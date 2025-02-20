@@ -3,13 +3,17 @@
     <channel>
         <title>VoiceInk Releases</title>
         <item>
-            <title>0.89</title>
-            <pubDate>Thu, 19 Feb 2025 07:51:55 +0545</pubDate>
-            <sparkle:version>89</sparkle:version>
-            <sparkle:shortVersionString>0.89</sparkle:shortVersionString>
+            <title>0.91</title>
+            <pubDate>Thu, 20 Feb 2025 07:51:55 +0545</pubDate>
+            <sparkle:version>91</sparkle:version>
+            <sparkle:shortVersionString>0.91</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <description><![CDATA[
-
+                    <h3>What's New in Version 0.91 🚀⚡</h3>
+                        <ul>
+                            <li>Proper support for Multiple Languages</li>
+                            <li>Better Onboarding View</li>
+                        </ul>
                     <h3>What's New in Version 0.89 🚀⚡</h3>
                         <ul>
                             <li>Fixed Native Mac apps not appearing on Power Mode</li>
@@ -17,7 +21,7 @@
                             <li>Made Screen Capture service more reliable</li>
                         </ul>
             ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v0.89/VoiceInk.dmg" length="5628266" type="application/octet-stream" sparkle:edSignature="XSlzGB5MEx1/uM5BGOeGwyaUkyOdrolv0+bVeCfy0AC9f2Gt+CMd6ktJu2W3luNjpr1FT/OqCQhu1LADIMC5BQ=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v0.91/VoiceInk.dmg" length="5665255" type="application/octet-stream" sparkle:edSignature="XhJfFmObvNeduAatySAdaleaPlzeS3IJ4XiF21caJ4aerj/TE1D+u2jxhUkoYP8ZmChQpe/HIPk3BIC6DysNBQ=="/>
         </item>
     </channel>
 </rss>
