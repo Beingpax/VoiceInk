@@ -129,6 +129,7 @@ class WorkflowManager: ObservableObject {
     )
     
     @Published var workflows: [Workflow] = []
+    @Published var errorMessage: String?
     
     private let workflowsKey = "VoiceInkWorkflows"
     
@@ -166,7 +167,11 @@ class WorkflowManager: ObservableObject {
         
         // Try to parse the JSON response
         guard let jsonData = jsonResponse.data(using: .utf8) else {
-            logger.error("❌ Failed to convert response to data")
+            let errorMsg = "Failed to convert workflow response to data"
+            logger.error("❌ \(errorMsg)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
         
@@ -183,11 +188,19 @@ class WorkflowManager: ObservableObject {
                     let response = WorkflowResponse(workflow_id: workflowId, workflow_args: workflowArgs)
                     processWorkflowResponse(response)
                 } else {
-                    logger.error("❌ JSON structure doesn't match expected format")
+                    let errorMsg = "JSON structure doesn't match the expected workflow format"
+                    logger.error("❌ \(errorMsg)")
+                    DispatchQueue.main.async {
+                        self.errorMessage = errorMsg
+                    }
                 }
             }
         } catch {
-            logger.error("❌ Error parsing workflow response: \(error.localizedDescription, privacy: .public)")
+            let errorMsg = "Error parsing workflow response: \(error.localizedDescription)"
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
         }
     }
     
@@ -196,7 +209,11 @@ class WorkflowManager: ObservableObject {
         
         // Extract the numeric part of the workflow_id (e.g., "w1" -> 1)
         guard let workflowIndex = Int(response.workflow_id.dropFirst(1)) else {
-            logger.error("❌ Invalid workflow ID format: \(response.workflow_id, privacy: .public)")
+            let errorMsg = "Invalid workflow ID format: \(response.workflow_id)"
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
         
@@ -205,7 +222,11 @@ class WorkflowManager: ObservableObject {
         
         // Check if the index is valid
         guard arrayIndex >= 0 && arrayIndex < workflows.count else {
-            logger.error("❌ Workflow index out of bounds: \(arrayIndex, privacy: .public)")
+            let errorMsg = "Workflow index out of bounds: \(arrayIndex). You might need to redefine your workflows."
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
         
@@ -215,7 +236,11 @@ class WorkflowManager: ObservableObject {
         
         // Get the shell script path and execute it
         if workflow.shellScriptPath.isEmpty {
-            logger.error("❌ No shell script path specified for workflow. This is required.")
+            let errorMsg = "No shell script path specified for workflow '\(workflow.name)'. This is required."
+            logger.error("❌ \(errorMsg)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
             
@@ -228,7 +253,11 @@ class WorkflowManager: ObservableObject {
         // Check if the script exists and is executable
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: scriptPath) else {
-            logger.error("❌ Shell script does not exist at path: \(scriptPath, privacy: .public)")
+            let errorMsg = "Shell script does not exist at path: \(scriptPath)"
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
         
@@ -240,12 +269,20 @@ class WorkflowManager: ObservableObject {
                 isExecutable = (permissions.intValue & 0o100) != 0
             }
         } catch {
-            logger.error("❌ Error checking script permissions: \(error.localizedDescription, privacy: .public)")
+            let errorMsg = "Error checking script permissions: \(error.localizedDescription)"
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
         
         if !isExecutable {
-            logger.error("❌ Shell script is not executable: \(scriptPath, privacy: .public)")
+            let errorMsg = "Shell script is not executable: \(scriptPath). Run 'chmod +x \(scriptPath)' to fix this."
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
             return
         }
         
@@ -271,7 +308,12 @@ class WorkflowManager: ObservableObject {
             environment["WORKFLOW_ARGS"] = jsonString
             logger.notice("📤 Setting WORKFLOW_ARGS: \(jsonString, privacy: .public)")
         } else {
-            logger.error("❌ Failed to serialize workflow args to JSON")
+            let errorMsg = "Failed to serialize workflow args to JSON"
+            logger.error("❌ \(errorMsg)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
+            return
         }
         
         // Set individual argument environment variables
@@ -333,6 +375,9 @@ class WorkflowManager: ObservableObject {
             let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
             if let error = String(data: errorData, encoding: .utf8), !error.isEmpty {
                 logger.error("❌ Script error: \(error, privacy: .public)")
+                DispatchQueue.main.async {
+                    self.errorMessage = "Script error: \(error)"
+                }
             }
             
             process.waitUntilExit()
@@ -340,11 +385,23 @@ class WorkflowManager: ObservableObject {
             let status = process.terminationStatus
             if status == 0 {
                 logger.notice("✅ Script executed successfully")
+                // Clear any previous error message on success
+                DispatchQueue.main.async {
+                    self.errorMessage = nil
+                }
             } else {
-                logger.error("❌ Script failed with status: \(status, privacy: .public)")
+                let errorMsg = "Script '\(workflow.name)' failed with status: \(status)"
+                logger.error("❌ \(errorMsg, privacy: .public)")
+                DispatchQueue.main.async {
+                    self.errorMessage = errorMsg
+                }
             }
         } catch {
-            logger.error("❌ Failed to execute script: \(error.localizedDescription, privacy: .public)")
+            let errorMsg = "Failed to execute script: \(error.localizedDescription)"
+            logger.error("❌ \(errorMsg, privacy: .public)")
+            DispatchQueue.main.async {
+                self.errorMessage = errorMsg
+            }
         }
     }
     

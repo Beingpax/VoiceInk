@@ -170,6 +170,7 @@ struct ContentView: View {
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
+    @State private var showWorkflowErrorAlert = false
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     @StateObject private var licenseViewModel = LicenseViewModel()
     
@@ -234,6 +235,22 @@ struct ContentView: View {
             } else {
                 print("ContentView: No destination in notification")
             }
+        }
+        .alert("Workflow Error", isPresented: $showWorkflowErrorAlert) {
+            Button("OK", role: .cancel) {
+                // Clear the error message when user acknowledges it
+                workflowManager.errorMessage = nil
+            }
+        } message: {
+            if let errorMessage = workflowManager.errorMessage {
+                Text(errorMessage)
+            } else {
+                Text("An unknown error occurred with the workflow.")
+            }
+        }
+        .onChange(of: workflowManager.errorMessage) { newValue in
+            // Only show alert in ContentView if we're not already in WorkflowsView
+            showWorkflowErrorAlert = newValue != nil && selectedView != .workflows
         }
     }
     

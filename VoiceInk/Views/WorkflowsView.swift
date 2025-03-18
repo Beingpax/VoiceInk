@@ -9,6 +9,7 @@ struct WorkflowsView: View {
     @State private var selectedWorkflow: Workflow?
     @State private var showDeleteAlert = false
     @State private var isEditing = false
+    @State private var showErrorAlert = false
     
     var body: some View {
         ScrollView {
@@ -162,6 +163,21 @@ struct WorkflowsView: View {
             }
         } message: {
             Text("Are you sure you want to delete this workflow? This action cannot be undone.")
+        }
+        .alert("Workflow Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) {
+                // Clear the error message when user acknowledges it
+                workflowManager.errorMessage = nil
+            }
+        } message: {
+            if let errorMessage = workflowManager.errorMessage {
+                Text(errorMessage)
+            } else {
+                Text("An unknown error occurred with the workflow.")
+            }
+        }
+        .onChange(of: workflowManager.errorMessage) { newValue in
+            showErrorAlert = newValue != nil
         }
     }
     
