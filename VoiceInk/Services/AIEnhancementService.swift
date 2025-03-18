@@ -287,6 +287,13 @@ class AIEnhancementService: ObservableObject {
                 let result = try await aiService.enhanceWithOllama(text: text, systemPrompt: systemMessage)
                 logger.notice("✅ Ollama enhancement successful")
                 logger.notice("📝 Received: \(result, privacy: .public)")
+                
+                // Check if this is a workflow response and execute it if needed
+                if mode == .workflowClassifier {
+                    logger.notice("🧬 Processing workflow response")
+                    WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                }
+                
                 return result
             } catch let error as LocalAIError {
                 switch error {
@@ -370,6 +377,13 @@ class AIEnhancementService: ObservableObject {
                     let result = enhancedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     logger.notice("✅ Gemini enhancement successful")
                     logger.notice("📝 Received: \(result, privacy: .public)")
+                    
+                    // Check if this is a workflow response and execute it if needed
+                    if mode == .workflowClassifier {
+                        logger.notice("🧬 Processing workflow response")
+                        WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                    }
+                    
                     return result
                     
                 case 401:
@@ -446,6 +460,13 @@ class AIEnhancementService: ObservableObject {
                     let result = enhancedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     logger.notice("✅ Anthropic enhancement successful")
                     logger.notice("📝 Received: \(result, privacy: .public)")
+                    
+                    // Check if this is a workflow response and execute it if needed
+                    if mode == .workflowClassifier {
+                        logger.notice("🧬 Processing workflow response")
+                        WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                    }
+                    
                     return result
                     
                 case 401:
@@ -534,6 +555,13 @@ class AIEnhancementService: ObservableObject {
                     let result = enhancedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     logger.notice("✅ Enhancement successful")
                     logger.notice("📝 Received: \(result, privacy: .public)")
+                    
+                    // Check if this is a workflow response and execute it if needed
+                    if mode == .workflowClassifier {
+                        logger.notice("🧬 Processing workflow response")
+                        WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                    }
+                    
                     return result
                     
                 case 401:

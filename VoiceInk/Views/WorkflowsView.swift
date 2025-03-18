@@ -5,6 +5,7 @@ struct WorkflowsView: View {
     @State private var workflowName: String = ""
     @State private var workflowPrompt: String = ""
     @State private var workflowJsonOutput: String = "{}"
+    @State private var workflowShellScriptPath: String = ""
     @State private var selectedWorkflow: Workflow?
     @State private var showDeleteAlert = false
     @State private var isEditing = false
@@ -69,6 +70,19 @@ struct WorkflowsView: View {
                             )
                         
                         Text("Define the expected format for the output as JSON")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Shell Script Path
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Shell Script Path (Optional)")
+                            .font(.headline)
+                        
+                        TextField("Enter absolute path to shell script", text: $workflowShellScriptPath)
+                            .textFieldStyle(.roundedBorder)
+                        
+                        Text("If provided, script will be executed when this workflow is triggered")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -155,7 +169,8 @@ struct WorkflowsView: View {
         let newWorkflow = Workflow(
             name: workflowName,
             prompt: workflowPrompt,
-            jsonOutput: workflowJsonOutput
+            jsonOutput: workflowJsonOutput,
+            shellScriptPath: workflowShellScriptPath
         )
         
         workflowManager.addWorkflow(newWorkflow)
@@ -169,7 +184,8 @@ struct WorkflowsView: View {
             id: id,
             name: workflowName,
             prompt: workflowPrompt,
-            jsonOutput: workflowJsonOutput
+            jsonOutput: workflowJsonOutput,
+            shellScriptPath: workflowShellScriptPath
         )
         
         workflowManager.updateWorkflow(updatedWorkflow)
@@ -181,6 +197,7 @@ struct WorkflowsView: View {
         workflowName = workflow.name
         workflowPrompt = workflow.prompt
         workflowJsonOutput = workflow.jsonOutput
+        workflowShellScriptPath = workflow.shellScriptPath
         isEditing = true
     }
     
@@ -189,6 +206,7 @@ struct WorkflowsView: View {
         workflowName = ""
         workflowPrompt = ""
         workflowJsonOutput = "{}"
+        workflowShellScriptPath = ""
         isEditing = false
     }
 }
@@ -242,6 +260,18 @@ struct WorkflowCard: View {
                     .foregroundColor(.secondary)
                     .lineLimit(3)
                     .truncationMode(.tail)
+                
+                if !workflow.shellScriptPath.isEmpty {
+                    Text("Shell Script:")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Text(workflow.shellScriptPath)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
         }
         .padding(16)

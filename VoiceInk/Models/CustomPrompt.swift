@@ -115,16 +115,19 @@ struct Workflow: Identifiable, Codable, Equatable {
     var name: String
     var prompt: String
     var jsonOutput: String
+    var shellScriptPath: String
     
     init(
         id: UUID = UUID(),
         name: String = "",
         prompt: String = "",
-        jsonOutput: String = "{}"
+        jsonOutput: String = "{}",
+        shellScriptPath: String = ""
     ) {
         self.id = id
         self.name = name
         self.prompt = prompt
         self.jsonOutput = jsonOutput
+        self.shellScriptPath = shellScriptPath
     }
 }
