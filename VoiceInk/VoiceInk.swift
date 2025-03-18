@@ -24,6 +24,10 @@ struct VoiceInkApp: App {
     private let audioCleanupManager = AudioCleanupManager.shared
     
     init() {
+        #if DEVELOPMENT_MODE
+        print("🧪 Running in DEVELOPMENT MODE - License restrictions disabled")
+        #endif
+        
         do {
             let schema = Schema([
                 Transcription.self

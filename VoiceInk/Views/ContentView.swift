@@ -80,6 +80,16 @@ struct DynamicSidebar: View {
                 Text("VoiceInk")
                     .font(.system(size: 14, weight: .semibold))
                 
+                #if DEVELOPMENT_MODE
+                // Always show PRO badge in development mode
+                Text("DEV")
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color.green)
+                    .cornerRadius(4)
+                #else
                 if case .licensed = licenseViewModel.licenseState {
                     Text("PRO")
                         .font(.system(size: 9, weight: .heavy))
@@ -89,6 +99,7 @@ struct DynamicSidebar: View {
                         .background(Color.blue)
                         .cornerRadius(4)
                 }
+                #endif
                 
                 Spacer()
             }
@@ -97,6 +108,23 @@ struct DynamicSidebar: View {
             
             // Navigation Items
             ForEach(ViewType.allCases, id: \.self) { viewType in
+                #if DEVELOPMENT_MODE
+                // Skip license view in development mode
+                if viewType != .license {
+                    DynamicSidebarButton(
+                        title: viewType.rawValue,
+                        systemImage: viewType.icon,
+                        isSelected: selectedView == viewType,
+                        isHovered: hoveredView == viewType,
+                        namespace: buttonAnimation
+                    ) {
+                        selectedView = viewType
+                    }
+                    .onHover { isHovered in
+                        hoveredView = isHovered ? viewType : nil
+                    }
+                }
+                #else
                 DynamicSidebarButton(
                     title: viewType.rawValue,
                     systemImage: viewType.icon,
@@ -109,6 +137,7 @@ struct DynamicSidebar: View {
                 .onHover { isHovered in
                     hoveredView = isHovered ? viewType : nil
                 }
+                #endif
             }
             
             Spacer()
