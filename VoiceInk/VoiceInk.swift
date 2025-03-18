@@ -3,6 +3,7 @@ import SwiftData
 import Sparkle
 import AppKit
 import OSLog
+import Combine
 
 @main
 struct VoiceInkApp: App {
@@ -16,12 +17,17 @@ struct VoiceInkApp: App {
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
+    @StateObject private var workflowManager = WorkflowManager.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     // Audio cleanup manager for automatic deletion of old audio files
     private let audioCleanupManager = AudioCleanupManager.shared
     
     init() {
+        #if DEVELOPMENT_MODE
+        print("🧪 Running in DEVELOPMENT MODE - License restrictions disabled")
+        #endif
+        
         do {
             let schema = Schema([
                 Transcription.self
@@ -91,6 +97,7 @@ struct VoiceInkApp: App {
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(workflowManager)
                     .modelContainer(container)
                     .onAppear {
                         updaterViewModel.silentlyCheckForUpdates()
@@ -113,6 +120,7 @@ struct VoiceInkApp: App {
                     .environmentObject(whisperState)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(workflowManager)
                     .frame(minWidth: 1200, minHeight: 800)
                    
             }
@@ -131,6 +139,7 @@ struct VoiceInkApp: App {
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
+                .environmentObject(workflowManager)
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width

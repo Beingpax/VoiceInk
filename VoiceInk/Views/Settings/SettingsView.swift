@@ -4,6 +4,7 @@ import KeyboardShortcuts
 import LaunchAtLogin
 import AVFoundation
 // Additional imports for Settings components
+import Combine
 
 struct SettingsView: View {
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
@@ -173,6 +174,28 @@ struct SettingsView: View {
                     subtitle: "Manage recording storage"
                 ) {
                     AudioCleanupSettingsView()
+                }
+                
+                // Workflows Section
+                SettingsSection(
+                    icon: "wand.and.stars",
+                    title: "Workflows",
+                    subtitle: "Create custom automation workflows"
+                ) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Manage your workflows for automated tasks")
+                            .settingsDescription()
+                        
+                        Button("Open Workflows") {
+                            NotificationCenter.default.post(
+                                name: .navigateToDestination,
+                                object: nil,
+                                userInfo: ["destination": "Workflows"]
+                            )
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                    }
                 }
                 
                 // Reset Onboarding Section

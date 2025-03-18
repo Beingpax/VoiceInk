@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import KeyboardShortcuts
+import Combine
 
 // ViewType enum with all cases
 enum ViewType: String, CaseIterable {
@@ -11,6 +12,7 @@ enum ViewType: String, CaseIterable {
     case models = "AI Models"
     case enhancement = "Enhancement"
     case powerMode = "Power Mode"
+    case workflows = "Workflows"
     case permissions = "Permissions"
     case audioInput = "Audio Input"
     case dictionary = "Dictionary"
@@ -27,6 +29,7 @@ enum ViewType: String, CaseIterable {
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
         case .powerMode: return "sparkles.square.fill.on.square"
+        case .workflows: return "arrow.triangle.branch"
         case .permissions: return "shield.fill"
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
@@ -77,6 +80,16 @@ struct DynamicSidebar: View {
                 Text("VoiceInk")
                     .font(.system(size: 14, weight: .semibold))
                 
+                #if DEVELOPMENT_MODE
+                // Always show PRO badge in development mode
+                Text("DEV")
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color.green)
+                    .cornerRadius(4)
+                #else
                 if case .licensed = licenseViewModel.licenseState {
                     Text("PRO")
                         .font(.system(size: 9, weight: .heavy))
@@ -86,6 +99,7 @@ struct DynamicSidebar: View {
                         .background(Color.blue)
                         .cornerRadius(4)
                 }
+                #endif
                 
                 Spacer()
             }
@@ -94,6 +108,23 @@ struct DynamicSidebar: View {
             
             // Navigation Items
             ForEach(ViewType.allCases, id: \.self) { viewType in
+                #if DEVELOPMENT_MODE
+                // Skip license view in development mode
+                if viewType != .license {
+                    DynamicSidebarButton(
+                        title: viewType.rawValue,
+                        systemImage: viewType.icon,
+                        isSelected: selectedView == viewType,
+                        isHovered: hoveredView == viewType,
+                        namespace: buttonAnimation
+                    ) {
+                        selectedView = viewType
+                    }
+                    .onHover { isHovered in
+                        hoveredView = isHovered ? viewType : nil
+                    }
+                }
+                #else
                 DynamicSidebarButton(
                     title: viewType.rawValue,
                     systemImage: viewType.icon,
@@ -106,6 +137,7 @@ struct DynamicSidebar: View {
                 .onHover { isHovered in
                     hoveredView = isHovered ? viewType : nil
                 }
+                #endif
             }
             
             Spacer()
@@ -163,9 +195,11 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var whisperState: WhisperState
     @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var workflowManager: WorkflowManager
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
+    @State private var showWorkflowErrorAlert = false
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     @StateObject private var licenseViewModel = LicenseViewModel()
     
@@ -220,6 +254,9 @@ struct ContentView: View {
                 case "Enhancement":
                     print("ContentView: Navigating to Enhancement")
                     selectedView = .enhancement
+                case "Workflows":
+                    print("ContentView: Navigating to Workflows")
+                    selectedView = .workflows
                 default:
                     print("ContentView: No matching destination found for: \(destination)")
                     break
@@ -227,6 +264,22 @@ struct ContentView: View {
             } else {
                 print("ContentView: No destination in notification")
             }
+        }
+        .alert("Workflow Error", isPresented: $showWorkflowErrorAlert) {
+            Button("OK", role: .cancel) {
+                // Clear the error message when user acknowledges it
+                workflowManager.errorMessage = nil
+            }
+        } message: {
+            if let errorMessage = workflowManager.errorMessage {
+                Text(errorMessage)
+            } else {
+                Text("An unknown error occurred with the workflow.")
+            }
+        }
+        .onChange(of: workflowManager.errorMessage) { newValue in
+            // Only show alert in ContentView if we're not already in WorkflowsView
+            showWorkflowErrorAlert = newValue != nil && selectedView != .workflows
         }
     }
     
@@ -255,6 +308,8 @@ struct ContentView: View {
             DictionarySettingsView(whisperPrompt: whisperState.whisperPrompt)
         case .powerMode:
             PowerModeView()
+        case .workflows:
+            WorkflowsView()
         case .settings:
             SettingsView()
                 .environmentObject(whisperState)

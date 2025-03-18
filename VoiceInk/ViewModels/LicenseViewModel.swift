@@ -18,9 +18,21 @@ class LicenseViewModel: ObservableObject {
     private let trialPeriodDays = 7
     private let polarService = PolarService()
     private let userDefaults = UserDefaults.standard
+    private var isDevelopmentMode: Bool {
+        #if DEVELOPMENT_MODE
+        return true
+        #else
+        return false
+        #endif
+    }
     
     init() {
-        checkLicenseState()
+        if isDevelopmentMode {
+            // In development mode, always set to licensed
+            licenseState = .licensed
+        } else {
+            checkLicenseState()
+        }
     }
     
     func startTrial() {
@@ -93,6 +105,10 @@ class LicenseViewModel: ObservableObject {
     }
     
     var canUseApp: Bool {
+        if isDevelopmentMode {
+            return true
+        }
+        
         switch licenseState {
         case .licensed, .trial:
             return true

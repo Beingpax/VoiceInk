@@ -133,6 +133,7 @@ struct MenuBarView: View {
                         }
                     }
                 }
+                
             }
             .id("additional-menu-\(menuRefreshTrigger)")
             

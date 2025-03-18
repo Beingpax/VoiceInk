@@ -7,6 +7,7 @@ enum PredefinedPrompts {
     private static let defaultPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     private static let chatStylePromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
     private static let emailPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+    private static let workflowPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
     
     static var all: [CustomPrompt] {
         // Always return the latest predefined prompts from source code
@@ -127,6 +128,15 @@ enum PredefinedPrompts {
                 """,
                 icon: .chatFill,
                 description: "Casual chat-style formatting",
+                isPredefined: true
+            ),
+            
+            CustomPrompt(
+                id: workflowPromptId,
+                title: "Workflow",
+                promptText: "This is a special prompt that processes a transcript using defined workflows. The system will automatically generate prompts based on user-defined workflows.",
+                icon: .workflowFill,
+                description: "Route transcriptions to custom workflows",
                 isPredefined: true
             )
         ]

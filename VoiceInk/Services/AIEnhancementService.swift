@@ -2,10 +2,12 @@ import Foundation
 import os
 import SwiftData
 import AppKit
+import Combine
 
 enum EnhancementMode {
     case transcriptionEnhancement
     case aiAssistant
+    case workflowClassifier
 }
 
 class AIEnhancementService: ObservableObject {
@@ -159,14 +161,24 @@ class AIEnhancementService: ObservableObject {
     }
     
     private func determineMode(text: String) -> EnhancementMode {
-        // Only use AI assistant mode if text starts with configured trigger word
+        // Check if we're in workflow mode based on currently selected prompt
+        if let activePrompt = activePrompt,
+           activePrompt.id == PredefinedPrompts.all.first(where: { $0.title == "Workflow" })?.id {
+            logger.notice("🧬 Using Workflow Classifier mode")
+            return .workflowClassifier
+        }
+        
+        // Use AI assistant mode if text starts with configured trigger word
         if text.lowercased().hasPrefix(assistantTriggerWord.lowercased()) {
+            logger.notice("🤖 Using AI Assistant mode")
             return .aiAssistant
         }
+        
+        logger.notice("📝 Using standard Transcription Enhancement mode")
         return .transcriptionEnhancement
     }
     
-    private func getSystemMessage(for mode: EnhancementMode) -> String {
+    private func getSystemMessage(for mode: EnhancementMode, text: String = "") -> String {
         // Get clipboard context if enabled and available
         let clipboardContext = if useClipboardContext,
                               let clipboardText = NSPasteboard.general.string(forType: .string),
@@ -202,6 +214,52 @@ class AIEnhancementService: ObservableObject {
 
         case .aiAssistant:
             return AIPrompts.assistantMode + clipboardContext + screenCaptureContext
+            
+        case .workflowClassifier:
+            logger.notice("🧬 Building workflow classifier prompt")
+            
+            // Get all workflows from the WorkflowManager
+            let workflowManager = WorkflowManager.shared
+            let workflows = workflowManager.workflows
+            
+            // Check if we have any workflows defined
+            if workflows.isEmpty {
+                logger.notice("⚠️ No workflows defined, falling back to default enhancement mode")
+                return getSystemMessage(for: .transcriptionEnhancement, text: text)
+            }
+            
+            // Build the additional info section (system prompt)
+            let systemPrompt = clipboardContext + screenCaptureContext
+            let additionalUserInfo = systemPrompt.isEmpty ? "" : "--- Additional user-provided infos:\n\(systemPrompt)"
+            
+            // Build the workflow descriptions section
+            var workflowDescriptions = ""
+            for (index, workflow) in workflows.enumerated() {
+                workflowDescriptions += """
+                - id: w\(index + 1)
+                - description:
+                \(workflow.name)
+                \(workflow.prompt)
+                - expected output:
+                \(workflow.jsonOutput)
+                
+                """
+            }
+            
+            // Log the workflow information for debugging
+            logger.notice("🧬 Workflow count: \(workflows.count)")
+            for (index, workflow) in workflows.enumerated() {
+                logger.notice("🧬 Workflow \(index + 1): \(workflow.name)")
+            }
+            
+            // Format the final prompt using the template
+            let formattedPrompt = String(format: AIPrompts.workflowClassifierTemplate, 
+                                        additionalUserInfo,
+                                        workflowDescriptions,
+                                        text)
+            
+            logger.notice("🧬 Created workflow classifier prompt")
+            return formattedPrompt
         }
     }
     
@@ -218,7 +276,7 @@ class AIEnhancementService: ObservableObject {
         
         // Determine mode and get system message
         let mode = determineMode(text: text)
-        let systemMessage = getSystemMessage(for: mode)
+        let systemMessage = getSystemMessage(for: mode, text: text)
         
         // Handle Ollama requests differently
         if aiService.selectedProvider == .ollama {
@@ -229,6 +287,13 @@ class AIEnhancementService: ObservableObject {
                 let result = try await aiService.enhanceWithOllama(text: text, systemPrompt: systemMessage)
                 logger.notice("✅ Ollama enhancement successful")
                 logger.notice("📝 Received: \(result, privacy: .public)")
+                
+                // Check if this is a workflow response and execute it if needed
+                if mode == .workflowClassifier {
+                    logger.notice("🧬 Processing workflow response")
+                    WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                }
+                
                 return result
             } catch let error as LocalAIError {
                 switch error {
@@ -312,6 +377,13 @@ class AIEnhancementService: ObservableObject {
                     let result = enhancedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     logger.notice("✅ Gemini enhancement successful")
                     logger.notice("📝 Received: \(result, privacy: .public)")
+                    
+                    // Check if this is a workflow response and execute it if needed
+                    if mode == .workflowClassifier {
+                        logger.notice("🧬 Processing workflow response")
+                        WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                    }
+                    
                     return result
                     
                 case 401:
@@ -388,6 +460,13 @@ class AIEnhancementService: ObservableObject {
                     let result = enhancedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     logger.notice("✅ Anthropic enhancement successful")
                     logger.notice("📝 Received: \(result, privacy: .public)")
+                    
+                    // Check if this is a workflow response and execute it if needed
+                    if mode == .workflowClassifier {
+                        logger.notice("🧬 Processing workflow response")
+                        WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                    }
+                    
                     return result
                     
                 case 401:
@@ -476,6 +555,13 @@ class AIEnhancementService: ObservableObject {
                     let result = enhancedText.trimmingCharacters(in: .whitespacesAndNewlines)
                     logger.notice("✅ Enhancement successful")
                     logger.notice("📝 Received: \(result, privacy: .public)")
+                    
+                    // Check if this is a workflow response and execute it if needed
+                    if mode == .workflowClassifier {
+                        logger.notice("🧬 Processing workflow response")
+                        WorkflowManager.shared.executeWorkflow(fromResponse: result)
+                    }
+                    
                     return result
                     
                 case 401:

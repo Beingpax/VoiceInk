@@ -106,6 +106,7 @@ class MenuBarManager: ObservableObject {
             .environmentObject(updaterViewModel)
             .environmentObject(enhancementService)
             .environmentObject(aiService)
+            .environmentObject(WorkflowManager.shared)
             .environment(\.modelContext, ModelContext(container))
         
         // Create window using WindowManager
