@@ -213,12 +213,13 @@ class WorkflowManager: ObservableObject {
         let workflow = workflows[arrayIndex]
         logger.notice("🧬 Found workflow: \(workflow.name, privacy: .public)")
         
-        // Check if there's a shell script path and if it exists
-        if !workflow.shellScriptPath.isEmpty {
-            executeShellScript(workflow: workflow, args: response.workflow_args)
-        } else {
-            logger.notice("ℹ️ No shell script path specified for workflow")
+        // Get the shell script path and execute it
+        if workflow.shellScriptPath.isEmpty {
+            logger.error("❌ No shell script path specified for workflow. This is required.")
+            return
         }
+            
+        executeShellScript(workflow: workflow, args: response.workflow_args)
     }
     
     private func executeShellScript(workflow: Workflow, args: [String: Any]) {

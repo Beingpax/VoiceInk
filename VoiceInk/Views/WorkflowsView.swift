@@ -76,13 +76,13 @@ struct WorkflowsView: View {
                     
                     // Shell Script Path
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Shell Script Path (Optional)")
+                        Text("Shell Script Path")
                             .font(.headline)
                         
                         TextField("Enter absolute path to shell script", text: $workflowShellScriptPath)
                             .textFieldStyle(.roundedBorder)
                         
-                        Text("If provided, script will be executed when this workflow is triggered")
+                        Text("Script will be executed when this workflow is triggered")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -106,7 +106,7 @@ struct WorkflowsView: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(workflowName.isEmpty || workflowPrompt.isEmpty)
+                        .disabled(workflowName.isEmpty || workflowPrompt.isEmpty || workflowShellScriptPath.isEmpty)
                     }
                 }
                 .padding()
