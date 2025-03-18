@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import KeyboardShortcuts
+import Combine
 
 // ViewType enum with all cases
 enum ViewType: String, CaseIterable {
@@ -11,6 +12,7 @@ enum ViewType: String, CaseIterable {
     case models = "AI Models"
     case enhancement = "Enhancement"
     case powerMode = "Power Mode"
+    case workflows = "Workflows"
     case permissions = "Permissions"
     case audioInput = "Audio Input"
     case dictionary = "Dictionary"
@@ -27,6 +29,7 @@ enum ViewType: String, CaseIterable {
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
         case .powerMode: return "sparkles.square.fill.on.square"
+        case .workflows: return "arrow.triangle.branch"
         case .permissions: return "shield.fill"
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
@@ -163,6 +166,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var whisperState: WhisperState
     @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var workflowManager: WorkflowManager
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
@@ -220,6 +224,9 @@ struct ContentView: View {
                 case "Enhancement":
                     print("ContentView: Navigating to Enhancement")
                     selectedView = .enhancement
+                case "Workflows":
+                    print("ContentView: Navigating to Workflows")
+                    selectedView = .workflows
                 default:
                     print("ContentView: No matching destination found for: \(destination)")
                     break
@@ -255,6 +262,8 @@ struct ContentView: View {
             DictionarySettingsView(whisperPrompt: whisperState.whisperPrompt)
         case .powerMode:
             PowerModeView()
+        case .workflows:
+            WorkflowsView()
         case .settings:
             SettingsView()
                 .environmentObject(whisperState)
