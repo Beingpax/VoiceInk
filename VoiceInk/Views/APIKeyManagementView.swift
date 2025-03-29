@@ -508,6 +508,8 @@ struct APIKeyManagementView: View {
                                         URL(string: "https://makersuite.google.com/app/apikey")!
                                     case .anthropic:
                                         URL(string: "https://console.anthropic.com/settings/keys")!
+                                    case .mistral:
+                                        URL(string: "https://console.mistral.ai/api-keys")!
                                     case .ollama, .custom:
                                         URL(string: "")! // This case should never be reached
                                     

@@ -6,6 +6,7 @@ enum AIProvider: String, CaseIterable {
     case deepSeek = "DeepSeek"
     case gemini = "Gemini"
     case anthropic = "Anthropic"
+    case mistral = "Mistral"
     case ollama = "Ollama"
     case custom = "Custom"
     
@@ -21,6 +22,8 @@ enum AIProvider: String, CaseIterable {
             return "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
         case .anthropic:
             return "https://api.anthropic.com/v1/messages"
+        case .mistral:
+            return "https://api.mistral.ai/v1/chat/completions"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
         case .custom:
@@ -40,6 +43,8 @@ enum AIProvider: String, CaseIterable {
             return "gemini-2.0-flash"
         case .anthropic:
             return "claude-3-5-sonnet-20241022"
+        case .mistral:
+            return "mistral-large-2411"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
         case .custom:
