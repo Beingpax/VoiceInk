@@ -1,10 +1,10 @@
-import Foundation
-import SwiftUI
-import AVFoundation
-import SwiftData
 import AppKit
+import AVFoundation
+import Foundation
 import KeyboardShortcuts
 import os
+import SwiftData
+import SwiftUI
 
 @MainActor
 class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
@@ -21,14 +21,15 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
     @Published var isProcessing = false
     @Published var shouldCancelRecording = false
     @Published var isTranscribing = false
-    @Published var isAutoCopyEnabled: Bool = UserDefaults.standard.object(forKey: "IsAutoCopyEnabled") as? Bool ?? true {
+    @Published var isAutoCopyEnabled: Bool = UserDefaults.standard.isAutoCopyEnabled {
         didSet {
-            UserDefaults.standard.set(isAutoCopyEnabled, forKey: "IsAutoCopyEnabled")
+            UserDefaults.standard.isAutoCopyEnabled = isAutoCopyEnabled
         }
     }
-    @Published var recorderType: String = UserDefaults.standard.string(forKey: "RecorderType") ?? "mini" {
+
+    @Published var recorderType: String = UserDefaults.standard.recorderType {
         didSet {
-            UserDefaults.standard.set(recorderType, forKey: "RecorderType")
+            UserDefaults.standard.recorderType = recorderType
         }
     }
     
@@ -44,7 +45,63 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
         }
     }
     
-    var whisperContext: WhisperContext?
+    // Use TranscriptionService protocol instead of specific WhisperContext
+    var transcriptionService: (any TranscriptionService)?
+    
+    // Service factory for creating transcription services
+    let serviceFactory = TranscriptionServiceFactory()
+    
+    // Currently selected transcription service type
+    @Published var transcriptionServiceType: TranscriptionServiceType = UserDefaults.standard.transcriptionServiceType {
+        didSet {
+            UserDefaults.standard.transcriptionServiceType = transcriptionServiceType
+            // Release existing service resources when changing type
+            Task {
+                await cleanupServiceResources()
+            }
+            // Post notification for language change
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
+        }
+    }
+    
+    // Cloud service configuration
+    @Published var cloudTranscriptionApiKey: String = UserDefaults.standard.cloudTranscriptionApiKey {
+        didSet {
+            UserDefaults.standard.cloudTranscriptionApiKey = cloudTranscriptionApiKey
+            serviceFactory.updateDefaultCloudConfig(apiKey: cloudTranscriptionApiKey)
+        }
+    }
+    
+    @Published var cloudTranscriptionApiEndpoint: String = UserDefaults.standard.cloudTranscriptionApiEndpoint {
+        didSet {
+            UserDefaults.standard.cloudTranscriptionApiEndpoint = cloudTranscriptionApiEndpoint
+            serviceFactory.updateDefaultCloudConfig(apiEndpoint: cloudTranscriptionApiEndpoint)
+        }
+    }
+    
+    // Cloud model selection
+    @Published var cloudTranscriptionModelName: String = UserDefaults.standard.cloudTranscriptionModelName {
+        didSet {
+            UserDefaults.standard.cloudTranscriptionModelName = cloudTranscriptionModelName
+        }
+    }
+    
+    // Custom language for manual input
+    @Published var cloudTranscriptionLanguage: String? = UserDefaults.standard.cloudTranscriptionLanguage {
+        didSet {
+            UserDefaults.standard.cloudTranscriptionLanguage = cloudTranscriptionLanguage
+            // Post notification for language change
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
+        }
+    }
+    
+    // Selected language for transcription
+    @Published var selectedLanguage: String? = UserDefaults.standard.selectedLanguage {
+        didSet {
+            UserDefaults.standard.selectedLanguage = selectedLanguage
+        }
+    }
+    
     let recorder = Recorder()
     var recordedFile: URL? = nil
     let whisperPrompt = WhisperPrompt()
@@ -68,6 +125,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
     
     private enum LoadError: Error {
         case couldNotLocateModel
+        case serviceCreationFailed
     }
     
     let modelsDirectory: URL
@@ -100,10 +158,17 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
         createRecordingsDirectoryIfNeeded()
         loadAvailableModels()
         
-        if let savedModelName = UserDefaults.standard.string(forKey: "CurrentModel"),
-           let savedModel = availableModels.first(where: { $0.name == savedModelName }) {
+        if let savedModelName = UserDefaults.standard.currentModel,
+           let savedModel = availableModels.first(where: { $0.name == savedModelName })
+        {
             currentModel = savedModel
         }
+        
+        // Initialize the service factory with cloud configuration
+        serviceFactory.updateDefaultCloudConfig(
+            apiEndpoint: cloudTranscriptionApiEndpoint,
+            apiKey: cloudTranscriptionApiKey
+        )
     }
     
     private func createRecordingsDirectoryIfNeeded() {
@@ -134,11 +199,11 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 logger.error("❌ No recorded file found after stopping recording")
             }
         } else {
-            guard currentModel != nil else {
+            guard currentModel != nil || transcriptionServiceType == .cloud else {
                 await MainActor.run {
                     let alert = NSAlert()
-                    alert.messageText = "No Whisper Model Selected"
-                    alert.informativeText = "Please select a default whisper model in AI Models tab before recording."
+                    alert.messageText = "No Whisper or Cloud Model Selected "
+                    alert.informativeText = "Please select a default model in AI Models tab before recording."
                     alert.alertStyle = .warning
                     alert.addButton(withTitle: "OK")
                     alert.runModal()
@@ -154,9 +219,9 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                     Task {
                         do {
                             let file = try FileManager.default.url(for: .documentDirectory,
-                                in: .userDomainMask,
-                                appropriateFor: nil,
-                                create: true)
+                                                                   in: .userDomainMask,
+                                                                   appropriateFor: nil,
+                                                                   create: true)
                                 .appending(path: "output.wav")
                             
                             self.recordedFile = file
@@ -167,18 +232,18 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                                 self.isVisualizerActive = true
                             }
                             
-                            async let recordingTask = self.recorder.startRecording(toOutputFile: file, delegate: self)
-                            async let windowConfigTask = ActiveWindowService.shared.applyConfigurationForCurrentApp()
+                            async let recordingTask: Void = self.recorder.startRecording(toOutputFile: file, delegate: self)
+                            async let windowConfigTask: Void = ActiveWindowService.shared.applyConfigurationForCurrentApp()
                             
-                            async let modelLoadingTask: Void = {
-                                if let currentModel = await self.currentModel, await self.whisperContext == nil {
-                                    logger.notice("🔄 Loading model in parallel with recording: \(currentModel.name)")
+                            async let serviceLoadingTask: Void = {
+                                if await self.transcriptionService == nil {
+                                    logger.notice("🔄 Loading transcription service in parallel with recording")
                                     do {
-                                        try await self.loadModel(currentModel)
+                                        try await self.loadTranscriptionService()
                                     } catch {
-                                        logger.error("❌ Model preloading failed: \(error.localizedDescription)")
+                                        logger.error("❌ Service preloading failed: \(error.localizedDescription)")
                                         await MainActor.run {
-                                            self.messageLog += "Error preloading model: \(error.localizedDescription)\n"
+                                            self.messageLog += "Error preloading transcription service: \(error.localizedDescription)\n"
                                         }
                                     }
                                 }
@@ -188,12 +253,13 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                             await windowConfigTask
                             
                             if let enhancementService = self.enhancementService,
-                               enhancementService.isEnhancementEnabled && 
-                               enhancementService.useScreenCaptureContext {
+                               enhancementService.isEnhancementEnabled &&
+                               enhancementService.useScreenCaptureContext
+                            {
                                 await enhancementService.captureScreenContext()
                             }
                             
-                            await modelLoadingTask
+                            await serviceLoadingTask
                             
                         } catch {
                             await MainActor.run {
@@ -259,71 +325,79 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
         defer {
             if shouldCancelRecording {
                 Task {
-                    await cleanupModelResources()
+                    await cleanupServiceResources()
                 }
             }
         }
 
-        guard let currentModel = currentModel else {
-            logger.error("❌ Cannot transcribe: No model selected")
-            messageLog += "Cannot transcribe: No model selected.\n"
-            currentError = .modelLoadFailed
-            return
-        }
-
-        if whisperContext == nil {
-            logger.notice("🔄 Model not loaded yet, attempting to load now: \(currentModel.name)")
-            do {
-                try await loadModel(currentModel)
-            } catch {
-                logger.error("❌ Failed to load model: \(currentModel.name) - \(error.localizedDescription)")
-                messageLog += "Failed to load transcription model. Please try again.\n"
+        // For local transcription, we need a model
+        if transcriptionServiceType == .local {
+            guard let _ = currentModel else {
+                logger.error("❌ Cannot transcribe: No model selected for local transcription")
+                messageLog += "Cannot transcribe: No model selected.\n"
                 currentError = .modelLoadFailed
                 return
             }
         }
 
-        guard let whisperContext = whisperContext else {
-            logger.error("❌ Cannot transcribe: Model could not be loaded")
-            messageLog += "Cannot transcribe: Model could not be loaded after retry.\n"
+        if transcriptionService == nil {
+            logger.notice("🔄 Transcription service not loaded yet, attempting to load now")
+            do {
+                try await loadTranscriptionService()
+            } catch {
+                logger.error("❌ Failed to load transcription service: \(error.localizedDescription)")
+                messageLog += "Failed to load transcription service. Please try again.\n"
+                currentError = .modelLoadFailed
+                return
+            }
+        }
+
+        guard let transcriptionService = transcriptionService else {
+            logger.error("❌ Cannot transcribe: Transcription service could not be loaded")
+            messageLog += "Cannot transcribe: Transcription service could not be loaded after retry.\n"
             currentError = .modelLoadFailed
             return
         }
 
-        logger.notice("🔄 Starting transcription with model: \(currentModel.name)")
+        logger.notice("🔄 Starting transcription with service type: \(self.transcriptionServiceType.rawValue)")
         do {
             let permanentURL = try saveRecordingPermanently(url)
             let permanentURLString = permanentURL.absoluteString
 
             if shouldCancelRecording { return }
 
-            messageLog += "Reading wave samples...\n"
-            let data = try readAudioSamples(url)
-            
-            if shouldCancelRecording { return }
-            
-            messageLog += "Transcribing data using \(currentModel.name) model...\n"
+            messageLog += "Transcribing audio using \(transcriptionServiceType.description)...\n"
             messageLog += "Setting prompt: \(whisperPrompt.transcriptionPrompt)\n"
-            await whisperContext.setPrompt(whisperPrompt.transcriptionPrompt)
+            await transcriptionService.setPrompt(whisperPrompt.transcriptionPrompt)
+            
+            let selectedLanguage = switch transcriptionServiceType {
+            case .local:
+                selectedLanguage
+            case .cloud:
+                cloudTranscriptionLanguage
+            }
+            await transcriptionService.setLanguage(selectedLanguage)
             
             if shouldCancelRecording { return }
             
-            await whisperContext.fullTranscribe(samples: data)
+            // Use direct file URL transcription instead of reading samples
+            try await transcriptionService.fullTranscribeFromURL(fileURL: permanentURL)
             
             if shouldCancelRecording { return }
             
-            var text = await whisperContext.getTranscription()
+            var text = await transcriptionService.getTranscription()
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             logger.notice("✅ Transcription completed successfully, length: \(text.count) characters")
             
-            if UserDefaults.standard.bool(forKey: "IsWordReplacementEnabled") {
+            if UserDefaults.standard.isWordReplacementEnabled {
                 text = WordReplacementService.shared.applyReplacements(to: text)
                 logger.notice("✅ Word replacements applied")
             }
             
             if let enhancementService = enhancementService,
                enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured {
+               enhancementService.isConfigured
+            {
                 do {
                     if shouldCancelRecording { return }
                     
@@ -363,10 +437,10 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
             
             if case .trialExpired = licenseViewModel.licenseState {
                 text = """
-                    Your trial has expired. Upgrade to VoiceInk Pro at tryvoiceink.com/buy
-                    
-                    \(text)
-                    """
+                Your trial has expired. Upgrade to VoiceInk Pro at tryvoiceink.com/buy
+                
+                \(text)
+                """
             }
             
             messageLog += "Done: \(text)\n"
@@ -391,36 +465,77 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 }
             }
             
-             await dismissMiniRecorder()
-             
-            await cleanupModelResources()
-           
+            await dismissMiniRecorder()
+            await cleanupServiceResources()
             
         } catch {
             messageLog += "\(error.localizedDescription)\n"
             currentError = .transcriptionFailed
             
-            await cleanupModelResources()
+            await cleanupServiceResources()
             await dismissMiniRecorder()
         }
     }
 
-    private func readAudioSamples(_ url: URL) throws -> [Float] {
-        return try decodeWaveFile(url)
-    }
-
-    private func decodeWaveFile(_ url: URL) throws -> [Float] {
-        let data = try Data(contentsOf: url)
-        let floats = stride(from: 44, to: data.count, by: 2).map {
-            return data[$0..<$0 + 2].withUnsafeBytes {
-                let short = Int16(littleEndian: $0.load(as: Int16.self))
-                return max(-1.0, min(Float(short) / 32767.0, 1.0))
+    @Published var currentError: WhisperStateError?
+    
+    // Load appropriate transcription service based on selected type
+    func loadTranscriptionService() async throws {
+        logger.notice("🔄 Loading transcription service of type: \(self.transcriptionServiceType.rawValue)")
+        
+        switch transcriptionServiceType {
+        case .local:
+            guard let currentModel = currentModel else {
+                throw LoadError.couldNotLocateModel
+            }
+            
+            isModelLoading = true
+            defer { isModelLoading = false }
+            
+            let configuration: [String: Any] = ["modelPath": currentModel.url.path]
+            transcriptionService = try await serviceFactory.createService(type: .local, configuration: configuration)
+            
+        case .cloud:
+            // Validate API key and endpoint first
+            guard !cloudTranscriptionApiKey.isEmpty else {
+                logger.error("❌ Unable to load cloud service: API key is empty")
+                throw LoadError.serviceCreationFailed
+            }
+            
+            guard !cloudTranscriptionApiEndpoint.isEmpty else {
+                logger.error("❌ Unable to load cloud service: Endpoint URL is empty")
+                throw LoadError.serviceCreationFailed
+            }
+            
+            // Validate endpoint URL
+            guard let url = URL(string: cloudTranscriptionApiEndpoint),
+                  url.scheme == "http" || url.scheme == "https"
+            else {
+                logger.error("❌ Unable to load cloud service: Invalid endpoint URL format")
+                throw LoadError.serviceCreationFailed
+            }
+            
+            let configuration: [String: Any] = [
+                "apiKey": cloudTranscriptionApiKey,
+                "apiEndpoint": cloudTranscriptionApiEndpoint,
+                "modelName": cloudTranscriptionModelName
+            ]
+            
+            do {
+                transcriptionService = try await serviceFactory.createService(type: .cloud, configuration: configuration)
+                await transcriptionService?.setLanguage(selectedLanguage)
+                
+                isModelLoaded = true
+                canTranscribe = true
+                logger.notice("✅ Successfully loaded cloud transcription service")
+            } catch {
+                logger.error("❌ Failed to load cloud service: \(error.localizedDescription)")
+                throw LoadError.serviceCreationFailed
             }
         }
-        return floats
+        
+        isModelLoaded = true
     }
-
-    @Published var currentError: WhisperStateError?
 
     func getEnhancementService() -> AIEnhancementService? {
         return enhancementService
@@ -441,6 +556,7 @@ struct WhisperModel: Identifiable {
     var downloadURL: String {
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(filename)"
     }
+
     var filename: String {
         "\(name).bin"
     }
@@ -460,4 +576,5 @@ private class TaskDelegate: NSObject, URLSessionTaskDelegate {
 
 extension Notification.Name {
     static let toggleMiniRecorder = Notification.Name("toggleMiniRecorder")
+    static let languageDidChange = Notification.Name("languageDidChange")
 }

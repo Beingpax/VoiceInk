@@ -22,9 +22,9 @@ enum AIProvider: String, CaseIterable {
         case .anthropic:
             return "https://api.anthropic.com/v1/messages"
         case .ollama:
-            return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+            return UserDefaults.standard.ollamaBaseURL
         case .custom:
-            return UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? ""
+            return UserDefaults.standard.customProviderBaseURL
         }
     }
     
@@ -41,9 +41,9 @@ enum AIProvider: String, CaseIterable {
         case .anthropic:
             return "claude-3-5-sonnet-20241022"
         case .ollama:
-            return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+            return UserDefaults.standard.ollamaSelectedModel
         case .custom:
-            return UserDefaults.standard.string(forKey: "customProviderModel") ?? ""
+            return UserDefaults.standard.customProviderModel
         }
     }
     
@@ -60,16 +60,19 @@ enum AIProvider: String, CaseIterable {
 class AIService: ObservableObject {
     @Published var apiKey: String = ""
     @Published var isAPIKeyValid: Bool = false
-    @Published var customBaseURL: String = UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? "" {
+    
+    @Published var customBaseURL: String = UserDefaults.standard.customProviderBaseURL {
         didSet {
-            userDefaults.set(customBaseURL, forKey: "customProviderBaseURL")
+            UserDefaults.standard.customProviderBaseURL = customBaseURL
         }
     }
-    @Published var customModel: String = UserDefaults.standard.string(forKey: "customProviderModel") ?? "" {
+    
+    @Published var customModel: String = UserDefaults.standard.customProviderModel {
         didSet {
-            userDefaults.set(customModel, forKey: "customProviderModel")
+            UserDefaults.standard.customProviderModel = customModel
         }
     }
+    
     @Published var selectedProvider: AIProvider {
         didSet {
             userDefaults.set(selectedProvider.rawValue, forKey: "selectedAIProvider")
@@ -340,13 +343,13 @@ class AIService: ObservableObject {
     // Add method to update Ollama base URL
     func updateOllamaBaseURL(_ newURL: String) {
         ollamaService.baseURL = newURL
-        userDefaults.set(newURL, forKey: "ollamaBaseURL")
+        userDefaults.set(newURL, forKey: UserDefaultsKeys.Ollama.baseURL)
     }
     
     // Add method to update selected Ollama model
     func updateSelectedOllamaModel(_ modelName: String) {
         ollamaService.selectedModel = modelName
-        userDefaults.set(modelName, forKey: "ollamaSelectedModel")
+        userDefaults.set(modelName, forKey: UserDefaultsKeys.Ollama.selectedModel)
     }
 }
 

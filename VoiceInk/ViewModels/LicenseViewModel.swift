@@ -201,11 +201,3 @@ class LicenseViewModel: ObservableObject {
 extension Notification.Name {
     static let licenseStatusChanged = Notification.Name("licenseStatusChanged")
 }
-
-// Add UserDefaults extensions for storing activation ID
-extension UserDefaults {
-    var activationId: String? {
-        get { string(forKey: "VoiceInkActivationId") }
-        set { set(newValue, forKey: "VoiceInkActivationId") }
-    }
-}

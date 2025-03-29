@@ -29,16 +29,24 @@ extension WhisperState {
     // MARK: - Model Loading
     
     func loadModel(_ model: WhisperModel) async throws {
-        guard whisperContext == nil else { return }
+        if transcriptionServiceType != .local {
+            transcriptionServiceType = .local
+        }
         
         logger.notice("🔄 Loading Whisper model: \(model.name)")
         isModelLoading = true
         defer { isModelLoading = false }
         
+        currentModel = model
+        UserDefaults.standard.currentModel = model.name
+        
+        await cleanupServiceResources()
+        
+        let configuration: [String: Any] = ["modelPath": model.url.path]
         do {
-            whisperContext = try await WhisperContext.createContext(path: model.url.path)
+            transcriptionService = try await serviceFactory.createService(type: .local, configuration: configuration)
             isModelLoaded = true
-            currentModel = model
+            canTranscribe = true
             logger.notice("✅ Successfully loaded model: \(model.name)")
         } catch {
             logger.error("❌ Failed to load model: \(model.name) - \(error.localizedDescription)")
@@ -49,7 +57,7 @@ extension WhisperState {
     func setDefaultModel(_ model: WhisperModel) async {
         do {
             currentModel = model
-            UserDefaults.standard.set(model.name, forKey: "CurrentModel")
+            UserDefaults.standard.currentModel = model.name
             canTranscribe = true
         } catch {
             currentError = error as? WhisperStateError ?? .unknownError
@@ -125,9 +133,7 @@ extension WhisperState {
     
     func unloadModel() {
         Task {
-            await whisperContext?.releaseResources()
-            whisperContext = nil
-            isModelLoaded = false
+            await cleanupServiceResources()
             
             if let recordedFile = recordedFile {
                 try? FileManager.default.removeItem(at: recordedFile)
@@ -149,21 +155,20 @@ extension WhisperState {
     
     // MARK: - Resource Management
     
-    func cleanupModelResources() async {
+    func cleanupServiceResources() async {
         recorder.stopRecording()
         
-        // Add a small delay to ensure recording has fully stopped
         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
         
-        // Only cleanup model resources if we're not actively using them
         let canCleanup = !isRecording && !isProcessing
         
         if canCleanup {
             logger.notice("🧹 Cleaning up Whisper resources")
-            // Release any resources held by the model
-            await whisperContext?.releaseResources()
-            whisperContext = nil
-            isModelLoaded = false
+            if let service = transcriptionService {
+                await service.releaseResources()
+                transcriptionService = nil
+                isModelLoaded = false
+            }
         } else {
             logger.info("Skipping cleanup while recording or processing is active")
         }

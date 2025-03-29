@@ -8,20 +8,41 @@ enum LanguageDisplayMode {
 
 struct LanguageSelectionView: View {
     @ObservedObject var whisperState: WhisperState
-    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
+    @AppStorage(UserDefaultsKeys.TranscriptionService.selectedLanguage) private var localSelectedLanguage: String = "en"
+    @AppStorage(UserDefaultsKeys.TranscriptionService.cloudTranscriptionLanguage) private var cloudSelectedLanguage: String = "en"
     // Add display mode parameter with full as the default
     var displayMode: LanguageDisplayMode = .full
+    
+    private var selectedLanguage: String {
+        whisperState.transcriptionServiceType == .local ? localSelectedLanguage : cloudSelectedLanguage
+    }
 
     private func updateLanguage(_ language: String) {
-        // Update UI state - the UserDefaults updating is now automatic with @AppStorage
-        selectedLanguage = language
-
+        if whisperState.transcriptionServiceType == .local {
+            localSelectedLanguage = language
+        } else {
+            cloudSelectedLanguage = language
+        }
+        
+        // Update language settings in WhisperState
+        if whisperState.transcriptionServiceType == .local {
+            whisperState.selectedLanguage = language
+        } else {
+            whisperState.cloudTranscriptionLanguage = language
+        }
+        
         // Post notification for language change
         NotificationCenter.default.post(name: .languageDidChange, object: nil)
     }
     
     // Function to check if current model is multilingual
     private func isMultilingualModel() -> Bool {
+        // For cloud transcription service, all models are multilingual
+        if whisperState.transcriptionServiceType == .cloud {
+            return true
+        }
+        
+        // For local models, check if they support multiple languages
         guard let currentModel = whisperState.currentModel,
                let predefinedModel = PredefinedModels.models.first(where: { $0.name == currentModel.name }) else {
             return false
@@ -58,17 +79,44 @@ struct LanguageSelectionView: View {
     // The original full view layout for settings page
     private var fullView: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Transcription Language")
+            let serviceTypeText = whisperState.transcriptionServiceType == .local ? "Local" : "Cloud"
+            Text("\(serviceTypeText) Transcription Language")
                 .font(.headline)
 
-            if let currentModel = whisperState.currentModel,
-               let predefinedModel = PredefinedModels.models.first(where: {
-                   $0.name == currentModel.name
-               })
+            if whisperState.transcriptionServiceType == .cloud {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker("Select Language", selection: Binding(
+                        get: { self.selectedLanguage },
+                        set: { self.updateLanguage($0) }
+                    )) {
+                        ForEach(
+                            getCurrentModelLanguages().sorted(by: { $0.value < $1.value }), id: \.key
+                        ) { key, value in
+                            Text(value).tag(key)
+                        }
+                    }
+                    .pickerStyle(MenuPickerStyle())
+                    
+                    Text("Cloud model: \(whisperState.cloudTranscriptionModelName)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Cloud transcription supports multiple languages.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } else if let currentModel = whisperState.currentModel,
+                     let predefinedModel = PredefinedModels.models.first(where: {
+                         $0.name == currentModel.name
+                     })
             {
+                // Local transcription service language settings
                 if isMultilingualModel() {
                     VStack(alignment: .leading, spacing: 8) {
-                        Picker("Select Language", selection: $selectedLanguage) {
+                        Picker("Select Language", selection: Binding(
+                            get: { self.selectedLanguage },
+                            set: { self.updateLanguage($0) }
+                        )) {
                             ForEach(
                                 predefinedModel.supportedLanguages.sorted(by: {
                                     $0.value < $1.value
@@ -78,9 +126,6 @@ struct LanguageSelectionView: View {
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
-                        .onChange(of: selectedLanguage) { newValue in
-                            updateLanguage(newValue)
-                        }
 
                         Text("Current model: \(predefinedModel.displayName)")
                             .font(.caption)
@@ -147,7 +192,8 @@ struct LanguageSelectionView: View {
                     }
                 } label: {
                     HStack {
-                        Text("Language: \(currentLanguageDisplayName())")
+                        let serviceType = whisperState.transcriptionServiceType == .local ? "Local" : "Cloud"
+                        Text("\(serviceType) Language: \(currentLanguageDisplayName())")
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 10))
                     }

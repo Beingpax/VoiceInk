@@ -1,22 +1,19 @@
 import SwiftUI
 
 class WordReplacementManager: ObservableObject {
-    @Published var replacements: [String: String] {
+    @Published var replacements: [String: String] = UserDefaults.standard.wordReplacements {
         didSet {
-            UserDefaults.standard.set(replacements, forKey: "wordReplacements")
+            UserDefaults.standard.wordReplacements = replacements
         }
     }
     
-    @Published var isEnabled: Bool {
+    @Published var isEnabled: Bool = UserDefaults.standard.isWordReplacementEnabled {
         didSet {
-            UserDefaults.standard.set(isEnabled, forKey: "IsWordReplacementEnabled")
+            UserDefaults.standard.isWordReplacementEnabled = isEnabled
         }
     }
     
-    init() {
-        self.replacements = UserDefaults.standard.dictionary(forKey: "wordReplacements") as? [String: String] ?? [:]
-        self.isEnabled = UserDefaults.standard.bool(forKey: "IsWordReplacementEnabled")
-    }
+    init() {}
     
     func addReplacement(original: String, replacement: String) {
         replacements[original] = replacement
@@ -336,4 +333,4 @@ struct ReplacementRow: View {
         .contentShape(Rectangle())
         .background(Color(.controlBackgroundColor))
     }
-} 
+}

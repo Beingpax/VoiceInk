@@ -15,8 +15,9 @@ class AudioTranscriptionManager: ObservableObject {
     @Published var errorMessage: String?
     
     private var currentTask: Task<Void, Error>?
-    private var whisperContext: WhisperContext?
+    private var transcriptionService: (any TranscriptionService)?
     private let audioProcessor = AudioProcessor()
+    private let serviceFactory = TranscriptionServiceFactory()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioTranscriptionManager")
     
     enum ProcessingPhase {
@@ -32,7 +33,7 @@ class AudioTranscriptionManager: ObservableObject {
             case .idle:
                 return ""
             case .loading:
-                return "Loading transcription model..."
+                return "Loading transcription service..."
             case .processingAudio:
                 return "Processing audio file for transcription..."
             case .transcribing:
@@ -58,18 +59,26 @@ class AudioTranscriptionManager: ObservableObject {
         
         currentTask = Task {
             do {
-                guard let currentModel = whisperState.currentModel else {
-                    throw TranscriptionError.noModelSelected
+                let serviceType = whisperState.transcriptionServiceType
+                
+                switch serviceType {
+                case .local:
+                    guard let currentModel = whisperState.currentModel else {
+                        throw TranscriptionError.noModelSelected
+                    }
+                    
+                    let configuration: [String: Any] = ["modelPath": currentModel.url.path]
+                    transcriptionService = try await serviceFactory.createService(type: .local, configuration: configuration)
+                    
+                case .cloud:
+                    let configuration: [String: Any] = [
+                        "apiKey": whisperState.cloudTranscriptionApiKey,
+                        "apiEndpoint": whisperState.cloudTranscriptionApiEndpoint
+                    ]
+                    transcriptionService = try await serviceFactory.createService(type: .cloud, configuration: configuration)
                 }
                 
-                // Load Whisper model
-                whisperContext = try await WhisperContext.createContext(path: currentModel.url.path)
-                
-                // Process audio file
-                processingPhase = .processingAudio
-                let samples = try await audioProcessor.processAudioToSamples(url)
-                
-                // Get audio duration
+                // Calculate the file duration
                 let audioAsset = AVURLAsset(url: url)
                 var duration: TimeInterval = 0
                 
@@ -80,7 +89,7 @@ class AudioTranscriptionManager: ObservableObject {
                     duration = CMTimeGetSeconds(audioAsset.duration)
                 }
                 
-                // Create permanent copy of the audio file
+                // Create a permanent copy
                 let recordingsDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                     .appendingPathComponent("com.prakashjoshipax.VoiceInk")
                     .appendingPathComponent("Recordings")
@@ -91,52 +100,76 @@ class AudioTranscriptionManager: ObservableObject {
                 try FileManager.default.createDirectory(at: recordingsDirectory, withIntermediateDirectories: true)
                 try FileManager.default.copyItem(at: url, to: permanentURL)
                 
-                // Transcribe
-                processingPhase = .transcribing
-                await whisperContext?.setPrompt(whisperState.whisperPrompt.transcriptionPrompt)
-                try await whisperContext?.fullTranscribe(samples: samples)
-                var text = await whisperContext?.getTranscription() ?? ""
-                text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                
-                // Apply word replacements if enabled
-                if UserDefaults.standard.bool(forKey: "IsWordReplacementEnabled") {
-                    text = WordReplacementService.shared.applyReplacements(to: text)
+                guard let transcriptionService = transcriptionService else {
+                    throw TranscriptionError.serviceInitFailed
                 }
                 
-                // Handle enhancement if enabled
+                // Set language from UserDefaults
+                let selectedLanguage = UserDefaults.standard.selectedLanguage
+                await transcriptionService.setLanguage(selectedLanguage)
+                
+                // Process with transcription service
+                processingPhase = .transcribing
+                messageLog += "Transcribing audio...\n"
+                await transcriptionService.setPrompt(whisperState.whisperPrompt.transcriptionPrompt)
+                
+                // Use direct file URL transcription instead of reading samples
+                try await transcriptionService.fullTranscribeFromURL(fileURL: permanentURL)
+                
+                var transcriptionText = await transcriptionService.getTranscription()
+                transcriptionText = transcriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                // Apply word replacements if enabled
+                if UserDefaults.standard.isWordReplacementEnabled {
+                    transcriptionText = WordReplacementService.shared.applyReplacements(to: transcriptionText)
+                }
+                
+                // Apply AI enhancement if enabled
                 if let enhancementService = whisperState.enhancementService,
                    enhancementService.isEnhancementEnabled,
-                   enhancementService.isConfigured {
+                   enhancementService.isConfigured
+                {
                     processingPhase = .enhancing
+                    messageLog += "Enhancing transcription with AI...\n"
                     do {
-                        let enhancedText = try await enhancementService.enhance(text)
+                        let enhancedText = try await enhancementService.enhance(transcriptionText)
+                        
+                        // Create and save the transcription
                         let transcription = Transcription(
-                            text: text,
+                            text: transcriptionText,
                             duration: duration,
                             enhancedText: enhancedText,
                             audioFileURL: permanentURL.absoluteString
                         )
+                        
                         modelContext.insert(transcription)
                         try modelContext.save()
                         currentTranscription = transcription
+                        
+                        messageLog += "Transcription complete!\n"
                     } catch {
                         logger.error("Enhancement failed: \(error.localizedDescription)")
                         messageLog += "Enhancement failed: \(error.localizedDescription). Using original transcription.\n"
+                        
+                        // Save original transcription without enhancement
                         let transcription = Transcription(
-                            text: text,
+                            text: transcriptionText,
                             duration: duration,
                             audioFileURL: permanentURL.absoluteString
                         )
+                        
                         modelContext.insert(transcription)
                         try modelContext.save()
                         currentTranscription = transcription
                     }
                 } else {
+                    // Save the transcription without enhancement
                     let transcription = Transcription(
-                        text: text,
+                        text: transcriptionText,
                         duration: duration,
                         audioFileURL: permanentURL.absoluteString
                     )
+                    
                     modelContext.insert(transcription)
                     try modelContext.save()
                     currentTranscription = transcription
@@ -175,13 +208,19 @@ class AudioTranscriptionManager: ObservableObject {
     }
     
     private func cleanupResources() {
-        whisperContext = nil
+        if let service = transcriptionService {
+            Task {
+                await service.releaseResources()
+                self.transcriptionService = nil
+            }
+        }
     }
 }
 
 enum TranscriptionError: Error, LocalizedError {
     case noModelSelected
     case transcriptionCancelled
+    case serviceInitFailed
     
     var errorDescription: String? {
         switch self {
@@ -189,6 +228,8 @@ enum TranscriptionError: Error, LocalizedError {
             return "No transcription model selected"
         case .transcriptionCancelled:
             return "Transcription was cancelled"
+        case .serviceInitFailed:
+            return "Failed to initialize transcription service"
         }
     }
 } 

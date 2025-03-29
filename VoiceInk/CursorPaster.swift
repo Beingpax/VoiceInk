@@ -21,7 +21,7 @@ class CursorPaster {
         pasteboard.setString(text, forType: .string)
         
         // Use the preferred paste method based on user settings
-        if UserDefaults.standard.bool(forKey: "UseAppleScriptPaste") {
+        if UserDefaults.standard.useAppleScriptPaste {
             pasteUsingAppleScript()
         } else {
             pasteUsingCommandV()

@@ -33,7 +33,7 @@ class AudioDeviceManager: ObservableObject {
         }
         
         // Load saved input mode
-        if let savedMode = UserDefaults.standard.string(forKey: "audioInputMode"),
+        if let savedMode = UserDefaults.standard.audioInputMode,
            let mode = AudioInputMode(rawValue: savedMode) {
             inputMode = mode
         }
@@ -65,7 +65,7 @@ class AudioDeviceManager: ObservableObject {
         }
         
         // Try to load saved device
-        if let savedID = UserDefaults.standard.object(forKey: "selectedAudioDeviceID") as? AudioDeviceID {
+        if let savedID = UserDefaults.standard.selectedAudioDeviceID as? AudioDeviceID {
             // Verify the saved device still exists and is valid
             if isDeviceAvailable(savedID) {
                 selectedDeviceID = savedID
@@ -217,7 +217,7 @@ class AudioDeviceManager: ObservableObject {
         if isDeviceAvailable(id) {
             DispatchQueue.main.async {
                 self.selectedDeviceID = id
-                UserDefaults.standard.set(id, forKey: "selectedAudioDeviceID")
+                UserDefaults.standard.selectedAudioDeviceID = id
                 self.logger.info("Device selection saved")
                 self.notifyDeviceChange()
             }
@@ -229,11 +229,11 @@ class AudioDeviceManager: ObservableObject {
     
     func selectInputMode(_ mode: AudioInputMode) {
         inputMode = mode
-        UserDefaults.standard.set(mode.rawValue, forKey: "audioInputMode")
+        UserDefaults.standard.audioInputMode = mode.rawValue
         
         if mode == .systemDefault {
             selectedDeviceID = nil
-            UserDefaults.standard.removeObject(forKey: "selectedAudioDeviceID")
+            UserDefaults.standard.selectedAudioDeviceID = nil
         } else if selectedDeviceID == nil {
             if let firstDevice = availableDevices.first {
                 selectDevice(id: firstDevice.id)
@@ -261,7 +261,7 @@ class AudioDeviceManager: ObservableObject {
     }
     
     private func loadPrioritizedDevices() {
-        if let data = UserDefaults.standard.data(forKey: "prioritizedDevices"),
+        if let data = UserDefaults.standard.prioritizedDevices,
            let devices = try? JSONDecoder().decode([PrioritizedDevice].self, from: data) {
             prioritizedDevices = devices
             logger.info("Loaded \(devices.count) prioritized devices")
@@ -270,7 +270,7 @@ class AudioDeviceManager: ObservableObject {
     
     func savePrioritizedDevices() {
         if let data = try? JSONEncoder().encode(prioritizedDevices) {
-            UserDefaults.standard.set(data, forKey: "prioritizedDevices")
+            UserDefaults.standard.prioritizedDevices = data
             logger.info("Saved \(self.prioritizedDevices.count) prioritized devices")
         }
     }
@@ -325,7 +325,7 @@ class AudioDeviceManager: ObservableObject {
                 // Actually set the device as the current input device
                 do {
                     try AudioDeviceConfiguration.setDefaultInputDevice(availableDevice.id)
-                    UserDefaults.standard.set(availableDevice.id, forKey: "selectedAudioDeviceID")
+                    UserDefaults.standard.selectedAudioDeviceID = availableDevice.id
                 } catch {
                     logger.error("Failed to set prioritized device: \(error.localizedDescription)")
                     continue // Try next device if this one fails

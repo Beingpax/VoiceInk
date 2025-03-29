@@ -54,36 +54,96 @@ struct MenuBarView: View {
             }
             
             Menu {
-                ForEach(whisperState.availableModels) { model in
+                ForEach(TranscriptionServiceType.allCases, id: \.self) { serviceType in
                     Button {
-                        Task {
-                            await whisperState.setDefaultModel(model)
-                        }
+                        whisperState.transcriptionServiceType = serviceType
                     } label: {
                         HStack {
-                            Text(PredefinedModels.models.first { $0.name == model.name }?.displayName ?? model.name)
-                            if whisperState.currentModel?.name == model.name {
+                            Text(serviceType.description)
+                            if whisperState.transcriptionServiceType == serviceType {
                                 Image(systemName: "checkmark")
                             }
                         }
                     }
                 }
                 
-                if whisperState.availableModels.isEmpty {
-                    Text("No models downloaded")
-                        .foregroundColor(.secondary)
-                }
-                
                 Divider()
                 
-                Button("Manage Models") {
+                Button("Configure Transcription Services") {
                     menuBarManager.openMainWindowAndNavigate(to: "AI Models")
                 }
             } label: {
                 HStack {
-                    Text("Model: \(PredefinedModels.models.first { $0.name == whisperState.currentModel?.name }?.displayName ?? "None")")
+                    Text("Transcription Service: \(whisperState.transcriptionServiceType.description)")
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
+                }
+            }
+            
+            if whisperState.transcriptionServiceType == .local {
+                Menu {
+                    ForEach(whisperState.availableModels) { model in
+                        Button {
+                            Task {
+                                await whisperState.setDefaultModel(model)
+                            }
+                        } label: {
+                            HStack {
+                                Text(PredefinedModels.models.first { $0.name == model.name }?.displayName ?? model.name)
+                                if whisperState.currentModel?.name == model.name {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                    
+                    if whisperState.availableModels.isEmpty {
+                        Text("No models downloaded")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    Button("Manage Models") {
+                        menuBarManager.openMainWindowAndNavigate(to: "AI Models")
+                    }
+                } label: {
+                    HStack {
+                        Text("Local Model: \(PredefinedModels.models.first { $0.name == whisperState.currentModel?.name }?.displayName ?? "None")")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
+                    }
+                }
+            }
+            
+            if whisperState.transcriptionServiceType == .cloud {
+                Menu {
+                    let availableCloudModels = ["gpt-4o-transcribe", "whisper-1"]
+                    
+                    ForEach(availableCloudModels, id: \.self) { modelName in
+                        Button {
+                            whisperState.cloudTranscriptionModelName = modelName
+                        } label: {
+                            HStack {
+                                Text(modelName)
+                                if whisperState.cloudTranscriptionModelName == modelName {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    Button("Configure Cloud Settings") {
+                        menuBarManager.openMainWindowAndNavigate(to: "AI Models")
+                    }
+                } label: {
+                    HStack {
+                        Text("Cloud Model: \(whisperState.cloudTranscriptionModelName)")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
+                    }
                 }
             }
             

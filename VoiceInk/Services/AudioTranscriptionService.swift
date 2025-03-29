@@ -1,8 +1,8 @@
-import Foundation
-import SwiftUI
 import AVFoundation
-import SwiftData
+import Foundation
 import os
+import SwiftData
+import SwiftUI
 
 @MainActor
 class AudioTranscriptionService: ObservableObject {
@@ -10,10 +10,11 @@ class AudioTranscriptionService: ObservableObject {
     @Published var messageLog = ""
     @Published var currentError: TranscriptionError?
     
-    private var whisperContext: WhisperContext?
+    private var transcriptionService: (any TranscriptionService)?
     private let modelContext: ModelContext
     private let enhancementService: AIEnhancementService?
     private let whisperState: WhisperState
+    private let serviceFactory = TranscriptionServiceFactory()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioTranscriptionService")
     
     enum TranscriptionError: Error {
@@ -21,6 +22,7 @@ class AudioTranscriptionService: ObservableObject {
         case transcriptionFailed
         case modelNotLoaded
         case invalidAudioFormat
+        case serviceCreationFailed
     }
     
     init(modelContext: ModelContext, whisperState: WhisperState) {
@@ -34,27 +36,54 @@ class AudioTranscriptionService: ObservableObject {
             throw TranscriptionError.noAudioFile
         }
         
-        await MainActor.run {
-            isTranscribing = true
-            messageLog = "Loading model...\n"
-        }
-        
-        // Load the whisper model if needed
-        if whisperContext == nil {
-            do {
-                whisperContext = try await WhisperContext.createContext(path: whisperModel.url.path)
-                messageLog += "Model loaded successfully.\n"
-            } catch {
-                logger.error("❌ Failed to load model: \(error.localizedDescription)")
-                messageLog += "Failed to load model: \(error.localizedDescription)\n"
-                isTranscribing = false
-                throw TranscriptionError.modelNotLoaded
+        defer {
+            if let service = transcriptionService {
+                Task {
+                    await service.releaseResources()
+                    transcriptionService = nil
+                }
             }
         }
         
-        guard let whisperContext = whisperContext else {
+        await MainActor.run {
+            isTranscribing = true
+            messageLog = "Loading transcription service...\n"
+        }
+        
+        // Use whisperState's selected service type
+        let serviceType = whisperState.transcriptionServiceType
+        
+        // Create appropriate transcription service
+        if transcriptionService == nil {
+            do {
+                switch serviceType {
+                case .local:
+                    messageLog += "Creating local transcription service with model: \(whisperModel.name)\n"
+                    let configuration: [String: Any] = ["modelPath": whisperModel.url.path]
+                    transcriptionService = try await serviceFactory.createService(type: .local, configuration: configuration)
+                    
+                case .cloud:
+                    messageLog += "Creating cloud transcription service\n"
+                    let configuration: [String: Any] = [
+                        "apiKey": whisperState.cloudTranscriptionApiKey,
+                        "apiEndpoint": whisperState.cloudTranscriptionApiEndpoint,
+                        "modelName": whisperState.cloudTranscriptionModelName
+                    ]
+                    transcriptionService = try await serviceFactory.createService(type: .cloud, configuration: configuration)
+                }
+                
+                messageLog += "Transcription service loaded successfully.\n"
+            } catch {
+                logger.error("❌ Failed to create transcription service: \(error.localizedDescription)")
+                messageLog += "Failed to create transcription service: \(error.localizedDescription)\n"
+                isTranscribing = false
+                throw TranscriptionError.serviceCreationFailed
+            }
+        }
+        
+        guard let transcriptionService = transcriptionService else {
             isTranscribing = false
-            throw TranscriptionError.modelNotLoaded
+            throw TranscriptionError.serviceCreationFailed
         }
         
         // Get audio duration
@@ -91,20 +120,28 @@ class AudioTranscriptionService: ObservableObject {
         messageLog += "Transcribing audio...\n"
         
         do {
-            // Read audio samples
-            let samples = try readAudioSamples(permanentURL)
+            let selectedLanguage = switch whisperState.transcriptionServiceType {
+            case .local:
+                whisperState.selectedLanguage
+            case .cloud:
+                whisperState.cloudTranscriptionLanguage
+            }
+            // Set language from WhisperState based on mode
+            await transcriptionService.setLanguage(selectedLanguage)
             
-            // Process with Whisper - using the same prompt as WhisperState
+            // Process with transcription service - using the same prompt as WhisperState
             messageLog += "Setting prompt: \(whisperState.whisperPrompt.transcriptionPrompt)\n"
-            await whisperContext.setPrompt(whisperState.whisperPrompt.transcriptionPrompt)
+            await transcriptionService.setPrompt(whisperState.whisperPrompt.transcriptionPrompt)
             
-            try await whisperContext.fullTranscribe(samples: samples)
-            var text = await whisperContext.getTranscription()
+            // Use direct file URL transcription instead of reading samples
+            try await transcriptionService.fullTranscribeFromURL(fileURL: permanentURL)
+            
+            var text = await transcriptionService.getTranscription()
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             logger.notice("✅ Retranscription completed successfully, length: \(text.count) characters")
             
             // Apply word replacements if enabled
-            if UserDefaults.standard.bool(forKey: "IsWordReplacementEnabled") {
+            if UserDefaults.standard.isWordReplacementEnabled {
                 text = WordReplacementService.shared.applyReplacements(to: text)
                 logger.notice("✅ Word replacements applied")
             }
@@ -112,7 +149,8 @@ class AudioTranscriptionService: ObservableObject {
             // Apply AI enhancement if enabled - using the same enhancement service as WhisperState
             if let enhancementService = enhancementService,
                enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured {
+               enhancementService.isConfigured
+            {
                 do {
                     messageLog += "Enhancing transcription with AI...\n"
                     let enhancedText = try await enhancementService.enhance(text)
@@ -188,20 +226,5 @@ class AudioTranscriptionService: ObservableObject {
             isTranscribing = false
             throw error
         }
-    }
-    
-    private func readAudioSamples(_ url: URL) throws -> [Float] {
-        return try decodeWaveFile(url)
-    }
-    
-    private func decodeWaveFile(_ url: URL) throws -> [Float] {
-        let data = try Data(contentsOf: url)
-        let floats = stride(from: 44, to: data.count, by: 2).map {
-            return data[$0..<$0 + 2].withUnsafeBytes {
-                let short = Int16(littleEndian: $0.load(as: Int16.self))
-                return max(-1.0, min(Float(short) / 32767.0, 1.0))
-            }
-        }
-        return floats
     }
 }

@@ -1,8 +1,8 @@
-import Foundation
 import AppKit
-import SwiftUI
-import os
 import Combine
+import Foundation
+import os
+import SwiftUI
 
 /// Controls media playback detection and management during recording
 class MediaController: ObservableObject {
@@ -13,9 +13,9 @@ class MediaController: ObservableObject {
     
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MediaController")
     
-    @Published var isMediaPauseEnabled: Bool = UserDefaults.standard.bool(forKey: "isMediaPauseEnabled") {
+    @Published var isMediaPauseEnabled: Bool = UserDefaults.standard.isMediaPauseEnabled {
         didSet {
-            UserDefaults.standard.set(isMediaPauseEnabled, forKey: "isMediaPauseEnabled")
+            UserDefaults.standard.isMediaPauseEnabled = isMediaPauseEnabled
         }
     }
     
@@ -33,8 +33,8 @@ class MediaController: ObservableObject {
     
     private init() {
         // Set default if not already set
-        if !UserDefaults.standard.contains(key: "isMediaPauseEnabled") {
-            UserDefaults.standard.set(true, forKey: "isMediaPauseEnabled")
+        if !UserDefaults.standard.contains(key: UserDefaultsKeys.Media.isPauseEnabled) {
+            UserDefaults.standard.isMediaPauseEnabled = true
         }
         setupMediaRemote()
     }
@@ -211,9 +211,3 @@ class MediaController: ObservableObject {
         }
     }
 }
-
-extension UserDefaults {
-    func contains(key: String) -> Bool {
-        return object(forKey: key) != nil
-    }
-} 

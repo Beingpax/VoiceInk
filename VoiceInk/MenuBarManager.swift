@@ -6,7 +6,7 @@ import AppKit
 class MenuBarManager: ObservableObject {
     @Published var isMenuBarOnly: Bool {
         didSet {
-            UserDefaults.standard.set(isMenuBarOnly, forKey: "IsMenuBarOnly")
+            UserDefaults.standard.isMenuBarOnly = isMenuBarOnly
             updateAppActivationPolicy()
         }
     }
@@ -25,7 +25,7 @@ class MenuBarManager: ObservableObject {
          enhancementService: AIEnhancementService,
          aiService: AIService,
          hotkeyManager: HotkeyManager) {
-        self.isMenuBarOnly = UserDefaults.standard.bool(forKey: "IsMenuBarOnly")
+        self.isMenuBarOnly = UserDefaults.standard.bool(forKey: UserDefaultsKeys.MenuBar.isMenuBarOnly)
         self.updaterViewModel = updaterViewModel
         self.whisperState = whisperState
         self.container = container

@@ -6,8 +6,8 @@ class WordReplacementService {
     private init() {}
     
     func applyReplacements(to text: String) -> String {
-        guard let replacements = UserDefaults.standard.dictionary(forKey: "wordReplacements") as? [String: String],
-              !replacements.isEmpty else {
+        let replacements = UserDefaults.standard.wordReplacements
+        guard !replacements.isEmpty else {
             return text // No replacements to apply
         }
         

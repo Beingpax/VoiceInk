@@ -32,9 +32,9 @@ class PowerModeManager: ObservableObject {
     @Published var defaultConfig: PowerModeConfig
     @Published var isPowerModeEnabled: Bool
     
-    private let configKey = "powerModeConfigurations"
-    private let defaultConfigKey = "defaultPowerModeConfig"
-    private let powerModeEnabledKey = "isPowerModeEnabled"
+    private let configKey = UserDefaultsKeys.PowerMode.config
+    private let defaultConfigKey = UserDefaultsKeys.PowerMode.defaultConfig
+    private let powerModeEnabledKey = UserDefaultsKeys.PowerMode.isEnabled
     
     private init() {
         // Load power mode enabled state
