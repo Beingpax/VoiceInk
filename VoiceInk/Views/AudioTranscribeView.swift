@@ -12,6 +12,7 @@ struct AudioTranscribeView: View {
     @State private var isAudioFileSelected = false
     @State private var isEnhancementEnabled = false
     @State private var selectedPromptId: UUID?
+    @State private var isMeetingFile: Bool = false // Added for meeting toggle
     
     var body: some View {
         VStack(spacing: 0) {
@@ -108,6 +109,16 @@ struct AudioTranscribeView: View {
                 VStack(spacing: 16) {
                     Text("Audio file selected: \(selectedAudioURL?.lastPathComponent ?? "")")
                         .font(.headline)
+
+                    // Meeting Recording Toggle
+                    Toggle("This is a meeting recording", isOn: $isMeetingFile)
+                        .toggleStyle(.switch)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(.windowBackgroundColor).opacity(0.4))
+                        )
                     
                     // AI Enhancement Settings
                     if let enhancementService = whisperState.getEnhancementService() {
@@ -187,7 +198,8 @@ struct AudioTranscribeView: View {
                                 transcriptionManager.startProcessing(
                                     url: url,
                                     modelContext: modelContext,
-                                    whisperState: whisperState
+                                    whisperState: whisperState,
+                                    isMeeting: isMeetingFile // Pass the toggle state
                                 )
                             }
                         }

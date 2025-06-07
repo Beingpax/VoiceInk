@@ -47,7 +47,7 @@ class AudioTranscriptionManager: ObservableObject {
     
     private init() {}
     
-    func startProcessing(url: URL, modelContext: ModelContext, whisperState: WhisperState) {
+    func startProcessing(url: URL, modelContext: ModelContext, whisperState: WhisperState, isMeeting: Bool = false) {
         // Cancel any existing processing
         cancelProcessing()
         
@@ -108,7 +108,8 @@ class AudioTranscriptionManager: ObservableObject {
                             text: text,
                             duration: duration,
                             enhancedText: enhancedText,
-                            audioFileURL: permanentURL.absoluteString
+                            audioFileURL: permanentURL.absoluteString,
+                            isMeeting: isMeeting
                         )
                         modelContext.insert(transcription)
                         try modelContext.save()
@@ -119,7 +120,8 @@ class AudioTranscriptionManager: ObservableObject {
                         let transcription = Transcription(
                             text: text,
                             duration: duration,
-                            audioFileURL: permanentURL.absoluteString
+                            audioFileURL: permanentURL.absoluteString,
+                            isMeeting: isMeeting
                         )
                         modelContext.insert(transcription)
                         try modelContext.save()
@@ -129,7 +131,8 @@ class AudioTranscriptionManager: ObservableObject {
                     let transcription = Transcription(
                         text: text,
                         duration: duration,
-                        audioFileURL: permanentURL.absoluteString
+                        audioFileURL: permanentURL.absoluteString,
+                        isMeeting: isMeeting
                     )
                     modelContext.insert(transcription)
                     try modelContext.save()

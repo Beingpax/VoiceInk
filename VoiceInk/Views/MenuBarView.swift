@@ -14,6 +14,32 @@ struct MenuBarView: View {
     
     var body: some View {
         VStack {
+            // Standard Recording Button
+            Button {
+                Task { await whisperState.toggleRecord() }
+            } label: {
+                HStack {
+                    Image(systemName: whisperState.isRecording && !whisperState.isMeetingRecording ? "stop.circle.fill" : "mic.circle.fill")
+                        .foregroundColor(whisperState.isRecording && !whisperState.isMeetingRecording ? .red : .accentColor)
+                    Text(whisperState.isRecording && !whisperState.isMeetingRecording ? "Stop Recording" : "Start Recording")
+                }
+            }
+            .disabled(whisperState.isMeetingRecording) // Disabled if a meeting is active
+
+            // Meeting Recording Button
+            Button {
+                Task { await whisperState.toggleRecord(forMeeting: true) }
+            } label: {
+                HStack {
+                    Image(systemName: whisperState.isRecording && whisperState.isMeetingRecording ? "stop.circle.fill" : "person.3.fill")
+                        .foregroundColor(whisperState.isRecording && whisperState.isMeetingRecording ? .red : .accentColor)
+                    Text(whisperState.isRecording && whisperState.isMeetingRecording ? "Stop Meeting" : "Start Meeting")
+                }
+            }
+            .disabled(whisperState.isRecording && !whisperState.isMeetingRecording) // Disabled if a standard recording is active
+
+            Divider() // Separate from other menu items
+
             Button("Toggle Mini Recorder") {
                 Task {
                     await whisperState.toggleMiniRecorder()
