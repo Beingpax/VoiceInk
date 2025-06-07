@@ -8,13 +8,21 @@ struct ModelManagementView: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @Environment(\.modelContext) private var modelContext
     @StateObject private var whisperPrompt = WhisperPrompt()
+    @ObservedObject private var audioManager = AudioTranscriptionManager.shared // Added
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                cloudServiceToggleSection // Added
                 defaultModelSection
+                    .disabled(audioManager.useCloudService)
+                    .opacity(audioManager.useCloudService ? 0.5 : 1.0)
                 languageSelectionSection
+                    .disabled(audioManager.useCloudService)
+                    .opacity(audioManager.useCloudService ? 0.5 : 1.0)
                 availableModelsSection
+                    .disabled(audioManager.useCloudService)
+                    .opacity(audioManager.useCloudService ? 0.5 : 1.0)
             }
             .padding(40)
         }
@@ -44,6 +52,26 @@ struct ModelManagementView: View {
             } ?? "No model selected")
                 .font(.title2)
                 .fontWeight(.bold)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.windowBackgroundColor).opacity(0.4))
+        .cornerRadius(10)
+    }
+
+    private var cloudServiceToggleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Transcription Source")
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+            Toggle("Use Cloud Transcription Service", isOn: $audioManager.useCloudService)
+                .toggleStyle(.switch)
+                .padding(.vertical, 4)
+
+            Text(audioManager.useCloudService ? "Cloud transcription is active. Local models are disabled." : "Local models are active. Turn on to use cloud-based transcription.")
+                .font(.caption)
+                .foregroundColor(.gray)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

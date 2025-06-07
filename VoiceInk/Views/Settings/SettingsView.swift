@@ -191,6 +191,17 @@ struct SettingsView: View {
                 ) {
                     AudioCleanupSettingsView()
                 }
+
+                // Cloud Transcription Settings Section
+                SettingsSection(
+                    icon: "icloud.and.arrow.up", // Example icon
+                    title: "Cloud Transcription",
+                    subtitle: "Configure cloud API key"
+                ) {
+                    NavigationLink(destination: CloudServiceSettingsView()) {
+                        Text("Configure API Key")
+                    }
+                }
                 
                 // Data Management Section
                 SettingsSection(
