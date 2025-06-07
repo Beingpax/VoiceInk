@@ -24,6 +24,11 @@ struct TranscriptionCard: View {
                     Text(transcription.timestamp, style: .date)
                         .font(.system(size: 14, weight: .medium, design: .default))
                         .foregroundColor(.secondary)
+                    if transcription.isMeeting {
+                        Image(systemName: "person.3.fill")
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 4) // Add some spacing
+                    }
                     Spacer()
                     
                     Text(formatDuration(transcription.duration))

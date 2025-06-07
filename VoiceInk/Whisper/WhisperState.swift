@@ -32,6 +32,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
     
     @Published var isVisualizerActive = false
+    @Published var isMeetingRecording: Bool = false
     
     @Published var isMiniRecorderVisible = false {
         didSet {
@@ -115,7 +116,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
         }
     }
     
-    func toggleRecord() async {
+    func toggleRecord(forMeeting: Bool = false) async {
         if isRecording {
             logger.notice("🛑 Stopping recording")
             await MainActor.run {
@@ -139,6 +140,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 logger.error("❌ No recorded file found after stopping recording")
             }
         } else {
+            self.isMeetingRecording = forMeeting
             guard currentModel != nil else {
                 await MainActor.run {
                     let alert = NSAlert()
@@ -337,7 +339,8 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                         text: originalText, 
                         duration: actualDuration,
                         enhancedText: enhancedText,
-                        audioFileURL: permanentURLString
+                        audioFileURL: permanentURLString,
+                        isMeeting: self.isMeetingRecording
                     )
                     modelContext.insert(newTranscription)
                     try? modelContext.save()
@@ -346,7 +349,8 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                     let newTranscription = Transcription(
                         text: originalText,
                         duration: actualDuration,
-                        audioFileURL: permanentURLString
+                        audioFileURL: permanentURLString,
+                        isMeeting: self.isMeetingRecording
                     )
                     modelContext.insert(newTranscription)
                     try? modelContext.save()
@@ -355,7 +359,8 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 let newTranscription = Transcription(
                     text: originalText,
                     duration: actualDuration,
-                    audioFileURL: permanentURLString
+                    audioFileURL: permanentURLString,
+                    isMeeting: self.isMeetingRecording
                 )
                 modelContext.insert(newTranscription)
                 try? modelContext.save()
@@ -393,6 +398,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
             }
             
             await dismissMiniRecorder()
+            self.isMeetingRecording = false
             await cleanupModelResources()
             
         } catch {
