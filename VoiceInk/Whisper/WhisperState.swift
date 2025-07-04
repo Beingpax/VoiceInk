@@ -60,6 +60,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private var localTranscriptionService: LocalTranscriptionService!
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
+    private lazy var parakeetTDTTranscriptionService = ParakeetTDTTranscriptionService(modelsDirectory: modelsDirectory)
     
     private var modelUrl: URL? {
         let possibleURLs = [
@@ -297,6 +298,8 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 transcriptionService = localTranscriptionService
             case .nativeApple:
                 transcriptionService = nativeAppleTranscriptionService
+            case .parakeetTDT:
+                transcriptionService = parakeetTDTTranscriptionService
             default:
                 transcriptionService = cloudTranscriptionService
             }
@@ -400,6 +403,10 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
             await cleanupModelResources()
             
         } catch {
+            logger.notice("🚨 Transcription failed with error: \(error)")
+            logger.notice("🚨 Error type: \(type(of: error))")
+            logger.notice("🚨 Error localized description: \(error.localizedDescription)")
+            
             if let permanentURL = permanentURL {
                 do {
                     let audioAsset = AVURLAsset(url: permanentURL)
@@ -550,6 +557,11 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
         {
             setDefaultTranscriptionModel(updatedModel)
         }
+    }
+    
+    // Provide access to shared Parakeet service to prevent multiple instances
+    func getParakeetService() -> ParakeetTDTTranscriptionService? {
+        return parakeetTDTTranscriptionService
     }
 }
 

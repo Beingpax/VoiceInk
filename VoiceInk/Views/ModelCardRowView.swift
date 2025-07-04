@@ -30,6 +30,15 @@ struct ModelCardRowView: View {
                         downloadAction: downloadAction
                     )
                 }
+            case .parakeetTDT:
+                if let parakeetModel = model as? ParakeetTDTModel {
+                    ParakeetTDTModelCardView(
+                        model: parakeetModel,
+                        isCurrent: isCurrent,
+                        setDefaultAction: setDefaultAction,
+                        downloadAction: downloadAction
+                    )
+                }
             case .nativeApple:
                 if let nativeAppleModel = model as? NativeAppleModel {
                     NativeAppleModelCardView(
@@ -805,6 +814,133 @@ struct NativeAppleModelCardView: View {
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
+        }
+        .lineLimit(1)
+    }
+    
+    private var descriptionSection: some View {
+        Text(model.description)
+            .font(.system(size: 11))
+            .foregroundColor(Color(.secondaryLabelColor))
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 4)
+    }
+    
+    private var actionSection: some View {
+        HStack(spacing: 8) {
+            if isCurrent {
+                Text("Default Model")
+                    .font(.system(size: 12))
+                    .foregroundColor(Color(.secondaryLabelColor))
+            } else {
+                Button(action: setDefaultAction) {
+                    Text("Set as Default")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        }
+    }
+}
+
+// MARK: - Parakeet TDT Model Card View
+struct ParakeetTDTModelCardView: View {
+    let model: ParakeetTDTModel
+    let isCurrent: Bool
+    var setDefaultAction: () -> Void
+    var downloadAction: () -> Void
+    
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Main Content
+            VStack(alignment: .leading, spacing: 6) {
+                headerSection
+                metadataSection
+                descriptionSection
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            // Action Controls
+            actionSection
+        }
+        .padding(16)
+        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+    }
+    
+    private var headerSection: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(model.displayName)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(Color(.labelColor))
+            
+            statusBadge
+            
+            Spacer()
+        }
+    }
+    
+    private var statusBadge: some View {
+        Group {
+            if isCurrent {
+                Text("Default")
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.accentColor))
+                    .foregroundColor(.white)
+            } else {
+                Text("NVIDIA Parakeet")
+                    .font(.system(size: 11, weight: .medium))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color(.systemGreen).opacity(0.2)))
+                    .foregroundColor(Color(.systemGreen))
+            }
+        }
+    }
+    
+    private var metadataSection: some View {
+        HStack(spacing: 12) {
+            // Provider
+            Label("NVIDIA Parakeet", systemImage: "brain.filled.head.profile")
+                .font(.system(size: 11))
+                .foregroundColor(Color(.secondaryLabelColor))
+                .lineLimit(1)
+            
+            // Language
+            Label(model.language, systemImage: "globe")
+                .font(.system(size: 11))
+                .foregroundColor(Color(.secondaryLabelColor))
+                .lineLimit(1)
+            
+            // Size
+            Label(model.size, systemImage: "internaldrive")
+                .font(.system(size: 11))
+                .foregroundColor(Color(.secondaryLabelColor))
+                .lineLimit(1)
+            
+            // Speed
+            HStack(spacing: 3) {
+                Text("Speed")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabelColor))
+                progressDotsWithNumber(value: model.speed * 10)
+            }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            
+            // Accuracy
+            HStack(spacing: 3) {
+                Text("Accuracy")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabelColor))
+                progressDotsWithNumber(value: model.accuracy * 10)
+            }
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
         }
         .lineLimit(1)
     }
