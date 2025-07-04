@@ -72,6 +72,8 @@ class NativeAppleTranscriptionService: TranscriptionService {
         let appleLocale = mapToAppleLocale(selectedLanguage)
         let locale = Locale(identifier: appleLocale)
 
+        // NOTE: Commented out due to macOS 26+ API availability issues
+        /*
         // Check for locale support and asset installation status using proper BCP-47 format
         let supportedLocales = await SpeechTranscriber.supportedLocales
         let installedLocales = await SpeechTranscriber.installedLocales
@@ -82,62 +84,15 @@ class NativeAppleTranscriptionService: TranscriptionService {
         let supportedIdentifiers = supportedLocales.map { $0.identifier(.bcp47) }.sorted().joined(separator: ", ")
         let installedIdentifiers = installedLocales.map { $0.identifier(.bcp47) }.sorted().joined(separator: ", ")
         let availableForDownload = Set(supportedLocales).subtracting(Set(installedLocales)).map { $0.identifier(.bcp47) }.sorted().joined(separator: ", ")
+        */
         
-        var statusMessage: String
-        if isLocaleInstalled {
-            statusMessage = "✅ Installed"
-        } else if isLocaleSupported {
-            statusMessage = "❌ Not Installed (Available for download)"
-        } else {
-            statusMessage = "❌ Not Supported"
-        }
+        // Fallback implementation for current macOS versions
+        let isLocaleSupported = true  // Assume supported for now
+        let isLocaleInstalled = true  // Assume installed for now
         
-        let logMessage = """
-        
-        --- Native Speech Transcription ---
-        Selected Language: '\(selectedLanguage)' → Apple Locale: '\(locale.identifier(.bcp47))'
-        Status: \(statusMessage)
-        ------------------------------------
-        Supported Locales: [\(supportedIdentifiers)]
-        Installed Locales: [\(installedIdentifiers)]
-        Available for Download: [\(availableForDownload)]
-        ------------------------------------
-        """
-        logger.notice("\(logMessage)")
-
-        guard isLocaleSupported else {
-            logger.error("Transcription failed: Locale '\(locale.identifier(.bcp47))' is not supported by SpeechTranscriber.")
-            throw ServiceError.localeNotSupported
-        }
-        
-        // Properly manage asset allocation/deallocation
-        try await deallocateExistingAssets()
-        try await allocateAssetsForLocale(locale)
-        
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [],
-            attributeOptions: []
-        )
-        
-        // Ensure model assets are available, triggering a system download prompt if necessary.
-        try await ensureModelIsAvailable(for: transcriber, locale: locale)
-        
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
-        
-        try await analyzer.start(inputAudioFile: audioFile, finishAfterFile: true)
-        
-        var transcript: AttributedString = ""
-        for try await result in transcriber.results {
-            transcript += result.text
-        }
-        
-        var finalTranscription = String(transcript.characters).trimmingCharacters(in: .whitespacesAndNewlines)
-        finalTranscription = WhisperTextFormatter.format(finalTranscription)
-        
-        logger.notice("Native transcription successful. Length: \(finalTranscription.count) characters.")
-        return finalTranscription
+        // Temporarily return an error since the macOS 26+ APIs are not available
+        logger.error("Native Apple transcription is temporarily unavailable due to macOS 26+ API requirements")
+        throw ServiceError.unsupportedOS
         
         #else
         logger.error("Speech framework is not available")
@@ -145,6 +100,8 @@ class NativeAppleTranscriptionService: TranscriptionService {
         #endif
     }
     
+    // NOTE: Commented out due to macOS 26+ API availability issues
+    /*
     @available(macOS 26, *)
     private func deallocateExistingAssets() async throws {
         #if canImport(Speech)
@@ -168,24 +125,25 @@ class NativeAppleTranscriptionService: TranscriptionService {
         }
         #endif
     }
+    */
     
-    @available(macOS 26, *)
-    private func ensureModelIsAvailable(for transcriber: SpeechTranscriber, locale: Locale) async throws {
-        #if canImport(Speech)
-        let installedLocales = await SpeechTranscriber.installedLocales
-        let isInstalled = installedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
+    // @available(macOS 26, *)
+    // private func ensureModelIsAvailable(for transcriber: SpeechTranscriber, locale: Locale) async throws {
+    //     #if canImport(Speech)
+    //     let installedLocales = await SpeechTranscriber.installedLocales
+    //     let isInstalled = installedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
 
-        if !isInstalled {
-            logger.notice("Assets for '\(locale.identifier(.bcp47))' not installed. Requesting system download.")
+    //     if !isInstalled {
+    //         logger.notice("Assets for '\(locale.identifier(.bcp47))' not installed. Requesting system download.")
             
-            if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-                try await request.downloadAndInstall()
-                logger.notice("Asset download for '\(locale.identifier(.bcp47))' complete.")
-            } else {
-                logger.error("Asset download for '\(locale.identifier(.bcp47))' failed: Could not create installation request.")
-                // Note: We don't throw an error here, as transcription might still work with a base model.
-            }
-        }
-        #endif
-    }
+    //         if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+    //             try await request.downloadAndInstall()
+    //             logger.notice("Asset download for '\(locale.identifier(.bcp47))' complete.")
+    //         } else {
+    //             logger.error("Asset download for '\(locale.identifier(.bcp47))' failed: Could not create installation request.")
+    //             // Note: We don't throw an error here, as transcription might still work with a base model.
+    //         }
+    //     }
+    //     #endif
+    // }
 } 
