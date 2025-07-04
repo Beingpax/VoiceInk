@@ -6,6 +6,7 @@ import AppKit
 extension KeyboardShortcuts.Name {
     static let toggleMiniRecorder = Self("toggleMiniRecorder")
     static let toggleMiniRecorder2 = Self("toggleMiniRecorder2")
+    static let toggleScratchpad = Self("toggleScratchpad")
 }
 
 @MainActor
@@ -19,6 +20,12 @@ class HotkeyManager: ObservableObject {
     @Published var selectedHotkey2: HotkeyOption {
         didSet {
             UserDefaults.standard.set(selectedHotkey2.rawValue, forKey: "selectedHotkey2")
+            setupHotkeyMonitoring()
+        }
+    }
+    @Published var selectedScratchpadHotkey: HotkeyOption {
+        didSet {
+            UserDefaults.standard.set(selectedScratchpadHotkey.rawValue, forKey: "selectedScratchpadHotkey")
             setupHotkeyMonitoring()
         }
     }
@@ -46,6 +53,11 @@ class HotkeyManager: ObservableObject {
     private var shortcutCurrentKeyState = false
     private var lastShortcutTriggerTime: Date?
     private let shortcutCooldownInterval: TimeInterval = 0.5
+    
+    enum HotkeyType {
+        case regular
+        case scratchpad
+    }
     
     enum HotkeyOption: String, CaseIterable {
         case none = "none"
@@ -109,6 +121,7 @@ class HotkeyManager: ObservableObject {
         // ---- normal initialisation ----
         self.selectedHotkey1 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey1") ?? "") ?? .rightCommand
         self.selectedHotkey2 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey2") ?? "") ?? .none
+        self.selectedScratchpadHotkey = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedScratchpadHotkey") ?? "") ?? .none
         self.whisperState = whisperState
         self.miniRecorderShortcutManager = MiniRecorderShortcutManager(whisperState: whisperState)
     }
@@ -126,7 +139,9 @@ class HotkeyManager: ObservableObject {
     
     private func setupModifierKeyMonitoring() {
         // Only set up if at least one hotkey is a modifier key
-        guard (selectedHotkey1.isModifierKey && selectedHotkey1 != .none) || (selectedHotkey2.isModifierKey && selectedHotkey2 != .none) else { return }
+        guard (selectedHotkey1.isModifierKey && selectedHotkey1 != .none) || 
+              (selectedHotkey2.isModifierKey && selectedHotkey2 != .none) || 
+              (selectedScratchpadHotkey.isModifierKey && selectedScratchpadHotkey != .none) else { return }
 
         globalEventMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self = self else { return }
@@ -163,6 +178,24 @@ class HotkeyManager: ObservableObject {
                 Task { @MainActor in await self?.handleCustomShortcutKeyUp() }
             }
         }
+        
+        // Scratchpad shortcut
+        if selectedScratchpadHotkey == .custom {
+            KeyboardShortcuts.onKeyUp(for: .toggleScratchpad) { [weak self] in
+                Task { @MainActor in
+                    await self?.handleScratchpadShortcutTriggered()
+                }
+            }
+        }
+    }
+    
+    private func handleScratchpadShortcutTriggered() async {
+        // Add same blocking checks as regular hotkeys
+        if whisperState.isRecording || whisperState.isTranscribing || whisperState.isProcessing {
+            return
+        }
+        
+        await whisperState.startScratchpadRecording()
     }
     
     private func removeAllMonitoring() {
@@ -193,11 +226,13 @@ class HotkeyManager: ObservableObject {
         let flags = event.modifierFlags
         
         // Determine which hotkey (if any) is being triggered
-        let activeHotkey: HotkeyOption?
+        let activeHotkey: (option: HotkeyOption, type: HotkeyType)?
         if selectedHotkey1.isModifierKey && selectedHotkey1.keyCode == keycode {
-            activeHotkey = selectedHotkey1
+            activeHotkey = (selectedHotkey1, .regular)
         } else if selectedHotkey2.isModifierKey && selectedHotkey2.keyCode == keycode {
-            activeHotkey = selectedHotkey2
+            activeHotkey = (selectedHotkey2, .regular)
+        } else if selectedScratchpadHotkey.isModifierKey && selectedScratchpadHotkey.keyCode == keycode {
+            activeHotkey = (selectedScratchpadHotkey, .scratchpad)
         } else {
             activeHotkey = nil
         }
@@ -206,7 +241,7 @@ class HotkeyManager: ObservableObject {
         
         var isKeyPressed = false
         
-        switch hotkey {
+        switch hotkey.option {
         case .rightOption, .leftOption:
             isKeyPressed = flags.contains(.option)
         case .leftControl, .rightControl:
@@ -220,7 +255,7 @@ class HotkeyManager: ObservableObject {
                 try? await Task.sleep(nanoseconds: 75_000_000) // 75ms
                 if pendingFnKeyState == pendingState {
                     await MainActor.run {
-                        self.processKeyPress(isKeyPressed: pendingState)
+                        self.processKeyPress(isKeyPressed: pendingState, type: hotkey.type)
                     }
                 }
             }
@@ -233,10 +268,10 @@ class HotkeyManager: ObservableObject {
             return // Should not reach here
         }
         
-        processKeyPress(isKeyPressed: isKeyPressed)
+        processKeyPress(isKeyPressed: isKeyPressed, type: hotkey.type)
     }
     
-    private func processKeyPress(isKeyPressed: Bool) {
+    private func processKeyPress(isKeyPressed: Bool, type: HotkeyType = .regular) {
         guard isKeyPressed != currentKeyState else { return }
         currentKeyState = isKeyPressed
         
@@ -247,7 +282,11 @@ class HotkeyManager: ObservableObject {
                 isHandsFreeMode = false
                 Task { @MainActor in
                     guard !whisperState.isTranscribing && !whisperState.isProcessing else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    if type == .scratchpad {
+                        await whisperState.startScratchpadRecording()
+                    } else {
+                        await whisperState.handleToggleMiniRecorder()
+                    }
                 }
                 return
             }
@@ -255,7 +294,11 @@ class HotkeyManager: ObservableObject {
             if !whisperState.isMiniRecorderVisible {
                 Task { @MainActor in
                     guard !whisperState.isTranscribing && !whisperState.isProcessing else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    if type == .scratchpad {
+                        await whisperState.startScratchpadRecording()
+                    } else {
+                        await whisperState.handleToggleMiniRecorder()
+                    }
                 }
             }
         } else {
@@ -269,7 +312,11 @@ class HotkeyManager: ObservableObject {
                 } else {
                     Task { @MainActor in
                         guard !whisperState.isTranscribing && !whisperState.isProcessing else { return }
-                        await whisperState.handleToggleMiniRecorder()
+                        if type == .scratchpad {
+                            await whisperState.startScratchpadRecording()
+                        } else {
+                            await whisperState.handleToggleMiniRecorder()
+                        }
                     }
                 }
             }

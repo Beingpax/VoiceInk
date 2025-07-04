@@ -33,6 +33,7 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
     }
     
     @Published var isVisualizerActive = false
+    @Published var isScratchpadMode = false
     
 
     
@@ -376,15 +377,30 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
             SoundManager.shared.playStopSound()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 
-                CursorPaster.pasteAtCursor(text, shouldPreserveClipboard: !self.isAutoCopyEnabled)
-                
-                if self.isAutoCopyEnabled {
-                    ClipboardManager.copyToClipboard(text)
-                }
-                
-                if !PasteEligibilityService.isPastePossible() && (UserDefaults.standard.object(forKey: "isFallbackWindowEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "isFallbackWindowEnabled")) {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        TranscriptionFallbackManager.shared.showFallback(for: text)
+                if self.isScratchpadMode {
+                    NotificationCenter.default.post(
+                        name: .scratchpadEntryAdded,
+                        object: nil,
+                        userInfo: ["entry": text.trimmingCharacters(in: .whitespacesAndNewlines)]
+                    )
+                    
+                    NotificationManager.shared.showNotification(
+                        title: "Saved to Voice Scratchpad",
+                        type: .success
+                    )
+                    
+                    self.isScratchpadMode = false
+                } else {
+                    CursorPaster.pasteAtCursor(text, shouldPreserveClipboard: !self.isAutoCopyEnabled)
+                    
+                    if self.isAutoCopyEnabled {
+                        ClipboardManager.copyToClipboard(text)
+                    }
+                    
+                    if !PasteEligibilityService.isPastePossible() && (UserDefaults.standard.object(forKey: "isFallbackWindowEnabled") == nil ? true : UserDefaults.standard.bool(forKey: "isFallbackWindowEnabled")) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            TranscriptionFallbackManager.shared.showFallback(for: text)
+                        }
                     }
                 }
             }
@@ -450,6 +466,24 @@ class WhisperState: NSObject, ObservableObject, AVAudioRecorderDelegate {
         let permanentURL = recordingsDirectory.appendingPathComponent(fileName)
         try FileManager.default.copyItem(at: tempURL, to: permanentURL)
         return permanentURL
+    }
+    
+    func startScratchpadRecording() async {
+        isScratchpadMode = true
+        
+        if isMiniRecorderVisible {
+            if isRecording {
+                await toggleRecord()
+            } else {
+                await cancelRecording()
+            }
+        } else {
+            SoundManager.shared.playStartSound()
+            await toggleRecord()
+            await MainActor.run {
+                isMiniRecorderVisible = true // This will call showRecorderPanel() via didSet
+            }
+        }
     }
     
     func retryLastTranscription() async {

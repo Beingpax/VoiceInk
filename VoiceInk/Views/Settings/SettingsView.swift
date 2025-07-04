@@ -70,6 +70,26 @@ struct SettingsView: View {
                     }
                 }
 
+                // Scratchpad Settings Section
+                SettingsSection(
+                    icon: "note.text",
+                    title: "Scratchpad Shortcut",
+                    subtitle: "Quick voice memos saved to daily notes"
+                ) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        hotkeyView(
+                            title: "Scratchpad Hotkey",
+                            binding: $hotkeyManager.selectedScratchpadHotkey,
+                            shortcutName: .toggleScratchpad
+                        )
+                        
+                        Text("Records voice memos directly to your scratchpad without pasting. Quick tap to start hands-free recording (tap again to stop). Press and hold for push-to-talk (release to stop recording).")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
                 // Recording Feedback Section
                 SettingsSection(
                     icon: "speaker.wave.2.bubble.left.fill",

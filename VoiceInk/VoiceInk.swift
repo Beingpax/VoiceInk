@@ -16,6 +16,7 @@ struct VoiceInkApp: App {
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
+    @StateObject private var scratchpadManager = DailyScratchpadManager()
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     // Audio cleanup manager for automatic deletion of old audio files
@@ -92,6 +93,7 @@ struct VoiceInkApp: App {
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(scratchpadManager)
                     .modelContainer(container)
                     .onAppear {
                         updaterViewModel.silentlyCheckForUpdates()
