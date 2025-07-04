@@ -8,6 +8,7 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case deepgram = "Deepgram"
     case custom = "Custom"
     case nativeApple = "Native Apple"
+    case parakeetTDT = "Parakeet TDT"
     // Future providers can be added here
 }
 
@@ -93,5 +94,34 @@ struct CustomCloudModel: TranscriptionModel, Codable {
         self.modelName = modelName
         self.isMultilingualModel = isMultilingual
         self.supportedLanguages = supportedLanguages ?? PredefinedModels.getLanguageDictionary(isMultilingual: isMultilingual)
+    }
+}
+
+// A new struct for Parakeet TDT models
+struct ParakeetTDTModel: TranscriptionModel {
+    let id = UUID()
+    let name: String
+    let displayName: String
+    let description: String
+    let provider: ModelProvider = .parakeetTDT
+    let isMultilingualModel: Bool
+    let supportedLanguages: [String: String]
+    let size: String
+    let speed: Double
+    let accuracy: Double
+    let ramUsage: Double
+    let isInstalled: Bool
+    
+    init(name: String, displayName: String, description: String, isMultilingual: Bool = false, supportedLanguages: [String: String]? = nil, size: String, speed: Double, accuracy: Double, ramUsage: Double, isInstalled: Bool = false) {
+        self.name = name
+        self.displayName = displayName
+        self.description = description
+        self.isMultilingualModel = isMultilingual
+        self.supportedLanguages = supportedLanguages ?? (isMultilingual ? PredefinedModels.allLanguages : ["en": "English"])
+        self.size = size
+        self.speed = speed
+        self.accuracy = accuracy
+        self.ramUsage = ramUsage
+        self.isInstalled = isInstalled
     }
 } 

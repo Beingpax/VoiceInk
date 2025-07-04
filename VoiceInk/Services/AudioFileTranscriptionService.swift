@@ -57,6 +57,14 @@ class AudioTranscriptionService: ObservableObject {
                 messageLog += "Using Native Apple transcription service...\n"
                 text = try await nativeAppleTranscriptionService.transcribe(audioURL: url, model: model)
                 messageLog += "Native Apple transcription completed.\n"
+            case .parakeetTDT:
+                messageLog += "Using Parakeet TDT v2 transcription service...\n"
+                // Use the shared Parakeet service from WhisperState to avoid multiple instances
+                guard let parakeetService = whisperState.getParakeetService() else {
+                    throw TranscriptionError.transcriptionFailed
+                }
+                text = try await parakeetService.transcribe(audioURL: url, model: model)
+                messageLog += "Parakeet transcription completed.\n"
             default: // Cloud models
                 messageLog += "Using cloud transcription service...\n"
                 text = try await cloudTranscriptionService.transcribe(audioURL: url, model: model)

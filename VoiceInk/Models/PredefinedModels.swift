@@ -112,6 +112,20 @@ import Foundation
             isMultilingualModel: true,
             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .nativeApple)
         ),
+        
+        // Parakeet TDT v2 Model
+        ParakeetTDTModel(
+            name: "parakeet-tdt-0.6b-v2",
+            displayName: "Parakeet TDT 0.6B v2",
+            description: "NVIDIA's Parakeet TDT model with 600M parameters. High-quality English transcription with timestamps.",
+            isMultilingual: false,
+            supportedLanguages: getLanguageDictionary(isMultilingual: false, provider: .parakeetTDT),
+            size: "~2.5 GB",
+            speed: 0.85,
+            accuracy: 0.94,
+            ramUsage: 2.5,
+            isInstalled: false
+        ),
          // Local Models
          LocalModel(
              name: "ggml-tiny",
