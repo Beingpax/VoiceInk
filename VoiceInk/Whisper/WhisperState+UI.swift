@@ -95,6 +95,11 @@ extension WhisperState {
         NotificationCenter.default.addObserver(self, selector: #selector(handlePromptChange), name: .promptDidChange, object: nil)
     }
     
+    public func startContinuousHoldRecording() async {
+        isCurrentSessionContinuousHold = true
+        await toggleMiniRecorder()
+    }
+    
     @objc public func handleToggleMiniRecorder() {
         Task {
             await toggleMiniRecorder()

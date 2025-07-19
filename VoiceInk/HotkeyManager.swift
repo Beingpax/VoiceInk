@@ -275,7 +275,7 @@ class HotkeyManager: ObservableObject {
                 } else {
                     Task { @MainActor in
                         guard canProcessHotkeyAction else { return }
-                        await whisperState.handleToggleMiniRecorder()
+                        await whisperState.startContinuousHoldRecording()
                     }
                 }
             }
@@ -321,7 +321,7 @@ class HotkeyManager: ObservableObject {
                 isShortcutHandsFreeMode = true
             } else {
                 guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                await whisperState.startContinuousHoldRecording()
             }
         }
         
