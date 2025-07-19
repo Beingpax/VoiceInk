@@ -37,6 +37,11 @@ class WhisperState: NSObject, ObservableObject {
             UserDefaults.standard.set(recorderType, forKey: "RecorderType")
         }
     }
+    @Published var isHoldToRecordAutoSendEnabled: Bool = UserDefaults.standard.bool(forKey: "HoldToRecordAutoSendEnabled") {
+        didSet {
+            UserDefaults.standard.set(isHoldToRecordAutoSendEnabled, forKey: "HoldToRecordAutoSendEnabled")
+        }
+    }
     
     @Published var isMiniRecorderVisible = false {
         didSet {
@@ -55,6 +60,9 @@ class WhisperState: NSObject, ObservableObject {
     
     // Prompt detection service for trigger word handling
     private let promptDetectionService = PromptDetectionService()
+    
+    // State flag to track continuous hold recording
+    internal var isCurrentSessionContinuousHold: Bool = false
     
     let modelContext: ModelContext
     
@@ -349,6 +357,16 @@ class WhisperState: NSObject, ObservableObject {
                         CursorPaster.pressEnter()
                     }
                 }
+                
+                // Auto-send for continuous hold-to-record mode
+                if self.isHoldToRecordAutoSendEnabled && self.isCurrentSessionContinuousHold {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        CursorPaster.pressEnter()
+                    }
+                }
+                
+                // Reset the flag for next recording
+                self.isCurrentSessionContinuousHold = false
             }
             
             if let result = promptDetectionResult,

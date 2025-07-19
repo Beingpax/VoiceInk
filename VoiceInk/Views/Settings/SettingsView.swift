@@ -129,6 +129,18 @@ struct SettingsView: View {
                         }
                         .toggleStyle(.switch)
                         .help("Automatically mute system audio when recording starts and restore when recording stops")
+                        
+                        HStack {
+                            Toggle("Auto-send after hold-to-record", isOn: $whisperState.isHoldToRecordAutoSendEnabled)
+                            
+                            InfoTip(
+                                title: "Auto-send for Hold-to-Record",
+                                message: "When enabled, transcribed text will be sent automatically (Enter key pressed) after releasing the key in continuous hold mode. This does not affect toggle recording mode."
+                            )
+                            
+                            Spacer()
+                        }
+                        .help("Automatically press Enter after transcription when using continuous hold-to-record mode")
                     }
                 }
 
