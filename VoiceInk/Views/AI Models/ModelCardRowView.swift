@@ -38,14 +38,6 @@ struct ModelCardRowView: View {
                         whisperState: whisperState
                     )
                 }
-            case .nativeApple:
-                if let nativeAppleModel = model as? NativeAppleModel {
-                    NativeAppleModelCardView(
-                        model: nativeAppleModel,
-                        isCurrent: isCurrent,
-                        setDefaultAction: setDefaultAction
-                    )
-                }
             case .groq, .elevenLabs, .deepgram, .mistral:
                 if let cloudModel = model as? CloudModel {
                     CloudModelCardView(

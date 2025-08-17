@@ -40,7 +40,9 @@ class ScreenCaptureService: ObservableObject {
             return captureFullScreen()
         }
         
+        // TODO: Replace deprecated CGWindowListCreateImage with ScreenCaptureKit
         // Capture the specific window
+        /*
         let cgImage = CGWindowListCreateImage(
             .null,
             .optionIncludingWindow,
@@ -55,11 +57,17 @@ class ScreenCaptureService: ObservableObject {
             logger.notice("⚠️ Window-specific capture failed, trying full screen")
             return captureFullScreen()
         }
+        */
+        
+        logger.notice("⚠️ Screen capture disabled - deprecated API")
+        return nil
     }
     
     private func captureFullScreen() -> NSImage? {
         logger.notice("📺 Attempting full screen capture")
         
+        // TODO: Replace deprecated CGWindowListCreateImage with ScreenCaptureKit
+        /*
         if let screen = NSScreen.main {
             let rect = screen.frame
             let cgImage = CGWindowListCreateImage(
@@ -74,8 +82,9 @@ class ScreenCaptureService: ObservableObject {
                 return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
             }
         }
+        */
         
-        logger.notice("❌ All capture methods failed")
+        logger.notice("❌ Screen capture disabled - deprecated API")
         return nil
     }
     

@@ -47,9 +47,9 @@
       }
     },
     {
-      "identity" : "zip?tab=readme-ov-file",
+      "identity" : "zip",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/marmelroy/Zip?tab=readme-ov-file",
+      "location" : "https://github.com/marmelroy/Zip",
       "state" : {
         "revision" : "67fa55813b9e7b3b9acee9c0ae501def28746d76",
         "version" : "2.1.2"

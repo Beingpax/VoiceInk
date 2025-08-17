@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>whisper</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.ggml.whisper</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>whisper</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>MinimumOSVersion</key>
+    <string>16.4</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>AppleTVOS</string>
+    </array>    <key>UIDeviceFamily</key>
+    <array>
+        <integer>3</integer>
+    </array>
+    <key>DTPlatformName</key>
+    <string>appletvos</string>
+    <key>DTSDKName</key>
+    <string>appletvos16.4</string>
+</dict>
+</plist>

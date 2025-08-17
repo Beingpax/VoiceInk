@@ -9,7 +9,6 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case deepgram = "Deepgram"
     case mistral = "Mistral"
     case custom = "Custom"
-    case nativeApple = "Native Apple"
     // Future providers can be added here
 }
 
@@ -34,17 +33,6 @@ extension TranscriptionModel {
     var language: String {
         isMultilingualModel ? "Multilingual" : "English-only"
     }
-}
-
-// A new struct for Apple's native models
-struct NativeAppleModel: TranscriptionModel {
-    let id = UUID()
-    let name: String
-    let displayName: String
-    let description: String
-    let provider: ModelProvider = .nativeApple
-    let isMultilingualModel: Bool
-    let supportedLanguages: [String: String]
 }
 
 // A new struct for Parakeet models

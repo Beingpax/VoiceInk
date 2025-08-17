@@ -5,11 +5,6 @@ import Foundation
         if !isMultilingual {
             return ["en": "English"]
         } else {
-            // For Apple Native models, return only supported languages in simple format
-            if provider == .nativeApple {
-                let appleSupportedCodes = ["ar", "de", "en", "es", "fr", "it", "ja", "ko", "pt", "yue", "zh"]
-                return allLanguages.filter { appleSupportedCodes.contains($0.key) }
-            }
             return allLanguages
         }
     }
@@ -78,15 +73,6 @@ import Foundation
     }
     
     private static let predefinedModels: [any TranscriptionModel] = [
-        // Native Apple Model
-        NativeAppleModel(
-            name: "apple-speech",
-            displayName: "Apple Speech",
-            description: "Uses the native Apple Speech framework for transcription. Requires macOS 26.",
-            isMultilingualModel: true,
-            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .nativeApple)
-        ),
-        
         // Parakeet Model
         ParakeetModel(
             name: "parakeet-tdt-0.6b",

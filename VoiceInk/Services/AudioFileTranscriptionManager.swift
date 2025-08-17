@@ -20,7 +20,6 @@ class AudioTranscriptionManager: ObservableObject {
     // Transcription services - will be initialized when needed
     private var localTranscriptionService: LocalTranscriptionService?
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
-    private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private var parakeetTranscriptionService: ParakeetTranscriptionService?
     
     enum ProcessingPhase {
@@ -104,8 +103,6 @@ class AudioTranscriptionManager: ObservableObject {
                     text = try await localTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
                 case .parakeet:
                     text = try await parakeetTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
-                case .nativeApple:
-                    text = try await nativeAppleTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
                 default: // Cloud models
                     text = try await cloudTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
                 }
