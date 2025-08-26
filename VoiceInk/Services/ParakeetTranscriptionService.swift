@@ -26,7 +26,7 @@ class ParakeetTranscriptionService: TranscriptionService {
         logger.notice("🦜 Starting Parakeet model loading")
         
         do {
-            let tdtConfig = TdtConfig(maxSymbolsPerStep: 3, durationBins: [0, 1, 2, 3, 4])
+            let tdtConfig = TdtConfig(durations: [0, 1, 2, 3, 4], includeTokenDuration: false, maxSymbolsPerStep: 3)
             let asrConfig = ASRConfig(tdtConfig: tdtConfig)
             asrManager = AsrManager(config: asrConfig)
             
