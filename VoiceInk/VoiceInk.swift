@@ -3,6 +3,7 @@ import SwiftData
 import Sparkle
 import AppKit
 import OSLog
+import AppIntents
 
 @main
 struct VoiceInkApp: App {
@@ -82,6 +83,8 @@ struct VoiceInkApp: App {
         activeWindowService.configure(with: enhancementService)
         activeWindowService.configureWhisperState(whisperState)
         _activeWindowService = StateObject(wrappedValue: activeWindowService)
+        
+        AppShortcuts.updateAppShortcutParameters()
     }
     
     var body: some Scene {
