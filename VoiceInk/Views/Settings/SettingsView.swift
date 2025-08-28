@@ -119,6 +119,23 @@ struct SettingsView: View {
                 }
 
                 SettingsSection(
+                    icon: "arrow.clockwise.circle.fill",
+                    title: "Retry Last Transcription",
+                    subtitle: "Configure shortcut to retry transcribing your most recent audio"
+                ) {
+                    HStack(spacing: 12) {
+                        Text("Retry Shortcut")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+
+                        KeyboardShortcuts.Recorder(for: .retryLastTranscription)
+                            .controlSize(.small)
+
+                        Spacer()
+                    }
+                }
+
+                SettingsSection(
                     icon: "speaker.wave.2.bubble.left.fill",
                     title: "Recording Feedback",
                     subtitle: "Customize app & system feedback"
