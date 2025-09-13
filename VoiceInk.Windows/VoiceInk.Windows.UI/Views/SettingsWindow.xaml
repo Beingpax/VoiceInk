@@ -1,0 +1,25 @@
+<Window x:Class="VoiceInk.Windows.UI.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="VoiceInk Settings" Height="450" Width="600"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <ListBox x:Name="NavigationListBox" Grid.Column="0" SelectionChanged="NavigationListBox_SelectionChanged" BorderThickness="0 1 1 1">
+            <ListBoxItem Content="General"/>
+            <ListBoxItem Content="Audio"/>
+            <ListBoxItem Content="Models"/>
+            <ListBoxItem Content="Dictionary"/>
+            <ListBoxItem Content="Power Mode"/>
+        </ListBox>
+
+        <Frame x:Name="SettingsFrame" Grid.Column="1" NavigationUIVisibility="Hidden" BorderThickness="0 1 1 1"/>
+    </Grid>
+</Window>

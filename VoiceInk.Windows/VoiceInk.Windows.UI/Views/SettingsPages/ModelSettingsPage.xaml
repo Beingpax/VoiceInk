@@ -1,0 +1,57 @@
+<Page x:Class="VoiceInk.Windows.UI.Views.SettingsPages.ModelSettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      mc:Ignorable="d"
+      d:DesignHeight="300" d:DesignWidth="400"
+      Title="ModelSettingsPage">
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Page.Resources>
+    <StackPanel Margin="20">
+        <TextBlock Text="Model Management" FontSize="20" FontWeight="Bold" Margin="0 0 0 20" />
+        <TextBlock Text="Select a model for transcription. If a model is not downloaded, select it and click 'Download'." TextWrapping="Wrap" Margin="0 0 0 10"/>
+
+        <ListView x:Name="ModelListView" ItemsSource="{Binding AvailableModels}" SelectionChanged="ModelListView_SelectionChanged" Height="150">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Model" DisplayMemberBinding="{Binding Name}" Width="150"/>
+                    <GridViewColumn Header="Status" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Available"/>
+                                            <Setter Property="Foreground" Value="Green"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDownloaded}" Value="False">
+                                                    <Setter Property="Text" Value="Not Downloaded"/>
+                                                    <Setter Property="Foreground" Value="Gray"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <Grid Margin="0 10 0 0">
+            <Button x:Name="DownloadButton" Content="Download Selected Model" Click="DownloadButton_Click" IsEnabled="{Binding IsDownloadButtonEnabled}"/>
+            <ProgressBar Value="{Binding DownloadProgress}" Maximum="100" Height="22" Visibility="{Binding IsDownloading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        </Grid>
+
+        <Separator Margin="0 20"/>
+
+        <TextBlock Text="Transcription Language:" Margin="0 0 0 5"/>
+        <ComboBox x:Name="LanguageComboBox"
+                  ItemsSource="{Binding Languages}"
+                  SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"/>
+
+    </StackPanel>
+</Page>

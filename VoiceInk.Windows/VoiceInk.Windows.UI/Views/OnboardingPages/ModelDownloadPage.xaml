@@ -1,0 +1,10 @@
+<Page x:Class="VoiceInk.Windows.UI.Views.OnboardingPages.ModelDownloadPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="ModelDownloadPage">
+    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+        <TextBlock Text="AI Model Download" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Text="The first time you transcribe, the application will automatically download the default AI model." FontSize="16" TextWrapping="Wrap" TextAlignment="Center" Margin="0 10 0 0"/>
+        <TextBlock Text="You can manage and download other models in the settings." FontSize="14" TextAlignment="Center" Margin="0 20 0 0"/>
+    </StackPanel>
+</Page>

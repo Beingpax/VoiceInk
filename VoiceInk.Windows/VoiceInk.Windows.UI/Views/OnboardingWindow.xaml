@@ -1,0 +1,21 @@
+<Window x:Class="VoiceInk.Windows.UI.Views.OnboardingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Welcome to VoiceInk" Height="350" Width="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Frame x:Name="OnboardingFrame" Grid.Row="0" NavigationUIVisibility="Hidden"/>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1" HorizontalAlignment="Right" Margin="10">
+            <Button x:Name="BackButton" Content="Back" Width="80" Margin="0 0 10 0" Click="BackButton_Click"/>
+            <Button x:Name="NextButton" Content="Next" Width="80" Click="NextButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

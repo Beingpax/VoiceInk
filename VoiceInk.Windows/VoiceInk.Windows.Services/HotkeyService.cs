@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace VoiceInkPoC.Services
+namespace VoiceInk.Windows.Services
 {
     public class HotkeyService : IDisposable
     {

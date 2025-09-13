@@ -9,9 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="Whisper.net" Version="1.5.0" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.5.0" />
+    <PackageReference Include="H.NotifyIcon.Wpf" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VoiceInk.Windows.Core\VoiceInk.Windows.Core.csproj" />
+    <ProjectReference Include="..\VoiceInk.Windows.Services\VoiceInk.Windows.Services.csproj" />
   </ItemGroup>
 
 </Project>
