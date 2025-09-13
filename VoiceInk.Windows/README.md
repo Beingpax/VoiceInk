@@ -26,14 +26,25 @@ This project is designed to be as simple as possible to run for a developer with
 *   Windows 10 or 11.
 *   Visual Studio 2022 (with the ".NET desktop development" workload installed).
 
-### Steps
+### Method 1: Using the Launch Script (Easiest)
+
+The simplest way to run the application for development is to use the provided launch script.
+
+1.  **Navigate to this directory** (`VoiceInk.Windows`).
+2.  **Double-click the `run.bat` file.**
+
+This script will open a command prompt, automatically build the entire project, and launch the application.
+
+### Method 2: Using Visual Studio (For Debugging)
+
+If you want to debug the code or view the project structure, the standard Visual Studio workflow is best.
 
 1.  **Open the Solution:**
     *   Navigate to this directory (`VoiceInk.Windows`).
     *   Double-click the `VoiceInk.Windows.sln` file to open the project in Visual Studio.
 
 2.  **Run the Application:**
-    *   Once the project is loaded, Visual Studio will automatically restore the required NuGet packages (`NAudio`, `Whisper.net`, etc.).
+    *   Once the project is loaded, Visual Studio will automatically restore the required NuGet packages.
     *   Press **F5** or click the "Start" button in the toolbar to compile and run the application.
 
 ### First-Time Run
