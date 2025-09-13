@@ -1,0 +1,24 @@
+<Window x:Class="VoiceInkPoC.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="VoiceInk Windows PoC" Height="450" Width="800">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button x:Name="RecordButton" Content="Record" Width="100" Height="30" Margin="5" Click="RecordButton_Click"/>
+            <Button x:Name="StopButton" Content="Stop &amp; Transcribe" Width="150" Height="30" Margin="5" IsEnabled="False" Click="StopButton_Click"/>
+        </StackPanel>
+
+        <TextBox x:Name="TranscriptionOutput" Grid.Row="1" Margin="5" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Text="Press 'Record' to start..."/>
+
+        <ProgressBar x:Name="ProgressBar" Grid.Row="2" Height="20" Margin="5" IsIndeterminate="False"/>
+    </Grid>
+</Window>
