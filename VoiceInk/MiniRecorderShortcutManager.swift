@@ -159,16 +159,16 @@ class MiniRecorderShortcutManager: ObservableObject {
     }
     
     private func setupPowerModeShortcuts() {
-        KeyboardShortcuts.setShortcut(.init(.one, modifiers: .option), for: .selectPowerMode1)
-        KeyboardShortcuts.setShortcut(.init(.two, modifiers: .option), for: .selectPowerMode2)
-        KeyboardShortcuts.setShortcut(.init(.three, modifiers: .option), for: .selectPowerMode3)
-        KeyboardShortcuts.setShortcut(.init(.four, modifiers: .option), for: .selectPowerMode4)
-        KeyboardShortcuts.setShortcut(.init(.five, modifiers: .option), for: .selectPowerMode5)
-        KeyboardShortcuts.setShortcut(.init(.six, modifiers: .option), for: .selectPowerMode6)
-        KeyboardShortcuts.setShortcut(.init(.seven, modifiers: .option), for: .selectPowerMode7)
-        KeyboardShortcuts.setShortcut(.init(.eight, modifiers: .option), for: .selectPowerMode8)
-        KeyboardShortcuts.setShortcut(.init(.nine, modifiers: .option), for: .selectPowerMode9)
-        KeyboardShortcuts.setShortcut(.init(.zero, modifiers: .option), for: .selectPowerMode10)
+        KeyboardShortcuts.setShortcut(.init(.one, modifiers: .command), for: .selectPowerMode1)
+        KeyboardShortcuts.setShortcut(.init(.two, modifiers: .command), for: .selectPowerMode2)
+        KeyboardShortcuts.setShortcut(.init(.three, modifiers: .command), for: .selectPowerMode3)
+        KeyboardShortcuts.setShortcut(.init(.four, modifiers: .command), for: .selectPowerMode4)
+        KeyboardShortcuts.setShortcut(.init(.five, modifiers: .command), for: .selectPowerMode5)
+        KeyboardShortcuts.setShortcut(.init(.six, modifiers: .command), for: .selectPowerMode6)
+        KeyboardShortcuts.setShortcut(.init(.seven, modifiers: .command), for: .selectPowerMode7)
+        KeyboardShortcuts.setShortcut(.init(.eight, modifiers: .command), for: .selectPowerMode8)
+        KeyboardShortcuts.setShortcut(.init(.nine, modifiers: .command), for: .selectPowerMode9)
+        KeyboardShortcuts.setShortcut(.init(.zero, modifiers: .command), for: .selectPowerMode10)
         
         // Setup handlers
         setupPowerModeHandler(for: .selectPowerMode1, index: 0)
@@ -217,16 +217,16 @@ class MiniRecorderShortcutManager: ObservableObject {
     }
     
     private func setupPromptShortcuts() {
-        KeyboardShortcuts.setShortcut(.init(.one, modifiers: .command), for: .selectPrompt1)
-        KeyboardShortcuts.setShortcut(.init(.two, modifiers: .command), for: .selectPrompt2)
-        KeyboardShortcuts.setShortcut(.init(.three, modifiers: .command), for: .selectPrompt3)
-        KeyboardShortcuts.setShortcut(.init(.four, modifiers: .command), for: .selectPrompt4)
-        KeyboardShortcuts.setShortcut(.init(.five, modifiers: .command), for: .selectPrompt5)
-        KeyboardShortcuts.setShortcut(.init(.six, modifiers: .command), for: .selectPrompt6)
-        KeyboardShortcuts.setShortcut(.init(.seven, modifiers: .command), for: .selectPrompt7)
-        KeyboardShortcuts.setShortcut(.init(.eight, modifiers: .command), for: .selectPrompt8)
-        KeyboardShortcuts.setShortcut(.init(.nine, modifiers: .command), for: .selectPrompt9)
-        KeyboardShortcuts.setShortcut(.init(.zero, modifiers: .command), for: .selectPrompt10)
+        KeyboardShortcuts.setShortcut(.init(.one, modifiers: .option), for: .selectPrompt1)
+        KeyboardShortcuts.setShortcut(.init(.two, modifiers: .option), for: .selectPrompt2)
+        KeyboardShortcuts.setShortcut(.init(.three, modifiers: .option), for: .selectPrompt3)
+        KeyboardShortcuts.setShortcut(.init(.four, modifiers: .option), for: .selectPrompt4)
+        KeyboardShortcuts.setShortcut(.init(.five, modifiers: .option), for: .selectPrompt5)
+        KeyboardShortcuts.setShortcut(.init(.six, modifiers: .option), for: .selectPrompt6)
+        KeyboardShortcuts.setShortcut(.init(.seven, modifiers: .option), for: .selectPrompt7)
+        KeyboardShortcuts.setShortcut(.init(.eight, modifiers: .option), for: .selectPrompt8)
+        KeyboardShortcuts.setShortcut(.init(.nine, modifiers: .option), for: .selectPrompt9)
+        KeyboardShortcuts.setShortcut(.init(.zero, modifiers: .option), for: .selectPrompt10)
         
         // Setup handlers
         setupPromptHandler(for: .selectPrompt1, index: 0)
@@ -287,4 +287,4 @@ class MiniRecorderShortcutManager: ObservableObject {
             removePowerModeShortcuts()
         }
     }
-} 
+}
