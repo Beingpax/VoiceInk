@@ -41,9 +41,10 @@ struct PromptSelectionGrid: View {
                 ]
                 
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(prompts) { prompt in
+                    ForEach(Array(prompts.enumerated()), id: \.element.id) { index, prompt in
                         prompt.promptIcon(
                             isSelected: selectedPromptId == prompt.id,
+                            shortcutIndex: index,
                             onTap: { 
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     onPromptSelected(prompt)

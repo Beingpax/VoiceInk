@@ -108,8 +108,8 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
 
 // MARK: - UI Extensions
 extension CustomPrompt {
-    func promptIcon(isSelected: Bool, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil, onDelete: ((CustomPrompt) -> Void)? = nil) -> some View {
-        VStack(spacing: 8) {
+    func promptIcon(isSelected: Bool, shortcutIndex: Int? = nil, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil, onDelete: ((CustomPrompt) -> Void)? = nil) -> some View {
+        VStack(spacing: 4) {
             ZStack {
                 // Dynamic background with blur effect
                 RoundedRectangle(cornerRadius: 14)
@@ -229,6 +229,8 @@ extension CustomPrompt {
                 }
                 .frame(height: 16)
             }
+            
+            shortcutLabel(for: shortcutIndex)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 6)
@@ -265,9 +267,28 @@ extension CustomPrompt {
         }
     }
     
+    @ViewBuilder
+    private func shortcutLabel(for index: Int?) -> some View {
+        let labelHeight: CGFloat = 16
+        if let index = index, index < 10 {
+            let numberToShow = (index + 1) % 10
+            HStack(spacing: 2) {
+                Image(systemName: "option")
+                    .font(.system(size: 9, weight: .medium))
+                Text("\(numberToShow)")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .foregroundColor(.secondary)
+            .frame(height: labelHeight)
+            .transition(.opacity)
+        } else {
+            Spacer().frame(height: labelHeight)
+        }
+    }
+    
     // Static method to create an "Add New" button with the same styling as the prompt icons
     static func addNewButton(action: @escaping () -> Void) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             ZStack {
                 // Dynamic background with blur effect - same styling as promptIcon
                 RoundedRectangle(cornerRadius: 14)
@@ -344,6 +365,9 @@ extension CustomPrompt {
                 Spacer()
                     .frame(height: 16)
             }
+            
+            // Spacer to match shortcut label height
+            Spacer().frame(height: 16)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 6)
