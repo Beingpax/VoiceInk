@@ -197,7 +197,7 @@ struct ConfigurationRow: View {
                 Spacer()
                 
                 if shortcutIndex < 10 {
-                    Text("⌘\(shortcutIndex)")
+                    Text("⌘\(shortcutIndex < 9 ? String(shortcutIndex + 1) : "0")")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.secondary)
                         .padding(.trailing, 8)
