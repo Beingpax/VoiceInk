@@ -56,15 +56,17 @@ struct PowerModeConfigurationsGrid: View {
     
     var body: some View {
         LazyVStack(spacing: 12) {
-            ForEach($powerModeManager.configurations) { $config in
+            ForEach(powerModeManager.configurations.indices, id: \.self) { index in
+                let config = powerModeManager.configurations[index]
                 ConfigurationRow(
-                    config: $config,
+                    config: $powerModeManager.configurations[index],
                     isEditing: false,
                     powerModeManager: powerModeManager,
-                    onEditConfig: onEditConfig
+                    onEditConfig: onEditConfig,
+                    shortcutIndex: index
                 )
                 .contextMenu {
-                    Button(action: { 
+                    Button(action: {
                         onEditConfig(config)
                     }) {
                         Label("Edit", systemImage: "pencil")
@@ -86,6 +88,7 @@ struct ConfigurationRow: View {
     let isEditing: Bool
     let powerModeManager: PowerModeManager
     let onEditConfig: (PowerModeConfig) -> Void
+    let shortcutIndex: Int
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var whisperState: WhisperState
     @State private var isHovering = false
@@ -192,6 +195,13 @@ struct ConfigurationRow: View {
                 }
                 
                 Spacer()
+                
+                if shortcutIndex < 10 {
+                    Text("⌘\(shortcutIndex)")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.trailing, 8)
+                }
                 
                 Toggle("", isOn: $config.isEnabled)
                     .toggleStyle(SwitchToggleStyle(tint: .accentColor))
