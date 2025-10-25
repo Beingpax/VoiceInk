@@ -6,6 +6,7 @@ import KeyboardShortcuts
 enum ViewType: String, CaseIterable {
     case metrics = "Dashboard"
     case transcribeAudio = "Transcribe Audio"
+    case textToSpeech = "Text to Speech"
     case history = "History"
     case models = "AI Models"
     case enhancement = "Enhancement"
@@ -20,6 +21,7 @@ enum ViewType: String, CaseIterable {
         switch self {
         case .metrics: return "gauge.medium"
         case .transcribeAudio: return "waveform.circle.fill"
+        case .textToSpeech: return "speaker.wave.3.fill"
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
@@ -155,6 +157,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var whisperState: WhisperState
     @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @StateObject private var ttsViewModel = TTSViewModel()
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
@@ -214,6 +217,9 @@ struct ContentView: View {
                     // Ensure we switch to the Transcribe Audio view in-place
                     print("ContentView: Navigating to Transcribe Audio")
                     selectedView = .transcribeAudio
+                case "Text to Speech":
+                    print("ContentView: Navigating to Text to Speech")
+                    selectedView = .textToSpeech
                 default:
                     print("ContentView: No matching destination found for: \(destination)")
                     break
@@ -240,6 +246,8 @@ struct ContentView: View {
             EnhancementSettingsView()
         case .transcribeAudio:
             AudioTranscribeView()
+        case .textToSpeech:
+            TextToSpeechView(viewModel: ttsViewModel)
         case .history:
             TranscriptionHistoryView()
         case .audioInput:

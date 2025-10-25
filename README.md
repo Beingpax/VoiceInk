@@ -22,6 +22,7 @@ Highlights of this fork:
 ## Features
 
 - 🎙️ **Offline transcription** – Whisper, Parakeet, and Apple Speech models are bundled and ready on first launch.
+- 🔊 **Text-to-speech studio** – Create narration with OpenAI, ElevenLabs, Google Cloud, or local system voices, complete with previews, batch queueing, translation, and article import tools.
 - 🔒 **Privacy first** – audio and transcripts stay local unless you explicitly export them.
 - ⚡ **Power Mode** – detect the active app/URL and auto-apply prompts, models, and paste rules.
 - 🎯 **Global shortcuts** – flexible hotkeys, push-to-talk, and middle-click control.
