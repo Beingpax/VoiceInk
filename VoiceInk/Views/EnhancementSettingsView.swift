@@ -63,19 +63,20 @@ struct EnhancementSettingsView: View {
                     .padding()
                     .background(CardBackground(isSelected: false))
                     
-                    // 1. AI Provider Integration Section
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("AI Provider Integration")
+                    // Informational note about provider setup
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Local-Only Enhancement", systemImage: "lock.shield")
                             .font(.headline)
-                        
-                        APIKeyManagementView()
-                            .background(CardBackground(isSelected: false))
+
+                        Text("The community build keeps enhancement providers on-device by default. Cloud API configuration has been removed to keep things privacy-friendly out of the box.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding()
-                    .background(Color(.windowBackgroundColor).opacity(0.4))
-                    .cornerRadius(10)
-                    
-                    // 3. Enhancement Modes & Assistant Section
+                    .background(CardBackground(isSelected: false))
+
+                    // Enhancement prompt selection
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Enhancement Prompt")
                             .font(.headline)

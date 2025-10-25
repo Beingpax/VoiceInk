@@ -14,7 +14,7 @@ enum ViewType: String, CaseIterable {
     case audioInput = "Audio Input"
     case dictionary = "Dictionary"
     case settings = "Settings"
-    case license = "VoiceInk Pro"
+    case community = "Community"
     
     var icon: String {
         switch self {
@@ -28,7 +28,7 @@ enum ViewType: String, CaseIterable {
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
         case .settings: return "gearshape.fill"
-        case .license: return "checkmark.seal.fill"
+        case .community: return "hands.sparkles.fill"
         }
     }
 }
@@ -55,18 +55,7 @@ struct DynamicSidebar: View {
     @Binding var selectedView: ViewType
     @Binding var hoveredView: ViewType?
     @Environment(\.colorScheme) private var colorScheme
-    @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
-    @StateObject private var licenseViewModel = LicenseViewModel()
     @Namespace private var buttonAnimation
-    
-    private var visibleViewTypes: [ViewType] {
-        ViewType.allCases.filter { viewType in
-            if viewType == .powerMode {
-                return powerModeUIFlag
-            }
-            return true
-        }
-    }
 
     var body: some View {
         VStack(spacing: 15) {
@@ -82,16 +71,13 @@ struct DynamicSidebar: View {
                 
                 Text("VoiceInk")
                     .font(.system(size: 14, weight: .semibold))
-                
-                if case .licensed = licenseViewModel.licenseState {
-                    Text("PRO")
-                        .font(.system(size: 9, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 2)
-                        .background(Color.blue)
-                        .cornerRadius(4)
-                }
+                Text("Community")
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+                    .background(Color.accentColor)
+                    .cornerRadius(4)
                 
                 Spacer()
             }
@@ -99,7 +85,7 @@ struct DynamicSidebar: View {
             .padding(.vertical, 12)
             
             // Navigation Items
-            ForEach(visibleViewTypes, id: \.self) { viewType in
+            ForEach(ViewType.allCases, id: \.self) { viewType in
                 DynamicSidebarButton(
                     title: viewType.rawValue,
                     systemImage: viewType.icon,
@@ -169,13 +155,9 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var whisperState: WhisperState
     @EnvironmentObject private var hotkeyManager: HotkeyManager
-    @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
-    let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    @StateObject private var licenseViewModel = LicenseViewModel()
-    
     
     private var isSetupComplete: Bool {
         hasLoadedData &&
@@ -206,27 +188,38 @@ struct ContentView: View {
         }
         // inside ContentView body:
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
+            print("ContentView: Received navigation notification")
             if let destination = notification.userInfo?["destination"] as? String {
+                print("ContentView: Destination received: \(destination)")
                 switch destination {
                 case "Settings":
+                    print("ContentView: Navigating to Settings")
                     selectedView = .settings
                 case "AI Models":
+                    print("ContentView: Navigating to AI Models")
                     selectedView = .models
-                case "VoiceInk Pro":
-                    selectedView = .license
+                case "Community":
+                    print("ContentView: Navigating to Community")
+                    selectedView = .community
                 case "History":
+                    print("ContentView: Navigating to History")
                     selectedView = .history
                 case "Permissions":
+                    print("ContentView: Navigating to Permissions")
                     selectedView = .permissions
                 case "Enhancement":
+                    print("ContentView: Navigating to Enhancement")
                     selectedView = .enhancement
                 case "Transcribe Audio":
+                    // Ensure we switch to the Transcribe Audio view in-place
+                    print("ContentView: Navigating to Transcribe Audio")
                     selectedView = .transcribeAudio
-                case "Power Mode":
-                    selectedView = .powerMode
                 default:
+                    print("ContentView: No matching destination found for: \(destination)")
                     break
                 }
+            } else {
+                print("ContentView: No destination in notification")
             }
         }
     }
@@ -258,7 +251,7 @@ struct ContentView: View {
         case .settings:
             SettingsView()
                 .environmentObject(whisperState)
-        case .license:
+        case .community:
             LicenseManagementView()
         case .permissions:
             PermissionsView()
