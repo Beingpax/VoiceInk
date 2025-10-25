@@ -5,6 +5,7 @@ struct MiniRecorderView: View {
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: MiniWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @AppStorage("enableAIEnhancementFeatures") private var enableAIEnhancementFeatures = false
     
     @State private var activePopover: ActivePopoverState = .none
     
@@ -35,8 +36,10 @@ struct MiniRecorderView: View {
     private var contentLayout: some View {
         HStack(spacing: 0) {
             // Left button zone - always visible
-            RecorderPromptButton(activePopover: $activePopover)
-                .padding(.leading, 7)
+            if enableAIEnhancementFeatures {
+                RecorderPromptButton(activePopover: $activePopover)
+                    .padding(.leading, 7)
+            }
 
             Spacer()
 

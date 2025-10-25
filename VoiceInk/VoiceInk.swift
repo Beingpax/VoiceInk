@@ -72,6 +72,9 @@ struct VoiceInkApp: App {
         
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: container.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
+        if !UserDefaults.standard.bool(forKey: "enableAIEnhancementFeatures") {
+            enhancementService.isEnhancementEnabled = false
+        }
         
         let whisperState = WhisperState(modelContext: container.mainContext, enhancementService: enhancementService)
         _whisperState = StateObject(wrappedValue: whisperState)

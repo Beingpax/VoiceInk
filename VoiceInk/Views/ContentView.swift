@@ -54,6 +54,7 @@ struct VisualEffectView: NSViewRepresentable {
 }
 
 struct DynamicSidebar: View {
+    let views: [ViewType]
     @Binding var selectedView: ViewType
     @Binding var hoveredView: ViewType?
     @Environment(\.colorScheme) private var colorScheme
@@ -87,7 +88,7 @@ struct DynamicSidebar: View {
             .padding(.vertical, 12)
             
             // Navigation Items
-            ForEach(ViewType.allCases, id: \.self) { viewType in
+            ForEach(views, id: \.self) { viewType in
                 DynamicSidebarButton(
                     title: viewType.rawValue,
                     systemImage: viewType.icon,
@@ -161,6 +162,16 @@ struct ContentView: View {
     @State private var selectedView: ViewType = .metrics
     @State private var hoveredView: ViewType?
     @State private var hasLoadedData = false
+    @AppStorage("enableAIEnhancementFeatures") private var enableAIEnhancementFeatures = false
+
+    private var availableViews: [ViewType] {
+        ViewType.allCases.filter { viewType in
+            if !enableAIEnhancementFeatures && (viewType == .models || viewType == .enhancement) {
+                return false
+            }
+            return true
+        }
+    }
     
     private var isSetupComplete: Bool {
         hasLoadedData &&
@@ -173,6 +184,7 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             DynamicSidebar(
+                views: availableViews,
                 selectedView: $selectedView,
                 hoveredView: $hoveredView
             )
@@ -188,6 +200,7 @@ struct ContentView: View {
         .frame(minWidth: 940, minHeight: 730)
         .onAppear {
             hasLoadedData = true
+            ensureValidSelection()
         }
         // inside ContentView body:
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
@@ -199,6 +212,10 @@ struct ContentView: View {
                     print("ContentView: Navigating to Settings")
                     selectedView = .settings
                 case "AI Models":
+                    guard enableAIEnhancementFeatures else {
+                        print("ContentView: AI features disabled; ignoring AI Models navigation")
+                        return
+                    }
                     print("ContentView: Navigating to AI Models")
                     selectedView = .models
                 case "Community":
@@ -211,6 +228,10 @@ struct ContentView: View {
                     print("ContentView: Navigating to Permissions")
                     selectedView = .permissions
                 case "Enhancement":
+                    guard enableAIEnhancementFeatures else {
+                        print("ContentView: AI features disabled; ignoring Enhancement navigation")
+                        return
+                    }
                     print("ContentView: Navigating to Enhancement")
                     selectedView = .enhancement
                 case "Transcribe Audio":
@@ -228,6 +249,9 @@ struct ContentView: View {
                 print("ContentView: No destination in notification")
             }
         }
+        .onChange(of: enableAIEnhancementFeatures) { _, _ in
+            ensureValidSelection()
+        }
     }
     
     @ViewBuilder
@@ -241,9 +265,17 @@ struct ContentView: View {
                     .environmentObject(hotkeyManager)
             }
         case .models:
-            ModelManagementView(whisperState: whisperState)
+            if enableAIEnhancementFeatures {
+                ModelManagementView(whisperState: whisperState)
+            } else {
+                FeatureUnavailablePlaceholder()
+            }
         case .enhancement:
-            EnhancementSettingsView()
+            if enableAIEnhancementFeatures {
+                EnhancementSettingsView()
+            } else {
+                FeatureUnavailablePlaceholder()
+            }
         case .transcribeAudio:
             AudioTranscribeView()
         case .textToSpeech:
@@ -264,6 +296,31 @@ struct ContentView: View {
         case .permissions:
             PermissionsView()
         }
+    }
+
+    private func ensureValidSelection() {
+        guard let firstAvailable = availableViews.first else { return }
+        if !availableViews.contains(selectedView) {
+            selectedView = firstAvailable
+        }
+    }
+}
+
+private struct FeatureUnavailablePlaceholder: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.secondary)
+            Text("AI enhancements are disabled.")
+                .font(.headline)
+            Text("Enable AI enhancement features in Settings to access this workspace.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.windowBackgroundColor))
     }
 }
 

@@ -11,6 +11,7 @@ struct MenuBarView: View {
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var menuRefreshTrigger = false  // Added to force menu updates
     @State private var isHovered = false
+    @AppStorage("enableAIEnhancementFeatures") private var enableAIEnhancementFeatures = false
     
     var body: some View {
         VStack {
@@ -32,8 +33,10 @@ struct MenuBarView: View {
                 
                 Divider()
                 
-                Button("Manage Models") {
-                    menuBarManager.openMainWindowAndNavigate(to: "AI Models")
+                if enableAIEnhancementFeatures {
+                    Button("Manage Models") {
+                        menuBarManager.openMainWindowAndNavigate(to: "AI Models")
+                    }
                 }
             } label: {
                 HStack {
@@ -45,131 +48,133 @@ struct MenuBarView: View {
             
             Divider()
             
-            Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
-            
-            Menu {
-                ForEach(enhancementService.allPrompts) { prompt in
-                    Button {
-                        enhancementService.setActivePrompt(prompt)
-                    } label: {
-                        HStack {
-                            Image(systemName: prompt.icon.rawValue)
-                                .foregroundColor(.accentColor)
-                            Text(prompt.title)
-                            if enhancementService.selectedPromptId == prompt.id {
-                                Spacer()
-                                Image(systemName: "checkmark")
+            if enableAIEnhancementFeatures {
+                Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
+                
+                Menu {
+                    ForEach(enhancementService.allPrompts) { prompt in
+                        Button {
+                            enhancementService.setActivePrompt(prompt)
+                        } label: {
+                            HStack {
+                                Image(systemName: prompt.icon.rawValue)
+                                    .foregroundColor(.accentColor)
+                                Text(prompt.title)
+                                if enhancementService.selectedPromptId == prompt.id {
+                                    Spacer()
+                                    Image(systemName: "checkmark")
+                                }
                             }
                         }
                     }
-                }
-            } label: {
-                HStack {
-                    Text("Prompt: \(enhancementService.activePrompt?.title ?? "None")")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                }
-            }
-            .disabled(!enhancementService.isEnhancementEnabled)
-            
-            Menu {
-                ForEach(aiService.connectedProviders, id: \.self) { provider in
-                    Button {
-                        aiService.selectedProvider = provider
-                    } label: {
-                        HStack {
-                            Text(provider.rawValue)
-                            if aiService.selectedProvider == provider {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-                
-                if aiService.connectedProviders.isEmpty {
-                    Text("No providers connected")
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                
-                Button("Manage AI Providers") {
-                    menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
-                }
-            } label: {
-                HStack {
-                    Text("AI Provider: \(aiService.selectedProvider.rawValue)")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                }
-            }
-            .disabled(!enhancementService.isEnhancementEnabled)
-            
-            Menu {
-                ForEach(aiService.availableModels, id: \.self) { model in
-                    Button {
-                        aiService.selectModel(model)
-                    } label: {
-                        HStack {
-                            Text(model)
-                            if aiService.currentModel == model {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-                
-                if aiService.availableModels.isEmpty {
-                    Text("No models available")
-                        .foregroundColor(.secondary)
-                }
-                
-                Divider()
-                
-                Button("Manage AI Models") {
-                    menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
-                }
-            } label: {
-                HStack {
-                    Text("AI Model: \(aiService.currentModel)")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                }
-            }
-            .disabled(!enhancementService.isEnhancementEnabled)
-            
-            LanguageSelectionView(whisperState: whisperState, displayMode: .menuItem, whisperPrompt: whisperState.whisperPrompt)
-            
-            Menu("Additional") {
-                Button {
-                    enhancementService.useClipboardContext.toggle()
-                    menuRefreshTrigger.toggle()
                 } label: {
                     HStack {
-                        Text("Clipboard Context")
-                        Spacer()
-                        if enhancementService.useClipboardContext {
-                            Image(systemName: "checkmark")
-                        }
+                        Text("Prompt: \(enhancementService.activePrompt?.title ?? "None")")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
                     }
                 }
                 .disabled(!enhancementService.isEnhancementEnabled)
                 
-                Button {
-                    enhancementService.useScreenCaptureContext.toggle()
-                    menuRefreshTrigger.toggle()
+                Menu {
+                    ForEach(aiService.connectedProviders, id: \.self) { provider in
+                        Button {
+                            aiService.selectedProvider = provider
+                        } label: {
+                            HStack {
+                                Text(provider.rawValue)
+                                if aiService.selectedProvider == provider {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                    
+                    if aiService.connectedProviders.isEmpty {
+                        Text("No providers connected")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    Button("Manage AI Providers") {
+                        menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
+                    }
                 } label: {
                     HStack {
-                        Text("Context Awareness")
-                        Spacer()
-                        if enhancementService.useScreenCaptureContext {
-                            Image(systemName: "checkmark")
-                        }
+                        Text("AI Provider: \(aiService.selectedProvider.rawValue)")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
                     }
                 }
                 .disabled(!enhancementService.isEnhancementEnabled)
+                
+                Menu {
+                    ForEach(aiService.availableModels, id: \.self) { model in
+                        Button {
+                            aiService.selectModel(model)
+                        } label: {
+                            HStack {
+                                Text(model)
+                                if aiService.currentModel == model {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                    
+                    if aiService.availableModels.isEmpty {
+                        Text("No models available")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Divider()
+                    
+                    Button("Manage AI Models") {
+                        menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
+                    }
+                } label: {
+                    HStack {
+                        Text("AI Model: \(aiService.currentModel)")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
+                    }
+                }
+                .disabled(!enhancementService.isEnhancementEnabled)
+                
+                LanguageSelectionView(whisperState: whisperState, displayMode: .menuItem, whisperPrompt: whisperState.whisperPrompt)
+                
+                Menu("Additional") {
+                    Button {
+                        enhancementService.useClipboardContext.toggle()
+                        menuRefreshTrigger.toggle()
+                    } label: {
+                        HStack {
+                            Text("Clipboard Context")
+                            Spacer()
+                            if enhancementService.useClipboardContext {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    .disabled(!enhancementService.isEnhancementEnabled)
+                    
+                    Button {
+                        enhancementService.useScreenCaptureContext.toggle()
+                        menuRefreshTrigger.toggle()
+                    } label: {
+                        HStack {
+                            Text("Context Awareness")
+                            Spacer()
+                            if enhancementService.useScreenCaptureContext {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    .disabled(!enhancementService.isEnhancementEnabled)
+                }
+                .id("additional-menu-\(menuRefreshTrigger)")
             }
-            .id("additional-menu-\(menuRefreshTrigger)")
             
             Divider()
             

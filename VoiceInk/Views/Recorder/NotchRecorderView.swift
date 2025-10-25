@@ -9,6 +9,7 @@ struct NotchRecorderView: View {
     @ObservedObject private var powerModeManager = PowerModeManager.shared
     
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @AppStorage("enableAIEnhancementFeatures") private var enableAIEnhancementFeatures = false
     
     private var menuBarHeight: CGFloat {
         if let screen = NSScreen.main {
@@ -32,11 +33,13 @@ struct NotchRecorderView: View {
     
     private var leftSection: some View {
         HStack(spacing: 12) {
-            RecorderPromptButton(
-                activePopover: $activePopover,
-                buttonSize: 22,
-                padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
-            )
+            if enableAIEnhancementFeatures {
+                RecorderPromptButton(
+                    activePopover: $activePopover,
+                    buttonSize: 22,
+                    padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+                )
+            }
 
             RecorderPowerModeButton(
                 activePopover: $activePopover,

@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
+    @AppStorage("enableAIEnhancementFeatures") private var enableAIEnhancementFeatures = false
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
@@ -246,6 +247,25 @@ struct SettingsView: View {
                 PowerModeSettingsSection()
 
                 ExperimentalFeaturesSection()
+
+                SettingsSection(
+                    icon: "wand.and.stars",
+                    title: "AI Enhancements",
+                    subtitle: "Optional features that rely on external AI providers"
+                ) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Enable AI enhancement features", isOn: $enableAIEnhancementFeatures)
+                            .toggleStyle(.switch)
+                            .onChange(of: enableAIEnhancementFeatures) { _, newValue in
+                                if !newValue {
+                                    enhancementService.isEnhancementEnabled = false
+                                }
+                            }
+
+                        Text("Expose the AI Models and Enhancement workspaces, recorder prompts, and menu bar controls. Requires configuring API credentials before use.")
+                            .settingsDescription()
+                    }
+                }
 
                 SettingsSection(
                     icon: "rectangle.on.rectangle",

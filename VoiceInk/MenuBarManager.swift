@@ -60,6 +60,20 @@ class MenuBarManager: ObservableObject {
     
     func openMainWindowAndNavigate(to destination: String) {
         print("MenuBarManager: Navigating to \(destination)")
+
+        let aiFeaturesEnabled = UserDefaults.standard.bool(forKey: "enableAIEnhancementFeatures")
+        if !aiFeaturesEnabled && (destination == "AI Models" || destination == "Enhancement") {
+            print("MenuBarManager: AI features disabled; navigation to \(destination) blocked")
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "AI enhancements are disabled"
+                alert.informativeText = "Enable AI enhancement features in Settings before accessing this workspace."
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
+            return
+        }
         
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -143,4 +157,3 @@ class WindowDelegate: NSObject, NSWindowDelegate {
         onClose()
     }
 }
-
