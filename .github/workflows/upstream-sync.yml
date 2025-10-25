@@ -1,0 +1,35 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Configure Git author
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/Beingpax/VoiceInk.git
+          git fetch upstream
+
+      - name: Merge upstream main
+        run: |
+          git checkout main
+          git merge --ff-only upstream/main || git merge upstream/main
+          git push origin main

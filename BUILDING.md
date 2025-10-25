@@ -1,6 +1,6 @@
 # Building VoiceInk
 
-This guide provides detailed instructions for building VoiceInk from source.
+This guide provides detailed instructions for building VoiceInk Community from source. The fork bundles the default Whisper and Parakeet models, so a fresh build is ready to transcribe offline immediately.
 
 ## Prerequisites
 
@@ -9,21 +9,33 @@ Before you begin, ensure you have:
 - Xcode (latest version recommended)
 - Swift (latest version recommended)
 
+## Preload default models (optional but recommended)
+
+Release builds bundle the preferred Whisper binaries. If you are building locally, run:
+
+```bash
+./scripts/download-models.sh
+```
+
+This script downloads `ggml-base.en.bin` and the quantized large turbo model into `VoiceInk/Resources/Models` so the first launch works offline.
+
 ## Building whisper.cpp Framework
 
-1. Clone and build whisper.cpp:
+VoiceInk relies on [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for on-device transcription. If you have not built the XCFramework yet:
+
 ```bash
 git clone https://github.com/ggerganov/whisper.cpp.git
 cd whisper.cpp
 ./build-xcframework.sh
 ```
-This will create the XCFramework at `build-apple/whisper.xcframework`.
+
+Drop `build-apple/whisper.xcframework` into the Xcode project (or update the existing reference) before building.
 
 ## Building VoiceInk
 
 1. Clone the VoiceInk repository:
 ```bash
-git clone https://github.com/Beingpax/VoiceInk.git
+git clone https://github.com/tmm22/VoiceInk.git
 cd VoiceInk
 ```
 
@@ -63,4 +75,4 @@ If you encounter any build issues:
 4. Verify all dependencies are properly installed
 5. Make sure whisper.xcframework is properly built and linked
 
-For more help, please check the [issues](https://github.com/Beingpax/VoiceInk/issues) section or create a new issue. 
+For more help, please check the [issues](https://github.com/tmm22/VoiceInk/issues) section or create a new issue. 

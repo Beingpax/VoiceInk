@@ -1,103 +1,37 @@
-# Contributing to VoiceInk
+# Contributing to VoiceInk Community
 
-First off, thank you for considering contributing to VoiceInk! It's people like you that make VoiceInk such a great tool.
+First off, thank you for your interest in shaping this fork! VoiceInk Community aims to remove friction—no license checks, no nag screens, and local models that just work. The same philosophy applies to contributions: if you have an improvement, we want to see it.
 
-## Important Notice About Pull Requests
+## Quick Start
 
-We welcome forks and improvements to VoiceInk! However, please note:
+1. **Fork and branch** – work off `main` using feature branches (`git switch -c feat/your-idea`).
+2. **Keep it focused** – smaller, well-scoped pull requests are easier to review and merge.
+3. **Use plain Swift style** – follow the default Swift formatting conventions; run `swiftformat` or Xcode's reformatting if you have it.
+4. **Test what you touch** – build the app, run the relevant flows, and add tests or notes when it helps.
 
-1. **The acceptance of Pull Requests is solely at the discretion of the project maintainers**
-2. **Before making significant changes or starting work on major features:**
-   - Open an issue to discuss your proposed changes
-   - Wait for maintainer feedback and approval
-   - This helps ensure your time and effort align with the project's direction
-3. **For fundamental or architectural changes:**
-   - Direct consultation with the maintainers is required
-   - These discussions should happen before you start the implementation
+No approval is required before hacking on features or bug fixes. If you’re not sure whether an idea fits, open an issue or draft PR and we’ll figure it out together.
 
-This policy helps ensure:
-- Your valuable time is spent on changes that align with the project's vision
-- The codebase maintains its consistency and quality
-- We can provide proper guidance and support for your contribution
+## What We’re Excited About
 
-## Important Notice
+- **User experience polish** for the community edition (onboarding tweaks, smarter defaults, accessibility).
+- **Offline-first enhancements** like new local models, better diarization, or power-mode automation.
+- **Developer ergonomics** such as scripting hooks, CLI tools, or documentation updates.
 
-Before starting work on any new feature or fix, please reach out to us first by opening an issue or discussion. This is crucial because:
+## Submitting Changes
 
-1. We want to ensure your contribution aligns with the project's goals and vision
-2. Someone else might already be working on something similar
-3. We might have valuable insights or requirements that could save you time
-4. Your proposed changes might need some adjustments to fit with our roadmap
+1. Make sure the app builds (`Cmd+B` in Xcode) and your change works end-to-end.
+2. Run the targeted tests you touched. If you can’t run a suite, explain why in the PR notes.
+3. Open a pull request describing the motivation, approach, and anything reviewers should pay attention to.
+4. Expect actionable feedback. We bias toward shipping improvements quickly, even if follow-ups are needed.
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+Be kind, inclusive, and collaborative. We follow the short-and-sweet community rules in `CODE_OF_CONDUCT.md`—they apply to GitHub discussions, reviews, and the Discord server.
 
-## How Can I Contribute?
+## Need Help?
 
-### Reporting Bugs
+- Start a discussion or file an issue describing your question.
+- Hop into Discord (`Community` tab inside the app) for real-time chats.
+- Tag maintainers in a PR if you are blocked—we’d rather unblock you than watch code go stale.
 
-- Before submitting a bug report, please check if the issue has already been reported
-- Use the bug report template when creating an issue
-- Include as much relevant information as possible
-- Include steps to reproduce the issue
-
-### Suggesting Enhancements
-
-- Open an issue using the feature request template
-- Clearly describe the feature and its benefits
-- Discuss potential implementation approaches
-- Consider the feature's impact on existing functionality
-
-### Pull Requests
-
-1. Fork the repository
-2. Create a new branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run tests and ensure they pass
-5. Commit your changes (`git commit -m 'Add some amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Development Process
-
-1. Ensure you have all the requirements installed:
-   - macOS 14.0 or later
-   - Latest version of Xcode
-   - Latest version of Swift
-   - whisper.cpp properly set up
-
-2. Follow our coding standards:
-   - Use Swift style guidelines
-   - Write meaningful commit messages
-   - Include comments where necessary
-   - Add tests for new features
-
-3. Testing:
-   - Run existing tests
-   - Add new tests for new functionality
-   - Ensure all tests pass before submitting PR
-
-## Style Guidelines
-
-- Follow Swift style guidelines
-- Use meaningful variable and function names
-- Keep functions focused and concise
-- Comment complex logic
-- Write self-documenting code where possible
-
-## Community
-
-- Join our discussions
-- Help other contributors
-- Share your ideas
-- Be respectful and constructive
-
-## Questions?
-
-If you have any questions or need clarification, feel free to:
-1. Open an issue
-2. Start a discussion
-3. Reach out to the maintainers
-
-Thank you for contributing to VoiceInk! 🎉 
+Thanks again for helping make an open, frictionless VoiceInk for everyone!
