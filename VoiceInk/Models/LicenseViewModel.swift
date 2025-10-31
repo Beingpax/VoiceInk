@@ -9,7 +9,7 @@ class LicenseViewModel: ObservableObject {
         case licensed
     }
     
-    @Published private(set) var licenseState: LicenseState = .trial(daysRemaining: 7)  // Default to trial
+    @Published private(set) var licenseState: LicenseState = .licensed  // Always licensed - no trial
     @Published var licenseKey: String = ""
     @Published var isValidating = false
     @Published var validationMessage: String?
@@ -20,7 +20,8 @@ class LicenseViewModel: ObservableObject {
     private let userDefaults = UserDefaults.standard
     
     init() {
-        loadLicenseState()
+        // Always set to licensed state - no license checks
+        licenseState = .licensed
     }
     
     func startTrial() {
@@ -71,12 +72,8 @@ class LicenseViewModel: ObservableObject {
     }
     
     var canUseApp: Bool {
-        switch licenseState {
-        case .licensed, .trial:
-            return true
-        case .trialExpired:
-            return false
-        }
+        // Always allow app usage - no license restrictions
+        return true
     }
     
     func openPurchaseLink() {

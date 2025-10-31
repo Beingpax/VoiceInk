@@ -3,7 +3,7 @@ DEPS_DIR := $(HOME)/VoiceInk-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 
-.PHONY: all clean whisper setup build check healthcheck help dev run
+.PHONY: all clean whisper setup build build-release check healthcheck help dev run dmg
 
 # Default target
 all: check build
@@ -41,7 +41,27 @@ setup: whisper
 	@echo "Please ensure your Xcode project references the framework from this new location."
 
 build: setup
-	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" build
+	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" CODE_SIGN_ENTITLEMENTS="" DEVELOPMENT_TEAM="" ENABLE_HARDENED_RUNTIME=NO SWIFT_VERSION=5.0 build
+
+# Build Release version (for distribution)
+build-release: setup
+	@echo "Building Release version..."
+	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Release CODE_SIGN_STYLE=Automatic SWIFT_VERSION=5.0 build
+	@echo "Release build complete. App location:"
+	@find "$$HOME/Library/Developer/Xcode/DerivedData" -name "VoiceInk.app" -path "*/Release/*" -type d | head -1
+
+# Create DMG installer
+dmg: build-release
+	@echo "Creating DMG installer..."
+	@APP_PATH=$$(find "$$HOME/Library/Developer/Xcode/DerivedData" -name "VoiceInk.app" -path "*/Release/*" -type d | head -1) && \
+	if [ -n "$$APP_PATH" ]; then \
+		rm -f VoiceInk.dmg; \
+		hdiutil create -volname "VoiceInk" -srcfolder "$$APP_PATH" -ov -format UDZO VoiceInk.dmg; \
+		echo "DMG created: $$(pwd)/VoiceInk.dmg"; \
+	else \
+		echo "Release build not found. Run 'make build-release' first."; \
+		exit 1; \
+	fi
 
 # Run application
 run:
@@ -67,7 +87,9 @@ help:
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
 	@echo "  setup              Copy whisper XCFramework to VoiceInk project"
-	@echo "  build              Build the VoiceInk Xcode project"
+	@echo "  build              Build the VoiceInk Xcode project (Debug)"
+	@echo "  build-release      Build Release version for distribution"
+	@echo "  dmg                Create DMG installer (builds Release first)"
 	@echo "  run                Launch the built VoiceInk app"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  all                Run full build process (default)"
