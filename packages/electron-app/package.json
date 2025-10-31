@@ -1,0 +1,33 @@
+{
+  "name": "electron-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "vite build && electron-builder",
+    "dev": "vite"
+  },
+  "build": {
+    "appId": "com.voiceink.app",
+    "productName": "VoiceInk",
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "index.html"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.1.12"
+  }
+}
