@@ -19,6 +19,15 @@ struct SettingsView: View {
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
+    
+    // TTS Settings
+    @State private var ttsElevenLabsKey: String = ""
+    @State private var ttsOpenAIKey: String = ""
+    @State private var ttsGoogleKey: String = ""
+    @State private var showTTSElevenLabsKey = false
+    @State private var showTTSOpenAIKey = false
+    @State private var showTTSGoogleKey = false
+    private let keychainManager = KeychainManager()
 
     
     var body: some View {
@@ -247,6 +256,9 @@ struct SettingsView: View {
 
                 ExperimentalFeaturesSection()
 
+                // Text-to-Speech Settings
+                TTSSettingsSection()
+
                 SettingsSection(
                     icon: "rectangle.on.rectangle",
                     title: "Recorder Style",
@@ -388,6 +400,7 @@ struct SettingsView: View {
         .background(Color(NSColor.controlBackgroundColor))
         .onAppear {
             isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
+            loadTTSAPIKeys()
         }
         .alert("Reset Onboarding", isPresented: $showResetOnboardingAlert) {
             Button("Cancel", role: .cancel) { }
@@ -399,6 +412,132 @@ struct SettingsView: View {
             }
         } message: {
             Text("Are you sure you want to reset the onboarding? You'll see the introduction screens again the next time you launch the app.")
+        }
+    }
+    
+    // MARK: - TTS Settings Helper Functions
+    
+    private func loadTTSAPIKeys() {
+        ttsElevenLabsKey = keychainManager.getAPIKey(for: "ElevenLabs") ?? ""
+        ttsOpenAIKey = keychainManager.getAPIKey(for: "OpenAI") ?? ""
+        ttsGoogleKey = keychainManager.getAPIKey(for: "Google") ?? ""
+    }
+    
+    private func saveTTSAPIKey(_ key: String, service: String) {
+        if !key.isEmpty {
+            keychainManager.saveAPIKey(key, for: service)
+        } else {
+            keychainManager.deleteAPIKey(for: service)
+        }
+    }
+    
+    @ViewBuilder
+    private func TTSSettingsSection() -> some View {
+        SettingsSection(
+            icon: "waveform.circle.fill",
+            title: "Text-to-Speech",
+            subtitle: "Accessibility tool for high-quality speech synthesis"
+        ) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("API Keys for Premium Voice Providers")
+                    .font(.system(size: 13, weight: .semibold))
+                
+                Text("Configure optional cloud providers for superior voice quality. Leave empty to use the built-in macOS voices. API keys are stored securely in the macOS Keychain.")
+                    .settingsDescription()
+                
+                // ElevenLabs
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "waveform")
+                            .foregroundColor(.orange)
+                        Text("ElevenLabs")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Link("Get API Key", destination: URL(string: "https://elevenlabs.io")!)
+                            .font(.caption)
+                    }
+                    
+                    HStack {
+                        if showTTSElevenLabsKey {
+                            TextField("Enter your ElevenLabs API key", text: $ttsElevenLabsKey)
+                                .textFieldStyle(.roundedBorder)
+                        } else {
+                            SecureField("Enter your ElevenLabs API key", text: $ttsElevenLabsKey)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Button(action: { showTTSElevenLabsKey.toggle() }) {
+                            Image(systemName: showTTSElevenLabsKey ? "eye.slash" : "eye")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .onChange(of: ttsElevenLabsKey) { _, newValue in
+                        saveTTSAPIKey(newValue, service: "ElevenLabs")
+                    }
+                }
+                
+                // OpenAI
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "cpu")
+                            .foregroundColor(.green)
+                        Text("OpenAI")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Link("Get API Key", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                            .font(.caption)
+                    }
+                    
+                    HStack {
+                        if showTTSOpenAIKey {
+                            TextField("Enter your OpenAI API key", text: $ttsOpenAIKey)
+                                .textFieldStyle(.roundedBorder)
+                        } else {
+                            SecureField("Enter your OpenAI API key", text: $ttsOpenAIKey)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Button(action: { showTTSOpenAIKey.toggle() }) {
+                            Image(systemName: showTTSOpenAIKey ? "eye.slash" : "eye")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .onChange(of: ttsOpenAIKey) { _, newValue in
+                        saveTTSAPIKey(newValue, service: "OpenAI")
+                    }
+                }
+                
+                // Google Cloud
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "cloud")
+                            .foregroundColor(.blue)
+                        Text("Google Cloud TTS")
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Link("Get API Key", destination: URL(string: "https://console.cloud.google.com")!)
+                            .font(.caption)
+                    }
+                    
+                    HStack {
+                        if showTTSGoogleKey {
+                            TextField("Enter your Google Cloud API key", text: $ttsGoogleKey)
+                                .textFieldStyle(.roundedBorder)
+                        } else {
+                            SecureField("Enter your Google Cloud API key", text: $ttsGoogleKey)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        
+                        Button(action: { showTTSGoogleKey.toggle() }) {
+                            Image(systemName: showTTSGoogleKey ? "eye.slash" : "eye")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .onChange(of: ttsGoogleKey) { _, newValue in
+                        saveTTSAPIKey(newValue, service: "Google")
+                    }
+                }
+            }
         }
     }
     

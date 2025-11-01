@@ -6,6 +6,7 @@ import KeyboardShortcuts
 enum ViewType: String, CaseIterable {
     case metrics = "Dashboard"
     case transcribeAudio = "Transcribe Audio"
+    case textToSpeech = "Text to Speech"
     case history = "History"
     case models = "AI Models"
     case enhancement = "Enhancement"
@@ -20,6 +21,7 @@ enum ViewType: String, CaseIterable {
         switch self {
         case .metrics: return "gauge.medium"
         case .transcribeAudio: return "waveform.circle.fill"
+        case .textToSpeech: return "speaker.wave.3.fill"
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
@@ -174,6 +176,7 @@ struct ContentView: View {
     @State private var hoveredView: ViewType?
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     @StateObject private var licenseViewModel = LicenseViewModel()
+    @StateObject private var ttsViewModel = TTSViewModel()
 
     var body: some View {
         NavigationSplitView {
@@ -209,6 +212,8 @@ struct ContentView: View {
                     selectedView = .enhancement
                 case "Transcribe Audio":
                     selectedView = .transcribeAudio
+                case "Text to Speech":
+                    selectedView = .textToSpeech
                 case "Power Mode":
                     selectedView = .powerMode
                 default:
@@ -229,6 +234,8 @@ struct ContentView: View {
             EnhancementSettingsView()
         case .transcribeAudio:
             AudioTranscribeView()
+        case .textToSpeech:
+            TextToSpeechView(viewModel: ttsViewModel)
         case .history:
             TranscriptionHistoryView()
         case .audioInput:
