@@ -20,13 +20,13 @@ struct VoiceInkApp: App {
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
-    
+
     // Audio cleanup manager for automatic deletion of old audio files
     private let audioCleanupManager = AudioCleanupManager.shared
-    
+
     // Transcription auto-cleanup service for zero data retention
     private let transcriptionAutoCleanupService = TranscriptionAutoCleanupService.shared
-    
+
     init() {
         // Configure FluidAudio logging subsystem
         AppLogger.defaultSubsystem = "com.prakashjoshipax.voiceink.parakeet"
@@ -40,62 +40,62 @@ struct VoiceInkApp: App {
             let schema = Schema([
                 Transcription.self
             ])
-            
+
             // Create app-specific Application Support directory URL
             let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
                 .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
-            
+
             // Create the directory if it doesn't exist
             try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
-            
+
             // Configure SwiftData to use the conventional location
             let storeURL = appSupportURL.appendingPathComponent("default.store")
             let modelConfiguration = ModelConfiguration(schema: schema, url: storeURL)
-            
+
             container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            
+
             // Print SwiftData storage location
             if let url = container.mainContext.container.configurations.first?.url {
                 print("💾 SwiftData storage location: \(url.path)")
             }
-            
+
         } catch {
             fatalError("Failed to create ModelContainer for Transcription: \(error.localizedDescription)")
         }
-        
+
         // Initialize services with proper sharing of instances
         let aiService = AIService()
         _aiService = StateObject(wrappedValue: aiService)
-        
+
         let updaterViewModel = UpdaterViewModel()
         _updaterViewModel = StateObject(wrappedValue: updaterViewModel)
-        
+
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: container.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
-        
+
         let whisperState = WhisperState(modelContext: container.mainContext, enhancementService: enhancementService)
         _whisperState = StateObject(wrappedValue: whisperState)
-        
+
         let hotkeyManager = HotkeyManager(whisperState: whisperState)
         _hotkeyManager = StateObject(wrappedValue: hotkeyManager)
-        
+
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
         appDelegate.menuBarManager = menuBarManager
-        
+
         let activeWindowService = ActiveWindowService.shared
         activeWindowService.configure(with: enhancementService)
         activeWindowService.configureWhisperState(whisperState)
         _activeWindowService = StateObject(wrappedValue: activeWindowService)
-        
+
         // Ensure no lingering recording state from previous runs
         Task {
             await whisperState.resetOnLaunch()
         }
-        
+
         AppShortcuts.updateAppShortcutParameters()
     }
-    
+
     var body: some Scene {
         WindowGroup {
             if hasCompletedOnboarding {
@@ -112,15 +112,15 @@ struct VoiceInkApp: App {
                         if enableAnnouncements {
                             AnnouncementsService.shared.start()
                         }
-                        
+
                         // Start the transcription auto-cleanup service (handles immediate and scheduled transcript deletion)
                         transcriptionAutoCleanupService.startMonitoring(modelContext: container.mainContext)
-                        
+
                         // Start the automatic audio cleanup process only if transcript cleanup is not enabled
                         if !UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled") {
                             audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
                         }
-                        
+
                         // Process any pending open-file request now that the main ContentView is ready.
                         if let pendingURL = appDelegate.pendingOpenFileURL {
                             NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
@@ -136,10 +136,10 @@ struct VoiceInkApp: App {
                     .onDisappear {
                         AnnouncementsService.shared.stop()
                         whisperState.unloadModel()
-                        
+
                         // Stop the transcription auto-cleanup service
                         transcriptionAutoCleanupService.stopMonitoring()
-                        
+
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
                     }
@@ -160,32 +160,34 @@ struct VoiceInkApp: App {
         .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(replacing: .newItem) { }
-            
+
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updaterViewModel: updaterViewModel)
             }
         }
-        
-        MenuBarExtra {
-            MenuBarView()
-                .environmentObject(whisperState)
-                .environmentObject(hotkeyManager)
-                .environmentObject(menuBarManager)
-                .environmentObject(updaterViewModel)
-                .environmentObject(aiService)
-                .environmentObject(enhancementService)
-        } label: {
-            let image: NSImage = {
-                let ratio = $0.size.height / $0.size.width
-                $0.size.height = 22
-                $0.size.width = 22 / ratio
-                return $0
-            }(NSImage(named: "menuBarIcon")!)
 
-            Image(nsImage: image)
+        if !menuBarManager.isMenuBarIconHidden {
+            MenuBarExtra {
+                MenuBarView()
+                    .environmentObject(whisperState)
+                    .environmentObject(hotkeyManager)
+                    .environmentObject(menuBarManager)
+                    .environmentObject(updaterViewModel)
+                    .environmentObject(aiService)
+                    .environmentObject(enhancementService)
+            } label: {
+                let image: NSImage = {
+                    let ratio = $0.size.height / $0.size.width
+                    $0.size.height = 22
+                    $0.size.width = 22 / ratio
+                    return $0
+                }(NSImage(named: "menuBarIcon")!)
+
+                Image(nsImage: image)
+            }
+            .menuBarExtraStyle(.menu)
         }
-        .menuBarExtraStyle(.menu)
-        
+
         #if DEBUG
         WindowGroup("Debug") {
             Button("Toggle Menu Bar Only") {
@@ -198,31 +200,31 @@ struct VoiceInkApp: App {
 
 class UpdaterViewModel: ObservableObject {
     @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
-    
+
     private let updaterController: SPUStandardUpdaterController
-    
+
     @Published var canCheckForUpdates = false
-    
+
     init() {
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
-        
+
         // Enable automatic update checking
         updaterController.updater.automaticallyChecksForUpdates = autoUpdateCheck
         updaterController.updater.updateCheckInterval = 24 * 60 * 60
-        
+
         updaterController.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
     }
-    
+
     func toggleAutoUpdates(_ value: Bool) {
         updaterController.updater.automaticallyChecksForUpdates = value
     }
-    
+
     func checkForUpdates() {
         // This is for manual checks - will show UI
         updaterController.checkForUpdates(nil)
     }
-    
+
     func silentlyCheckForUpdates() {
         // This checks for updates in the background without showing UI unless an update is found
         updaterController.updater.checkForUpdatesInBackground()
@@ -231,7 +233,7 @@ class UpdaterViewModel: ObservableObject {
 
 struct CheckForUpdatesView: View {
     @ObservedObject var updaterViewModel: UpdaterViewModel
-    
+
     var body: some View {
         Button("Check for Updates…", action: updaterViewModel.checkForUpdates)
             .disabled(!updaterViewModel.canCheckForUpdates)
@@ -240,7 +242,7 @@ struct CheckForUpdatesView: View {
 
 struct WindowAccessor: NSViewRepresentable {
     let callback: (NSWindow) -> Void
-    
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
         DispatchQueue.main.async {
@@ -250,6 +252,6 @@ struct WindowAccessor: NSViewRepresentable {
         }
         return view
     }
-    
+
     func updateNSView(_ nsView: NSView, context: Context) {}
 }

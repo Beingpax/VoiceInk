@@ -11,7 +11,7 @@ struct MenuBarView: View {
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var menuRefreshTrigger = false  // Added to force menu updates
     @State private var isHovered = false
-    
+
     var body: some View {
         VStack {
             Menu {
@@ -29,9 +29,9 @@ struct MenuBarView: View {
                         }
                     }
                 }
-                
+
                 Divider()
-                
+
                 Button("Manage Models") {
                     menuBarManager.openMainWindowAndNavigate(to: "AI Models")
                 }
@@ -42,11 +42,11 @@ struct MenuBarView: View {
                         .font(.system(size: 10))
                 }
             }
-            
+
             Divider()
-            
+
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
-            
+
             Menu {
                 ForEach(enhancementService.allPrompts) { prompt in
                     Button {
@@ -71,7 +71,7 @@ struct MenuBarView: View {
                 }
             }
             .disabled(!enhancementService.isEnhancementEnabled)
-            
+
             Menu {
                 ForEach(aiService.connectedProviders, id: \.self) { provider in
                     Button {
@@ -85,14 +85,14 @@ struct MenuBarView: View {
                         }
                     }
                 }
-                
+
                 if aiService.connectedProviders.isEmpty {
                     Text("No providers connected")
                         .foregroundColor(.secondary)
                 }
-                
+
                 Divider()
-                
+
                 Button("Manage AI Providers") {
                     menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
                 }
@@ -104,7 +104,7 @@ struct MenuBarView: View {
                 }
             }
             .disabled(!enhancementService.isEnhancementEnabled)
-            
+
             Menu {
                 ForEach(aiService.availableModels, id: \.self) { model in
                     Button {
@@ -118,14 +118,14 @@ struct MenuBarView: View {
                         }
                     }
                 }
-                
+
                 if aiService.availableModels.isEmpty {
                     Text("No models available")
                         .foregroundColor(.secondary)
                 }
-                
+
                 Divider()
-                
+
                 Button("Manage AI Models") {
                     menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
                 }
@@ -137,9 +137,9 @@ struct MenuBarView: View {
                 }
             }
             .disabled(!enhancementService.isEnhancementEnabled)
-            
+
             LanguageSelectionView(whisperState: whisperState, displayMode: .menuItem, whisperPrompt: whisperState.whisperPrompt)
-            
+
             Menu("Additional") {
                 Button {
                     enhancementService.useClipboardContext.toggle()
@@ -154,7 +154,7 @@ struct MenuBarView: View {
                     }
                 }
                 .disabled(!enhancementService.isEnhancementEnabled)
-                
+
                 Button {
                     enhancementService.useScreenCaptureContext.toggle()
                     menuRefreshTrigger.toggle()
@@ -170,51 +170,56 @@ struct MenuBarView: View {
                 .disabled(!enhancementService.isEnhancementEnabled)
             }
             .id("additional-menu-\(menuRefreshTrigger)")
-            
+
             Divider()
-            
+
             Button("Retry Last Transcription") {
                 LastTranscriptionService.retryLastTranscription(from: whisperState.modelContext, whisperState: whisperState)
             }
-            
+
             Button("Copy Last Transcription") {
                 LastTranscriptionService.copyLastTranscription(from: whisperState.modelContext)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
-            
+
             Button("History") {
                 menuBarManager.openMainWindowAndNavigate(to: "History")
             }
             .keyboardShortcut("h", modifiers: [.command, .shift])
-            
+
             Button("Settings") {
                 menuBarManager.openMainWindowAndNavigate(to: "Settings")
             }
             .keyboardShortcut(",", modifiers: .command)
-            
+
             Button(menuBarManager.isMenuBarOnly ? "Show Dock Icon" : "Hide Dock Icon") {
                 menuBarManager.toggleMenuBarOnly()
             }
             .keyboardShortcut("d", modifiers: [.command, .shift])
-            
+
+            Button(menuBarManager.isMenuBarIconHidden ? "Show Menu Bar Icon" : "Hide Menu Bar Icon") {
+                menuBarManager.toggleMenuBarIconVisibility()
+            }
+            .disabled(!menuBarManager.isMenuBarOnly)
+
             Toggle("Launch at Login", isOn: $launchAtLoginEnabled)
                 .onChange(of: launchAtLoginEnabled) { oldValue, newValue in
                     LaunchAtLogin.isEnabled = newValue
                 }
-            
+
             Divider()
-            
+
             Button("Check for Updates") {
                 updaterViewModel.checkForUpdates()
             }
             .disabled(!updaterViewModel.canCheckForUpdates)
-            
+
             Button("Help and Support") {
                 EmailSupport.openSupportEmail()
             }
-            
+
             Divider()
-            
+
             Button("Quit VoiceInk") {
                 NSApplication.shared.terminate(nil)
             }

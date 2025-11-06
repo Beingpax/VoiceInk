@@ -20,7 +20,7 @@ struct SettingsView: View {
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
 
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -80,15 +80,15 @@ struct SettingsView: View {
                             Text("Paste Last Transcript(Original)")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
-                            
+
                             KeyboardShortcuts.Recorder(for: .pasteLastTranscription)
                                 .controlSize(.small)
-                            
+
                             InfoTip(
                                 title: "Paste Last Transcript(Original)",
                                 message: "Shortcut for pasting the most recent transcription."
                             )
-                            
+
                             Spacer()
                         }
 
@@ -97,19 +97,19 @@ struct SettingsView: View {
                             Text("Paste Last Transcript(Enhanced)")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
-                            
+
                             KeyboardShortcuts.Recorder(for: .pasteLastEnhancement)
                                 .controlSize(.small)
-                            
+
                             InfoTip(
                                 title: "Paste Last Transcript(Enhanced)",
                                 message: "Pastes the enhanced transcript if available, otherwise falls back to the original."
                             )
-                            
+
                             Spacer()
                         }
 
-                        
+
 
                         // Retry Last Transcription
                         HStack(spacing: 12) {
@@ -130,8 +130,8 @@ struct SettingsView: View {
 
                         Divider()
 
-                        
-                        
+
+
                         // Custom Cancel Shortcut
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 8) {
@@ -144,22 +144,22 @@ struct SettingsView: View {
                                         KeyboardShortcuts.setShortcut(nil, for: .cancelRecorder)
                                     }
                                 }
-                                
+
                                 InfoTip(
                                     title: "Dismiss Recording",
                                     message: "Shortcut for cancelling the current recording session. Default: double-tap Escape."
                                 )
                             }
-                            
+
                             if isCustomCancelEnabled {
                                 HStack(spacing: 12) {
                                     Text("Cancel Shortcut")
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundColor(.secondary)
-                                    
+
                                     KeyboardShortcuts.Recorder(for: .cancelRecorder)
                                         .controlSize(.small)
-                                    
+
                                     Spacer()
                                 }
                                 .padding(.leading, 16)
@@ -174,7 +174,7 @@ struct SettingsView: View {
                             HStack(spacing: 8) {
                                 Toggle("Enable Middle-Click Toggle", isOn: $hotkeyManager.isMiddleClickToggleEnabled.animation())
                                     .toggleStyle(.switch)
-                                
+
                                 InfoTip(
                                     title: "Middle-Click Toggle",
                                     message: "Use middle mouse button to toggle VoiceInk recording."
@@ -186,7 +186,7 @@ struct SettingsView: View {
                                     Text("Activation Delay")
                                         .font(.system(size: 13, weight: .medium))
                                         .foregroundColor(.secondary)
-                                    
+
                                     TextField("", value: $hotkeyManager.middleClickActivationDelay, formatter: {
                                         let formatter = NumberFormatter()
                                         formatter.numberStyle = .none
@@ -198,10 +198,10 @@ struct SettingsView: View {
                                     .background(Color(NSColor.textBackgroundColor))
                                     .cornerRadius(5)
                                     .frame(width: 70)
-                                    
+
                                     Text("ms")
                                         .foregroundColor(.secondary)
-                                    
+
                                     Spacer()
                                 }
                                 .padding(.leading, 16)
@@ -255,7 +255,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Select how you want the recorder to appear on your screen.")
                             .settingsDescription()
-                        
+
                         Picker("Recorder Style", selection: $whisperState.recorderType) {
                             Text("Notch Recorder").tag("notch")
                             Text("Mini Recorder").tag("mini")
@@ -273,7 +273,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Select the method used to paste text. Use AppleScript if you have a non-standard keyboard layout.")
                             .settingsDescription()
-                        
+
                         Toggle("Use AppleScript Paste Method", isOn: Binding(
                             get: { UserDefaults.standard.bool(forKey: "UseAppleScriptPaste") },
                             set: { UserDefaults.standard.set($0, forKey: "UseAppleScriptPaste") }
@@ -290,7 +290,11 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Toggle("Hide Dock Icon (Menu Bar Only)", isOn: $menuBarManager.isMenuBarOnly)
                             .toggleStyle(.switch)
-                        
+
+                        Toggle("Hide Menu Bar Icon", isOn: $menuBarManager.isMenuBarIconHidden)
+                            .toggleStyle(.switch)
+                            .disabled(!menuBarManager.isMenuBarOnly) // Only allow hiding menu bar icon in menu bar only mode
+
                         LaunchAtLogin.Toggle()
                             .toggleStyle(.switch)
 
@@ -299,7 +303,7 @@ struct SettingsView: View {
                             .onChange(of: autoUpdateCheck) { _, newValue in
                                 updaterViewModel.toggleAutoUpdates(newValue)
                             }
-                        
+
                         Toggle("Show app announcements", isOn: $enableAnnouncements)
                             .toggleStyle(.switch)
                             .onChange(of: enableAnnouncements) { _, newValue in
@@ -309,14 +313,14 @@ struct SettingsView: View {
                                     AnnouncementsService.shared.stop()
                                 }
                             }
-                        
+
                         Button("Check for Updates Now") {
                             updaterViewModel.checkForUpdates()
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.large)
                         .disabled(!updaterViewModel.canCheckForUpdates)
-                        
+
                         Divider()
 
                         Button("Reset Onboarding") {
@@ -326,7 +330,7 @@ struct SettingsView: View {
                         .controlSize(.large)
                     }
                 }
-                
+
                 SettingsSection(
                     icon: "lock.shield",
                     title: "Data & Privacy",
@@ -334,7 +338,7 @@ struct SettingsView: View {
                 ) {
                     AudioCleanupSettingsView()
                 }
-                
+
                 SettingsSection(
                     icon: "arrow.up.arrow.down.circle",
                     title: "Data Management",
@@ -347,11 +351,11 @@ struct SettingsView: View {
                         HStack(spacing: 12) {
                             Button {
                                 ImportExportService.shared.importSettings(
-                                    enhancementService: enhancementService, 
-                                    whisperPrompt: whisperState.whisperPrompt, 
-                                    hotkeyManager: hotkeyManager, 
-                                    menuBarManager: menuBarManager, 
-                                    mediaController: MediaController.shared, 
+                                    enhancementService: enhancementService,
+                                    whisperPrompt: whisperState.whisperPrompt,
+                                    hotkeyManager: hotkeyManager,
+                                    menuBarManager: menuBarManager,
+                                    mediaController: MediaController.shared,
                                     playbackController: PlaybackController.shared,
                                     soundManager: SoundManager.shared,
                                     whisperState: whisperState
@@ -364,11 +368,11 @@ struct SettingsView: View {
 
                             Button {
                                 ImportExportService.shared.exportSettings(
-                                    enhancementService: enhancementService, 
-                                    whisperPrompt: whisperState.whisperPrompt, 
-                                    hotkeyManager: hotkeyManager, 
-                                    menuBarManager: menuBarManager, 
-                                    mediaController: MediaController.shared, 
+                                    enhancementService: enhancementService,
+                                    whisperPrompt: whisperState.whisperPrompt,
+                                    hotkeyManager: hotkeyManager,
+                                    menuBarManager: menuBarManager,
+                                    mediaController: MediaController.shared,
                                     playbackController: PlaybackController.shared,
                                     soundManager: SoundManager.shared,
                                     whisperState: whisperState
@@ -401,7 +405,7 @@ struct SettingsView: View {
             Text("Are you sure you want to reset the onboarding? You'll see the introduction screens again the next time you launch the app.")
         }
     }
-    
+
     @ViewBuilder
     private func hotkeyView(
         title: String,
@@ -414,7 +418,7 @@ struct SettingsView: View {
             Text(title)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.secondary)
-            
+
             Menu {
                 ForEach(HotkeyManager.HotkeyOption.allCases, id: \.self) { option in
                     Button(action: {
@@ -447,14 +451,14 @@ struct SettingsView: View {
                 )
             }
             .menuStyle(.borderlessButton)
-            
+
             if binding.wrappedValue == .custom {
                 KeyboardShortcuts.Recorder(for: shortcutName)
                     .controlSize(.small)
             }
-            
+
             Spacer()
-            
+
             if isRemovable {
                 Button(action: {
                     onRemove?()
@@ -474,7 +478,7 @@ struct SettingsSection<Content: View>: View {
     let subtitle: String
     let content: Content
     var showWarning: Bool = false
-    
+
     init(icon: String, title: String, subtitle: String, showWarning: Bool = false, @ViewBuilder content: () -> Content) {
         self.icon = icon
         self.title = title
@@ -482,7 +486,7 @@ struct SettingsSection<Content: View>: View {
         self.showWarning = showWarning
         self.content = content()
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
@@ -490,7 +494,7 @@ struct SettingsSection<Content: View>: View {
                     .font(.system(size: 20))
                     .foregroundColor(showWarning ? .red : .accentColor)
                     .frame(width: 24, height: 24)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.headline)
@@ -498,7 +502,7 @@ struct SettingsSection<Content: View>: View {
                         .font(.subheadline)
                         .foregroundColor(showWarning ? .red : .secondary)
                 }
-                
+
                 if showWarning {
                     Spacer()
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -506,10 +510,10 @@ struct SettingsSection<Content: View>: View {
                         .help("Permission required for VoiceInk to function properly")
                 }
             }
-            
+
             Divider()
                 .padding(.vertical, 4)
-            
+
             content
         }
         .padding(16)
