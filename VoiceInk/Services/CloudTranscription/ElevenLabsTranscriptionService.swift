@@ -37,7 +37,9 @@ class ElevenLabsTranscriptionService {
             throw CloudTranscriptionError.missingAPIKey
         }
         
-        let apiURL = URL(string: "https://api.elevenlabs.io/v1/speech-to-text")!
+        guard let apiURL = URL(string: "https://api.elevenlabs.io/v1/speech-to-text") else {
+            throw NSError(domain: "ElevenLabsTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
+        }
         return APIConfig(url: apiURL, apiKey: apiKey, modelName: model.name)
     }
     

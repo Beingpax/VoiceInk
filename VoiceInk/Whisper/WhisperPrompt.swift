@@ -106,8 +106,8 @@ class WhisperPrompt: ObservableObject {
             return customPrompt
         }
         
-        // Otherwise return the default prompt
-        return languagePrompts[language] ?? languagePrompts["default"]!
+        // Otherwise return the default prompt, with safe fallback
+        return languagePrompts[language] ?? languagePrompts["default"] ?? ""
     }
     
     func setCustomPrompt(_ prompt: String, for language: String) {

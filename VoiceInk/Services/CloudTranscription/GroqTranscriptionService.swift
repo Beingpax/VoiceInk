@@ -40,7 +40,9 @@ class GroqTranscriptionService {
             throw CloudTranscriptionError.missingAPIKey
         }
         
-        let apiURL = URL(string: "https://api.groq.com/openai/v1/audio/transcriptions")!
+        guard let apiURL = URL(string: "https://api.groq.com/openai/v1/audio/transcriptions") else {
+            throw NSError(domain: "GroqTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
+        }
         return APIConfig(url: apiURL, apiKey: apiKey, modelName: model.name)
     }
     

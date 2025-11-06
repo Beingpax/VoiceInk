@@ -12,7 +12,9 @@ class MistralTranscriptionService {
             throw CloudTranscriptionError.missingAPIKey
         }
 
-        let url = URL(string: "https://api.mistral.ai/v1/audio/transcriptions")!
+        guard let url = URL(string: "https://api.mistral.ai/v1/audio/transcriptions") else {
+            throw NSError(domain: "MistralTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
+        }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
 
