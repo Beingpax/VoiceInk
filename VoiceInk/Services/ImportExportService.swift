@@ -30,7 +30,7 @@ struct VoiceInkExportedSettings: Codable {
     let version: String
     let customPrompts: [CustomPrompt]
     let powerModeConfigs: [PowerModeConfig]
-    let dictionaryItems: [DictionaryItem]?
+    let dictionaryItems: [VocabularyWord]?
     let wordReplacements: [String: String]?
     let generalSettings: GeneralSettings?
     let customEmojis: [String]?
@@ -76,10 +76,10 @@ class ImportExportService {
         // Export custom models
         let customModels = CustomModelManager.shared.customModels
 
-        var exportedDictionaryItems: [DictionaryItem]? = nil
+        var exportedVocabularyItems: [VocabularyWord]? = nil
         if let data = UserDefaults.standard.data(forKey: dictionaryItemsKey),
-           let items = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
-            exportedDictionaryItems = items
+           let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
+            exportedVocabularyItems = items
         }
 
         let exportedWordReplacements = UserDefaults.standard.dictionary(forKey: wordReplacementsKey) as? [String: String]
@@ -110,7 +110,7 @@ class ImportExportService {
             version: currentSettingsVersion,
             customPrompts: exportablePrompts,
             powerModeConfigs: powerConfigs,
-            dictionaryItems: exportedDictionaryItems,
+            dictionaryItems: exportedVocabularyItems,
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
@@ -204,7 +204,7 @@ class ImportExportService {
                             UserDefaults.standard.set(encoded, forKey: "CustomDictionaryItems")
                         }
                     } else {
-                        print("No dictionary items (for spelling) found in the imported file. Existing items remain unchanged.")
+                        print("No vocabulary items found in the imported file. Existing items remain unchanged.")
                     }
 
                     if let replacementsToImport = importedSettings.wordReplacements {

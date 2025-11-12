@@ -17,10 +17,10 @@ class DictionaryImportExportService {
     private init() {}
 
     func exportDictionary() {
-        var dictionaryWords: [String] = []
+        var vocabularyWords: [String] = []
         if let data = UserDefaults.standard.data(forKey: dictionaryItemsKey),
-           let items = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
-            dictionaryWords = items.map { $0.word }
+           let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
+            vocabularyWords = items.map { $0.word }
         }
 
         let wordReplacements = UserDefaults.standard.dictionary(forKey: wordReplacementsKey) as? [String: String] ?? [:]
@@ -29,7 +29,7 @@ class DictionaryImportExportService {
 
         let exportData = DictionaryExportData(
             version: version,
-            dictionaryItems: dictionaryWords,
+            dictionaryItems: vocabularyWords,
             wordReplacements: wordReplacements,
             exportDate: Date()
         )
@@ -88,9 +88,9 @@ class DictionaryImportExportService {
                     decoder.dateDecodingStrategy = .iso8601
                     let importedData = try decoder.decode(DictionaryExportData.self, from: jsonData)
 
-                    var existingItems: [DictionaryItem] = []
+                    var existingItems: [VocabularyWord] = []
                     if let data = UserDefaults.standard.data(forKey: self.dictionaryItemsKey),
-                       let items = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
+                       let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
                         existingItems = items
                     }
 
@@ -100,7 +100,7 @@ class DictionaryImportExportService {
 
                     for importedWord in importedData.dictionaryItems {
                         if !existingWordsLower.contains(importedWord.lowercased()) {
-                            existingItems.append(DictionaryItem(word: importedWord))
+                            existingItems.append(VocabularyWord(word: importedWord))
                             newWordsAdded += 1
                         }
                     }
@@ -150,7 +150,7 @@ class DictionaryImportExportService {
                     UserDefaults.standard.set(mergedReplacements, forKey: self.wordReplacementsKey)
 
                     var message = "Dictionary data imported successfully from \(url.lastPathComponent).\n\n"
-                    message += "Dictionary Items: \(newWordsAdded) added, \(originalExistingCount) kept\n"
+                    message += "Vocabulary Words: \(newWordsAdded) added, \(originalExistingCount) kept\n"
                     message += "Word Replacements: Merged into \(mergedReplacements.count) total rules"
 
                     self.showAlert(title: "Import Successful", message: message)

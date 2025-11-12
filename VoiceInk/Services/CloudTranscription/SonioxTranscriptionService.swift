@@ -64,11 +64,11 @@ class SonioxTranscriptionService {
             // Disable diarization as per app requirement
             "enable_speaker_diarization": false
         ]
-        // Attach custom vocabulary terms from the app's dictionary (if any)
-        let dictionaryTerms = getCustomDictionaryTerms()
-        if !dictionaryTerms.isEmpty {
+        // Attach custom vocabulary terms from the app (if any)
+        let vocabularyTerms = getCustomVocabularyTerms()
+        if !vocabularyTerms.isEmpty {
             payload["context"] = [
-                "terms": dictionaryTerms
+                "terms": vocabularyTerms
             ]
         }
         let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
@@ -169,7 +169,7 @@ class SonioxTranscriptionService {
         return body
     }
     
-    private func getCustomDictionaryTerms() -> [String] {
+    private func getCustomVocabularyTerms() -> [String] {
         guard let data = UserDefaults.standard.data(forKey: "CustomDictionaryItems") else {
             return []
         }

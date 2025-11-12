@@ -65,7 +65,7 @@ class AIEnhancementService: ObservableObject {
 
     private let aiService: AIService
     private let screenCaptureService: ScreenCaptureService
-    private let dictionaryContextService: DictionaryContextService
+    private let vocabularyContextService: VocabularyContextService
     private let baseTimeout: TimeInterval = 30
     private let rateLimitInterval: TimeInterval = 1.0
     private var lastRequestTime: Date?
@@ -77,7 +77,7 @@ class AIEnhancementService: ObservableObject {
         self.aiService = aiService
         self.modelContext = modelContext
         self.screenCaptureService = ScreenCaptureService()
-        self.dictionaryContextService = DictionaryContextService.shared
+        self.vocabularyContextService = VocabularyContextService.shared
 
         self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
@@ -164,17 +164,17 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
-        let dictionaryContext = dictionaryContextService.getDictionaryContext()
+        let vocabularyContext = vocabularyContextService.getVocabularyContext()
 
         let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
 
-        let dictionaryContextSection = if !dictionaryContext.isEmpty {
-            "\n\n<DICTIONARY_CONTEXT>\(dictionaryContext)\n</DICTIONARY_CONTEXT>"
+        let vocabularyContextSection = if !vocabularyContext.isEmpty {
+            "\n\n<VOCABULARY_CONTEXT>\(vocabularyContext)\n</VOCABULARY_CONTEXT>"
         } else {
             ""
         }
 
-        let finalContextSection = allContextSections + dictionaryContextSection
+        let finalContextSection = allContextSections + vocabularyContextSection
 
         if let activePrompt = activePrompt {
             if activePrompt.id == PredefinedPrompts.assistantPromptId {

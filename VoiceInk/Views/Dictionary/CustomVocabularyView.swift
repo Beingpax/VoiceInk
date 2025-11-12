@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct DictionaryItem: Identifiable, Hashable, Codable {
+struct VocabularyWord: Identifiable, Hashable, Codable {
     var word: String
 
     var id: String { word }
@@ -27,86 +27,86 @@ struct DictionaryItem: Identifiable, Hashable, Codable {
     }
 }
 
-enum DictionarySortMode: String {
+enum VocabularySortMode: String {
     case wordAsc = "wordAsc"
     case wordDesc = "wordDesc"
 }
 
-class DictionaryManager: ObservableObject {
-    @Published var items: [DictionaryItem] = []
+class CustomVocabularyManager: ObservableObject {
+    @Published var items: [VocabularyWord] = []
     private let saveKey = "CustomDictionaryItems"
     private let whisperPrompt: WhisperPrompt
-    
+
     init(whisperPrompt: WhisperPrompt) {
         self.whisperPrompt = whisperPrompt
         loadItems()
     }
-    
+
     private func loadItems() {
         guard let data = UserDefaults.standard.data(forKey: saveKey) else { return }
 
-        if let savedItems = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
+        if let savedItems = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
             items = savedItems
         }
     }
-    
+
     private func saveItems() {
         if let encoded = try? JSONEncoder().encode(items) {
             UserDefaults.standard.set(encoded, forKey: saveKey)
         }
     }
-    
+
     func addWord(_ word: String) {
         let normalizedWord = word.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !items.contains(where: { $0.word.lowercased() == normalizedWord.lowercased() }) else {
             return
         }
-        
-        let newItem = DictionaryItem(word: normalizedWord)
+
+        let newItem = VocabularyWord(word: normalizedWord)
         items.insert(newItem, at: 0)
         saveItems()
     }
-    
+
     func removeWord(_ word: String) {
         items.removeAll(where: { $0.word == word })
         saveItems()
     }
-    
+
     var allWords: [String] {
         items.map { $0.word }
     }
 }
 
-struct DictionaryView: View {
-    @StateObject private var dictionaryManager: DictionaryManager
+struct CustomVocabularyView: View {
+    @StateObject private var vocabularyManager: CustomVocabularyManager
     @ObservedObject var whisperPrompt: WhisperPrompt
     @State private var newWord = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var sortMode: DictionarySortMode = .wordAsc
+    @State private var sortMode: VocabularySortMode = .wordAsc
 
     init(whisperPrompt: WhisperPrompt) {
         self.whisperPrompt = whisperPrompt
-        _dictionaryManager = StateObject(wrappedValue: DictionaryManager(whisperPrompt: whisperPrompt))
+        _vocabularyManager = StateObject(wrappedValue: CustomVocabularyManager(whisperPrompt: whisperPrompt))
 
-        if let savedSort = UserDefaults.standard.string(forKey: "dictionarySortMode"),
-           let mode = DictionarySortMode(rawValue: savedSort) {
+        if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
+           let mode = VocabularySortMode(rawValue: savedSort) {
             _sortMode = State(initialValue: mode)
         }
     }
 
-    private var sortedItems: [DictionaryItem] {
+    private var sortedItems: [VocabularyWord] {
         switch sortMode {
         case .wordAsc:
-            return dictionaryManager.items.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
+            return vocabularyManager.items.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
         case .wordDesc:
-            return dictionaryManager.items.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedDescending }
+            return vocabularyManager.items.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedDescending }
         }
     }
 
     private func toggleSort() {
         sortMode = (sortMode == .wordAsc) ? .wordDesc : .wordAsc
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "dictionarySortMode")
+        UserDefaults.standard.set(sortMode.rawValue, forKey: "vocabularySortMode")
     }
 
     var body: some View {
@@ -124,7 +124,7 @@ struct DictionaryView: View {
             }
 
             HStack(spacing: 8) {
-                TextField("Add word to dictionary", text: $newWord)
+                TextField("Add word to vocabulary", text: $newWord)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
                     .onSubmit { addWords() }
@@ -140,11 +140,11 @@ struct DictionaryView: View {
                 .help("Add word")
             }
 
-            if !dictionaryManager.items.isEmpty {
+            if !vocabularyManager.items.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: toggleSort) {
                         HStack(spacing: 4) {
-                            Text("Dictionary Items (\(dictionaryManager.items.count))")
+                            Text("Vocabulary Words (\(vocabularyManager.items.count))")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 
@@ -159,8 +159,8 @@ struct DictionaryView: View {
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 240, maximum: .infinity), spacing: 12)], alignment: .leading, spacing: 12) {
                             ForEach(sortedItems) { item in
-                                DictionaryItemView(item: item) {
-                                    dictionaryManager.removeWord(item.word)
+                                VocabularyWordView(item: item) {
+                                    vocabularyManager.removeWord(item.word)
                                 }
                             }
                         }
@@ -172,7 +172,7 @@ struct DictionaryView: View {
             }
         }
         .padding()
-        .alert("Dictionary", isPresented: $showAlert) {
+        .alert("Custom Vocabulary", isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(alertMessage)
@@ -182,37 +182,37 @@ struct DictionaryView: View {
     private func addWords() {
         let input = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
-        
+
         let parts = input
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-        
+
         guard !parts.isEmpty else { return }
-        
+
         if parts.count == 1, let word = parts.first {
-            if dictionaryManager.items.contains(where: { $0.word.lowercased() == word.lowercased() }) {
-                alertMessage = "'\(word)' is already in the dictionary"
+            if vocabularyManager.items.contains(where: { $0.word.lowercased() == word.lowercased() }) {
+                alertMessage = "'\(word)' is already in the vocabulary"
                 showAlert = true
                 return
             }
-            dictionaryManager.addWord(word)
+            vocabularyManager.addWord(word)
             newWord = ""
             return
         }
-        
+
         for word in parts {
             let lower = word.lowercased()
-            if !dictionaryManager.items.contains(where: { $0.word.lowercased() == lower }) {
-                dictionaryManager.addWord(word)
+            if !vocabularyManager.items.contains(where: { $0.word.lowercased() == lower }) {
+                vocabularyManager.addWord(word)
             }
         }
         newWord = ""
     }
 }
 
-struct DictionaryItemView: View {
-    let item: DictionaryItem
+struct VocabularyWordView: View {
+    let item: VocabularyWord
     let onDelete: () -> Void
     @State private var isHovered = false
 

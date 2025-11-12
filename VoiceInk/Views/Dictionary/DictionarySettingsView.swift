@@ -6,20 +6,20 @@ struct DictionarySettingsView: View {
     
     enum DictionarySection: String, CaseIterable {
         case replacements = "Word Replacements"
-        case spellings = "Correct Spellings"
-        
+        case customVocabulary = "Custom Vocabulary"
+
         var description: String {
             switch self {
-            case .spellings:
+            case .customVocabulary:
                 return "Add words to help VoiceInk recognize them properly"
             case .replacements:
                 return "Automatically replace specific words/phrases with custom formatted text "
             }
         }
-        
+
         var icon: String {
             switch self {
-            case .spellings:
+            case .customVocabulary:
                 return "character.book.closed.fill"
             case .replacements:
                 return "arrow.2.squarepath"
@@ -119,8 +119,8 @@ struct DictionarySettingsView: View {
     private var selectedSectionContent: some View {
         VStack(alignment: .leading, spacing: 20) {
             switch selectedSection {
-            case .spellings:
-                DictionaryView(whisperPrompt: whisperPrompt)
+            case .customVocabulary:
+                CustomVocabularyView(whisperPrompt: whisperPrompt)
                     .background(CardBackground(isSelected: false))
             case .replacements:
                 WordReplacementView()
