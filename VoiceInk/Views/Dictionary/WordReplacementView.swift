@@ -210,6 +210,7 @@ struct AddReplacementSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var originalWord = ""
     @State private var replacementWord = ""
+    @State private var errorMessage: String? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -252,6 +253,22 @@ struct AddReplacementSheet: View {
                         .padding(.horizontal)
                         .padding(.top, 8)
 
+                    // Error Message
+                    if let errorMessage = errorMessage {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                            Text(errorMessage)
+                                .font(.subheadline)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(12)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(8)
+                        .padding(.horizontal)
+                    }
+
                     // Form Content
                     VStack(spacing: 16) {
                         // Original Text Section
@@ -269,6 +286,9 @@ struct AddReplacementSheet: View {
                             TextField("Enter word or phrase to replace (use commas for multiple)", text: $originalWord)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.body)
+                                .onChange(of: originalWord) {
+                                    errorMessage = nil
+                                }
                             Text("Separate multiple originals with commas, e.g. Voicing, Voice ink, Voiceing")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -376,6 +396,16 @@ struct AddReplacementSheet: View {
 
         guard !original.isEmpty && !replacement.isEmpty else { return }
 
+        // Check if a replacement with the same originalVariants already exists (case-insensitive)
+        let descriptor = FetchDescriptor<WordReplacement>()
+        if let existingReplacements = try? modelContext.fetch(descriptor) {
+            let normalizedOriginal = original.lowercased()
+            if existingReplacements.contains(where: { $0.originalVariants.lowercased() == normalizedOriginal }) {
+                errorMessage = "A replacement rule for '\(original)' already exists. Please edit the existing rule or use a different original text."
+                return
+            }
+        }
+
         let wordReplacement = WordReplacement(originalVariants: original, replacement: replacement)
         modelContext.insert(wordReplacement)
 
@@ -383,8 +413,7 @@ struct AddReplacementSheet: View {
             try modelContext.save()
             dismiss()
         } catch {
-            // Handle error if needed
-            print("Failed to save replacement: \(error)")
+            errorMessage = "Failed to save replacement: \(error.localizedDescription)"
         }
     }
 }
