@@ -396,11 +396,13 @@ struct AddReplacementSheet: View {
 
         guard !original.isEmpty && !replacement.isEmpty else { return }
 
-        // Check if a replacement with the same originalVariants already exists (case-insensitive)
+        // Check for duplicates using normalized comparison
         let descriptor = FetchDescriptor<WordReplacement>()
         if let existingReplacements = try? modelContext.fetch(descriptor) {
-            let normalizedOriginal = original.lowercased()
-            if existingReplacements.contains(where: { $0.originalVariants.lowercased() == normalizedOriginal }) {
+            let normalizedOriginal = WordReplacementService.normalizeOriginalVariants(original)
+            if existingReplacements.contains(where: {
+                WordReplacementService.normalizeOriginalVariants($0.originalVariants) == normalizedOriginal
+            }) {
                 errorMessage = "A replacement rule for '\(original)' already exists. Please edit the existing rule or use a different original text."
                 return
             }

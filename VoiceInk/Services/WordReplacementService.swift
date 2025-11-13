@@ -6,6 +6,18 @@ class WordReplacementService {
 
     private init() {}
 
+    /// Normalizes comma-separated variants for consistent duplicate detection (trims, sorts, lowercases)
+    static func normalizeOriginalVariants(_ originalVariants: String) -> String {
+        let variants = originalVariants
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { $0.lowercased() }
+            .sorted() // Sort so "a,b" == "b,a"
+
+        return variants.joined(separator: ",")
+    }
+
     func applyReplacements(to text: String, modelContext: ModelContext) -> String {
         let descriptor = FetchDescriptor<WordReplacement>()
 

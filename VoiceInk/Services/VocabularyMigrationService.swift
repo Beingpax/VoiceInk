@@ -23,6 +23,8 @@ class VocabularyMigrationService {
 
         var vocabularyMigrated = 0
         var replacementsMigrated = 0
+        var vocabularyMigrationSucceeded = true
+        var replacementsMigrationSucceeded = true
 
         // Migrate vocabulary words
         if let data = UserDefaults.standard.data(forKey: Self.vocabularyItemsKey) {
@@ -51,6 +53,7 @@ class VocabularyMigrationService {
                 logger.info("Migrated \(vocabularyMigrated) vocabulary words")
             } catch {
                 logger.error("Failed to migrate vocabulary words: \(error.localizedDescription)")
+                vocabularyMigrationSucceeded = false
             }
         }
 
@@ -83,12 +86,17 @@ class VocabularyMigrationService {
                 logger.info("Migrated \(replacementsMigrated) word replacements")
             } catch {
                 logger.error("Failed to migrate word replacements: \(error.localizedDescription)")
+                replacementsMigrationSucceeded = false
             }
         }
 
-        // Mark migration as completed
-        UserDefaults.standard.set(true, forKey: Self.migrationCompletedKey)
-        logger.info("Migration completed successfully. Total: \(vocabularyMigrated) words, \(replacementsMigrated) replacements")
+        // Only mark migration as completed if BOTH migrations succeeded
+        if vocabularyMigrationSucceeded && replacementsMigrationSucceeded {
+            UserDefaults.standard.set(true, forKey: Self.migrationCompletedKey)
+            logger.info("Migration completed successfully. Total: \(vocabularyMigrated) words, \(replacementsMigrated) replacements")
+        } else {
+            logger.error("Migration failed. Will retry on next app launch.")
+        }
 
         // Note: We intentionally DO NOT delete the UserDefaults data here
         // This allows users to rollback if needed and serves as a backup

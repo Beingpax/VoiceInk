@@ -231,8 +231,19 @@ class ImportExportService {
                             }
                         }
 
-                        // Add imported replacements
+                        // Add imported replacements with deduplication
+                        var seenReplacements = Set<String>()
+
                         for importedReplacement in replacementsToImport {
+                            let normalizedOriginal = WordReplacementService.normalizeOriginalVariants(importedReplacement.originalVariants)
+                            let normalizedReplacement = importedReplacement.replacement.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                            let key = "\(normalizedOriginal)|\(normalizedReplacement)"
+
+                            if seenReplacements.contains(key) {
+                                continue
+                            }
+                            seenReplacements.insert(key)
+
                             let wordReplacement = WordReplacement(
                                 originalVariants: importedReplacement.originalVariants,
                                 replacement: importedReplacement.replacement

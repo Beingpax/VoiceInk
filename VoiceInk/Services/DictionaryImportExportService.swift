@@ -109,15 +109,25 @@ class DictionaryImportExportService {
                         }
                     }
 
-                    // Fetch existing replacements
+                    // Fetch existing replacements for duplicate checking
                     let replacementDescriptor = FetchDescriptor<WordReplacement>()
                     let existingReplacements = try? modelContext.fetch(replacementDescriptor)
-                    let existingReplacementsSet = Set(existingReplacements?.map { "\($0.originalVariants.lowercased())|\($0.replacement.lowercased())" } ?? [])
+                    var existingReplacementsSet = Set<String>()
+                    if let existingReplacements = existingReplacements {
+                        for existing in existingReplacements {
+                            let normalizedOriginal = WordReplacementService.normalizeOriginalVariants(existing.originalVariants)
+                            let normalizedReplacement = existing.replacement.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                            existingReplacementsSet.insert("\(normalizedOriginal)|\(normalizedReplacement)")
+                        }
+                    }
                     var newReplacementsAdded = 0
 
                     // Import word replacements
                     for importedReplacement in importedData.wordReplacements {
-                        let key = "\(importedReplacement.originalVariants.lowercased())|\(importedReplacement.replacement.lowercased())"
+                        let normalizedOriginal = WordReplacementService.normalizeOriginalVariants(importedReplacement.originalVariants)
+                        let normalizedReplacement = importedReplacement.replacement.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                        let key = "\(normalizedOriginal)|\(normalizedReplacement)"
+
                         if !existingReplacementsSet.contains(key) {
                             let wordReplacement = WordReplacement(
                                 originalVariants: importedReplacement.originalVariants,
