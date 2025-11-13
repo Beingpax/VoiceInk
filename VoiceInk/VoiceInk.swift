@@ -39,7 +39,11 @@ struct VoiceInkApp: App {
         }
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
-        let schema = Schema([Transcription.self])
+        let schema = Schema([
+            Transcription.self,
+            VocabularyWord.self,
+            WordReplacement.self
+        ])
         var initializationFailed = false
         
         // Attempt 1: Try persistent storage
@@ -202,11 +206,15 @@ struct VoiceInkApp: App {
                             alert.alertStyle = .critical
                             alert.addButton(withTitle: "Quit")
                             alert.runModal()
-                            
+
                             NSApplication.shared.terminate(nil)
                             return
                         }
-                        
+
+                        // Perform one-time migration from UserDefaults to SwiftData
+                        let migrationService = VocabularyMigrationService()
+                        migrationService.migrateIfNeeded(modelContext: container.mainContext)
+
                         updaterViewModel.silentlyCheckForUpdates()
                         if enableAnnouncements {
                             AnnouncementsService.shared.start()

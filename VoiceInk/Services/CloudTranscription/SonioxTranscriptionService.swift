@@ -1,13 +1,14 @@
 import Foundation
+import SwiftData
 
 class SonioxTranscriptionService {
     private let apiBase = "https://api.soniox.com/v1"
-    
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+
+    func transcribe(audioURL: URL, model: any TranscriptionModel, modelContext: ModelContext?) async throws -> String {
         let config = try getAPIConfig(for: model)
-        
+
         let fileId = try await uploadFile(audioURL: audioURL, apiKey: config.apiKey)
-        let transcriptionId = try await createTranscription(fileId: fileId, apiKey: config.apiKey, modelName: model.name)
+        let transcriptionId = try await createTranscription(fileId: fileId, apiKey: config.apiKey, modelName: model.name, modelContext: modelContext)
         try await pollTranscriptionStatus(id: transcriptionId, apiKey: config.apiKey)
         let transcript = try await fetchTranscript(id: transcriptionId, apiKey: config.apiKey)
         
@@ -50,7 +51,7 @@ class SonioxTranscriptionService {
         }
     }
     
-    private func createTranscription(fileId: String, apiKey: String, modelName: String) async throws -> String {
+    private func createTranscription(fileId: String, apiKey: String, modelName: String, modelContext: ModelContext?) async throws -> String {
         guard let apiURL = URL(string: "\(apiBase)/transcriptions") else {
             throw CloudTranscriptionError.dataEncodingError
         }
@@ -65,7 +66,7 @@ class SonioxTranscriptionService {
             "enable_speaker_diarization": false
         ]
         // Attach custom vocabulary terms from the app (if any)
-        let vocabularyTerms = getCustomVocabularyTerms()
+        let vocabularyTerms = getCustomVocabularyTerms(modelContext: modelContext)
         if !vocabularyTerms.isEmpty {
             payload["context"] = [
                 "terms": vocabularyTerms
@@ -169,17 +170,21 @@ class SonioxTranscriptionService {
         return body
     }
     
-    private func getCustomVocabularyTerms() -> [String] {
-        guard let data = UserDefaults.standard.data(forKey: "CustomDictionaryItems") else {
+    private func getCustomVocabularyTerms(modelContext: ModelContext?) -> [String] {
+        guard let modelContext = modelContext else {
             return []
         }
-        // Decode without depending on UI layer types; extract "word" strings
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+
+        guard let items = try? modelContext.fetch(descriptor) else {
             return []
         }
-        let words = json.compactMap { $0["word"] as? String }
+
+        let words = items.map { $0.word }
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
+
         // De-duplicate while preserving order
         var seen = Set<String>()
         var unique: [String] = []

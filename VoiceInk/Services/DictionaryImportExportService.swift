@@ -1,29 +1,35 @@
 import Foundation
 import AppKit
 import UniformTypeIdentifiers
+import SwiftData
 
 struct DictionaryExportData: Codable {
     let version: String
     let dictionaryItems: [String]
-    let wordReplacements: [String: String]
+    let wordReplacements: [WordReplacementExportData]
     let exportDate: Date
+}
+
+struct WordReplacementExportData: Codable {
+    let originalVariants: String
+    let replacement: String
 }
 
 class DictionaryImportExportService {
     static let shared = DictionaryImportExportService()
-    private let dictionaryItemsKey = "CustomDictionaryItems"
-    private let wordReplacementsKey = "wordReplacements"
 
     private init() {}
 
-    func exportDictionary() {
-        var vocabularyWords: [String] = []
-        if let data = UserDefaults.standard.data(forKey: dictionaryItemsKey),
-           let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
-            vocabularyWords = items.map { $0.word }
-        }
+    func exportDictionary(modelContext: ModelContext) {
+        // Fetch vocabulary words
+        let vocabularyDescriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+        let vocabularyWords = (try? modelContext.fetch(vocabularyDescriptor))?.map { $0.word } ?? []
 
-        let wordReplacements = UserDefaults.standard.dictionary(forKey: wordReplacementsKey) as? [String: String] ?? [:]
+        // Fetch word replacements
+        let replacementDescriptor = FetchDescriptor<WordReplacement>(sortBy: [SortDescriptor(\.originalVariants)])
+        let wordReplacements = (try? modelContext.fetch(replacementDescriptor))?.map {
+            WordReplacementExportData(originalVariants: $0.originalVariants, replacement: $0.replacement)
+        } ?? []
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0"
 
@@ -66,7 +72,7 @@ class DictionaryImportExportService {
         }
     }
 
-    func importDictionary() {
+    func importDictionary(modelContext: ModelContext) {
         let openPanel = NSOpenPanel()
         openPanel.allowedContentTypes = [UTType.json]
         openPanel.canChooseFiles = true
@@ -88,70 +94,45 @@ class DictionaryImportExportService {
                     decoder.dateDecodingStrategy = .iso8601
                     let importedData = try decoder.decode(DictionaryExportData.self, from: jsonData)
 
-                    var existingItems: [VocabularyWord] = []
-                    if let data = UserDefaults.standard.data(forKey: self.dictionaryItemsKey),
-                       let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
-                        existingItems = items
-                    }
-
-                    let existingWordsLower = Set(existingItems.map { $0.word.lowercased() })
-                    let originalExistingCount = existingItems.count
+                    // Fetch existing vocabulary words
+                    let vocabularyDescriptor = FetchDescriptor<VocabularyWord>()
+                    let existingWords = try? modelContext.fetch(vocabularyDescriptor)
+                    let existingWordsSet = Set(existingWords?.map { $0.word.lowercased() } ?? [])
                     var newWordsAdded = 0
 
-                    for importedWord in importedData.dictionaryItems {
-                        if !existingWordsLower.contains(importedWord.lowercased()) {
-                            existingItems.append(VocabularyWord(word: importedWord))
+                    // Import vocabulary words
+                    for word in importedData.dictionaryItems {
+                        if !existingWordsSet.contains(word.lowercased()) {
+                            let vocabularyWord = VocabularyWord(word: word)
+                            modelContext.insert(vocabularyWord)
                             newWordsAdded += 1
                         }
                     }
 
-                    if let encoded = try? JSONEncoder().encode(existingItems) {
-                        UserDefaults.standard.set(encoded, forKey: self.dictionaryItemsKey)
-                    }
+                    // Fetch existing replacements
+                    let replacementDescriptor = FetchDescriptor<WordReplacement>()
+                    let existingReplacements = try? modelContext.fetch(replacementDescriptor)
+                    let existingReplacementsSet = Set(existingReplacements?.map { "\($0.originalVariants.lowercased())|\($0.replacement.lowercased())" } ?? [])
+                    var newReplacementsAdded = 0
 
-                    var existingReplacements = UserDefaults.standard.dictionary(forKey: self.wordReplacementsKey) as? [String: String] ?? [:]
-
-                    var replacementToOriginals: [String: Set<String>] = [:]
-
-                    for (originals, replacement) in existingReplacements {
-                        let replacementLower = replacement.lowercased()
-                        let words = originals.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                        replacementToOriginals[replacementLower, default: []].formUnion(words)
-                    }
-
-                    for (originals, replacement) in importedData.wordReplacements {
-                        let replacementLower = replacement.lowercased()
-                        let words = originals.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                        replacementToOriginals[replacementLower, default: []].formUnion(words)
-                    }
-
-                    var mergedReplacements: [String: String] = [:]
-                    for (replacementLower, originals) in replacementToOriginals {
-                        var uniqueOriginals: [String] = []
-                        var seenLower = Set<String>()
-
-                        for original in originals {
-                            let originalLower = original.lowercased()
-                            if !seenLower.contains(originalLower) {
-                                uniqueOriginals.append(original)
-                                seenLower.insert(originalLower)
-                            }
+                    // Import word replacements
+                    for importedReplacement in importedData.wordReplacements {
+                        let key = "\(importedReplacement.originalVariants.lowercased())|\(importedReplacement.replacement.lowercased())"
+                        if !existingReplacementsSet.contains(key) {
+                            let wordReplacement = WordReplacement(
+                                originalVariants: importedReplacement.originalVariants,
+                                replacement: importedReplacement.replacement
+                            )
+                            modelContext.insert(wordReplacement)
+                            newReplacementsAdded += 1
                         }
-
-                        let mergedKey = uniqueOriginals.sorted().joined(separator: ", ")
-
-                        let replacement = existingReplacements.first(where: { $0.value.lowercased() == replacementLower })?.value
-                            ?? importedData.wordReplacements.first(where: { $0.value.lowercased() == replacementLower })?.value
-                            ?? replacementLower
-
-                        mergedReplacements[mergedKey] = replacement
                     }
 
-                    UserDefaults.standard.set(mergedReplacements, forKey: self.wordReplacementsKey)
+                    try modelContext.save()
 
                     var message = "Dictionary data imported successfully from \(url.lastPathComponent).\n\n"
-                    message += "Vocabulary Words: \(newWordsAdded) added, \(originalExistingCount) kept\n"
-                    message += "Word Replacements: Merged into \(mergedReplacements.count) total rules"
+                    message += "Vocabulary Words: \(newWordsAdded) added, \(existingWords?.count ?? 0) existing\n"
+                    message += "Word Replacements: \(newReplacementsAdded) added, \(existingReplacements?.count ?? 0) existing"
 
                     self.showAlert(title: "Import Successful", message: message)
 

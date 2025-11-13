@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import os
 
 enum CloudTranscriptionError: Error, LocalizedError {
@@ -43,7 +44,7 @@ class CloudTranscriptionService: TranscriptionService {
     private lazy var openAICompatibleService = OpenAICompatibleTranscriptionService()
     private lazy var sonioxService = SonioxTranscriptionService()
     
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, modelContext: ModelContext?) async throws -> String {
         var text: String
         
         switch model.provider {
@@ -58,7 +59,7 @@ class CloudTranscriptionService: TranscriptionService {
         case .gemini:
             text = try await geminiService.transcribe(audioURL: audioURL, model: model)
         case .soniox:
-            text = try await sonioxService.transcribe(audioURL: audioURL, model: model)
+            text = try await sonioxService.transcribe(audioURL: audioURL, model: model, modelContext: modelContext)
         case .custom:
             guard let customModel = model as? CustomCloudModel else {
                 throw CloudTranscriptionError.unsupportedProvider

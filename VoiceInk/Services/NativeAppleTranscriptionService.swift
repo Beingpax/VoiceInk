@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import SwiftData
 import os
 
 #if canImport(Speech)
@@ -52,7 +53,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
         }
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, modelContext: ModelContext?) async throws -> String {
         guard model is NativeAppleModel else {
             throw ServiceError.invalidModel
         }

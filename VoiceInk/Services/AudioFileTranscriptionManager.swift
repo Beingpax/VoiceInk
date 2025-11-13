@@ -101,13 +101,13 @@ class AudioTranscriptionManager: ObservableObject {
                 
                 switch currentModel.provider {
                 case .local:
-                    text = try await localTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
+                    text = try await localTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel, modelContext: modelContext)
                 case .parakeet:
-                    text = try await parakeetTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
+                    text = try await parakeetTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel, modelContext: modelContext)
                 case .nativeApple:
-                    text = try await nativeAppleTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
+                    text = try await nativeAppleTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel, modelContext: modelContext)
                 default: // Cloud models
-                    text = try await cloudTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
+                    text = try await cloudTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel, modelContext: modelContext)
                 }
                 
                 let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
@@ -123,7 +123,7 @@ class AudioTranscriptionManager: ObservableObject {
                     text = WhisperTextFormatter.format(text)
                 }
 
-                text = WordReplacementService.shared.applyReplacements(to: text)
+                text = WordReplacementService.shared.applyReplacements(to: text, modelContext: modelContext)
                 
                 // Handle enhancement if enabled
                 if let enhancementService = whisperState.enhancementService,

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import SwiftData
 import os
 
 class LocalTranscriptionService: TranscriptionService {
@@ -14,7 +15,7 @@ class LocalTranscriptionService: TranscriptionService {
         self.whisperState = whisperState
     }
     
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, modelContext: ModelContext?) async throws -> String {
         guard model.provider == .local else {
             throw WhisperStateError.modelLoadFailed
         }

@@ -1,6 +1,7 @@
 import Foundation
 import CoreML
 import AVFoundation
+import SwiftData
 import FluidAudio
 import os.log
 
@@ -35,7 +36,7 @@ class ParakeetTranscriptionService: TranscriptionService {
         try await ensureModelsLoaded(for: version(for: model))
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, modelContext: ModelContext?) async throws -> String {
         let targetVersion = version(for: model)
         try await ensureModelsLoaded(for: targetVersion)
 

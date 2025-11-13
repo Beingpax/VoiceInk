@@ -1,10 +1,12 @@
 import SwiftUI
+import SwiftData
 import Cocoa
 import KeyboardShortcuts
 import LaunchAtLogin
 import AVFoundation
 
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
     @EnvironmentObject private var hotkeyManager: HotkeyManager
@@ -347,14 +349,15 @@ struct SettingsView: View {
                         HStack(spacing: 12) {
                             Button {
                                 ImportExportService.shared.importSettings(
-                                    enhancementService: enhancementService, 
-                                    whisperPrompt: whisperState.whisperPrompt, 
-                                    hotkeyManager: hotkeyManager, 
-                                    menuBarManager: menuBarManager, 
-                                    mediaController: MediaController.shared, 
+                                    enhancementService: enhancementService,
+                                    whisperPrompt: whisperState.whisperPrompt,
+                                    hotkeyManager: hotkeyManager,
+                                    menuBarManager: menuBarManager,
+                                    mediaController: MediaController.shared,
                                     playbackController: PlaybackController.shared,
                                     soundManager: SoundManager.shared,
-                                    whisperState: whisperState
+                                    whisperState: whisperState,
+                                    modelContext: modelContext
                                 )
                             } label: {
                                 Label("Import Settings...", systemImage: "arrow.down.doc")
@@ -364,14 +367,15 @@ struct SettingsView: View {
 
                             Button {
                                 ImportExportService.shared.exportSettings(
-                                    enhancementService: enhancementService, 
-                                    whisperPrompt: whisperState.whisperPrompt, 
-                                    hotkeyManager: hotkeyManager, 
-                                    menuBarManager: menuBarManager, 
-                                    mediaController: MediaController.shared, 
+                                    enhancementService: enhancementService,
+                                    whisperPrompt: whisperState.whisperPrompt,
+                                    hotkeyManager: hotkeyManager,
+                                    menuBarManager: menuBarManager,
+                                    mediaController: MediaController.shared,
                                     playbackController: PlaybackController.shared,
                                     soundManager: SoundManager.shared,
-                                    whisperState: whisperState
+                                    whisperState: whisperState,
+                                    modelContext: modelContext
                                 )
                             } label: {
                                 Label("Export Settings...", systemImage: "arrow.up.doc")

@@ -51,13 +51,13 @@ class AudioTranscriptionService: ObservableObject {
             
             switch model.provider {
             case .local:
-                text = try await localTranscriptionService.transcribe(audioURL: url, model: model)
+                text = try await localTranscriptionService.transcribe(audioURL: url, model: model, modelContext: modelContext)
             case .parakeet:
-                text = try await parakeetTranscriptionService.transcribe(audioURL: url, model: model)
+                text = try await parakeetTranscriptionService.transcribe(audioURL: url, model: model, modelContext: modelContext)
             case .nativeApple:
-                text = try await nativeAppleTranscriptionService.transcribe(audioURL: url, model: model)
+                text = try await nativeAppleTranscriptionService.transcribe(audioURL: url, model: model, modelContext: modelContext)
             default: // Cloud models
-                text = try await cloudTranscriptionService.transcribe(audioURL: url, model: model)
+                text = try await cloudTranscriptionService.transcribe(audioURL: url, model: model, modelContext: modelContext)
             }
             
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
@@ -73,7 +73,7 @@ class AudioTranscriptionService: ObservableObject {
                 text = WhisperTextFormatter.format(text)
             }
 
-            text = WordReplacementService.shared.applyReplacements(to: text)
+            text = WordReplacementService.shared.applyReplacements(to: text, modelContext: modelContext)
             logger.notice("✅ Word replacements applied")
             
             // Get audio duration

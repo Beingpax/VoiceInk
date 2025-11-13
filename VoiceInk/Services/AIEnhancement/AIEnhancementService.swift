@@ -164,7 +164,7 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
-        let vocabularyContext = vocabularyContextService.getVocabularyContext()
+        let vocabularyContext = vocabularyContextService.getVocabularyContext(modelContext: modelContext)
 
         let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
 

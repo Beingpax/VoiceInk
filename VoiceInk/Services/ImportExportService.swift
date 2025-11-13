@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import AppKit
 import UniformTypeIdentifiers
 import KeyboardShortcuts
@@ -30,8 +31,8 @@ struct VoiceInkExportedSettings: Codable {
     let version: String
     let customPrompts: [CustomPrompt]
     let powerModeConfigs: [PowerModeConfig]
-    let dictionaryItems: [VocabularyWord]?
-    let wordReplacements: [String: String]?
+    let vocabularyWords: [String]?
+    let wordReplacements: [WordReplacementExportData]?
     let generalSettings: GeneralSettings?
     let customEmojis: [String]?
     let customCloudModels: [CustomCloudModel]?
@@ -40,8 +41,6 @@ struct VoiceInkExportedSettings: Codable {
 class ImportExportService {
     static let shared = ImportExportService()
     private let currentSettingsVersion: String
-    private let dictionaryItemsKey = "CustomDictionaryItems"
-    private let wordReplacementsKey = "wordReplacements"
 
 
     private let keyIsMenuBarOnly = "IsMenuBarOnly"
@@ -65,7 +64,7 @@ class ImportExportService {
     }
 
     @MainActor
-    func exportSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, whisperState: WhisperState) {
+    func exportSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, whisperState: WhisperState, modelContext: ModelContext) {
         let powerModeManager = PowerModeManager.shared
         let emojiManager = EmojiManager.shared
 
@@ -76,13 +75,15 @@ class ImportExportService {
         // Export custom models
         let customModels = CustomModelManager.shared.customModels
 
-        var exportedVocabularyItems: [VocabularyWord]? = nil
-        if let data = UserDefaults.standard.data(forKey: dictionaryItemsKey),
-           let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
-            exportedVocabularyItems = items
-        }
+        // Fetch vocabulary words from SwiftData
+        let vocabularyDescriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+        let exportedVocabularyWords = (try? modelContext.fetch(vocabularyDescriptor))?.map { $0.word }
 
-        let exportedWordReplacements = UserDefaults.standard.dictionary(forKey: wordReplacementsKey) as? [String: String]
+        // Fetch word replacements from SwiftData
+        let replacementDescriptor = FetchDescriptor<WordReplacement>(sortBy: [SortDescriptor(\.originalVariants)])
+        let exportedWordReplacements = (try? modelContext.fetch(replacementDescriptor))?.map {
+            WordReplacementExportData(originalVariants: $0.originalVariants, replacement: $0.replacement)
+        }
 
         let generalSettingsToExport = GeneralSettings(
             toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
@@ -110,7 +111,7 @@ class ImportExportService {
             version: currentSettingsVersion,
             customPrompts: exportablePrompts,
             powerModeConfigs: powerConfigs,
-            dictionaryItems: exportedVocabularyItems,
+            vocabularyWords: exportedVocabularyWords,
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
@@ -149,7 +150,7 @@ class ImportExportService {
     }
 
     @MainActor
-    func importSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, whisperState: WhisperState) {
+    func importSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, whisperState: WhisperState, modelContext: ModelContext) {
         let openPanel = NSOpenPanel()
         openPanel.allowedContentTypes = [UTType.json]
         openPanel.canChooseFiles = true
@@ -199,16 +200,47 @@ class ImportExportService {
                         }
                     }
 
-                    if let itemsToImport = importedSettings.dictionaryItems {
-                        if let encoded = try? JSONEncoder().encode(itemsToImport) {
-                            UserDefaults.standard.set(encoded, forKey: "CustomDictionaryItems")
+                    // Import vocabulary words to SwiftData
+                    if let wordsToImport = importedSettings.vocabularyWords {
+                        // Clear existing vocabulary
+                        let vocabularyDescriptor = FetchDescriptor<VocabularyWord>()
+                        if let existingWords = try? modelContext.fetch(vocabularyDescriptor) {
+                            for word in existingWords {
+                                modelContext.delete(word)
+                            }
                         }
+
+                        // Add imported words
+                        for word in wordsToImport {
+                            let vocabularyWord = VocabularyWord(word: word)
+                            modelContext.insert(vocabularyWord)
+                        }
+
+                        try? modelContext.save()
                     } else {
                         print("No vocabulary items found in the imported file. Existing items remain unchanged.")
                     }
 
+                    // Import word replacements to SwiftData
                     if let replacementsToImport = importedSettings.wordReplacements {
-                        UserDefaults.standard.set(replacementsToImport, forKey: self.wordReplacementsKey)
+                        // Clear existing replacements
+                        let replacementDescriptor = FetchDescriptor<WordReplacement>()
+                        if let existingReplacements = try? modelContext.fetch(replacementDescriptor) {
+                            for replacement in existingReplacements {
+                                modelContext.delete(replacement)
+                            }
+                        }
+
+                        // Add imported replacements
+                        for importedReplacement in replacementsToImport {
+                            let wordReplacement = WordReplacement(
+                                originalVariants: importedReplacement.originalVariants,
+                                replacement: importedReplacement.replacement
+                            )
+                            modelContext.insert(wordReplacement)
+                        }
+
+                        try? modelContext.save()
                     } else {
                         print("No word replacements found in the imported file. Existing replacements remain unchanged.")
                     }

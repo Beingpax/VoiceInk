@@ -42,7 +42,7 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
             modelsDirectory: whisperState.modelsDirectory,
             whisperState: whisperState
         )
-        _ = try await service.transcribe(audioURL: sampleURL, model: model)
+        _ = try await service.transcribe(audioURL: sampleURL, model: model, modelContext: nil)
     }
     
     private func warmupSampleURL() -> URL? {

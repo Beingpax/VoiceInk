@@ -1,94 +1,21 @@
 import SwiftUI
-
-struct VocabularyWord: Identifiable, Hashable, Codable {
-    var word: String
-
-    var id: String { word }
-
-    init(word: String) {
-        self.word = word
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case id, word, dateAdded, isEnabled
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        word = try container.decode(String.self, forKey: .word)
-        _ = try? container.decodeIfPresent(UUID.self, forKey: .id)
-        _ = try? container.decodeIfPresent(Date.self, forKey: .dateAdded)
-        _ = try? container.decodeIfPresent(Bool.self, forKey: .isEnabled)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(word, forKey: .word)
-    }
-}
+import SwiftData
 
 enum VocabularySortMode: String {
     case wordAsc = "wordAsc"
     case wordDesc = "wordDesc"
 }
 
-class CustomVocabularyManager: ObservableObject {
-    @Published var items: [VocabularyWord] = []
-    private let saveKey = "CustomDictionaryItems"
-    private let whisperPrompt: WhisperPrompt
-
-    init(whisperPrompt: WhisperPrompt) {
-        self.whisperPrompt = whisperPrompt
-        loadItems()
-    }
-
-    private func loadItems() {
-        guard let data = UserDefaults.standard.data(forKey: saveKey) else { return }
-
-        if let savedItems = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
-            items = savedItems
-        }
-    }
-
-    private func saveItems() {
-        if let encoded = try? JSONEncoder().encode(items) {
-            UserDefaults.standard.set(encoded, forKey: saveKey)
-        }
-    }
-
-    func addWord(_ word: String) {
-        let normalizedWord = word.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !items.contains(where: { $0.word.lowercased() == normalizedWord.lowercased() }) else {
-            return
-        }
-
-        let newItem = VocabularyWord(word: normalizedWord)
-        items.insert(newItem, at: 0)
-        saveItems()
-    }
-
-    func removeWord(_ word: String) {
-        items.removeAll(where: { $0.word == word })
-        saveItems()
-    }
-
-    var allWords: [String] {
-        items.map { $0.word }
-    }
-}
-
 struct CustomVocabularyView: View {
-    @StateObject private var vocabularyManager: CustomVocabularyManager
-    @ObservedObject var whisperPrompt: WhisperPrompt
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \VocabularyWord.word) private var allVocabularyWords: [VocabularyWord]
+
     @State private var newWord = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
 
-    init(whisperPrompt: WhisperPrompt) {
-        self.whisperPrompt = whisperPrompt
-        _vocabularyManager = StateObject(wrappedValue: CustomVocabularyManager(whisperPrompt: whisperPrompt))
-
+    init() {
         if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
            let mode = VocabularySortMode(rawValue: savedSort) {
             _sortMode = State(initialValue: mode)
@@ -98,9 +25,9 @@ struct CustomVocabularyView: View {
     private var sortedItems: [VocabularyWord] {
         switch sortMode {
         case .wordAsc:
-            return vocabularyManager.items.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
+            return allVocabularyWords.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
         case .wordDesc:
-            return vocabularyManager.items.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedDescending }
+            return allVocabularyWords.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedDescending }
         }
     }
 
@@ -140,11 +67,11 @@ struct CustomVocabularyView: View {
                 .help("Add word")
             }
 
-            if !vocabularyManager.items.isEmpty {
+            if !allVocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: toggleSort) {
                         HStack(spacing: 4) {
-                            Text("Vocabulary Words (\(vocabularyManager.items.count))")
+                            Text("Vocabulary Words (\(allVocabularyWords.count))")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 
@@ -158,9 +85,9 @@ struct CustomVocabularyView: View {
 
                     ScrollView {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 240, maximum: .infinity), spacing: 12)], alignment: .leading, spacing: 12) {
-                            ForEach(sortedItems) { item in
-                                VocabularyWordView(item: item) {
-                                    vocabularyManager.removeWord(item.word)
+                            ForEach(sortedItems, id: \.word) { item in
+                                VocabularyWordView(word: item.word) {
+                                    removeWord(item)
                                 }
                             }
                         }
@@ -178,7 +105,7 @@ struct CustomVocabularyView: View {
             Text(alertMessage)
         }
     }
-    
+
     private func addWords() {
         let input = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
@@ -191,34 +118,57 @@ struct CustomVocabularyView: View {
         guard !parts.isEmpty else { return }
 
         if parts.count == 1, let word = parts.first {
-            if vocabularyManager.items.contains(where: { $0.word.lowercased() == word.lowercased() }) {
+            if allVocabularyWords.contains(where: { $0.word.lowercased() == word.lowercased() }) {
                 alertMessage = "'\(word)' is already in the vocabulary"
                 showAlert = true
                 return
             }
-            vocabularyManager.addWord(word)
+            addWord(word)
             newWord = ""
             return
         }
 
         for word in parts {
             let lower = word.lowercased()
-            if !vocabularyManager.items.contains(where: { $0.word.lowercased() == lower }) {
-                vocabularyManager.addWord(word)
+            if !allVocabularyWords.contains(where: { $0.word.lowercased() == lower }) {
+                addWord(word)
             }
         }
         newWord = ""
     }
+
+    private func addWord(_ word: String) {
+        let vocabularyWord = VocabularyWord(word: word)
+        modelContext.insert(vocabularyWord)
+
+        do {
+            try modelContext.save()
+        } catch {
+            alertMessage = "Failed to add word: \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
+    private func removeWord(_ item: VocabularyWord) {
+        modelContext.delete(item)
+
+        do {
+            try modelContext.save()
+        } catch {
+            alertMessage = "Failed to remove word: \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
 }
 
 struct VocabularyWordView: View {
-    let item: VocabularyWord
+    let word: String
     let onDelete: () -> Void
     @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: 6) {
-            Text(item.word)
+            Text(word)
                 .font(.system(size: 13))
                 .lineLimit(1)
                 .foregroundColor(.primary)
@@ -251,4 +201,4 @@ struct VocabularyWordView: View {
         }
         .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
     }
-} 
+}

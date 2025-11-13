@@ -305,7 +305,7 @@ class WhisperState: NSObject, ObservableObject {
             }
 
             let transcriptionStart = Date()
-            var text = try await transcriptionService.transcribe(audioURL: url, model: model)
+            var text = try await transcriptionService.transcribe(audioURL: url, model: model, modelContext: modelContext)
             logger.notice("📝 Raw transcript: \(text, privacy: .public)")
             text = TranscriptionOutputFilter.filter(text)
             logger.notice("📝 Output filter result: \(text, privacy: .public)")
@@ -325,7 +325,7 @@ class WhisperState: NSObject, ObservableObject {
                 logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
             }
 
-            text = WordReplacementService.shared.applyReplacements(to: text)
+            text = WordReplacementService.shared.applyReplacements(to: text, modelContext: modelContext)
             logger.notice("📝 WordReplacement: \(text, privacy: .public)")
 
             let audioAsset = AVURLAsset(url: url)

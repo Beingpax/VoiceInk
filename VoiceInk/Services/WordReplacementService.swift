@@ -1,20 +1,26 @@
 import Foundation
+import SwiftData
 
 class WordReplacementService {
     static let shared = WordReplacementService()
-    
+
     private init() {}
-    
-    func applyReplacements(to text: String) -> String {
-        guard let replacements = UserDefaults.standard.dictionary(forKey: "wordReplacements") as? [String: String],
+
+    func applyReplacements(to text: String, modelContext: ModelContext) -> String {
+        let descriptor = FetchDescriptor<WordReplacement>()
+
+        guard let replacements = try? modelContext.fetch(descriptor),
               !replacements.isEmpty else {
             return text // No replacements to apply
         }
-        
+
         var modifiedText = text
-        
+
         // Apply replacements (case-insensitive)
-        for (originalGroup, replacement) in replacements {
+        for wordReplacement in replacements {
+            let originalGroup = wordReplacement.originalVariants
+            let replacement = wordReplacement.replacement
+
             // Split comma-separated originals at apply time only
             let variants = originalGroup
                 .split(separator: ",")
@@ -42,7 +48,7 @@ class WordReplacementService {
                 }
             }
         }
-        
+
         return modifiedText
     }
 

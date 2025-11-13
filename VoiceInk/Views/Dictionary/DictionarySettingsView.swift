@@ -1,8 +1,9 @@
 import SwiftUI
+import SwiftData
 
 struct DictionarySettingsView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedSection: DictionarySection = .replacements
-    let whisperPrompt: WhisperPrompt
     
     enum DictionarySection: String, CaseIterable {
         case replacements = "Word Replacements"
@@ -83,7 +84,7 @@ struct DictionarySettingsView: View {
 
                 HStack(spacing: 12) {
                     Button(action: {
-                        DictionaryImportExportService.shared.importDictionary()
+                        DictionaryImportExportService.shared.importDictionary(modelContext: modelContext)
                     }) {
                         Image(systemName: "square.and.arrow.down")
                             .font(.system(size: 18))
@@ -93,7 +94,7 @@ struct DictionarySettingsView: View {
                     .help("Import dictionary items and word replacements")
 
                     Button(action: {
-                        DictionaryImportExportService.shared.exportDictionary()
+                        DictionaryImportExportService.shared.exportDictionary(modelContext: modelContext)
                     }) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 18))
@@ -120,7 +121,7 @@ struct DictionarySettingsView: View {
         VStack(alignment: .leading, spacing: 20) {
             switch selectedSection {
             case .customVocabulary:
-                CustomVocabularyView(whisperPrompt: whisperPrompt)
+                CustomVocabularyView()
                     .background(CardBackground(isSelected: false))
             case .replacements:
                 WordReplacementView()
