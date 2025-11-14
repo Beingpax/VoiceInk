@@ -69,7 +69,7 @@ class WhisperState: NSObject, ObservableObject {
     let modelContext: ModelContext
     
     // Transcription Services
-    private var localTranscriptionService: LocalTranscriptionService!
+    private var localTranscriptionService: LocalTranscriptionService?
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     internal lazy var parakeetTranscriptionService = ParakeetTranscriptionService()
@@ -295,7 +295,10 @@ class WhisperState: NSObject, ObservableObject {
             let transcriptionService: TranscriptionService
             switch model.provider {
             case .local:
-                transcriptionService = localTranscriptionService
+                guard let service = localTranscriptionService else {
+                    throw WhisperStateError.transcriptionFailed
+                }
+                transcriptionService = service
             case .parakeet:
                 transcriptionService = parakeetTranscriptionService
             case .nativeApple:

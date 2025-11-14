@@ -101,9 +101,15 @@ class AudioTranscriptionManager: ObservableObject {
                 
                 switch currentModel.provider {
                 case .local:
-                    text = try await localTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
+                    guard let service = localTranscriptionService else {
+                        throw TranscriptionError.serviceNotAvailable
+                    }
+                    text = try await service.transcribe(audioURL: permanentURL, model: currentModel)
                 case .parakeet:
-                    text = try await parakeetTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
+                    guard let service = parakeetTranscriptionService else {
+                        throw TranscriptionError.serviceNotAvailable
+                    }
+                    text = try await service.transcribe(audioURL: permanentURL, model: currentModel)
                 case .nativeApple:
                     text = try await nativeAppleTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
                 default: // Cloud models
@@ -218,6 +224,7 @@ class AudioTranscriptionManager: ObservableObject {
 enum TranscriptionError: Error, LocalizedError {
     case noModelSelected
     case transcriptionCancelled
+    case serviceNotAvailable
     
     var errorDescription: String? {
         switch self {
@@ -225,6 +232,8 @@ enum TranscriptionError: Error, LocalizedError {
             return "No transcription model selected"
         case .transcriptionCancelled:
             return "Transcription was cancelled"
+        case .serviceNotAvailable:
+            return "Transcription service is not available"
         }
     }
 }

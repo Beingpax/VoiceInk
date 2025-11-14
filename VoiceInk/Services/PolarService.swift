@@ -9,8 +9,10 @@ class PolarService {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "PolarService")
     
     // Create an authenticated URLRequest for the given endpoint
-    private func createAuthenticatedRequest(endpoint: String, method: String = "POST") -> URLRequest {
-        let url = URL(string: "\(baseURL)\(endpoint)")!
+    private func createAuthenticatedRequest(endpoint: String, method: String = "POST") throws -> URLRequest {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw LicenseError.invalidURL
+        }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
@@ -53,7 +55,7 @@ class PolarService {
     
     // Check if a license key requires activation
     func checkLicenseRequiresActivation(_ key: String) async throws -> (isValid: Bool, requiresActivation: Bool, activationsLimit: Int?) {
-        var request = createAuthenticatedRequest(endpoint: "/v1/license-keys/validate")
+        var request = try createAuthenticatedRequest(endpoint: "/v1/license-keys/validate")
         
         let body: [String: Any] = [
             "key": key,
@@ -88,7 +90,7 @@ class PolarService {
     
     // Activate a license key on this device
     func activateLicenseKey(_ key: String) async throws -> (activationId: String, activationsLimit: Int) {
-        var request = createAuthenticatedRequest(endpoint: "/v1/license-keys/activate")
+        var request = try createAuthenticatedRequest(endpoint: "/v1/license-keys/activate")
         
         let deviceId = getDeviceIdentifier()
         let hostname = Host.current().localizedName ?? "Unknown Mac"
@@ -132,7 +134,7 @@ class PolarService {
     
     // Validate a license key with an activation ID
     func validateLicenseKeyWithActivation(_ key: String, activationId: String) async throws -> Bool {
-        var request = createAuthenticatedRequest(endpoint: "/v1/license-keys/validate")
+        var request = try createAuthenticatedRequest(endpoint: "/v1/license-keys/validate")
         
         let body: [String: Any] = [
             "key": key,
@@ -168,6 +170,7 @@ enum LicenseError: Error, LocalizedError {
     case validationFailed(String)
     case activationLimitReached(String)
     case activationNotRequired
+    case invalidURL
     
     var errorDescription: String? {
         switch self {
@@ -179,6 +182,8 @@ enum LicenseError: Error, LocalizedError {
             return "Activation limit reached: \(details)"
         case .activationNotRequired:
             return "This license does not require activation."
+        case .invalidURL:
+            return "Invalid URL for license service."
         }
     }
 }

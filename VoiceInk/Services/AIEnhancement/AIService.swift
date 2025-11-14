@@ -167,8 +167,13 @@ class AIService: ObservableObject {
         didSet {
             userDefaults.set(selectedProvider.rawValue, forKey: "selectedAIProvider")
             if selectedProvider.requiresAPIKey {
-                if let savedKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey") {
+                // Try Keychain first, then fall back to UserDefaults for backward compatibility
+                if let savedKey = keychain.getAPIKey(for: selectedProvider.rawValue) {
                     self.apiKey = savedKey
+                    self.isAPIKeyValid = true
+                } else if let legacyKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey"), !legacyKey.isEmpty {
+                    // Backward compatibility: load from UserDefaults if not in Keychain
+                    self.apiKey = legacyKey
                     self.isAPIKeyValid = true
                 } else {
                     self.apiKey = ""
@@ -190,6 +195,7 @@ class AIService: ObservableObject {
     
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
+    private let keychain = KeychainManager()
     private lazy var ollamaService = OllamaService()
     
     @Published private var openRouterModels: [String] = []
@@ -199,7 +205,7 @@ class AIService: ObservableObject {
             if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider.requiresAPIKey {
-                return userDefaults.string(forKey: "\(provider.rawValue)APIKey") != nil
+                return keychain.hasAPIKey(for: provider.rawValue)
             }
             return false
         }
@@ -232,8 +238,13 @@ class AIService: ObservableObject {
         }
         
         if selectedProvider.requiresAPIKey {
-            if let savedKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey") {
+            // Try Keychain first, then fall back to UserDefaults for backward compatibility
+            if let savedKey = keychain.getAPIKey(for: selectedProvider.rawValue) {
                 self.apiKey = savedKey
+                self.isAPIKeyValid = true
+            } else if let legacyKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey"), !legacyKey.isEmpty {
+                // Backward compatibility: load from UserDefaults if not in Keychain
+                self.apiKey = legacyKey
                 self.isAPIKeyValid = true
             }
         } else {
@@ -290,7 +301,7 @@ class AIService: ObservableObject {
                 if isValid {
                     self.apiKey = key
                     self.isAPIKeyValid = true
-                    self.userDefaults.set(key, forKey: "\(self.selectedProvider.rawValue)APIKey")
+                    self.keychain.saveAPIKey(key, for: self.selectedProvider.rawValue)
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
                     self.isAPIKeyValid = false
@@ -501,7 +512,7 @@ class AIService: ObservableObject {
         
         apiKey = ""
         isAPIKeyValid = false
-        userDefaults.removeObject(forKey: "\(selectedProvider.rawValue)APIKey")
+        try? keychain.deleteAPIKey(for: selectedProvider.rawValue)
         NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
     }
     

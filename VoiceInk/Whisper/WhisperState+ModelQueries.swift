@@ -2,7 +2,8 @@ import Foundation
 
 extension WhisperState {
     var usableModels: [any TranscriptionModel] {
-        allAvailableModels.filter { model in
+        let keychain = KeychainManager()
+        return allAvailableModels.filter { model in
             switch model.provider {
             case .local:
                 return availableModels.contains { $0.name == model.name }
@@ -15,23 +16,17 @@ extension WhisperState {
                     return false
                 }
             case .groq:
-                let key = UserDefaults.standard.string(forKey: "GROQAPIKey")
-                return key != nil && !key!.isEmpty
+                return keychain.hasAPIKey(for: "GROQ")
             case .elevenLabs:
-                let key = UserDefaults.standard.string(forKey: "ElevenLabsAPIKey")
-                return key != nil && !key!.isEmpty
+                return keychain.hasAPIKey(for: "ElevenLabs")
             case .deepgram:
-                let key = UserDefaults.standard.string(forKey: "DeepgramAPIKey")
-                return key != nil && !key!.isEmpty
+                return keychain.hasAPIKey(for: "Deepgram")
             case .mistral:
-                let key = UserDefaults.standard.string(forKey: "MistralAPIKey")
-                return key != nil && !key!.isEmpty
+                return keychain.hasAPIKey(for: "Mistral")
             case .gemini:
-                let key = UserDefaults.standard.string(forKey: "GeminiAPIKey")
-                return key != nil && !key!.isEmpty
+                return keychain.hasAPIKey(for: "Gemini")
             case .soniox:
-                let key = UserDefaults.standard.string(forKey: "SonioxAPIKey")
-                return key != nil && !key!.isEmpty
+                return keychain.hasAPIKey(for: "Soniox")
             case .custom:
                 // Custom models are always usable since they contain their own API keys
                 return true

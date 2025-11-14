@@ -20,7 +20,8 @@ struct CloudModelCardView: View {
     }
     
     private var isConfigured: Bool {
-        guard let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") else {
+        let keychain = KeychainManager()
+        guard let savedKey = keychain.getAPIKey(for: providerKey) else {
             return false
         }
         return !savedKey.isEmpty
@@ -260,7 +261,8 @@ struct CloudModelCardView: View {
     }
     
     private func loadSavedAPIKey() {
-        if let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") {
+        let keychain = KeychainManager()
+        if let savedKey = keychain.getAPIKey(for: providerKey) {
             apiKey = savedKey
             verificationStatus = .success
         }
@@ -299,7 +301,8 @@ struct CloudModelCardView: View {
                 if isValid {
                     self.verificationStatus = .success
                     // Save the API key
-                    UserDefaults.standard.set(self.apiKey, forKey: "\(self.providerKey)APIKey")
+                    let keychain = KeychainManager()
+                    keychain.saveAPIKey(self.apiKey, for: self.providerKey)
                     self.isConfiguredState = true
                     
                     // Collapse the configuration section after successful verification
@@ -317,7 +320,8 @@ struct CloudModelCardView: View {
     }
     
     private func clearAPIKey() {
-        UserDefaults.standard.removeObject(forKey: "\(providerKey)APIKey")
+        let keychain = KeychainManager()
+        try? keychain.deleteAPIKey(for: providerKey)
         apiKey = ""
         verificationStatus = .none
         isConfiguredState = false

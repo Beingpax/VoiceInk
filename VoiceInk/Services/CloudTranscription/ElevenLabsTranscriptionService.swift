@@ -33,7 +33,14 @@ class ElevenLabsTranscriptionService {
     }
     
     private func getAPIConfig(for model: any TranscriptionModel) throws -> APIConfig {
-        guard let apiKey = UserDefaults.standard.string(forKey: "ElevenLabsAPIKey"), !apiKey.isEmpty else {
+        let keychain = KeychainManager()
+        // Try Keychain first, then fall back to UserDefaults for backward compatibility
+        let apiKey: String
+        if let keychainKey = keychain.getAPIKey(for: "ElevenLabs"), !keychainKey.isEmpty {
+            apiKey = keychainKey
+        } else if let legacyKey = UserDefaults.standard.string(forKey: "ElevenLabsAPIKey"), !legacyKey.isEmpty {
+            apiKey = legacyKey
+        } else {
             throw CloudTranscriptionError.missingAPIKey
         }
         

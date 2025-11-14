@@ -33,6 +33,9 @@ struct VoiceInkApp: App {
         // Configure FluidAudio logging subsystem
         AppLogger.defaultSubsystem = "com.prakashjoshipax.voiceink.parakeet"
 
+        // Migrate API keys from UserDefaults to Keychain (runs once on first launch after update)
+        APIKeyMigrationService.migrateAPIKeysIfNeeded()
+        
         if UserDefaults.standard.object(forKey: "powerModeUIFlag") == nil {
             let hasEnabledPowerModes = PowerModeManager.shared.configurations.contains { $0.isEnabled }
             UserDefaults.standard.set(hasEnabledPowerModes, forKey: "powerModeUIFlag")
