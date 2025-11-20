@@ -13,8 +13,12 @@ struct TranscriptionCard: View {
     let isSelected: Bool
     let onDelete: () -> Void
     let onToggleSelection: () -> Void
+    
+    @EnvironmentObject var whisperState: WhisperState
+    @Environment(\.modelContext) private var modelContext
 
     @State private var selectedTab: ContentTab = .original
+    @State private var isRetrying = false
 
     private var availableTabs: [ContentTab] {
         var tabs: [ContentTab] = []
@@ -254,7 +258,19 @@ struct TranscriptionCard: View {
             } label: {
                 Label("Copy Original", systemImage: "doc.on.doc")
             }
+            
+            if hasAudioFile && !isRetrying {
+                Divider()
+                
+                Button {
+                    retryTranscription()
+                } label: {
+                    Label("Retry Transcription", systemImage: "arrow.clockwise")
+                }
+            }
 
+            Divider()
+            
             Button(role: .destructive) {
                 onDelete()
             } label: {
@@ -319,6 +335,63 @@ struct TranscriptionCard: View {
             return nameValue
         default:
             return nil
+        }
+    }
+    
+    private func retryTranscription() {
+        isRetrying = true
+        
+        Task { @MainActor in
+            defer { isRetrying = false }
+            
+            guard let audioURLString = transcription.audioFileURL,
+                  let audioURL = URL(string: audioURLString),
+                  FileManager.default.fileExists(atPath: audioURL.path) else {
+                NotificationManager.shared.showNotification(
+                    title: "Cannot retry - Audio file not found",
+                    type: .error
+                )
+                return
+            }
+            
+            guard let currentModel = whisperState.currentTranscriptionModel else {
+                NotificationManager.shared.showNotification(
+                    title: "Cannot retry - No transcription model selected",
+                    type: .error
+                )
+                return
+            }
+            
+            let transcriptionService = AudioTranscriptionService(
+                modelContext: modelContext,
+                whisperState: whisperState
+            )
+            
+            do {
+                let newTranscription = try await transcriptionService.retranscribeAudio(
+                    from: audioURL,
+                    using: currentModel
+                )
+                
+                // Copy to clipboard (prefer enhanced text)
+                let textToCopy: String
+                if let enhancedText = newTranscription.enhancedText, !enhancedText.isEmpty {
+                    textToCopy = enhancedText
+                } else {
+                    textToCopy = newTranscription.text
+                }
+                let _ = ClipboardManager.copyToClipboard(textToCopy)
+                
+                NotificationManager.shared.showNotification(
+                    title: "Retranscription completed - Copied to clipboard",
+                    type: .success
+                )
+            } catch {
+                NotificationManager.shared.showNotification(
+                    title: "Retry failed: \(error.localizedDescription)",
+                    type: .error
+                )
+            }
         }
     }
 }
