@@ -73,6 +73,7 @@ class WhisperState: NSObject, ObservableObject {
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     internal lazy var parakeetTranscriptionService = ParakeetTranscriptionService()
+    internal lazy var senseVoiceTranscriptionService = SenseVoiceTranscriptionService(modelsDirectory: senseVoiceModelsDirectory)
     
     private var modelUrl: URL? {
         let possibleURLs = [
@@ -94,6 +95,7 @@ class WhisperState: NSObject, ObservableObject {
     }
     
     let modelsDirectory: URL
+    let senseVoiceModelsDirectory: URL
     let recordingsDirectory: URL
     let enhancementService: AIEnhancementService?
     var licenseViewModel: LicenseViewModel
@@ -104,6 +106,7 @@ class WhisperState: NSObject, ObservableObject {
     // For model progress tracking
     @Published var downloadProgress: [String: Double] = [:]
     @Published var parakeetDownloadStates: [String: Bool] = [:]
+    @Published var senseVoiceDownloadProgress: [String: Double] = [:]
     
     init(modelContext: ModelContext, enhancementService: AIEnhancementService? = nil) {
         self.modelContext = modelContext
@@ -111,6 +114,7 @@ class WhisperState: NSObject, ObservableObject {
             .appendingPathComponent("com.prakashjoshipax.VoiceInk")
         
         self.modelsDirectory = appSupportDirectory.appendingPathComponent("WhisperModels")
+        self.senseVoiceModelsDirectory = appSupportDirectory.appendingPathComponent("SenseVoice")
         self.recordingsDirectory = appSupportDirectory.appendingPathComponent("Recordings")
         
         self.enhancementService = enhancementService
@@ -128,6 +132,7 @@ class WhisperState: NSObject, ObservableObject {
         
         setupNotifications()
         createModelsDirectoryIfNeeded()
+        createSenseVoiceDirectoryIfNeeded()
         createRecordingsDirectoryIfNeeded()
         loadAvailableModels()
         loadCurrentTranscriptionModel()
@@ -298,6 +303,8 @@ class WhisperState: NSObject, ObservableObject {
                 transcriptionService = localTranscriptionService
             case .parakeet:
                 transcriptionService = parakeetTranscriptionService
+            case .senseVoice:
+                transcriptionService = senseVoiceTranscriptionService
             case .nativeApple:
                 transcriptionService = nativeAppleTranscriptionService
             default:
