@@ -10,7 +10,7 @@ struct TranscriptionHistoryView: View {
     @State private var isViewCurrentlyVisible = false
     @State private var showAnalysisView = false
     
-    private let exportService = VoiceInkCSVExportService()
+    private let exportService = TranscriptionExportService()
     
     // Pagination states
     @State private var displayedTranscriptions: [Transcription] = []
@@ -239,15 +239,22 @@ struct TranscriptionHistoryView: View {
             }
             .buttonStyle(.borderless)
             
-            Button(action: {
-                exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
-            }) {
+            Menu {
+                ForEach(ExportFormat.allCases) { format in
+                    Button(action: {
+                        exportService.exportTranscriptions(Array(selectedTranscriptions), format: format)
+                    }) {
+                        Label(format.rawValue, systemImage: iconForFormat(format))
+                    }
+                }
+            } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "square.and.arrow.up")
                     Text("Export")
                 }
             }
-            .buttonStyle(.borderless)
+            .menuStyle(.borderlessButton)
+            .fixedSize()
             
             Button(action: {
                 showDeleteConfirmation = true
@@ -423,6 +430,14 @@ struct TranscriptionHistoryView: View {
             }
         } catch {
             print("Error selecting all transcriptions: \(error)")
+        }
+    }
+    
+    private func iconForFormat(_ format: ExportFormat) -> String {
+        switch format {
+        case .csv: return "tablecells"
+        case .json: return "curlybraces"
+        case .txt: return "doc.text"
         }
     }
 }
