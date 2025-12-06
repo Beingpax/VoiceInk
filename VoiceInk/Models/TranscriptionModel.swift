@@ -4,6 +4,7 @@ import Foundation
 enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case local = "Local"
     case parakeet = "Parakeet"
+    case senseVoice = "SenseVoice"
     case groq = "Groq"
     case elevenLabs = "ElevenLabs"
     case deepgram = "Deepgram"
@@ -12,7 +13,6 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case soniox = "Soniox"
     case custom = "Custom"
     case nativeApple = "Native Apple"
-    // Future providers can be added here
 }
 
 // A unified protocol for any transcription model
@@ -26,6 +26,10 @@ protocol TranscriptionModel: Identifiable, Hashable {
     // Language capabilities
     var isMultilingualModel: Bool { get }
     var supportedLanguages: [String: String] { get }
+    
+    // Performance metrics (for sorting/ranking)
+    var speed: Double { get }
+    var accuracy: Double { get }
 }
 
 extension TranscriptionModel {
@@ -36,6 +40,10 @@ extension TranscriptionModel {
     var language: String {
         isMultilingualModel ? "Multilingual" : "English-only"
     }
+    
+    // Default values for models that don't specify speed/accuracy
+    var speed: Double { 0.5 }
+    var accuracy: Double { 0.5 }
 }
 
 // A new struct for Apple's native models
@@ -159,4 +167,23 @@ struct ImportedLocalModel: TranscriptionModel {
         self.isMultilingualModel = true
         self.supportedLanguages = PredefinedModels.getLanguageDictionary(isMultilingual: true, provider: .local)
     }
+}
+
+// SenseVoice model - Alibaba's ultra-fast multilingual ASR
+struct SenseVoiceModel: TranscriptionModel {
+    let id = UUID()
+    let name: String
+    let displayName: String
+    let description: String
+    let provider: ModelProvider = .senseVoice
+    let size: String
+    let speed: Double
+    let accuracy: Double
+    let ramUsage: Double
+    let isMultilingualModel: Bool
+    let supportedLanguages: [String: String]
+    let modelURL: String
+    let tokenizerURL: String
+    let badges: [String]
+    let highlight: String?
 }

@@ -22,6 +22,7 @@ class AudioTranscriptionManager: ObservableObject {
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private var parakeetTranscriptionService: ParakeetTranscriptionService?
+    private var senseVoiceTranscriptionService: SenseVoiceTranscriptionService?
     
     enum ProcessingPhase {
         case idle
@@ -75,6 +76,11 @@ class AudioTranscriptionManager: ObservableObject {
                     parakeetTranscriptionService = ParakeetTranscriptionService()
                 }
                 
+                // Initialize SenseVoice transcription service if needed
+                if senseVoiceTranscriptionService == nil {
+                    senseVoiceTranscriptionService = SenseVoiceTranscriptionService(modelsDirectory: whisperState.senseVoiceModelsDirectory)
+                }
+                
                 // Process audio file
                 processingPhase = .processingAudio
                 let samples = try await audioProcessor.processAudioToSamples(url)
@@ -104,6 +110,8 @@ class AudioTranscriptionManager: ObservableObject {
                     text = try await localTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
                 case .parakeet:
                     text = try await parakeetTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
+                case .senseVoice:
+                    text = try await senseVoiceTranscriptionService!.transcribe(audioURL: permanentURL, model: currentModel)
                 case .nativeApple:
                     text = try await nativeAppleTranscriptionService.transcribe(audioURL: permanentURL, model: currentModel)
                 default: // Cloud models
