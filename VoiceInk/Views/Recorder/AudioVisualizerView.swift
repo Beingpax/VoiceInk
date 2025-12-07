@@ -10,7 +10,7 @@ struct AudioVisualizer: View {
     private let maxHeight: CGFloat = 32
     private let barWidth: CGFloat = 3.5
     private let barSpacing: CGFloat = 2.3
-    private let hardThreshold: Double = 0.3
+    private let hardThreshold: Double = 0.2
     
     private let sensitivityMultipliers: [Double]
     
@@ -23,7 +23,7 @@ struct AudioVisualizer: View {
         self.isActive = isActive
         
         self.sensitivityMultipliers = (0..<barCount).map { _ in
-            Double.random(in: 0.2...1.9)
+            Double.random(in: 0.25...2.0)
         }
         
         _barHeights = State(initialValue: Array(repeating: minHeight, count: barCount))
@@ -69,16 +69,15 @@ struct AudioVisualizer: View {
             let targetHeight = minHeight + CGFloat(sensitivityAdjustedLevel) * range
             
             let isDecaying = targetHeight < targetHeights[i]
-            let smoothingFactor: CGFloat = isDecaying ? 0.6 : 0.3 // Adjusted smoothing
+            let smoothingFactor: CGFloat = isDecaying ? 0.7 : 0.4
             
             targetHeights[i] = targetHeights[i] * (1 - smoothingFactor) + targetHeight * smoothingFactor
             
-            // Only update if change is significant enough to matter visually
-            if abs(barHeights[i] - targetHeights[i]) > 0.5 {
+            if abs(barHeights[i] - targetHeights[i]) > 0.4 {
                 withAnimation(
                     isDecaying
-                    ? .spring(response: 0.4, dampingFraction: 0.8)
-                    : .spring(response: 0.3, dampingFraction: 0.7)
+                    ? .spring(response: 0.3, dampingFraction: 0.8)
+                    : .spring(response: 0.25, dampingFraction: 0.7)
                 ) {
                     barHeights[i] = targetHeights[i]
                 }

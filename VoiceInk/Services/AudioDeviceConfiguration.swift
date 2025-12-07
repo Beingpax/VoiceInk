@@ -5,65 +5,64 @@ import os
 
 class AudioDeviceConfiguration {
     private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioDeviceConfiguration")
-    
 
+    // MARK: - Per-App Device Selection (AVAudioEngine)
 
+    // Sets the input device for an AVAudioEngine (per-app, doesn't affect system)
+    static func setEngineInputDevice(_ deviceID: AudioDeviceID, for audioEngine: AVAudioEngine) throws {
+        let inputNode = audioEngine.inputNode
+        guard let audioUnit = inputNode.audioUnit else {
+            logger.error("Audio unit not available for device configuration")
+            throw AudioConfigurationError.audioUnitNotAvailable
+        }
 
-    static func getDefaultInputDevice() -> AudioDeviceID? {
-        var defaultDeviceID = AudioDeviceID(0)
-        var propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultInputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        let status = AudioObjectGetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject),
-            &address,
+        var deviceIDCopy = deviceID
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
             0,
-            nil,
-            &propertySize,
-            &defaultDeviceID
+            &deviceIDCopy,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
         )
+
         if status != noErr {
-            logger.error("Failed to get current default input device: \(status)")
+            logger.error("Failed to set audio engine input device: \(status)")
+            throw AudioConfigurationError.failedToSetInputDevice(status: status)
+        }
+
+        logger.info("✅ Set audio engine input device to \(deviceID) - per-app only, no system changes")
+    }
+
+    // Gets the current input device for an AVAudioEngine
+    static func getEngineInputDevice(for audioEngine: AVAudioEngine) -> AudioDeviceID? {
+        let inputNode = audioEngine.inputNode
+        guard let audioUnit = inputNode.audioUnit else {
+            logger.warning("Audio unit not available for querying device")
             return nil
         }
-        return defaultDeviceID
-    }
-    
-    static func setDefaultInputDevice(_ deviceID: AudioDeviceID) throws {
-        if let currentDefault = getDefaultInputDevice(), currentDefault == deviceID {
-            return
-        }
-        var deviceIDCopy = deviceID
-        let propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultInputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        
-        let setDeviceResult = AudioObjectSetPropertyData(
-            AudioObjectID(kAudioObjectSystemObject),
-            &address,
+
+        var deviceID = AudioDeviceID(0)
+        var propertySize = UInt32(MemoryLayout<AudioDeviceID>.size)
+
+        let status = AudioUnitGetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
             0,
-            nil,
-            propertySize,
-            &deviceIDCopy
+            &deviceID,
+            &propertySize
         )
-        
-        if setDeviceResult != noErr {
-            logger.error("Failed to set input device: \(setDeviceResult)")
-            throw AudioConfigurationError.failedToSetInputDevice(status: setDeviceResult)
+
+        if status != noErr {
+            logger.error("Failed to get audio engine input device: \(status)")
+            return nil
         }
+
+        return deviceID
     }
     
-    /// Creates a device change observer
-    /// - Parameters:
-    ///   - handler: The closure to execute when device changes
-    ///   - queue: The queue to execute the handler on (defaults to main queue)
-    /// - Returns: The observer token
+    // Creates a device change observer
     static func createDeviceChangeObserver(
         handler: @escaping () -> Void,
         queue: OperationQueue = .main
@@ -79,11 +78,14 @@ class AudioDeviceConfiguration {
 
 enum AudioConfigurationError: LocalizedError {
     case failedToSetInputDevice(status: OSStatus)
-    
+    case audioUnitNotAvailable
+
     var errorDescription: String? {
         switch self {
         case .failedToSetInputDevice(let status):
             return "Failed to set input device: \(status)"
+        case .audioUnitNotAvailable:
+            return "Audio unit not available for device configuration"
         }
     }
 } 

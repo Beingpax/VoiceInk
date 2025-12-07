@@ -268,7 +268,7 @@ class AudioDeviceManager: ObservableObject {
             if let id = selectedDeviceID, isDeviceAvailable(id) {
                 return id
             } else {
-                return fallbackDeviceID ?? 0
+                return getFallbackDevice(excluding: selectedDeviceID) ?? 0
             }
         case .prioritized:
             let sortedDevices = prioritizedDevices.sorted { $0.priority < $1.priority }
@@ -277,10 +277,42 @@ class AudioDeviceManager: ObservableObject {
                     return available.id
                 }
             }
-            return fallbackDeviceID ?? 0
+            return getFallbackDevice(excluding: nil) ?? 0
         }
     }
-    
+
+    // Finds fallback device, preferring built-in mic, excluding specified device
+    func getFallbackDevice(excluding excludeDeviceID: AudioDeviceID?) -> AudioDeviceID? {
+        let candidates = availableDevices.filter { device in
+            if let excludeID = excludeDeviceID {
+                return device.id != excludeID
+            }
+            return true
+        }
+
+        guard !candidates.isEmpty else {
+            logger.warning("No available audio input devices found")
+            return nil
+        }
+
+        // Prefer built-in microphone
+        if let builtin = candidates.first(where: { device in
+            device.name.lowercased().contains("built-in") ||
+            device.name.lowercased().contains("internal")
+        }) {
+            logger.info("Found built-in microphone: \(builtin.name)")
+            return builtin.id
+        }
+
+        // Return first available device
+        if let firstDevice = candidates.first {
+            logger.info("Using first available device: \(firstDevice.name)")
+            return firstDevice.id
+        }
+
+        return nil
+    }
+
     private func loadPrioritizedDevices() {
         if let data = UserDefaults.standard.prioritizedDevicesData,
            let devices = try? JSONDecoder().decode([PrioritizedDevice].self, from: data) {
@@ -333,23 +365,17 @@ class AudioDeviceManager: ObservableObject {
     
     private func selectHighestPriorityAvailableDevice() {
         let sortedDevices = prioritizedDevices.sorted { $0.priority < $1.priority }
-        
+
         for device in sortedDevices {
             if let availableDevice = availableDevices.first(where: { $0.uid == device.id }) {
                 selectedDeviceID = availableDevice.id
                 logger.info("Selected prioritized device: \(device.name) (Priority: \(device.priority))")
-                
-                do {
-                    try AudioDeviceConfiguration.setDefaultInputDevice(availableDevice.id)
-                } catch {
-                    logger.error("Failed to set prioritized device: \(error.localizedDescription)")
-                    continue
-                }
+
                 notifyDeviceChange()
                 return
             }
         }
-        
+
         fallbackToDefaultDevice()
     }
     

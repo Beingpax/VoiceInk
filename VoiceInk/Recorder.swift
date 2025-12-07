@@ -4,8 +4,10 @@ import CoreAudio
 import os
 
 @MainActor
-class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
-    private var recorder: AVAudioRecorder?
+class Recorder: NSObject, ObservableObject, AudioEngineRecorderDelegate {
+    private let audioEngine = AVAudioEngine()
+    private var recorder: AudioEngineRecorder?
+
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Recorder")
     private let deviceManager = AudioDeviceManager.shared
     private var deviceObserver: NSObjectProtocol?
@@ -16,14 +18,30 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private var audioLevelCheckTask: Task<Void, Never>?
     private var audioMeterUpdateTask: Task<Void, Never>?
     private var hasDetectedAudioInCurrentSession = false
-    
+
     enum RecorderError: Error {
         case couldNotStartRecording
     }
-    
+
     override init() {
         super.init()
         setupDeviceChangeObserver()
+
+        Task { @MainActor in
+            try? await self.prepareAudioEngine()
+        }
+    }
+
+    /// Prepares the audio engine with the current device (reduces recording startup delay)
+    private func prepareAudioEngine() async throws {
+        let deviceID = deviceManager.getCurrentDevice()
+
+        if deviceID != 0 {
+            try AudioDeviceConfiguration.setEngineInputDevice(deviceID, for: audioEngine)
+        }
+
+        audioEngine.prepare()
+        logger.info("✅ Audio engine pre-warmed and ready for instant recording")
     }
     
     private func setupDeviceChangeObserver() {
@@ -37,32 +55,56 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private func handleDeviceChange() async {
         guard !isReconfiguring else { return }
         isReconfiguring = true
-        
+
         if recorder != nil {
             let currentURL = recorder?.url
+
             stopRecording()
-            
+            audioEngine.reset()
+
+            let deviceID = deviceManager.getCurrentDevice()
+
+            guard deviceID != 0 else {
+                await NotificationManager.shared.showNotification(
+                    title: "Recording stopped - no audio input available",
+                    type: .error
+                )
+                isReconfiguring = false
+                return
+            }
+
+            if let deviceName = deviceManager.getDeviceName(deviceID: deviceID) {
+                await NotificationManager.shared.showNotification(
+                    title: "Switched to \(deviceName)",
+                    type: .info
+                )
+            }
+
             if let url = currentURL {
                 do {
                     try await startRecording(toOutputFile: url)
                 } catch {
-                    logger.error("❌ Failed to restart recording after device change: \(error.localizedDescription)")
+                    logger.error("Failed to restart recording: \(error.localizedDescription)")
+                    await NotificationManager.shared.showNotification(
+                        title: "Could not resume recording",
+                        type: .error
+                    )
                 }
             }
+        } else {
+            audioEngine.reset()
+            try? await prepareAudioEngine()
         }
+
         isReconfiguring = false
-    }
-    
-    private func configureAudioSession(with deviceID: AudioDeviceID) async throws {
-        try AudioDeviceConfiguration.setDefaultInputDevice(deviceID)
     }
     
     func startRecording(toOutputFile url: URL) async throws {
         deviceManager.isRecordingActive = true
-        
+
         let currentDeviceID = deviceManager.getCurrentDevice()
         let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
-        
+
         if String(currentDeviceID) != lastDeviceID {
             if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
                 await MainActor.run {
@@ -74,54 +116,47 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
             }
         }
         UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
-        
+
         hasDetectedAudioInCurrentSession = false
 
-        let deviceID = deviceManager.getCurrentDevice()
-        if deviceID != 0 {
+        if currentDeviceID != 0 {
             do {
-                try await configureAudioSession(with: deviceID)
+                try AudioDeviceConfiguration.setEngineInputDevice(currentDeviceID, for: audioEngine)
             } catch {
-                logger.warning("⚠️ Failed to configure audio session for device \(deviceID), attempting to continue: \(error.localizedDescription)")
+                logger.warning("⚠️ Failed to set audio engine device \(currentDeviceID): \(error.localizedDescription)")
             }
         }
-        
-        let recordSettings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: 16000.0,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false
-        ]
-        
+
+        guard currentDeviceID != 0 else {
+            logger.error("Cannot start recording: no audio input device available")
+            deviceManager.isRecordingActive = false
+            throw RecorderError.couldNotStartRecording
+        }
+
         do {
-            recorder = try AVAudioRecorder(url: url, settings: recordSettings)
+            recorder = AudioEngineRecorder(audioEngine: audioEngine)
             recorder?.delegate = self
             recorder?.isMeteringEnabled = true
-            
-            if recorder?.record() == false {
-                logger.error("❌ Could not start recording")
-                throw RecorderError.couldNotStartRecording
-            }
-            
+
+            try recorder?.prepare(deviceID: currentDeviceID)
+            try recorder?.startRecording(toOutputFile: url)
+
             Task { [weak self] in
                 guard let self = self else { return }
                 await self.playbackController.pauseMedia()
                 _ = await self.mediaController.muteSystemAudio()
             }
-            
+
             audioLevelCheckTask?.cancel()
             audioMeterUpdateTask?.cancel()
-            
+
             audioMeterUpdateTask = Task {
                 while recorder != nil && !Task.isCancelled {
                     updateAudioMeter()
                     try? await Task.sleep(nanoseconds: 33_000_000)
                 }
             }
-            
+
             audioLevelCheckTask = Task {
                 let notificationChecks: [TimeInterval] = [5.0, 12.0]
 
@@ -142,9 +177,9 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
                     }
                 }
             }
-            
+
         } catch {
-            logger.error("Failed to create audio recorder: \(error.localizedDescription)")
+            logger.error("Failed to start audio engine recording: \(error.localizedDescription)")
             stopRecording()
             throw RecorderError.couldNotStartRecording
         }
@@ -153,10 +188,10 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     func stopRecording() {
         audioLevelCheckTask?.cancel()
         audioMeterUpdateTask?.cancel()
-        recorder?.stop()
+        recorder?.stopRecording()
         recorder = nil
         audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
-        
+
         Task {
             await mediaController.unmuteSystemAudio()
             try? await Task.sleep(nanoseconds: 100_000_000)
@@ -202,9 +237,9 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
         audioMeter = newAudioMeter
     }
     
-    // MARK: - AVAudioRecorderDelegate
-    
-    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+    // MARK: - AudioEngineRecorderDelegate
+
+    nonisolated func audioEngineRecorderDidFinishRecording(_ recorder: AudioEngineRecorder, successfully flag: Bool) {
         if !flag {
             logger.error("❌ Recording finished unsuccessfully - file may be corrupted or empty")
             Task { @MainActor in
@@ -215,8 +250,8 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
             }
         }
     }
-    
-    nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+
+    nonisolated func audioEngineRecorderEncodeErrorDidOccur(_ recorder: AudioEngineRecorder, error: Error?) {
         if let error = error {
             logger.error("❌ Recording encode error during session: \(error.localizedDescription)")
             Task { @MainActor in
