@@ -148,10 +148,6 @@ class AudioDeviceManager: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.availableDevices = devices.map { ($0.id, $0.uid, $0.name) }
-            if let currentID = self.selectedDeviceID, !devices.contains(where: { $0.id == currentID }) {
-                self.logger.warning("Currently selected device is no longer available")
-                self.fallbackToDefaultDevice()
-            }
             completion?()
         }
     }
@@ -412,13 +408,31 @@ class AudioDeviceManager: ObservableObject {
         logger.info("Device list change detected")
         loadAvailableDevices { [weak self] in
             guard let self = self else { return }
-            
+
             if self.inputMode == .prioritized {
                 self.selectHighestPriorityAvailableDevice()
             } else if self.inputMode == .custom,
                       let currentID = self.selectedDeviceID,
                       !self.isDeviceAvailable(currentID) {
-                self.fallbackToDefaultDevice()
+                if let fallbackID = self.getFallbackDevice(excluding: nil),
+                   let deviceToSelect = self.availableDevices.first(where: { $0.id == fallbackID }) {
+                    self.logger.info("Selected custom device unavailable, switching to fallback device: \(deviceToSelect.name)")
+
+                    self.selectedDeviceID = fallbackID
+                    UserDefaults.standard.selectedAudioDeviceUID = deviceToSelect.uid
+                    self.objectWillChange.send()
+                    self.notifyDeviceChange()
+
+                    Task { @MainActor in
+                        NotificationManager.shared.showNotification(
+                            title: "Switched to \(deviceToSelect.name)",
+                            type: .info
+                        )
+                    }
+                } else {
+                    self.logger.warning("No fallback device available")
+                    self.fallbackToDefaultDevice()
+                }
             }
         }
     }
