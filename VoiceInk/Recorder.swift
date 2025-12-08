@@ -26,22 +26,6 @@ class Recorder: NSObject, ObservableObject, AudioEngineRecorderDelegate {
     override init() {
         super.init()
         setupDeviceChangeObserver()
-
-        Task { @MainActor in
-            try? await self.prepareAudioEngine()
-        }
-    }
-
-    /// Prepares the audio engine with the current device (reduces recording startup delay)
-    private func prepareAudioEngine() async throws {
-        let deviceID = deviceManager.getCurrentDevice()
-
-        if deviceID != 0 {
-            try AudioDeviceConfiguration.setEngineInputDevice(deviceID, for: audioEngine)
-        }
-
-        audioEngine.prepare()
-        logger.info("✅ Audio engine pre-warmed and ready for instant recording")
     }
     
     private func setupDeviceChangeObserver() {
@@ -91,9 +75,6 @@ class Recorder: NSObject, ObservableObject, AudioEngineRecorderDelegate {
                     )
                 }
             }
-        } else {
-            audioEngine.reset()
-            try? await prepareAudioEngine()
         }
 
         isReconfiguring = false
