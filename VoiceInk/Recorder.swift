@@ -41,39 +41,26 @@ class Recorder: NSObject, ObservableObject, AudioEngineRecorderDelegate {
         isReconfiguring = true
 
         if recorder != nil {
-            let currentURL = recorder?.url
-
             stopRecording()
             audioEngine.reset()
 
             let deviceID = deviceManager.getCurrentDevice()
 
-            guard deviceID != 0 else {
+            if deviceID == 0 {
                 await NotificationManager.shared.showNotification(
                     title: "Recording stopped - no audio input available",
                     type: .error
                 )
-                isReconfiguring = false
-                return
-            }
-
-            if let deviceName = deviceManager.getDeviceName(deviceID: deviceID) {
+            } else if let deviceName = deviceManager.getDeviceName(deviceID: deviceID) {
                 await NotificationManager.shared.showNotification(
-                    title: "Switched to \(deviceName)",
+                    title: "Recording stopped - device changed to \(deviceName)",
                     type: .info
                 )
-            }
-
-            if let url = currentURL {
-                do {
-                    try await startRecording(toOutputFile: url)
-                } catch {
-                    logger.error("Failed to restart recording: \(error.localizedDescription)")
-                    await NotificationManager.shared.showNotification(
-                        title: "Could not resume recording",
-                        type: .error
-                    )
-                }
+            } else {
+                await NotificationManager.shared.showNotification(
+                    title: "Recording stopped - audio device changed",
+                    type: .info
+                )
             }
         }
 

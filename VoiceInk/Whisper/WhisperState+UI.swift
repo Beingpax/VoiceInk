@@ -140,11 +140,11 @@ extension WhisperState {
             await updateContextPrompt()
         }
     }
-    
+
     private func updateContextPrompt() async {
         // Always reload the prompt from UserDefaults to ensure we have the latest
         let currentPrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? whisperPrompt.transcriptionPrompt
-        
+
         if let context = whisperContext {
             await context.setPrompt(currentPrompt)
         }

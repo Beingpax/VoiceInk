@@ -497,8 +497,6 @@ class AudioDeviceManager: ObservableObject {
     }
     
     private func notifyDeviceChange() {
-        if !isRecordingActive {
-            NotificationCenter.default.post(name: NSNotification.Name("AudioDeviceChanged"), object: nil)
-        }
+        NotificationCenter.default.post(name: NSNotification.Name("AudioDeviceChanged"), object: nil)
     }
 } 
