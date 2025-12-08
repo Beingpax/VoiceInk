@@ -82,11 +82,6 @@ struct AudioInputSettingsView: View {
                 }
                 .buttonStyle(.borderless)
             }
-            
-            Text("Note: Selecting a device here will override your Mac\'s system-wide default microphone.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.bottom, 8)
 
             VStack(spacing: 12) {
                 ForEach(audioDeviceManager.availableDevices, id: \.id) { device in
@@ -120,14 +115,10 @@ struct AudioInputSettingsView: View {
                 Text("Prioritized Devices")
                     .font(.title2)
                     .fontWeight(.semibold)
-                Text("Devices will be used in order of priority. If a device is unavailable, the next one will be tried. If no prioritized device is available, the system default microphone will be used.")
+                Text("Devices will be used in order of priority. If a device is unavailable, the next one will be tried. If no prioritized device is available, the built-in microphone will be used as fallback.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Warning: Using a prioritized device will override your Mac\'s system-wide default microphone if it becomes active.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 4)
             }
             
             if audioDeviceManager.prioritizedDevices.isEmpty {
@@ -258,15 +249,13 @@ struct InputModeCard: View {
     
     private var icon: String {
         switch mode {
-        case .systemDefault: return "macbook.and.iphone"
         case .custom: return "mic.circle.fill"
         case .prioritized: return "list.number"
         }
     }
-    
+
     private var description: String {
         switch mode {
-        case .systemDefault: return "Use system's default input device"
         case .custom: return "Select a specific input device"
         case .prioritized: return "Set up device priority order"
         }
