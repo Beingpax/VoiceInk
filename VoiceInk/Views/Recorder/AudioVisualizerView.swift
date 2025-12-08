@@ -34,8 +34,15 @@ struct AudioVisualizer: View {
         HStack(spacing: barSpacing) {
             ForEach(0..<barCount, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 1.7)
-                    .fill(color)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [color, color.opacity(0.75)]),
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
                     .frame(width: barWidth, height: barHeights[index])
+                    .shadow(color: color.opacity(0.3), radius: 1.5, x: 0, y: 0)
             }
         }
         .onChange(of: audioMeter) { _, newValue in
@@ -72,15 +79,13 @@ struct AudioVisualizer: View {
             let smoothingFactor: CGFloat = isDecaying ? 0.7 : 0.4
             
             targetHeights[i] = targetHeights[i] * (1 - smoothingFactor) + targetHeight * smoothingFactor
-            
-            if abs(barHeights[i] - targetHeights[i]) > 0.4 {
-                withAnimation(
-                    isDecaying
-                    ? .spring(response: 0.3, dampingFraction: 0.8)
-                    : .spring(response: 0.25, dampingFraction: 0.7)
-                ) {
-                    barHeights[i] = targetHeights[i]
-                }
+
+            withAnimation(
+                isDecaying
+                ? .spring(response: 0.3, dampingFraction: 0.8)
+                : .spring(response: 0.25, dampingFraction: 0.7)
+            ) {
+                barHeights[i] = targetHeights[i]
             }
         }
     }

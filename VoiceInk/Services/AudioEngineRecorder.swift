@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import CoreAudio
+import Accelerate
 import os
 
 // MARK: - AudioEngineRecorder Delegate Protocol
@@ -183,7 +184,7 @@ class AudioEngineRecorder: NSObject {
             throw AudioEngineRecorderError.invalidFormat
         }
 
-        let bufferSize: AVAudioFrameCount = 1024
+        let bufferSize: AVAudioFrameCount = 2048
 
         inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: nativeFormat) { [weak self] buffer, time in
             guard let self = self else { return }
@@ -284,22 +285,23 @@ class AudioEngineRecorder: NSObject {
 
         guard frameLength > 0 else { return }
 
-        var sum: Float = 0
+        var rms: Float = 0
         var peak: Float = 0
 
-        for frame in 0..<frameLength {
-            var sample: Float = 0
+        if channelCount == 1 {
+            vDSP_rmsqv(channelData[0], 1, &rms, vDSP_Length(frameLength))
+            vDSP_maxv(channelData[0], 1, &peak, vDSP_Length(frameLength))
+        } else {
+            var mixedBuffer = [Float](repeating: 0, count: frameLength)
             for channel in 0..<channelCount {
-                sample += channelData[channel][frame]
+                vDSP_vadd(mixedBuffer, 1, channelData[channel], 1, &mixedBuffer, 1, vDSP_Length(frameLength))
             }
-            sample /= Float(channelCount)
+            var scale = Float(1.0) / Float(channelCount)
+            vDSP_vsmul(mixedBuffer, 1, &scale, &mixedBuffer, 1, vDSP_Length(frameLength))
 
-            let absSample = abs(sample)
-            sum += absSample * absSample
-            peak = max(peak, absSample)
+            vDSP_rmsqv(mixedBuffer, 1, &rms, vDSP_Length(frameLength))
+            vDSP_maxmgv(mixedBuffer, 1, &peak, vDSP_Length(frameLength))
         }
-
-        let rms = sqrt(sum / Float(frameLength))
 
         let avgDb = rms > 0.000001 ? 20 * log10(rms) : -160.0
         let peakDb = peak > 0.000001 ? 20 * log10(peak) : -160.0
