@@ -99,7 +99,7 @@ class AudioEngineRecorder: NSObject {
     func prepare(deviceID: AudioDeviceID? = nil) throws {
         if let deviceID = deviceID {
             selectedDeviceID = deviceID
-            try setInputDevice(deviceID)
+            try AudioDeviceConfiguration.setEngineInputDevice(deviceID, for: audioEngine)
         }
 
         let inputNode = audioEngine.inputNode
@@ -132,28 +132,7 @@ class AudioEngineRecorder: NSObject {
         audioEngine.prepare()
     }
 
-    // MARK: - Device Selection
 
-    private func setInputDevice(_ deviceID: AudioDeviceID) throws {
-        let inputNode = audioEngine.inputNode
-        guard let audioUnit = inputNode.audioUnit else {
-            throw AudioEngineRecorderError.audioUnitNotAvailable
-        }
-
-        var deviceIDCopy = deviceID
-        let status = AudioUnitSetProperty(
-            audioUnit,
-            kAudioOutputUnitProperty_CurrentDevice,
-            kAudioUnitScope_Global,
-            0,
-            &deviceIDCopy,
-            UInt32(MemoryLayout<AudioDeviceID>.size)
-        )
-
-        if status != noErr {
-            throw AudioEngineRecorderError.failedToSetDevice(status: status)
-        }
-    }
 
     // MARK: - Recording Control
 
