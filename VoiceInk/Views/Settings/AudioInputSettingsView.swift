@@ -17,12 +17,14 @@ struct AudioInputSettingsView: View {
     private var mainContent: some View {
         VStack(spacing: 40) {
             inputModeSection
-            
+
             if audioDeviceManager.inputMode == .custom {
                 customDeviceSection
             } else if audioDeviceManager.inputMode == .prioritized {
                 prioritizedDevicesSection
             }
+
+            recordingConfigurationSection
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 40)
@@ -248,6 +250,105 @@ struct AudioInputSettingsView: View {
             PrioritizedDevice(id: device.id, name: device.name, priority: index)
         }
         audioDeviceManager.updatePriorities(devices: updatedDevices)
+    }
+
+    // MARK: - Recording Configuration Section
+
+    @State private var selectedChannelMode: AudioChannelMode = {
+        if let modeString = UserDefaults.standard.audioChannelMode,
+           let mode = AudioChannelMode(rawValue: modeString) {
+            return mode
+        }
+        return .mono
+    }()
+
+    @State private var customChannelCount: Int = UserDefaults.standard.audioCustomChannelCount
+    @State private var autoDownmix: Bool = UserDefaults.standard.autoDownmixForTranscription
+
+    private var recordingConfigurationSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Recording Configuration")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            VStack(alignment: .leading, spacing: 16) {
+                // Channel Mode Picker
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Channel Configuration")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(AudioChannelMode.allCases, id: \.self) { mode in
+                            HStack {
+                                Image(systemName: selectedChannelMode == mode ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selectedChannelMode == mode ? .blue : .secondary)
+                                Text(mode.rawValue)
+                                    .font(.body)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedChannelMode = mode
+                                UserDefaults.standard.audioChannelMode = mode.rawValue
+                            }
+                        }
+                    }
+                    .padding(.leading, 4)
+
+                    // Show device capability info
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                        Text("Current device supports up to \(audioDeviceManager.currentDeviceMaxChannels) channel(s)")
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                    .padding(.top, 4)
+                }
+
+                // Custom channel picker (if mode is custom)
+                if selectedChannelMode == .custom {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Channel Count:")
+                                .font(.subheadline)
+                            Stepper("\(customChannelCount)", value: $customChannelCount, in: 1...Int(audioDeviceManager.currentDeviceMaxChannels))
+                                .frame(width: 120)
+                                .onChange(of: customChannelCount) { newValue in
+                                    UserDefaults.standard.audioCustomChannelCount = newValue
+                                }
+                        }
+                    }
+                    .padding(.leading, 4)
+                }
+
+                Divider().padding(.vertical, 8)
+
+                // Transcription handling
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Transcription Compatibility")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    Toggle("Automatically downmix to mono for transcription", isOn: $autoDownmix)
+                        .toggleStyle(.switch)
+                        .onChange(of: autoDownmix) { newValue in
+                            UserDefaults.standard.autoDownmixForTranscription = newValue
+                        }
+
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                        Text("When enabled, multi-channel recordings will be downmixed to mono before transcription. The original multi-channel file is preserved.")
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .foregroundColor(.secondary)
+                }
+            }
+            .padding(20)
+            .background(CardBackground(isSelected: false))
+        }
     }
 }
 

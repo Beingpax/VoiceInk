@@ -56,7 +56,29 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private func configureAudioSession(with deviceID: AudioDeviceID) async throws {
         try AudioDeviceConfiguration.setDefaultInputDevice(deviceID)
     }
-    
+
+    private func getDesiredChannelCount() -> Int {
+        // Get channel mode from UserDefaults
+        guard let modeString = UserDefaults.standard.audioChannelMode,
+              let mode = AudioChannelMode(rawValue: modeString) else {
+            return 1  // Default to mono
+        }
+
+        switch mode {
+        case .mono:
+            return 1
+        case .stereo:
+            return 2
+        case .deviceMaximum:
+            return Int(deviceManager.currentDeviceMaxChannels)
+        case .custom:
+            let customCount = UserDefaults.standard.audioCustomChannelCount
+            // Clamp to device maximum
+            let maxChannels = Int(deviceManager.currentDeviceMaxChannels)
+            return min(customCount, maxChannels)
+        }
+    }
+
     func startRecording(toOutputFile url: URL) async throws {
         deviceManager.isRecordingActive = true
         
@@ -85,11 +107,14 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
                 logger.warning("⚠️ Failed to configure audio session for device \(deviceID), attempting to continue: \(error.localizedDescription)")
             }
         }
-        
+
+        let desiredChannels = getDesiredChannelCount()
+        logger.info("📼 Recording with \(desiredChannels) channel(s)")
+
         let recordSettings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: 16000.0,
-            AVNumberOfChannelsKey: 1,
+            AVNumberOfChannelsKey: desiredChannels,
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
             AVLinearPCMIsBigEndianKey: false,
@@ -168,37 +193,47 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
     private func updateAudioMeter() {
         guard let recorder = recorder else { return }
         recorder.updateMeters()
-        
-        let averagePower = recorder.averagePower(forChannel: 0)
-        let peakPower = recorder.peakPower(forChannel: 0)
-        
-        let minVisibleDb: Float = -60.0 
+
+        let channelCount = Int(recorder.numberOfChannels)
+        let minVisibleDb: Float = -60.0
         let maxVisibleDb: Float = 0.0
 
-        let normalizedAverage: Float
-        if averagePower < minVisibleDb {
-            normalizedAverage = 0.0
-        } else if averagePower >= maxVisibleDb {
-            normalizedAverage = 1.0
-        } else {
-            normalizedAverage = (averagePower - minVisibleDb) / (maxVisibleDb - minVisibleDb)
+        var channelMeters: [AudioMeter.ChannelMeter] = []
+
+        for channelIndex in 0..<channelCount {
+            let averagePower = recorder.averagePower(forChannel: channelIndex)
+            let peakPower = recorder.peakPower(forChannel: channelIndex)
+
+            let normalizedAverage: Float
+            if averagePower < minVisibleDb {
+                normalizedAverage = 0.0
+            } else if averagePower >= maxVisibleDb {
+                normalizedAverage = 1.0
+            } else {
+                normalizedAverage = (averagePower - minVisibleDb) / (maxVisibleDb - minVisibleDb)
+            }
+
+            let normalizedPeak: Float
+            if peakPower < minVisibleDb {
+                normalizedPeak = 0.0
+            } else if peakPower >= maxVisibleDb {
+                normalizedPeak = 1.0
+            } else {
+                normalizedPeak = (peakPower - minVisibleDb) / (maxVisibleDb - minVisibleDb)
+            }
+
+            channelMeters.append(AudioMeter.ChannelMeter(
+                averagePower: Double(normalizedAverage),
+                peakPower: Double(normalizedPeak)
+            ))
         }
-        
-        let normalizedPeak: Float
-        if peakPower < minVisibleDb {
-            normalizedPeak = 0.0
-        } else if peakPower >= maxVisibleDb {
-            normalizedPeak = 1.0
-        } else {
-            normalizedPeak = (peakPower - minVisibleDb) / (maxVisibleDb - minVisibleDb)
-        }
-        
-        let newAudioMeter = AudioMeter(averagePower: Double(normalizedAverage), peakPower: Double(normalizedPeak))
+
+        let newAudioMeter = AudioMeter(channels: channelMeters)
 
         if !hasDetectedAudioInCurrentSession && newAudioMeter.averagePower > 0.01 {
             hasDetectedAudioInCurrentSession = true
         }
-        
+
         audioMeter = newAudioMeter
     }
     
@@ -240,4 +275,33 @@ class Recorder: NSObject, ObservableObject, AVAudioRecorderDelegate {
 struct AudioMeter: Equatable {
     let averagePower: Double
     let peakPower: Double
+    let channels: [ChannelMeter]
+
+    struct ChannelMeter: Equatable {
+        let averagePower: Double
+        let peakPower: Double
+    }
+
+    // Convenience initializer for backward compatibility (mono)
+    init(averagePower: Double, peakPower: Double) {
+        self.averagePower = averagePower
+        self.peakPower = peakPower
+        self.channels = [ChannelMeter(averagePower: averagePower, peakPower: peakPower)]
+    }
+
+    // Multi-channel initializer
+    init(channels: [ChannelMeter]) {
+        self.channels = channels
+        // Use first channel for backward compatibility, or average if multiple
+        if channels.count == 1 {
+            self.averagePower = channels[0].averagePower
+            self.peakPower = channels[0].peakPower
+        } else if channels.count > 1 {
+            self.averagePower = channels.map { $0.averagePower }.reduce(0, +) / Double(channels.count)
+            self.peakPower = channels.map { $0.peakPower }.max() ?? 0
+        } else {
+            self.averagePower = 0
+            self.peakPower = 0
+        }
+    }
 }

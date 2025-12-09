@@ -15,16 +15,32 @@ enum AudioInputMode: String, CaseIterable {
     case prioritized = "Prioritized"
 }
 
+enum AudioChannelMode: String, CaseIterable, Codable {
+    case mono = "Mono (1 channel)"
+    case stereo = "Stereo (2 channels)"
+    case deviceMaximum = "Device Maximum"
+    case custom = "Custom"
+
+    var channelCount: Int? {
+        switch self {
+        case .mono: return 1
+        case .stereo: return 2
+        case .deviceMaximum, .custom: return nil  // Determined dynamically
+        }
+    }
+}
+
 class AudioDeviceManager: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioDeviceManager")
     @Published var availableDevices: [(id: AudioDeviceID, uid: String, name: String)] = []
     @Published var selectedDeviceID: AudioDeviceID?
     @Published var inputMode: AudioInputMode = .systemDefault
     @Published var prioritizedDevices: [PrioritizedDevice] = []
+    @Published var currentDeviceMaxChannels: UInt32 = 1
     var fallbackDeviceID: AudioDeviceID?
-    
+
     var isRecordingActive: Bool = false
-    
+
     static let shared = AudioDeviceManager()
 
     init() {
@@ -67,6 +83,7 @@ class AudioDeviceManager: ObservableObject {
         if let savedUID = UserDefaults.standard.selectedAudioDeviceUID {
             if let device = availableDevices.first(where: { $0.uid == savedUID }) {
                 selectedDeviceID = device.id
+                updateCurrentDeviceChannels()
                 logger.info("Loaded saved device UID: \(savedUID), mapped to ID: \(device.id)")
                 if let name = getDeviceName(deviceID: device.id) {
                     logger.info("Using saved device: \(name)")
@@ -204,6 +221,66 @@ class AudioDeviceManager: ObservableObject {
         return bufferCount > 0
     }
 
+    func getMaxChannelsForDevice(deviceID: AudioDeviceID) -> UInt32 {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamConfiguration,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        var propertySize: UInt32 = 0
+        var result = AudioObjectGetPropertyDataSize(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &propertySize
+        )
+
+        guard result == noErr else {
+            logger.error("Error getting property size for device \(deviceID): \(result)")
+            return 1
+        }
+
+        let bufferList = UnsafeMutablePointer<AudioBufferList>.allocate(capacity: Int(propertySize))
+        defer { bufferList.deallocate() }
+
+        result = AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &propertySize,
+            bufferList
+        )
+
+        guard result == noErr else {
+            logger.error("Error getting stream configuration for device \(deviceID): \(result)")
+            return 1
+        }
+
+        var totalChannels: UInt32 = 0
+        let bufferCount = Int(bufferList.pointee.mNumberBuffers)
+
+        for i in 0..<bufferCount {
+            let audioBuffer = withUnsafePointer(to: &bufferList.pointee.mBuffers) {
+                UnsafeBufferPointer(start: $0, count: bufferCount)[i]
+            }
+            totalChannels += audioBuffer.mNumberChannels
+        }
+
+        logger.info("Device \(deviceID) has \(totalChannels) input channels")
+        return max(totalChannels, 1)  // At least 1 channel
+    }
+
+    func updateCurrentDeviceChannels() {
+        guard let deviceID = selectedDeviceID else {
+            currentDeviceMaxChannels = 1
+            return
+        }
+        currentDeviceMaxChannels = getMaxChannelsForDevice(deviceID: deviceID)
+    }
+
     func selectDevice(id: AudioDeviceID) {
         logger.info("Selecting device with ID: \(id)")
         if let name = getDeviceName(deviceID: id) {
@@ -215,6 +292,7 @@ class AudioDeviceManager: ObservableObject {
             DispatchQueue.main.async {
                 self.selectedDeviceID = id
                 UserDefaults.standard.selectedAudioDeviceUID = uid
+                self.updateCurrentDeviceChannels()
                 self.logger.info("Device selection saved with UID: \(uid)")
                 self.notifyDeviceChange()
             }
@@ -232,6 +310,7 @@ class AudioDeviceManager: ObservableObject {
                 self.selectedDeviceID = id
                 UserDefaults.standard.audioInputModeRawValue = AudioInputMode.custom.rawValue
                 UserDefaults.standard.selectedAudioDeviceUID = uid
+                self.updateCurrentDeviceChannels()
                 self.notifyDeviceChange()
             }
         } else {

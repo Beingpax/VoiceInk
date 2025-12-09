@@ -10,6 +10,11 @@ extension UserDefaults {
         static let prioritizedDevices = "prioritizedDevices"
         static let affiliatePromotionDismissed = "VoiceInkAffiliatePromotionDismissed"
 
+        // Multi-channel recording settings
+        static let audioChannelMode = "audioChannelMode"
+        static let audioCustomChannelCount = "audioCustomChannelCount"
+        static let autoDownmixForTranscription = "autoDownmixForTranscription"
+
         // Obfuscated keys for license-related data
         enum License {
             static let trialStartDate = "VoiceInkTrialStartDate"
@@ -78,5 +83,30 @@ extension UserDefaults {
     var affiliatePromotionDismissed: Bool {
         get { bool(forKey: Keys.affiliatePromotionDismissed) }
         set { setValue(newValue, forKey: Keys.affiliatePromotionDismissed) }
+    }
+
+    // MARK: - Multi-Channel Recording Settings
+    var audioChannelMode: String? {
+        get { string(forKey: Keys.audioChannelMode) }
+        set { setValue(newValue, forKey: Keys.audioChannelMode) }
+    }
+
+    var audioCustomChannelCount: Int {
+        get {
+            let count = integer(forKey: Keys.audioCustomChannelCount)
+            return count == 0 ? 2 : count  // Default to 2 if not set
+        }
+        set { setValue(newValue, forKey: Keys.audioCustomChannelCount) }
+    }
+
+    var autoDownmixForTranscription: Bool {
+        get {
+            // Default to true if not explicitly set
+            if object(forKey: Keys.autoDownmixForTranscription) == nil {
+                return true
+            }
+            return bool(forKey: Keys.autoDownmixForTranscription)
+        }
+        set { setValue(newValue, forKey: Keys.autoDownmixForTranscription) }
     }
 } 
