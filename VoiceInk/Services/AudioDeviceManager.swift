@@ -201,8 +201,13 @@ class AudioDeviceManager: ObservableObject {
             return false
         }
 
-        let bufferCount = Int(bufferList.pointee.mNumberBuffers)
-        return bufferCount > 0
+        var totalChannels: UInt32 = 0
+        let bufferListPointer = UnsafeMutableAudioBufferListPointer(bufferList)
+        for buffer in bufferListPointer {
+            totalChannels += buffer.mNumberChannels
+        }
+
+        return totalChannels > 0
     }
 
     func selectDevice(id: AudioDeviceID) {
