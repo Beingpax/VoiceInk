@@ -87,14 +87,6 @@ class Recorder: NSObject, ObservableObject, AudioEngineRecorderDelegate {
 
         hasDetectedAudioInCurrentSession = false
 
-        if currentDeviceID != 0 {
-            do {
-                try AudioDeviceConfiguration.setEngineInputDevice(currentDeviceID, for: audioEngine)
-            } catch {
-                logger.warning("⚠️ Failed to set audio engine device \(currentDeviceID): \(error.localizedDescription)")
-            }
-        }
-
         guard currentDeviceID != 0 else {
             logger.error("Cannot start recording: no audio input device available")
             deviceManager.isRecordingActive = false
