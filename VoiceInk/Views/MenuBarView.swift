@@ -15,6 +15,12 @@ struct MenuBarView: View {
     
     var body: some View {
         VStack {
+            Button("Toggle Recorder") {
+                whisperState.handleToggleMiniRecorder()
+            }
+
+            Divider()
+
             Menu {
                 ForEach(whisperState.usableModels, id: \.id) { model in
                     Button {
@@ -182,7 +188,7 @@ struct MenuBarView: View {
             .id("additional-menu-\(menuRefreshTrigger)")
             
             Divider()
-            
+
             Button("Retry Last Transcription") {
                 LastTranscriptionService.retryLastTranscription(from: whisperState.modelContext, whisperState: whisperState)
             }
