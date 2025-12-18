@@ -20,6 +20,9 @@ class AudioTranscriptionService: ObservableObject {
     private lazy var cloudTranscriptionService = CloudTranscriptionService()
     private lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private lazy var parakeetTranscriptionService = ParakeetTranscriptionService()
+    private lazy var senseVoiceTranscriptionService: SenseVoiceTranscriptionService = {
+        SenseVoiceTranscriptionService(modelsDirectory: whisperState.senseVoiceModelsDirectory)
+    }()
     
     enum TranscriptionError: Error {
         case noAudioFile
@@ -54,6 +57,8 @@ class AudioTranscriptionService: ObservableObject {
                 text = try await localTranscriptionService.transcribe(audioURL: url, model: model)
             case .parakeet:
                 text = try await parakeetTranscriptionService.transcribe(audioURL: url, model: model)
+            case .senseVoice:
+                text = try await senseVoiceTranscriptionService.transcribe(audioURL: url, model: model)
             case .nativeApple:
                 text = try await nativeAppleTranscriptionService.transcribe(audioURL: url, model: model)
             default: // Cloud models

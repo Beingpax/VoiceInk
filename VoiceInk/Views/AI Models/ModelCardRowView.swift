@@ -48,6 +48,20 @@ struct ModelCardRowView: View {
                         whisperState: whisperState
                     )
                 }
+            case .senseVoice:
+                if let senseVoiceModel = model as? SenseVoiceModel {
+                    SenseVoiceModelCardView(
+                        model: senseVoiceModel,
+                        whisperState: whisperState,
+                        isCurrent: isCurrent,
+                        isDownloaded: isDownloaded,
+                        downloadProgress: whisperState.senseVoiceDownloadProgress[senseVoiceModel.name] ?? 0,
+                        downloadAction: downloadAction,
+                        deleteAction: deleteAction,
+                        setDefaultAction: setDefaultAction,
+                        showInFinderAction: { whisperState.showSenseVoiceModelInFinder(senseVoiceModel) }
+                    )
+                }
             case .nativeApple:
                 if let nativeAppleModel = model as? NativeAppleModel {
                     NativeAppleModelCardView(

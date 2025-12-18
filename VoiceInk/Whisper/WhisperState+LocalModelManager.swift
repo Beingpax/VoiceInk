@@ -64,6 +64,14 @@ extension WhisperState {
         }
     }
     
+    func createSenseVoiceDirectoryIfNeeded() {
+        do {
+            try FileManager.default.createDirectory(at: senseVoiceModelsDirectory, withIntermediateDirectories: true, attributes: nil)
+        } catch {
+            logError("Error creating SenseVoice directory", error)
+        }
+    }
+    
     func loadAvailableModels() {
         do {
             let fileURLs = try FileManager.default.contentsOfDirectory(at: modelsDirectory, includingPropertiesForKeys: nil)
