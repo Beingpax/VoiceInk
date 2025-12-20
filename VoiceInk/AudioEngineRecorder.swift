@@ -42,14 +42,39 @@ class AudioEngineRecorder: ObservableObject {
         )
     }
 
+    private func startEngineWithRetry(_ engine: AVAudioEngine, maxAttempts: Int = 3) throws {
+        var lastError: Error?
+        let baseDelay: TimeInterval = 0.1 // 100ms
+
+        for attempt in 0..<maxAttempts {
+            do {
+                try engine.start()
+                if attempt > 0 {
+                    logger.notice("🎙️ Audio engine started successfully on attempt \(attempt + 1)")
+                }
+                return
+            } catch {
+                lastError = error
+                logger.warning("🎙️ Failed to start audio engine (attempt \(attempt + 1)/\(maxAttempts)): \(error.localizedDescription)")
+
+                if attempt < maxAttempts - 1 {
+                    let delay = baseDelay * Double(attempt + 1) // Linear: 100ms, 200ms, 300ms...
+                    Thread.sleep(forTimeInterval: delay)
+                }
+            }
+        }
+
+        throw lastError ?? AudioEngineRecorderError.failedToStartEngine(NSError(domain: "AudioEngineRecorder", code: -1))
+    }
+
     @objc private func handleConfigurationChange(notification: Notification) {
         Task { @MainActor in
             guard isRecording else { return }
-            logger.info("⚠️ AVAudioEngine configuration change detected (e.g. sample rate change). Restarting engine...")
+            logger.notice("🎙️ AVAudioEngine configuration change detected (e.g. sample rate change). Restarting engine...")
             do {
                 try restartRecordingPreservingFile()
             } catch {
-                logger.error("Failed to recover from configuration change: \(error.localizedDescription)")
+                logger.error("🎙️ Failed to recover from configuration change: \(error.localizedDescription)")
                 stopRecording()
             }
         }
@@ -61,13 +86,11 @@ class AudioEngineRecorder: ObservableObject {
         let engine = AVAudioEngine()
         audioEngine = engine
 
-        let input = engine.inputNode
-        inputNode = input
-
-        let inputFormat = input.outputFormat(forBus: tapBusNumber)
+        // Get input format before prepare(), but don't store the node reference yet
+        let inputFormat = engine.inputNode.outputFormat(forBus: tapBusNumber)
 
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
-            logger.error("Invalid input format: sample rate or channel count is zero")
+            logger.error("🎙️ Invalid input format: sample rate or channel count is zero")
             throw AudioEngineRecorderError.invalidInputFormat
         }
 
@@ -77,7 +100,7 @@ class AudioEngineRecorder: ObservableObject {
             channels: 1,
             interleaved: false
         ) else {
-            logger.error("Failed to create desired recording format")
+            logger.error("🎙️ Failed to create desired recording format")
             throw AudioEngineRecorderError.invalidRecordingFormat
         }
 
@@ -96,12 +119,12 @@ class AudioEngineRecorder: ObservableObject {
                 interleaved: desiredFormat.isInterleaved
             )
         } catch {
-            logger.error("Failed to create audio file: \(error.localizedDescription)")
+            logger.error("🎙️ Failed to create audio file: \(error.localizedDescription)")
             throw AudioEngineRecorderError.failedToCreateFile(error)
         }
 
         guard let audioConverter = AVAudioConverter(from: inputFormat, to: desiredFormat) else {
-            logger.error("Failed to create audio format converter")
+            logger.error("🎙️ Failed to create audio format converter")
             throw AudioEngineRecorderError.failedToCreateConverter
         }
 
@@ -111,6 +134,13 @@ class AudioEngineRecorder: ObservableObject {
         converter = audioConverter
         fileWriteLock.unlock()
 
+        // Prepare the engine before accessing nodes
+        engine.prepare()
+
+        // Re-access inputNode after prepare() as recommended by Apple
+        let input = engine.inputNode
+        inputNode = input
+
         input.installTap(onBus: tapBusNumber, bufferSize: tapBufferSize, format: inputFormat) { [weak self] (buffer, time) in
             guard let self = self else { return }
 
@@ -119,13 +149,11 @@ class AudioEngineRecorder: ObservableObject {
             }
         }
 
-        engine.prepare()
-
         do {
-            try engine.start()
+            try startEngineWithRetry(engine)
             isRecording = true
         } catch {
-            logger.error("Failed to start audio engine: \(error.localizedDescription)")
+            logger.error("🎙️ Failed to start audio engine after retries: \(error.localizedDescription)")
             input.removeTap(onBus: tapBusNumber)
             throw AudioEngineRecorderError.failedToStartEngine(error)
         }
@@ -143,11 +171,9 @@ class AudioEngineRecorder: ObservableObject {
         let engine = AVAudioEngine()
         audioEngine = engine
 
-        let input = engine.inputNode
-        inputNode = input
-
-        let inputFormat = input.outputFormat(forBus: tapBusNumber)
-        logger.info("Restarting with new input format - Sample Rate: \(inputFormat.sampleRate)")
+        // Get input format before prepare(), but don't store the node reference yet
+        let inputFormat = engine.inputNode.outputFormat(forBus: tapBusNumber)
+        logger.notice("🎙️ Restarting with new input format - Sample Rate: \(inputFormat.sampleRate)")
 
         guard inputFormat.sampleRate > 0 else {
             throw AudioEngineRecorderError.invalidInputFormat
@@ -165,6 +191,13 @@ class AudioEngineRecorder: ObservableObject {
         converter = newConverter
         fileWriteLock.unlock()
 
+        // Prepare the engine before accessing nodes
+        engine.prepare()
+
+        // Re-access inputNode after prepare() as recommended by Apple
+        let input = engine.inputNode
+        inputNode = input
+
         input.installTap(onBus: tapBusNumber, bufferSize: tapBufferSize, format: inputFormat) { [weak self] (buffer, time) in
             guard let self = self else { return }
             self.audioProcessingQueue.async {
@@ -172,9 +205,8 @@ class AudioEngineRecorder: ObservableObject {
             }
         }
 
-        engine.prepare()
-        try engine.start()
-        logger.info("✅ Audio engine successfully restarted after configuration change")
+        try startEngineWithRetry(engine)
+        logger.notice("🎙️ Audio engine successfully restarted after configuration change")
     }
 
     func stopRecording() {
@@ -227,7 +259,7 @@ class AudioEngineRecorder: ObservableObject {
         let outputCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio)
 
         guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: outputCapacity) else {
-            logger.error("Failed to create converted buffer")
+            logger.error("🎙️ Failed to create converted buffer")
             Task { @MainActor in
                 self.onRecordingError?(AudioEngineRecorderError.bufferConversionFailed)
             }
@@ -249,7 +281,7 @@ class AudioEngineRecorder: ObservableObject {
         }
 
         if let error = error {
-            logger.error("Audio conversion error: \(error.localizedDescription)")
+            logger.error("🎙️ Audio conversion error: \(error.localizedDescription)")
             Task { @MainActor in
                 self.onRecordingError?(AudioEngineRecorderError.audioConversionError(error))
             }
@@ -259,7 +291,7 @@ class AudioEngineRecorder: ObservableObject {
         do {
             try audioFile.write(from: convertedBuffer)
         } catch {
-            logger.error("Failed to write buffer to file: \(error.localizedDescription)")
+            logger.error("🎙️ Failed to write buffer to file: \(error.localizedDescription)")
             Task { @MainActor in
                 self.onRecordingError?(AudioEngineRecorderError.fileWriteFailed(error))
             }

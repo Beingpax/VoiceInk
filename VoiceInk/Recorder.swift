@@ -46,23 +46,19 @@ class Recorder: NSObject, ObservableObject {
                 do {
                     try await startRecording(toOutputFile: url)
                 } catch {
-                    logger.error("❌ Failed to restart recording after device change: \(error.localizedDescription)")
+                    logger.error("🎙️ Failed to restart recording after device change: \(error.localizedDescription)")
                 }
             }
         }
         isReconfiguring = false
     }
     
-    private func configureAudioSession(with deviceID: AudioDeviceID) async throws {
-        try AudioDeviceConfiguration.setDefaultInputDevice(deviceID)
-    }
-    
     func startRecording(toOutputFile url: URL) async throws {
         deviceManager.isRecordingActive = true
-        
+
         let currentDeviceID = deviceManager.getCurrentDevice()
         let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
-        
+
         if String(currentDeviceID) != lastDeviceID {
             if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
                 await MainActor.run {
@@ -74,18 +70,23 @@ class Recorder: NSObject, ObservableObject {
             }
         }
         UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
-        
+
         hasDetectedAudioInCurrentSession = false
 
-        let deviceID = deviceManager.getCurrentDevice()
-        if deviceID != 0 {
-            do {
-                try await configureAudioSession(with: deviceID)
-            } catch {
-                logger.warning("⚠️ Failed to configure audio session for device \(deviceID), attempting to continue: \(error.localizedDescription)")
-            }
+        guard currentDeviceID != 0 else {
+            logger.error("🎙️ No input device available for recording")
+            throw RecorderError.couldNotStartRecording
         }
-        
+
+        // Enforce user's selected device as system default
+        do {
+            try AudioDeviceConfiguration.setDefaultInputDevice(currentDeviceID)
+            logger.notice("🎙️ Enforced user's selected device (ID: \(currentDeviceID)) as system default")
+        } catch {
+            logger.error("🎙️ Failed to set input device: \(error.localizedDescription)")
+            throw RecorderError.couldNotStartRecording
+        }
+
         do {
             let engineRecorder = AudioEngineRecorder()
             recorder = engineRecorder
@@ -99,7 +100,7 @@ class Recorder: NSObject, ObservableObject {
 
             try engineRecorder.startRecording(toOutputFile: url)
 
-            logger.info("✅ AudioEngineRecorder started successfully")
+            logger.notice("🎙️ AudioEngineRecorder started successfully")
 
             Task { [weak self] in
                 guard let self = self else { return }
@@ -139,7 +140,7 @@ class Recorder: NSObject, ObservableObject {
             }
 
         } catch {
-            logger.error("Failed to create audio recorder: \(error.localizedDescription)")
+            logger.error("🎙️ Failed to create audio recorder: \(error.localizedDescription)")
             stopRecording()
             throw RecorderError.couldNotStartRecording
         }
@@ -161,7 +162,7 @@ class Recorder: NSObject, ObservableObject {
     }
 
     private func handleRecordingError(_ error: Error) async {
-        logger.error("❌ Recording error occurred: \(error.localizedDescription)")
+        logger.error("🎙️ Recording error occurred: \(error.localizedDescription)")
 
         // Stop the recording
         stopRecording()

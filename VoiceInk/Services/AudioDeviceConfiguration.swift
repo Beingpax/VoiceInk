@@ -26,7 +26,7 @@ class AudioDeviceConfiguration {
             &defaultDeviceID
         )
         if status != noErr {
-            logger.error("Failed to get current default input device: \(status)")
+            logger.error("🎙️ Failed to get current default input device: \(status)")
             return nil
         }
         return defaultDeviceID
@@ -52,9 +52,9 @@ class AudioDeviceConfiguration {
             propertySize,
             &deviceIDCopy
         )
-        
+
         if setDeviceResult != noErr {
-            logger.error("Failed to set input device: \(setDeviceResult)")
+            logger.error("🎙️ Failed to set input device: \(setDeviceResult)")
             throw AudioConfigurationError.failedToSetInputDevice(status: setDeviceResult)
         }
     }
