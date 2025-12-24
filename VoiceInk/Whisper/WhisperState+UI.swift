@@ -4,36 +4,11 @@ import os
 
 // MARK: - UI Management Extension
 extension WhisperState {
-    
-    // MARK: - Recorder Panel Management
-    
-    func showRecorderPanel() {
-        logger.notice("📱 Showing \(self.recorderType) recorder")
-        if recorderType == "notch" {
-            if notchWindowManager == nil {
-                notchWindowManager = NotchWindowManager(whisperState: self, recorder: recorder)
-            }
-            notchWindowManager?.show()
-        } else {
-            if miniWindowManager == nil {
-                miniWindowManager = MiniWindowManager(whisperState: self, recorder: recorder)
-            }
-            miniWindowManager?.show()
-        }
-    }
-    
-    func hideRecorderPanel() {
-        if recorderType == "notch" {
-            notchWindowManager?.hide()
-        } else {
-            miniWindowManager?.hide()
-        }
-    }
-    
-    // MARK: - Mini Recorder Management
-    
-    func toggleMiniRecorder() async {
-        if isMiniRecorderVisible {
+
+    // MARK: - Recorder Management
+
+    func toggleRecorder() async {
+        if isRecorderVisible {
             if recordingState == .recording {
                 await toggleRecord()
             } else {
@@ -43,14 +18,14 @@ extension WhisperState {
             SoundManager.shared.playStartSound()
 
             await MainActor.run {
-                isMiniRecorderVisible = true // This will call showRecorderPanel() via didSet
+                isRecorderVisible = true
             }
 
             await toggleRecord()
         }
     }
-    
-    func dismissMiniRecorder() async {
+
+    func dismissRecorder() async {
         if recordingState == .busy { return }
 
         let wasRecording = recordingState == .recording
@@ -62,9 +37,11 @@ extension WhisperState {
         if wasRecording {
             await recorder.stopRecording()
         }
-        
-        hideRecorderPanel()
-        
+
+        await MainActor.run {
+            recorderManager?.hideRecorder()
+        }
+
         // Clear captured context when the recorder is dismissed
         if let enhancementService = enhancementService {
             await MainActor.run {
@@ -73,9 +50,9 @@ extension WhisperState {
         }
         
         await MainActor.run {
-            isMiniRecorderVisible = false
+            isRecorderVisible = false
         }
-        
+
         await cleanupModelResources()
         
         if UserDefaults.standard.bool(forKey: PowerModeDefaults.autoRestoreKey) {
@@ -93,40 +70,40 @@ extension WhisperState {
     func resetOnLaunch() async {
         logger.notice("🔄 Resetting recording state on launch")
         await recorder.stopRecording()
-        hideRecorderPanel()
         await MainActor.run {
-            isMiniRecorderVisible = false
+            recorderManager?.hideRecorder()
+            isRecorderVisible = false
             shouldCancelRecording = false
             miniRecorderError = nil
             recordingState = .idle
         }
         await cleanupModelResources()
     }
-    
+
     func cancelRecording() async {
         SoundManager.shared.playEscSound()
         shouldCancelRecording = true
-        await dismissMiniRecorder()
+        await dismissRecorder()
     }
     
     // MARK: - Notification Handling
     
     func setupNotifications() {
-        NotificationCenter.default.addObserver(self, selector: #selector(handleToggleMiniRecorder), name: .toggleMiniRecorder, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(handleDismissMiniRecorder), name: .dismissMiniRecorder, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleToggleRecorder), name: .toggleRecorder, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDismissRecorder), name: .dismissRecorder, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handleLicenseStatusChanged), name: .licenseStatusChanged, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(handlePromptChange), name: .promptDidChange, object: nil)
     }
-    
-    @objc public func handleToggleMiniRecorder() {
+
+    @objc public func handleToggleRecorder() {
         Task {
-            await toggleMiniRecorder()
+            await toggleRecorder()
         }
     }
-    
-    @objc public func handleDismissMiniRecorder() {
+
+    @objc public func handleDismissRecorder() {
         Task {
-            await dismissMiniRecorder()
+            await dismissRecorder()
         }
     }
     

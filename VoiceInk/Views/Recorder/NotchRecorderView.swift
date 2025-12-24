@@ -3,7 +3,7 @@ import SwiftUI
 struct NotchRecorderView: View {
     @ObservedObject var whisperState: WhisperState
     @ObservedObject var recorder: Recorder
-    @EnvironmentObject var windowManager: NotchWindowManager
+    @EnvironmentObject var windowManager: RecorderWindowManager
     @State private var isHovering = false
     @State private var activePopover: ActivePopoverState = .none
     @ObservedObject private var powerModeManager = PowerModeManager.shared

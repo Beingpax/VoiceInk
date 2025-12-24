@@ -5,7 +5,7 @@ struct AppShortcuts : AppShortcutsProvider {
     @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
             AppShortcut(
-                intent: ToggleMiniRecorderIntent(),
+                intent: ToggleRecorderIntent(),
                 phrases: [
                     "Toggle \(.applicationName) recorder",
                     "Start \(.applicationName) recording",
@@ -17,9 +17,9 @@ struct AppShortcuts : AppShortcutsProvider {
                 shortTitle: "Toggle Recorder",
                 systemImageName: "mic.circle"
             )
-            
+
             AppShortcut(
-                intent: DismissMiniRecorderIntent(),
+                intent: DismissRecorderIntent(),
                 phrases: [
                     "Dismiss \(.applicationName) recorder",
                     "Cancel \(.applicationName) recording",

@@ -199,7 +199,7 @@ class HotkeyManager: ObservableObject {
                     
                     Task { @MainActor in
                         guard self.canProcessHotkeyAction else { return }
-                        await self.whisperState.handleToggleMiniRecorder()
+                        await self.whisperState.handleToggleRecorder()
                     }
                 } catch {
                     // Cancelled
@@ -324,13 +324,13 @@ class HotkeyManager: ObservableObject {
             if isHandsFreeMode {
                 isHandsFreeMode = false
                 guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                await whisperState.handleToggleRecorder()
                 return
             }
 
-            if !whisperState.isMiniRecorderVisible {
+            if !whisperState.isRecorderVisible {
                 guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                await whisperState.handleToggleRecorder()
             }
         } else {
             let now = Date()
@@ -342,7 +342,7 @@ class HotkeyManager: ObservableObject {
                     isHandsFreeMode = true
                 } else {
                     guard canProcessHotkeyAction else { return }
-                    await whisperState.handleToggleMiniRecorder()
+                    await whisperState.handleToggleRecorder()
                 }
             }
 
@@ -364,13 +364,13 @@ class HotkeyManager: ObservableObject {
         if isShortcutHandsFreeMode {
             isShortcutHandsFreeMode = false
             guard canProcessHotkeyAction else { return }
-            await whisperState.handleToggleMiniRecorder()
+            await whisperState.handleToggleRecorder()
             return
         }
         
-        if !whisperState.isMiniRecorderVisible {
+        if !whisperState.isRecorderVisible {
             guard canProcessHotkeyAction else { return }
-            await whisperState.handleToggleMiniRecorder()
+            await whisperState.handleToggleRecorder()
         }
     }
     
@@ -387,7 +387,7 @@ class HotkeyManager: ObservableObject {
                 isShortcutHandsFreeMode = true
             } else {
                 guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
+                await whisperState.handleToggleRecorder()
             }
         }
         

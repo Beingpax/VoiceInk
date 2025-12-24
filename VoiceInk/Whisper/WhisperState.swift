@@ -31,30 +31,13 @@ class WhisperState: NSObject, ObservableObject {
 
     @Published var recorderType: String = UserDefaults.standard.string(forKey: "RecorderType") ?? "mini" {
         didSet {
-            if isMiniRecorderVisible {
-                if oldValue == "notch" {
-                    notchWindowManager?.hide()
-                    notchWindowManager = nil
-                } else {
-                    miniWindowManager?.hide()
-                    miniWindowManager = nil
-                }
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 50_000_000)
-                    showRecorderPanel()
-                }
-            }
-            UserDefaults.standard.set(recorderType, forKey: "RecorderType")
+            recorderManager?.recorderStyle = RecorderStyle(rawValue: recorderType) ?? .mini
         }
     }
-    
-    @Published var isMiniRecorderVisible = false {
+
+    @Published var isRecorderVisible = false {
         didSet {
-            if isMiniRecorderVisible {
-                showRecorderPanel()
-            } else {
-                hideRecorderPanel()
-            }
+            recorderManager?.isRecorderVisible = isRecorderVisible
         }
     }
     
@@ -94,8 +77,7 @@ class WhisperState: NSObject, ObservableObject {
     let enhancementService: AIEnhancementService?
     var licenseViewModel: LicenseViewModel
     let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "WhisperState")
-    var notchWindowManager: NotchWindowManager?
-    var miniWindowManager: MiniWindowManager?
+    var recorderManager: RecorderManager?
     
     // For model progress tracking
     @Published var downloadProgress: [String: Double] = [:]
@@ -121,7 +103,10 @@ class WhisperState: NSObject, ObservableObject {
 
         // Initialize the transcription service registry
         self.serviceRegistry = TranscriptionServiceRegistry(whisperState: self, modelsDirectory: self.modelsDirectory)
-        
+
+        // Initialize the recorder manager
+        self.recorderManager = RecorderManager(whisperState: self, recorder: recorder)
+
         setupNotifications()
         createModelsDirectoryIfNeeded()
         createRecordingsDirectoryIfNeeded()
@@ -226,7 +211,7 @@ class WhisperState: NSObject, ObservableObject {
                         } catch {
                             self.logger.error("❌ Failed to start recording: \(error.localizedDescription)")
                             await NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
-                            await self.dismissMiniRecorder()
+                            await self.dismissRecorder()
                             // Do not remove the file on a failed start, to preserve all recordings.
                             self.recordedFile = nil
                         }
@@ -408,7 +393,7 @@ class WhisperState: NSObject, ObservableObject {
             await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
         }
 
-        await self.dismissMiniRecorder()
+        await self.dismissRecorder()
 
         shouldCancelRecording = false
     }
@@ -426,6 +411,6 @@ class WhisperState: NSObject, ObservableObject {
     }
 
     private func cleanupAndDismiss() async {
-        await dismissMiniRecorder()
+        await dismissRecorder()
     }
 }

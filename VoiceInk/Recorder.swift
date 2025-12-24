@@ -41,11 +41,11 @@ class Recorder: NSObject, ObservableObject {
         isReconfiguring = true
         
         try? await Task.sleep(nanoseconds: 200_000_000)
-        
+
         await MainActor.run {
-            NotificationCenter.default.post(name: .toggleMiniRecorder, object: nil)
+            NotificationCenter.default.post(name: .toggleRecorder, object: nil)
         }
-        
+
         isReconfiguring = false
     }
     

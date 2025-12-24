@@ -3,7 +3,7 @@ import SwiftUI
 struct MiniRecorderView: View {
     @ObservedObject var whisperState: WhisperState
     @ObservedObject var recorder: Recorder
-    @EnvironmentObject var windowManager: MiniWindowManager
+    @EnvironmentObject var windowManager: RecorderWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
     
     @State private var activePopover: ActivePopoverState = .none

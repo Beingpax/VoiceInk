@@ -16,7 +16,7 @@ struct MenuBarView: View {
     var body: some View {
         VStack {
             Button("Toggle Recorder") {
-                whisperState.handleToggleMiniRecorder()
+                whisperState.handleToggleRecorder()
             }
 
             Divider()
