@@ -61,6 +61,10 @@ class HotkeyManager: ObservableObject {
     private var keyPressStartTime: Date?
     private let briefPressThreshold = 1.7
     private var isHandsFreeMode = false
+    private var isPushToTalkMode = false
+    private var lastTapTime: Date?
+    private let doubleTapThreshold = 0.5 // Time window for double tap
+
     
     // Debounce for Fn key
     private var fnDebounceTask: Task<Void, Never>?
@@ -266,6 +270,8 @@ class HotkeyManager: ObservableObject {
         shortcutCurrentKeyState = false
         shortcutKeyPressStartTime = nil
         isShortcutHandsFreeMode = false
+        isPushToTalkMode = false
+        lastTapTime = nil
     }
     
     private func handleModifierKeyEvent(_ event: NSEvent) async {
@@ -317,57 +323,82 @@ class HotkeyManager: ObservableObject {
     private func processKeyPress(isKeyPressed: Bool) async {
         guard isKeyPressed != currentKeyState else { return }
         currentKeyState = isKeyPressed
-
+        let now = Date()
+        
+        // Hotkey logic is following:
+        // press-release-press within doubleTapThreshold -> push-to-talk mode
+        // While in push-to-talk mode, releasing the key:
+        //   - if held longer than doubleTapThreshold -> stop recording
+        //   - if released quickly -> switch to hands-free mode (keep recording)
+        // While in hands-free mode, key press stops recording immediately
         if isKeyPressed {
-            keyPressStartTime = Date()
+            // Key pressed down
+            keyPressStartTime = now
 
+            // If already in hands-free mode, any key press stops recording immediately
             if isHandsFreeMode {
                 isHandsFreeMode = false
+                lastTapTime = nil
                 guard canProcessHotkeyAction else { return }
                 await whisperState.handleToggleMiniRecorder()
                 return
             }
 
-            if !whisperState.isMiniRecorderVisible {
-                guard canProcessHotkeyAction else { return }
-                await whisperState.handleToggleMiniRecorder()
-            }
-        } else {
-            let now = Date()
-
-            if let startTime = keyPressStartTime {
-                let pressDuration = now.timeIntervalSince(startTime)
-
-                if pressDuration < briefPressThreshold {
-                    isHandsFreeMode = true
-                } else {
+            if let lastTap = lastTapTime, now.timeIntervalSince(lastTap) < doubleTapThreshold {
+                // This is a second down after a previous tap (press-release-press)
+                // Enter push-to-talk mode immediately
+                isPushToTalkMode = true
+                lastTapTime = nil
+                if !whisperState.isMiniRecorderVisible {
                     guard canProcessHotkeyAction else { return }
                     await whisperState.handleToggleMiniRecorder()
                 }
+                return
             }
 
-            keyPressStartTime = nil
+        } else {
+            // Key released
+            guard let startTime = keyPressStartTime else { return }
+            let holdDuration = now.timeIntervalSince(startTime)
+
+            lastTapTime = startTime
+
+            if isPushToTalkMode {
+                // Release while in push-to-talk mode
+                isPushToTalkMode = false
+
+                if holdDuration < doubleTapThreshold {
+                    // Quick release - switch to hands-free mode. Keep recording...
+                    isHandsFreeMode = true
+                } else {
+                    // Long hold - stop recording
+                    guard canProcessHotkeyAction else { return }
+                    await whisperState.handleToggleMiniRecorder()
+                }
+                return
+            }
         }
     }
+
     
     private func handleCustomShortcutKeyDown() async {
         if let lastTrigger = lastShortcutTriggerTime,
            Date().timeIntervalSince(lastTrigger) < shortcutCooldownInterval {
             return
         }
-        
+
         guard !shortcutCurrentKeyState else { return }
         shortcutCurrentKeyState = true
         lastShortcutTriggerTime = Date()
         shortcutKeyPressStartTime = Date()
-        
+
         if isShortcutHandsFreeMode {
             isShortcutHandsFreeMode = false
             guard canProcessHotkeyAction else { return }
             await whisperState.handleToggleMiniRecorder()
             return
         }
-        
+
         if !whisperState.isMiniRecorderVisible {
             guard canProcessHotkeyAction else { return }
             await whisperState.handleToggleMiniRecorder()
@@ -377,12 +408,12 @@ class HotkeyManager: ObservableObject {
     private func handleCustomShortcutKeyUp() async {
         guard shortcutCurrentKeyState else { return }
         shortcutCurrentKeyState = false
-        
+
         let now = Date()
-        
+
         if let startTime = shortcutKeyPressStartTime {
             let pressDuration = now.timeIntervalSince(startTime)
-            
+
             if pressDuration < briefPressThreshold {
                 isShortcutHandsFreeMode = true
             } else {
@@ -390,7 +421,7 @@ class HotkeyManager: ObservableObject {
                 await whisperState.handleToggleMiniRecorder()
             }
         }
-        
+
         shortcutKeyPressStartTime = nil
     }
     
