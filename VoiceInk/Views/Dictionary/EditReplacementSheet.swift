@@ -8,6 +8,8 @@ struct EditReplacementSheet: View {
 
     @State private var originalWord: String
     @State private var replacementWord: String
+    @State private var showAlert = false
+    @State private var alertMessage = ""
 
     // MARK: – Initialiser
     init(manager: WordReplacementManager, originalKey: String) {
@@ -24,6 +26,11 @@ struct EditReplacementSheet: View {
             formContent
         }
         .frame(width: 460, height: 560)
+        .alert("Word Replacement", isPresented: $showAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(alertMessage)
+        }
     }
 
     // MARK: – Subviews
@@ -115,15 +122,23 @@ struct EditReplacementSheet: View {
     private func saveChanges() {
         let newOriginal = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
         let newReplacement = replacementWord
-        // Ensure at least one non-empty token
         let tokens = newOriginal
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         guard !tokens.isEmpty, !newReplacement.isEmpty else { return }
 
-        manager.updateReplacement(oldOriginal: originalKey, newOriginal: newOriginal, newReplacement: newReplacement)
-        dismiss()
+        let result = manager.updateReplacement(oldOriginal: originalKey, newOriginal: newOriginal, newReplacement: newReplacement)
+        if result.success {
+            dismiss()
+        } else {
+            if let conflictingWord = result.conflictingWord {
+                alertMessage = "'\(conflictingWord)' already exists in word replacements"
+            } else {
+                alertMessage = "This word replacement already exists"
+            }
+            showAlert = true
+        }
     }
 }
 

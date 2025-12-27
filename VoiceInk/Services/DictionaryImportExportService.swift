@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 struct DictionaryExportData: Codable {
     let version: String
-    let dictionaryItems: [String]
+    let vocabularyWords: [String]
     let wordReplacements: [String: String]
     let exportDate: Date
 }
@@ -19,7 +19,7 @@ class DictionaryImportExportService {
     func exportDictionary() {
         var dictionaryWords: [String] = []
         if let data = UserDefaults.standard.data(forKey: dictionaryItemsKey),
-           let items = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
+           let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
             dictionaryWords = items.map { $0.word }
         }
 
@@ -29,7 +29,7 @@ class DictionaryImportExportService {
 
         let exportData = DictionaryExportData(
             version: version,
-            dictionaryItems: dictionaryWords,
+            vocabularyWords: dictionaryWords,
             wordReplacements: wordReplacements,
             exportDate: Date()
         )
@@ -45,7 +45,7 @@ class DictionaryImportExportService {
             savePanel.allowedContentTypes = [UTType.json]
             savePanel.nameFieldStringValue = "VoiceInk_Dictionary.json"
             savePanel.title = "Export Dictionary Data"
-            savePanel.message = "Choose a location to save your dictionary items and word replacements."
+            savePanel.message = "Choose a location to save your vocabulary and word replacements."
 
             DispatchQueue.main.async {
                 if savePanel.runModal() == .OK {
@@ -88,9 +88,9 @@ class DictionaryImportExportService {
                     decoder.dateDecodingStrategy = .iso8601
                     let importedData = try decoder.decode(DictionaryExportData.self, from: jsonData)
 
-                    var existingItems: [DictionaryItem] = []
+                    var existingItems: [VocabularyWord] = []
                     if let data = UserDefaults.standard.data(forKey: self.dictionaryItemsKey),
-                       let items = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
+                       let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
                         existingItems = items
                     }
 
@@ -98,9 +98,9 @@ class DictionaryImportExportService {
                     let originalExistingCount = existingItems.count
                     var newWordsAdded = 0
 
-                    for importedWord in importedData.dictionaryItems {
+                    for importedWord in importedData.vocabularyWords {
                         if !existingWordsLower.contains(importedWord.lowercased()) {
-                            existingItems.append(DictionaryItem(word: importedWord))
+                            existingItems.append(VocabularyWord(word: importedWord))
                             newWordsAdded += 1
                         }
                     }
@@ -147,7 +147,7 @@ class DictionaryImportExportService {
                     UserDefaults.standard.set(existingReplacements, forKey: self.wordReplacementsKey)
 
                     var message = "Dictionary data imported successfully from \(url.lastPathComponent).\n\n"
-                    message += "Dictionary Items: \(newWordsAdded) added, \(originalExistingCount) kept\n"
+                    message += "Vocabulary Words: \(newWordsAdded) added, \(originalExistingCount) kept\n"
                     message += "Word Replacements: \(addedCount) added, \(updatedCount) updated"
 
                     self.showAlert(title: "Import Successful", message: message)

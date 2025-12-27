@@ -32,7 +32,7 @@ struct VoiceInkExportedSettings: Codable {
     let version: String
     let customPrompts: [CustomPrompt]
     let powerModeConfigs: [PowerModeConfig]
-    let dictionaryItems: [DictionaryItem]?
+    let vocabularyWords: [VocabularyWord]?
     let wordReplacements: [String: String]?
     let generalSettings: GeneralSettings?
     let customEmojis: [String]?
@@ -78,9 +78,9 @@ class ImportExportService {
         // Export custom models
         let customModels = CustomModelManager.shared.customModels
 
-        var exportedDictionaryItems: [DictionaryItem]? = nil
+        var exportedDictionaryItems: [VocabularyWord]? = nil
         if let data = UserDefaults.standard.data(forKey: dictionaryItemsKey),
-           let items = try? JSONDecoder().decode([DictionaryItem].self, from: data) {
+           let items = try? JSONDecoder().decode([VocabularyWord].self, from: data) {
             exportedDictionaryItems = items
         }
 
@@ -114,7 +114,7 @@ class ImportExportService {
             version: currentSettingsVersion,
             customPrompts: exportablePrompts,
             powerModeConfigs: powerConfigs,
-            dictionaryItems: exportedDictionaryItems,
+            vocabularyWords: exportedDictionaryItems,
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
@@ -203,12 +203,12 @@ class ImportExportService {
                         }
                     }
 
-                    if let itemsToImport = importedSettings.dictionaryItems {
+                    if let itemsToImport = importedSettings.vocabularyWords {
                         if let encoded = try? JSONEncoder().encode(itemsToImport) {
                             UserDefaults.standard.set(encoded, forKey: "CustomVocabularyItems")
                         }
                     } else {
-                        print("No custom vocabulary items (for spelling) found in the imported file. Existing items remain unchanged.")
+                        print("No vocabulary words found in the imported file. Existing items remain unchanged.")
                     }
 
                     if let replacementsToImport = importedSettings.wordReplacements {

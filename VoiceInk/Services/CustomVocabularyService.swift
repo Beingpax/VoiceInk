@@ -24,7 +24,7 @@ class CustomVocabularyService {
         }
 
         do {
-            let items = try JSONDecoder().decode([DictionaryItem].self, from: data)
+            let items = try JSONDecoder().decode([VocabularyWord].self, from: data)
             let words = items.map { $0.word }
             return words.isEmpty ? nil : words
         } catch {

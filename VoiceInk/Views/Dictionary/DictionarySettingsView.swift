@@ -6,7 +6,7 @@ struct DictionarySettingsView: View {
     
     enum DictionarySection: String, CaseIterable {
         case replacements = "Word Replacements"
-        case spellings = "Correct Spellings"
+        case spellings = "Vocabulary"
         
         var description: String {
             switch self {
@@ -90,7 +90,7 @@ struct DictionarySettingsView: View {
                             .foregroundColor(.blue)
                     }
                     .buttonStyle(.plain)
-                    .help("Import dictionary items and word replacements")
+                    .help("Import vocabulary and word replacements")
 
                     Button(action: {
                         DictionaryImportExportService.shared.exportDictionary()
@@ -100,7 +100,7 @@ struct DictionarySettingsView: View {
                             .foregroundColor(.blue)
                     }
                     .buttonStyle(.plain)
-                    .help("Export dictionary items and word replacements")
+                    .help("Export vocabulary and word replacements")
                 }
             }
 
@@ -120,7 +120,7 @@ struct DictionarySettingsView: View {
         VStack(alignment: .leading, spacing: 20) {
             switch selectedSection {
             case .spellings:
-                DictionaryView(whisperPrompt: whisperPrompt)
+                VocabularyView(whisperPrompt: whisperPrompt)
                     .background(CardBackground(isSelected: false))
             case .replacements:
                 WordReplacementView()
