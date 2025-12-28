@@ -471,21 +471,24 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 165;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
-				DEVELOPMENT_TEAM = V6J6A3VWY2;
+				DEVELOPMENT_TEAM = 35TY63JS8B;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = VoiceInk/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = VoiceInk;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = NO;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "VoiceInk needs access to your microphone to record audio for transcription.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.64;
-				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pschnass.VoiceInk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG ENABLE_NATIVE_SPEECH_ANALYZER $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -505,21 +508,24 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 165;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
-				DEVELOPMENT_TEAM = V6J6A3VWY2;
+				DEVELOPMENT_TEAM = 35TY63JS8B;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = VoiceInk/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = VoiceInk;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_LSUIElement = NO;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "VoiceInk needs access to your microphone to record audio for transcription.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.64;
-				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pschnass.VoiceInk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "ENABLE_NATIVE_SPEECH_ANALYZER $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
