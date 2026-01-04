@@ -46,6 +46,7 @@ class CloudTranscriptionService: TranscriptionService {
     private lazy var deepgramService = DeepgramTranscriptionService()
     private lazy var mistralService = MistralTranscriptionService()
     private lazy var geminiService = GeminiTranscriptionService()
+    private lazy var doubaoService = DoubaoTranscriptionService()
     private lazy var openAICompatibleService = OpenAICompatibleTranscriptionService()
     private lazy var sonioxService = SonioxTranscriptionService(modelContext: modelContext)
     
@@ -63,6 +64,8 @@ class CloudTranscriptionService: TranscriptionService {
             text = try await mistralService.transcribe(audioURL: audioURL, model: model)
         case .gemini:
             text = try await geminiService.transcribe(audioURL: audioURL, model: model)
+        case .doubao:
+            text = try await doubaoService.transcribe(audioURL: audioURL, model: model)
         case .soniox:
             text = try await sonioxService.transcribe(audioURL: audioURL, model: model)
         case .custom:

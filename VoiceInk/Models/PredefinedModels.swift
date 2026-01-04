@@ -294,6 +294,18 @@ import Foundation
             accuracy: 0.95,
             isMultilingual: true,
             supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .gemini)
+        ),
+
+        // Doubao Models
+        CloudModel(
+            name: "bigmodel",
+            displayName: "Doubao ASR (豆包)",
+            description: "ByteDance's Doubao model optimized for Chinese transcription with high accuracy.",
+            provider: .doubao,
+            speed: 0.85,
+            accuracy: 0.96,
+            isMultilingual: true,
+            supportedLanguages: getLanguageDictionary(isMultilingual: true, provider: .doubao)
         )
         ,
         CloudModel(
