@@ -32,7 +32,7 @@ final class AnnouncementsService {
             self?.fetchAndMaybeShow()
         }
         // Do an initial fetch shortly after launch
-        Task { [weak self] @MainActor in
+        Task { [weak self] in
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             self?.fetchAndMaybeShow()
         }
