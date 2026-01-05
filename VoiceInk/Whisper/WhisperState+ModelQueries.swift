@@ -32,6 +32,10 @@ extension WhisperState {
             case .soniox:
                 let key = UserDefaults.standard.string(forKey: "SonioxAPIKey")
                 return key != nil && !key!.isEmpty
+            case .doubao:
+                let appId = UserDefaults.standard.string(forKey: "DoubaoAppID")
+                let accessKey = UserDefaults.standard.string(forKey: "DoubaoAccessKey")
+                return appId != nil && !appId!.isEmpty && accessKey != nil && !accessKey!.isEmpty
             case .custom:
                 // Custom models are always usable since they contain their own API keys
                 return true

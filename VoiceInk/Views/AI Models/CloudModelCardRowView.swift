@@ -11,6 +11,8 @@ struct CloudModelCardView: View {
     @StateObject private var aiService = AIService()
     @State private var isExpanded = false
     @State private var apiKey = ""
+    @State private var doubaoAppId = ""
+    @State private var doubaoAccessKey = ""
     @State private var isVerifying = false
     @State private var verificationStatus: VerificationStatus = .none
     @State private var isConfiguredState: Bool = false
@@ -21,6 +23,14 @@ struct CloudModelCardView: View {
     }
     
     private var isConfigured: Bool {
+        if model.provider == .doubao {
+            guard let appId = UserDefaults.standard.string(forKey: "DoubaoAppID"),
+                  let accessKey = UserDefaults.standard.string(forKey: "DoubaoAccessKey") else {
+                return false
+            }
+            return !appId.isEmpty && !accessKey.isEmpty
+        }
+
         guard let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") else {
             return false
         }
@@ -41,6 +51,8 @@ struct CloudModelCardView: View {
             return "Gemini"
         case .soniox:
             return "Soniox"
+        case .doubao:
+            return "Doubao"
         default:
             return model.provider.rawValue
         }
@@ -217,37 +229,68 @@ struct CloudModelCardView: View {
             Text("API Key Configuration")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
-            
-            HStack(spacing: 8) {
-                SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(isVerifying)
-                
-                Button(action: verifyAPIKey) {
-                    HStack(spacing: 4) {
-                        if isVerifying {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                                .frame(width: 12, height: 12)
-                        } else {
-                            Image(systemName: verificationStatus == .success ? "checkmark" : "checkmark.shield")
+
+            if model.provider == .doubao {
+                // Doubao requires two fields
+                VStack(alignment: .leading, spacing: 8) {
+                    SecureField("Enter App ID", text: $doubaoAppId)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isVerifying)
+
+                    SecureField("Enter Access Key", text: $doubaoAccessKey)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isVerifying)
+
+                    Button(action: saveDoubaoKeys) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.shield")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("Save")
                                 .font(.system(size: 12, weight: .medium))
                         }
-                        Text(isVerifying ? "Verifying..." : "Verify")
-                            .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(Color(.controlAccentColor))
+                        )
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
-                    )
+                    .buttonStyle(.plain)
+                    .disabled(doubaoAppId.isEmpty || doubaoAccessKey.isEmpty)
                 }
-                .buttonStyle(.plain)
-                .disabled(apiKey.isEmpty || isVerifying)
+            } else {
+                HStack(spacing: 8) {
+                    SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isVerifying)
+
+                    Button(action: verifyAPIKey) {
+                        HStack(spacing: 4) {
+                            if isVerifying {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 12, height: 12)
+                            } else {
+                                Image(systemName: verificationStatus == .success ? "checkmark" : "checkmark.shield")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            Text(isVerifying ? "Verifying..." : "Verify")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(apiKey.isEmpty || isVerifying)
+                }
             }
-            
+
             if verificationStatus == .failure {
                 if let error = verificationError {
                     Text(error)
@@ -267,7 +310,17 @@ struct CloudModelCardView: View {
     }
     
     private func loadSavedAPIKey() {
-        if let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") {
+        if model.provider == .doubao {
+            if let appId = UserDefaults.standard.string(forKey: "DoubaoAppID") {
+                doubaoAppId = appId
+            }
+            if let accessKey = UserDefaults.standard.string(forKey: "DoubaoAccessKey") {
+                doubaoAccessKey = accessKey
+            }
+            if !doubaoAppId.isEmpty && !doubaoAccessKey.isEmpty {
+                verificationStatus = .success
+            }
+        } else if let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") {
             apiKey = savedKey
             verificationStatus = .success
         }
@@ -324,10 +377,32 @@ struct CloudModelCardView: View {
             }
         }
     }
-    
+
+    private func saveDoubaoKeys() {
+        guard !doubaoAppId.isEmpty && !doubaoAccessKey.isEmpty else { return }
+
+        UserDefaults.standard.set(doubaoAppId, forKey: "DoubaoAppID")
+        UserDefaults.standard.set(doubaoAccessKey, forKey: "DoubaoAccessKey")
+
+        verificationStatus = .success
+        isConfiguredState = true
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isExpanded = false
+        }
+    }
+
     private func clearAPIKey() {
-        UserDefaults.standard.removeObject(forKey: "\(providerKey)APIKey")
-        apiKey = ""
+        if model.provider == .doubao {
+            UserDefaults.standard.removeObject(forKey: "DoubaoAppID")
+            UserDefaults.standard.removeObject(forKey: "DoubaoAccessKey")
+            doubaoAppId = ""
+            doubaoAccessKey = ""
+        } else {
+            UserDefaults.standard.removeObject(forKey: "\(providerKey)APIKey")
+            apiKey = ""
+        }
+
         verificationStatus = .none
         verificationError = nil
         isConfiguredState = false
