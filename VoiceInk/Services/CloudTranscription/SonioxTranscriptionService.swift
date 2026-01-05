@@ -24,7 +24,7 @@ class SonioxTranscriptionService {
     }
     
     private func getAPIConfig(for model: any TranscriptionModel) throws -> APIConfig {
-        guard let apiKey = UserDefaults.standard.string(forKey: "SonioxAPIKey"), !apiKey.isEmpty else {
+        guard let apiKey = KeychainManager.shared.retrieve(forKey: "sonioxAPIKey"), !apiKey.isEmpty else {
             throw CloudTranscriptionError.missingAPIKey
         }
         return APIConfig(apiKey: apiKey)

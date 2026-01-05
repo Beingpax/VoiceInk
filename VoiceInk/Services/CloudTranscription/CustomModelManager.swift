@@ -23,6 +23,9 @@ class CustomModelManager: ObservableObject {
     }
     
     func removeCustomModel(withId id: UUID) {
+        // Delete API Key from Keychain
+        try? KeychainManager.shared.delete(forKey: "CustomModel_\(id)_APIKey")
+        
         customModels.removeAll { $0.id == id }
         saveCustomModels()
         logger.info("Removed custom model with ID: \(id)")
@@ -39,25 +42,79 @@ class CustomModelManager: ObservableObject {
     // MARK: - Persistence
     
     private func loadCustomModels() {
-        guard let data = userDefaults.data(forKey: customModelsKey) else {
-            logger.info("No custom models found in UserDefaults")
-            return
+        // First, try to load from Keychain
+        if let keychainString = KeychainManager.shared.retrieve(forKey: customModelsKey),
+           let data = keychainString.data(using: .utf8) {
+            do {
+                customModels = try JSONDecoder().decode([CustomCloudModel].self, from: data)
+                logger.info("Loaded custom models from Keychain")
+                return
+            } catch {
+                logger.error("Failed to decode custom models from Keychain: \(error.localizedDescription)")
+            }
         }
-        
-        do {
-            customModels = try JSONDecoder().decode([CustomCloudModel].self, from: data)
-        } catch {
-            logger.error("Failed to decode custom models: \(error.localizedDescription)")
-            customModels = []
+
+        // Fallback: Try to migrate from UserDefaults
+        if let data = userDefaults.data(forKey: customModelsKey) {
+            do {
+                // Define legacy struct to capture the stored apiKey
+                struct LegacyCustomCloudModel: Codable {
+                    let id: UUID
+                    let name: String
+                    let displayName: String
+                    let description: String
+                    let apiEndpoint: String
+                    let modelName: String
+                    let apiKey: String // Stored property in old model
+                    let isMultilingualModel: Bool
+                    let supportedLanguages: [String: String]?
+                }
+
+                let legacyModels = try JSONDecoder().decode([LegacyCustomCloudModel].self, from: data)
+                var migratedModels: [CustomCloudModel] = []
+                
+                for legacy in legacyModels {
+                    // Save API Key to Keychain
+                    try KeychainManager.shared.save(legacy.apiKey, forKey: "CustomModel_\(legacy.id)_APIKey")
+                    
+                    // Create new model using the current struct
+                    let newModel = CustomCloudModel(
+                        id: legacy.id,
+                        name: legacy.name,
+                        displayName: legacy.displayName,
+                        description: legacy.description,
+                        apiEndpoint: legacy.apiEndpoint,
+                        modelName: legacy.modelName,
+                        isMultilingual: legacy.isMultilingualModel,
+                        supportedLanguages: legacy.supportedLanguages
+                    )
+                    migratedModels.append(newModel)
+                }
+                
+                customModels = migratedModels
+                logger.info("Migrated \(migratedModels.count) custom models from UserDefaults to Keychain")
+                
+                // Save to Keychain and remove from UserDefaults
+                saveCustomModels()
+                userDefaults.removeObject(forKey: customModelsKey)
+            } catch {
+                logger.error("Failed to decode custom models from UserDefaults: \(error.localizedDescription)")
+                customModels = []
+            }
+        } else {
+            logger.info("No custom models found")
         }
     }
-    
+
     func saveCustomModels() {
         do {
             let data = try JSONEncoder().encode(customModels)
-            userDefaults.set(data, forKey: customModelsKey)
+            if let jsonString = String(data: data, encoding: .utf8) {
+                try KeychainManager.shared.save(jsonString, forKey: customModelsKey)
+                logger.info("Saved custom models to Keychain")
+            }
         } catch {
-            logger.error("Failed to encode custom models: \(error.localizedDescription)")
+            logger.error("Failed to save custom models to Keychain: \(error.localizedDescription)")
         }
     }
     

@@ -99,18 +99,20 @@ struct CustomCloudModel: TranscriptionModel, Codable {
     let description: String
     let provider: ModelProvider = .custom
     let apiEndpoint: String
-    let apiKey: String
     let modelName: String
     let isMultilingualModel: Bool
     let supportedLanguages: [String: String]
 
-    init(id: UUID = UUID(), name: String, displayName: String, description: String, apiEndpoint: String, apiKey: String, modelName: String, isMultilingual: Bool = true, supportedLanguages: [String: String]? = nil) {
+    var apiKey: String? {
+        KeychainManager.shared.retrieve(forKey: "CustomModel_\(id)_APIKey")
+    }
+
+    init(id: UUID = UUID(), name: String, displayName: String, description: String, apiEndpoint: String, modelName: String, isMultilingual: Bool = true, supportedLanguages: [String: String]? = nil) {
         self.id = id
         self.name = name
         self.displayName = displayName
         self.description = description
         self.apiEndpoint = apiEndpoint
-        self.apiKey = apiKey
         self.modelName = modelName
         self.isMultilingualModel = isMultilingual
         self.supportedLanguages = supportedLanguages ?? PredefinedModels.getLanguageDictionary(isMultilingual: isMultilingual)

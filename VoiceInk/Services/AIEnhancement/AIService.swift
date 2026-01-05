@@ -148,6 +148,36 @@ enum AIProvider: String, CaseIterable {
             return true
         }
     }
+
+    /// Returns the iOS-format API key name for cross-platform sync compatibility
+    var apiKeyName: String {
+        switch self {
+        case .cerebras:
+            return "cerebrasAPIKey"
+        case .groq:
+            return "groqAPIKey"
+        case .gemini:
+            return "geminiAPIKey"
+        case .anthropic:
+            return "anthropicAPIKey"
+        case .openAI:
+            return "openAIAPIKey"
+        case .openRouter:
+            return "openRouterAPIKey"
+        case .mistral:
+            return "mistralAPIKey"
+        case .elevenLabs:
+            return "elevenLabsAPIKey"
+        case .deepgram:
+            return "deepgramAPIKey"
+        case .soniox:
+            return "sonioxAPIKey"
+        case .custom:
+            return "customAPIKey"
+        case .ollama:
+            return "" // Ollama doesn't use API keys
+        }
+    }
 }
 
 class AIService: ObservableObject {
@@ -167,7 +197,7 @@ class AIService: ObservableObject {
         didSet {
             userDefaults.set(selectedProvider.rawValue, forKey: "selectedAIProvider")
             if selectedProvider.requiresAPIKey {
-                if let savedKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey") {
+                if let savedKey = KeychainManager.shared.retrieve(forKey: selectedProvider.apiKeyName) {
                     self.apiKey = savedKey
                     self.isAPIKeyValid = true
                 } else {
@@ -199,7 +229,7 @@ class AIService: ObservableObject {
             if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider.requiresAPIKey {
-                return userDefaults.string(forKey: "\(provider.rawValue)APIKey") != nil
+                return KeychainManager.shared.exists(forKey: provider.apiKeyName)
             }
             return false
         }
@@ -230,16 +260,16 @@ class AIService: ObservableObject {
         } else {
             self.selectedProvider = .gemini
         }
-        
+
         if selectedProvider.requiresAPIKey {
-            if let savedKey = userDefaults.string(forKey: "\(selectedProvider.rawValue)APIKey") {
+            if let savedKey = KeychainManager.shared.retrieve(forKey: selectedProvider.apiKeyName) {
                 self.apiKey = savedKey
                 self.isAPIKeyValid = true
             }
         } else {
             self.isAPIKeyValid = true
         }
-        
+
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
     }
@@ -283,15 +313,19 @@ class AIService: ObservableObject {
             completion(true, nil)
             return
         }
-        
+
         verifyAPIKey(key) { [weak self] isValid, errorMessage in
             guard let self = self else { return }
             DispatchQueue.main.async {
                 if isValid {
                     self.apiKey = key
                     self.isAPIKeyValid = true
-                    self.userDefaults.set(key, forKey: "\(self.selectedProvider.rawValue)APIKey")
-                    NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
+                    do {
+                        try KeychainManager.shared.save(key, forKey: self.selectedProvider.apiKeyName)
+                        NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
+                    } catch {
+                        print("Failed to save API key to Keychain: \(error.localizedDescription)")
+                    }
                 } else {
                     self.isAPIKeyValid = false
                 }
@@ -515,10 +549,14 @@ class AIService: ObservableObject {
     
     func clearAPIKey() {
         guard selectedProvider.requiresAPIKey else { return }
-        
+
         apiKey = ""
         isAPIKeyValid = false
-        userDefaults.removeObject(forKey: "\(selectedProvider.rawValue)APIKey")
+        do {
+            try KeychainManager.shared.delete(forKey: selectedProvider.apiKeyName)
+        } catch {
+            print("Failed to delete API key from Keychain: \(error.localizedDescription)")
+        }
         NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
     }
     

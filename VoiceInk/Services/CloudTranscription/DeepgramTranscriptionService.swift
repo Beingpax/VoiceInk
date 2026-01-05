@@ -42,10 +42,10 @@ class DeepgramTranscriptionService {
     }
     
     private func getAPIConfig(for model: any TranscriptionModel) throws -> APIConfig {
-        guard let apiKey = UserDefaults.standard.string(forKey: "DeepgramAPIKey"), !apiKey.isEmpty else {
+        guard let apiKey = KeychainManager.shared.retrieve(forKey: "deepgramAPIKey"), !apiKey.isEmpty else {
             throw CloudTranscriptionError.missingAPIKey
         }
-        
+
         // Build the URL with query parameters
         var components = URLComponents(string: "https://api.deepgram.com/v1/listen")!
         var queryItems: [URLQueryItem] = []

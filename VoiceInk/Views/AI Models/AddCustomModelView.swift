@@ -234,10 +234,17 @@ struct AddCustomModelCardView: View {
                     displayName: trimmedDisplayName,
                     description: "Custom transcription model",
                     apiEndpoint: trimmedApiEndpoint,
-                    apiKey: trimmedApiKey,
                     modelName: trimmedModelName,
                     isMultilingual: isMultilingual
                 )
+
+                // Save API key to Keychain
+                do {
+                    try KeychainManager.shared.save(trimmedApiKey, forKey: "CustomModel_\(updatedModel.id)_APIKey")
+                } catch {
+                    print("Failed to save custom model API key: \(error)")
+                }
+
                 customModelManager.updateCustomModel(updatedModel)
             } else {
                 // Add new model
@@ -246,10 +253,17 @@ struct AddCustomModelCardView: View {
                     displayName: trimmedDisplayName,
                     description: "Custom transcription model",
                     apiEndpoint: trimmedApiEndpoint,
-                    apiKey: trimmedApiKey,
                     modelName: trimmedModelName,
                     isMultilingual: isMultilingual
                 )
+
+                // Save API key to Keychain
+                do {
+                    try KeychainManager.shared.save(trimmedApiKey, forKey: "CustomModel_\(customModel.id)_APIKey")
+                } catch {
+                    print("Failed to save custom model API key: \(error)")
+                }
+
                 customModelManager.addCustomModel(customModel)
             }
             

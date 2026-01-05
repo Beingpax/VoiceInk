@@ -23,6 +23,7 @@
 	</array>
 	<key>keychain-access-groups</key>
 	<array>
+		<string>$(AppIdentifierPrefix)com.prakashjoshipax.VoiceInk.shared</string>
 		<string>$(AppIdentifierPrefix)com.prakashjoshipax.VoiceInk</string>
 	</array>
 </dict>

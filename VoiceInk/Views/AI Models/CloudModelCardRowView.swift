@@ -21,28 +21,26 @@ struct CloudModelCardView: View {
     }
     
     private var isConfigured: Bool {
-        guard let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") else {
-            return false
-        }
-        return !savedKey.isEmpty
+        return KeychainManager.shared.exists(forKey: providerKey)
     }
     
+    /// Returns the iOS-format API key name for cross-platform sync compatibility
     private var providerKey: String {
         switch model.provider {
         case .groq:
-            return "GROQ"
+            return "groqAPIKey"
         case .elevenLabs:
-            return "ElevenLabs"
+            return "elevenLabsAPIKey"
         case .deepgram:
-            return "Deepgram"
+            return "deepgramAPIKey"
         case .mistral:
-            return "Mistral"
+            return "mistralAPIKey"
         case .gemini:
-            return "Gemini"
+            return "geminiAPIKey"
         case .soniox:
-            return "Soniox"
+            return "sonioxAPIKey"
         default:
-            return model.provider.rawValue
+            return model.provider.rawValue.lowercased() + "APIKey"
         }
     }
     
@@ -267,7 +265,7 @@ struct CloudModelCardView: View {
     }
     
     private func loadSavedAPIKey() {
-        if let savedKey = UserDefaults.standard.string(forKey: "\(providerKey)APIKey") {
+        if let savedKey = KeychainManager.shared.retrieve(forKey: providerKey) {
             apiKey = savedKey
             verificationStatus = .success
         }
@@ -275,6 +273,8 @@ struct CloudModelCardView: View {
     
     private func verifyAPIKey() {
         guard !apiKey.isEmpty else { return }
+        
+        let originalProvider = aiService.selectedProvider
         
         isVerifying = true
         verificationStatus = .verifying
@@ -306,10 +306,8 @@ struct CloudModelCardView: View {
                 if isValid {
                     self.verificationStatus = .success
                     self.verificationError = nil
-                    // Save the API key
-                    UserDefaults.standard.set(self.apiKey, forKey: "\(self.providerKey)APIKey")
                     self.isConfiguredState = true
-                    
+
                     // Collapse the configuration section after successful verification
                     withAnimation(.easeInOut(duration: 0.3)) {
                         self.isExpanded = false
@@ -320,18 +318,18 @@ struct CloudModelCardView: View {
                 }
                 
                 // Restore original provider
-                // aiService.selectedProvider = originalProvider // This line was removed as per the new_code
+                aiService.selectedProvider = originalProvider
             }
         }
     }
     
     private func clearAPIKey() {
-        UserDefaults.standard.removeObject(forKey: "\(providerKey)APIKey")
+        try? KeychainManager.shared.delete(forKey: providerKey)
         apiKey = ""
         verificationStatus = .none
         verificationError = nil
         isConfiguredState = false
-        
+
         // If this model is currently the default, clear it
         if isCurrent {
             Task {

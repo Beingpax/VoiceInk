@@ -102,10 +102,10 @@ class GroqTranscriptionService {
     }
 
     private func getAPIConfig(for model: any TranscriptionModel) throws -> APIConfig {
-        guard let apiKey = UserDefaults.standard.string(forKey: "GROQAPIKey"), !apiKey.isEmpty else {
+        guard let apiKey = KeychainManager.shared.retrieve(forKey: "groqAPIKey"), !apiKey.isEmpty else {
             throw CloudTranscriptionError.missingAPIKey
         }
-        
+
         guard let apiURL = URL(string: "https://api.groq.com/openai/v1/audio/transcriptions") else {
             throw NSError(domain: "GroqTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API URL"])
         }

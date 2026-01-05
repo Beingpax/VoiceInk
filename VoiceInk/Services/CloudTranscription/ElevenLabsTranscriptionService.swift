@@ -6,10 +6,10 @@ class ElevenLabsTranscriptionService {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ElevenLabsTranscriptionService")
     
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
-        guard let apiKey = UserDefaults.standard.string(forKey: "ElevenLabsAPIKey"), !apiKey.isEmpty else {
+        guard let apiKey = KeychainManager.shared.retrieve(forKey: "elevenLabsAPIKey"), !apiKey.isEmpty else {
             throw CloudTranscriptionError.missingAPIKey
         }
-        
+
         let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: apiURL)
         request.httpMethod = "POST"
