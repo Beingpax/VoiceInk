@@ -9,7 +9,7 @@ class LicenseViewModel: ObservableObject {
         case licensed
     }
     
-    @Published private(set) var licenseState: LicenseState = .trial(daysRemaining: 7)  // Default to trial
+    @Published private(set) var licenseState: LicenseState = .licensed  // Default to licensed for open source
     @Published var licenseKey: String = ""
     @Published var isValidating = false
     @Published var validationMessage: String?
@@ -33,50 +33,19 @@ class LicenseViewModel: ObservableObject {
     }
     
     private func loadLicenseState() {
-        // Check for existing license key
+        // Always set to licensed for open source version
+        licenseState = .licensed
+
+        // Also load existing license key if present for compatibility
         if let licenseKey = userDefaults.licenseKey {
             self.licenseKey = licenseKey
-            
-            // If we have a license key, trust that it's licensed
-            // Skip server validation on startup
-            if userDefaults.activationId != nil || !userDefaults.bool(forKey: "VoiceInkLicenseRequiresActivation") {
-                licenseState = .licensed
-                activationsLimit = userDefaults.activationsLimit
-                return
-            }
-        }
-        
-        // Check if this is first launch
-        let hasLaunchedBefore = userDefaults.bool(forKey: "VoiceInkHasLaunchedBefore")
-        if !hasLaunchedBefore {
-            // First launch - start trial automatically
-            userDefaults.set(true, forKey: "VoiceInkHasLaunchedBefore")
-            startTrial()
-            return
-        }
-        
-        // Only check trial if not licensed and not first launch
-        if let trialStartDate = userDefaults.trialStartDate {
-            let daysSinceTrialStart = Calendar.current.dateComponents([.day], from: trialStartDate, to: Date()).day ?? 0
-            
-            if daysSinceTrialStart >= trialPeriodDays {
-                licenseState = .trialExpired
-            } else {
-                licenseState = .trial(daysRemaining: trialPeriodDays - daysSinceTrialStart)
-            }
-        } else {
-            // No trial has been started yet - start it now
-            startTrial()
+            activationsLimit = userDefaults.activationsLimit
         }
     }
     
     var canUseApp: Bool {
-        switch licenseState {
-        case .licensed, .trial:
-            return true
-        case .trialExpired:
-            return false
-        }
+        // Always return true for open source version
+        return true
     }
     
     func openPurchaseLink() {

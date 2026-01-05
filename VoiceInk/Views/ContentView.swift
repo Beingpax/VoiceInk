@@ -30,7 +30,7 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
         case .settings: return "gearshape.fill"
-        case .license: return "checkmark.seal.fill"
+        case .license: return "crown.fill"
         }
     }
 }
@@ -196,10 +196,11 @@ struct ContentView: View {
         case .settings:
             SettingsView()
                 .environmentObject(whisperState)
-        case .license:
-            LicenseManagementView()
         case .permissions:
             PermissionsView()
+        case .license:
+            LicenseManagementView()
+                .environmentObject(licenseViewModel)
         }
     }
 }
