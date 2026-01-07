@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-class ElevenLabsTTSService: TTSProvider {
+class ElevenLabsTTSService: TTSProvider, StreamingSpeechSynthesizing {
     // MARK: - Properties
     var name: String { "ElevenLabs" }
     private var apiKey: String?
@@ -11,6 +11,7 @@ class ElevenLabsTTSService: TTSProvider {
     private var activeManagedCredential: ManagedCredential?
     private var voicesByModel: [String: [Voice]] = [:]
     private var fallbackVoices: [Voice] = Voice.elevenLabsVoices
+    private var activeStreamingTask: Task<Void, Never>?
 
     // MARK: - Default Voice
     var defaultVoice: Voice {
@@ -118,42 +119,44 @@ class ElevenLabsTTSService: TTSProvider {
             throw TTSError.textTooLong(5000)
         }
         
-        // Prepare URL
-        guard let url = URL(string: "\(baseURL)/text-to-speech/\(voice.id)") else {
+        let processedText = applyPronunciationOverrides(to: text, overrides: settings.pronunciationOverrides)
+        
+        let outputFormat = settings.providerOption(for: ElevenLabsProviderOptionKey.outputFormat) ?? "mp3_44100_128"
+        
+        var urlComponents = URLComponents(string: "\(baseURL)/text-to-speech/\(voice.id)")
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "output_format", value: outputFormat)
+        ]
+        
+        guard let url = urlComponents?.url else {
             throw TTSError.networkError("Invalid API endpoint")
         }
 
-        // Prepare request
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         let authorization = try await authorizationService.authorizationHeader(for: "ElevenLabs", headerType: HeaderType.elevenLabs)
         request.setValue(authorization.value, forHTTPHeaderField: authorization.header)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 45
         
-        // Prepare request body
         let controlsByID = Dictionary(uniqueKeysWithValues: styleControls.map { ($0.id, $0) })
         let stability = controlsByID["elevenLabs.stability"].map { settings.styleValue(for: $0) } ?? 0.5
         let similarityBoost = controlsByID["elevenLabs.similarityBoost"].map { settings.styleValue(for: $0) } ?? 0.75
         let style = controlsByID["elevenLabs.style"].map { settings.styleValue(for: $0) } ?? 0.0
 
-        let modelID = settings.providerOption(for: ElevenLabsProviderOptionKey.modelID) ?? "eleven_monolingual_v1"
+        let modelID = settings.providerOption(for: ElevenLabsProviderOptionKey.modelID) ?? ElevenLabsModel.defaultSelection.rawValue
 
-        let requestBody = ElevenLabsRequest(
-            text: text,
-            model_id: modelID,
-            voice_settings: VoiceSettings(
-                stability: stability,
-                similarity_boost: similarityBoost,
-                style: style,
-                use_speaker_boost: true
-            )
+        let requestBody = buildRequestBody(
+            text: processedText,
+            modelID: modelID,
+            stability: stability,
+            similarityBoost: similarityBoost,
+            style: style,
+            pronunciationDictionaryID: settings.pronunciationDictionaryID
         )
         
         request.httpBody = try JSONEncoder().encode(requestBody)
         
-        // Make request
         do {
             let (data, response) = try await session.data(for: request)
 
@@ -183,6 +186,194 @@ class ElevenLabsTTSService: TTSProvider {
         } catch {
             throw TTSError.networkError(error.localizedDescription)
         }
+    }
+    
+    // MARK: - Streaming Speech Synthesis
+    func synthesizeSpeechStream(
+        text: String,
+        voice: Voice,
+        settings: AudioSettings,
+        onChunk: @escaping @Sendable (Data) -> Void,
+        onComplete: @escaping @Sendable () -> Void,
+        onError: @escaping @Sendable (Error) -> Void
+    ) async throws {
+        guard text.count <= 5000 else {
+            throw TTSError.textTooLong(5000)
+        }
+        
+        let processedText = applyPronunciationOverrides(to: text, overrides: settings.pronunciationOverrides)
+        
+        let latencyOptimization = settings.providerOption(for: ElevenLabsProviderOptionKey.optimizeStreamingLatency) ?? "3"
+        let outputFormat = settings.providerOption(for: ElevenLabsProviderOptionKey.outputFormat) ?? "mp3_44100_128"
+        
+        var urlComponents = URLComponents(string: "\(baseURL)/text-to-speech/\(voice.id)/stream")
+        urlComponents?.queryItems = [
+            URLQueryItem(name: "optimize_streaming_latency", value: latencyOptimization),
+            URLQueryItem(name: "output_format", value: outputFormat)
+        ]
+        
+        guard let url = urlComponents?.url else {
+            throw TTSError.networkError("Invalid API endpoint")
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        let authorization = try await authorizationService.authorizationHeader(for: "ElevenLabs", headerType: HeaderType.elevenLabs)
+        request.setValue(authorization.value, forHTTPHeaderField: authorization.header)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 60
+        
+        let controlsByID = Dictionary(uniqueKeysWithValues: styleControls.map { ($0.id, $0) })
+        let stability = controlsByID["elevenLabs.stability"].map { settings.styleValue(for: $0) } ?? 0.5
+        let similarityBoost = controlsByID["elevenLabs.similarityBoost"].map { settings.styleValue(for: $0) } ?? 0.75
+        let style = controlsByID["elevenLabs.style"].map { settings.styleValue(for: $0) } ?? 0.0
+
+        let modelID = settings.providerOption(for: ElevenLabsProviderOptionKey.modelID) ?? ElevenLabsModel.streamingRecommended.rawValue
+
+        let requestBody = buildRequestBody(
+            text: processedText,
+            modelID: modelID,
+            stability: stability,
+            similarityBoost: similarityBoost,
+            style: style,
+            pronunciationDictionaryID: settings.pronunciationDictionaryID
+        )
+        
+        request.httpBody = try JSONEncoder().encode(requestBody)
+        
+        activeStreamingTask?.cancel()
+        
+        let sessionCopy = session
+        let authCopy = authorization
+        let authServiceRef = authorizationService
+        let chunkBufferSize = 8192
+        
+        activeStreamingTask = Task { [weak self] in
+            defer {
+                Task { @MainActor in
+                    self?.activeStreamingTask = nil
+                }
+            }
+            
+            do {
+                let (bytes, response) = try await sessionCopy.bytes(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    onError(TTSError.networkError("Invalid response"))
+                    return
+                }
+                
+                guard (200...299).contains(httpResponse.statusCode) else {
+                    if httpResponse.statusCode == 401 {
+                        if authCopy.usedManagedCredential {
+                            await MainActor.run {
+                                authServiceRef.invalidateManagedCredential(for: .elevenLabs)
+                                self?.activeManagedCredential = nil
+                            }
+                        }
+                        onError(TTSError.invalidAPIKey)
+                    } else if httpResponse.statusCode == 422 {
+                        var errorData = Data()
+                        for try await byte in bytes {
+                            errorData.append(byte)
+                            if errorData.count > 4096 { break }
+                        }
+                        if let elevenLabsError = try? JSONDecoder().decode(ElevenLabsError.self, from: errorData) {
+                            onError(TTSError.apiError(elevenLabsError.detail.message))
+                        } else {
+                            onError(TTSError.apiError("Invalid request"))
+                        }
+                    } else {
+                        var errorData = Data()
+                        for try await byte in bytes {
+                            errorData.append(byte)
+                            if errorData.count > 4096 { break }
+                        }
+                        if let elevenLabsError = try? JSONDecoder().decode(ElevenLabsError.self, from: errorData) {
+                            onError(TTSError.streamingError(elevenLabsError.detail.message))
+                        } else {
+                            onError(TTSError.streamingError("HTTP \(httpResponse.statusCode)"))
+                        }
+                    }
+                    return
+                }
+                
+                var buffer = Data()
+                buffer.reserveCapacity(chunkBufferSize)
+                
+                for try await byte in bytes {
+                    if Task.isCancelled { break }
+                    buffer.append(byte)
+                    
+                    if buffer.count >= chunkBufferSize {
+                        onChunk(buffer)
+                        buffer.removeAll(keepingCapacity: true)
+                    }
+                }
+                
+                if !Task.isCancelled {
+                    if !buffer.isEmpty {
+                        onChunk(buffer)
+                    }
+                    onComplete()
+                }
+            } catch {
+                if !Task.isCancelled {
+                    onError(TTSError.streamingError(error.localizedDescription))
+                }
+            }
+        }
+    }
+    
+    func cancelStreaming() {
+        activeStreamingTask?.cancel()
+        activeStreamingTask = nil
+    }
+    
+    // MARK: - Text Processing
+    private func applyPronunciationOverrides(to text: String, overrides: [PronunciationOverride]) -> String {
+        guard !overrides.isEmpty else { return text }
+        
+        var result = text
+        for override in overrides {
+            let escapedWord = NSRegularExpression.escapedPattern(for: override.word)
+            let pattern = "\\b\(escapedWord)\\b"
+            
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+                continue
+            }
+            
+            let range = NSRange(result.startIndex..., in: result)
+            result = regex.stringByReplacingMatches(in: result, options: [], range: range, withTemplate: override.replacement)
+        }
+        return result
+    }
+    
+    // MARK: - Request Building
+    private func buildRequestBody(
+        text: String,
+        modelID: String,
+        stability: Double,
+        similarityBoost: Double,
+        style: Double,
+        pronunciationDictionaryID: String?
+    ) -> ElevenLabsRequest {
+        var pronunciationDictionaryLocators: [[String: String]]?
+        if let dictID = pronunciationDictionaryID, !dictID.isEmpty {
+            pronunciationDictionaryLocators = [["pronunciation_dictionary_id": dictID]]
+        }
+        
+        return ElevenLabsRequest(
+            text: text,
+            model_id: modelID,
+            voice_settings: VoiceSettings(
+                stability: stability,
+                similarity_boost: similarityBoost,
+                style: style,
+                use_speaker_boost: true
+            ),
+            pronunciation_dictionary_locators: pronunciationDictionaryLocators
+        )
     }
     
     // MARK: - Fetch Available Voices
@@ -267,10 +458,11 @@ class ElevenLabsTTSService: TTSProvider {
 
 
 // MARK: - Request/Response Models
-private struct ElevenLabsRequest: Codable {
+private struct ElevenLabsRequest: Encodable {
     let text: String
     let model_id: String
     let voice_settings: VoiceSettings
+    let pronunciation_dictionary_locators: [[String: String]]?
 }
 
 private struct VoiceSettings: Codable {

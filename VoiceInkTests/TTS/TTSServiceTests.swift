@@ -53,6 +53,76 @@ final class TTSServiceTests: XCTestCase {
         XCTAssertTrue(error.errorDescription?.contains("Rate limit exceeded") ?? false)
     }
     
+    func testStreamingErrorContainsMessage() {
+        let error = TTSError.streamingError("Connection interrupted")
+        XCTAssertTrue(error.errorDescription?.contains("Connection interrupted") ?? false)
+    }
+    
+    // MARK: - Pronunciation Override Tests
+    
+    func testPronunciationOverrideLiteral() {
+        let override = PronunciationOverride(word: "GIF", replacement: "JIF")
+        
+        XCTAssertEqual(override.word, "GIF")
+        XCTAssertEqual(override.replacement, "JIF")
+        XCTAssertEqual(override.type, .literal)
+    }
+    
+    func testPronunciationOverrideIPA() {
+        let override = PronunciationOverride(word: "tomato", replacement: "təˈmɑːtəʊ", type: .ipa)
+        
+        XCTAssertEqual(override.word, "tomato")
+        XCTAssertEqual(override.replacement, "təˈmɑːtəʊ")
+        XCTAssertEqual(override.type, .ipa)
+    }
+    
+    func testPronunciationOverrideArpabet() {
+        let override = PronunciationOverride(word: "hello", replacement: "HH AH0 L OW1", type: .arpabet)
+        
+        XCTAssertEqual(override.type, .arpabet)
+    }
+    
+    func testPronunciationOverrideHashable() {
+        let override1 = PronunciationOverride(word: "test", replacement: "tester")
+        let override2 = PronunciationOverride(word: "test", replacement: "tester")
+        
+        XCTAssertEqual(override1, override2)
+    }
+    
+    // MARK: - AnyCodable Tests
+    
+    func testAnyCodableString() throws {
+        let codable = AnyCodable("hello")
+        let data = try JSONEncoder().encode(codable)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        
+        XCTAssertEqual(decoded.value as? String, "hello")
+    }
+    
+    func testAnyCodableInt() throws {
+        let codable = AnyCodable(42)
+        let data = try JSONEncoder().encode(codable)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        
+        XCTAssertEqual(decoded.value as? Int, 42)
+    }
+    
+    func testAnyCodableDouble() throws {
+        let codable = AnyCodable(3.14)
+        let data = try JSONEncoder().encode(codable)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        
+        XCTAssertEqual(decoded.value as? Double, 3.14)
+    }
+    
+    func testAnyCodableBool() throws {
+        let codable = AnyCodable(true)
+        let data = try JSONEncoder().encode(codable)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        
+        XCTAssertEqual(decoded.value as? Bool, true)
+    }
+    
     // MARK: - Voice Model Tests
     
     func testVoiceEquality() {
@@ -113,6 +183,38 @@ final class TTSServiceTests: XCTestCase {
         XCTAssertEqual(settings.sampleRate, 22050)
         XCTAssertTrue(settings.styleValues.isEmpty)
         XCTAssertTrue(settings.providerOptions.isEmpty)
+        XCTAssertTrue(settings.extras.isEmpty)
+        XCTAssertTrue(settings.pronunciationOverrides.isEmpty)
+        XCTAssertNil(settings.pronunciationDictionaryID)
+    }
+    
+    func testAudioSettingsExtras() {
+        var settings = AudioSettings()
+        
+        settings.extras["custom_param"] = AnyCodable("value")
+        settings.extras["numeric_param"] = AnyCodable(42)
+        
+        XCTAssertEqual(settings.extras.count, 2)
+        XCTAssertEqual(settings.extras["custom_param"]?.value as? String, "value")
+        XCTAssertEqual(settings.extras["numeric_param"]?.value as? Int, 42)
+    }
+    
+    func testAudioSettingsPronunciationOverrides() {
+        var settings = AudioSettings()
+        
+        let override = PronunciationOverride(word: "API", replacement: "A-P-I")
+        settings.pronunciationOverrides = [override]
+        
+        XCTAssertEqual(settings.pronunciationOverrides.count, 1)
+        XCTAssertEqual(settings.pronunciationOverrides.first?.word, "API")
+    }
+    
+    func testAudioSettingsPronunciationDictionaryID() {
+        var settings = AudioSettings()
+        
+        settings.pronunciationDictionaryID = "dict_12345"
+        
+        XCTAssertEqual(settings.pronunciationDictionaryID, "dict_12345")
     }
     
     func testAudioSettingsStyleValueWithControl() {
@@ -250,6 +352,80 @@ final class TTSServiceTests: XCTestCase {
         
         XCTAssertFalse(maleVoices.isEmpty, "Should have male voices")
         XCTAssertFalse(femaleVoices.isEmpty, "Should have female voices")
+    }
+    
+    // MARK: - ElevenLabs Model Tests
+    
+    func testElevenLabsModelCases() {
+        let allModels = ElevenLabsModel.allCases
+        
+        XCTAssertTrue(allModels.contains(.flashV2_5))
+        XCTAssertTrue(allModels.contains(.turboV2_5))
+        XCTAssertTrue(allModels.contains(.turboV3))
+        XCTAssertTrue(allModels.contains(.multilingualV3))
+        XCTAssertTrue(allModels.contains(.turboV2))
+        XCTAssertTrue(allModels.contains(.multilingualV2))
+        XCTAssertTrue(allModels.contains(.monolingualV1))
+    }
+    
+    func testElevenLabsModelRawValues() {
+        XCTAssertEqual(ElevenLabsModel.flashV2_5.rawValue, "eleven_flash_v2_5")
+        XCTAssertEqual(ElevenLabsModel.turboV2_5.rawValue, "eleven_turbo_v2_5")
+        XCTAssertEqual(ElevenLabsModel.turboV3.rawValue, "eleven_turbo_v3")
+    }
+    
+    func testElevenLabsModelDefaultSelection() {
+        XCTAssertEqual(ElevenLabsModel.defaultSelection, .turboV2_5)
+    }
+    
+    func testElevenLabsModelStreamingRecommended() {
+        XCTAssertEqual(ElevenLabsModel.streamingRecommended, .flashV2_5)
+    }
+    
+    func testElevenLabsModelSupportsStreaming() {
+        XCTAssertTrue(ElevenLabsModel.flashV2_5.supportsStreaming)
+        XCTAssertTrue(ElevenLabsModel.turboV2_5.supportsStreaming)
+        XCTAssertTrue(ElevenLabsModel.turboV2.supportsStreaming)
+        XCTAssertFalse(ElevenLabsModel.monolingualV1.supportsStreaming)
+    }
+    
+    func testElevenLabsModelSupportsAdvancedPrompting() {
+        XCTAssertTrue(ElevenLabsModel.flashV2_5.supportsAdvancedPrompting)
+        XCTAssertTrue(ElevenLabsModel.turboV2_5.supportsAdvancedPrompting)
+        XCTAssertFalse(ElevenLabsModel.turboV2.supportsAdvancedPrompting)
+        XCTAssertFalse(ElevenLabsModel.monolingualV1.supportsAdvancedPrompting)
+    }
+    
+    func testElevenLabsModelFallback() {
+        XCTAssertEqual(ElevenLabsModel.flashV2_5.fallback, .turboV2_5)
+        XCTAssertEqual(ElevenLabsModel.turboV2_5.fallback, .turboV2)
+        XCTAssertEqual(ElevenLabsModel.turboV3.fallback, .turboV2)
+        XCTAssertEqual(ElevenLabsModel.multilingualV3.fallback, .multilingualV2)
+        XCTAssertNil(ElevenLabsModel.monolingualV1.fallback)
+    }
+    
+    func testElevenLabsModelIdentifier() {
+        let identifier = ElevenLabsModelIdentifier("eleven_custom_model")
+        
+        XCTAssertEqual(identifier.rawValue, "eleven_custom_model")
+        XCTAssertNil(identifier.knownModel)
+        
+        let knownIdentifier = ElevenLabsModelIdentifier(from: .turboV2_5)
+        XCTAssertEqual(knownIdentifier.knownModel, .turboV2_5)
+    }
+    
+    func testElevenLabsVoiceTagDefaultCatalog() {
+        let tags = ElevenLabsVoiceTag.defaultCatalog
+        
+        XCTAssertGreaterThan(tags.count, 10)
+        
+        let tokens = tags.map { $0.token }
+        XCTAssertTrue(tokens.contains("[pause_short]"))
+        XCTAssertTrue(tokens.contains("[whisper]"))
+        XCTAssertTrue(tokens.contains("[laugh]"))
+        XCTAssertTrue(tokens.contains("[pause_medium]"))
+        XCTAssertTrue(tokens.contains("[soft]"))
+        XCTAssertTrue(tokens.contains("[excited]"))
     }
 }
 
@@ -393,6 +569,43 @@ final class ElevenLabsTTSServiceTests: XCTestCase {
         } catch {
             // Other errors are acceptable (network, etc.)
         }
+    }
+    
+    func testStreamingThrowsForTextTooLong() async {
+        service.updateAPIKey("test-key")
+        
+        let longText = String(repeating: "a", count: 5001)
+        let voice = service.defaultVoice
+        let settings = AudioSettings()
+        
+        do {
+            try await service.synthesizeSpeechStream(
+                text: longText,
+                voice: voice,
+                settings: settings,
+                onChunk: { _ in },
+                onComplete: { },
+                onError: { _ in }
+            )
+            XCTFail("Should throw textTooLong error")
+        } catch let error as TTSError {
+            if case .textTooLong(let limit) = error {
+                XCTAssertEqual(limit, 5000)
+            } else {
+                XCTFail("Expected textTooLong error, got \(error)")
+            }
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
+    }
+    
+    func testCancelStreamingDoesNotCrash() async {
+        service.cancelStreaming()
+        service.cancelStreaming()
+    }
+    
+    func testServiceConformsToStreamingProtocol() async {
+        XCTAssertTrue(service is StreamingSpeechSynthesizing)
     }
 }
 

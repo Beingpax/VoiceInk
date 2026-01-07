@@ -7,6 +7,18 @@ protocol SpeechSynthesizing {
 }
 
 @MainActor
+protocol StreamingSpeechSynthesizing {
+    func synthesizeSpeechStream(
+        text: String,
+        voice: Voice,
+        settings: AudioSettings,
+        onChunk: @escaping @Sendable (Data) -> Void,
+        onComplete: @escaping @Sendable () -> Void,
+        onError: @escaping @Sendable (Error) -> Void
+    ) async throws
+}
+
+@MainActor
 protocol VoiceProviding {
     var availableVoices: [Voice] { get }
     var defaultVoice: Voice { get }
@@ -101,6 +113,25 @@ struct ProviderStyleControl: Identifiable, Hashable {
     }
 }
 
+// MARK: - Pronunciation Override
+struct PronunciationOverride: Codable, Hashable {
+    enum OverrideType: String, Codable {
+        case ipa
+        case arpabet
+        case literal
+    }
+    
+    let word: String
+    let replacement: String
+    let type: OverrideType
+    
+    init(word: String, replacement: String, type: OverrideType = .literal) {
+        self.word = word
+        self.replacement = replacement
+        self.type = type
+    }
+}
+
 // MARK: - Audio Settings
 struct AudioSettings {
     var speed: Double = 1.0      // 0.5 to 2.0
@@ -110,6 +141,9 @@ struct AudioSettings {
     var sampleRate: Int = 22050
     var styleValues: [String: Double] = [:]
     var providerOptions: [String: String] = [:]
+    var extras: [String: AnyCodable] = [:]
+    var pronunciationOverrides: [PronunciationOverride] = []
+    var pronunciationDictionaryID: String?
     
     enum AudioFormat: String, CaseIterable {
         case mp3 = "mp3"
@@ -117,6 +151,114 @@ struct AudioSettings {
         case aac = "aac"
         case flac = "flac"
         case opus = "opus"
+    }
+}
+
+struct AnyCodable: Codable, Hashable {
+    let value: Any
+    
+    init(_ value: Any) {
+        self.value = value
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let double = try? container.decode(Double.self) {
+            value = double
+        } else if let string = try? container.decode(String.self) {
+            value = string
+        } else if let array = try? container.decode([AnyCodable].self) {
+            value = array.map { $0.value }
+        } else if let dict = try? container.decode([String: AnyCodable].self) {
+            value = dict.mapValues { $0.value }
+        } else {
+            value = NSNull()
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        switch value {
+        case let bool as Bool:
+            try container.encode(bool)
+        case let int as Int:
+            try container.encode(int)
+        case let double as Double:
+            try container.encode(double)
+        case let string as String:
+            try container.encode(string)
+        case let array as [Any]:
+            try container.encode(array.map { AnyCodable($0) })
+        case let dict as [String: Any]:
+            try container.encode(dict.mapValues { AnyCodable($0) })
+        default:
+            try container.encodeNil()
+        }
+    }
+    
+    private var typeIdentifier: String {
+        switch value {
+        case is Bool: return "bool"
+        case is Int: return "int"
+        case is Double: return "double"
+        case is String: return "string"
+        case is [Any]: return "array"
+        case is [String: Any]: return "dict"
+        case is NSNull: return "null"
+        default: return "unknown"
+        }
+    }
+    
+    static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
+        guard lhs.typeIdentifier == rhs.typeIdentifier else { return false }
+        
+        switch (lhs.value, rhs.value) {
+        case let (l as Bool, r as Bool): return l == r
+        case let (l as Int, r as Int): return l == r
+        case let (l as Double, r as Double): return l == r
+        case let (l as String, r as String): return l == r
+        case (is NSNull, is NSNull): return true
+        case let (l as [Any], r as [Any]):
+            guard l.count == r.count else { return false }
+            return zip(l, r).allSatisfy { AnyCodable($0) == AnyCodable($1) }
+        case let (l as [String: Any], r as [String: Any]):
+            guard l.count == r.count else { return false }
+            return l.keys.allSatisfy { key in
+                guard let lv = l[key], let rv = r[key] else { return false }
+                return AnyCodable(lv) == AnyCodable(rv)
+            }
+        default: return false
+        }
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(typeIdentifier)
+        switch value {
+        case let bool as Bool: hasher.combine(bool)
+        case let int as Int: hasher.combine(int)
+        case let double as Double: hasher.combine(double)
+        case let string as String: hasher.combine(string)
+        case is NSNull: hasher.combine(0)
+        case let array as [Any]:
+            hasher.combine(array.count)
+            for (index, item) in array.prefix(5).enumerated() {
+                hasher.combine(index)
+                AnyCodable(item).hash(into: &hasher)
+            }
+        case let dict as [String: Any]:
+            hasher.combine(dict.count)
+            for key in dict.keys.sorted().prefix(5) {
+                hasher.combine(key)
+                if let v = dict[key] {
+                    AnyCodable(v).hash(into: &hasher)
+                }
+            }
+        default: break
+        }
     }
 }
 
@@ -155,6 +297,7 @@ enum TTSError: LocalizedError {
     case textTooLong(Int)
     case unsupportedFormat
     case apiError(String)
+    case streamingError(String)
     
     var errorDescription: String? {
         switch self {
@@ -172,6 +315,8 @@ enum TTSError: LocalizedError {
             return "Selected audio format is not supported."
         case .apiError(let message):
             return "API error: \(message)"
+        case .streamingError(let message):
+            return "Streaming error: \(message)"
         }
     }
 }
