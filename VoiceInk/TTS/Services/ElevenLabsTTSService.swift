@@ -330,6 +330,11 @@ class ElevenLabsTTSService: TTSProvider, StreamingSpeechSynthesizing {
         activeStreamingTask = nil
     }
     
+    // MARK: - Cleanup
+    deinit {
+        activeStreamingTask?.cancel()
+    }
+    
     // MARK: - Text Processing
     private func applyPronunciationOverrides(to text: String, overrides: [PronunciationOverride]) -> String {
         guard !overrides.isEmpty else { return text }
