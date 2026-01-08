@@ -18,6 +18,8 @@ struct TTSInspectorView: View {
             HStack {
                 Label("Tickwick Settings", systemImage: "slider.horizontal.3")
                     .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer()
                 Button {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -25,12 +27,15 @@ struct TTSInspectorView: View {
                     }
                 } label: {
                     Image(systemName: "sidebar.right")
-                        .foregroundColor(.accentColor)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundColor(.primary)
                 }
                 .buttonStyle(.plain)
+                .layoutPriority(1)
                 .help("Hide Tickwick Settings")
             }
-            .padding()
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .background(Color(NSColor.windowBackgroundColor))
             
             Divider()
@@ -121,6 +126,7 @@ struct TTSInspectorView: View {
                             InspectorSectionHeader(title: "System", icon: "gear", isExpanded: isSystemExpanded)
                         }
                     )
+
                 }
             }
         }
