@@ -50,18 +50,14 @@ class Recorder: NSObject, ObservableObject {
         isReconfiguring = false
     }
     
-    private func configureAudioSession(with deviceID: AudioDeviceID) async throws {
-        try AudioDeviceConfiguration.setDefaultInputDevice(deviceID)
-    }
-    
     func startRecording(toOutputFile url: URL) async throws {
         deviceManager.isRecordingActive = true
-        
-        let currentDeviceID = deviceManager.getCurrentDevice()
+
+        let deviceID = deviceManager.getCurrentDevice()
         let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
-        
-        if String(currentDeviceID) != lastDeviceID {
-            if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
+
+        if String(deviceID) != lastDeviceID {
+            if let deviceName = deviceManager.availableDevices.first(where: { $0.id == deviceID })?.name {
                 await MainActor.run {
                     NotificationManager.shared.showNotification(
                         title: "Using: \(deviceName)",
@@ -70,16 +66,9 @@ class Recorder: NSObject, ObservableObject {
                 }
             }
         }
-        UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
-        
-        hasDetectedAudioInCurrentSession = false
+        UserDefaults.standard.set(String(deviceID), forKey: "lastUsedMicrophoneDeviceID")
 
-        let deviceID = deviceManager.getCurrentDevice()
-        do {
-            try await configureAudioSession(with: deviceID)
-        } catch {
-            logger.warning("⚠️ Failed to configure audio session for device \(deviceID), attempting to continue: \(error.localizedDescription)")
-        }
+        hasDetectedAudioInCurrentSession = false
 
         do {
             let engineRecorder = AudioEngineRecorder()
@@ -92,7 +81,8 @@ class Recorder: NSObject, ObservableObject {
                 }
             }
 
-            try engineRecorder.startRecording(toOutputFile: url)
+            // Pass nil if no device found to fall back to system default
+            try engineRecorder.startRecording(toOutputFile: url, deviceID: deviceID != 0 ? deviceID : nil)
 
             logger.info("✅ AudioEngineRecorder started successfully")
 

@@ -255,14 +255,6 @@ class AudioDeviceManager: ObservableObject {
                 self.selectedDeviceID = id
                 UserDefaults.standard.selectedAudioDeviceUID = uid
                 self.logger.info("Device selection saved with UID: \(uid)")
-
-                do {
-                    try AudioDeviceConfiguration.setDefaultInputDevice(id)
-                    self.logger.info("✅ Set device as system default immediately")
-                } catch {
-                    self.logger.error("Failed to set device as system default: \(error.localizedDescription)")
-                }
-
                 self.notifyDeviceChange()
             }
         } else {
@@ -279,14 +271,7 @@ class AudioDeviceManager: ObservableObject {
                 self.selectedDeviceID = id
                 UserDefaults.standard.audioInputModeRawValue = AudioInputMode.custom.rawValue
                 UserDefaults.standard.selectedAudioDeviceUID = uid
-
-                do {
-                    try AudioDeviceConfiguration.setDefaultInputDevice(id)
-                    self.logger.info("✅ Set device as system default immediately")
-                } catch {
-                    self.logger.error("Failed to set device as system default: \(error.localizedDescription)")
-                }
-
+                self.logger.info("Device selection saved with UID: \(uid)")
                 self.notifyDeviceChange()
             }
         } else {
@@ -306,15 +291,6 @@ class AudioDeviceManager: ObservableObject {
                 }
             } else if inputMode == .prioritized {
                 selectHighestPriorityAvailableDevice()
-            }
-        } else {
-            if let currentDeviceID = selectedDeviceID {
-                do {
-                    try AudioDeviceConfiguration.setDefaultInputDevice(currentDeviceID)
-                    logger.info("✅ Set current device as system default when mode changed")
-                } catch {
-                    logger.error("Failed to set device as system default: \(error.localizedDescription)")
-                }
             }
         }
 
@@ -399,14 +375,6 @@ class AudioDeviceManager: ObservableObject {
             if let availableDevice = availableDevices.first(where: { $0.uid == device.id }) {
                 selectedDeviceID = availableDevice.id
                 logger.info("Selected prioritized device: \(device.name) (Priority: \(device.priority))")
-
-                do {
-                    try AudioDeviceConfiguration.setDefaultInputDevice(availableDevice.id)
-                    logger.info("✅ Set prioritized device as system default immediately")
-                } catch {
-                    logger.error("Failed to set prioritized device: \(error.localizedDescription)")
-                    continue
-                }
                 notifyDeviceChange()
                 return
             }

@@ -1,6 +1,7 @@
 import Foundation
 @preconcurrency import AVFoundation
 import CoreAudio
+import AudioToolbox
 import os
 
 @MainActor
@@ -28,18 +29,18 @@ class AudioEngineRecorder: ObservableObject {
 
     var onRecordingError: ((Error) -> Void)?
 
-    private var validationTimer: Timer?
-    private var hasReceivedValidBuffer = false
-
-    func startRecording(toOutputFile url: URL, retryCount: Int = 0) throws {
+    func startRecording(toOutputFile url: URL, deviceID: AudioDeviceID? = nil) throws {
         stopRecording()
-        hasReceivedValidBuffer = false
 
         let engine = AVAudioEngine()
         audioEngine = engine
 
         let input = engine.inputNode
         inputNode = input
+
+        if let deviceID = deviceID {
+            try setInputDevice(deviceID, on: input)
+        }
 
         let inputFormat = input.outputFormat(forBus: tapBusNumber)
 
@@ -101,7 +102,6 @@ class AudioEngineRecorder: ObservableObject {
         do {
             try engine.start()
             isRecording = true
-            startValidationTimer(url: url, retryCount: retryCount)
         } catch {
             logger.error("Failed to start audio engine: \(error.localizedDescription)")
             input.removeTap(onBus: tapBusNumber)
@@ -109,41 +109,8 @@ class AudioEngineRecorder: ObservableObject {
         }
     }
 
-    private func startValidationTimer(url: URL, retryCount: Int) {
-        validationTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-
-            let validationPassed = self.hasReceivedValidBuffer
-
-            if !validationPassed {
-                self.logger.warning("Recording validation failed")
-                self.stopRecording()
-
-                if retryCount < 2 {
-                    self.logger.info("Retrying recording (attempt \(retryCount + 1)/2)...")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        do {
-                            try self.startRecording(toOutputFile: url, retryCount: retryCount + 1)
-                        } catch {
-                            self.logger.error("Retry failed: \(error.localizedDescription)")
-                            self.onRecordingError?(error)
-                        }
-                    }
-                } else {
-                    self.logger.error("Recording failed after 2 retry attempts")
-                    self.onRecordingError?(AudioEngineRecorderError.recordingValidationFailed)
-                }
-            } else {
-                self.logger.info("Recording validation successful")
-            }
-        }
-    }
-
     func stopRecording() {
         guard isRecording else { return }
-
-        validationTimer?.invalidate()
-        validationTimer = nil
 
         inputNode?.removeTap(onBus: tapBusNumber)
         audioEngine?.stop()
@@ -159,10 +126,34 @@ class AudioEngineRecorder: ObservableObject {
         inputNode = nil
         recordingURL = nil
         isRecording = false
-        hasReceivedValidBuffer = false
 
         currentAveragePower = 0.0
         currentPeakPower = 0.0
+    }
+
+    /// Sets the input device on the audio unit (does not change system default)
+    private func setInputDevice(_ deviceID: AudioDeviceID, on inputNode: AVAudioInputNode) throws {
+        guard let audioUnit = inputNode.audioUnit else {
+            logger.error("Failed to get audio unit from input node")
+            throw AudioEngineRecorderError.failedToGetAudioUnit
+        }
+
+        var deviceIDCopy = deviceID
+        let status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioOutputUnitProperty_CurrentDevice,
+            kAudioUnitScope_Global,
+            1,  // Element 1 = input bus (microphone)
+            &deviceIDCopy,
+            UInt32(MemoryLayout<AudioDeviceID>.size)
+        )
+
+        if status != noErr {
+            logger.error("Failed to set input device on audio unit: \(status)")
+            throw AudioEngineRecorderError.failedToSetInputDevice(status: status)
+        }
+
+        logger.info("Successfully set input device \(deviceID) on audio engine")
     }
 
     nonisolated private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
@@ -214,11 +205,6 @@ class AudioEngineRecorder: ObservableObject {
 
         do {
             try audioFile.write(from: convertedBuffer)
-            Task { @MainActor in
-                if !self.hasReceivedValidBuffer {
-                    self.hasReceivedValidBuffer = true
-                }
-            }
         } catch {
             logTapError(message: "File write failed: \(error.localizedDescription)")
         }
@@ -277,7 +263,8 @@ enum AudioEngineRecorderError: LocalizedError {
     case bufferConversionFailed
     case audioConversionError(Error)
     case fileWriteFailed(Error)
-    case recordingValidationFailed
+    case failedToGetAudioUnit
+    case failedToSetInputDevice(status: OSStatus)
 
     var errorDescription: String? {
         switch self {
@@ -297,8 +284,10 @@ enum AudioEngineRecorderError: LocalizedError {
             return "Audio format conversion failed: \(error.localizedDescription)"
         case .fileWriteFailed(let error):
             return "Failed to write audio data to file: \(error.localizedDescription)"
-        case .recordingValidationFailed:
-            return "Recording failed to start - no valid audio received from device"
+        case .failedToGetAudioUnit:
+            return "Failed to access audio unit from input node"
+        case .failedToSetInputDevice(let status):
+            return "Failed to set input device: \(status)"
         }
     }
 }
