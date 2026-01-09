@@ -26,14 +26,13 @@ class AudioEngineRecorder: ObservableObject {
     private let audioProcessingQueue = DispatchQueue(label: "com.prakashjoshipax.VoiceInk.audioProcessing", qos: .userInitiated)
     private let fileWriteLock = NSLock()
 
+    private var configurationChangeObserver: NSObjectProtocol?
+    private var isRecovering = false
+
     var onRecordingError: ((Error) -> Void)?
 
-    private var validationTimer: Timer?
-    private var hasReceivedValidBuffer = false
-
-    func startRecording(toOutputFile url: URL, retryCount: Int = 0) throws {
+    func startRecording(toOutputFile url: URL) throws {
         stopRecording()
-        hasReceivedValidBuffer = false
 
         let engine = AVAudioEngine()
         audioEngine = engine
@@ -99,9 +98,12 @@ class AudioEngineRecorder: ObservableObject {
         engine.prepare()
 
         do {
-            try engine.start()
+            if !engine.isRunning {
+                try engine.start()
+            }
             isRecording = true
-            startValidationTimer(url: url, retryCount: retryCount)
+            setupConfigurationChangeObserver()
+            logger.info("Recording started with input format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) channels")
         } catch {
             logger.error("Failed to start audio engine: \(error.localizedDescription)")
             input.removeTap(onBus: tapBusNumber)
@@ -109,41 +111,103 @@ class AudioEngineRecorder: ObservableObject {
         }
     }
 
-    private func startValidationTimer(url: URL, retryCount: Int) {
-        validationTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+    private func setupConfigurationChangeObserver() {
+        removeConfigurationChangeObserver()
+
+        configurationChangeObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: audioEngine,
+            queue: .main
+        ) { [weak self] _ in
             guard let self = self else { return }
-
-            let validationPassed = self.hasReceivedValidBuffer
-
-            if !validationPassed {
-                self.logger.warning("Recording validation failed")
-                self.stopRecording()
-
-                if retryCount < 2 {
-                    self.logger.info("Retrying recording (attempt \(retryCount + 1)/2)...")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        do {
-                            try self.startRecording(toOutputFile: url, retryCount: retryCount + 1)
-                        } catch {
-                            self.logger.error("Retry failed: \(error.localizedDescription)")
-                            self.onRecordingError?(error)
-                        }
-                    }
-                } else {
-                    self.logger.error("Recording failed after 2 retry attempts")
-                    self.onRecordingError?(AudioEngineRecorderError.recordingValidationFailed)
-                }
-            } else {
-                self.logger.info("Recording validation successful")
+            Task { @MainActor in
+                self.handleConfigurationChange()
             }
         }
+    }
+
+    private func removeConfigurationChangeObserver() {
+        if let observer = configurationChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            configurationChangeObserver = nil
+        }
+    }
+
+    private func handleConfigurationChange() {
+        logger.warning("Audio engine configuration changed (device switch or Bluetooth profile change)")
+        guard isRecording, !isRecovering else { return }
+
+        isRecovering = true
+        Task {
+            defer { isRecovering = false }
+            do {
+                try await recoverFromConfigurationChange()
+                logger.info("Successfully recovered from audio configuration change")
+            } catch {
+                logger.error("Failed to recover from configuration change: \(error.localizedDescription)")
+                onRecordingError?(error)
+            }
+        }
+    }
+
+    /// Recreates audio engine while keeping audio file open for seamless recording continuation
+    private func recoverFromConfigurationChange() async throws {
+        removeConfigurationChangeObserver()
+        inputNode?.removeTap(onBus: tapBusNumber)
+        audioEngine?.stop()
+        audioProcessingQueue.sync { }
+
+        // Allow audio system to stabilize, especially for Bluetooth devices (non-blocking)
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        let engine = AVAudioEngine()
+        let input = engine.inputNode
+        let inputFormat = input.outputFormat(forBus: tapBusNumber)
+
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            logger.error("Invalid input format after config change: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) ch")
+            throw AudioEngineRecorderError.invalidInputFormat
+        }
+
+        fileWriteLock.lock()
+        guard let format = recordingFormat else {
+            fileWriteLock.unlock()
+            throw AudioEngineRecorderError.invalidRecordingFormat
+        }
+
+        guard let newConverter = AVAudioConverter(from: inputFormat, to: format) else {
+            fileWriteLock.unlock()
+            throw AudioEngineRecorderError.failedToCreateConverter
+        }
+        converter = newConverter
+        fileWriteLock.unlock()
+
+        input.installTap(onBus: tapBusNumber, bufferSize: tapBufferSize, format: inputFormat) { [weak self] (buffer, time) in
+            guard let self = self else { return }
+            self.audioProcessingQueue.async {
+                self.processAudioBuffer(buffer)
+            }
+        }
+
+        engine.prepare()
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: tapBusNumber)
+            throw AudioEngineRecorderError.failedToStartEngine(error)
+        }
+
+        audioEngine = engine
+        inputNode = input
+        setupConfigurationChangeObserver()
+
+        logger.info("Engine recreated with format: \(inputFormat.sampleRate)Hz, \(inputFormat.channelCount) ch")
     }
 
     func stopRecording() {
         guard isRecording else { return }
 
-        validationTimer?.invalidate()
-        validationTimer = nil
+        removeConfigurationChangeObserver()
 
         inputNode?.removeTap(onBus: tapBusNumber)
         audioEngine?.stop()
@@ -159,7 +223,7 @@ class AudioEngineRecorder: ObservableObject {
         inputNode = nil
         recordingURL = nil
         isRecording = false
-        hasReceivedValidBuffer = false
+        isRecovering = false
 
         currentAveragePower = 0.0
         currentPeakPower = 0.0
@@ -214,11 +278,6 @@ class AudioEngineRecorder: ObservableObject {
 
         do {
             try audioFile.write(from: convertedBuffer)
-            Task { @MainActor in
-                if !self.hasReceivedValidBuffer {
-                    self.hasReceivedValidBuffer = true
-                }
-            }
         } catch {
             logTapError(message: "File write failed: \(error.localizedDescription)")
         }
@@ -277,7 +336,7 @@ enum AudioEngineRecorderError: LocalizedError {
     case bufferConversionFailed
     case audioConversionError(Error)
     case fileWriteFailed(Error)
-    case recordingValidationFailed
+    case configurationChanged
 
     var errorDescription: String? {
         switch self {
@@ -297,8 +356,8 @@ enum AudioEngineRecorderError: LocalizedError {
             return "Audio format conversion failed: \(error.localizedDescription)"
         case .fileWriteFailed(let error):
             return "Failed to write audio data to file: \(error.localizedDescription)"
-        case .recordingValidationFailed:
-            return "Recording failed to start - no valid audio received from device"
+        case .configurationChanged:
+            return "Audio device configuration changed during recording"
         }
     }
 }

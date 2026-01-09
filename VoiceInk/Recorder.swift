@@ -82,17 +82,8 @@ class Recorder: NSObject, ObservableObject {
         }
 
         do {
-            let engineRecorder = AudioEngineRecorder()
-            recorder = engineRecorder
-
-            // Set up error callback to handle runtime recording failures
-            engineRecorder.onRecordingError = { [weak self] error in
-                Task { @MainActor in
-                    await self?.handleRecordingError(error)
-                }
-            }
-
-            try engineRecorder.startRecording(toOutputFile: url)
+            // Retry handles Bluetooth A2DP→HFP profile switching delays
+            try await startRecordingWithRetry(toOutputFile: url, maxAttempts: 3, delayBetweenAttempts: 0.15)
 
             logger.info("✅ AudioEngineRecorder started successfully")
 
@@ -142,7 +133,49 @@ class Recorder: NSObject, ObservableObject {
             throw RecorderError.couldNotStartRecording
         }
     }
-    
+
+    /// Retries recording start to handle Bluetooth profile switching delays
+    private func startRecordingWithRetry(
+        toOutputFile url: URL,
+        maxAttempts: Int,
+        delayBetweenAttempts: TimeInterval
+    ) async throws {
+        var lastError: Error?
+
+        for attempt in 1...maxAttempts {
+            do {
+                let engineRecorder = AudioEngineRecorder()
+                recorder = engineRecorder
+
+                engineRecorder.onRecordingError = { [weak self] error in
+                    Task { @MainActor in
+                        await self?.handleRecordingError(error)
+                    }
+                }
+
+                try engineRecorder.startRecording(toOutputFile: url)
+                return
+            } catch let error as AudioEngineRecorderError {
+                lastError = error
+                recorder = nil
+
+                let shouldRetry = switch error {
+                case .invalidInputFormat, .failedToCreateConverter, .failedToStartEngine: true
+                default: false
+                }
+
+                if shouldRetry && attempt < maxAttempts {
+                    logger.warning("⚠️ Recording attempt \(attempt) failed: \(error.localizedDescription). Retrying...")
+                    try await Task.sleep(nanoseconds: UInt64(delayBetweenAttempts * 1_000_000_000))
+                } else {
+                    throw error
+                }
+            } catch {
+                throw error
+            }
+        }
+    }
+
     func stopRecording() {
         audioLevelCheckTask?.cancel()
         audioMeterUpdateTask?.cancel()
