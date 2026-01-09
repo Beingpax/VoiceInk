@@ -279,6 +279,10 @@ class HotkeyManager: ObservableObject {
         shortcutCurrentKeyState = false
         shortcutKeyPressStartTime = nil
         isShortcutHandsFreeMode = false
+        // Reset Fn key debounce state
+        fnDebounceTask?.cancel()
+        fnDebounceTask = nil
+        pendingFnKeyState = nil
     }
     
     private func handleModifierKeyEvent(_ event: NSEvent) async {
@@ -306,14 +310,33 @@ class HotkeyManager: ObservableObject {
             isKeyPressed = flags.contains(.control)
         case .fn:
             isKeyPressed = flags.contains(.function)
-            // Debounce Fn key
+            // Debounce Fn key - the Fn key can generate spurious events on some keyboards,
+            // especially with light pressure causing intermittent contact.
+            // Use asymmetric debouncing: quick press detection, slower release detection
+            // to filter out flickers during hold.
+            if pendingFnKeyState == isKeyPressed {
+                // State hasn't changed, let existing debounce timer continue
+                return
+            }
             pendingFnKeyState = isKeyPressed
             fnDebounceTask?.cancel()
-            fnDebounceTask = Task { [pendingState = isKeyPressed] in
-                try? await Task.sleep(nanoseconds: 75_000_000) // 75ms
-                if pendingFnKeyState == pendingState {
-                    await self.processKeyPress(isKeyPressed: pendingState)
+
+            // Asymmetric debounce: 30ms for press (fast response), 200ms for release (filter flickers)
+            let debounceNs: UInt64 = isKeyPressed ? 30_000_000 : 200_000_000
+
+            fnDebounceTask = Task { [weak self, pendingState = isKeyPressed] in
+                guard let self = self else { return }
+                do {
+                    try await Task.sleep(nanoseconds: debounceNs)
+                } catch {
+                    // Task was cancelled during sleep
+                    return
                 }
+                // Double-check cancellation after waking up
+                guard !Task.isCancelled else { return }
+                // Only process if the pending state hasn't changed since we started
+                guard self.pendingFnKeyState == pendingState else { return }
+                await self.processKeyPress(isKeyPressed: pendingState)
             }
             return
         case .rightCommand:
