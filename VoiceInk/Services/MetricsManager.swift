@@ -3,7 +3,7 @@ import MetricKit
 import OSLog
 
 @available(macOS 12.0, *)
-struct MetricsSummary: Codable, Equatable {
+struct MetricsSummary: Codable, Equatable, Sendable {
     let timestampBegin: Date
     let timestampEnd: Date
     let peakMemoryBytes: Double?
@@ -35,11 +35,11 @@ struct MetricsSummary: Codable, Equatable {
 }
 
 @available(macOS 12.0, *)
+@MainActor
 final class MetricsManager: NSObject, MXMetricManagerSubscriber {
     static let shared = MetricsManager()
     
     private static let summaryKey = "latestMetricsSummary"
-    private let processingQueue = DispatchQueue(label: "com.voiceink.metrics", qos: .utility)
     
     private override init() {
         super.init()
@@ -55,16 +55,16 @@ final class MetricsManager: NSObject, MXMetricManagerSubscriber {
         AppLogger.metrics.info("MetricsManager unregistered")
     }
     
-    func didReceive(_ payloads: [MXMetricPayload]) {
-        processingQueue.async { [weak self] in
+    nonisolated func didReceive(_ payloads: [MXMetricPayload]) {
+        Task { @MainActor [weak self] in
             for payload in payloads {
                 self?.processMetricPayload(payload)
             }
         }
     }
     
-    func didReceive(_ payloads: [MXDiagnosticPayload]) {
-        processingQueue.async { [weak self] in
+    nonisolated func didReceive(_ payloads: [MXDiagnosticPayload]) {
+        Task { @MainActor [weak self] in
             for payload in payloads {
                 self?.processDiagnosticPayload(payload)
             }
@@ -174,7 +174,7 @@ final class MetricsManager: NSObject, MXMetricManagerSubscriber {
         var totalCount = 0
         let enumerator = histogram.bucketEnumerator
         while let bucket = enumerator.nextObject() as? MXHistogramBucket {
-            totalCount += bucket.bucketCount
+            totalCount += bucket.bucketCount.intValue
         }
         
         return totalCount > 0 ? totalCount : nil

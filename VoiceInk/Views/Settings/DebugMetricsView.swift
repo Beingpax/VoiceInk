@@ -5,12 +5,12 @@ import SwiftUI
 struct DebugMetricsView: View {
     @State private var summary: MetricsSummary?
     
-    private var dateFormatter: DateFormatter {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
         formatter.timeStyle = .short
         return formatter
-    }
+    }()
     
     var body: some View {
         GroupBox("MetricKit Summary") {
@@ -44,7 +44,7 @@ struct DebugMetricsView: View {
                     
                     MetricRow(
                         label: "Period",
-                        value: "\(dateFormatter.string(from: summary.timestampBegin)) - \(dateFormatter.string(from: summary.timestampEnd))"
+                        value: "\(Self.dateFormatter.string(from: summary.timestampBegin)) - \(Self.dateFormatter.string(from: summary.timestampEnd))"
                     )
                 }
                 .padding(.vertical, 4)
