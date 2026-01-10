@@ -55,18 +55,20 @@ final class MetricsManager: NSObject, MXMetricManagerSubscriber {
         AppLogger.metrics.info("MetricsManager unregistered")
     }
     
+    // MetricKit invokes delegate methods on arbitrary background queues.
+    // These are marked nonisolated and use await to hop to the main actor.
     nonisolated func didReceive(_ payloads: [MXMetricPayload]) {
-        Task { @MainActor [weak self] in
+        Task { [weak self] in
             for payload in payloads {
-                self?.processMetricPayload(payload)
+                await self?.processMetricPayload(payload)
             }
         }
     }
     
     nonisolated func didReceive(_ payloads: [MXDiagnosticPayload]) {
-        Task { @MainActor [weak self] in
+        Task { [weak self] in
             for payload in payloads {
-                self?.processDiagnosticPayload(payload)
+                await self?.processDiagnosticPayload(payload)
             }
         }
     }
