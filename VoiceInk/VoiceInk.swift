@@ -29,6 +29,10 @@ struct VoiceInkApp: App {
     // Transcription auto-cleanup service for zero data retention
     private let transcriptionAutoCleanupService = TranscriptionAutoCleanupService.shared
     
+    // MetricKit manager for production performance monitoring
+    @available(macOS 12.0, *)
+    private var metricsManager: MetricsManager { MetricsManager.shared }
+    
     init() {
         // Migrate API keys from UserDefaults to Keychain (runs once on first launch after update)
         APIKeyMigrationService.migrateAPIKeysIfNeeded()
@@ -238,6 +242,11 @@ struct VoiceInkApp: App {
                             }
                             appDelegate.pendingOpenFileURL = nil
                         }
+                        
+                        // Register MetricKit for production performance monitoring
+                        if #available(macOS 12.0, *) {
+                            metricsManager.register()
+                        }
                     }
                     .background(WindowAccessor { window in
                         WindowManager.shared.configureWindow(window)
@@ -251,6 +260,11 @@ struct VoiceInkApp: App {
                         
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
+                        
+                        // Unregister MetricKit
+                        if #available(macOS 12.0, *) {
+                            metricsManager.unregister()
+                        }
                     }
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)

@@ -46,7 +46,7 @@ struct SettingsView: View {
     
     // Searchable settings definitions
     var searchableSettings: [SearchableSetting] {
-        [
+        var settings = [
             // General
             SearchableSetting(tab: .general, section: "App Behavior", keywords: ["dock", "icon", "menu bar", "launch", "login", "startup", "update", "automatic", "announcements", "onboarding", "reset"]),
             SearchableSetting(tab: .general, section: "Community & License", keywords: ["license", "community", "edition", "open source", "privacy"]),
@@ -79,6 +79,12 @@ struct SettingsView: View {
             // Permissions
             SearchableSetting(tab: .permissions, section: "Permissions", keywords: ["permissions", "accessibility", "microphone", "access", "privacy", "security"]),
         ]
+        
+        #if DEBUG
+        settings.append(SearchableSetting(tab: .general, section: "Performance Metrics", keywords: ["performance", "metrics", "metrickit", "cpu", "memory", "hang", "debug", "monitoring"]))
+        #endif
+        
+        return settings
     }
     
     func matchesSearch(_ setting: SearchableSetting) -> Bool {

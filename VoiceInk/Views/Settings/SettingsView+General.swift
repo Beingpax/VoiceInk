@@ -84,6 +84,18 @@ extension SettingsView {
                     }
                 }
             }
+            
+            #if DEBUG
+            if #available(macOS 12.0, *), sectionMatches("Performance Metrics", in: .general) {
+                VoiceInkSection(
+                    icon: "chart.bar.xaxis",
+                    title: "Performance Metrics",
+                    subtitle: "MetricKit production monitoring (DEBUG only)"
+                ) {
+                    DebugMetricsView()
+                }
+            }
+            #endif
         }
     }
 }

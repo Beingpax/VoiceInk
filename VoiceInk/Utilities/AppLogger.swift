@@ -92,6 +92,15 @@ struct AppLogger {
     /// - Critical errors
     static let app = Logger(subsystem: subsystem, category: "App")
     
+    /// Logger for MetricKit performance metrics
+    ///
+    /// Use for:
+    /// - CPU/memory usage reports
+    /// - Launch time measurements
+    /// - Hang diagnostics
+    /// - Disk I/O metrics
+    static let metrics = Logger(subsystem: subsystem, category: "Metrics")
+    
     // MARK: - Convenience Methods
     
     /// Log a transcription event
@@ -112,6 +121,11 @@ struct AppLogger {
     /// Log an AI enhancement event
     static func logAI(_ message: String, level: OSLogType = .info, file: String = #file, function: String = #function, line: Int = #line) {
         log(message, logger: ai, level: level, file: file, function: function, line: line)
+    }
+    
+    /// Log a metrics event
+    static func logMetrics(_ message: String, level: OSLogType = .info, file: String = #file, function: String = #function, line: Int = #line) {
+        log(message, logger: metrics, level: level, file: file, function: function, line: line)
     }
     
     // MARK: - Private Helpers

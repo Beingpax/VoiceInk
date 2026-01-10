@@ -241,6 +241,7 @@ VoiceInk/
 │   ├── AIEnhancementService.swift
 │   ├── AudioDeviceManager.swift
 │   ├── ScreenCaptureService.swift
+│   ├── MetricsManager.swift    # MetricKit production performance monitoring
 │   ├── CloudTranscription/     # Cloud provider integrations
 │   ├── OllamaAIService.swift
 │   └── CloudSyncService.swift  # iCloud Sync integration
@@ -1713,6 +1714,7 @@ None - purely additive feature
 | `TTSViewModel.swift` | TTS workspace state |
 | `PowerModeSessionManager.swift` | Context detection |
 | `AIEnhancementService.swift` | AI text processing |
+| `MetricsManager.swift` | MetricKit production performance monitoring |
 
 ### Graphite Commands (AI Agents Must Use)
 
@@ -1774,6 +1776,11 @@ Task { @MainActor [weak self] in
 
 ## Version History
 
+- **v1.10** (2026-01-10) - MetricKit Production Performance Monitoring
+  - Added MetricsManager service for MetricKit integration
+  - Extended AppLogger with metrics category
+  - Added DebugMetricsView for DEBUG builds
+  - Integrated performance monitoring in app lifecycle
 - **v1.0** (2025-11-03) - Initial AGENTS.md created
   - Comprehensive project overview
   - Security guidelines
@@ -1798,11 +1805,18 @@ This guide is a living document. If you find errors, outdated information, or ha
 
 ---
 
-**Last Updated:** January 2, 2026
+**Last Updated:** January 10, 2026
 **Maintained By:** VoiceInk Community
 **License:** GPL v3 (same as project)
 
 **Recent Updates:**
+- **v1.10** (2026-01-10) - MetricKit Production Performance Monitoring
+  - Added [`MetricsManager`](VoiceInk/Services/MetricsManager.swift) for production performance monitoring via MetricKit
+  - Extended [`AppLogger`](VoiceInk/Utilities/AppLogger.swift) with `.metrics` category for performance logging
+  - Added optional [`DebugMetricsView`](VoiceInk/Views/Settings/DebugMetricsView.swift) for DEBUG builds to display metrics summary
+  - Integrated MetricsManager registration in app lifecycle (`VoiceInk.swift`)
+  - Collects: CPU time, peak memory, disk I/O, launch times, hang diagnostics
+  - View metrics in Console.app with filter `category:Metrics`
 - **v1.9** (2026-01-02) - Graphite Integration
   - Configured Graphite CLI for stacked PRs workflow
   - Updated **Development Workflow** section to use `gt` commands instead of `git`/`gh`
