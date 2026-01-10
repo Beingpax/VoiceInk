@@ -1,18 +1,12 @@
 import Foundation
 import AppKit
 import Vision
-import os
 import ScreenCaptureKit
 
 @MainActor
 class ScreenCaptureService: ObservableObject {
     @Published var isCapturing = false
     @Published var lastCapturedText: String?
-    
-    private let logger = Logger(
-        subsystem: "com.prakashjoshipax.voiceink",
-        category: "aienhancement"
-    )
     
     private struct WindowCandidate {
         let title: String
@@ -88,7 +82,6 @@ class ScreenCaptureService: ObservableObject {
             return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
             
         } catch {
-            logger.notice("📸 Screen capture failed: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
@@ -125,8 +118,7 @@ class ScreenCaptureService: ObservableObject {
         switch result {
         case .success(let text):
             return text
-        case .failure(let error):
-            logger.notice("📸 Text recognition failed: \(error.localizedDescription, privacy: .public)")
+        case .failure:
             return nil
         }
     }
@@ -144,11 +136,8 @@ class ScreenCaptureService: ObservableObject {
         }
 
         guard let windowInfo = getActiveWindowInfo() else {
-            logger.notice("📸 No active window found")
             return nil
         }
-        
-        logger.notice("📸 Capturing: \(windowInfo.title, privacy: .public) (\(windowInfo.ownerName, privacy: .public))")
 
         var contextText = """
         Active Window: \(windowInfo.title)
@@ -161,11 +150,8 @@ class ScreenCaptureService: ObservableObject {
             
             if let extractedText = extractedText, !extractedText.isEmpty {
                 contextText += "Window Content:\n\(extractedText)"
-                let preview = String(extractedText.prefix(100))
-                logger.notice("📸 Text extracted: \(preview, privacy: .public)\(extractedText.count > 100 ? "..." : "")")
             } else {
                 contextText += "Window Content:\nNo text detected via OCR"
-                logger.notice("📸 No text extracted from window")
             }
             
             await MainActor.run {
@@ -174,8 +160,7 @@ class ScreenCaptureService: ObservableObject {
             
             return contextText
         }
-        
-        logger.notice("📸 Window capture failed")
+
         return nil
     }
 } 

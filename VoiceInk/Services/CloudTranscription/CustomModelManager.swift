@@ -19,21 +19,18 @@ class CustomModelManager: ObservableObject {
     func addCustomModel(_ model: CustomCloudModel) {
         customModels.append(model)
         saveCustomModels()
-        logger.info("Added custom model: \(model.displayName)")
     }
-    
+
     func removeCustomModel(withId id: UUID) {
         customModels.removeAll { $0.id == id }
         saveCustomModels()
         APIKeyManager.shared.deleteCustomModelAPIKey(forModelId: id)
-        logger.info("Removed custom model with ID: \(id)")
     }
-    
+
     func updateCustomModel(_ updatedModel: CustomCloudModel) {
         if let index = customModels.firstIndex(where: { $0.id == updatedModel.id }) {
             customModels[index] = updatedModel
             saveCustomModels()
-            logger.info("Updated custom model: \(updatedModel.displayName)")
         }
     }
     
@@ -41,7 +38,6 @@ class CustomModelManager: ObservableObject {
     
     private func loadCustomModels() {
         guard let data = userDefaults.data(forKey: customModelsKey) else {
-            logger.info("No custom models found in UserDefaults")
             return
         }
         
