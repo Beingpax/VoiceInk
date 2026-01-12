@@ -5,7 +5,8 @@ class CursorPaster {
 
     static func pasteAtCursor(_ text: String) {
         let pasteboard = NSPasteboard.general
-        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
+        // Default to true if not explicitly set by user
+        let shouldRestoreClipboard = UserDefaults.standard.object(forKey: "restoreClipboardAfterPaste") as? Bool ?? true
 
         var savedContents: [(NSPasteboard.PasteboardType, Data)] = []
 
@@ -33,7 +34,7 @@ class CursorPaster {
 
         if shouldRestoreClipboard {
             let restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
-            let delay = restoreDelay > 0 ? restoreDelay : 1.5
+            let delay = restoreDelay > 0 ? restoreDelay : 1.0
 
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                 if !savedContents.isEmpty {

@@ -209,10 +209,6 @@ class AIEnhancementService: ObservableObject {
             self.lastUserMessageSent = formattedText
         }
 
-        // Log the message being sent to AI enhancement
-        logger.notice("AI Enhancement - System Message: \(systemMessage, privacy: .public)")
-        logger.notice("AI Enhancement - User Message: \(formattedText, privacy: .public)")
-
         if aiService.selectedProvider == .ollama {
             do {
                 let result = try await aiService.enhanceWithOllama(text: formattedText, systemPrompt: systemMessage)

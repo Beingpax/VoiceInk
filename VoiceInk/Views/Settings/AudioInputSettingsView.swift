@@ -17,10 +17,13 @@ struct AudioInputSettingsView: View {
     private var mainContent: some View {
         VStack(spacing: 40) {
             inputModeSection
-            
-            if audioDeviceManager.inputMode == .custom {
+
+            switch audioDeviceManager.inputMode {
+            case .systemDefault:
+                systemDefaultSection
+            case .custom:
                 customDeviceSection
-            } else if audioDeviceManager.inputMode == .prioritized {
+            case .prioritized:
                 prioritizedDevicesSection
             }
         }
@@ -54,25 +57,50 @@ struct AudioInputSettingsView: View {
         }
     }
     
+    private var systemDefaultSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Current Device")
+                .font(.title2)
+                .fontWeight(.semibold)
+
+            HStack {
+                Image(systemName: "display")
+                    .foregroundStyle(.secondary)
+
+                Text(audioDeviceManager.getSystemDefaultDeviceName() ?? "No device available")
+                    .foregroundStyle(.primary)
+
+                Spacer()
+
+                Label("Active", systemImage: "wave.3.right")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(.green.opacity(0.1))
+                    )
+            }
+            .padding()
+            .background(CardBackground(isSelected: false))
+        }
+    }
+
     private var customDeviceSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
                 Text("Available Devices")
                     .font(.title2)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 Button(action: { audioDeviceManager.loadAvailableDevices() }) {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
             }
-            
-            Text("Note: Selecting a device here will override your Mac\'s system-wide default microphone.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.bottom, 8)
 
             VStack(spacing: 12) {
                 ForEach(audioDeviceManager.availableDevices, id: \.id) { device in
@@ -106,14 +134,10 @@ struct AudioInputSettingsView: View {
                 Text("Prioritized Devices")
                     .font(.title2)
                     .fontWeight(.semibold)
-                Text("Devices will be used in order of priority. If a device is unavailable, the next one will be tried. If no prioritized device is available, the system default microphone will be used.")
+                Text("Devices will be used in order of priority. If a device is unavailable, the next one will be tried. If no prioritized device is available, the built-in microphone will be used.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Warning: Using a prioritized device will override your Mac\'s system-wide default microphone if it becomes active.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 4)
             }
             
             if audioDeviceManager.prioritizedDevices.isEmpty {
@@ -241,9 +265,10 @@ struct InputModeCard: View {
     let mode: AudioInputMode
     let isSelected: Bool
     let action: () -> Void
-    
+
     private var icon: String {
         switch mode {
+        case .systemDefault: return "display"
         case .custom: return "mic.circle.fill"
         case .prioritized: return "list.number"
         }
@@ -251,6 +276,7 @@ struct InputModeCard: View {
 
     private var description: String {
         switch mode {
+        case .systemDefault: return "Use your Mac's default input"
         case .custom: return "Select a specific input device"
         case .prioritized: return "Set up device priority order"
         }

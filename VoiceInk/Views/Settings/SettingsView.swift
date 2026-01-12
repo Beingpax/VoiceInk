@@ -17,8 +17,8 @@ struct SettingsView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
     @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
-    @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = false
-    @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
+    @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
+    @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 1.0
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
@@ -397,11 +397,11 @@ struct SettingsView: View {
 
                             Button {
                                 ImportExportService.shared.exportSettings(
-                                    enhancementService: enhancementService, 
-                                    whisperPrompt: whisperState.whisperPrompt, 
-                                    hotkeyManager: hotkeyManager, 
-                                    menuBarManager: menuBarManager, 
-                                    mediaController: MediaController.shared, 
+                                    enhancementService: enhancementService,
+                                    whisperPrompt: whisperState.whisperPrompt,
+                                    hotkeyManager: hotkeyManager,
+                                    menuBarManager: menuBarManager,
+                                    mediaController: MediaController.shared,
                                     playbackController: PlaybackController.shared,
                                     soundManager: SoundManager.shared,
                                     whisperState: whisperState
@@ -413,6 +413,14 @@ struct SettingsView: View {
                             .controlSize(.large)
                         }
                     }
+                }
+
+                SettingsSection(
+                    icon: "ant.circle",
+                    title: "Diagnostics",
+                    subtitle: "Export logs for troubleshooting"
+                ) {
+                    DiagnosticsSettingsView()
                 }
             }
             .padding(.horizontal, 20)

@@ -115,11 +115,7 @@ class OllamaService: ObservableObject {
         guard let systemPrompt = systemPrompt else {
             throw LocalAIError.invalidRequest
         }
-        
-        print("\nOllama Enhancement Debug:")
-        print("Original Text: \(text)")
-        print("System Prompt: \(systemPrompt)")
-        
+
         let body: [String: Any] = [
             "model": selectedModel,
             "prompt": text,
@@ -139,7 +135,6 @@ class OllamaService: ObservableObject {
         switch httpResponse.statusCode {
         case 200:
             let response = try JSONDecoder().decode(OllamaResponse.self, from: data)
-            print("Enhanced Text: \(response.response)\n")
             return response.response
         case 404:
             throw LocalAIError.modelNotFound

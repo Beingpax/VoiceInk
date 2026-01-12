@@ -195,8 +195,10 @@ class WhisperState: NSObject, ObservableObject {
                                 self.recordingState = .recording
                             }
 
-                            // Detect and apply Power Mode for current app/website
-                            await ActiveWindowService.shared.applyConfiguration(powerModeId: powerModeId)
+                            // Detect and apply Power Mode for current app/website in background
+                            Task {
+                                await ActiveWindowService.shared.applyConfiguration(powerModeId: powerModeId)
+                            }
 
                             // Load model and capture context in background without blocking
                             Task.detached { [weak self] in

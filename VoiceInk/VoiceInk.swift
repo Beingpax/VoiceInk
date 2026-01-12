@@ -49,13 +49,6 @@ struct VoiceInkApp: App {
         // Attempt 1: Try persistent storage
         if let persistentContainer = Self.createPersistentContainer(schema: schema, logger: logger) {
             container = persistentContainer
-
-            #if DEBUG
-            // Print SwiftData storage location in debug builds only
-            if let url = persistentContainer.mainContext.container.configurations.first?.url {
-                print("💾 SwiftData storage location: \(url.path)")
-            }
-            #endif
         }
         // Attempt 2: Try in-memory storage
         else if let memoryContainer = Self.createInMemoryContainer(schema: schema, logger: logger) {

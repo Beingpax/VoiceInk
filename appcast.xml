@@ -3,25 +3,21 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>1.67</title>
-            <pubDate>Tue, 07 Jan 2026 12:00:00 +0545</pubDate>
-            <sparkle:version>167</sparkle:version>
-            <sparkle:shortVersionString>1.67</sparkle:shortVersionString>
+            <title>1.69</title>
+            <pubDate>Sun, 12 Jan 2026 12:00:00 +0545</pubDate>
+            <sparkle:version>169</sparkle:version>
+            <sparkle:shortVersionString>1.69</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <description><![CDATA[
 
-                <h3>What's New in Version 1.67</h3>
+                <h3>What's New in Version 1.69</h3>
                 <ul>
-                    <li>Keyboard shortcuts to toggle specific Power Modes directly</li>
-                    <li>Dedicated transcript history window with global keyboard shortcut access</li>
-                    <li>GPT-5.2 model support</li>
-                    <li>Configurable audio resume delay for Bluetooth headphones</li>
-                    <li>Redesigned Power Mode & Enhancement UI</li>
-                    <li>Minor bug fixes and improvements</li>
+                    <li>Fix recording Issue</li>
+                    <li>Added export logs option in settings</li>
                 </ul>
 
             ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.67/VoiceInk.dmg" length="10785277" type="application/octet-stream" sparkle:edSignature="mAvwccTy7ltp5SBU7ay+rMbLo3tJKhyHhGhD1iHdg54C9UMTpubgyLSMksYPzT9YJciT73jdPIIW0/Vwt4i6DQ=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.69/VoiceInk.dmg" length="10786047" type="application/octet-stream" sparkle:edSignature="tPVfTDY+CKBMxW5EW+KsbhsH5YiVDyY9VFplI71EiDu56GZu0fWxd/p/V2WRdPHX+8FKfVpmSJwhzVgCHL7FBg=="/>
         </item>
     </channel>
 </rss>
