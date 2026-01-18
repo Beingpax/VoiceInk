@@ -9,9 +9,11 @@ enum LanguageDisplayMode {
 struct LanguageSelectionView: View {
     @ObservedObject var whisperState: WhisperState
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
-    // Add display mode parameter with full as the default
+    @AppStorage("AutoSwitchLanguageByKeyboard") private var autoSwitchEnabled: Bool = false
     var displayMode: LanguageDisplayMode = .full
     @ObservedObject var whisperPrompt: WhisperPrompt
+    @StateObject private var keyboardMonitor = KeyboardInputSourceMonitor.shared
+    @State private var expandedSections: Set<ExpandableSection> = []
 
     private func updateLanguage(_ language: String) {
         // Update UI state - the UserDefaults updating is now automatic with @AppStorage
@@ -105,6 +107,7 @@ struct LanguageSelectionView: View {
                             }
                         }
                         .pickerStyle(MenuPickerStyle())
+                        .disabled(autoSwitchEnabled)
                         .onChange(of: selectedLanguage) { oldValue, newValue in
                             updateLanguage(newValue)
                         }
@@ -119,8 +122,11 @@ struct LanguageSelectionView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     }
+
+                    Divider()
+
+                    autoSwitchKeyboardSection
                 } else {
-                    // For English-only models, force set language to English
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Language: English")
                             .font(.subheadline)
@@ -137,7 +143,6 @@ struct LanguageSelectionView: View {
                         .foregroundColor(.secondary)
                     }
                     .onAppear {
-                        // Ensure English is set when viewing English-only model
                         updateLanguage("en")
                     }
                 }
@@ -151,6 +156,44 @@ struct LanguageSelectionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(10)
+    }
+
+    private var autoSwitchKeyboardSection: some View {
+        ExpandableToggleSection(
+            section: .autoSwitchKeyboard,
+            title: "Auto-switch with keyboard",
+            helpText: "Automatically change the transcription language when you switch your system keyboard input source",
+            isEnabled: $autoSwitchEnabled,
+            expandedSections: $expandedSections
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "keyboard")
+                        .foregroundColor(.secondary)
+                    Text("Current keyboard:")
+                        .foregroundColor(.secondary)
+                    Text(keyboardMonitor.currentKeyboardDisplayName)
+                        .fontWeight(.medium)
+                }
+                .font(.caption)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "globe")
+                        .foregroundColor(.secondary)
+                    Text("Detected language:")
+                        .foregroundColor(.secondary)
+                    Text(keyboardMonitor.currentKeyboardLanguage)
+                        .fontWeight(.medium)
+                }
+                .font(.caption)
+            }
+            .padding(.vertical, 4)
+        }
+        .onChange(of: autoSwitchEnabled) { _, newValue in
+            if newValue {
+                keyboardMonitor.syncLanguageIfEnabled()
+            }
+        }
     }
 
     // New compact view for menu bar
