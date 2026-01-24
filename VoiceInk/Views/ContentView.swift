@@ -59,7 +59,9 @@ struct ContentView: View {
     @EnvironmentObject private var whisperState: WhisperState
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
-    @State private var selectedView: ViewType? = .metrics
+    @State private var contentSelection: ViewType? = .metrics
+    @State private var sidebarSelection: ViewType? = .metrics
+    @State private var lastNonHistorySelection: ViewType? = .metrics
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     @StateObject private var licenseViewModel = LicenseViewModel()
 
@@ -74,7 +76,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selectedView) {
+            List(selection: $sidebarSelection) {
                 Section {
                     // App Header
                     HStack(spacing: 6) {
@@ -106,25 +108,11 @@ struct ContentView: View {
 
                 ForEach(visibleViewTypes) { viewType in
                     Section {
-                        if viewType == .history {
-                            Button(action: {
-                                HistoryWindowController.shared.showHistoryWindow(
-                                    modelContainer: modelContext.container,
-                                    whisperState: whisperState
-                                )
-                            }) {
-                                SidebarItemView(viewType: viewType)
-                            }
-                            .buttonStyle(.plain)
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                            .listRowSeparator(.hidden)
-                        } else {
-                            NavigationLink(value: viewType) {
-                                SidebarItemView(viewType: viewType)
-                            }
-                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                            .listRowSeparator(.hidden)
+                        NavigationLink(value: viewType) {
+                            SidebarItemView(viewType: viewType)
                         }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.hidden)
                     }
                 }
             }
@@ -132,7 +120,7 @@ struct ContentView: View {
             .navigationTitle("VoiceInk")
             .navigationSplitViewColumnWidth(210)
         } detail: {
-            if let selectedView = selectedView {
+            if let selectedView = contentSelection {
                 detailView(for: selectedView)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .navigationTitle(selectedView.rawValue)
@@ -144,33 +132,61 @@ struct ContentView: View {
         .navigationSplitViewStyle(.balanced)
         .frame(width: 950)
         .frame(minHeight: 730)
+        .onChange(of: sidebarSelection) { _, newValue in
+            guard let newValue else { return }
+            if newValue == .history {
+                openHistoryFromSidebar()
+                return
+            }
+            contentSelection = newValue
+            lastNonHistorySelection = newValue
+        }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
             if let destination = notification.userInfo?["destination"] as? String {
                 switch destination {
                 case "Settings":
-                    selectedView = .settings
+                    setSelection(.settings)
                 case "AI Models":
-                    selectedView = .models
+                    setSelection(.models)
                 case "VoiceInk Pro":
-                    selectedView = .license
+                    setSelection(.license)
                 case "History":
                     HistoryWindowController.shared.showHistoryWindow(
                         modelContainer: modelContext.container,
                         whisperState: whisperState
                     )
                 case "Permissions":
-                    selectedView = .permissions
+                    setSelection(.permissions)
                 case "Enhancement":
-                    selectedView = .enhancement
+                    setSelection(.enhancement)
                 case "Transcribe Audio":
-                    selectedView = .transcribeAudio
+                    setSelection(.transcribeAudio)
                 case "Power Mode":
-                    selectedView = .powerMode
+                    setSelection(.powerMode)
                 default:
                     break
                 }
             }
         }
+    }
+
+    private func openHistoryFromSidebar() {
+        let previousSelection = lastNonHistorySelection ?? contentSelection
+        HistoryWindowController.shared.showHistoryWindow(
+            modelContainer: modelContext.container,
+            whisperState: whisperState
+        )
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            if sidebarSelection == .history {
+                sidebarSelection = previousSelection
+            }
+        }
+    }
+
+    private func setSelection(_ viewType: ViewType) {
+        contentSelection = viewType
+        sidebarSelection = viewType
+        lastNonHistorySelection = viewType
     }
     
     @ViewBuilder
@@ -218,6 +234,8 @@ private struct SidebarItemView: View {
 
             Spacer()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .padding(.vertical, 8)
         .padding(.horizontal, 2)
     }
