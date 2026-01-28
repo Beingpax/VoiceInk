@@ -2,36 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>SUEnableInstallerLauncherService</key>
-	<true/>
-	<key>SUFeedURL</key>
-	<string>https://beingpax.github.io/VoiceInk/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>rLRdZIjK3gHKfqNlAF9nT7FbjwSvwkJ8BVn0v2mD1Mo=</string>
-	<key>LSUIElement</key>
-	<false/>
-	<key>SUEnableAutomaticChecks</key>
-	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>VoiceInk needs access to your microphone to record audio for transcription.</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations.</string>
-	<key>NSScreenCaptureUsageDescription</key>
-	<string>VoiceInk needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
-			<key>CFBundleTypeName</key>
-			<string>Audio/Video File</string>
-			<key>CFBundleTypeRole</key>
-			<string>Viewer</string>
-			<key>LSHandlerRank</key>
-			<string>Alternate</string>
-			<key>LSItemContentTypes</key>
-			<array>
-				<string>public.audio</string>
-				<string>public.movie</string>
-			</array>
 			<key>CFBundleTypeExtensions</key>
 			<array>
 				<string>wav</string>
@@ -44,7 +17,28 @@
 				<string>flac</string>
 				<string>caf</string>
 			</array>
+			<key>CFBundleTypeName</key>
+			<string>Audio/Video File</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.audio</string>
+				<string>public.movie</string>
+			</array>
 		</dict>
 	</array>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>VoiceInk needs screen recording access to understand context from your screen for improved transcription accuracy.</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://beingpax.github.io/VoiceInk/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>rLRdZIjK3gHKfqNlAF9nT7FbjwSvwkJ8BVn0v2mD1Mo=</string>
 </dict>
 </plist>
