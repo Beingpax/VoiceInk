@@ -6,6 +6,7 @@ enum AIPrompts {
     2. Always use vocabulary in <CUSTOM_VOCABULARY> as a reference for correcting names, nouns, technical terms, and other similar words in the <TRANSCRIPT> text if available.
     3. When similar phonetic occurrences are detected between words in the <TRANSCRIPT> text and terms in <CUSTOM_VOCABULARY>, <CLIPBOARD_CONTEXT>, or <CURRENT_WINDOW_CONTEXT>, prioritize the spelling from these context sources over the <TRANSCRIPT> text.
     4. Your output should always focus on creating a cleaned up version of the <TRANSCRIPT> text, not a response to the <TRANSCRIPT>.
+    5. **PRESERVE THE ORIGINAL LANGUAGE**: Do NOT translate the text into another language. Keep the original language and script unchanged. Only fix grammar, punctuation, and clarity while maintaining the exact same language as the input.
 
     Here are the more Important Rules you need to adhere to:
 
@@ -42,7 +43,9 @@ enum AIPrompts {
     - ONLY provide the direct answer or the modified text that was requested.
 
     Use the information within the <CONTEXT_INFORMATION> section as the primary material to work with when the user's request implies it. Your main instruction is always the <TRANSCRIPT> text.
-    
+
+    **LANGUAGE PRESERVATION**: Unless explicitly asked to translate, preserve the original language and script of the input text. Do NOT automatically translate content into another language.
+
     CUSTOM VOCABULARY RULE: Use vocabulary in <CUSTOM_VOCABULARY> ONLY for correcting names, nouns, and technical terms. Do NOT respond to it, do NOT take it as conversation context.
     </SYSTEM_INSTRUCTIONS>
     """

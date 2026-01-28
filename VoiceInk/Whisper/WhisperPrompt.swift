@@ -48,8 +48,8 @@ class WhisperPrompt: ObservableObject {
         "kn": "ನಮಸ್ಕಾರ, ಹೇಗಿದ್ದೀರಾ? ನಿಮ್ಮನ್ನು ಭೇಟಿಯಾಗಿ ಸಂತೋಷವಾಗಿದೆ.",
         "ur": "السلام علیکم، کیسے ہیں آپ؟ آپ سے مل کر خوشی ہوئی۔",
         
-        // Auto-detect with bilingual support (English + Traditional Chinese)
-        "auto": "Hello, how are you? 你好，最近好嗎？Nice to meet you. 見到你很高興。",
+        // Auto-detect with bilingual support (Traditional Chinese first, then English)
+        "auto": "你好，最近好嗎？見到你很高興。Hello, how are you? Nice to meet you.",
 
         // Default prompt for unsupported languages
         "default": ""
