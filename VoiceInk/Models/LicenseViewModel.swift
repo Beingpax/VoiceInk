@@ -34,41 +34,8 @@ class LicenseViewModel: ObservableObject {
     }
 
     private func loadLicenseState() {
-        // Check for existing license key
-        if let storedLicenseKey = licenseManager.licenseKey {
-            self.licenseKey = storedLicenseKey
-
-            // If we have a license key, trust that it's licensed
-            // Skip server validation on startup
-            if licenseManager.activationId != nil || !userDefaults.bool(forKey: "VoiceInkLicenseRequiresActivation") {
-                licenseState = .licensed
-                activationsLimit = userDefaults.activationsLimit
-                return
-            }
-        }
-
-        // Check if this is first launch
-        let hasLaunchedBefore = userDefaults.bool(forKey: "VoiceInkHasLaunchedBefore")
-        if !hasLaunchedBefore {
-            // First launch - start trial automatically
-            userDefaults.set(true, forKey: "VoiceInkHasLaunchedBefore")
-            startTrial()
-            return
-        }
-
-        // Only check trial if not licensed and not first launch
-        if let trialStartDate = licenseManager.trialStartDate {
-            let daysSinceTrialStart = Calendar.current.dateComponents([.day], from: trialStartDate, to: Date()).day ?? 0
-
-            if daysSinceTrialStart >= trialPeriodDays {
-                licenseState = .trialExpired
-            } else {
-                licenseState = .trial(daysRemaining: trialPeriodDays - daysSinceTrialStart)
-            }
-        } else {
-            // No trial has been started yet - start it now
-            startTrial()
-        }
+        // Always licensed - trial enforcement removed
+        licenseState = .licensed
     }
     
     var canUseApp: Bool {
