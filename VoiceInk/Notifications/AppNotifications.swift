@@ -17,4 +17,5 @@ extension Notification.Name {
     static let enhancementToggleChanged = Notification.Name("enhancementToggleChanged")
     static let openFileForTranscription = Notification.Name("openFileForTranscription")
     static let audioDeviceSwitchRequired = Notification.Name("audioDeviceSwitchRequired")
+    static let vocabularyDidChange = Notification.Name("vocabularyDidChange")
 }

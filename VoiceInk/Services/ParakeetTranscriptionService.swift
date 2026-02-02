@@ -20,6 +20,7 @@ class ParakeetTranscriptionService: TranscriptionService {
     private var vadManager: VadManager?
     private var activeVersion: AsrModelVersion?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink.parakeet", category: "ParakeetTranscriptionService")
+    var vocabularyService: ParakeetVocabularyService?
 
     private func version(for model: any TranscriptionModel) -> AsrModelVersion {
         model.name.lowercased().contains("v2") ? .v2 : .v3
@@ -60,6 +61,14 @@ class ParakeetTranscriptionService: TranscriptionService {
 
         guard let asrManager = asrManager else {
             throw ASRError.notInitialized
+        }
+
+        if let vocabularyService {
+            do {
+                try await vocabularyService.configureIfNeeded(on: asrManager)
+            } catch {
+                logger.notice("Vocabulary boosting configuration failed: \(error.localizedDescription)")
+            }
         }
 
         let audioSamples = try readAudioSamples(from: audioURL)
@@ -120,5 +129,6 @@ class ParakeetTranscriptionService: TranscriptionService {
         asrManager = nil
         vadManager = nil
         activeVersion = nil
+        vocabularyService?.cleanup()
     }
 }

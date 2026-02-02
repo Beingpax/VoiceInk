@@ -52,6 +52,9 @@ extension WhisperState {
 
             _ = try await VadManager()
 
+            // Download CTC model for vocabulary boosting
+            _ = try await CtcModels.downloadAndLoad(variant: .ctc110m)
+
             UserDefaults.standard.set(true, forKey: parakeetDefaultsKey(for: modelName))
             downloadProgress[modelName] = 1.0
         } catch {
@@ -84,6 +87,17 @@ extension WhisperState {
             UserDefaults.standard.set(false, forKey: parakeetDefaultsKey(for: model.name))
         } catch {
             // Silently ignore removal errors
+        }
+
+        // Clean up CTC model if no other Parakeet model is downloaded
+        let hasOtherParakeetModel = allAvailableModels
+            .compactMap { $0 as? ParakeetModel }
+            .contains { $0.name != model.name && isParakeetModelDownloaded($0) }
+
+        if !hasOtherParakeetModel {
+            let ctcDirectory = CtcModels.defaultCacheDirectory(for: .ctc110m)
+            try? FileManager.default.removeItem(at: ctcDirectory)
+            serviceRegistry.parakeetVocabularyService.cleanup()
         }
 
         refreshAllAvailableModels()

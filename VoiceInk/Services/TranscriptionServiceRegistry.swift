@@ -15,10 +15,12 @@ class TranscriptionServiceRegistry {
     private(set) lazy var cloudTranscriptionService = CloudTranscriptionService(modelContext: whisperState.modelContext)
     private(set) lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private(set) lazy var parakeetTranscriptionService = ParakeetTranscriptionService()
+    private(set) lazy var parakeetVocabularyService = ParakeetVocabularyService(modelContext: whisperState.modelContext)
 
     init(whisperState: WhisperState, modelsDirectory: URL) {
         self.whisperState = whisperState
         self.modelsDirectory = modelsDirectory
+        parakeetTranscriptionService.vocabularyService = parakeetVocabularyService
     }
 
     func service(for provider: ModelProvider) -> TranscriptionService {

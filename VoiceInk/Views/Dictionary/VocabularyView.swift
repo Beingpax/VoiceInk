@@ -157,6 +157,7 @@ struct VocabularyView: View {
 
         do {
             try modelContext.save()
+            NotificationCenter.default.post(name: .vocabularyDidChange, object: nil)
         } catch {
             // Rollback the insert to maintain UI consistency
             modelContext.delete(newWord)
@@ -170,6 +171,7 @@ struct VocabularyView: View {
 
         do {
             try modelContext.save()
+            NotificationCenter.default.post(name: .vocabularyDidChange, object: nil)
         } catch {
             // Rollback the delete to restore UI consistency
             modelContext.rollback()
