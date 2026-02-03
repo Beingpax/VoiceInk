@@ -14,13 +14,13 @@ class TranscriptionServiceRegistry {
     )
     private(set) lazy var cloudTranscriptionService = CloudTranscriptionService(modelContext: whisperState.modelContext)
     private(set) lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
-    private(set) lazy var parakeetTranscriptionService = ParakeetTranscriptionService()
+    private(set) lazy var parakeetStreamingService = ParakeetStreamingTranscriptionService()
     private(set) lazy var parakeetVocabularyService = ParakeetVocabularyService(modelContext: whisperState.modelContext)
 
     init(whisperState: WhisperState, modelsDirectory: URL) {
         self.whisperState = whisperState
         self.modelsDirectory = modelsDirectory
-        parakeetTranscriptionService.vocabularyService = parakeetVocabularyService
+        parakeetStreamingService.vocabularyService = parakeetVocabularyService
     }
 
     func service(for provider: ModelProvider) -> TranscriptionService {
@@ -28,7 +28,7 @@ class TranscriptionServiceRegistry {
         case .local:
             return localTranscriptionService
         case .parakeet:
-            return parakeetTranscriptionService
+            return parakeetStreamingService
         case .nativeApple:
             return nativeAppleTranscriptionService
         default:
@@ -43,6 +43,6 @@ class TranscriptionServiceRegistry {
     }
 
     func cleanup() {
-        parakeetTranscriptionService.cleanup()
+        parakeetStreamingService.cleanup()
     }
 }

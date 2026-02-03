@@ -48,6 +48,9 @@ final class CoreAudioRecorder {
     private var renderBuffer: UnsafeMutablePointer<Float32>?
     private var renderBufferSize: UInt32 = 0
 
+    // Audio buffer callback for streaming consumers
+    var onAudioBuffer: ((_ samples: UnsafePointer<Float32>, _ frameCount: UInt32, _ sampleRate: Double, _ channels: UInt32) -> Void)?
+
     // MARK: - Initialization
 
     init() {}
@@ -137,6 +140,7 @@ final class CoreAudioRecorder {
         }
 
         isRecording = false
+        onAudioBuffer = nil
         currentDeviceID = 0
         recordingURL = nil
 
@@ -584,6 +588,9 @@ final class CoreAudioRecorder {
         if status != noErr {
             return status
         }
+
+        // Feed raw audio to streaming consumers
+        onAudioBuffer?(renderBuf, inNumberFrames, deviceFormat.mSampleRate, deviceFormat.mChannelsPerFrame)
 
         // Calculate audio meters from input buffer
         calculateMeters(from: &bufferList, frameCount: inNumberFrames)

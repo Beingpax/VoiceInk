@@ -77,6 +77,10 @@ class ParakeetVocabularyService {
         logger.info("Vocabulary boosting configured with \(terms.count) terms")
     }
 
+    func fetchCurrentWords() -> [String] {
+        return fetchVocabularyWords().map { $0.word }
+    }
+
     func cleanup() {
         cachedCtcModels = nil
         cachedTokenizer = nil

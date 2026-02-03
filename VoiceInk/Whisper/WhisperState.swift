@@ -195,6 +195,16 @@ class WhisperState: NSObject, ObservableObject {
                             let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
                             self.recordedFile = permanentURL
 
+                            // For Parakeet: prepare buffer and wire callback before recording
+                            // so no audio is lost while the model loads
+                            if self.currentTranscriptionModel is ParakeetModel {
+                                let svc = self.serviceRegistry.parakeetStreamingService
+                                svc.prepareForStreaming()
+                                self.recorder.setAudioBufferCallback { samples, frameCount, sampleRate, channels in
+                                    svc.feedAudio(samples, frameCount: frameCount, sampleRate: sampleRate, channels: channels)
+                                }
+                            }
+
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
                             await MainActor.run {
@@ -222,7 +232,9 @@ class WhisperState: NSObject, ObservableObject {
                                         }
                                     }
                                 } else if let parakeetModel = await self.currentTranscriptionModel as? ParakeetModel {
-                                    try? await self.serviceRegistry.parakeetTranscriptionService.loadModel(for: parakeetModel)
+                                    // Audio is already being buffered; start streaming to load the model
+                                    let streamingService = await self.serviceRegistry.parakeetStreamingService
+                                    try? await streamingService.startStreaming(for: parakeetModel)
                                 }
 
                                 if let enhancementService = await self.enhancementService {

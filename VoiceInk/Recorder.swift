@@ -18,7 +18,8 @@ class Recorder: NSObject, ObservableObject {
     private var audioMeterUpdateTask: Task<Void, Never>?
     private var audioRestorationTask: Task<Void, Never>?
     private var hasDetectedAudioInCurrentSession = false
-    
+    private var pendingAudioBufferCallback: ((_ samples: UnsafePointer<Float32>, _ frameCount: UInt32, _ sampleRate: Double, _ channels: UInt32) -> Void)?
+
     enum RecorderError: Error {
         case couldNotStartRecording
     }
@@ -134,6 +135,8 @@ class Recorder: NSObject, ObservableObject {
 
         do {
             let coreAudioRecorder = CoreAudioRecorder()
+            coreAudioRecorder.onAudioBuffer = pendingAudioBufferCallback
+            pendingAudioBufferCallback = nil
             recorder = coreAudioRecorder
 
             try coreAudioRecorder.startRecording(toOutputFile: url, deviceID: deviceID)
@@ -186,10 +189,19 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
+    func setAudioBufferCallback(_ callback: ((_ samples: UnsafePointer<Float32>, _ frameCount: UInt32, _ sampleRate: Double, _ channels: UInt32) -> Void)?) {
+        if let recorder {
+            recorder.onAudioBuffer = callback
+        } else {
+            pendingAudioBufferCallback = callback
+        }
+    }
+
     func stopRecording() {
         logger.notice("stopRecording called")
         audioLevelCheckTask?.cancel()
         audioMeterUpdateTask?.cancel()
+        pendingAudioBufferCallback = nil
         recorder?.stopRecording()
         recorder = nil
         audioMeter = AudioMeter(averagePower: 0, peakPower: 0)

@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E11BBA4E2E5DC555000AB839 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = E11BBA4D2E5DC555000AB839 /* FluidAudio */; };
 		E1342C1F2EB4844800CED8A2 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = E1342C1E2EB4844800CED8A2 /* Atomics */; };
+		E1436CF72F31D69E00DBE2A1 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = E1436CF62F31D69E00DBE2A1 /* FluidAudio */; };
 		E1A261122CC143AC00B233D1 /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = E1A261112CC143AC00B233D1 /* KeyboardShortcuts */; };
 		E1ADD45A2CC5352A00303ECB /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = E1ADD4592CC5352A00303ECB /* LaunchAtLogin */; };
 		E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E1ADD45E2CC544F100303ECB /* Sparkle */; };
@@ -88,7 +88,7 @@
 				E1F350112F1D10D600790A2C /* whisper.xcframework in Frameworks */,
 				E1ECEC162E44591300DFFBA8 /* Zip in Frameworks */,
 				E1ADD45A2CC5352A00303ECB /* LaunchAtLogin in Frameworks */,
-				E11BBA4E2E5DC555000AB839 /* FluidAudio in Frameworks */,
+				E1436CF72F31D69E00DBE2A1 /* FluidAudio in Frameworks */,
 				E1D7EF992E35E16C00640029 /* MediaRemoteAdapter in Frameworks */,
 				E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */,
 				E1F1037B2EF85FC700A4FF94 /* SelectedTextKit in Frameworks */,
@@ -170,9 +170,9 @@
 				E1ADD45E2CC544F100303ECB /* Sparkle */,
 				E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */,
 				E1ECEC152E44591300DFFBA8 /* Zip */,
-				E11BBA4D2E5DC555000AB839 /* FluidAudio */,
 				E1342C1E2EB4844800CED8A2 /* Atomics */,
 				E1F1037A2EF85FC700A4FF94 /* SelectedTextKit */,
+				E1436CF62F31D69E00DBE2A1 /* FluidAudio */,
 			);
 			productName = VoiceInk;
 			productReference = E11473B02CBE0F0A00318EE4 /* VoiceInk.app */;
@@ -262,9 +262,9 @@
 				E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */,
 				E1D7EF972E35E16C00640029 /* XCRemoteSwiftPackageReference "mediaremote-adapter" */,
 				E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */,
-				E11BBA4C2E5DC555000AB839 /* XCRemoteSwiftPackageReference "FluidAudio" */,
 				E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */,
 				E1F103792EF85FC700A4FF94 /* XCRemoteSwiftPackageReference "SelectedTextKit" */,
+				E1436CF52F31D69E00DBE2A1 /* XCLocalSwiftPackageReference "../FluidAudio" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E11473B12CBE0F0A00318EE4 /* Products */;
@@ -636,15 +636,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		E11BBA4C2E5DC555000AB839 /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/FluidInference/FluidAudio";
-			requirement = {
-				branch = main;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		E1436CF52F31D69E00DBE2A1 /* XCLocalSwiftPackageReference "../FluidAudio" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../FluidAudio;
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-atomics.git";
@@ -704,15 +703,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		E11BBA4D2E5DC555000AB839 /* FluidAudio */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E11BBA4C2E5DC555000AB839 /* XCRemoteSwiftPackageReference "FluidAudio" */;
-			productName = FluidAudio;
-		};
 		E1342C1E2EB4844800CED8A2 /* Atomics */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */;
 			productName = Atomics;
+		};
+		E1436CF62F31D69E00DBE2A1 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FluidAudio;
 		};
 		E1A261112CC143AC00B233D1 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;
