@@ -1,11 +1,26 @@
 import Foundation
 
+enum AzureAuthMethod: String, CaseIterable {
+    case standard = "Standard (api-key)"
+    case apiManagement = "API Management (Ocp-Apim-Subscription-Key)"
+
+    var headerName: String {
+        switch self {
+        case .standard:
+            return "api-key"
+        case .apiManagement:
+            return "Ocp-Apim-Subscription-Key"
+        }
+    }
+}
+
 enum AIProvider: String, CaseIterable {
     case cerebras = "Cerebras"
     case groq = "Groq"
     case gemini = "Gemini"
     case anthropic = "Anthropic"
     case openAI = "OpenAI"
+    case azureOpenAI = "Azure OpenAI"
     case openRouter = "OpenRouter"
     case mistral = "Mistral"
     case elevenLabs = "ElevenLabs"
@@ -27,6 +42,31 @@ enum AIProvider: String, CaseIterable {
             return "https://api.anthropic.com/v1/messages"
         case .openAI:
             return "https://api.openai.com/v1/chat/completions"
+        case .azureOpenAI:
+            // Check for custom endpoint first
+            if let customEndpoint = UserDefaults.standard.string(forKey: "azureOpenAICustomEndpoint"),
+               !customEndpoint.isEmpty {
+                // Check if endpoint is already complete (has full path)
+                if customEndpoint.contains("/chat/completions") || customEndpoint.contains("/deployments/") {
+                    // Complete URL - use as-is
+                    return customEndpoint
+                } else {
+                    // Base URL - auto-complete with deployment path
+                    let deployment = UserDefaults.standard.string(forKey: "azureOpenAIDeployment") ?? ""
+                    let apiVersion = UserDefaults.standard.string(forKey: "azureOpenAIAPIVersion") ?? "2024-02-15-preview"
+                    // Ensure proper path construction (handle trailing slash)
+                    var baseURL = customEndpoint
+                    if !baseURL.hasSuffix("/") {
+                        baseURL += "/"
+                    }
+                    return "\(baseURL)openai/deployments/\(deployment)/chat/completions?api-version=\(apiVersion)"
+                }
+            }
+            // Fall back to auto-construction from resource/deployment
+            let resource = UserDefaults.standard.string(forKey: "azureOpenAIResourceName") ?? ""
+            let deployment = UserDefaults.standard.string(forKey: "azureOpenAIDeployment") ?? ""
+            let apiVersion = UserDefaults.standard.string(forKey: "azureOpenAIAPIVersion") ?? "2024-02-15-preview"
+            return "https://\(resource).openai.azure.com/openai/deployments/\(deployment)/chat/completions?api-version=\(apiVersion)"
         case .openRouter:
             return "https://openrouter.ai/api/v1/chat/completions"
         case .mistral:
@@ -56,6 +96,8 @@ enum AIProvider: String, CaseIterable {
             return "claude-sonnet-4-5"
         case .openAI:
             return "gpt-5.2"
+        case .azureOpenAI:
+            return UserDefaults.standard.string(forKey: "azureOpenAIDeployment") ?? "gpt-4"
         case .mistral:
             return "mistral-large-latest"
         case .elevenLabs:
@@ -120,6 +162,11 @@ enum AIProvider: String, CaseIterable {
                 "gpt-4.1",
                 "gpt-4.1-mini"
             ]
+        case .azureOpenAI:
+            // Azure uses deployment names, not model names
+            // Return the deployment name configured by user
+            let deployment = UserDefaults.standard.string(forKey: "azureOpenAIDeployment") ?? "gpt-4"
+            return [deployment]
         case .mistral:
             return [
                 "mistral-large-latest",
@@ -330,41 +377,60 @@ class AIService: ObservableObject {
     }
     
     private func verifyOpenAICompatibleAPIKey(_ key: String, completion: @escaping (Bool, String?) -> Void) {
-        let url = URL(string: selectedProvider.baseURL)!
+        let baseURL = selectedProvider.baseURL
+
+        var azureAuthMethod: AzureAuthMethod = .standard
+        if selectedProvider == .azureOpenAI {
+            if let savedMethod = UserDefaults.standard.string(forKey: "azureOpenAIAuthMethod"),
+               let method = AzureAuthMethod(rawValue: savedMethod) {
+                azureAuthMethod = method
+            }
+        }
+
+        guard let url = URL(string: baseURL) else {
+            completion(false, "Invalid URL: \(baseURL)")
+            return
+        }
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
-        
+
+        if selectedProvider == .azureOpenAI {
+            request.addValue(key, forHTTPHeaderField: azureAuthMethod.headerName)
+        } else {
+            request.addValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        }
+
         let testBody: [String: Any] = [
             "model": currentModel,
             "messages": [
                 ["role": "user", "content": "test"]
             ]
         ]
-        
+
         request.httpBody = try? JSONSerialization.data(withJSONObject: testBody)
-        
+
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(false, error.localizedDescription)
                 return
             }
-            
+
             if let httpResponse = response as? HTTPURLResponse {
                 let isValid = httpResponse.statusCode == 200
-                
+
                 if !isValid {
                     if let data = data, let responseString = String(data: data, encoding: .utf8) {
                         completion(false, responseString)
                     } else {
-                        completion(false, nil)
+                        completion(false, "HTTP \(httpResponse.statusCode)")
                     }
                 } else {
                     completion(true, nil)
                 }
             } else {
-                completion(false, nil)
+                completion(false, "Invalid HTTP response")
             }
         }.resume()
     }

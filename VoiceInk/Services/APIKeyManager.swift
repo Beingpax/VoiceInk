@@ -21,6 +21,7 @@ final class APIKeyManager {
         "elevenlabs": "elevenLabsAPIKey",
         "soniox": "sonioxAPIKey",
         "openai": "openAIAPIKey",
+        "azure openai": "azureOpenAIAPIKey",
         "anthropic": "anthropicAPIKey",
         "openrouter": "openRouterAPIKey"
     ]
