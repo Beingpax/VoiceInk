@@ -11,6 +11,17 @@ struct APIKeyManagementView: View {
     @State private var selectedOllamaModel: String = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var isCheckingOllama = false
     @State private var isEditingURL = false
+    @State private var azureResourceName: String = UserDefaults.standard.string(forKey: "azureOpenAIResourceName") ?? ""
+    @State private var azureDeployment: String = UserDefaults.standard.string(forKey: "azureOpenAIDeployment") ?? ""
+    @State private var azureAPIVersion: String = UserDefaults.standard.string(forKey: "azureOpenAIAPIVersion") ?? "2024-02-15-preview"
+    @State private var azureCustomEndpoint: String = UserDefaults.standard.string(forKey: "azureOpenAICustomEndpoint") ?? ""
+    @State private var azureAuthMethod: AzureAuthMethod = {
+        if let savedMethod = UserDefaults.standard.string(forKey: "azureOpenAIAuthMethod"),
+           let method = AzureAuthMethod(rawValue: savedMethod) {
+            return method
+        }
+        return .apiManagement  // Default to API Management for enterprise gateways
+    }()
     
     var body: some View {
         Section("AI Provider Integration") {
@@ -156,6 +167,86 @@ struct APIKeyManagementView: View {
                         }
                     }
 
+                } else if aiService.selectedProvider == .azureOpenAI {
+                    // Azure OpenAI Configuration
+                    TextField("Resource Name", text: $azureResourceName, prompt: Text("e.g., my-resource"))
+                        .textFieldStyle(.roundedBorder)
+                        .help("Your Azure OpenAI resource name (from Azure portal)")
+                        .onChange(of: azureResourceName) { oldValue, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "azureOpenAIResourceName")
+                        }
+
+                    Divider()
+
+                    TextField("Deployment Name", text: $azureDeployment, prompt: Text("e.g., gpt-4"))
+                        .textFieldStyle(.roundedBorder)
+                        .help("Your deployment name from Azure OpenAI Studio")
+                        .onChange(of: azureDeployment) { oldValue, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "azureOpenAIDeployment")
+                            // Update the model selection when deployment changes
+                            aiService.selectModel(newValue)
+                        }
+
+                    Divider()
+
+                    TextField("API Version", text: $azureAPIVersion, prompt: Text("2024-02-15-preview"))
+                        .textFieldStyle(.roundedBorder)
+                        .help("Azure API version (default: 2024-02-15-preview)")
+                        .onChange(of: azureAPIVersion) { oldValue, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "azureOpenAIAPIVersion")
+                        }
+
+                    Divider()
+
+                    TextField("Custom Endpoint URL (Optional)", text: $azureCustomEndpoint, prompt: Text("Leave empty for auto-construction"))
+                        .textFieldStyle(.roundedBorder)
+                        .help("Override automatic URL construction with a custom endpoint URL")
+                        .onChange(of: azureCustomEndpoint) { oldValue, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "azureOpenAICustomEndpoint")
+                        }
+
+                    Divider()
+
+                    Picker("Authentication Method", selection: $azureAuthMethod) {
+                        ForEach(AzureAuthMethod.allCases, id: \.self) { method in
+                            Text(method.rawValue).tag(method)
+                        }
+                    }
+                    .help("Select the authentication header format required by your Azure endpoint")
+                    .onChange(of: azureAuthMethod) { oldValue, newValue in
+                        UserDefaults.standard.set(newValue.rawValue, forKey: "azureOpenAIAuthMethod")
+                    }
+
+                    Divider()
+
+                    if aiService.isAPIKeyValid {
+                        HStack {
+                            Text("API Key Set")
+                            Spacer()
+                            Button("Remove Key", role: .destructive) {
+                                aiService.clearAPIKey()
+                            }
+                        }
+                    } else {
+                        SecureField("API Key", text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
+
+                        Button("Verify and Save") {
+                            isVerifying = true
+                            aiService.saveAPIKey(apiKey) { success, errorMessage in
+                                isVerifying = false
+                                if !success {
+                                    alertMessage = errorMessage ?? "Verification failed"
+                                    showAlert = true
+                                }
+                                apiKey = ""
+                            }
+                        }
+                        .disabled(apiKey.isEmpty ||
+                                 (!azureCustomEndpoint.isEmpty && azureDeployment.isEmpty) ||
+                                 (azureCustomEndpoint.isEmpty && (azureResourceName.isEmpty || azureDeployment.isEmpty)))
+                    }
+
                 } else if aiService.selectedProvider == .custom {
                     // Custom Configuration inline
                     TextField("API Endpoint URL", text: $aiService.customBaseURL)
@@ -287,6 +378,7 @@ struct APIKeyManagementView: View {
         switch aiService.selectedProvider {
         case .groq: return URL(string: "https://console.groq.com/keys")
         case .openAI: return URL(string: "https://platform.openai.com/api-keys")
+        case .azureOpenAI: return URL(string: "https://portal.azure.com/#view/Microsoft_Azure_ProjectOxford/CognitiveServicesHub/~/OpenAI")
         case .gemini: return URL(string: "https://makersuite.google.com/app/apikey")
         case .anthropic: return URL(string: "https://console.anthropic.com/settings/keys")
         case .mistral: return URL(string: "https://console.mistral.ai/api-keys")

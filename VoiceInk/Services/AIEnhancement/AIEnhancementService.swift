@@ -278,8 +278,77 @@ class AIEnhancementService: ObservableObject {
                 throw EnhancementError.customError(error.localizedDescription)
             }
 
+        case .azureOpenAI:
+            guard let url = URL(string: aiService.selectedProvider.baseURL) else {
+                throw EnhancementError.customError("Invalid Azure OpenAI endpoint URL. Please configure resource name and deployment in AI settings.")
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            // Get configured Azure authentication method
+            var azureAuthMethod: AzureAuthMethod = .standard
+            if let savedMethod = UserDefaults.standard.string(forKey: "azureOpenAIAuthMethod"),
+               let method = AzureAuthMethod(rawValue: savedMethod) {
+                azureAuthMethod = method
+            }
+
+            // Apply the configured authentication header
+            request.addValue(self.aiService.apiKey, forHTTPHeaderField: azureAuthMethod.headerName)
+            request.timeoutInterval = baseTimeout
+
+            let messages: [[String: Any]] = [
+                ["role": "system", "content": systemMessage],
+                ["role": "user", "content": formattedText]
+            ]
+
+            let requestBody: [String: Any] = [
+                "messages": messages,
+                "stream": false
+            ]
+
+            request.httpBody = try? JSONSerialization.data(withJSONObject: requestBody)
+
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw EnhancementError.invalidResponse
+                }
+
+                if httpResponse.statusCode == 200 {
+                    guard let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                          let choices = jsonResponse["choices"] as? [[String: Any]],
+                          let firstChoice = choices.first,
+                          let message = firstChoice["message"] as? [String: Any],
+                          let enhancedText = message["content"] as? String else {
+                        throw EnhancementError.enhancementFailed
+                    }
+
+                    let filteredText = AIEnhancementOutputFilter.filter(enhancedText.trimmingCharacters(in: .whitespacesAndNewlines))
+                    return filteredText
+                } else if httpResponse.statusCode == 429 {
+                    throw EnhancementError.rateLimitExceeded
+                } else if (500...599).contains(httpResponse.statusCode) {
+                    throw EnhancementError.serverError
+                } else {
+                    let errorString = String(data: data, encoding: .utf8) ?? "Could not decode error response."
+                    throw EnhancementError.customError("HTTP \(httpResponse.statusCode): \(errorString)")
+                }
+
+            } catch let error as EnhancementError {
+                throw error
+            } catch let error as URLError {
+                throw error
+            } catch {
+                throw EnhancementError.customError(error.localizedDescription)
+            }
+
         default:
-            let url = URL(string: aiService.selectedProvider.baseURL)!
+            guard let url = URL(string: aiService.selectedProvider.baseURL) else {
+                throw EnhancementError.customError("Invalid API endpoint URL for \(aiService.selectedProvider.rawValue).")
+            }
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.addValue("application/json", forHTTPHeaderField: "Content-Type")
