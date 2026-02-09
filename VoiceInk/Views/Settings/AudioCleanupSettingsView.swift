@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct AudioCleanupSettingsView: View {
-    @EnvironmentObject private var whisperState: WhisperState
+    @Environment(\.modelContext) private var modelContext
 
     // Audio cleanup settings
     @AppStorage("IsTranscriptionCleanupEnabled") private var isTranscriptionCleanupEnabled = false
@@ -64,7 +64,7 @@ struct AudioCleanupSettingsView: View {
 
                         Button("Run Cleanup Now") {
                             Task {
-                                await TranscriptionAutoCleanupService.shared.runManualCleanup(modelContext: whisperState.modelContext)
+                                await TranscriptionAutoCleanupService.shared.runManualCleanup(modelContext: modelContext)
                                 await MainActor.run {
                                     showTranscriptCleanupResult = true
                                 }
@@ -92,7 +92,7 @@ struct AudioCleanupSettingsView: View {
                 } else {
                     isTranscriptExpanded = false
                     if isAudioCleanupEnabled {
-                        AudioCleanupManager.shared.startAutomaticCleanup(modelContext: whisperState.modelContext)
+                        AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
                     }
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -142,7 +142,7 @@ struct AudioCleanupSettingsView: View {
                             Button(isPerformingCleanup ? "Analyzing..." : "Run Cleanup Now") {
                                 Task {
                                     await MainActor.run { isPerformingCleanup = true }
-                                    let info = await AudioCleanupManager.shared.getCleanupInfo(modelContext: whisperState.modelContext)
+                                    let info = await AudioCleanupManager.shared.getCleanupInfo(modelContext: modelContext)
                                     await MainActor.run {
                                         cleanupInfo = info
                                         isPerformingCleanup = false
@@ -166,7 +166,7 @@ struct AudioCleanupSettingsView: View {
                             Task {
                                 await MainActor.run { isPerformingCleanup = true }
                                 let result = await AudioCleanupManager.shared.runCleanupForTranscriptions(
-                                    modelContext: whisperState.modelContext,
+                                    modelContext: modelContext,
                                     transcriptions: cleanupInfo.transcriptions
                                 )
                                 await MainActor.run {

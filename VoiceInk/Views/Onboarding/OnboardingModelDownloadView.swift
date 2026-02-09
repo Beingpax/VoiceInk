@@ -2,7 +2,7 @@ import SwiftUI
 
 struct OnboardingModelDownloadView: View {
     @Binding var hasCompletedOnboarding: Bool
-    @EnvironmentObject private var whisperState: WhisperState
+    @EnvironmentObject private var modelManager: ModelManager
     @State private var scale: CGFloat = 0.8
     @State private var opacity: CGFloat = 0
     @State private var isDownloading = false
@@ -89,7 +89,7 @@ struct OnboardingModelDownloadView: View {
                             if isDownloading {
                                 DownloadProgressView(
                                     modelName: turboModel.name,
-                                    downloadProgress: whisperState.downloadProgress
+                                    downloadProgress: modelManager.downloadProgress
                                 )
                                 .transition(.opacity)
                             }
@@ -150,8 +150,8 @@ struct OnboardingModelDownloadView: View {
     }
     
     private func checkModelStatus() {
-        if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
-            isModelSet = whisperState.currentTranscriptionModel?.name == turboModel.name
+        if modelManager.availableModels.contains(where: { $0.name == turboModel.name }) {
+            isModelSet = modelManager.currentTranscriptionModel?.name == turboModel.name
         }
     }
     
@@ -160,10 +160,10 @@ struct OnboardingModelDownloadView: View {
             withAnimation {
                 showTutorial = true
             }
-        } else if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
-            if let modelToSet = whisperState.allAvailableModels.first(where: { $0.name == turboModel.name }) {
+        } else if modelManager.availableModels.contains(where: { $0.name == turboModel.name }) {
+            if let modelToSet = modelManager.allAvailableModels.first(where: { $0.name == turboModel.name }) {
                 Task {
-                    await whisperState.setDefaultTranscriptionModel(modelToSet)
+                    await modelManager.setDefaultTranscriptionModel(modelToSet)
                     withAnimation {
                         isModelSet = true
                     }
@@ -174,9 +174,9 @@ struct OnboardingModelDownloadView: View {
                 isDownloading = true
             }
             Task {
-                await whisperState.downloadModel(turboModel)
-                if let modelToSet = whisperState.allAvailableModels.first(where: { $0.name == turboModel.name }) {
-                    await whisperState.setDefaultTranscriptionModel(modelToSet)
+                await modelManager.downloadModel(turboModel)
+                if let modelToSet = modelManager.allAvailableModels.first(where: { $0.name == turboModel.name }) {
+                    await modelManager.setDefaultTranscriptionModel(modelToSet)
                     withAnimation {
                         isModelSet = true
                         isDownloading = false
@@ -191,7 +191,7 @@ struct OnboardingModelDownloadView: View {
             return "Continue"
         } else if isDownloading {
             return "Downloading..."
-        } else if whisperState.availableModels.contains(where: { $0.name == turboModel.name }) {
+        } else if modelManager.availableModels.contains(where: { $0.name == turboModel.name }) {
             return "Set as Default"
         } else {
             return "Download Model"

@@ -8,10 +8,12 @@ class NotchWindowManager: ObservableObject {
      var notchPanel: NotchRecorderPanel?
     private let whisperState: WhisperState
     private let recorder: Recorder
+    private let enhancementService: AIEnhancementService
 
-    init(whisperState: WhisperState, recorder: Recorder) {
+    init(whisperState: WhisperState, recorder: Recorder, enhancementService: AIEnhancementService) {
         self.whisperState = whisperState
         self.recorder = recorder
+        self.enhancementService = enhancementService
 
         NotificationCenter.default.addObserver(
             self,
@@ -58,7 +60,7 @@ class NotchWindowManager: ObservableObject {
         
         let notchRecorderView = NotchRecorderView(whisperState: whisperState, recorder: recorder)
             .environmentObject(self)
-            .environmentObject(whisperState.enhancementService!)
+            .environmentObject(enhancementService)
         
         let hostingController = NotchRecorderHostingController(rootView: notchRecorderView)
         panel.contentView = hostingController.view
