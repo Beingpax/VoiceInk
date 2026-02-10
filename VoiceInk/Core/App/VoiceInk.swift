@@ -295,6 +295,7 @@ struct VoiceInkApp: App {
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
+                .modelContainer(container)
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width
