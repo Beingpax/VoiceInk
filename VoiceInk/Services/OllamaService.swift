@@ -1,89 +1,62 @@
 import Foundation
 import SwiftUI
+import LLMkit
 
 class OllamaService: ObservableObject {
     static let defaultBaseURL = "http://localhost:11434"
-    
-    // MARK: - Response Types
-    struct OllamaModel: Codable, Identifiable {
-        let name: String
-        let modified_at: String
-        let size: Int64
-        let digest: String
-        let details: ModelDetails
-        
-        var id: String { name }
-        
-        struct ModelDetails: Codable {
-            let format: String
-            let family: String
-            let families: [String]?
-            let parameter_size: String
-            let quantization_level: String
-        }
-    }
 
-    struct OllamaModelsResponse: Codable {
-        let models: [OllamaModel]
-    }
-
-    struct OllamaResponse: Codable {
-        let response: String
-    }
-    
     // MARK: - Published Properties
     @Published var baseURL: String {
         didSet {
             UserDefaults.standard.set(baseURL, forKey: "ollamaBaseURL")
         }
     }
-    
+
     @Published var selectedModel: String {
         didSet {
             UserDefaults.standard.set(selectedModel, forKey: "ollamaSelectedModel")
         }
     }
-    
+
     @Published var availableModels: [OllamaModel] = []
     @Published var isConnected: Bool = false
     @Published var isLoadingModels: Bool = false
-    
+
     private let defaultTemperature: Double = 0.3
-    
+
     init() {
         self.baseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? Self.defaultBaseURL
-        self.selectedModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "llama2"        
+        self.selectedModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "llama2"
     }
-    
+
+    private var baseURLValue: URL? {
+        URL(string: baseURL)
+    }
+
     @MainActor
     func checkConnection() async {
-        guard let url = URL(string: baseURL) else {
+        guard let url = baseURLValue else {
             isConnected = false
             return
         }
-        
-        do {
-            let (_, response) = try await URLSession.shared.data(from: url)
-            if let httpResponse = response as? HTTPURLResponse {
-                isConnected = (200...299).contains(httpResponse.statusCode)
-            } else {
-                isConnected = false
-            }
-        } catch {
-            isConnected = false
-        }
+        isConnected = await OllamaClient.checkConnection(baseURL: url)
     }
-    
+
     @MainActor
     func refreshModels() async {
         isLoadingModels = true
         defer { isLoadingModels = false }
-        
+
+        guard let url = baseURLValue else {
+            print("Invalid Ollama base URL")
+            availableModels = []
+            return
+        }
+
         do {
-            let models = try await fetchAvailableModels()
+            let models = try await OllamaClient.fetchModels(baseURL: url)
             availableModels = models
-            
-            // If selected model is not in available models, select first available
+
             if !models.contains(where: { $0.name == selectedModel }) && !models.isEmpty {
                 selectedModel = models[0].name
             }
@@ -92,56 +65,45 @@ class OllamaService: ObservableObject {
             availableModels = []
         }
     }
-    
-    private func fetchAvailableModels() async throws -> [OllamaModel] {
-        guard let url = URL(string: "\(baseURL)/api/tags") else {
-            throw LocalAIError.invalidURL
-        }
-        
-        let (data, _) = try await URLSession.shared.data(from: url)
-        let response = try JSONDecoder().decode(OllamaModelsResponse.self, from: data)
-        return response.models
-    }
-    
+
     func enhance(_ text: String, withSystemPrompt systemPrompt: String? = nil) async throws -> String {
-        guard let url = URL(string: "\(baseURL)/api/generate") else {
-            throw LocalAIError.invalidURL
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
         guard let systemPrompt = systemPrompt else {
             throw LocalAIError.invalidRequest
         }
 
-        let body: [String: Any] = [
-            "model": selectedModel,
-            "prompt": text,
-            "system": systemPrompt,
-            "temperature": defaultTemperature,
-            "stream": false
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw LocalAIError.invalidResponse
+        guard let url = baseURLValue else {
+            throw LocalAIError.invalidURL
         }
-        
-        switch httpResponse.statusCode {
-        case 200:
-            let response = try JSONDecoder().decode(OllamaResponse.self, from: data)
-            return response.response
-        case 404:
-            throw LocalAIError.modelNotFound
-        case 500:
-            throw LocalAIError.serverError
-        default:
-            throw LocalAIError.invalidResponse
+
+        do {
+            return try await OllamaClient.generate(
+                baseURL: url,
+                model: selectedModel,
+                prompt: text,
+                systemPrompt: systemPrompt,
+                temperature: defaultTemperature
+            )
+        } catch let error as LLMKitError {
+            throw mapLLMKitError(error)
+        }
+    }
+
+    private func mapLLMKitError(_ error: LLMKitError) -> LocalAIError {
+        switch error {
+        case .invalidURL:
+            return .invalidURL
+        case .httpError(let statusCode, _):
+            if statusCode == 404 { return .modelNotFound }
+            if statusCode == 500 { return .serverError }
+            return .invalidResponse
+        case .networkError:
+            return .serviceUnavailable
+        case .noResultReturned, .decodingError:
+            return .invalidResponse
+        case .encodingError:
+            return .invalidRequest
+        case .missingAPIKey, .timeout:
+            return .invalidResponse
         }
     }
 }
@@ -154,7 +116,7 @@ enum LocalAIError: Error, LocalizedError {
     case modelNotFound
     case serverError
     case invalidRequest
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidURL:
@@ -171,4 +133,4 @@ enum LocalAIError: Error, LocalizedError {
             return "System prompt is required"
         }
     }
-} 
+}

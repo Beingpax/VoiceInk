@@ -1,4 +1,5 @@
 import SwiftUI
+import LLMkit
 
 struct APIKeyManagementView: View {
     @EnvironmentObject private var aiService: AIService
@@ -7,7 +8,7 @@ struct APIKeyManagementView: View {
     @State private var alertMessage = ""
     @State private var isVerifying = false
     @State private var ollamaBaseURL: String = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
-    @State private var ollamaModels: [OllamaService.OllamaModel] = []
+    @State private var ollamaModels: [OllamaModel] = []
     @State private var selectedOllamaModel: String = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var isCheckingOllama = false
     @State private var isEditingURL = false
@@ -23,7 +24,6 @@ struct APIKeyManagementView: View {
                 .pickerStyle(.automatic)
                 .tint(.blue)
                 
-                // Show connected status for all providers
                 if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
                     Spacer()
                     Circle()
@@ -115,7 +115,6 @@ struct APIKeyManagementView: View {
                 Divider()
 
                 if aiService.selectedProvider == .ollama {
-                    // Ollama Configuration inline
                     if isEditingURL {
                         HStack {
                             TextField("Base URL", text: $ollamaBaseURL)
@@ -157,7 +156,6 @@ struct APIKeyManagementView: View {
                     }
 
                 } else if aiService.selectedProvider == .custom {
-                    // Custom Configuration inline
                     TextField("API Endpoint URL", text: $aiService.customBaseURL)
                         .textFieldStyle(.roundedBorder)
 
@@ -195,7 +193,6 @@ struct APIKeyManagementView: View {
                     }
                     
                 } else {
-                    // API Key Display for other providers
                     if aiService.isAPIKeyValid {
                         HStack {
                             Text("API Key")
@@ -211,7 +208,6 @@ struct APIKeyManagementView: View {
                             .textFieldStyle(.roundedBorder)
 
                         HStack {
-                            // Get API Key Link
                             if let url = getAPIKeyURL() {
                                 Link(destination: url) {
                                     HStack {
