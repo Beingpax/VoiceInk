@@ -443,6 +443,7 @@ import Foundation
          "yi": "Yiddish",
          "yo": "Yoruba",
          "yue": "Cantonese",
-         "zh": "Chinese",
+         "zh": "Chinese (Simplified)",
+         "zh-TW": "Chinese Traditional (繁體中文)",
      ]
  }

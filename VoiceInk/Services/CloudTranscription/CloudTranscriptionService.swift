@@ -146,7 +146,8 @@ class CloudTranscriptionService: TranscriptionService {
 
     private func selectedLanguage() -> String? {
         let lang = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
-        return (lang == "auto" || lang.isEmpty) ? nil : lang
+        let resolvedLang = lang == "zh-TW" ? "zh" : lang
+        return (resolvedLang == "auto" || resolvedLang.isEmpty) ? nil : resolvedLang
     }
 
     private func transcriptionPrompt() -> String? {
