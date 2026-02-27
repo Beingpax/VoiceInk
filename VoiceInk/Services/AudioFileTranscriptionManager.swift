@@ -105,14 +105,14 @@ class AudioTranscriptionManager: ObservableObject {
                     processingPhase = .enhancing
                     do {
                         // inside the enhancement success path where transcription is created
-                        let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(text)
+                        let (enhancedText, enhancementDuration, promptName, modelName) = try await enhancementService.enhance(text)
                         let transcription = Transcription(
                             text: text,
                             duration: duration,
                             enhancedText: enhancedText,
                             audioFileURL: permanentURL.absoluteString,
                             transcriptionModelName: currentModel.displayName,
-                            aiEnhancementModelName: enhancementService.getAIService()?.currentModel,
+                            aiEnhancementModelName: modelName,
                             promptName: promptName,
                             transcriptionDuration: transcriptionDuration,
                             enhancementDuration: enhancementDuration,

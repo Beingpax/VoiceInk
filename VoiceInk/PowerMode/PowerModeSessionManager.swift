@@ -5,8 +5,6 @@ struct ApplicationState: Codable {
     var isEnhancementEnabled: Bool
     var useScreenCaptureContext: Bool
     var selectedPromptId: String?
-    var selectedAIProvider: String?
-    var selectedAIModel: String?
     var selectedLanguage: String?
     var transcriptionModelName: String?
 }
@@ -47,8 +45,6 @@ class PowerModeSessionManager {
                 isEnhancementEnabled: enhancementService.isEnhancementEnabled,
                 useScreenCaptureContext: enhancementService.useScreenCaptureContext,
                 selectedPromptId: enhancementService.selectedPromptId?.uuidString,
-                selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
-                selectedAIModel: enhancementService.getAIService()?.currentModel,
                 selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
                 transcriptionModelName: whisperState.currentTranscriptionModel?.name
             )
@@ -94,8 +90,6 @@ class PowerModeSessionManager {
             isEnhancementEnabled: enhancementService.isEnhancementEnabled,
             useScreenCaptureContext: enhancementService.useScreenCaptureContext,
             selectedPromptId: enhancementService.selectedPromptId?.uuidString,
-            selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
-            selectedAIModel: enhancementService.getAIService()?.currentModel,
             selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
             transcriptionModelName: whisperState.currentTranscriptionModel?.name
         )
@@ -114,15 +108,6 @@ class PowerModeSessionManager {
             if config.isAIEnhancementEnabled {
                 if let promptId = config.selectedPrompt, let uuid = UUID(uuidString: promptId) {
                     enhancementService.selectedPromptId = uuid
-                }
-
-                if let aiService = enhancementService.getAIService() {
-                    if let providerName = config.selectedAIProvider, let provider = AIProvider(rawValue: providerName) {
-                        aiService.selectedProvider = provider
-                    }
-                    if let model = config.selectedAIModel {
-                        aiService.selectModel(model)
-                    }
                 }
             }
 
@@ -151,15 +136,6 @@ class PowerModeSessionManager {
             enhancementService.isEnhancementEnabled = state.isEnhancementEnabled
             enhancementService.useScreenCaptureContext = state.useScreenCaptureContext
             enhancementService.selectedPromptId = state.selectedPromptId.flatMap(UUID.init)
-
-            if let aiService = enhancementService.getAIService() {
-                if let providerName = state.selectedAIProvider, let provider = AIProvider(rawValue: providerName) {
-                    aiService.selectedProvider = provider
-                }
-                if let model = state.selectedAIModel {
-                    aiService.selectModel(model)
-                }
-            }
 
             if let language = state.selectedLanguage {
                 UserDefaults.standard.set(language, forKey: "SelectedLanguage")
