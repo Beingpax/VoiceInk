@@ -56,7 +56,7 @@ struct ProviderConfigEditorView: View {
             return ollamaModels.map { $0.name }
         }
         if selectedProvider == .openRouter {
-            return aiService.availableModels
+            return aiService.openRouterModels
         }
         return selectedProvider.availableModels
     }

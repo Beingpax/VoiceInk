@@ -193,7 +193,7 @@ class AIService: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
     
-    @Published private var openRouterModels: [String] = []
+    @Published private(set) var openRouterModels: [String] = []
     
     @Published var providerConfigurations: [AIProviderConfiguration] = []
     private let providerConfigurationsKey = "aiProviderConfigurations"
