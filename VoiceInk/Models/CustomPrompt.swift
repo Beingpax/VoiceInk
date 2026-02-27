@@ -85,6 +85,7 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
     let isPredefined: Bool
     let triggerWords: [String]
     let useSystemInstructions: Bool
+    let providerConfigurationId: UUID?
     
     init(
         id: UUID = UUID(),
@@ -95,7 +96,8 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         description: String? = nil,
         isPredefined: Bool = false,
         triggerWords: [String] = [],
-        useSystemInstructions: Bool = true
+        useSystemInstructions: Bool = true,
+        providerConfigurationId: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -106,10 +108,11 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         self.isPredefined = isPredefined
         self.triggerWords = triggerWords
         self.useSystemInstructions = useSystemInstructions
+        self.providerConfigurationId = providerConfigurationId
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, promptText, isActive, icon, description, isPredefined, triggerWords, useSystemInstructions
+        case id, title, promptText, isActive, icon, description, isPredefined, triggerWords, useSystemInstructions, providerConfigurationId
     }
 
     init(from decoder: Decoder) throws {
@@ -123,6 +126,7 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         isPredefined = try container.decode(Bool.self, forKey: .isPredefined)
         triggerWords = try container.decode([String].self, forKey: .triggerWords)
         useSystemInstructions = try container.decodeIfPresent(Bool.self, forKey: .useSystemInstructions) ?? true
+        providerConfigurationId = try container.decodeIfPresent(UUID.self, forKey: .providerConfigurationId)
     }
     
     var finalPromptText: String {
@@ -136,7 +140,7 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
 
 // MARK: - UI Extensions
 extension CustomPrompt {
-    func promptIcon(isSelected: Bool, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil, onDelete: ((CustomPrompt) -> Void)? = nil) -> some View {
+    func promptIcon(isSelected: Bool, modelName: String? = nil, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil, onDelete: ((CustomPrompt) -> Void)? = nil) -> some View {
         VStack(spacing: 8) {
             ZStack {
                 // Dynamic background with blur effect
@@ -239,7 +243,7 @@ extension CustomPrompt {
                             Image(systemName: "mic.fill")
                                 .font(.system(size: 7))
                                 .foregroundColor(isSelected ? .accentColor.opacity(0.9) : .secondary.opacity(0.7))
-                            
+
                             if triggerWords.count == 1 {
                                 Text("\"\(triggerWords[0])...\"")
                                     .font(.system(size: 8, weight: .regular))
@@ -256,6 +260,20 @@ extension CustomPrompt {
                     }
                 }
                 .frame(height: 16)
+
+                // Model name
+                if let modelName = modelName {
+                    HStack(spacing: 2) {
+                        Image(systemName: "cpu")
+                            .font(.system(size: 7))
+                            .foregroundColor(isSelected ? .accentColor.opacity(0.9) : .secondary.opacity(0.6))
+                        Text(modelName)
+                            .font(.system(size: 8, weight: .regular))
+                            .foregroundColor(isSelected ? .primary.opacity(0.8) : .secondary.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: 70)
+                }
             }
         }
         .padding(.horizontal, 4)

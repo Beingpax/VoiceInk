@@ -25,10 +25,6 @@ struct ConfigurationView: View {
     @State private var validationErrors: [PowerModeValidationError] = []
     @State private var showValidationAlert = false
     
-    // New state for AI provider and model
-    @State private var selectedAIProvider: String?
-    @State private var selectedAIModel: String?
-    
     // App and Website configurations
     @State private var selectedAppConfigs: [AppConfig] = []
     @State private var websiteConfigs: [URLConfig] = []
@@ -100,9 +96,6 @@ struct ConfigurationView: View {
             _useScreenCapture = State(initialValue: false)
             _isAutoSendEnabled = State(initialValue: false)
             _isDefault = State(initialValue: false)
-            // Default to current global AI provider/model for new configurations - use UserDefaults only
-            _selectedAIProvider = State(initialValue: UserDefaults.standard.string(forKey: "selectedAIProvider"))
-            _selectedAIModel = State(initialValue: nil) // Initialize to nil and set it after view appears
         case .edit(let config):
             // Get the latest version of this config from PowerModeManager
             let latestConfig = powerModeManager.getConfiguration(with: config.id) ?? config
@@ -118,8 +111,6 @@ struct ConfigurationView: View {
             _useScreenCapture = State(initialValue: latestConfig.useScreenCapture)
             _isAutoSendEnabled = State(initialValue: latestConfig.isAutoSendEnabled)
             _isDefault = State(initialValue: latestConfig.isDefault)
-            _selectedAIProvider = State(initialValue: latestConfig.selectedAIProvider)
-            _selectedAIModel = State(initialValue: latestConfig.selectedAIModel)
         }
     }
     
@@ -320,91 +311,13 @@ struct ConfigurationView: View {
                 Toggle("Enable AI Enhancement", isOn: $isAIEnhancementEnabled)
                     .onChange(of: isAIEnhancementEnabled) { _, newValue in
                         if newValue {
-                            if selectedAIProvider == nil {
-                                selectedAIProvider = aiService.selectedProvider.rawValue
-                            }
-                            if selectedAIModel == nil {
-                                selectedAIModel = aiService.currentModel
-                            }
                             if selectedPromptId == nil {
                                 selectedPromptId = enhancementService.allPrompts.first?.id
                             }
                         }
                     }
 
-                let providerBinding = Binding<AIProvider>(
-                    get: {
-                        if let providerName = selectedAIProvider,
-                           let provider = AIProvider(rawValue: providerName) {
-                            return provider
-                        }
-                        return aiService.selectedProvider
-                    },
-                    set: { newValue in
-                        selectedAIProvider = newValue.rawValue
-                        aiService.selectedProvider = newValue
-                        selectedAIModel = nil
-                    }
-                )
-
                 if isAIEnhancementEnabled {
-                    if aiService.connectedProviders.isEmpty {
-                        LabeledContent("AI Provider") {
-                            Text("No providers connected")
-                                .foregroundColor(.secondary)
-                                .italic()
-                        }
-                    } else {
-                        Picker("AI Provider", selection: providerBinding) {
-                            ForEach(aiService.connectedProviders.filter { $0 != .elevenLabs && $0 != .deepgram }, id: \.self) { provider in
-                                Text(provider.rawValue).tag(provider)
-                            }
-                        }
-                        .onChange(of: selectedAIProvider) { _, newValue in
-                            if let provider = newValue.flatMap({ AIProvider(rawValue: $0) }) {
-                                selectedAIModel = provider.defaultModel
-                            }
-                        }
-                    }
-
-                    let providerName = selectedAIProvider ?? aiService.selectedProvider.rawValue
-                    if let provider = AIProvider(rawValue: providerName),
-                       provider != .custom {
-                        if aiService.availableModels.isEmpty {
-                            LabeledContent("AI Model") {
-                                Text(provider == .openRouter ? "No models loaded" : "No models available")
-                                    .foregroundColor(.secondary)
-                                    .italic()
-                            }
-                        } else {
-                            let modelBinding = Binding<String>(
-                                get: {
-                                    if let model = selectedAIModel, !model.isEmpty { return model }
-                                    return aiService.currentModel
-                                },
-                                set: { newModelValue in
-                                    selectedAIModel = newModelValue
-                                    aiService.selectModel(newModelValue)
-                                }
-                            )
-
-                            let models = provider == .openRouter ? aiService.availableModels : (provider == .ollama ? aiService.availableModels : provider.availableModels)
-
-                            Picker("AI Model", selection: modelBinding) {
-                                ForEach(models, id: \.self) { model in
-                                    Text(model).tag(model)
-                                }
-                            }
-
-                            if provider == .openRouter {
-                                Button("Refresh Models") {
-                                    Task { await aiService.fetchOpenRouterModels() }
-                                }
-                                .help("Refresh models")
-                            }
-                        }
-                    }
-
                     if enhancementService.allPrompts.isEmpty {
                         LabeledContent("Enhancement Prompt") {
                             Text("No prompts available")
@@ -414,6 +327,15 @@ struct ConfigurationView: View {
                         Picker("Enhancement Prompt", selection: $selectedPromptId) {
                             ForEach(enhancementService.allPrompts) { prompt in
                                 Text(prompt.title).tag(prompt.id as UUID?)
+                            }
+                        }
+
+                        if let promptId = selectedPromptId,
+                           let prompt = enhancementService.allPrompts.first(where: { $0.id == promptId }) {
+                            let resolved = aiService.resolveProviderConfig(forId: prompt.providerConfigurationId)
+                            LabeledContent("AI Provider") {
+                                Text("\(resolved.provider.rawValue) - \(resolved.model)")
+                                    .foregroundColor(.secondary)
                             }
                         }
                     }
@@ -503,16 +425,6 @@ struct ConfigurationView: View {
         }
         .powerModeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
         .onAppear {
-            // Set AI provider and model for new power modes after environment objects are available
-            if case .add = mode {
-                if selectedAIProvider == nil {
-                    selectedAIProvider = aiService.selectedProvider.rawValue
-                }
-                if selectedAIModel == nil || selectedAIModel?.isEmpty == true {
-                    selectedAIModel = aiService.currentModel
-                }
-            }
-            
             // Select first prompt if AI enhancement is enabled and no prompt is selected
             if isAIEnhancementEnabled && selectedPromptId == nil {
                 selectedPromptId = enhancementService.allPrompts.first?.id
@@ -564,8 +476,6 @@ struct ConfigurationView: View {
                     selectedTranscriptionModelName: selectedTranscriptionModelName,
                     selectedLanguage: selectedLanguage,
                     useScreenCapture: useScreenCapture,
-                    selectedAIProvider: selectedAIProvider,
-                    selectedAIModel: selectedAIModel,
                     isAutoSendEnabled: isAutoSendEnabled,
                     isDefault: isDefault,
                     hotkeyShortcut: hotkeyString
@@ -582,8 +492,6 @@ struct ConfigurationView: View {
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
             updatedConfig.useScreenCapture = useScreenCapture
             updatedConfig.isAutoSendEnabled = isAutoSendEnabled
-            updatedConfig.selectedAIProvider = selectedAIProvider
-            updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.isDefault = isDefault
             updatedConfig.hotkeyShortcut = hotkeyString
             return updatedConfig

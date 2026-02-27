@@ -94,6 +94,7 @@ struct ConfigurationRow: View {
     let powerModeManager: PowerModeManager
     let onEditConfig: (PowerModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
+    @EnvironmentObject var aiService: AIService
     @EnvironmentObject var whisperState: WhisperState
     @State private var isHovering = false
     
@@ -249,7 +250,9 @@ struct ConfigurationRow: View {
                         )
                     }
                     
-                    if config.isAIEnhancementEnabled, let modelName = config.selectedAIModel, !modelName.isEmpty {
+                    if config.isAIEnhancementEnabled, let prompt = selectedPrompt {
+                        let resolved = aiService.resolveProviderConfig(forId: prompt.providerConfigurationId)
+                        let modelName = resolved.model
                         HStack(spacing: 4) {
                             Image(systemName: "cpu")
                                 .font(.system(size: 10))

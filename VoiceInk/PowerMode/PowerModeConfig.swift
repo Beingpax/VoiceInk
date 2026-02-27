@@ -12,15 +12,15 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var selectedTranscriptionModelName: String?
     var selectedLanguage: String?
     var useScreenCapture: Bool
-    var selectedAIProvider: String?
-    var selectedAIModel: String?
     var isAutoSendEnabled: Bool = false
     var isEnabled: Bool = true
     var isDefault: Bool = false
     var hotkeyShortcut: String? = nil
         
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, isEnabled, isDefault, hotkeyShortcut
+        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, useScreenCapture, isAutoSendEnabled, isEnabled, isDefault, hotkeyShortcut
+        // Legacy keys kept for backward-compatible decoding
+        case selectedAIProvider, selectedAIModel
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
@@ -28,7 +28,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     init(id: UUID = UUID(), name: String, emoji: String, appConfigs: [AppConfig]? = nil,
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
-         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, isAutoSendEnabled: Bool = false, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
+         isAutoSendEnabled: Bool = false, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
         self.id = id
         self.name = name
         self.emoji = emoji
@@ -38,8 +38,6 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.selectedPrompt = selectedPrompt
         self.useScreenCapture = useScreenCapture
         self.isAutoSendEnabled = isAutoSendEnabled
-        self.selectedAIProvider = selectedAIProvider ?? UserDefaults.standard.string(forKey: "selectedAIProvider")
-        self.selectedAIModel = selectedAIModel
         self.selectedTranscriptionModelName = selectedTranscriptionModelName ?? UserDefaults.standard.string(forKey: "CurrentTranscriptionModel")
         self.selectedLanguage = selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
         self.isEnabled = isEnabled
@@ -58,8 +56,6 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         selectedPrompt = try container.decodeIfPresent(String.self, forKey: .selectedPrompt)
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
         useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
-        selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
-        selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         isAutoSendEnabled = try container.decodeIfPresent(Bool.self, forKey: .isAutoSendEnabled) ?? false
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         isDefault = try container.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
@@ -85,8 +81,6 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(selectedPrompt, forKey: .selectedPrompt)
         try container.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
         try container.encode(useScreenCapture, forKey: .useScreenCapture)
-        try container.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
-        try container.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)
         try container.encode(isAutoSendEnabled, forKey: .isAutoSendEnabled)
         try container.encodeIfPresent(selectedTranscriptionModelName, forKey: .selectedTranscriptionModelName)
         try container.encode(isEnabled, forKey: .isEnabled)
