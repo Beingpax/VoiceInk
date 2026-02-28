@@ -17,12 +17,62 @@ struct TranscriptionHistoryView: View {
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
+    @State private var selectedPowerMode: String? = nil
+    @State private var selectedModelName: String? = nil
+    @State private var availablePowerModes: [String] = []
+    @State private var availableModelNames: [String] = []
 
     private let exportService = VoiceInkCSVExportService()
     private let minSidebarWidth: CGFloat = 200
     private let maxSidebarWidth: CGFloat = 350
     private let pageSize = 20
-    
+
+    private var filteredTranscriptions: [Transcription] {
+        displayedTranscriptions.filter { t in
+            if let mode = selectedPowerMode, t.powerModeName != mode { return false }
+            if let model = selectedModelName, t.transcriptionModelName != model { return false }
+            return true
+        }
+    }
+
+    private var groupedTranscriptions: [(header: String, transcriptions: [Transcription])] {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfToday = calendar.startOfDay(for: now)
+        guard let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday),
+              let startOfWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
+              let startOfMonth = calendar.dateInterval(of: .month, for: now)?.start
+        else { return [("All", filteredTranscriptions)] }
+
+        var today: [Transcription] = []
+        var yesterday: [Transcription] = []
+        var thisWeek: [Transcription] = []
+        var thisMonth: [Transcription] = []
+        var older: [Transcription] = []
+
+        for t in filteredTranscriptions {
+            if t.timestamp >= startOfToday {
+                today.append(t)
+            } else if t.timestamp >= startOfYesterday {
+                yesterday.append(t)
+            } else if t.timestamp >= startOfWeek {
+                thisWeek.append(t)
+            } else if t.timestamp >= startOfMonth {
+                thisMonth.append(t)
+            } else {
+                older.append(t)
+            }
+        }
+
+        var groups: [(header: String, transcriptions: [Transcription])] = []
+        if !today.isEmpty { groups.append(("Today", today)) }
+        if !yesterday.isEmpty { groups.append(("Yesterday", yesterday)) }
+        if !thisWeek.isEmpty { groups.append(("This Week", thisWeek)) }
+        if !thisMonth.isEmpty { groups.append(("This Month", thisMonth)) }
+        if !older.isEmpty { groups.append(("Older", older)) }
+        return groups
+    }
+
     @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator: [Transcription]
 
     private static func createLatestTranscriptionIndicatorDescriptor() -> FetchDescriptor<Transcription> {
@@ -159,10 +209,80 @@ struct TranscriptionHistoryView: View {
             )
             .padding(12)
 
+            if !availablePowerModes.isEmpty || !availableModelNames.isEmpty {
+                HStack(spacing: 6) {
+                    if !availablePowerModes.isEmpty {
+                        Menu {
+                            Button("All Power Modes") { selectedPowerMode = nil }
+                            Divider()
+                            ForEach(availablePowerModes, id: \.self) { mode in
+                                Button(mode) { selectedPowerMode = mode }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(selectedPowerMode ?? "Power Mode")
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .font(.system(size: 11, weight: selectedPowerMode != nil ? .semibold : .regular))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(selectedPowerMode != nil ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.1))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if !availableModelNames.isEmpty {
+                        Menu {
+                            Button("All Models") { selectedModelName = nil }
+                            Divider()
+                            ForEach(availableModelNames, id: \.self) { model in
+                                Button(model) { selectedModelName = model }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(selectedModelName ?? "Model")
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .bold))
+                            }
+                            .font(.system(size: 11, weight: selectedModelName != nil ? .semibold : .regular))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(selectedModelName != nil ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.1))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if selectedPowerMode != nil || selectedModelName != nil {
+                        Button {
+                            selectedPowerMode = nil
+                            selectedModelName = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
+
             Divider()
 
             ZStack(alignment: .bottom) {
-                if displayedTranscriptions.isEmpty && !isLoading {
+                if filteredTranscriptions.isEmpty && !isLoading {
                     VStack(spacing: 12) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .font(.system(size: 40))
@@ -174,33 +294,44 @@ struct TranscriptionHistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 8) {
-                            ForEach(displayedTranscriptions) { transcription in
-                                TranscriptionListItem(
-                                    transcription: transcription,
-                                    isSelected: selectedTranscription == transcription,
-                                    isChecked: selectedTranscriptions.contains(transcription),
-                                    onSelect: { selectedTranscription = transcription },
-                                    onToggleCheck: { toggleSelection(transcription) }
-                                )
+                        LazyVStack(spacing: 8, pinnedViews: .sectionHeaders) {
+                            ForEach(groupedTranscriptions, id: \.header) { group in
+                                Section {
+                                    ForEach(group.transcriptions) { transcription in
+                                        TranscriptionListItem(
+                                            transcription: transcription,
+                                            isSelected: selectedTranscription == transcription,
+                                            isChecked: selectedTranscriptions.contains(transcription),
+                                            onSelect: { selectedTranscription = transcription },
+                                            onToggleCheck: { toggleSelection(transcription) }
+                                        )
+                                    }
+                                } header: {
+                                    Text(group.header)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.vertical, 4)
+                                        .padding(.horizontal, 4)
+                                        .background(Color(NSColor.controlBackgroundColor).opacity(0.95))
+                                }
                             }
 
                             if hasMoreContent {
-                                Button(action: {
-                                    Task { await loadMoreContent() }
-                                }) {
-                                    HStack(spacing: 8) {
-                                        if isLoading {
-                                            ProgressView().controlSize(.small)
-                                        }
-                                        Text(isLoading ? "Loading..." : "Load More")
-                                            .font(.system(size: 13, weight: .medium))
+                                if isLoading {
+                                    HStack {
+                                        Spacer()
+                                        ProgressView().controlSize(.small)
+                                        Spacer()
                                     }
-                                    .frame(maxWidth: .infinity)
                                     .padding(.vertical, 10)
+                                } else {
+                                    Color.clear
+                                        .frame(height: 1)
+                                        .onAppear {
+                                            Task { await loadMoreContent() }
+                                        }
                                 }
-                                .buttonStyle(.plain)
-                                .disabled(isLoading)
                             }
                         }
                         .padding(8)
@@ -208,7 +339,7 @@ struct TranscriptionHistoryView: View {
                     }
                 }
 
-                if !displayedTranscriptions.isEmpty {
+                if !filteredTranscriptions.isEmpty {
                     selectionToolbar
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -349,6 +480,7 @@ struct TranscriptionHistoryView: View {
             displayedTranscriptions = items
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
+            updateAvailableFilterOptions()
         } catch {
             print("Error loading transcriptions: \(error)")
         }
@@ -366,6 +498,7 @@ struct TranscriptionHistoryView: View {
             displayedTranscriptions.append(contentsOf: newItems)
             self.lastTimestamp = newItems.last?.timestamp
             hasMoreContent = newItems.count == pageSize
+            updateAvailableFilterOptions()
         } catch {
             print("Error loading more transcriptions: \(error)")
         }
@@ -377,6 +510,19 @@ struct TranscriptionHistoryView: View {
         lastTimestamp = nil
         hasMoreContent = true
         isLoading = false
+        availablePowerModes = []
+        availableModelNames = []
+    }
+
+    private func updateAvailableFilterOptions() {
+        var modes = Set(availablePowerModes)
+        var models = Set(availableModelNames)
+        for t in displayedTranscriptions {
+            if let m = t.powerModeName, !m.isEmpty { modes.insert(m) }
+            if let m = t.transcriptionModelName, !m.isEmpty { models.insert(m) }
+        }
+        availablePowerModes = modes.sorted()
+        availableModelNames = models.sorted()
     }
 
     private func performDeletion(for transcription: Transcription) {
@@ -446,18 +592,16 @@ struct TranscriptionHistoryView: View {
                 }
             }
 
-            allDescriptor.propertiesToFetch = [\.id]
             let allTranscriptions = try modelContext.fetch(allDescriptor)
-            let visibleIds = Set(displayedTranscriptions.map { $0.id })
+
+            let filtered = allTranscriptions.filter { t in
+                if let mode = selectedPowerMode, t.powerModeName != mode { return false }
+                if let model = selectedModelName, t.transcriptionModelName != model { return false }
+                return true
+            }
 
             await MainActor.run {
-                selectedTranscriptions = Set(displayedTranscriptions)
-
-                for transcription in allTranscriptions {
-                    if !visibleIds.contains(transcription.id) {
-                        selectedTranscriptions.insert(transcription)
-                    }
-                }
+                selectedTranscriptions = Set(filtered)
             }
         } catch {
             print("Error selecting all transcriptions: \(error)")

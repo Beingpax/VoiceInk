@@ -291,6 +291,7 @@ class AIEnhancementService: ObservableObject {
         var currentDelay = initialDelay
 
         while retries < maxRetries {
+            try Task.checkCancellation()
             do {
                 return try await makeRequest(text: text, mode: mode)
             } catch let error as EnhancementError {

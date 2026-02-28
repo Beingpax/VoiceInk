@@ -42,6 +42,14 @@ struct SettingsView: View {
                             KeyboardShortcuts.Recorder(for: .toggleMiniRecorder)
                                 .controlSize(.small)
                         }
+                        if hotkeyManager.selectedHotkey1.isModifierKey {
+                            Text("+")
+                                .foregroundColor(.secondary)
+                            companionModifierPicker(
+                                binding: $hotkeyManager.companionModifier1,
+                                excluding: hotkeyManager.selectedHotkey1
+                            )
+                        }
                     }
                 }
 
@@ -52,6 +60,14 @@ struct SettingsView: View {
                             if hotkeyManager.selectedHotkey2 == .custom {
                                 KeyboardShortcuts.Recorder(for: .toggleMiniRecorder2)
                                     .controlSize(.small)
+                            }
+                            if hotkeyManager.selectedHotkey2.isModifierKey {
+                                Text("+")
+                                    .foregroundColor(.secondary)
+                                companionModifierPicker(
+                                    binding: $hotkeyManager.companionModifier2,
+                                    excluding: hotkeyManager.selectedHotkey2
+                                )
                             }
                             Button {
                                 withAnimation { hotkeyManager.selectedHotkey2 = .none }
@@ -69,10 +85,23 @@ struct SettingsView: View {
                         withAnimation { hotkeyManager.selectedHotkey2 = .rightOption }
                     }
                 }
+                Picker("Recording Mode", selection: $hotkeyManager.recordingMode) {
+                    ForEach(HotkeyManager.RecordingMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+
             } header: {
                 Text("Shortcuts")
             } footer: {
-                Text("Quick tap for hands-free recording, hold for push-to-talk.")
+                switch hotkeyManager.recordingMode {
+                case .pushToTalk:
+                    Text("Hold the hotkey to record, release to stop and transcribe.")
+                case .toggle:
+                    Text("Press the hotkey to start recording, press again to stop.")
+                case .hybrid:
+                    Text("Quick tap for hands-free recording, hold for push-to-talk.")
+                }
             }
 
             // MARK: - Additional Shortcuts
@@ -276,7 +305,7 @@ struct SettingsView: View {
             } header: {
                 Text("Backup")
             } footer: {
-                Text("Export or import all your settings, prompts, power modes, dictionary, and custom models.")
+                Text("Export or import all your settings, prompts, power modes, dictionary, custom models, and transcription history.")
             }
 
             // MARK: - Diagnostics
@@ -311,6 +340,23 @@ struct SettingsView: View {
         }
         .labelsHidden()
         .frame(width: 140)
+    }
+
+    @ViewBuilder
+    private func companionModifierPicker(
+        binding: Binding<HotkeyManager.CompanionModifier>,
+        excluding hotkey: HotkeyManager.HotkeyOption
+    ) -> some View {
+        let excludedFlag = hotkey.modifierFlag
+        Picker("", selection: binding) {
+            ForEach(HotkeyManager.CompanionModifier.allCases, id: \.self) { mod in
+                if mod == .none || mod.flag != excludedFlag {
+                    Text(mod.displayName).tag(mod)
+                }
+            }
+        }
+        .labelsHidden()
+        .frame(width: 120)
     }
 }
 

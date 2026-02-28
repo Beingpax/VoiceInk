@@ -470,6 +470,20 @@ struct OnboardingPermissionsView: View {
                 }
             )
 
+            if binding.wrappedValue.isModifierKey {
+                let excludedFlag = binding.wrappedValue.modifierFlag
+                styledPicker(
+                    label: "Combine with:",
+                    selectedValue: hotkeyManager.companionModifier1,
+                    displayValue: hotkeyManager.companionModifier1.displayName,
+                    options: HotkeyManager.CompanionModifier.allCases.filter { $0 == .none || $0.flag != excludedFlag },
+                    optionDisplayName: { $0.displayName },
+                    onSelection: { mod in
+                        hotkeyManager.companionModifier1 = mod
+                    }
+                )
+            }
+
             if binding.wrappedValue == .custom {
                 KeyboardShortcuts.Recorder(for: shortcutName) { newShortcut in
                     onConfigured(newShortcut != nil)

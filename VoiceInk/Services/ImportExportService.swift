@@ -11,6 +11,9 @@ struct GeneralSettings: Codable {
     let retryLastTranscriptionShortcut: KeyboardShortcuts.Shortcut?
     let selectedHotkey1RawValue: String?
     let selectedHotkey2RawValue: String?
+    let recordingModeRawValue: String?
+    let companionModifier1RawValue: String?
+    let companionModifier2RawValue: String?
     let launchAtLoginEnabled: Bool?
     let isMenuBarOnly: Bool?
     let recorderType: String?
@@ -35,6 +38,22 @@ struct VocabularyWordData: Codable {
     let word: String
 }
 
+struct TranscriptionExportData: Codable {
+    let id: UUID
+    let text: String
+    let enhancedText: String?
+    let timestamp: Date
+    let duration: TimeInterval
+    let transcriptionModelName: String?
+    let aiEnhancementModelName: String?
+    let promptName: String?
+    let transcriptionDuration: TimeInterval?
+    let enhancementDuration: TimeInterval?
+    let powerModeName: String?
+    let powerModeEmoji: String?
+    let transcriptionStatus: String?
+}
+
 struct VoiceInkExportedSettings: Codable {
     let version: String
     let customPrompts: [CustomPrompt]
@@ -44,6 +63,7 @@ struct VoiceInkExportedSettings: Codable {
     let generalSettings: GeneralSettings?
     let customEmojis: [String]?
     let customCloudModels: [CustomCloudModel]?
+    let transcriptionHistory: [TranscriptionExportData]?
 }
 
 class ImportExportService {
@@ -98,12 +118,40 @@ class ImportExportService {
             exportedWordReplacements = Dictionary(uniqueKeysWithValues: replacements.map { ($0.originalText, $0.replacementText) })
         }
 
+        // Fetch transcription history from SwiftData
+        var exportedTranscriptions: [TranscriptionExportData]? = nil
+        let transcriptionDescriptor = FetchDescriptor<Transcription>(
+            sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+        )
+        if let transcriptions = try? whisperState.modelContext.fetch(transcriptionDescriptor), !transcriptions.isEmpty {
+            exportedTranscriptions = transcriptions.map { t in
+                TranscriptionExportData(
+                    id: t.id,
+                    text: t.text,
+                    enhancedText: t.enhancedText,
+                    timestamp: t.timestamp,
+                    duration: t.duration,
+                    transcriptionModelName: t.transcriptionModelName,
+                    aiEnhancementModelName: t.aiEnhancementModelName,
+                    promptName: t.promptName,
+                    transcriptionDuration: t.transcriptionDuration,
+                    enhancementDuration: t.enhancementDuration,
+                    powerModeName: t.powerModeName,
+                    powerModeEmoji: t.powerModeEmoji,
+                    transcriptionStatus: t.transcriptionStatus
+                )
+            }
+        }
+
         let generalSettingsToExport = GeneralSettings(
             toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
             toggleMiniRecorderShortcut2: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2),
             retryLastTranscriptionShortcut: KeyboardShortcuts.getShortcut(for: .retryLastTranscription),
             selectedHotkey1RawValue: hotkeyManager.selectedHotkey1.rawValue,
             selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
+            recordingModeRawValue: hotkeyManager.recordingMode.rawValue,
+            companionModifier1RawValue: hotkeyManager.companionModifier1.rawValue,
+            companionModifier2RawValue: hotkeyManager.companionModifier2.rawValue,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
             recorderType: whisperState.recorderType,
@@ -131,11 +179,13 @@ class ImportExportService {
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
-            customCloudModels: customModels
+            customCloudModels: customModels,
+            transcriptionHistory: exportedTranscriptions
         )
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
+        encoder.dateEncodingStrategy = .iso8601
 
         do {
             let jsonData = try encoder.encode(exportedSettings)
@@ -185,6 +235,7 @@ class ImportExportService {
                 do {
                     let jsonData = try Data(contentsOf: url)
                     let decoder = JSONDecoder()
+                    decoder.dateDecodingStrategy = .iso8601
                     let importedSettings = try decoder.decode(VoiceInkExportedSettings.self, from: jsonData)
                     
                     if importedSettings.version != self.currentSettingsVersion {
@@ -271,6 +322,37 @@ class ImportExportService {
                         print("No word replacements found in the imported file. Existing replacements remain unchanged.")
                     }
 
+                    // Import transcription history
+                    if let transcriptionsToImport = importedSettings.transcriptionHistory, !transcriptionsToImport.isEmpty {
+                        let existingDescriptor = FetchDescriptor<Transcription>()
+                        let existingTranscriptions = (try? whisperState.modelContext.fetch(existingDescriptor)) ?? []
+                        let existingIds = Set(existingTranscriptions.map { $0.id })
+
+                        var importedCount = 0
+                        for data in transcriptionsToImport {
+                            if existingIds.contains(data.id) { continue }
+                            let transcription = Transcription(
+                                text: data.text,
+                                duration: data.duration,
+                                enhancedText: data.enhancedText,
+                                transcriptionModelName: data.transcriptionModelName,
+                                aiEnhancementModelName: data.aiEnhancementModelName,
+                                promptName: data.promptName,
+                                transcriptionDuration: data.transcriptionDuration,
+                                enhancementDuration: data.enhancementDuration,
+                                powerModeName: data.powerModeName,
+                                powerModeEmoji: data.powerModeEmoji,
+                                transcriptionStatus: data.transcriptionStatus.flatMap { TranscriptionStatus(rawValue: $0) } ?? .completed
+                            )
+                            transcription.id = data.id
+                            transcription.timestamp = data.timestamp
+                            whisperState.modelContext.insert(transcription)
+                            importedCount += 1
+                        }
+                        try? whisperState.modelContext.save()
+                        print("Successfully imported \(importedCount) transcriptions (skipped \(transcriptionsToImport.count - importedCount) duplicates).")
+                    }
+
                     if let general = importedSettings.generalSettings {
                         if let shortcut = general.toggleMiniRecorderShortcut {
                             KeyboardShortcuts.setShortcut(shortcut, for: .toggleMiniRecorder)
@@ -288,6 +370,18 @@ class ImportExportService {
                         if let hotkeyRaw2 = general.selectedHotkey2RawValue,
                            let hotkey2 = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw2) {
                             hotkeyManager.selectedHotkey2 = hotkey2
+                        }
+                        if let modeRaw = general.recordingModeRawValue,
+                           let mode = HotkeyManager.RecordingMode(rawValue: modeRaw) {
+                            hotkeyManager.recordingMode = mode
+                        }
+                        if let comp1Raw = general.companionModifier1RawValue,
+                           let comp1 = HotkeyManager.CompanionModifier(rawValue: comp1Raw) {
+                            hotkeyManager.companionModifier1 = comp1
+                        }
+                        if let comp2Raw = general.companionModifier2RawValue,
+                           let comp2 = HotkeyManager.CompanionModifier(rawValue: comp2Raw) {
+                            hotkeyManager.companionModifier2 = comp2
                         }
                         if let launch = general.launchAtLoginEnabled {
                             LaunchAtLogin.isEnabled = launch

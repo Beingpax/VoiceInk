@@ -159,7 +159,7 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    func stopRecording() {
+    func stopRecording(restoreAudio: Bool = true) {
         logger.notice("stopRecording called")
         audioLevelCheckTask?.cancel()
         audioMeterUpdateTimer?.cancel()
@@ -175,11 +175,20 @@ class Recorder: NSObject, ObservableObject {
 
         audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
 
+        if restoreAudio {
+            audioRestorationTask = Task {
+                await mediaController.unmuteSystemAudio()
+                await playbackController.resumeMedia()
+            }
+        }
+        deviceManager.isRecordingActive = false
+    }
+
+    func restoreAudio() {
         audioRestorationTask = Task {
             await mediaController.unmuteSystemAudio()
             await playbackController.resumeMedia()
         }
-        deviceManager.isRecordingActive = false
     }
 
     private func handleRecordingError(_ error: Error) async {

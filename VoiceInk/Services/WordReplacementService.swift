@@ -4,7 +4,13 @@ import SwiftData
 class WordReplacementService {
     static let shared = WordReplacementService()
 
+    private var cachedRegexes: [String: NSRegularExpression] = [:]
+
     private init() {}
+
+    func invalidateCache() {
+        cachedRegexes.removeAll()
+    }
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
         let descriptor = FetchDescriptor<WordReplacement>(
@@ -32,9 +38,8 @@ class WordReplacementService {
                 let usesBoundaries = usesWordBoundaries(for: original)
 
                 if usesBoundaries {
-                    // Word-boundary regex for full original string
-                    let pattern = "\\b\(NSRegularExpression.escapedPattern(for: original))\\b"
-                    if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                    let regex = cachedRegex(for: original)
+                    if let regex {
                         let range = NSRange(modifiedText.startIndex..., in: modifiedText)
                         modifiedText = regex.stringByReplacingMatches(
                             in: modifiedText,
@@ -51,6 +56,18 @@ class WordReplacementService {
         }
 
         return modifiedText
+    }
+
+    private func cachedRegex(for original: String) -> NSRegularExpression? {
+        if let cached = cachedRegexes[original] {
+            return cached
+        }
+        let pattern = "\\b\(NSRegularExpression.escapedPattern(for: original))\\b"
+        let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        if let regex {
+            cachedRegexes[original] = regex
+        }
+        return regex
     }
 
     private func usesWordBoundaries(for text: String) -> Bool {

@@ -33,10 +33,10 @@ class MiniWindowManager: ObservableObject {
     func show() {
         if isVisible { return }
 
-        let activeScreen = NSApp.keyWindow?.screen ?? NSScreen.main ?? NSScreen.screens[0]
-
-        initializeWindow(screen: activeScreen)
-        self.isVisible = true 
+        if miniPanel == nil {
+            initializeWindow()
+        }
+        self.isVisible = true
         miniPanel?.show()
     }
 
@@ -44,31 +44,24 @@ class MiniWindowManager: ObservableObject {
         guard isVisible else { return }
 
         self.isVisible = false
-        self.miniPanel?.hide { [weak self] in
-            guard let self = self else { return }
-            self.deinitializeWindow()
-        }
+        miniPanel?.orderOut(nil)
     }
-    
-    private func initializeWindow(screen: NSScreen) {
-        deinitializeWindow()
-        
+
+    private func initializeWindow() {
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
         let panel = MiniRecorderPanel(contentRect: metrics)
-        
+
         let miniRecorderView = MiniRecorderView(whisperState: whisperState, recorder: recorder)
             .environmentObject(self)
             .environmentObject(whisperState.enhancementService!)
-        
+
         let hostingController = NSHostingController(rootView: miniRecorderView)
         panel.contentView = hostingController.view
-        
+
         self.miniPanel = panel
         self.windowController = NSWindowController(window: panel)
-        
-        panel.orderFrontRegardless()
     }
-    
+
     private func deinitializeWindow() {
         miniPanel?.orderOut(nil)
         windowController?.close()

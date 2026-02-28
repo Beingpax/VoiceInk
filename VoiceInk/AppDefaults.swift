@@ -37,6 +37,9 @@ enum AppDefaults {
             "IsMenuBarOnly": false,
             "powerModeAutoRestoreEnabled": false,
             // Hotkey
+            "recordingMode": "hybrid",
+            "companionModifier1": "none",
+            "companionModifier2": "none",
             "isMiddleClickToggleEnabled": false,
             "middleClickActivationDelay": 200,
 

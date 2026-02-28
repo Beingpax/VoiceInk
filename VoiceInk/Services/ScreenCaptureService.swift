@@ -80,7 +80,7 @@ class ScreenCaptureService: ObservableObject {
             return nil
         }
 
-        let result: Result<String?, Error> = await Task.detached(priority: .userInitiated) {
+        let ocrTask = Task.detached(priority: .userInitiated) { () -> String? in
             let request = VNRecognizeTextRequest()
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
@@ -90,21 +90,23 @@ class ScreenCaptureService: ObservableObject {
 
             do {
                 try requestHandler.perform([request])
-                guard let observations = request.results else {
-                    return .success(nil)
-                }
+                guard let observations = request.results else { return nil }
                 let text = observations
                     .compactMap { $0.topCandidates(1).first?.string }
                     .joined(separator: "\n")
-                return .success(text.isEmpty ? nil : text)
+                return text.isEmpty ? nil : text
             } catch {
-                return .failure(error)
+                return nil
             }
-        }.value
-
-        switch result {
-        case .success(let text): return text
-        case .failure: return nil
         }
+
+        let timeoutTask = Task {
+            try await Task.sleep(for: .seconds(3))
+            ocrTask.cancel()
+        }
+
+        let result = await ocrTask.value
+        timeoutTask.cancel()
+        return result
     }
 }

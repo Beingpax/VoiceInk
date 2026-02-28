@@ -7,9 +7,33 @@ private let logger = Logger(subsystem: "com.VoiceInk", category: "CursorPaster")
 
 class CursorPaster {
 
+    // MARK: - Cached preferences
+
+    private static var shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
+    private static var shouldUseAppleScript = UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
+    private static var restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
+    static var appendTrailingSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+
+    private static let prefsObserver: NSObjectProtocol = {
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil, queue: .main
+        ) { _ in
+            shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
+            shouldUseAppleScript = UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
+            restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
+            appendTrailingSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+        }
+    }()
+
+    static func setupObservers() {
+        _ = prefsObserver
+    }
+
     static func pasteAtCursor(_ text: String) {
+        _ = prefsObserver
+
         let pasteboard = NSPasteboard.general
-        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
 
         var savedContents: [(NSPasteboard.PasteboardType, Data)] = []
 
@@ -28,7 +52,7 @@ class CursorPaster {
         ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
+            if shouldUseAppleScript {
                 pasteUsingAppleScript()
             } else {
                 pasteFromClipboard()
@@ -36,7 +60,6 @@ class CursorPaster {
         }
 
         if shouldRestoreClipboard {
-            let restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
             let delay = max(restoreDelay, 0.25)
 
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
