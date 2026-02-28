@@ -24,7 +24,7 @@ final class KeychainService {
     @discardableResult
     func save(_ value: String, forKey key: String, syncable: Bool = true) -> Bool {
         guard let data = value.data(using: .utf8) else {
-            logger.error("Failed to convert value to data for key: \(key)")
+            logger.error("Failed to convert value to data for key: \(key, privacy: .public)")
             return false
         }
         return save(data: data, forKey: key, syncable: syncable)
@@ -46,10 +46,10 @@ final class KeychainService {
         let status = SecItemAdd(query as CFDictionary, nil)
 
         if status == errSecSuccess {
-            logger.info("Successfully saved keychain item for key: \(key)")
+            logger.info("Successfully saved keychain item for key: \(key, privacy: .public)")
             return true
         } else {
-            logger.error("Failed to save keychain item for key: \(key), status: \(status)")
+            logger.error("Failed to save keychain item for key: \(key, privacy: .public), status: \(status, privacy: .public)")
             return false
         }
         #endif
@@ -78,7 +78,7 @@ final class KeychainService {
         if status == errSecSuccess {
             return result as? Data
         } else if status != errSecItemNotFound {
-            logger.error("Failed to retrieve keychain item for key: \(key), status: \(status)")
+            logger.error("Failed to retrieve keychain item for key: \(key, privacy: .public), status: \(status, privacy: .public)")
         }
 
         return nil
@@ -97,11 +97,11 @@ final class KeychainService {
 
         if status == errSecSuccess || status == errSecItemNotFound {
             if status == errSecSuccess {
-                logger.info("Successfully deleted keychain item for key: \(key)")
+                logger.info("Successfully deleted keychain item for key: \(key, privacy: .public)")
             }
             return true
         } else {
-            logger.error("Failed to delete keychain item for key: \(key), status: \(status)")
+            logger.error("Failed to delete keychain item for key: \(key, privacy: .public), status: \(status, privacy: .public)")
             return false
         }
         #endif

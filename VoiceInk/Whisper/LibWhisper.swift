@@ -90,7 +90,7 @@ actor WhisperContext {
         var success = true
         samples.withUnsafeBufferPointer { samplesBuffer in
             if whisper_full(context, params, samplesBuffer.baseAddress, Int32(samplesBuffer.count)) != 0 {
-                logger.error("Failed to run whisper_full. VAD enabled: \(params.vad)")
+                logger.error("Failed to run whisper_full. VAD enabled: \(params.vad, privacy: .public)")
                 success = false
             }
         }
@@ -135,7 +135,7 @@ actor WhisperContext {
         if let context {
             self.context = context
         } else {
-            logger.error("Couldn't load model at \(path)")
+            logger.error("Couldn't load model at \(path, privacy: .public)")
             throw WhisperStateError.modelLoadFailed
         }
     }

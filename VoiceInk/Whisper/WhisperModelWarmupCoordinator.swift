@@ -26,7 +26,7 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
                 try await runWarmup(for: model, whisperState: whisperState)
             } catch {
                 await MainActor.run {
-                    whisperState.logger.error("Warmup failed for \(model.name): \(error.localizedDescription)")
+                    whisperState.logger.error("Warmup failed for \(model.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             }
             

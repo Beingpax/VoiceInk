@@ -33,7 +33,7 @@ class DictionaryMigrationService {
                 let decoder = JSONDecoder()
                 let oldVocabulary = try decoder.decode([OldVocabularyWord].self, from: data)
 
-                logger.info("Found \(oldVocabulary.count) vocabulary words to migrate")
+                logger.info("Found \(oldVocabulary.count, privacy: .public) vocabulary words to migrate")
 
                 for oldWord in oldVocabulary {
                     let newWord = VocabularyWord(word: oldWord.word)
@@ -41,9 +41,9 @@ class DictionaryMigrationService {
                     vocabularyMigrated += 1
                 }
 
-                logger.info("Successfully migrated \(vocabularyMigrated) vocabulary words")
+                logger.info("Successfully migrated \(vocabularyMigrated, privacy: .public) vocabulary words")
             } catch {
-                logger.error("Failed to migrate vocabulary words: \(error.localizedDescription)")
+                logger.error("Failed to migrate vocabulary words: \(error.localizedDescription, privacy: .public)")
             }
         } else {
             logger.info("No vocabulary words found to migrate")
@@ -51,7 +51,7 @@ class DictionaryMigrationService {
 
         // Migrate word replacements
         if let replacements = UserDefaults.standard.dictionary(forKey: wordReplacementsKey) as? [String: String] {
-            logger.info("Found \(replacements.count) word replacements to migrate")
+            logger.info("Found \(replacements.count, privacy: .public) word replacements to migrate")
 
             for (originalText, replacementText) in replacements {
                 let wordReplacement = WordReplacement(
@@ -62,7 +62,7 @@ class DictionaryMigrationService {
                 replacementsMigrated += 1
             }
 
-            logger.info("Successfully migrated \(replacementsMigrated) word replacements")
+            logger.info("Successfully migrated \(replacementsMigrated, privacy: .public) word replacements")
         } else {
             logger.info("No word replacements found to migrate")
         }
@@ -76,7 +76,7 @@ class DictionaryMigrationService {
             UserDefaults.standard.set(true, forKey: migrationCompletedKey)
             logger.info("Migration completed successfully")
         } catch {
-            logger.error("Failed to save migrated data: \(error.localizedDescription)")
+            logger.error("Failed to save migrated data: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

@@ -124,7 +124,7 @@ struct MetricsContent: View {
                 self.isLoadingMetrics = false
             }
         } catch {
-            logger.error("Error loading metrics: \(error.localizedDescription)")
+            logger.error("Error loading metrics: \(error.localizedDescription, privacy: .public)")
             await MainActor.run {
                 self.isLoadingMetrics = false
             }

@@ -34,7 +34,7 @@ final class ParakeetStreamingProvider: StreamingTranscriptionProvider {
         self.streamingManager = manager
 
         eventsContinuation?.yield(.sessionStarted)
-        logger.notice("Parakeet streaming started for \(model.displayName)")
+        logger.notice("Parakeet streaming started for \(model.displayName, privacy: .public)")
     }
 
     func sendAudioChunk(_ data: Data) async throws {

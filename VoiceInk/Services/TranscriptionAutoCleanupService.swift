@@ -74,7 +74,7 @@ class TranscriptionAutoCleanupService {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
-                logger.error("Failed to delete audio file: \(error.localizedDescription)")
+                logger.error("Failed to delete audio file: \(error.localizedDescription, privacy: .public)")
             }
         }
 
@@ -84,7 +84,7 @@ class TranscriptionAutoCleanupService {
             try modelContext.save()
             NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
         } catch {
-            logger.error("Failed to save after transcription deletion: \(error.localizedDescription)")
+            logger.error("Failed to save after transcription deletion: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -121,13 +121,13 @@ class TranscriptionAutoCleanupService {
             }
             if deletedCount > 0 {
                 try backgroundContext.save()
-                logger.notice("Cleaned up \(deletedCount) old transcription(s)")
+                logger.notice("Cleaned up \(deletedCount, privacy: .public) old transcription(s)")
                 await MainActor.run {
                     NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
                 }
             }
         } catch {
-            logger.error("Failed during transcription cleanup: \(error.localizedDescription)")
+            logger.error("Failed during transcription cleanup: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -168,10 +168,10 @@ class TranscriptionAutoCleanupService {
             }
 
             if deletedCount > 0 {
-                logger.notice("Cleaned up \(deletedCount) orphan audio file(s)")
+                logger.notice("Cleaned up \(deletedCount, privacy: .public) orphan audio file(s)")
             }
         } catch {
-            logger.error("Failed during orphan audio cleanup: \(error.localizedDescription)")
+            logger.error("Failed during orphan audio cleanup: \(error.localizedDescription, privacy: .public)")
         }
     }
 }

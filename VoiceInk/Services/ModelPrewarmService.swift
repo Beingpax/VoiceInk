@@ -73,17 +73,17 @@ final class ModelPrewarmService: ObservableObject {
             return
         }
 
-        logger.notice("🌅 Prewarming \(currentModel.displayName)")
+        logger.notice("🌅 Prewarming \(currentModel.displayName, privacy: .public)")
         let startTime = Date()
 
         do {
             let _ = try await serviceRegistry.transcribe(audioURL: audioURL, model: currentModel)
             let duration = Date().timeIntervalSince(startTime)
 
-            logger.notice("🌅 Prewarm completed in \(String(format: "%.2f", duration))s")
+            logger.notice("🌅 Prewarm completed in \(String(format: "%.2f", duration), privacy: .public)s")
 
         } catch {
-            logger.error("❌ Prewarm failed: \(error.localizedDescription)")
+            logger.error("❌ Prewarm failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

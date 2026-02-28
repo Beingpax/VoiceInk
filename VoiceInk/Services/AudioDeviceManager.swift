@@ -63,7 +63,7 @@ class AudioDeviceManager: ObservableObject {
         )
 
         guard status == noErr, deviceID != 0 else {
-            logger.error("Failed to get system default device: \(status)")
+            logger.error("Failed to get system default device: \(status, privacy: .public)")
             return nil
         }
         return deviceID
@@ -85,7 +85,7 @@ class AudioDeviceManager: ObservableObject {
                 if let device = availableDevices.first(where: { $0.uid == savedUID }) {
                     selectedDeviceID = device.id
                 } else {
-                    logger.warning("🎙️ Saved device UID \(savedUID) is no longer available")
+                    logger.warning("🎙️ Saved device UID \(savedUID, privacy: .public) is no longer available")
                     UserDefaults.standard.removeObject(forKey: UserDefaults.Keys.selectedAudioDeviceUID)
                     fallbackToDefaultDevice()
                 }
@@ -110,7 +110,7 @@ class AudioDeviceManager: ObservableObject {
         }
 
         let newDeviceName = getDeviceName(deviceID: newDeviceID) ?? "Unknown Device"
-        logger.notice("🎙️ Auto-selecting new device: \(newDeviceName)")
+        logger.notice("🎙️ Auto-selecting new device: \(newDeviceName, privacy: .public)")
         selectDevice(id: newDeviceID)
     }
 
@@ -119,7 +119,7 @@ class AudioDeviceManager: ObservableObject {
             return device.id
         }
         if let device = availableDevices.first {
-            logger.warning("🎙️ No built-in device found, using: \(device.name)")
+            logger.warning("🎙️ No built-in device found, using: \(device.name, privacy: .public)")
             return device.id
         }
         return nil
@@ -162,7 +162,7 @@ class AudioDeviceManager: ObservableObject {
         )
         
         if result != noErr {
-            logger.error("Error getting audio devices: \(result)")
+            logger.error("Error getting audio devices: \(result, privacy: .public)")
             return
         }
         
@@ -215,7 +215,7 @@ class AudioDeviceManager: ObservableObject {
         )
 
         if result != noErr {
-            logger.error("Error checking input capability for device \(deviceID): \(result)")
+            logger.error("Error checking input capability for device \(deviceID, privacy: .public): \(result, privacy: .public)")
             return false
         }
 
@@ -232,7 +232,7 @@ class AudioDeviceManager: ObservableObject {
         )
 
         if result != noErr {
-            logger.error("Error getting stream configuration for device \(deviceID): \(result)")
+            logger.error("Error getting stream configuration for device \(deviceID, privacy: .public): \(result, privacy: .public)")
             return false
         }
 
@@ -249,7 +249,7 @@ class AudioDeviceManager: ObservableObject {
                 self.notifyDeviceChange()
             }
         } else {
-            logger.error("Attempted to select unavailable device: \(id)")
+            logger.error("Attempted to select unavailable device: \(id, privacy: .public)")
             fallbackToDefaultDevice()
         }
     }
@@ -265,11 +265,11 @@ class AudioDeviceManager: ObservableObject {
                 self.notifyDeviceChange()
             }
         } else {
-            logger.error("Attempted to select unavailable device: \(id)")
+            logger.error("Attempted to select unavailable device: \(id, privacy: .public)")
             fallbackToDefaultDevice()
         }
     }
-    
+
     func selectInputMode(_ mode: AudioInputMode) {
         inputMode = mode
         UserDefaults.standard.audioInputModeRawValue = mode.rawValue
@@ -366,7 +366,7 @@ class AudioDeviceManager: ObservableObject {
         for device in sortedDevices {
             if let availableDevice = availableDevices.first(where: { $0.uid == device.id }) {
                 selectedDeviceID = availableDevice.id
-                logger.notice("🎙️ Selected prioritized device: \(device.name)")
+                logger.notice("🎙️ Selected prioritized device: \(device.name, privacy: .public)")
                 notifyDeviceChange()
                 return
             }
@@ -398,7 +398,7 @@ class AudioDeviceManager: ObservableObject {
         )
         
         if status != noErr {
-            logger.error("Failed to add device change listener: \(status)")
+            logger.error("Failed to add device change listener: \(status, privacy: .public)")
         }
     }
     
@@ -417,7 +417,7 @@ class AudioDeviceManager: ObservableObject {
                 guard let currentID = self.selectedDeviceID else { return }
 
                 if !self.isDeviceAvailable(currentID) {
-                    self.logger.warning("🎙️ Recording device \(currentID) no longer available - requesting switch")
+                    self.logger.warning("🎙️ Recording device \(currentID, privacy: .public) no longer available - requesting switch")
 
                     let newDeviceID: AudioDeviceID?
                     if self.inputMode == .prioritized {
@@ -513,7 +513,7 @@ class AudioDeviceManager: ObservableObject {
         )
         
         if status != noErr {
-            logger.error("Failed to get device property \(selector) for device \(deviceID): \(status)")
+            logger.error("Failed to get device property \(selector, privacy: .public) for device \(deviceID, privacy: .public): \(status, privacy: .public)")
             return nil
         }
         

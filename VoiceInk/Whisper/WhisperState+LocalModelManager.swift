@@ -344,7 +344,7 @@ extension WhisperState {
     // MARK: - Helper Methods
     
     private func logError(_ message: String, _ error: Error) {
-        self.logger.error("\(message): \(error.localizedDescription)")
+        self.logger.error("\(message, privacy: .public): \(error.localizedDescription, privacy: .public)")
     }
 
     // MARK: - Import Local Model (User-provided .bin)

@@ -52,7 +52,7 @@ class ActiveWindowService: ObservableObject {
                     configToApply = config
                 }
             } catch {
-                logger.error("❌ Failed to get URL from \(browserType.displayName): \(error.localizedDescription)")
+                logger.error("❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
 

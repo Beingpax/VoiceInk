@@ -62,7 +62,7 @@ class Recorder: NSObject, ObservableObject {
         isReconfiguring = true
         defer { isReconfiguring = false }
 
-        logger.notice("🎙️ Device switch required: switching to device \(newDeviceID)")
+        logger.notice("🎙️ Device switch required: switching to device \(newDeviceID, privacy: .public)")
 
         do {
             try recorder.switchDevice(to: newDeviceID)
@@ -77,9 +77,9 @@ class Recorder: NSObject, ObservableObject {
                 }
             }
 
-            logger.notice("🎙️ Successfully switched recording to device \(newDeviceID)")
+            logger.notice("🎙️ Successfully switched recording to device \(newDeviceID, privacy: .public)")
         } catch {
-            logger.error("❌ Failed to switch device: \(error.localizedDescription)")
+            logger.error("❌ Failed to switch device: \(error.localizedDescription, privacy: .public)")
 
             // If switch fails, stop recording and notify user
             await handleRecordingError(error)
@@ -87,7 +87,7 @@ class Recorder: NSObject, ObservableObject {
     }
 
     func startRecording(toOutputFile url: URL) async throws {
-        logger.notice("startRecording called – deviceID=\(self.deviceManager.getCurrentDevice()), file=\(url.lastPathComponent)")
+        logger.notice("startRecording called – deviceID=\(self.deviceManager.getCurrentDevice(), privacy: .public), file=\(url.lastPathComponent, privacy: .public)")
         deviceManager.isRecordingActive = true
         
         let currentDeviceID = deviceManager.getCurrentDevice()
@@ -153,7 +153,7 @@ class Recorder: NSObject, ObservableObject {
             }
 
         } catch {
-            logger.error("Failed to create audio recorder: \(error.localizedDescription)")
+            logger.error("Failed to create audio recorder: \(error.localizedDescription, privacy: .public)")
             stopRecording()
             throw RecorderError.couldNotStartRecording
         }
@@ -183,7 +183,7 @@ class Recorder: NSObject, ObservableObject {
     }
 
     private func handleRecordingError(_ error: Error) async {
-        logger.error("❌ Recording error occurred: \(error.localizedDescription)")
+        logger.error("❌ Recording error occurred: \(error.localizedDescription, privacy: .public)")
 
         // Stop the recording
         stopRecording()

@@ -44,7 +44,7 @@ class CustomModelManager: ObservableObject {
         do {
             customModels = try JSONDecoder().decode([CustomCloudModel].self, from: data)
         } catch {
-            logger.error("Failed to decode custom models: \(error.localizedDescription)")
+            logger.error("Failed to decode custom models: \(error.localizedDescription, privacy: .public)")
             customModels = []
         }
     }
@@ -54,7 +54,7 @@ class CustomModelManager: ObservableObject {
             let data = try JSONEncoder().encode(customModels)
             userDefaults.set(data, forKey: customModelsKey)
         } catch {
-            logger.error("Failed to encode custom models: \(error.localizedDescription)")
+            logger.error("Failed to encode custom models: \(error.localizedDescription, privacy: .public)")
         }
     }
     

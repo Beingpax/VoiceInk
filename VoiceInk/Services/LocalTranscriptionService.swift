@@ -19,7 +19,7 @@ class LocalTranscriptionService: TranscriptionService {
             throw WhisperStateError.modelLoadFailed
         }
         
-        logger.notice("Initiating local transcription for model: \(model.displayName)")
+        logger.notice("Initiating local transcription for model: \(model.displayName, privacy: .public)")
         
         // Check if the required model is already loaded in WhisperState
         if let whisperState = whisperState,
@@ -29,22 +29,22 @@ class LocalTranscriptionService: TranscriptionService {
             currentModel.provider == .local,
             currentModel.name == model.name {
             
-            logger.notice("✅ Using already loaded model: \(model.name)")
+            logger.notice("✅ Using already loaded model: \(model.name, privacy: .public)")
             whisperContext = loadedContext
         } else {
             // Model not loaded or wrong model loaded, proceed with loading
             // Resolve the on-disk URL using WhisperState.availableModels (covers imports)
             let resolvedURL: URL? = await whisperState?.availableModels.first(where: { $0.name == model.name })?.url
             guard let modelURL = resolvedURL, FileManager.default.fileExists(atPath: modelURL.path) else {
-                logger.error("Model file not found for: \(model.name)")
+                logger.error("Model file not found for: \(model.name, privacy: .public)")
                 throw WhisperStateError.modelLoadFailed
             }
             
-            logger.notice("Loading model: \(model.name)")
+            logger.notice("Loading model: \(model.name, privacy: .public)")
             do {
                 whisperContext = try await WhisperContext.createContext(path: modelURL.path)
             } catch {
-                logger.error("Failed to load model: \(model.name) - \(error.localizedDescription)")
+                logger.error("Failed to load model: \(model.name, privacy: .public) - \(error.localizedDescription, privacy: .public)")
                 throw WhisperStateError.modelLoadFailed
             }
         }

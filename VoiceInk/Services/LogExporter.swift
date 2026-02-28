@@ -22,7 +22,7 @@ final class LogExporter {
         sessionStartDates = Array(sessionStartDates.prefix(maxSessionsToKeep))
         saveSessions()
 
-        logger.notice("🎙️ LogExporter initialized, \(self.sessionStartDates.count) session(s) tracked")
+        logger.notice("🎙️ LogExporter initialized, \(self.sessionStartDates.count, privacy: .public) session(s) tracked")
     }
 
     private func saveSessions() {
@@ -37,7 +37,7 @@ final class LogExporter {
         let logs = try await fetchLogs()
         let fileURL = try saveLogsToFile(logs)
 
-        logger.notice("🎙️ Log export completed: \(fileURL.path)")
+        logger.notice("🎙️ Log export completed: \(fileURL.path, privacy: .public)")
         return fileURL
     }
 

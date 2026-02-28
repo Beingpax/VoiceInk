@@ -25,7 +25,7 @@ class AudioDeviceConfiguration {
             &defaultDeviceID
         )
         if status != noErr {
-            logger.error("Failed to get current default input device: \(status)")
+            logger.error("Failed to get current default input device: \(status, privacy: .public)")
             return nil
         }
         return defaultDeviceID

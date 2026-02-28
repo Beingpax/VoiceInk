@@ -140,12 +140,12 @@ class WhisperState: NSObject, ObservableObject {
         do {
             try FileManager.default.createDirectory(at: recordingsDirectory, withIntermediateDirectories: true, attributes: nil)
         } catch {
-            logger.error("Error creating recordings directory: \(error.localizedDescription)")
+            logger.error("Error creating recordings directory: \(error.localizedDescription, privacy: .public)")
         }
     }
     
     func toggleRecord(powerModeId: UUID? = nil) async {
-        logger.notice("toggleRecord called – state=\(String(describing: self.recordingState))")
+        logger.notice("toggleRecord called – state=\(String(describing: self.recordingState), privacy: .public)")
         if recordingState == .recording {
             partialTranscript = ""
             recordingState = .transcribing
@@ -259,7 +259,7 @@ class WhisperState: NSObject, ObservableObject {
                                         do {
                                             try await self.loadModel(localWhisperModel)
                                         } catch {
-                                            await self.logger.error("❌ Model loading failed: \(error.localizedDescription)")
+                                            await self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
                                         }
                                     }
                                 } else if let parakeetModel = await self.currentTranscriptionModel as? ParakeetModel {
@@ -275,7 +275,7 @@ class WhisperState: NSObject, ObservableObject {
                             }
 
                         } catch {
-                            self.logger.error("❌ Failed to start recording: \(error.localizedDescription)")
+                            self.logger.error("❌ Failed to start recording: \(error.localizedDescription, privacy: .public)")
                             await NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
                             self.logger.notice("toggleRecord: calling dismissMiniRecorder from error handler")
                             await self.dismissMiniRecorder()

@@ -105,10 +105,10 @@ class NativeAppleTranscriptionService: TranscriptionService {
         Available for Download: [\(availableForDownload)]
         ------------------------------------
         """
-        logger.notice("\(logMessage)")
+        logger.notice("\(logMessage, privacy: .public)")
 
         guard isLocaleSupported else {
-            logger.error("Transcription failed: Locale '\(locale.identifier(.bcp47))' is not supported by SpeechTranscriber.")
+            logger.error("Transcription failed: Locale '\(locale.identifier(.bcp47), privacy: .public)' is not supported by SpeechTranscriber.")
             throw ServiceError.localeNotSupported
         }
         
@@ -135,7 +135,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
         
         var finalTranscription = String(transcript.characters).trimmingCharacters(in: .whitespacesAndNewlines)
 
-        logger.notice("Native transcription successful. Length: \(finalTranscription.count) characters.")
+        logger.notice("Native transcription successful. Length: \(finalTranscription.count, privacy: .public) characters.")
         return finalTranscription
         #else
         logger.notice("Native Apple transcription is disabled in this build (future Speech APIs not enabled).")
@@ -154,13 +154,13 @@ class NativeAppleTranscriptionService: TranscriptionService {
         let isInstalled = installedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
 
         if !isInstalled {
-            logger.notice("Assets for '\(locale.identifier(.bcp47))' not installed. Requesting system download.")
+            logger.notice("Assets for '\(locale.identifier(.bcp47), privacy: .public)' not installed. Requesting system download.")
             
             if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
                 try await request.downloadAndInstall()
-                logger.notice("Asset download for '\(locale.identifier(.bcp47))' complete.")
+                logger.notice("Asset download for '\(locale.identifier(.bcp47), privacy: .public)' complete.")
             } else {
-                logger.error("Asset download for '\(locale.identifier(.bcp47))' failed: Could not create installation request.")
+                logger.error("Asset download for '\(locale.identifier(.bcp47), privacy: .public)' failed: Could not create installation request.")
                 // Note: We don't throw an error here, as transcription might still work with a base model.
             }
         }

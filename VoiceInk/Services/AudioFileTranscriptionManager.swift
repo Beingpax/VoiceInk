@@ -127,7 +127,7 @@ class AudioTranscriptionManager: ObservableObject {
                         NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
                         currentTranscription = transcription
                     } catch {
-                        logger.error("Enhancement failed: \(error.localizedDescription)")
+                        logger.error("Enhancement failed: \(error.localizedDescription, privacy: .public)")
                         let transcription = Transcription(
                             text: text,
                             duration: duration,
@@ -183,7 +183,7 @@ class AudioTranscriptionManager: ObservableObject {
     }
     
     private func handleError(_ error: Error) {
-        logger.error("Transcription error: \(error.localizedDescription)")
+        logger.error("Transcription error: \(error.localizedDescription, privacy: .public)")
         errorMessage = error.localizedDescription
         isProcessing = false
         processingPhase = .idle

@@ -95,7 +95,7 @@ class ParakeetTranscriptionService: TranscriptionService {
                 do {
                     vadManager = try await VadManager(config: vadConfig)
                 } catch {
-                    logger.notice("VAD init failed; falling back to full audio: \(error.localizedDescription)")
+                    logger.notice("VAD init failed; falling back to full audio: \(error.localizedDescription, privacy: .public)")
                     vadManager = nil
                 }
             }
@@ -105,7 +105,7 @@ class ParakeetTranscriptionService: TranscriptionService {
                     let segments = try await vadManager.segmentSpeechAudio(audioSamples)
                     speechAudio = segments.isEmpty ? audioSamples : segments.flatMap { $0 }
                 } catch {
-                    logger.notice("VAD segmentation failed; using full audio: \(error.localizedDescription)")
+                    logger.notice("VAD segmentation failed; using full audio: \(error.localizedDescription, privacy: .public)")
                     speechAudio = audioSamples
                 }
             }

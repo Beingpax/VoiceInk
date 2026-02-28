@@ -298,11 +298,11 @@ class AIEnhancementService: ObservableObject {
                 case .networkError, .serverError, .rateLimitExceeded:
                     retries += 1
                     if retries < maxRetries {
-                        logger.warning("Request failed, retrying in \(currentDelay)s... (Attempt \(retries)/\(maxRetries))")
+                        logger.warning("Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))")
                         try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
                         currentDelay *= 2
                     } else {
-                        logger.error("Request failed after \(maxRetries) retries.")
+                        logger.error("Request failed after \(maxRetries, privacy: .public) retries.")
                         throw error
                     }
                 default:
@@ -313,11 +313,11 @@ class AIEnhancementService: ObservableObject {
                 if nsError.domain == NSURLErrorDomain && [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(nsError.code) {
                     retries += 1
                     if retries < maxRetries {
-                        logger.warning("Request failed with network error, retrying in \(currentDelay)s... (Attempt \(retries)/\(maxRetries))")
+                        logger.warning("Request failed with network error, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))")
                         try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
                         currentDelay *= 2
                     } else {
-                        logger.error("Request failed after \(maxRetries) retries with network error.")
+                        logger.error("Request failed after \(maxRetries, privacy: .public) retries with network error.")
                         throw EnhancementError.networkError
                     }
                 } else {

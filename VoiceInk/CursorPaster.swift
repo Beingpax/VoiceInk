@@ -145,7 +145,7 @@ class CursorPaster {
                     logger.notice("Switched input source to \(targetID, privacy: .public)")
                     return true
                 } else {
-                    logger.error("TISSelectInputSource failed with status \(status)")
+                    logger.error("TISSelectInputSource failed with status \(status, privacy: .public)")
                 }
             }
         }
