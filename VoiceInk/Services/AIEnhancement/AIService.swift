@@ -393,26 +393,16 @@ class AIService: ObservableObject {
     }
     
     func enhanceWithOllama(text: String, systemPrompt: String, baseURL: String? = nil, model: String? = nil) async throws -> String {
-        let savedBaseURL = ollamaService.baseURL
-        let savedModel = ollamaService.selectedModel
-        
-        if let baseURL = baseURL {
-            ollamaService.baseURL = baseURL
-        }
-        if let model = model {
-            ollamaService.selectedModel = model
-        }
-        
-        do {
-            let result = try await ollamaService.enhance(text, withSystemPrompt: systemPrompt)
-            ollamaService.baseURL = savedBaseURL
-            ollamaService.selectedModel = savedModel
-            return result
-        } catch {
-            ollamaService.baseURL = savedBaseURL
-            ollamaService.selectedModel = savedModel
-            throw error
-        }
+        let effectiveBaseURL = baseURL ?? ollamaService.baseURL
+        let effectiveModel = model ?? ollamaService.selectedModel
+
+        // Use the thread-safe overload that doesn't mutate shared state
+        return try await ollamaService.enhance(
+            text,
+            withSystemPrompt: systemPrompt,
+            baseURL: effectiveBaseURL,
+            model: effectiveModel
+        )
     }
     
     func updateOllamaBaseURL(_ newURL: String) {
@@ -580,6 +570,7 @@ class AIService: ObservableObject {
     }
 
     func setDefaultProviderConfiguration(_ config: AIProviderConfiguration) {
+        guard providerConfigurations.contains(where: { $0.id == config.id }) else { return }
         for i in providerConfigurations.indices {
             providerConfigurations[i].isDefault = (providerConfigurations[i].id == config.id)
         }
