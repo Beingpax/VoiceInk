@@ -28,7 +28,11 @@ class CursorPaster {
         ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            pasteFromClipboard()
+            if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
+                pasteUsingAppleScript()
+            } else {
+                pasteFromClipboard()
+            }
         }
 
         if shouldRestoreClipboard {
@@ -46,11 +50,32 @@ class CursorPaster {
         }
     }
 
-    // MARK: - Clipboard paste with input-source fix
+    // MARK: - AppleScript paste
 
-    /// Paste from the clipboard using CGEvent, temporarily switching to a
-    /// QWERTY-compatible input source so that virtual key 0x09 is reliably
-    /// interpreted as "V" for Cmd+V.
+    // Pre-compiled AppleScript for pasting. Compiled once on first use to avoid per-paste overhead.
+    private static let pasteScript: NSAppleScript? = {
+        let script = NSAppleScript(source: """
+            tell application "System Events"
+                keystroke "v" using command down
+            end tell
+            """)
+        var error: NSDictionary?
+        script?.compileAndReturnError(&error)
+        return script
+    }()
+
+    // Paste via AppleScript. Works with custom keyboard layouts (e.g. Neo2) where CGEvent-based paste fails.
+    private static func pasteUsingAppleScript() {
+        var error: NSDictionary?
+        pasteScript?.executeAndReturnError(&error)
+        if let error = error {
+            logger.error("AppleScript paste failed: \(error, privacy: .public)")
+        }
+    }
+
+    // MARK: - CGEvent paste
+
+    // Paste via CGEvent, temporarily switching to a QWERTY input source so virtual key 0x09 maps to "V".
     private static func pasteFromClipboard() {
         guard AXIsProcessTrusted() else {
             logger.error("Accessibility not trusted — cannot paste")
@@ -66,8 +91,7 @@ class CursorPaster {
         logger.notice("Pasting: inputSource=\(currentID, privacy: .public), switched=\(switched)")
 
         // If we switched input sources, wait 30 ms for the system to apply it
-        // before posting the CGEvents. Use asyncAfter instead of usleep so the
-        // main thread is not blocked.
+        // before posting the CGEvents.
         let eventDelay: TimeInterval = switched ? 0.03 : 0.0
         DispatchQueue.main.asyncAfter(deadline: .now() + eventDelay) {
             let source = CGEventSource(stateID: .privateState)
@@ -99,7 +123,7 @@ class CursorPaster {
         }
     }
 
-    /// Try to switch to ABC or US QWERTY. Returns true if the switch was made.
+    // Try to switch to ABC or US QWERTY. Returns true if the switch was made.
     private static func switchToQWERTYInputSource() -> Bool {
         guard let currentSourceRef = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else { return false }
         if let currentID = sourceID(for: currentSourceRef), isQWERTY(currentID) {
@@ -149,7 +173,7 @@ class CursorPaster {
 
     // MARK: - Enter key
 
-    /// Simulate pressing the Return / Enter key.
+    // Simulate pressing the Return/Enter key.
     static func pressEnter() {
         guard AXIsProcessTrusted() else { return }
         let source = CGEventSource(stateID: .privateState)

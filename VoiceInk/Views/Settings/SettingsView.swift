@@ -19,6 +19,7 @@ struct SettingsView: View {
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
+    @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
@@ -172,6 +173,14 @@ struct SettingsView: View {
                         Text("3s").tag(3.0)
                         Text("4s").tag(4.0)
                         Text("5s").tag(5.0)
+                    }
+                }
+
+                // AppleScript Paste
+                Toggle(isOn: $useAppleScriptPaste) {
+                    HStack(spacing: 4) {
+                        Text("Use AppleScript Paste")
+                        InfoTip("Enable this if pasting doesn't work with your keyboard layout (e.g. Neo2). Uses AppleScript instead of simulated key events.")
                     }
                 }
             }

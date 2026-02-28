@@ -48,6 +48,7 @@ class SystemInfoService {
         CLIPBOARD & PASTE SETTINGS:
         Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
         Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
+        Use AppleScript Paste: \(UserDefaults.standard.bool(forKey: "useAppleScriptPaste"))
 
         POWER MODE:
         Power Mode Enabled: \(UserDefaults.standard.bool(forKey: "powerModeUIFlag"))

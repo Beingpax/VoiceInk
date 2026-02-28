@@ -27,6 +27,7 @@ struct GeneralSettings: Codable {
     let isExperimentalFeaturesEnabled: Bool?
     let restoreClipboardAfterPaste: Bool?
     let clipboardRestoreDelay: Double?
+    let useAppleScriptPaste: Bool?
 }
 
 // Simple codable struct for vocabulary words (for export/import only)
@@ -118,7 +119,8 @@ class ImportExportService {
             isTextFormattingEnabled: UserDefaults.standard.bool(forKey: keyIsTextFormattingEnabled),
             isExperimentalFeaturesEnabled: UserDefaults.standard.bool(forKey: "isExperimentalFeaturesEnabled"),
             restoreClipboardAfterPaste: UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"),
-            clipboardRestoreDelay: UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
+            clipboardRestoreDelay: UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
+            useAppleScriptPaste: UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
         )
 
         let exportedSettings = VoiceInkExportedSettings(
@@ -336,6 +338,9 @@ class ImportExportService {
                         }
                         if let clipboardDelay = general.clipboardRestoreDelay {
                             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
+                        }
+                        if let appleScriptPaste = general.useAppleScriptPaste {
+                            UserDefaults.standard.set(appleScriptPaste, forKey: "useAppleScriptPaste")
                         }
                     }
 
