@@ -68,6 +68,13 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         } else {
             selectedTranscriptionModelName = nil
         }
+
+        // Log legacy AI provider settings for migration awareness
+        // These fields are no longer used - provider config is now per-prompt via AIProviderConfiguration
+        if let legacyProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider),
+           let legacyModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel) {
+            print("[Migration] PowerMode '\(name)' had legacy AI settings: provider=\(legacyProvider), model=\(legacyModel). These have been migrated to the new provider configuration system.")
+        }
     }
 
     func encode(to encoder: Encoder) throws {

@@ -88,6 +88,26 @@ class OllamaService: ObservableObject {
         }
     }
 
+    /// Thread-safe enhancement using explicit URL and model parameters.
+    /// Use this overload for concurrent calls to avoid race conditions.
+    func enhance(_ text: String, withSystemPrompt systemPrompt: String, baseURL: String, model: String) async throws -> String {
+        guard let url = URL(string: baseURL) else {
+            throw LocalAIError.invalidURL
+        }
+
+        do {
+            return try await OllamaClient.generate(
+                baseURL: url,
+                model: model,
+                prompt: text,
+                systemPrompt: systemPrompt,
+                temperature: defaultTemperature
+            )
+        } catch let error as LLMKitError {
+            throw mapLLMKitError(error)
+        }
+    }
+
     private func mapLLMKitError(_ error: LLMKitError) -> LocalAIError {
         switch error {
         case .invalidURL:
