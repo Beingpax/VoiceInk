@@ -91,13 +91,6 @@ class VocabularySuggestionService: NSObject {
     vocabLookup = [:]
    }
 
-   let suggestionDescriptor = FetchDescriptor<VocabularySuggestion>()
-   let allSuggestions = (try? context.fetch(suggestionDescriptor)) ?? []
-   let suggestionLookup = Dictionary(
-    allSuggestions.map { ($0.correctedPhrase.lowercased(), $0) },
-    uniquingKeysWith: { a, _ in a }
-   )
-
    var didInsertOrUpdate = false
 
    for candidate in candidates {
@@ -120,7 +113,12 @@ class VocabularySuggestionService: NSObject {
 
     // Check for existing suggestion with same corrected phrase
     let correctedLower = candidate.correctedPhrase.lowercased()
-    let matchingSuggestion = suggestionLookup[correctedLower]
+    let suggestionDescriptor = FetchDescriptor<VocabularySuggestion>()
+    let existingSuggestions = (try? context.fetch(suggestionDescriptor)) ?? []
+
+    let matchingSuggestion = existingSuggestions.first {
+     $0.correctedPhrase.lowercased() == correctedLower
+    }
 
     if let existing = matchingSuggestion {
      if existing.status == "dismissed" {

@@ -1,12 +1,11 @@
 // LocalBuild.xcconfig
-// Build configuration for local/unsigned builds (no Apple Developer certificate required).
+// Build configuration for local development builds.
 // Used by `make local` — does NOT affect Debug or Release configurations.
 
-// Ad-hoc signing (works without a developer account)
-CODE_SIGN_IDENTITY = -
-CODE_SIGN_STYLE = Manual
-DEVELOPMENT_TEAM =
-PROVISIONING_PROFILE_SPECIFIER =
+// Use Apple Development certificate for stable code signing (preserves TCC permissions across rebuilds)
+CODE_SIGN_IDENTITY = Apple Development
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM = 6KL725J249
 
 // Entitlements are set via absolute path in the Makefile command line
 // (relative paths break SPM package targets that resolve from their own source root)

@@ -12,15 +12,13 @@ enum EditableTextFieldChecker {
    &focusedElement
   )
 
-  guard focusResult == .success, let focusedElement else {
+  guard focusResult == .success, let element = focusedElement else {
    return false
   }
-  // AXUIElement is a CFTypeRef; the accessibility API always returns one on success
-  let element = focusedElement as! AXUIElement
 
   var roleValue: AnyObject?
   let roleResult = AXUIElementCopyAttributeValue(
-   element,
+   element as! AXUIElement,
    kAXRoleAttribute as CFString,
    &roleValue
   )

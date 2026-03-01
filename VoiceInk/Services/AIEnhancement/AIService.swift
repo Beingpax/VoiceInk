@@ -467,10 +467,12 @@ class AIService: ObservableObject {
 
     func updateLocalMLXBaseURL(_ newURL: String) {
         localMLXService.baseURL = newURL
+        userDefaults.set(newURL, forKey: "localMLXBaseURL")
     }
 
     func updateSelectedLocalMLXModel(_ modelName: String) {
         localMLXService.selectedModel = modelName
+        userDefaults.set(modelName, forKey: "localMLXSelectedModel")
     }
 
     // MARK: - OpenRouter

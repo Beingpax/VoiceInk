@@ -282,7 +282,7 @@ struct TranscriptionHistoryView: View {
             Divider()
 
             ZStack(alignment: .bottom) {
-                if filteredTranscriptions.isEmpty && !isLoading && !hasMoreContent {
+                if filteredTranscriptions.isEmpty && !isLoading {
                     VStack(spacing: 12) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .font(.system(size: 40))
