@@ -279,7 +279,13 @@ class AIService: ObservableObject {
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.ollamaService.checkConnection()
+            if self.ollamaService.isConnected {
+                await self.ollamaService.refreshModels()
+            }
             await self.localMLXService.checkConnection()
+            if self.localMLXService.isConnected {
+                await self.localMLXService.refreshModels()
+            }
         }
     }
     
