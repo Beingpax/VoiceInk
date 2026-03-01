@@ -95,9 +95,11 @@ struct VocabularyView: View {
                     ScrollView {
                         FlowLayout(spacing: 8) {
                             ForEach(sortedItems) { item in
-                                VocabularyWordView(item: item) {
+                                VocabularyWordView(item: item, onDelete: {
                                     removeWord(item)
-                                }
+                                }, onSave: {
+                                    saveContext()
+                                })
                             }
                         }
                         .padding(.vertical, 4)
@@ -166,6 +168,16 @@ struct VocabularyView: View {
         }
     }
 
+    private func saveContext() {
+        do {
+            try modelContext.save()
+            NotificationCenter.default.post(name: .promptDidChange, object: nil)
+        } catch {
+            alertMessage = "Failed to save: \(error.localizedDescription)"
+            showAlert = true
+        }
+    }
+
     private func removeWord(_ word: VocabularyWord) {
         modelContext.delete(word)
 
@@ -182,29 +194,70 @@ struct VocabularyView: View {
 }
 
 struct VocabularyWordView: View {
-    let item: VocabularyWord
+    @Bindable var item: VocabularyWord
     let onDelete: () -> Void
+    let onSave: () -> Void
     @State private var isDeleteHovered = false
+    @State private var isExpanded = false
+    @State private var hintsText = ""
 
     var body: some View {
-        HStack(spacing: 6) {
-            Text(item.word)
-                .font(.system(size: 13))
-                .lineLimit(1)
-                .foregroundColor(.primary)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(item.word)
+                    .font(.system(size: 13))
+                    .lineLimit(1)
+                    .foregroundColor(.primary)
 
-            Button(action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isDeleteHovered ? .red : .secondary)
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.borderless)
-            .help("Remove word")
-            .onHover { hover in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isDeleteHovered = hover
+                if !item.phoneticHints.isEmpty && !isExpanded {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                        .help("Has phonetic hints: \(item.phoneticHints)")
                 }
+
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded.toggle()
+                        if isExpanded {
+                            hintsText = item.phoneticHints
+                        }
+                    }
+                }) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .help("Edit phonetic hints")
+
+                Button(action: onDelete) {
+                    Image(systemName: "xmark.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(isDeleteHovered ? .red : .secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.borderless)
+                .help("Remove word")
+                .onHover { hover in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isDeleteHovered = hover
+                    }
+                }
+            }
+
+            if isExpanded {
+                HStack(spacing: 4) {
+                    TextField("e.g. clawed code, cloud code", text: $hintsText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11))
+                        .onSubmit { saveHints() }
+
+                    Button("Save") { saveHints() }
+                        .font(.system(size: 11))
+                        .controlSize(.small)
+                }
+                .padding(.top, 2)
             }
         }
         .padding(.horizontal, 8)
@@ -215,8 +268,16 @@ struct VocabularyWordView: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                .stroke(item.phoneticHints.isEmpty ? Color.secondary.opacity(0.2) : Color.orange.opacity(0.3), lineWidth: 1)
         }
         .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
+    }
+
+    private func saveHints() {
+        item.phoneticHints = hintsText.trimmingCharacters(in: .whitespacesAndNewlines)
+        onSave()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            isExpanded = false
+        }
     }
 } 
