@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import LLMkit
 
@@ -203,8 +204,9 @@ class AIService: ObservableObject {
     
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
-    private lazy var ollamaService = OllamaService()
-    private lazy var localMLXService = LocalMLXService()
+    private let ollamaService = OllamaService()
+    private let localMLXService = LocalMLXService()
+    private var cancellables = Set<AnyCancellable>()
     
     @Published private var openRouterModels: [String] = []
     
@@ -264,6 +266,19 @@ class AIService: ObservableObject {
 
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
+
+        ollamaService.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+        localMLXService.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.ollamaService.checkConnection()
+            await self.localMLXService.checkConnection()
+        }
     }
     
     private func loadSavedModelSelections() {

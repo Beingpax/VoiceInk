@@ -14,6 +14,9 @@ struct VocabularyView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
+    @State private var isGenerating = false
+    @State private var showHintResults = false
+    @State private var hintSuggestions: [HintSuggestion] = []
 
     init(whisperPrompt: WhisperPrompt) {
         self.whisperPrompt = whisperPrompt
@@ -78,19 +81,42 @@ struct VocabularyView: View {
 
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    Button(action: toggleSort) {
-                        HStack(spacing: 4) {
-                            Text("Vocabulary Words (\(vocabularyWords.count))")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
+                    HStack {
+                        Button(action: toggleSort) {
+                            HStack(spacing: 4) {
+                                Text("Vocabulary Words (\(vocabularyWords.count))")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
 
-                            Image(systemName: sortMode == .wordAsc ? "chevron.up" : "chevron.down")
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
+                                Image(systemName: sortMode == .wordAsc ? "chevron.up" : "chevron.down")
+                                    .font(.caption)
+                                    .foregroundColor(.accentColor)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .help("Sort alphabetically")
+
+                        Spacer()
+
+                        Button(action: { generateHints() }) {
+                            HStack(spacing: 4) {
+                                if isGenerating {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                        .scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 11))
+                                }
+                                Text("Generate Hints")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundColor(.blue)
+                        .disabled(isGenerating)
+                        .help("Scan transcription history to discover phonetic hints")
                     }
-                    .buttonStyle(.plain)
-                    .help("Sort alphabetically")
 
                     ScrollView {
                         FlowLayout(spacing: 8) {
@@ -114,6 +140,12 @@ struct VocabularyView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(alertMessage)
+        }
+        .sheet(isPresented: $showHintResults) {
+            PhoneticHintReviewSheet(
+                suggestions: $hintSuggestions,
+                modelContext: modelContext
+            )
         }
     }
     
@@ -178,6 +210,23 @@ struct VocabularyView: View {
         }
     }
 
+    private func generateHints() {
+        isGenerating = true
+        Task {
+            let suggestions = await PhoneticHintMiningService.shared.mineFromHistory()
+            await MainActor.run {
+                hintSuggestions = suggestions
+                isGenerating = false
+                if suggestions.isEmpty {
+                    alertMessage = "No new phonetic hints discovered from transcription history."
+                    showAlert = true
+                } else {
+                    showHintResults = true
+                }
+            }
+        }
+    }
+
     private func removeWord(_ word: VocabularyWord) {
         modelContext.delete(word)
 
@@ -201,19 +250,29 @@ struct VocabularyWordView: View {
     @State private var isExpanded = false
     @State private var hintsText = ""
 
+    private var hintsList: [String] {
+        item.phoneticHints
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
-                Text(item.word)
-                    .font(.system(size: 13))
-                    .lineLimit(1)
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.word)
+                        .font(.system(size: 13))
+                        .lineLimit(1)
+                        .foregroundColor(.primary)
 
-                if !item.phoneticHints.isEmpty && !isExpanded {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.secondary)
-                        .help("Has phonetic hints: \(item.phoneticHints)")
+                    if !hintsList.isEmpty && !isExpanded {
+                        Text(hintsList.joined(separator: ", "))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.orange.opacity(0.8))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
 
                 Button(action: {
@@ -280,4 +339,168 @@ struct VocabularyWordView: View {
             isExpanded = false
         }
     }
-} 
+}
+
+struct PhoneticHintReviewSheet: View {
+    @Binding var suggestions: [HintSuggestion]
+    let modelContext: ModelContext
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedHints: [PersistentIdentifier: Set<String>] = [:]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            headerRow
+            Divider()
+            suggestionList
+            Divider()
+            footerRow
+        }
+        .frame(width: 480)
+        .frame(minHeight: 300)
+        .onAppear {
+            for suggestion in suggestions {
+                selectedHints[suggestion.wordPersistentModelID] = Set(suggestion.discoveredHints)
+            }
+        }
+    }
+
+    private var headerRow: some View {
+        HStack {
+            Text("Discovered Phonetic Hints")
+                .font(.headline)
+            Spacer()
+            Text("\(suggestions.count) word\(suggestions.count == 1 ? "" : "s")")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+    }
+
+    private var suggestionList: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(suggestions, id: \.wordPersistentModelID) { suggestion in
+                    HintSuggestionRow(
+                        suggestion: suggestion,
+                        selectedHints: selectedHintsBinding(for: suggestion)
+                    )
+                    Divider()
+                }
+            }
+        }
+        .frame(maxHeight: 400)
+    }
+
+    private var footerRow: some View {
+        HStack {
+            Button("Cancel") { dismiss() }
+                .keyboardShortcut(.cancelAction)
+            Spacer()
+            Button("Apply Selected") { applySelected() }
+                .keyboardShortcut(.defaultAction)
+                .disabled(totalSelectedCount == 0)
+        }
+        .padding()
+    }
+
+    private var totalSelectedCount: Int {
+        selectedHints.values.reduce(0) { $0 + $1.count }
+    }
+
+    private func selectedHintsBinding(for suggestion: HintSuggestion) -> Binding<Set<String>> {
+        Binding(
+            get: { selectedHints[suggestion.wordPersistentModelID] ?? Set(suggestion.discoveredHints) },
+            set: { selectedHints[suggestion.wordPersistentModelID] = $0 }
+        )
+    }
+
+    private func applySelected() {
+        for suggestion in suggestions {
+            let selected = selectedHints[suggestion.wordPersistentModelID] ?? []
+            guard !selected.isEmpty else { continue }
+
+            guard let vocabWord = modelContext.model(for: suggestion.wordPersistentModelID) as? VocabularyWord else {
+                continue
+            }
+
+            let merged = PhoneticHintMiningService.mergeHints(
+                existing: vocabWord.phoneticHints,
+                new: Array(selected)
+            )
+            vocabWord.phoneticHints = merged
+        }
+
+        do {
+            try modelContext.save()
+            NotificationCenter.default.post(name: .promptDidChange, object: nil)
+        } catch {}
+
+        dismiss()
+    }
+}
+
+private struct HintSuggestionRow: View {
+    let suggestion: HintSuggestion
+    @Binding var selectedHints: Set<String>
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(suggestion.wordText)
+                    .font(.system(size: 13, weight: .semibold))
+
+                if !suggestion.existingHints.isEmpty {
+                    Text("existing: \(suggestion.existingHints)")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            FlowLayout(spacing: 6) {
+                ForEach(suggestion.discoveredHints, id: \.self) { hint in
+                    HintChip(
+                        hint: hint,
+                        isSelected: selectedHints.contains(hint),
+                        onToggle: { toggleHint(hint) }
+                    )
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+    }
+
+    private func toggleHint(_ hint: String) {
+        if selectedHints.contains(hint) {
+            selectedHints.remove(hint)
+        } else {
+            selectedHints.insert(hint)
+        }
+    }
+}
+
+private struct HintChip: View {
+    let hint: String
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    var body: some View {
+        Button(action: onToggle) {
+            Text(hint)
+                .font(.system(size: 11))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(isSelected ? Color.blue.opacity(0.15) : Color.secondary.opacity(0.1))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(isSelected ? Color.blue.opacity(0.4) : Color.clear, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .foregroundColor(isSelected ? .blue : .secondary)
+    }
+}

@@ -236,13 +236,150 @@ awareness reduced prompt size significantly and is recommended for local models.
 
 | Word | Common mistranscriptions |
 |------|-------------------------|
-| VoiceInk | voicing, voice ink, voice inc |
-| Claude Code | clawed code, cloud code |
-| chezmoi | shamua, shemwa, chessmoy, chez moi |
-| MLXLM | MLX LM, MLX elem |
-| Qwen | Quinn, queen |
-| JetBrains Rider | JetBrains Writer |
-| GitKraken | Git Kraken |
+| VoiceInk | voicing, voice ink, voice inc, voice link |
+| chezmoi | shamua, shemwa, chessmoy, chez moi, chambois |
+| MLXLM | MLX LM, MLX elem, mxlxm |
+| claude.md | claud.md |
+| Wispr Flow | whisperflow |
+| Avalonia UI | avaloni |
+
+**Note:** "Claude" and "Claude Code" intentionally have no phonetic hints. See Experiment 8
+below for why hints like "claw, clawed, cloud" cause more harm than good.
+
+---
+
+## Experiment 8: Phonetic Hint Overcorrection
+
+**Goal:** Test whether phonetic hints on common-sounding words cause false corrections.
+
+**Background:** The auto-generated phonetic hints for "claude" included `sladcode, claw,
+cloud, clawed`. These were discovered by mining transcription history for patterns where the
+AI enhancement corrected raw text to "claude."
+
+**Setup:**
+- Test sentence (raw): "the dog clawed me and I looked that up in clawed code to see what
+  it might be, and then I found out that that person was such a clod"
+- Expected: "clawed me" preserved, "clawed code" -> "Claude Code", "clod" preserved
+- Tested with Gemini 2.5 Flash using progressively fewer hints
+
+**Results:**
+
+| Hints on "claude" | "dog clawed me" | "clawed code" | "a real clod" |
+|-------------------|-----------------|---------------|---------------|
+| sladcode, claw, cloud, clawed | claude.md | claude code | claude |
+| claw, clawed | the dog claude | claude code | clod |
+| *(none)* | **clawed me** | **claude code** | **clod** |
+
+**Analysis:** Even Gemini overcorrects real English words when they appear as phonetic hints.
+The hints tell the model "when you see 'clawed', it probably means 'claude'" which overrides
+contextual understanding. With no hints, "claude code" as a compound vocabulary entry is
+sufficient -- the model uses context to distinguish "the dog clawed me" from "Claude Code."
+
+**Conclusion:** Phonetic hints should only be added for words that are NOT common English
+words. Hints like "voiceync" -> VoiceInk or "chambois" -> chezmoi are safe because they
+aren't real words. Hints like "claw" or "cloud" are dangerous because they suppress
+legitimate uses of those words.
+
+---
+
+## Experiment 9: Transcription Model Comparison (Parakeet V2 vs Large v3 Turbo)
+
+**Goal:** Compare transcription models on the same vocabulary-heavy input.
+
+**Setup:**
+- Same test sentence spoken twice, once with each model
+- AI enhancement by Qwen 7B via MLX-LM
+- Vocabulary words in transcription prompt (bare words only, no hint annotations)
+
+**Results (raw transcription):**
+
+| Phrase | Parakeet V2 | Large v3 Turbo |
+|--------|-------------|----------------|
+| Claude Code | Claude Code | Cloud Code |
+| claude.md | claude.md | Cloud.md |
+| VoiceInk | Voice Inc | Voice Link |
+| dog clawed me | dog clawed me | dog clawed me |
+| a real clod | a real claude | a real clawed |
+| blood clot | blood clot | blood clot |
+| drain clogged | drain is clocked | drain got clogged |
+
+**Results (after AI enhancement):**
+
+Both models' output was corrected to the same quality by the Qwen 7B enhancement:
+- "Cloud Code" / "Voice Link" -> Claude Code / VoiceInk (corrected by enhancement)
+- "dog clawed me" preserved correctly by both pipelines
+- "blood clot" preserved correctly by both pipelines
+- "drain got clogged" recovered by v3 Turbo pipeline (Parakeet had "clocked")
+- "clod" lost by both (transcription-level ambiguity, not recoverable)
+
+**Conclusion:** Each transcription model has different strengths. Parakeet handles proper
+nouns better (Claude, claude.md); v3 Turbo handles common words better (clogged). The AI
+enhancement layer compensates for most transcription errors regardless of which model is
+used. The only unrecoverable cases are where the transcription model produces a grammatically
+valid alternative (clod -> claude/clawed).
+
+---
+
+## Experiment 10: Separating Vocabulary for Transcription vs Enhancement
+
+**Goal:** Optimize what vocabulary information reaches each stage of the pipeline.
+
+**Background:** VoiceInk was passing the full vocabulary string including phonetic hint
+annotations to both the transcription model and the AI enhancement model:
+```
+Important Vocabulary: claude (often heard as: claw, clawed), VoiceInk (often heard as: voiceync)...
+```
+
+The transcription model (Whisper/Parakeet) uses the prompt as conditioning text -- it biases
+recognition toward words in the prompt but cannot interpret instructions like "often heard
+as." The `(often heard as: ...)` annotations waste prompt tokens and add noise.
+
+**Change:** Split vocabulary formatting into two methods:
+- `getTranscriptionVocabulary()` -- bare word list for biasing speech recognition
+- `getCustomVocabulary()` -- full annotations with phonetic hints for AI enhancement
+
+**Transcription prompt (before):**
+```
+Hello, how are you doing? Important Vocabulary: claude (often heard as: claw, clawed),
+VoiceInk (often heard as: voiceync, voicelink, voiceinc, voice inc), chezmoi (often
+heard as: chambois)...
+```
+
+**Transcription prompt (after):**
+```
+Hello, how are you doing? claude, claude code, claude.md, VoiceInk, chezmoi...
+```
+
+**Conclusion:** The transcription model gets a cleaner, shorter conditioning prompt with
+just the words it needs to bias recognition. The AI enhancement model continues to receive
+the full phonetic hint annotations it can interpret and act on.
+
+---
+
+## Summary of Recommendations
+
+### For Local Models (MLX-LM with Qwen 7B)
+1. **Use phonetic hints** on vocabulary entries for words that are commonly mistranscribed
+2. **Avoid hints that are real English words** -- they cause overcorrection (see Experiment 8)
+3. **Turn off screen context** to reduce prompt noise (toggle in VoiceInk menu bar)
+4. **Keep clipboard context** on (usually small, often helpful)
+5. **Consider a compact prompt** optimized for smaller models (future feature)
+6. **7B is the minimum** for acceptable quality; 3B loses too much context
+
+### For Cloud Models (Gemini)
+1. **Keep all context enabled** -- Gemini benefits from the extra signal
+2. **Phonetic hints still help** but are less critical due to Gemini's world knowledge
+3. **Full prompt is fine** -- Gemini handles long prompts without attention dilution
+4. **Same overcorrection risk** -- even Gemini overcorrects with aggressive hints
+
+### Speed vs Quality Tradeoff
+
+| Provider | Avg Latency | Quality | Privacy | Cost |
+|----------|-------------|---------|---------|------|
+| MLX-LM Qwen 7B | 1-4s | Good (with hints) | Full | Free |
+| MLX-LM Qwen 3B | 0.5-2.5s | Acceptable | Full | Free |
+| Gemini 2.5 Flash | 1-8s | Excellent | None | API fees |
+| Ollama Qwen3 4B | 20-44s | Good | Full | Free |
 
 ---
 
@@ -270,3 +407,15 @@ KMP_DUPLICATE_LIB_OK=TRUE mlx_lm.server \
 - Model: `VocabularyWord.phoneticHints` field (String)
 - Prompt format: `VoiceInk (often heard as: voicing, voice ink, voice inc)`
 - UI: Expandable chip in Dictionary view with text field for hints
+- Auto-generation: `PhoneticHintMiningService` mines transcription history for patterns
+- Plausibility filter: Rejects morphological variants, abbreviations, containment patterns,
+  and pairs with low bigram similarity (threshold 0.30)
+- Transcription prompt: Bare word list only (no hint annotations) to avoid wasting tokens
+
+### Auto-Generate Phonetic Hints
+- Toggle: Post Processing settings -> "Auto-generate Phonetic Hints"
+- Manual: Dictionary view -> "Generate Hints" button scans full transcription history
+- Service: `PhoneticHintMiningService` compares raw vs enhanced text using `VocabularyDiffEngine`
+- Filter: `isPlausiblePhoneticHint()` applies morphological, abbreviation, containment,
+  and bigram similarity checks to reject false patterns
+- Review: Discovered hints are presented in a sheet for user approval before applying

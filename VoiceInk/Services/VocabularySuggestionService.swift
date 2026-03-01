@@ -88,6 +88,21 @@ class VocabularySuggestionService: NSObject {
    for candidate in candidates {
     // Skip if already in vocabulary
     if existingWords.contains(candidate.correctedPhrase.lowercased()) {
+     if UserDefaults.standard.bool(forKey: "autoGeneratePhoneticHints"),
+        PhoneticHintMiningService.isPlausiblePhoneticHint(raw: candidate.rawPhrase, corrected: candidate.correctedPhrase) {
+      let wordDescriptor = FetchDescriptor<VocabularyWord>()
+      if let allWords = try? context.fetch(wordDescriptor),
+         let vocabWord = allWords.first(where: { $0.word.lowercased() == candidate.correctedPhrase.lowercased() }) {
+       let merged = PhoneticHintMiningService.mergeHints(
+        existing: vocabWord.phoneticHints,
+        new: [candidate.rawPhrase]
+       )
+       if merged != vocabWord.phoneticHints {
+        vocabWord.phoneticHints = merged
+        didInsertOrUpdate = true
+       }
+      }
+     }
      continue
     }
 

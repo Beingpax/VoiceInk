@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PostProcessingSettingsView: View {
  @EnvironmentObject private var enhancementService: AIEnhancementService
- @State private var isVocabularyExtractionExpanded = false
+ @AppStorage("autoGeneratePhoneticHints") private var autoGeneratePhoneticHints = false
 
  var body: some View {
   Form {
@@ -21,16 +21,21 @@ struct PostProcessingSettingsView: View {
    }
 
    Section {
-    ExpandableSettingsRow(
-     isExpanded: $isVocabularyExtractionExpanded,
-     isEnabled: $enhancementService.vocabularyExtractionEnabled,
-     label: "Vocabulary Extraction",
-     infoMessage: "Analyzes AI corrections to detect new vocabulary and suggests additions to your dictionary."
-    ) {
-     Text("Compares your raw speech with AI-enhanced text to identify words that should be added to your custom dictionary for better transcription accuracy.")
-      .font(.caption)
-      .foregroundColor(.secondary)
+    Toggle(isOn: $enhancementService.vocabularyExtractionEnabled) {
+     HStack(spacing: 4) {
+      Text("Vocabulary Extraction")
+      InfoTip("Analyzes AI corrections to detect new vocabulary and suggests additions to your dictionary.")
+     }
     }
+    .toggleStyle(.switch)
+
+    Toggle(isOn: $autoGeneratePhoneticHints) {
+     HStack(spacing: 4) {
+      Text("Auto-generate Phonetic Hints")
+      InfoTip("Automatically discovers how Whisper mishears your vocabulary words and adds phonetic hints to improve future recognition.")
+     }
+    }
+    .toggleStyle(.switch)
    } header: {
     Text("Features")
    }

@@ -23,6 +23,16 @@ class CustomVocabularyService {
         return "Important Vocabulary: \(entries.joined(separator: ", "))"
     }
 
+    func getTranscriptionVocabulary(from context: ModelContext) -> String {
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\VocabularyWord.word)])
+        guard let items = try? context.fetch(descriptor), !items.isEmpty else {
+            return ""
+        }
+
+        let words = items.map { $0.word }
+        return words.joined(separator: ", ")
+    }
+
     func existingWords(from context: ModelContext) -> Set<String> {
         let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\VocabularyWord.word)])
         guard let items = try? context.fetch(descriptor) else { return [] }

@@ -170,8 +170,8 @@ extension WhisperState {
  // Always reload the prompt from UserDefaults to ensure we have the latest
  let basePrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? whisperPrompt.transcriptionPrompt
 
- // Append custom vocabulary words to bias Whisper toward recognizing them
- let vocabularyString = CustomVocabularyService.shared.getCustomVocabulary(from: modelContext)
+ // Append bare vocabulary words to bias transcription toward recognizing them
+ let vocabularyString = CustomVocabularyService.shared.getTranscriptionVocabulary(from: modelContext)
  let fullPrompt = vocabularyString.isEmpty ? basePrompt : basePrompt + " " + vocabularyString
 
  if let context = whisperContext {

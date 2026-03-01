@@ -111,7 +111,7 @@ struct VocabularySuggestionsView: View {
  }
 
  private func approve(_ suggestion: VocabularySuggestion) {
-  let newWord = VocabularyWord(word: suggestion.correctedPhrase)
+  let newWord = VocabularyWord(word: suggestion.correctedPhrase, phoneticHints: suggestion.rawPhrase)
   modelContext.insert(newWord)
   suggestion.status = "approved"
 
@@ -139,7 +139,7 @@ struct VocabularySuggestionsView: View {
  private func approveAll() {
   var insertedWords: [VocabularyWord] = []
   for suggestion in suggestions {
-   let newWord = VocabularyWord(word: suggestion.correctedPhrase)
+   let newWord = VocabularyWord(word: suggestion.correctedPhrase, phoneticHints: suggestion.rawPhrase)
    modelContext.insert(newWord)
    insertedWords.append(newWord)
    suggestion.status = "approved"

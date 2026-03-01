@@ -89,7 +89,7 @@ extension WhisperState {
             
             // Set the prompt from UserDefaults to ensure we have the latest
             let basePrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? whisperPrompt.transcriptionPrompt
-            let vocabularyString = CustomVocabularyService.shared.getCustomVocabulary(from: modelContext)
+            let vocabularyString = CustomVocabularyService.shared.getTranscriptionVocabulary(from: modelContext)
             let fullPrompt = vocabularyString.isEmpty ? basePrompt : basePrompt + " " + vocabularyString
             await whisperContext?.setPrompt(fullPrompt)
             
