@@ -2,7 +2,7 @@ import SwiftUI
 import KeyboardShortcuts
 
 struct MetricsSetupView: View {
-    @EnvironmentObject private var whisperState: WhisperState
+    @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     @State private var isScreenRecordingEnabled = CGPreflightScreenCaptureAccess()
@@ -89,7 +89,7 @@ struct MetricsSetupView: View {
             )
         default:
             stepInfo = (
-                isCompleted: whisperState.currentTranscriptionModel != nil,
+                isCompleted: engine.currentTranscriptionModel != nil,
                 icon: "arrow.down.to.line",
                 title: "Download Model",
                 description: "Choose an AI model to start transcribing."
@@ -173,7 +173,7 @@ struct MetricsSetupView: View {
             return "Enable Accessibility"
         } else if !CGPreflightScreenCaptureAccess() {
             return "Enable Screen Recording"
-        } else if whisperState.currentTranscriptionModel == nil {
+        } else if engine.currentTranscriptionModel == nil {
             return "Download Model"
         }
         return "Get Started"

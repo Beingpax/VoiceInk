@@ -12,7 +12,7 @@ enum ModelFilter: String, CaseIterable, Identifiable {
 }
 
 struct ModelManagementView: View {
-    @ObservedObject var whisperState: WhisperState
+    @ObservedObject var engine: VoiceInkEngine
     @State private var customModelToEdit: CustomCloudModel?
     @StateObject private var aiService = AIService()
     @StateObject private var customModelManager = CustomModelManager.shared
@@ -60,7 +60,7 @@ struct ModelManagementView: View {
             Text("Default Model")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            Text(whisperState.currentTranscriptionModel?.displayName ?? "No model selected")
+            Text(engine.currentTranscriptionModel?.displayName ?? "No model selected")
                 .font(.title2)
                 .fontWeight(.bold)
         }
@@ -71,7 +71,7 @@ struct ModelManagementView: View {
     }
     
     private var languageSelectionSection: some View {
-        LanguageSelectionView(whisperState: whisperState, displayMode: .full, whisperPrompt: whisperPrompt)
+        LanguageSelectionView(engine: engine, displayMode: .full, whisperPrompt: whisperPrompt)
     }
     
     private var availableModelsSection: some View {
@@ -129,11 +129,11 @@ struct ModelManagementView: View {
 
                         ModelCardRowView(
                             model: model,
-                            whisperState: whisperState, 
-                            isDownloaded: whisperState.availableModels.contains { $0.name == model.name },
-                            isCurrent: whisperState.currentTranscriptionModel?.name == model.name,
-                            downloadProgress: whisperState.downloadProgress,
-                            modelURL: whisperState.availableModels.first { $0.name == model.name }?.url,
+                            engine: engine, 
+                            isDownloaded: engine.availableModels.contains { $0.name == model.name },
+                            isCurrent: engine.currentTranscriptionModel?.name == model.name,
+                            downloadProgress: engine.downloadProgress,
+                            modelURL: engine.availableModels.first { $0.name == model.name }?.url,
                             isWarming: isWarming,
                             deleteAction: {
                                 if let customModel = model as? CustomCloudModel {
@@ -141,15 +141,15 @@ struct ModelManagementView: View {
                                     alertMessage = "Are you sure you want to delete the custom model '\(customModel.displayName)'?"
                                     deleteActionClosure = {
                                         customModelManager.removeCustomModel(withId: customModel.id)
-                                        whisperState.refreshAllAvailableModels()
+                                        engine.refreshAllAvailableModels()
                                     }
                                     isShowingDeleteAlert = true
-                                } else if let downloadedModel = whisperState.availableModels.first(where: { $0.name == model.name }) {
+                                } else if let downloadedModel = engine.availableModels.first(where: { $0.name == model.name }) {
                                     alertTitle = "Delete Model"
                                     alertMessage = "Are you sure you want to delete the model '\(downloadedModel.name)'?"
                                     deleteActionClosure = {
                                         Task {
-                                            await whisperState.deleteModel(downloadedModel)
+                                            await engine.deleteModel(downloadedModel)
                                         }
                                     }
                                     isShowingDeleteAlert = true
@@ -157,12 +157,12 @@ struct ModelManagementView: View {
                             },
                             setDefaultAction: {
                                 Task {
-                                    await whisperState.setDefaultTranscriptionModel(model)
+                                    await engine.setDefaultTranscriptionModel(model)
                                 }
                             },
                             downloadAction: {
                                 if let localModel = model as? LocalModel {
-                                    Task { await whisperState.downloadModel(localModel) }
+                                    Task { await engine.downloadModel(localModel) }
                                 }
                             },
                             editAction: model.provider == .custom ? { customModel in
@@ -202,7 +202,7 @@ struct ModelManagementView: View {
                             editingModel: customModelToEdit
                         ) {
                             // Refresh the models when a new custom model is added
-                            whisperState.refreshAllAvailableModels()
+                            engine.refreshAllAvailableModels()
                             customModelToEdit = nil // Clear editing state
                         }
                     }
@@ -252,7 +252,7 @@ struct ModelManagementView: View {
     private var filteredModels: [any TranscriptionModel] {
         switch selectedFilter {
         case .recommended:
-            return whisperState.allAvailableModels.filter {
+            return engine.allAvailableModels.filter {
                 let recommendedNames = ["ggml-base.en", "parakeet-tdt-0.6b-v2", "ggml-large-v3-turbo-q5_0", "whisper-large-v3-turbo"]
                 return recommendedNames.contains($0.name)
             }.sorted { model1, model2 in
@@ -262,12 +262,12 @@ struct ModelManagementView: View {
                 return index1 < index2
             }
         case .local:
-            return whisperState.allAvailableModels.filter { $0.provider == .local || $0.provider == .nativeApple || $0.provider == .parakeet }
+            return engine.allAvailableModels.filter { $0.provider == .local || $0.provider == .nativeApple || $0.provider == .parakeet }
         case .cloud:
             let cloudProviders: [ModelProvider] = [.groq, .elevenLabs, .deepgram, .mistral, .gemini, .soniox]
-            return whisperState.allAvailableModels.filter { cloudProviders.contains($0.provider) }
+            return engine.allAvailableModels.filter { cloudProviders.contains($0.provider) }
         case .custom:
-            return whisperState.allAvailableModels.filter { $0.provider == .custom }
+            return engine.allAvailableModels.filter { $0.provider == .custom }
         }
     }
 
@@ -281,7 +281,7 @@ struct ModelManagementView: View {
         panel.title = "Select a Whisper ggml .bin model"
         if panel.runModal() == .OK, let url = panel.url {
             Task { @MainActor in
-                await whisperState.importLocalModel(from: url)
+                await engine.importLocalModel(from: url)
             }
         }
     }

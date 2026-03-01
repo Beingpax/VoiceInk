@@ -11,7 +11,7 @@ class MenuBarManager: ObservableObject {
     }
 
     private var modelContainer: ModelContainer?
-    private var whisperState: WhisperState?
+    private var engine: VoiceInkEngine?
 
     init() {
         self.isMenuBarOnly = UserDefaults.standard.bool(forKey: "IsMenuBarOnly")
@@ -42,9 +42,9 @@ class MenuBarManager: ObservableObject {
         }
     }
 
-    func configure(modelContainer: ModelContainer, whisperState: WhisperState) {
+    func configure(modelContainer: ModelContainer, engine: VoiceInkEngine) {
         self.modelContainer = modelContainer
-        self.whisperState = whisperState
+        self.engine = engine
     }
     
     func toggleMenuBarOnly() {
@@ -105,14 +105,14 @@ class MenuBarManager: ObservableObject {
 
     func openHistoryWindow() {
         guard let modelContainer = modelContainer,
-              let whisperState = whisperState else {
+              let engine = engine else {
             print("MenuBarManager: Dependencies not configured")
             return
         }
         NSApplication.shared.setActivationPolicy(.regular)
         HistoryWindowController.shared.showHistoryWindow(
             modelContainer: modelContainer,
-            whisperState: whisperState
+            engine: engine
         )
     }
 }

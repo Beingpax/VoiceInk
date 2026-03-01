@@ -4,18 +4,18 @@ import AppKit
 
 struct ParakeetModelCardRowView: View {
     let model: ParakeetModel
-    @ObservedObject var whisperState: WhisperState
+    @ObservedObject var engine: VoiceInkEngine
 
     var isCurrent: Bool {
-        whisperState.currentTranscriptionModel?.name == model.name
+        engine.currentTranscriptionModel?.name == model.name
     }
 
     var isDownloaded: Bool {
-        whisperState.isParakeetModelDownloaded(model)
+        engine.isParakeetModelDownloaded(model)
     }
 
     var isDownloading: Bool {
-        whisperState.isParakeetModelDownloading(model)
+        engine.isParakeetModelDownloading(model)
     }
 
     var body: some View {
@@ -97,7 +97,7 @@ struct ParakeetModelCardRowView: View {
     private var progressSection: some View {
         Group {
             if isDownloading {
-                let progress = whisperState.downloadProgress[model.name] ?? 0.0
+                let progress = engine.downloadProgress[model.name] ?? 0.0
                 ProgressView(value: progress)
                     .progressViewStyle(LinearProgressViewStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -115,7 +115,7 @@ struct ParakeetModelCardRowView: View {
             } else if isDownloaded {
                 Button(action: {
                     Task {
-                        await whisperState.setDefaultTranscriptionModel(model)
+                        await engine.setDefaultTranscriptionModel(model)
                     }
                 }) {
                     Text("Set as Default")
@@ -126,7 +126,7 @@ struct ParakeetModelCardRowView: View {
             } else {
                 Button(action: {
                     Task {
-                        await whisperState.downloadParakeetModel(model)
+                        await engine.downloadParakeetModel(model)
                     }
                 }) {
                     HStack(spacing: 4) {
@@ -146,13 +146,13 @@ struct ParakeetModelCardRowView: View {
             if isDownloaded {
                 Menu {
                     Button(action: {
-                         whisperState.deleteParakeetModel(model)
+                         engine.deleteParakeetModel(model)
                     }) {
                         Label("Delete Model", systemImage: "trash")
                     }
                     
                     Button {
-                        whisperState.showParakeetModelInFinder(model)
+                        engine.showParakeetModelInFinder(model)
                     } label: {
                         Label("Show in Finder", systemImage: "folder")
                     }

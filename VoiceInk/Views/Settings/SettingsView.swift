@@ -8,7 +8,7 @@ struct SettingsView: View {
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
     @EnvironmentObject private var hotkeyManager: HotkeyManager
-    @EnvironmentObject private var whisperState: WhisperState
+    @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @StateObject private var deviceManager = AudioDeviceManager.shared
     @ObservedObject private var soundManager = SoundManager.shared
@@ -190,7 +190,7 @@ struct SettingsView: View {
 
             // MARK: - Interface
             Section("Interface") {
-                Picker("Recorder Style", selection: $whisperState.recorderType) {
+                Picker("Recorder Style", selection: $engine.recorderType) {
                     Text("Notch").tag("notch")
                     Text("Mini").tag("mini")
                 }
@@ -254,7 +254,7 @@ struct SettingsView: View {
                             mediaController: mediaController,
                             playbackController: playbackController,
                             soundManager: soundManager,
-                            whisperState: whisperState
+                            engine: engine
                         )
                     }
                 }
@@ -269,7 +269,7 @@ struct SettingsView: View {
                             mediaController: mediaController,
                             playbackController: playbackController,
                             soundManager: soundManager,
-                            whisperState: whisperState
+                            engine: engine
                         )
                     }
                 }

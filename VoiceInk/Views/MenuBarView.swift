@@ -2,7 +2,7 @@ import SwiftUI
 import LaunchAtLogin
 
 struct MenuBarView: View {
-    @EnvironmentObject var whisperState: WhisperState
+    @EnvironmentObject var engine: VoiceInkEngine
     @EnvironmentObject var hotkeyManager: HotkeyManager
     @EnvironmentObject var menuBarManager: MenuBarManager
     @EnvironmentObject var updaterViewModel: UpdaterViewModel
@@ -16,21 +16,21 @@ struct MenuBarView: View {
     var body: some View {
         VStack {
             Button("Toggle Recorder") {
-                whisperState.handleToggleMiniRecorder()
+                engine.handleToggleMiniRecorder()
             }
 
             Divider()
 
             Menu {
-                ForEach(whisperState.usableModels, id: \.id) { model in
+                ForEach(engine.usableModels, id: \.id) { model in
                     Button {
                         Task {
-                            await whisperState.setDefaultTranscriptionModel(model)
+                            await engine.setDefaultTranscriptionModel(model)
                         }
                     } label: {
                         HStack {
                             Text(model.displayName)
-                            if whisperState.currentTranscriptionModel?.id == model.id {
+                            if engine.currentTranscriptionModel?.id == model.id {
                                 Image(systemName: "checkmark")
                             }
                         }
@@ -44,7 +44,7 @@ struct MenuBarView: View {
                 }
             } label: {
                 HStack {
-                    Text("Transcription Model: \(whisperState.currentTranscriptionModel?.displayName ?? "None")")
+                    Text("Transcription Model: \(engine.currentTranscriptionModel?.displayName ?? "None")")
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
                 }
@@ -130,7 +130,7 @@ struct MenuBarView: View {
                 }
             }
             
-            LanguageSelectionView(whisperState: whisperState, displayMode: .menuItem, whisperPrompt: whisperState.whisperPrompt)
+            LanguageSelectionView(engine: engine, displayMode: .menuItem, whisperPrompt: engine.whisperPrompt)
 
             Menu {
                 ForEach(audioDeviceManager.availableDevices, id: \.id) { device in
@@ -190,11 +190,11 @@ struct MenuBarView: View {
             Divider()
 
             Button("Retry Last Transcription") {
-                LastTranscriptionService.retryLastTranscription(from: whisperState.modelContext, whisperState: whisperState)
+                LastTranscriptionService.retryLastTranscription(from: engine.modelContext, engine: engine)
             }
             
             Button("Copy Last Transcription") {
-                LastTranscriptionService.copyLastTranscription(from: whisperState.modelContext)
+                LastTranscriptionService.copyLastTranscription(from: engine.modelContext)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
             

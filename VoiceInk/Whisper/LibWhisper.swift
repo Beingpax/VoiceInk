@@ -136,7 +136,7 @@ actor WhisperContext {
             self.context = context
         } else {
             logger.error("Couldn't load model at \(path, privacy: .public)")
-            throw WhisperStateError.modelLoadFailed
+            throw VoiceInkEngineError.modelLoadFailed
         }
     }
     

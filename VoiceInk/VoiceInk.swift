@@ -12,7 +12,7 @@ struct VoiceInkApp: App {
     let container: ModelContainer
     let containerInitializationFailed: Bool
     
-    @StateObject private var whisperState: WhisperState
+    @StateObject private var engine: VoiceInkEngine
     @StateObject private var hotkeyManager: HotkeyManager
     @StateObject private var updaterViewModel: UpdaterViewModel
     @StateObject private var menuBarManager: MenuBarManager
@@ -92,30 +92,30 @@ struct VoiceInkApp: App {
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: container.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
         
-        let whisperState = WhisperState(modelContext: container.mainContext, enhancementService: enhancementService)
-        _whisperState = StateObject(wrappedValue: whisperState)
+        let engine = VoiceInkEngine(modelContext: container.mainContext, enhancementService: enhancementService)
+        _engine = StateObject(wrappedValue: engine)
         
-        let hotkeyManager = HotkeyManager(whisperState: whisperState)
+        let hotkeyManager = HotkeyManager(engine: engine)
         _hotkeyManager = StateObject(wrappedValue: hotkeyManager)
 
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
-        menuBarManager.configure(modelContainer: container, whisperState: whisperState)
+        menuBarManager.configure(modelContainer: container, engine: engine)
 
         let activeWindowService = ActiveWindowService.shared
         activeWindowService.configure(with: enhancementService)
-        activeWindowService.configureWhisperState(whisperState)
+        activeWindowService.configureVoiceInkEngine(engine)
         _activeWindowService = StateObject(wrappedValue: activeWindowService)
 
         
-        let prewarmService = ModelPrewarmService(whisperState: whisperState, modelContext: container.mainContext)
+        let prewarmService = ModelPrewarmService(engine: engine, modelContext: container.mainContext)
         _prewarmService = StateObject(wrappedValue: prewarmService)
 
         appDelegate.menuBarManager = menuBarManager
 
         // Ensure no lingering recording state from previous runs
         Task {
-            await whisperState.resetOnLaunch()
+            await engine.resetOnLaunch()
         }
 
         AppShortcuts.updateAppShortcutParameters()
@@ -202,7 +202,7 @@ struct VoiceInkApp: App {
         WindowGroup {
             if hasCompletedOnboarding {
                 ContentView()
-                    .environmentObject(whisperState)
+                    .environmentObject(engine)
                     .environmentObject(hotkeyManager)
                     .environmentObject(updaterViewModel)
                     .environmentObject(menuBarManager)
@@ -250,7 +250,7 @@ struct VoiceInkApp: App {
                     })
                     .onDisappear {
                         AnnouncementsService.shared.stop()
-                        whisperState.unloadModel()
+                        engine.unloadModel()
                         
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
@@ -258,7 +258,7 @@ struct VoiceInkApp: App {
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
                     .environmentObject(hotkeyManager)
-                    .environmentObject(whisperState)
+                    .environmentObject(engine)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
                     .frame(minWidth: 880, minHeight: 780)
@@ -282,7 +282,7 @@ struct VoiceInkApp: App {
         
         MenuBarExtra(isInserted: $showMenuBarIcon) {
             MenuBarView()
-                .environmentObject(whisperState)
+                .environmentObject(engine)
                 .environmentObject(hotkeyManager)
                 .environmentObject(menuBarManager)
                 .environmentObject(updaterViewModel)

@@ -11,7 +11,7 @@ class AudioTranscriptionService: ObservableObject {
 
     private let modelContext: ModelContext
     private let enhancementService: AIEnhancementService?
-    private let whisperState: WhisperState
+    private let engine: VoiceInkEngine
     private let promptDetectionService = PromptDetectionService()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioTranscriptionService")
     private let serviceRegistry: TranscriptionServiceRegistry
@@ -23,11 +23,11 @@ class AudioTranscriptionService: ObservableObject {
         case invalidAudioFormat
     }
     
-    init(modelContext: ModelContext, whisperState: WhisperState) {
+    init(modelContext: ModelContext, engine: VoiceInkEngine) {
         self.modelContext = modelContext
-        self.whisperState = whisperState
-        self.enhancementService = whisperState.enhancementService
-        self.serviceRegistry = TranscriptionServiceRegistry(whisperState: whisperState, modelsDirectory: whisperState.modelsDirectory)
+        self.engine = engine
+        self.enhancementService = engine.enhancementService
+        self.serviceRegistry = TranscriptionServiceRegistry(engine: engine, modelsDirectory: engine.modelsDirectory)
     }
     
     func retranscribeAudio(from url: URL, using model: any TranscriptionModel) async throws -> Transcription {

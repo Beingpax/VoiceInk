@@ -4,19 +4,19 @@ import os
 
 @MainActor
 class TranscriptionServiceRegistry {
-    private let whisperState: WhisperState
+    private let engine: VoiceInkEngine
     private let modelsDirectory: URL
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionServiceRegistry")
 
     private(set) lazy var localTranscriptionService = LocalTranscriptionService(
         modelsDirectory: modelsDirectory,
-        whisperState: whisperState
+        engine: engine
     )
-    private(set) lazy var cloudTranscriptionService = CloudTranscriptionService(modelContext: whisperState.modelContext)
+    private(set) lazy var cloudTranscriptionService = CloudTranscriptionService(modelContext: engine.modelContext)
     private(set) lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private(set) lazy var parakeetTranscriptionService = ParakeetTranscriptionService()
-    init(whisperState: WhisperState, modelsDirectory: URL) {
-        self.whisperState = whisperState
+    init(engine: VoiceInkEngine, modelsDirectory: URL) {
+        self.engine = engine
         self.modelsDirectory = modelsDirectory
     }
 
@@ -44,7 +44,7 @@ class TranscriptionServiceRegistry {
     func createSession(for model: any TranscriptionModel, onPartialTranscript: ((String) -> Void)? = nil) -> TranscriptionSession {
         if supportsStreaming(model: model) {
             let streamingService = StreamingTranscriptionService(
-                modelContext: whisperState.modelContext,
+                modelContext: engine.modelContext,
                 onPartialTranscript: onPartialTranscript
             )
             let fallback = service(for: model.provider)

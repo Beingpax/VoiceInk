@@ -1,8 +1,18 @@
 import Foundation
 import FluidAudio
 import AppKit
+import os
 
-extension WhisperState {
+@MainActor
+class ParakeetModelManager: ObservableObject {
+    @Published var parakeetDownloadStates: [String: Bool] = [:]
+    @Published var downloadProgress: [String: Double] = [:]
+
+    let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ParakeetModelManager")
+
+    /// Called when model state changes so ModelManager can refresh
+    var onModelChanged: (() -> Void)?
+
     private func parakeetDefaultsKey(for modelName: String) -> String {
         "ParakeetModelDownloaded_\(modelName)"
     }
@@ -49,7 +59,6 @@ extension WhisperState {
 
         do {
             _ = try await AsrModels.downloadAndLoad(version: version)
-
             _ = try await VadManager()
 
             UserDefaults.standard.set(true, forKey: parakeetDefaultsKey(for: modelName))
@@ -62,18 +71,11 @@ extension WhisperState {
         parakeetDownloadStates[modelName] = false
         downloadProgress[modelName] = nil
 
-        refreshAllAvailableModels()
+        onModelChanged?()
     }
 
     @MainActor
     func deleteParakeetModel(_ model: ParakeetModel) {
-        if let currentModel = currentTranscriptionModel,
-           currentModel.provider == .parakeet,
-           currentModel.name == model.name {
-            currentTranscriptionModel = nil
-            UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
-        }
-
         let version = parakeetVersion(for: model.name)
         let cacheDirectory = parakeetCacheDirectory(for: version)
 
@@ -85,8 +87,6 @@ extension WhisperState {
         } catch {
             // Silently ignore removal errors
         }
-
-        refreshAllAvailableModels()
     }
 
     @MainActor

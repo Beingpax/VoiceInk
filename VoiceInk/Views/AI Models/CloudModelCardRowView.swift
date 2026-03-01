@@ -7,7 +7,7 @@ struct CloudModelCardView: View {
     let isCurrent: Bool
     var setDefaultAction: () -> Void
     
-    @EnvironmentObject private var whisperState: WhisperState
+    @EnvironmentObject private var engine: VoiceInkEngine
     @StateObject private var aiService = AIService()
     @State private var isExpanded = false
     @State private var apiKey = ""
@@ -333,12 +333,7 @@ struct CloudModelCardView: View {
 
         // If this model is currently the default, clear it
         if isCurrent {
-            Task {
-                await MainActor.run {
-                    whisperState.currentTranscriptionModel = nil
-                    UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
-                }
-            }
+            engine.clearCurrentTranscriptionModel()
         }
 
         withAnimation(.easeInOut(duration: 0.3)) {

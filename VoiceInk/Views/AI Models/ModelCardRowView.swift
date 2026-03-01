@@ -3,7 +3,7 @@ import AppKit
 
 struct ModelCardRowView: View {
     let model: any TranscriptionModel
-    @ObservedObject var whisperState: WhisperState
+    @ObservedObject var engine: VoiceInkEngine
     let isDownloaded: Bool
     let isCurrent: Bool
     let downloadProgress: [String: Double]
@@ -45,7 +45,7 @@ struct ModelCardRowView: View {
             if let parakeetModel = model as? ParakeetModel {
                 ParakeetModelCardRowView(
                     model: parakeetModel,
-                        whisperState: whisperState
+                        engine: engine
                     )
                 }
             case .nativeApple:

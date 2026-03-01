@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct MiniRecorderView: View {
-    @ObservedObject var whisperState: WhisperState
+    @ObservedObject var engine: VoiceInkEngine
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: MiniWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
@@ -25,7 +25,7 @@ struct MiniRecorderView: View {
             Spacer(minLength: 0)
 
             RecorderStatusDisplay(
-                currentState: whisperState.recordingState,
+                currentState: engine.recordingState,
                 audioMeter: recorder.audioMeter
             )
 

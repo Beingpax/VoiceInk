@@ -33,7 +33,7 @@ final class FileTranscriptionSession: TranscriptionSession {
 
     func transcribe(audioURL: URL) async throws -> String {
         guard let model = model else {
-            throw WhisperStateError.transcriptionFailed
+            throw VoiceInkEngineError.transcriptionFailed
         }
         return try await service.transcribe(audioURL: audioURL, model: model)
     }
@@ -92,7 +92,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
     func transcribe(audioURL: URL) async throws -> String {
         guard let model = model else {
-            throw WhisperStateError.transcriptionFailed
+            throw VoiceInkEngineError.transcriptionFailed
         }
 
         if !streamingFailed {

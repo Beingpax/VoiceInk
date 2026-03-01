@@ -73,7 +73,7 @@ class ImportExportService {
     }
 
     @MainActor
-    func exportSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, whisperState: WhisperState) {
+    func exportSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, engine: VoiceInkEngine) {
         let powerModeManager = PowerModeManager.shared
         let emojiManager = EmojiManager.shared
 
@@ -87,14 +87,14 @@ class ImportExportService {
         // Fetch vocabulary words from SwiftData
         var exportedDictionaryItems: [VocabularyWordData]? = nil
         let vocabularyDescriptor = FetchDescriptor<VocabularyWord>()
-        if let items = try? whisperState.modelContext.fetch(vocabularyDescriptor), !items.isEmpty {
+        if let items = try? engine.modelContext.fetch(vocabularyDescriptor), !items.isEmpty {
             exportedDictionaryItems = items.map { VocabularyWordData(word: $0.word) }
         }
 
         // Fetch word replacements from SwiftData
         var exportedWordReplacements: [String: String]? = nil
         let replacementsDescriptor = FetchDescriptor<WordReplacement>()
-        if let replacements = try? whisperState.modelContext.fetch(replacementsDescriptor), !replacements.isEmpty {
+        if let replacements = try? engine.modelContext.fetch(replacementsDescriptor), !replacements.isEmpty {
             exportedWordReplacements = Dictionary(uniqueKeysWithValues: replacements.map { ($0.originalText, $0.replacementText) })
         }
 
@@ -106,7 +106,7 @@ class ImportExportService {
             selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
-            recorderType: whisperState.recorderType,
+            recorderType: engine.recorderType,
             isTranscriptionCleanupEnabled: UserDefaults.standard.bool(forKey: keyIsTranscriptionCleanupEnabled),
             transcriptionRetentionMinutes: UserDefaults.standard.integer(forKey: keyTranscriptionRetentionMinutes),
             isAudioCleanupEnabled: UserDefaults.standard.bool(forKey: keyIsAudioCleanupEnabled),
@@ -166,7 +166,7 @@ class ImportExportService {
     }
 
     @MainActor
-    func importSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, whisperState: WhisperState) {
+    func importSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, engine: VoiceInkEngine) {
         let openPanel = NSOpenPanel()
         openPanel.allowedContentTypes = [UTType.json]
         openPanel.canChooseFiles = true
@@ -203,7 +203,7 @@ class ImportExportService {
                         let customModelManager = CustomModelManager.shared
                         customModelManager.customModels = modelsToImport
                         customModelManager.saveCustomModels() // Ensure they are persisted
-                        whisperState.refreshAllAvailableModels() // Refresh the UI
+                        engine.refreshAllAvailableModels() // Refresh the UI
                         print("Successfully imported \(modelsToImport.count) custom models.")
                     } else {
                         print("No custom models found in the imported file.")
@@ -219,16 +219,16 @@ class ImportExportService {
                     // Import vocabulary words to SwiftData
                     if let itemsToImport = importedSettings.vocabularyWords {
                         let vocabularyDescriptor = FetchDescriptor<VocabularyWord>()
-                        let existingWords = (try? whisperState.modelContext.fetch(vocabularyDescriptor)) ?? []
+                        let existingWords = (try? engine.modelContext.fetch(vocabularyDescriptor)) ?? []
                         let existingWordsSet = Set(existingWords.map { $0.word.lowercased() })
 
                         for item in itemsToImport {
                             if !existingWordsSet.contains(item.word.lowercased()) {
                                 let newWord = VocabularyWord(word: item.word)
-                                whisperState.modelContext.insert(newWord)
+                                engine.modelContext.insert(newWord)
                             }
                         }
-                        try? whisperState.modelContext.save()
+                        try? engine.modelContext.save()
                         print("Successfully imported vocabulary words to SwiftData.")
                     } else {
                         print("No vocabulary words found in the imported file. Existing items remain unchanged.")
@@ -237,7 +237,7 @@ class ImportExportService {
                     // Import word replacements to SwiftData
                     if let replacementsToImport = importedSettings.wordReplacements {
                         let replacementsDescriptor = FetchDescriptor<WordReplacement>()
-                        let existingReplacements = (try? whisperState.modelContext.fetch(replacementsDescriptor)) ?? []
+                        let existingReplacements = (try? engine.modelContext.fetch(replacementsDescriptor)) ?? []
 
                         // Build a set of existing replacement keys for duplicate checking
                         var existingKeysSet = Set<String>()
@@ -260,12 +260,12 @@ class ImportExportService {
 
                             if !hasConflict {
                                 let newReplacement = WordReplacement(originalText: original, replacementText: replacement)
-                                whisperState.modelContext.insert(newReplacement)
+                                engine.modelContext.insert(newReplacement)
                                 // Add these tokens to the set to prevent duplicates within the import
                                 existingKeysSet.formUnion(importTokens)
                             }
                         }
-                        try? whisperState.modelContext.save()
+                        try? engine.modelContext.save()
                         print("Successfully imported word replacements to SwiftData.")
                     } else {
                         print("No word replacements found in the imported file. Existing replacements remain unchanged.")
@@ -296,7 +296,7 @@ class ImportExportService {
                             menuBarManager.isMenuBarOnly = menuOnly
                         }
                         if let recType = general.recorderType {
-                            whisperState.recorderType = recType
+                            engine.recorderType = recType
                         }
 
                         if let transcriptionCleanup = general.isTranscriptionCleanupEnabled {

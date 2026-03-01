@@ -46,7 +46,7 @@ struct ConfigurationView: View {
 
     private func languageSelectionDisabled() -> Bool {
         guard let selectedModelName = effectiveModelName,
-              let model = whisperState.allAvailableModels.first(where: { $0.name == selectedModelName })
+              let model = engine.allAvailableModels.first(where: { $0.name == selectedModelName })
         else {
             return false
         }
@@ -54,7 +54,7 @@ struct ConfigurationView: View {
     }
     
     // Whisper state for model selection
-    @EnvironmentObject private var whisperState: WhisperState
+    @EnvironmentObject private var engine: VoiceInkEngine
     
     // Computed property to check if current config is the default
     private var isCurrentConfigDefault: Bool {
@@ -79,7 +79,7 @@ struct ConfigurationView: View {
         if let model = selectedTranscriptionModelName {
             return model
         }
-        return whisperState.currentTranscriptionModel?.name
+        return engine.currentTranscriptionModel?.name
     }
     
     init(mode: ConfigurationMode, powerModeManager: PowerModeManager) {
@@ -255,24 +255,24 @@ struct ConfigurationView: View {
             }
 
             Section("Transcription") {
-                if whisperState.usableModels.isEmpty {
+                if engine.usableModels.isEmpty {
                     Text("No transcription models available. Please connect to a cloud service or download a local model in the AI Models tab.")
                         .foregroundColor(.secondary)
                 } else {
                     let modelBinding = Binding<String?>(
-                        get: { selectedTranscriptionModelName ?? whisperState.currentTranscriptionModel?.name },
+                        get: { selectedTranscriptionModelName ?? engine.currentTranscriptionModel?.name },
                         set: { selectedTranscriptionModelName = $0 }
                     )
 
                     Picker("Model", selection: modelBinding) {
-                        ForEach(whisperState.usableModels, id: \.name) { model in
+                        ForEach(engine.usableModels, id: \.name) { model in
                             Text(model.displayName).tag(model.name as String?)
                         }
                     }
                     .onChange(of: selectedTranscriptionModelName) { _, newModelName in
                         // Auto-set language to "auto" for models that only support auto-detection
-                        if let modelName = newModelName ?? whisperState.currentTranscriptionModel?.name,
-                           let model = whisperState.allAvailableModels.first(where: { $0.name == modelName }),
+                        if let modelName = newModelName ?? engine.currentTranscriptionModel?.name,
+                           let model = engine.allAvailableModels.first(where: { $0.name == modelName }),
                            model.provider == .parakeet || model.provider == .gemini {
                             selectedLanguage = "auto"
                         }
@@ -288,7 +288,7 @@ struct ConfigurationView: View {
                         selectedLanguage = "auto"
                     }
                 } else if let selectedModel = effectiveModelName,
-                          let modelInfo = whisperState.allAvailableModels.first(where: { $0.name == selectedModel }),
+                          let modelInfo = engine.allAvailableModels.first(where: { $0.name == selectedModel }),
                           modelInfo.isMultilingualModel {
                     let languageBinding = Binding<String?>(
                         get: { selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto" },
@@ -305,7 +305,7 @@ struct ConfigurationView: View {
                         }
                     }
                 } else if let selectedModel = effectiveModelName,
-                          let modelInfo = whisperState.allAvailableModels.first(where: { $0.name == selectedModel }),
+                          let modelInfo = engine.allAvailableModels.first(where: { $0.name == selectedModel }),
                           !modelInfo.isMultilingualModel {
                     EmptyView()
                         .onAppear {

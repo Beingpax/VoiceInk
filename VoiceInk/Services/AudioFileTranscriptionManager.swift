@@ -45,7 +45,7 @@ class AudioTranscriptionManager: ObservableObject {
     
     private init() {}
     
-    func startProcessing(url: URL, modelContext: ModelContext, whisperState: WhisperState) {
+    func startProcessing(url: URL, modelContext: ModelContext, engine: VoiceInkEngine) {
         // Cancel any existing processing
         cancelProcessing()
         
@@ -55,11 +55,11 @@ class AudioTranscriptionManager: ObservableObject {
         
         currentTask = Task {
             do {
-                guard let currentModel = whisperState.currentTranscriptionModel else {
+                guard let currentModel = engine.currentTranscriptionModel else {
                     throw TranscriptionError.noModelSelected
                 }
 
-                let serviceRegistry = TranscriptionServiceRegistry(whisperState: whisperState, modelsDirectory: whisperState.modelsDirectory)
+                let serviceRegistry = TranscriptionServiceRegistry(engine: engine, modelsDirectory: engine.modelsDirectory)
                 defer {
                     serviceRegistry.cleanup()
                 }
@@ -99,7 +99,7 @@ class AudioTranscriptionManager: ObservableObject {
                 text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
                 
                 // Handle enhancement if enabled
-                if let enhancementService = whisperState.enhancementService,
+                if let enhancementService = engine.enhancementService,
                    enhancementService.isEnhancementEnabled,
                    enhancementService.isConfigured {
                     processingPhase = .enhancing

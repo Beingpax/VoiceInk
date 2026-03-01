@@ -7,25 +7,25 @@ class LocalTranscriptionService: TranscriptionService {
     private var whisperContext: WhisperContext?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LocalTranscriptionService")
     private let modelsDirectory: URL
-    private weak var whisperState: WhisperState?
+    private weak var engine: VoiceInkEngine?
     
-    init(modelsDirectory: URL, whisperState: WhisperState? = nil) {
+    init(modelsDirectory: URL, engine: VoiceInkEngine? = nil) {
         self.modelsDirectory = modelsDirectory
-        self.whisperState = whisperState
+        self.engine = engine
     }
     
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
         guard model.provider == .local else {
-            throw WhisperStateError.modelLoadFailed
+            throw VoiceInkEngineError.modelLoadFailed
         }
         
         logger.notice("Initiating local transcription for model: \(model.displayName, privacy: .public)")
         
-        // Check if the required model is already loaded in WhisperState
-        if let whisperState = whisperState,
-           await whisperState.isModelLoaded,
-           let loadedContext = await whisperState.whisperContext,
-            let currentModel = await whisperState.currentTranscriptionModel,
+        // Check if the required model is already loaded in VoiceInkEngine
+        if let engine = engine,
+           await engine.isModelLoaded,
+           let loadedContext = await engine.whisperContext,
+            let currentModel = await engine.currentTranscriptionModel,
             currentModel.provider == .local,
             currentModel.name == model.name {
             
@@ -33,11 +33,11 @@ class LocalTranscriptionService: TranscriptionService {
             whisperContext = loadedContext
         } else {
             // Model not loaded or wrong model loaded, proceed with loading
-            // Resolve the on-disk URL using WhisperState.availableModels (covers imports)
-            let resolvedURL: URL? = await whisperState?.availableModels.first(where: { $0.name == model.name })?.url
+            // Resolve the on-disk URL using VoiceInkEngine.availableModels (covers imports)
+            let resolvedURL: URL? = await engine?.availableModels.first(where: { $0.name == model.name })?.url
             guard let modelURL = resolvedURL, FileManager.default.fileExists(atPath: modelURL.path) else {
                 logger.error("Model file not found for: \(model.name, privacy: .public)")
-                throw WhisperStateError.modelLoadFailed
+                throw VoiceInkEngineError.modelLoadFailed
             }
             
             logger.notice("Loading model: \(model.name, privacy: .public)")
@@ -45,13 +45,13 @@ class LocalTranscriptionService: TranscriptionService {
                 whisperContext = try await WhisperContext.createContext(path: modelURL.path)
             } catch {
                 logger.error("Failed to load model: \(model.name, privacy: .public) - \(error.localizedDescription, privacy: .public)")
-                throw WhisperStateError.modelLoadFailed
+                throw VoiceInkEngineError.modelLoadFailed
             }
         }
         
         guard let whisperContext = whisperContext else {
             logger.error("Cannot transcribe: Model could not be loaded")
-            throw WhisperStateError.modelLoadFailed
+            throw VoiceInkEngineError.modelLoadFailed
         }
         
         // Read audio data
@@ -66,7 +66,7 @@ class LocalTranscriptionService: TranscriptionService {
         
         guard success else {
             logger.error("Core transcription engine failed (whisper_full).")
-            throw WhisperStateError.whisperCoreFailed
+            throw VoiceInkEngineError.whisperCoreFailed
         }
         
         var text = await whisperContext.getTranscription()
@@ -74,7 +74,7 @@ class LocalTranscriptionService: TranscriptionService {
         logger.notice("✅ Local transcription completed successfully.")
         
         // Only release resources if we created a new context (not using the shared one)
-        if await whisperState?.whisperContext !== whisperContext {
+        if await engine?.whisperContext !== whisperContext {
             await whisperContext.releaseResources()
             self.whisperContext = nil
         }

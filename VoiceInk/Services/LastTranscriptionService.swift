@@ -98,7 +98,7 @@ class LastTranscriptionService: ObservableObject {
         }
     }
     
-    static func retryLastTranscription(from modelContext: ModelContext, whisperState: WhisperState) {
+    static func retryLastTranscription(from modelContext: ModelContext, engine: VoiceInkEngine) {
         Task { @MainActor in
             guard let lastTranscription = getLastTranscription(from: modelContext),
                   let audioURLString = lastTranscription.audioFileURL,
@@ -111,7 +111,7 @@ class LastTranscriptionService: ObservableObject {
                 return
             }
             
-            guard let currentModel = whisperState.currentTranscriptionModel else {
+            guard let currentModel = engine.currentTranscriptionModel else {
                 NotificationManager.shared.showNotification(
                     title: "No transcription model selected",
                     type: .error
@@ -119,7 +119,7 @@ class LastTranscriptionService: ObservableObject {
                 return
             }
             
-            let transcriptionService = AudioTranscriptionService(modelContext: modelContext, whisperState: whisperState)
+            let transcriptionService = AudioTranscriptionService(modelContext: modelContext, engine: engine)
             do {
                 let newTranscription = try await transcriptionService.retranscribeAudio(from: audioURL, using: currentModel)
                 

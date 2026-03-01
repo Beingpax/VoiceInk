@@ -1,6 +1,6 @@
 import Foundation
 
-enum WhisperStateError: Error, Identifiable {
+enum VoiceInkEngineError: Error, Identifiable {
     case modelLoadFailed
     case transcriptionFailed
     case whisperCoreFailed
@@ -10,7 +10,7 @@ enum WhisperStateError: Error, Identifiable {
     var id: String { UUID().uuidString }
 }
 
-extension WhisperStateError: LocalizedError {
+extension VoiceInkEngineError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .modelLoadFailed:

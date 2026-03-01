@@ -6,11 +6,11 @@ class NotchWindowManager: ObservableObject {
     @Published var isVisible = false
     private var windowController: NSWindowController?
      var notchPanel: NotchRecorderPanel?
-    private let whisperState: WhisperState
+    private let engine: VoiceInkEngine
     private let recorder: Recorder
 
-    init(whisperState: WhisperState, recorder: Recorder) {
-        self.whisperState = whisperState
+    init(engine: VoiceInkEngine, recorder: Recorder) {
+        self.engine = engine
         self.recorder = recorder
 
         NotificationCenter.default.addObserver(
@@ -56,9 +56,9 @@ class NotchWindowManager: ObservableObject {
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
         let panel = NotchRecorderPanel(contentRect: metrics.frame)
         
-        let notchRecorderView = NotchRecorderView(whisperState: whisperState, recorder: recorder)
+        let notchRecorderView = NotchRecorderView(engine: engine, recorder: recorder)
             .environmentObject(self)
-            .environmentObject(whisperState.enhancementService!)
+            .environmentObject(engine.enhancementService!)
         
         let hostingController = NotchRecorderHostingController(rootView: notchRecorderView)
         panel.contentView = hostingController.view

@@ -7,7 +7,7 @@ class ActiveWindowService: ObservableObject {
     @Published var currentApplication: NSRunningApplication?
     private var enhancementService: AIEnhancementService?
     private let browserURLService = BrowserURLService.shared
-    private var whisperState: WhisperState?
+    private var engine: VoiceInkEngine?
     
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",
@@ -20,8 +20,8 @@ class ActiveWindowService: ObservableObject {
         self.enhancementService = enhancementService
     }
     
-    func configureWhisperState(_ whisperState: WhisperState) {
-        self.whisperState = whisperState
+    func configureVoiceInkEngine(_ engine: VoiceInkEngine) {
+        self.engine = engine
     }
     
     func applyConfiguration(powerModeId: UUID? = nil) async {

@@ -5,11 +5,11 @@ class MiniWindowManager: ObservableObject {
     @Published var isVisible = false
     private var windowController: NSWindowController?
     private var miniPanel: MiniRecorderPanel?
-    private let whisperState: WhisperState
+    private let engine: VoiceInkEngine
     private let recorder: Recorder
     
-    init(whisperState: WhisperState, recorder: Recorder) {
-        self.whisperState = whisperState
+    init(engine: VoiceInkEngine, recorder: Recorder) {
+        self.engine = engine
         self.recorder = recorder
         setupNotifications()
     }
@@ -56,9 +56,9 @@ class MiniWindowManager: ObservableObject {
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
         let panel = MiniRecorderPanel(contentRect: metrics)
         
-        let miniRecorderView = MiniRecorderView(whisperState: whisperState, recorder: recorder)
+        let miniRecorderView = MiniRecorderView(engine: engine, recorder: recorder)
             .environmentObject(self)
-            .environmentObject(whisperState.enhancementService!)
+            .environmentObject(engine.enhancementService!)
         
         let hostingController = NSHostingController(rootView: miniRecorderView)
         panel.contentView = hostingController.view

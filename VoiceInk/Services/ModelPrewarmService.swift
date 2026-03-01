@@ -5,18 +5,18 @@ import AppKit
 
 @MainActor
 final class ModelPrewarmService: ObservableObject {
-    private let whisperState: WhisperState
+    private let engine: VoiceInkEngine
     private let modelContext: ModelContext
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ModelPrewarm")
     private lazy var serviceRegistry = TranscriptionServiceRegistry(
-        whisperState: whisperState,
-        modelsDirectory: whisperState.modelsDirectory
+        engine: engine,
+        modelsDirectory: engine.modelsDirectory
     )
     private let prewarmAudioURL = Bundle.main.url(forResource: "esc", withExtension: "wav")
     private let prewarmEnabledKey = "PrewarmModelOnWake"
 
-    init(whisperState: WhisperState, modelContext: ModelContext) {
-        self.whisperState = whisperState
+    init(engine: VoiceInkEngine, modelContext: ModelContext) {
+        self.engine = engine
         self.modelContext = modelContext
         setupNotifications()
         schedulePrewarmOnAppLaunch()
@@ -68,7 +68,7 @@ final class ModelPrewarmService: ObservableObject {
             return
         }
 
-        guard let currentModel = whisperState.currentTranscriptionModel else {
+        guard let currentModel = engine.currentTranscriptionModel else {
             logger.notice("🌅 No model selected, skipping prewarm")
             return
         }
@@ -98,7 +98,7 @@ final class ModelPrewarmService: ObservableObject {
         }
 
         // Only prewarm local models (Parakeet and Whisper need ANE compilation)
-        guard let model = whisperState.currentTranscriptionModel else {
+        guard let model = engine.currentTranscriptionModel else {
             return false
         }
 
