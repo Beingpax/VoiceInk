@@ -421,6 +421,22 @@ class AIService: ObservableObject {
         }
     }
 
+    func startLocalMLXServer() async -> Bool {
+        await localMLXService.startServerIfNeeded()
+    }
+
+    var isLocalMLXStartingServer: Bool {
+        localMLXService.isStartingServer
+    }
+
+    var isLocalMLXServerManagedByApp: Bool {
+        localMLXService.isServerManagedByApp
+    }
+
+    func stopLocalMLXServer() {
+        localMLXService.stopServer()
+    }
+
     func fetchLocalMLXModels() async -> [String] {
         await localMLXService.refreshModels()
         return localMLXService.availableModels

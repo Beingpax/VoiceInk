@@ -289,6 +289,8 @@ class AIEnhancementService: ObservableObject {
         }
 
         if aiService.selectedProvider == .local {
+            // Auto-start server if not running
+            _ = await aiService.startLocalMLXServer()
             do {
                 let result = try await LocalMLXClient.chatCompletion(
                     baseURL: aiService.selectedProvider.baseURL,
@@ -437,6 +439,7 @@ class AIEnhancementService: ObservableObject {
         }
 
         if aiService.selectedProvider == .local {
+            _ = await aiService.startLocalMLXServer()
             do {
                 let result = try await LocalMLXClient.chatCompletion(
                     baseURL: aiService.selectedProvider.baseURL,

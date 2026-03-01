@@ -42,6 +42,9 @@ struct APIKeyManagementView: View {
                     if isCheckingLocalMLX {
                         ProgressView()
                             .controlSize(.small)
+                        Text(aiService.isLocalMLXStartingServer ? "Starting server..." : "Checking...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     } else if !localMLXModels.isEmpty {
                         Circle()
                             .fill(Color.green)
@@ -346,8 +349,20 @@ struct APIKeyManagementView: View {
                     isCheckingLocalMLX = false
                 }
             } else {
-                localMLXModels = []
-                isCheckingLocalMLX = false
+                // Server not running -- try to start it automatically
+                Task {
+                    let started = await aiService.startLocalMLXServer()
+                    if started {
+                        localMLXModels = await aiService.fetchLocalMLXModels()
+                        if let first = localMLXModels.first, selectedLocalMLXModel.isEmpty {
+                            selectedLocalMLXModel = first
+                            aiService.updateSelectedLocalMLXModel(first)
+                        }
+                    } else {
+                        localMLXModels = []
+                    }
+                    isCheckingLocalMLX = false
+                }
             }
         }
     }
