@@ -120,6 +120,8 @@ extension WhisperState {
  logger.notice("cancelRecording called")
  SoundManager.shared.playEscSound()
  shouldCancelRecording = true
+ activeTranscriptionTask?.cancel()
+ activeTranscriptionTask = nil
  enhancementTask?.cancel()
  enhancementTask = nil
  await dismissMiniRecorder()

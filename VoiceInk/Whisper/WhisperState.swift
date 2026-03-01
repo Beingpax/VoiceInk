@@ -32,6 +32,7 @@ class WhisperState: NSObject, ObservableObject {
  var currentSession: TranscriptionSession?
  private var modelCleanupTimer: Task<Void, Never>?
  var enhancementTask: Task<(String, TimeInterval, String?), Error>?
+ var activeTranscriptionTask: Task<Void, Never>?
 
 
  @Published var recorderType: String = UserDefaults.standard.string(forKey: "RecorderType") ?? "mini" {
@@ -177,7 +178,10 @@ class WhisperState: NSObject, ObservableObject {
  try? modelContext.save()
  NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
- await transcribeAudio(on: transcription)
+ let task = Task { await self.transcribeAudio(on: transcription) }
+ self.activeTranscriptionTask = task
+ await task.value
+ self.activeTranscriptionTask = nil
  } else {
  currentSession?.cancel()
  currentSession = nil
@@ -446,6 +450,14 @@ class WhisperState: NSObject, ObservableObject {
 
  transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
 
+ } catch is CancellationError {
+ logger.notice("Transcription cancelled, cleaning up silently")
+ modelContext.delete(transcription)
+ try? modelContext.save()
+ recorder.restoreAudio()
+ await self.dismissMiniRecorder()
+ scheduleModelCleanup()
+ return
  } catch {
  let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
  let recoverySuggestion = (error as? LocalizedError)?.recoverySuggestion ?? ""
