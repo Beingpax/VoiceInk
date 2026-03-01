@@ -9,22 +9,27 @@ struct DictionarySettingsView: View {
     enum DictionarySection: String, CaseIterable {
         case replacements = "Word Replacements"
         case spellings = "Vocabulary"
-        
+        case suggestions = "Suggestions"
+
         var description: String {
             switch self {
             case .spellings:
                 return "Add words to help VoiceInk recognize them properly"
             case .replacements:
                 return "Automatically replace specific words/phrases with custom formatted text "
+            case .suggestions:
+                return "Review vocabulary corrections detected from AI enhancement"
             }
         }
-        
+
         var icon: String {
             switch self {
             case .spellings:
                 return "character.book.closed.fill"
             case .replacements:
                 return "arrow.2.squarepath"
+            case .suggestions:
+                return "lightbulb.fill"
             }
         }
     }
@@ -111,6 +116,9 @@ struct DictionarySettingsView: View {
                     .background(CardBackground(isSelected: false))
             case .replacements:
                 WordReplacementView()
+                    .background(CardBackground(isSelected: false))
+            case .suggestions:
+                VocabularySuggestionsView()
                     .background(CardBackground(isSelected: false))
             }
         }

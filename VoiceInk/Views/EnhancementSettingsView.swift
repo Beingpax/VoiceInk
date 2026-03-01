@@ -22,16 +22,21 @@ struct EnhancementSettingsView: View {
         ZStack(alignment: .topLeading) {
             Form {
                 Section {
-                    Toggle(isOn: $enhancementService.isEnhancementEnabled) {
-                        HStack(spacing: 4) {
-                            Text("Enable Enhancement")
-                            InfoTip(
-                                "AI enhancement lets you pass the transcribed audio through LLMs to post-process using different prompts suitable for different use cases like e-mails, summary, writing, etc.",
-                                learnMoreURL: "https://tryvoiceink.com/docs/enhancements-configuring-models"
-                            )
+                    HStack(spacing: 4) {
+                        Text("Enhancement Mode")
+                        InfoTip(
+                            "Off: No AI enhancement. On: Waits for AI to enhance before pasting. Background: Pastes raw text immediately and enhances in the background (result appears in History).",
+                            learnMoreURL: "https://tryvoiceink.com/docs/enhancements-configuring-models"
+                        )
+                        Spacer()
+                        Picker("", selection: $enhancementService.enhancementMode) {
+                            ForEach(EnhancementMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
                         }
+                        .pickerStyle(.segmented)
+                        .frame(width: 220)
                     }
-                    .toggleStyle(.switch)
                     
                     HStack(spacing: 24) {
                         Toggle(isOn: $enhancementService.useClipboardContext) {

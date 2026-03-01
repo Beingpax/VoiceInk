@@ -7,14 +7,18 @@ struct EnhancementPromptPopover: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Enhancement Toggle at the top
-            HStack(spacing: 8) {
-                Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
+            // Enhancement Mode picker at the top
+            VStack(alignment: .leading, spacing: 4) {
+                Text("AI Enhancement")
                     .foregroundColor(.white.opacity(0.9))
                     .font(.headline)
                     .lineLimit(1)
-                
-                Spacer()
+                Picker("", selection: $enhancementService.enhancementMode) {
+                    ForEach(EnhancementMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
             }
             .padding(.horizontal)
             .padding(.top, 8)
@@ -29,11 +33,11 @@ struct EnhancementPromptPopover: View {
                         EnhancementPromptRow(
                             prompt: prompt,
                             isSelected: selectedPrompt?.id == prompt.id,
-                            isDisabled: !enhancementService.isEnhancementEnabled,
+                            isDisabled: enhancementService.enhancementMode == .off,
                             action: {
-                                // If enhancement is disabled, enable it first
-                                if !enhancementService.isEnhancementEnabled {
-                                    enhancementService.isEnhancementEnabled = true
+                                // If enhancement is off, enable it
+                                if enhancementService.enhancementMode == .off {
+                                    enhancementService.enhancementMode = .on
                                 }
                                 enhancementService.setActivePrompt(prompt)
                                 selectedPrompt = prompt

@@ -414,13 +414,23 @@ class WhisperState: NSObject, ObservableObject {
  }
 
  if let enhancementService = enhancementService,
- enhancementService.isEnhancementEnabled,
  enhancementService.isConfigured {
+ let textForAI = promptDetectionResult?.processedText ?? text
+ let formattedUserMessage = "\n<TRANSCRIPT>\n\(textForAI)\n</TRANSCRIPT>"
+
+ // Determine effective mode: prompt detection forces synchronous enhancement
+ let effectiveMode: EnhancementMode = if promptDetectionResult?.shouldEnableAI == true {
+ .on
+ } else {
+ enhancementService.enhancementMode
+ }
+
+ switch effectiveMode {
+ case .on:
  if await checkCancellationAndCleanup() { return }
 
  await MainActor.run { self.recordingState = .enhancing }
- let textForAI = promptDetectionResult?.processedText ?? text
- 
+
  do {
  let task = Task {
  try await enhancementService.enhance(textForAI)
@@ -443,8 +453,26 @@ class WhisperState: NSObject, ObservableObject {
  } catch {
  self.enhancementTask = nil
  transcription.enhancedText = "Enhancement failed: \(error)"
- 
+
  if await checkCancellationAndCleanup() { return }
+ }
+
+ case .background:
+ // Snapshot system message before contexts are cleared by dismissMiniRecorder
+ let systemMessage = await enhancementService.buildSystemMessageSnapshot()
+ let job = BackgroundEnhancementJob(
+ transcriptionId: transcription.id,
+ text: textForAI,
+ systemMessage: systemMessage,
+ userMessage: formattedUserMessage,
+ promptName: enhancementService.activePrompt?.title,
+ aiModelName: enhancementService.getAIService()?.currentModel
+ )
+ EnhancementQueueService.shared.enqueue(job)
+ // finalPastedText stays as raw text; pipeline proceeds immediately
+
+ case .off:
+ break
  }
  }
 

@@ -9,19 +9,38 @@ enum EnhancementPrompt {
     case aiAssistant
 }
 
+enum EnhancementMode: String, Codable, CaseIterable {
+    case off
+    case on
+    case background
+
+    var displayName: String {
+        switch self {
+        case .off: return "Off"
+        case .on: return "On"
+        case .background: return "Background"
+        }
+    }
+}
+
 @MainActor
 class AIEnhancementService: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIEnhancementService")
 
-    @Published var isEnhancementEnabled: Bool {
+    @Published var enhancementMode: EnhancementMode {
         didSet {
-            UserDefaults.standard.set(isEnhancementEnabled, forKey: "isAIEnhancementEnabled")
-            if isEnhancementEnabled && selectedPromptId == nil {
+            UserDefaults.standard.set(enhancementMode.rawValue, forKey: "enhancementMode")
+            if enhancementMode != .off && selectedPromptId == nil {
                 selectedPromptId = customPrompts.first?.id
             }
             NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
             NotificationCenter.default.post(name: .enhancementToggleChanged, object: nil)
         }
+    }
+
+    var isEnhancementEnabled: Bool {
+        get { enhancementMode != .off }
+        set { enhancementMode = newValue ? .on : .off }
     }
 
     @Published var useClipboardContext: Bool {
@@ -80,7 +99,15 @@ class AIEnhancementService: ObservableObject {
         self.screenCaptureService = ScreenCaptureService()
         self.customVocabularyService = CustomVocabularyService.shared
 
-        self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
+        // Migration: check new key first, fall back to old boolean key
+        if let modeString = UserDefaults.standard.string(forKey: "enhancementMode"),
+           let mode = EnhancementMode(rawValue: modeString) {
+            self.enhancementMode = mode
+        } else if UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled") {
+            self.enhancementMode = .on
+        } else {
+            self.enhancementMode = .off
+        }
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
         self.useScreenCaptureContext = UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
 
@@ -117,7 +144,7 @@ class AIEnhancementService: ObservableObject {
         DispatchQueue.main.async {
             self.objectWillChange.send()
             if !self.aiService.isAPIKeyValid {
-                self.isEnhancementEnabled = false
+                self.enhancementMode = .off
             }
         }
     }
@@ -342,6 +369,75 @@ class AIEnhancementService: ObservableObject {
             return (result, duration, promptName)
         } catch {
             throw error
+        }
+    }
+
+    func buildSystemMessageSnapshot() async -> String {
+        return await getSystemMessage(for: .transcriptionEnhancement)
+    }
+
+    static func performEnhancementRequest(userMessage: String, systemMessage: String, aiService: AIService, baseTimeout: TimeInterval = 30) async throws -> String {
+        if aiService.selectedProvider == .ollama {
+            do {
+                let result = try await aiService.enhanceWithOllama(text: userMessage, systemPrompt: systemMessage)
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let localError = error as? LocalAIError {
+                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown Ollama error occurred.")
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
+        do {
+            let result: String
+            switch aiService.selectedProvider {
+            case .anthropic:
+                result = try await AnthropicLLMClient.chatCompletion(
+                    apiKey: aiService.apiKey,
+                    model: aiService.currentModel,
+                    messages: [.user(userMessage)],
+                    systemPrompt: systemMessage,
+                    timeout: baseTimeout
+                )
+            default:
+                guard let baseURL = URL(string: aiService.selectedProvider.baseURL) else {
+                    throw EnhancementError.customError("\(aiService.selectedProvider.rawValue) has an invalid API endpoint URL.")
+                }
+                let temperature = aiService.currentModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
+                let reasoningEffort = ReasoningConfig.getReasoningParameter(for: aiService.currentModel)
+                result = try await OpenAILLMClient.chatCompletion(
+                    baseURL: baseURL,
+                    apiKey: aiService.apiKey,
+                    model: aiService.currentModel,
+                    messages: [.user(userMessage)],
+                    systemPrompt: systemMessage,
+                    temperature: temperature,
+                    reasoningEffort: reasoningEffort,
+                    timeout: baseTimeout
+                )
+            }
+            return AIEnhancementOutputFilter.filter(result.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch let error as LLMKitError {
+            switch error {
+            case .missingAPIKey:
+                throw EnhancementError.notConfigured
+            case .httpError(let statusCode, let message):
+                if statusCode == 429 { throw EnhancementError.rateLimitExceeded }
+                if (500...599).contains(statusCode) { throw EnhancementError.serverError }
+                throw EnhancementError.customError("HTTP \(statusCode): \(message)")
+            case .noResultReturned:
+                throw EnhancementError.enhancementFailed
+            case .networkError:
+                throw EnhancementError.networkError
+            case .invalidURL, .decodingError, .encodingError, .timeout:
+                throw EnhancementError.customError(error.localizedDescription ?? "An unknown error occurred.")
+            }
+        } catch let error as EnhancementError {
+            throw error
+        } catch {
+            throw EnhancementError.customError(error.localizedDescription)
         }
     }
 

@@ -57,13 +57,11 @@ class CursorPaster {
             } else {
                 pasteFromClipboard()
             }
-        }
 
-        if shouldRestoreClipboard {
-            let delay = max(restoreDelay, 0.25)
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                if !savedContents.isEmpty {
+            // Restore clipboard relative to paste time, not call time
+            if shouldRestoreClipboard && !savedContents.isEmpty {
+                let delay = max(restoreDelay, 0.1)
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     pasteboard.clearContents()
                     for (type, data) in savedContents {
                         pasteboard.setData(data, forType: type)

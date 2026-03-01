@@ -2,13 +2,50 @@ import Foundation
 import AppKit
 
 struct ApplicationState: Codable {
-    var isEnhancementEnabled: Bool
+    var enhancementMode: String
     var useScreenCaptureContext: Bool
     var selectedPromptId: String?
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var selectedLanguage: String?
     var transcriptionModelName: String?
+
+    // Migration: decode old format with isEnhancementEnabled boolean
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let mode = try? container.decode(String.self, forKey: .enhancementMode) {
+            self.enhancementMode = mode
+        } else {
+            // Fall back to old boolean key
+            let wasEnabled = (try? container.decode(Bool.self, forKey: .enhancementMode)) ?? false
+            self.enhancementMode = wasEnabled ? EnhancementMode.on.rawValue : EnhancementMode.off.rawValue
+        }
+        self.useScreenCaptureContext = try container.decode(Bool.self, forKey: .useScreenCaptureContext)
+        self.selectedPromptId = try container.decodeIfPresent(String.self, forKey: .selectedPromptId)
+        self.selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
+        self.selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
+        self.selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
+        self.transcriptionModelName = try container.decodeIfPresent(String.self, forKey: .transcriptionModelName)
+    }
+
+    init(enhancementMode: String, useScreenCaptureContext: Bool, selectedPromptId: String? = nil,
+         selectedAIProvider: String? = nil, selectedAIModel: String? = nil,
+         selectedLanguage: String? = nil, transcriptionModelName: String? = nil) {
+        self.enhancementMode = enhancementMode
+        self.useScreenCaptureContext = useScreenCaptureContext
+        self.selectedPromptId = selectedPromptId
+        self.selectedAIProvider = selectedAIProvider
+        self.selectedAIModel = selectedAIModel
+        self.selectedLanguage = selectedLanguage
+        self.transcriptionModelName = transcriptionModelName
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        // Use the old key name for backward-compatible decoding
+        case enhancementMode = "isEnhancementEnabled"
+        case useScreenCaptureContext, selectedPromptId, selectedAIProvider
+        case selectedAIModel, selectedLanguage, transcriptionModelName
+    }
 }
 
 struct PowerModeSession: Codable {
@@ -44,7 +81,7 @@ class PowerModeSessionManager {
         // Only capture baseline if NO session exists
         if loadSession() == nil {
             let originalState = ApplicationState(
-                isEnhancementEnabled: enhancementService.isEnhancementEnabled,
+                enhancementMode: enhancementService.enhancementMode.rawValue,
                 useScreenCaptureContext: enhancementService.useScreenCaptureContext,
                 selectedPromptId: enhancementService.selectedPromptId?.uuidString,
                 selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
@@ -91,7 +128,7 @@ class PowerModeSessionManager {
         guard var session = loadSession(), let whisperState = whisperState, let enhancementService = enhancementService else { return }
 
         let updatedState = ApplicationState(
-            isEnhancementEnabled: enhancementService.isEnhancementEnabled,
+            enhancementMode: enhancementService.enhancementMode.rawValue,
             useScreenCaptureContext: enhancementService.useScreenCaptureContext,
             selectedPromptId: enhancementService.selectedPromptId?.uuidString,
             selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
@@ -108,7 +145,13 @@ class PowerModeSessionManager {
         guard let enhancementService = enhancementService else { return }
 
         await MainActor.run {
-            enhancementService.isEnhancementEnabled = config.isAIEnhancementEnabled
+            // When PowerMode disables enhancement, set to .off
+            // When PowerMode enables enhancement, leave the current mode (respects user's On/Background choice)
+            if !config.isAIEnhancementEnabled {
+                enhancementService.enhancementMode = .off
+            } else if enhancementService.enhancementMode == .off {
+                enhancementService.enhancementMode = .on
+            }
             enhancementService.useScreenCaptureContext = config.useScreenCapture
 
             if config.isAIEnhancementEnabled {
@@ -148,7 +191,7 @@ class PowerModeSessionManager {
         guard let enhancementService = enhancementService else { return }
 
         await MainActor.run {
-            enhancementService.isEnhancementEnabled = state.isEnhancementEnabled
+            enhancementService.enhancementMode = EnhancementMode(rawValue: state.enhancementMode) ?? .off
             enhancementService.useScreenCaptureContext = state.useScreenCaptureContext
             enhancementService.selectedPromptId = state.selectedPromptId.flatMap(UUID.init)
 

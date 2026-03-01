@@ -10,7 +10,7 @@ enum AppDefaults {
 
             // Clipboard
             "restoreClipboardAfterPaste": true,
-            "clipboardRestoreDelay": 2.0,
+            "clipboardRestoreDelay": 0.25,
             "useAppleScriptPaste": false,
 
             // Audio & Media
@@ -44,6 +44,7 @@ enum AppDefaults {
             "middleClickActivationDelay": 200,
 
             // Enhancement
+            "enhancementMode": "off",
             "isToggleEnhancementShortcutEnabled": true,
 
             // Model

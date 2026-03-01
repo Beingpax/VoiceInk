@@ -161,8 +161,10 @@ class SystemInfoService {
     }
 
     private func getAIEnhancementStatus() -> String {
-        let enhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
-        return enhancementEnabled ? "Enabled" : "Disabled"
+        if let mode = UserDefaults.standard.string(forKey: "enhancementMode") {
+            return mode.capitalized
+        }
+        return "Off"
     }
 
     private func getAIProvider() -> String {

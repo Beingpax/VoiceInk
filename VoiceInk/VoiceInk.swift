@@ -44,7 +44,8 @@ struct VoiceInkApp: App {
         let schema = Schema([
             Transcription.self,
             VocabularyWord.self,
-            WordReplacement.self
+            WordReplacement.self,
+            VocabularySuggestion.self
         ])
         var initializationFailed = false
         
@@ -102,6 +103,9 @@ struct VoiceInkApp: App {
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
         menuBarManager.configure(modelContainer: container, whisperState: whisperState)
 
+        EnhancementQueueService.shared.configure(aiService: aiService, modelContainer: container)
+        VocabularySuggestionService.shared.configure(modelContainer: container)
+
         let activeWindowService = ActiveWindowService.shared
         activeWindowService.configure(with: enhancementService)
         activeWindowService.configureWhisperState(whisperState)
@@ -149,7 +153,7 @@ struct VoiceInkApp: App {
             )
 
             // Dictionary configuration
-            let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
+            let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self, VocabularySuggestion.self])
             #if LOCAL_BUILD
             let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .none
             #else
@@ -184,7 +188,7 @@ struct VoiceInkApp: App {
             )
 
             // Dictionary configuration
-            let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
+            let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self, VocabularySuggestion.self])
             let dictionaryConfig = ModelConfiguration(
                 "dictionary",
                 schema: dictionarySchema,
