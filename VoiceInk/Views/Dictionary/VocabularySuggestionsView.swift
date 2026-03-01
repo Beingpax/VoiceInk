@@ -14,7 +14,7 @@ struct VocabularySuggestionsView: View {
   VStack(alignment: .leading, spacing: 20) {
    GroupBox {
     Label {
-     Text("Vocabulary corrections detected from AI enhancement. Approve to add to your dictionary.")
+     Text("Words detected from AI enhancement that may improve transcription accuracy. Add them to your dictionary so Whisper recognizes them.")
       .font(.system(size: 12))
       .foregroundColor(.secondary)
       .fixedSize(horizontal: false, vertical: true)
@@ -29,17 +29,28 @@ struct VocabularySuggestionsView: View {
    } else {
     VStack(spacing: 12) {
      HStack {
-      Text("\(suggestions.count) suggestion\(suggestions.count == 1 ? "" : "s")")
+      Text("\(suggestions.count) suggested word\(suggestions.count == 1 ? "" : "s")")
        .font(.system(size: 12, weight: .medium))
        .foregroundColor(.secondary)
 
       Spacer()
 
+      Button(action: dismissAll) {
+       HStack(spacing: 4) {
+        Image(systemName: "xmark.circle")
+         .font(.system(size: 12))
+        Text("Dismiss All")
+         .font(.system(size: 12, weight: .medium))
+       }
+      }
+      .buttonStyle(.borderless)
+      .foregroundColor(.secondary)
+
       Button(action: approveAll) {
        HStack(spacing: 4) {
-        Image(systemName: "checkmark.circle.fill")
+        Image(systemName: "plus.circle.fill")
          .font(.system(size: 12))
-        Text("Approve All")
+        Text("Add All")
          .font(.system(size: 12, weight: .medium))
        }
       }
@@ -49,12 +60,7 @@ struct VocabularySuggestionsView: View {
 
      VStack(spacing: 0) {
       HStack(spacing: 8) {
-       Text("Misheard")
-        .font(.system(size: 12, weight: .medium))
-        .foregroundColor(.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-
-       Text("Correction")
+       Text("Suggested Word")
         .font(.system(size: 12, weight: .medium))
         .foregroundColor(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,7 +101,7 @@ struct VocabularySuggestionsView: View {
    Text("No suggestions yet")
     .font(.headline)
     .foregroundColor(.secondary)
-   Text("Suggestions appear when AI enhancement corrects misheard words.")
+   Text("Suggestions appear when AI enhancement corrects words that Whisper doesn't recognize.")
     .font(.subheadline)
     .foregroundColor(.secondary.opacity(0.7))
     .multilineTextAlignment(.center)
@@ -147,6 +153,18 @@ struct VocabularySuggestionsView: View {
    modelContext.rollback()
   }
  }
+
+ private func dismissAll() {
+  for suggestion in suggestions {
+   suggestion.status = "dismissed"
+  }
+
+  do {
+   try modelContext.save()
+  } catch {
+   modelContext.rollback()
+  }
+ }
 }
 
 struct SuggestionRow: View {
@@ -158,69 +176,58 @@ struct SuggestionRow: View {
 
  var body: some View {
   HStack(spacing: 8) {
-   HStack(spacing: 4) {
-    Text(suggestion.rawPhrase)
-     .font(.system(size: 13))
-     .strikethrough()
-     .foregroundColor(.secondary)
+   VStack(alignment: .leading, spacing: 2) {
+    Text(suggestion.correctedPhrase)
+     .font(.system(size: 13, weight: .semibold))
      .lineLimit(2)
+
+    if !suggestion.rawPhrase.isEmpty {
+     Text("heard as \"\(suggestion.rawPhrase)\"")
+      .font(.system(size: 11))
+      .foregroundColor(.secondary)
+      .lineLimit(1)
+    }
    }
    .frame(maxWidth: .infinity, alignment: .leading)
 
-   Image(systemName: "arrow.right")
-    .foregroundColor(.secondary)
-    .font(.system(size: 10))
-    .frame(width: 10)
+   if suggestion.occurrenceCount > 1 {
+    Text("\(suggestion.occurrenceCount)x")
+     .font(.system(size: 10, weight: .medium))
+     .foregroundColor(.white)
+     .padding(.horizontal, 5)
+     .padding(.vertical, 1)
+     .background(Capsule().fill(.blue.opacity(0.7)))
+   }
 
-   ZStack(alignment: .trailing) {
-    HStack(spacing: 6) {
-     Text(suggestion.correctedPhrase)
-      .font(.system(size: 13, weight: .semibold))
-      .lineLimit(2)
-
-     if suggestion.occurrenceCount > 1 {
-      Text("\(suggestion.occurrenceCount)")
-       .font(.system(size: 10, weight: .medium))
-       .foregroundColor(.white)
-       .padding(.horizontal, 5)
-       .padding(.vertical, 1)
-       .background(Capsule().fill(.blue.opacity(0.7)))
+   HStack(spacing: 6) {
+    Button(action: onApprove) {
+     Image(systemName: "plus.circle.fill")
+      .symbolRenderingMode(.hierarchical)
+      .foregroundColor(isApproveHovered ? .green : .secondary)
+      .contentTransition(.symbolEffect(.replace))
+    }
+    .buttonStyle(.borderless)
+    .help("Add to dictionary")
+    .onHover { hover in
+     withAnimation(.easeInOut(duration: 0.2)) {
+      isApproveHovered = hover
      }
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(.trailing, 50)
 
-    HStack(spacing: 6) {
-     Button(action: onApprove) {
-      Image(systemName: "checkmark.circle.fill")
-       .symbolRenderingMode(.hierarchical)
-       .foregroundColor(isApproveHovered ? .green : .secondary)
-       .contentTransition(.symbolEffect(.replace))
-     }
-     .buttonStyle(.borderless)
-     .help("Approve and add to vocabulary")
-     .onHover { hover in
-      withAnimation(.easeInOut(duration: 0.2)) {
-       isApproveHovered = hover
-      }
-     }
-
-     Button(action: onDismiss) {
-      Image(systemName: "xmark.circle.fill")
-       .symbolRenderingMode(.hierarchical)
-       .foregroundStyle(isDismissHovered ? .red : .secondary)
-       .contentTransition(.symbolEffect(.replace))
-      }
-     .buttonStyle(.borderless)
-     .help("Dismiss suggestion")
-     .onHover { hover in
-      withAnimation(.easeInOut(duration: 0.2)) {
-       isDismissHovered = hover
-      }
+    Button(action: onDismiss) {
+     Image(systemName: "xmark.circle.fill")
+      .symbolRenderingMode(.hierarchical)
+      .foregroundStyle(isDismissHovered ? .red : .secondary)
+      .contentTransition(.symbolEffect(.replace))
+    }
+    .buttonStyle(.borderless)
+    .help("Dismiss suggestion")
+    .onHover { hover in
+     withAnimation(.easeInOut(duration: 0.2)) {
+      isDismissHovered = hover
      }
     }
    }
-   .frame(maxWidth: .infinity)
   }
   .padding(.vertical, 8)
   .padding(.horizontal, 4)

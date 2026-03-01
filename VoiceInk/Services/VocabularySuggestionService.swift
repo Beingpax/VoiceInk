@@ -2,13 +2,15 @@ import Foundation
 import SwiftData
 import os
 
-class VocabularySuggestionService {
+class VocabularySuggestionService: NSObject {
  static let shared = VocabularySuggestionService()
 
  private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "VocabularySuggestion")
  private var modelContainer: ModelContainer?
 
- private init() {}
+ private override init() {
+  super.init()
+ }
 
  func configure(modelContainer: ModelContainer) {
   self.modelContainer = modelContainer
@@ -36,10 +38,15 @@ class VocabularySuggestionService {
 
  @objc private func handleBackgroundEnhancementCompleted(_ notification: Notification) {
   guard let transcriptionId = notification.userInfo?["transcriptionId"] as? UUID else { return }
-  processTranscription(id: transcriptionId)
+  // Brief delay to ensure the persistent store has flushed the write from the enhancement queue's context
+  Task {
+   try? await Task.sleep(nanoseconds: 500_000_000)
+   self.processTranscription(id: transcriptionId)
+  }
  }
 
  private func processTranscription(id transcriptionId: UUID) {
+  guard UserDefaults.standard.bool(forKey: "vocabularyExtractionEnabled") else { return }
   guard let modelContainer = modelContainer else {
    logger.error("VocabularySuggestionService not configured")
    return

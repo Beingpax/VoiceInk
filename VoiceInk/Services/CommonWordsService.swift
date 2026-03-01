@@ -14,7 +14,7 @@ class CommonWordsService {
    return cached
   }
 
-  guard let url = Bundle.main.url(forResource: languageCode, withExtension: "txt", subdirectory: "CommonWords") else {
+  guard let url = Bundle.main.url(forResource: languageCode, withExtension: "txt") else {
    logger.info("No common words file for language: \(languageCode, privacy: .public)")
    cache[languageCode] = []
    return []

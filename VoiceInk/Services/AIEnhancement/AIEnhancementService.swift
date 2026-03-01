@@ -43,6 +43,26 @@ class AIEnhancementService: ObservableObject {
         set { enhancementMode = newValue ? .on : .off }
     }
 
+    @Published var backgroundEnhancementEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(backgroundEnhancementEnabled, forKey: "backgroundEnhancementEnabled")
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+    }
+
+    @Published var vocabularyExtractionEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(vocabularyExtractionEnabled, forKey: "vocabularyExtractionEnabled")
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+    }
+
+    var effectiveEnhancementMode: EnhancementMode {
+        if enhancementMode != .off { return enhancementMode }
+        if backgroundEnhancementEnabled { return .background }
+        return .off
+    }
+
     @Published var useClipboardContext: Bool {
         didSet {
             UserDefaults.standard.set(useClipboardContext, forKey: "useClipboardContext")
@@ -102,12 +122,24 @@ class AIEnhancementService: ObservableObject {
         // Migration: check new key first, fall back to old boolean key
         if let modeString = UserDefaults.standard.string(forKey: "enhancementMode"),
            let mode = EnhancementMode(rawValue: modeString) {
-            self.enhancementMode = mode
+            // Migrate stored "background" mode to separate toggle
+            if mode == .background {
+                self.enhancementMode = .off
+                self.backgroundEnhancementEnabled = true
+                UserDefaults.standard.set(EnhancementMode.off.rawValue, forKey: "enhancementMode")
+                UserDefaults.standard.set(true, forKey: "backgroundEnhancementEnabled")
+            } else {
+                self.enhancementMode = mode
+                self.backgroundEnhancementEnabled = UserDefaults.standard.bool(forKey: "backgroundEnhancementEnabled")
+            }
         } else if UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled") {
             self.enhancementMode = .on
+            self.backgroundEnhancementEnabled = UserDefaults.standard.bool(forKey: "backgroundEnhancementEnabled")
         } else {
             self.enhancementMode = .off
+            self.backgroundEnhancementEnabled = UserDefaults.standard.bool(forKey: "backgroundEnhancementEnabled")
         }
+        self.vocabularyExtractionEnabled = UserDefaults.standard.bool(forKey: "vocabularyExtractionEnabled")
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
         self.useScreenCaptureContext = UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
 

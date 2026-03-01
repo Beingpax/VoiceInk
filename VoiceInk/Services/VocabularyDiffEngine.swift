@@ -15,8 +15,11 @@ struct VocabularyDiffEngine {
 
   let lcsIndices = longestCommonSubsequence(rawTokens.map { $0.normalized }, enhancedTokens.map { $0.normalized })
 
-  let corrections = extractCorrections(rawTokens: rawTokens, enhancedTokens: enhancedTokens, lcs: lcsIndices)
+  var corrections = extractCorrections(rawTokens: rawTokens, enhancedTokens: enhancedTokens, lcs: lcsIndices)
 
+  expandCompoundNames(corrections: &corrections, enhancedTokens: enhancedTokens, lcs: lcsIndices)
+
+  var seen = Set<String>()
   return corrections.compactMap { correction -> VocabularyCandidate? in
    let rawPhrase = correction.raw.map { $0.cleaned }.joined(separator: " ")
    let correctedPhrase = correction.enhanced.map { $0.cleaned }.joined(separator: " ")
@@ -26,6 +29,10 @@ struct VocabularyDiffEngine {
    guard passesFilters(raw: correction.raw, enhanced: correction.enhanced, rawPhrase: rawPhrase, correctedPhrase: correctedPhrase, commonWords: commonWords) else {
     return nil
    }
+
+   let key = correctedPhrase.lowercased()
+   guard !seen.contains(key) else { return nil }
+   seen.insert(key)
 
    return VocabularyCandidate(rawPhrase: rawPhrase, correctedPhrase: correctedPhrase)
   }
@@ -40,7 +47,8 @@ struct VocabularyDiffEngine {
  }
 
  private static func tokenize(_ text: String) -> [Token] {
-  text.split(separator: " ")
+  let stripped = stripMarkdownFormatting(text)
+  return stripped.split(omittingEmptySubsequences: true, whereSeparator: { $0.isWhitespace })
    .map { substring -> Token in
     let original = String(substring)
     let normalized = original
@@ -51,6 +59,17 @@ struct VocabularyDiffEngine {
     return Token(original: original, normalized: normalized, cleaned: cleaned)
    }
    .filter { !$0.normalized.isEmpty }
+ }
+
+ private static func stripMarkdownFormatting(_ text: String) -> String {
+  var result = text
+  // Remove bullet points (*, -, bullet) at start of lines
+  result = result.replacingOccurrences(of: "(?m)^\\s*[*\\-\u{2022}]\\s+", with: " ", options: .regularExpression)
+  // Remove numbered list markers at start of lines
+  result = result.replacingOccurrences(of: "(?m)^\\s*\\d+\\.\\s+", with: " ", options: .regularExpression)
+  // Remove markdown bold/italic markers
+  result = result.replacingOccurrences(of: "[*_]{1,3}", with: "", options: .regularExpression)
+  return result
  }
 
  // MARK: - LCS
@@ -96,8 +115,9 @@ struct VocabularyDiffEngine {
  // MARK: - Correction Extraction
 
  private struct CorrectionPair {
-  let raw: [Token]
-  let enhanced: [Token]
+  var raw: [Token]
+  var enhanced: [Token]
+  var enhancedStartIndex: Int
  }
 
  private static func extractCorrections(rawTokens: [Token], enhancedTokens: [Token], lcs: [LCSPair]) -> [CorrectionPair] {
@@ -110,7 +130,7 @@ struct VocabularyDiffEngine {
    let enhancedGap = Array(enhancedTokens[enhancedPos..<pair.enhancedIndex])
 
    if !rawGap.isEmpty && !enhancedGap.isEmpty {
-    corrections.append(CorrectionPair(raw: rawGap, enhanced: enhancedGap))
+    corrections.append(CorrectionPair(raw: rawGap, enhanced: enhancedGap, enhancedStartIndex: enhancedPos))
    }
 
    rawPos = pair.rawIndex + 1
@@ -120,10 +140,51 @@ struct VocabularyDiffEngine {
   let rawGap = Array(rawTokens[rawPos...])
   let enhancedGap = Array(enhancedTokens[enhancedPos...])
   if !rawGap.isEmpty && !enhancedGap.isEmpty {
-   corrections.append(CorrectionPair(raw: rawGap, enhanced: enhancedGap))
+   corrections.append(CorrectionPair(raw: rawGap, enhanced: enhancedGap, enhancedStartIndex: enhancedPos))
   }
 
   return corrections
+ }
+
+ // MARK: - Compound Name Expansion
+
+ /// When a correction produces a capitalized word like "Claude", check if the
+ /// next LCS-matched token is also capitalized (e.g. "Code") and absorb it
+ /// to form the full proper noun "Claude Code".
+ private static func expandCompoundNames(corrections: inout [CorrectionPair], enhancedTokens: [Token], lcs: [LCSPair]) {
+  let matchedEnhancedIndices = Set(lcs.map { $0.enhancedIndex })
+
+  for i in corrections.indices {
+   let correction = corrections[i]
+
+   // Only expand if the corrected phrase contains at least one capitalized word
+   guard correction.enhanced.contains(where: { $0.cleaned.first?.isUppercase == true }) else { continue }
+
+   // Look at tokens immediately following this correction in the enhanced text
+   let enhancedEndIndex = correction.enhancedStartIndex + correction.enhanced.count
+   var expandedEnhanced = correction.enhanced
+   var nextIndex = enhancedEndIndex
+
+   while nextIndex < enhancedTokens.count {
+    // Stop at sentence boundaries -- if the last token ends with . ! ? then the
+    // next capitalized word is a new sentence, not part of a compound name
+    if let lastOriginal = expandedEnhanced.last?.original,
+       let lastChar = lastOriginal.last,
+       ".!?".contains(lastChar) {
+     break
+    }
+    let nextToken = enhancedTokens[nextIndex]
+    // Only absorb LCS-matched tokens that continue a proper noun phrase (capitalized)
+    guard matchedEnhancedIndices.contains(nextIndex),
+          nextToken.cleaned.first?.isUppercase == true else { break }
+    expandedEnhanced.append(nextToken)
+    nextIndex += 1
+   }
+
+   if expandedEnhanced.count > correction.enhanced.count {
+    corrections[i].enhanced = expandedEnhanced
+   }
+  }
  }
 
  // MARK: - Filters
@@ -136,8 +197,9 @@ struct VocabularyDiffEngine {
    return false
   }
 
-  // Skip runs longer than 4 tokens
-  if raw.count > 4 || enhanced.count > 4 {
+  // Skip runs longer than 4 raw tokens or 6 enhanced tokens
+  // (enhanced limit is higher to accommodate compound proper nouns from expansion)
+  if raw.count > 4 || enhanced.count > 6 {
    return false
   }
 

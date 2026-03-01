@@ -46,6 +46,8 @@ enum AppDefaults {
             // Enhancement
             "enhancementMode": "off",
             "isToggleEnhancementShortcutEnabled": true,
+            "backgroundEnhancementEnabled": false,
+            "vocabularyExtractionEnabled": true,
 
             // Model
             "PrewarmModelOnWake": true,

@@ -422,7 +422,7 @@ class WhisperState: NSObject, ObservableObject {
  let effectiveMode: EnhancementMode = if promptDetectionResult?.shouldEnableAI == true {
  .on
  } else {
- enhancementService.enhancementMode
+ enhancementService.effectiveEnhancementMode
  }
 
  switch effectiveMode {

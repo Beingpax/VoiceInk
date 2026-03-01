@@ -52,22 +52,7 @@ struct MenuBarView: View {
             
             Divider()
             
-            Menu {
-                ForEach(EnhancementMode.allCases, id: \.self) { mode in
-                    Button {
-                        enhancementService.enhancementMode = mode
-                    } label: {
-                        HStack {
-                            Text(mode.displayName)
-                            if enhancementService.enhancementMode == mode {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Text("AI Enhancement: \(enhancementService.enhancementMode.displayName)")
-            }
+            Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
             
             Menu {
                 ForEach(enhancementService.allPrompts) { prompt in

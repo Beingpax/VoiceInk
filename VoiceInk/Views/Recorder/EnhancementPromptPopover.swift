@@ -7,18 +7,16 @@ struct EnhancementPromptPopover: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Enhancement Mode picker at the top
-            VStack(alignment: .leading, spacing: 4) {
+            // Enhancement toggle at the top
+            HStack {
                 Text("AI Enhancement")
                     .foregroundColor(.white.opacity(0.9))
                     .font(.headline)
                     .lineLimit(1)
-                Picker("", selection: $enhancementService.enhancementMode) {
-                    ForEach(EnhancementMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
+                Spacer()
+                Toggle("", isOn: $enhancementService.isEnhancementEnabled)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
             }
             .padding(.horizontal)
             .padding(.top, 8)
@@ -33,11 +31,11 @@ struct EnhancementPromptPopover: View {
                         EnhancementPromptRow(
                             prompt: prompt,
                             isSelected: selectedPrompt?.id == prompt.id,
-                            isDisabled: enhancementService.enhancementMode == .off,
+                            isDisabled: !enhancementService.isEnhancementEnabled,
                             action: {
                                 // If enhancement is off, enable it
-                                if enhancementService.enhancementMode == .off {
-                                    enhancementService.enhancementMode = .on
+                                if !enhancementService.isEnhancementEnabled {
+                                    enhancementService.isEnhancementEnabled = true
                                 }
                                 enhancementService.setActivePrompt(prompt)
                                 selectedPrompt = prompt

@@ -169,12 +169,7 @@ class MiniRecorderShortcutManager: ObservableObject {
                 guard let self = self,
                       await self.whisperState.isMiniRecorderVisible,
                       let enhancementService = await self.whisperState.getEnhancementService() else { return }
-                // Cycle: off -> on -> background -> off
-                switch enhancementService.enhancementMode {
-                case .off: enhancementService.enhancementMode = .on
-                case .on: enhancementService.enhancementMode = .background
-                case .background: enhancementService.enhancementMode = .off
-                }
+                enhancementService.isEnhancementEnabled.toggle()
             }
         }
     }
@@ -272,8 +267,8 @@ class MiniRecorderShortcutManager: ObservableObject {
                 
                 let availablePrompts = enhancementService.allPrompts
                 if index < availablePrompts.count {
-                    if enhancementService.enhancementMode == .off {
-                        enhancementService.enhancementMode = .on
+                    if !enhancementService.isEnhancementEnabled {
+                        enhancementService.isEnhancementEnabled = true
                     }
 
                     enhancementService.setActivePrompt(availablePrompts[index])
