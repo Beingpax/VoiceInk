@@ -268,9 +268,11 @@ class AIService: ObservableObject {
         loadSavedOpenRouterModels()
 
         ollamaService.objectWillChange
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
         localMLXService.objectWillChange
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
 

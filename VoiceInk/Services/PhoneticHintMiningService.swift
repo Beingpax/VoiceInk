@@ -39,7 +39,10 @@ class PhoneticHintMiningService {
    uniquingKeysWith: { first, _ in first }
   )
 
-  let transcriptionDescriptor = FetchDescriptor<Transcription>()
+  var transcriptionDescriptor = FetchDescriptor<Transcription>(
+   predicate: #Predicate { $0.enhancedText != nil }
+  )
+  transcriptionDescriptor.propertiesToFetch = [\.text, \.enhancedText]
   guard let transcriptions = try? context.fetch(transcriptionDescriptor) else {
    return []
   }

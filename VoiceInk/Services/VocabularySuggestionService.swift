@@ -83,24 +83,29 @@ class VocabularySuggestionService: NSObject {
 
    let existingWords = CustomVocabularyService.shared.existingWords(from: context)
 
+   let wordDescriptor = FetchDescriptor<VocabularyWord>()
+   let vocabLookup: [String: VocabularyWord]
+   if let allWords = try? context.fetch(wordDescriptor) {
+    vocabLookup = Dictionary(allWords.map { ($0.word.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
+   } else {
+    vocabLookup = [:]
+   }
+
    var didInsertOrUpdate = false
 
    for candidate in candidates {
     // Skip if already in vocabulary
     if existingWords.contains(candidate.correctedPhrase.lowercased()) {
      if UserDefaults.standard.bool(forKey: "autoGeneratePhoneticHints"),
-        PhoneticHintMiningService.isPlausiblePhoneticHint(raw: candidate.rawPhrase, corrected: candidate.correctedPhrase) {
-      let wordDescriptor = FetchDescriptor<VocabularyWord>()
-      if let allWords = try? context.fetch(wordDescriptor),
-         let vocabWord = allWords.first(where: { $0.word.lowercased() == candidate.correctedPhrase.lowercased() }) {
-       let merged = PhoneticHintMiningService.mergeHints(
-        existing: vocabWord.phoneticHints,
-        new: [candidate.rawPhrase]
-       )
-       if merged != vocabWord.phoneticHints {
-        vocabWord.phoneticHints = merged
-        didInsertOrUpdate = true
-       }
+        PhoneticHintMiningService.isPlausiblePhoneticHint(raw: candidate.rawPhrase, corrected: candidate.correctedPhrase),
+        let vocabWord = vocabLookup[candidate.correctedPhrase.lowercased()] {
+      let merged = PhoneticHintMiningService.mergeHints(
+       existing: vocabWord.phoneticHints,
+       new: [candidate.rawPhrase]
+      )
+      if merged != vocabWord.phoneticHints {
+       vocabWord.phoneticHints = merged
+       didInsertOrUpdate = true
       }
      }
      continue

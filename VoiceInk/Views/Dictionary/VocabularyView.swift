@@ -433,7 +433,9 @@ struct PhoneticHintReviewSheet: View {
         do {
             try modelContext.save()
             NotificationCenter.default.post(name: .promptDidChange, object: nil)
-        } catch {}
+        } catch {
+            modelContext.rollback()
+        }
 
         dismiss()
     }
