@@ -12,6 +12,11 @@ struct APIKeyManagementView: View {
     @State private var selectedOllamaModel: String = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var isCheckingOllama = false
     @State private var isEditingURL = false
+    @State private var localMLXBaseURL: String = UserDefaults.standard.string(forKey: "localMLXBaseURL") ?? "http://localhost:8090"
+    @State private var localMLXModels: [String] = []
+    @State private var selectedLocalMLXModel: String = UserDefaults.standard.string(forKey: "localMLXSelectedModel") ?? ""
+    @State private var isCheckingLocalMLX = false
+    @State private var isEditingLocalMLXURL = false
     
     var body: some View {
         Section("AI Provider Integration") {
@@ -24,7 +29,7 @@ struct APIKeyManagementView: View {
                 .pickerStyle(.automatic)
                 .tint(.blue)
                 
-                if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
+                if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama && aiService.selectedProvider != .local {
                     Spacer()
                     Circle()
                         .fill(Color.green)
@@ -32,6 +37,26 @@ struct APIKeyManagementView: View {
                     Text("Connected")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                } else if aiService.selectedProvider == .local {
+                    Spacer()
+                    if isCheckingLocalMLX {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else if !localMLXModels.isEmpty {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                        Text("Connected")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                        Text("Disconnected")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
                 } else if aiService.selectedProvider == .ollama {
                     Spacer()
                     if isCheckingOllama {
@@ -55,7 +80,9 @@ struct APIKeyManagementView: View {
                 }
             }
             .onChange(of: aiService.selectedProvider) { oldValue, newValue in
-                if aiService.selectedProvider == .ollama {
+                if newValue == .local {
+                    checkLocalMLXConnection()
+                } else if newValue == .ollama {
                     checkOllamaConnection()
                 }
             }
@@ -100,6 +127,7 @@ struct APIKeyManagementView: View {
                     }
                     
                 } else if !aiService.availableModels.isEmpty &&
+                            aiService.selectedProvider != .local &&
                             aiService.selectedProvider != .ollama &&
                             aiService.selectedProvider != .custom {
                     Picker("Model", selection: Binding(
@@ -114,7 +142,48 @@ struct APIKeyManagementView: View {
 
                 Divider()
 
-                if aiService.selectedProvider == .ollama {
+                if aiService.selectedProvider == .local {
+                    if isEditingLocalMLXURL {
+                        HStack {
+                            TextField("Server URL", text: $localMLXBaseURL)
+                                .textFieldStyle(.roundedBorder)
+
+                            Button("Save") {
+                                aiService.updateLocalMLXBaseURL(localMLXBaseURL)
+                                checkLocalMLXConnection()
+                                isEditingLocalMLXURL = false
+                            }
+                        }
+                    } else {
+                        HStack {
+                            Text("Server: \(localMLXBaseURL)")
+                            Spacer()
+                            Button("Edit") { isEditingLocalMLXURL = true }
+                            Button(action: {
+                                localMLXBaseURL = "http://localhost:8090"
+                                aiService.updateLocalMLXBaseURL(localMLXBaseURL)
+                                checkLocalMLXConnection()
+                            }) {
+                                Image(systemName: "arrow.counterclockwise")
+                            }
+                            .help("Reset to default")
+                        }
+                    }
+
+                    if !localMLXModels.isEmpty {
+                        Divider()
+
+                        Picker("Model", selection: $selectedLocalMLXModel) {
+                            ForEach(localMLXModels, id: \.self) { model in
+                                Text(model).tag(model)
+                            }
+                        }
+                        .onChange(of: selectedLocalMLXModel) { oldValue, newValue in
+                            aiService.updateSelectedLocalMLXModel(newValue)
+                        }
+                    }
+
+                } else if aiService.selectedProvider == .ollama {
                     if isEditingURL {
                         HStack {
                             TextField("Base URL", text: $ollamaBaseURL)
@@ -256,12 +325,33 @@ struct APIKeyManagementView: View {
             Text(alertMessage)
         }
         .onAppear {
-            if aiService.selectedProvider == .ollama {
+            if aiService.selectedProvider == .local {
+                checkLocalMLXConnection()
+            } else if aiService.selectedProvider == .ollama {
                 checkOllamaConnection()
             }
         }
     }
     
+    private func checkLocalMLXConnection() {
+        isCheckingLocalMLX = true
+        aiService.checkLocalMLXConnection { connected in
+            if connected {
+                Task {
+                    localMLXModels = await aiService.fetchLocalMLXModels()
+                    if let first = localMLXModels.first, selectedLocalMLXModel.isEmpty {
+                        selectedLocalMLXModel = first
+                        aiService.updateSelectedLocalMLXModel(first)
+                    }
+                    isCheckingLocalMLX = false
+                }
+            } else {
+                localMLXModels = []
+                isCheckingLocalMLX = false
+            }
+        }
+    }
+
     private func checkOllamaConnection() {
         isCheckingOllama = true
         aiService.checkOllamaConnection { connected in
