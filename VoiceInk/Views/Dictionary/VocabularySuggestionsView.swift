@@ -117,6 +117,7 @@ struct VocabularySuggestionsView: View {
 
   do {
    try modelContext.save()
+   NotificationCenter.default.post(name: .promptDidChange, object: nil)
   } catch {
    modelContext.delete(newWord)
    suggestion.status = "pending"
@@ -146,6 +147,7 @@ struct VocabularySuggestionsView: View {
 
   do {
    try modelContext.save()
+   NotificationCenter.default.post(name: .promptDidChange, object: nil)
   } catch {
    for word in insertedWords {
     modelContext.delete(word)

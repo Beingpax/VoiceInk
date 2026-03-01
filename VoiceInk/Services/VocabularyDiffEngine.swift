@@ -19,6 +19,11 @@ struct VocabularyDiffEngine {
 
   expandCompoundNames(corrections: &corrections, enhancedTokens: enhancedTokens, lcs: lcsIndices)
 
+  // Trim leading/trailing common words from corrections
+  if !commonWords.isEmpty {
+   trimCommonWords(corrections: &corrections, commonWords: commonWords)
+  }
+
   var seen = Set<String>()
   return corrections.compactMap { correction -> VocabularyCandidate? in
    let rawPhrase = correction.raw.map { $0.cleaned }.joined(separator: " ")
@@ -187,6 +192,38 @@ struct VocabularyDiffEngine {
   }
  }
 
+ // MARK: - Common Word Trimming
+
+ /// Strips leading and trailing common words from corrections so that
+ /// "like MacUpdate" becomes just "MacUpdate" and "for there's Mac update"
+ /// gets cleaned up on the raw side too.
+ private static func trimCommonWords(corrections: inout [CorrectionPair], commonWords: Set<String>) {
+  for i in corrections.indices {
+   var enhanced = corrections[i].enhanced
+   var raw = corrections[i].raw
+
+   // Trim leading common words from enhanced side
+   while enhanced.count > 1, commonWords.contains(enhanced[0].normalized) {
+    enhanced.removeFirst()
+   }
+   // Trim trailing common words from enhanced side
+   while enhanced.count > 1, commonWords.contains(enhanced[enhanced.count - 1].normalized) {
+    enhanced.removeLast()
+   }
+   // Trim leading common words from raw side
+   while raw.count > 1, commonWords.contains(raw[0].normalized) {
+    raw.removeFirst()
+   }
+   // Trim trailing common words from raw side
+   while raw.count > 1, commonWords.contains(raw[raw.count - 1].normalized) {
+    raw.removeLast()
+   }
+
+   corrections[i].enhanced = enhanced
+   corrections[i].raw = raw
+  }
+ }
+
  // MARK: - Filters
 
  private static let fillerWords: Set<String> = Set(FillerWordManager.defaultFillerWords)
@@ -221,6 +258,16 @@ struct VocabularyDiffEngine {
    return false
   }
 
+  // Skip if the only difference is hyphenation (e.g. "Mac only" vs "Mac-only")
+  if isOnlyHyphenationChange(raw: raw, enhanced: enhanced) {
+   return false
+  }
+
+  // Skip if the only difference is possessive form (e.g. "users" vs "user's")
+  if isOnlyPossessiveChange(raw: raw, enhanced: enhanced) {
+   return false
+  }
+
   // Skip if ALL words in the corrected phrase are common words.
   // Vocabulary suggestions should be for terms Whisper doesn't know --
   // proper nouns, brand names, technical jargon -- not common rephrasing.
@@ -246,5 +293,20 @@ struct VocabularyDiffEngine {
    }
   }
   return true
+ }
+
+ /// Detects "Mac only" vs "Mac-only" -- joining/splitting by hyphen
+ private static func isOnlyHyphenationChange(raw: [Token], enhanced: [Token]) -> Bool {
+  let rawJoined = raw.map { $0.normalized }.joined()
+  let enhancedJoined = enhanced.map { $0.normalized }.joined()
+  return rawJoined == enhancedJoined
+ }
+
+ /// Detects "users" vs "user's" or "apps" vs "app's"
+ private static func isOnlyPossessiveChange(raw: [Token], enhanced: [Token]) -> Bool {
+  guard raw.count == 1, enhanced.count == 1 else { return false }
+  let r = raw[0].normalized
+  let e = enhanced[0].normalized.replacingOccurrences(of: "'s", with: "s")
+  return r == e
  }
 }

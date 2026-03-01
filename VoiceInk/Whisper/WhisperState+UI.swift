@@ -167,10 +167,14 @@ extension WhisperState {
  
  private func updateContextPrompt() async {
  // Always reload the prompt from UserDefaults to ensure we have the latest
- let currentPrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? whisperPrompt.transcriptionPrompt
- 
+ let basePrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? whisperPrompt.transcriptionPrompt
+
+ // Append custom vocabulary words to bias Whisper toward recognizing them
+ let vocabularyString = CustomVocabularyService.shared.getCustomVocabulary(from: modelContext)
+ let fullPrompt = vocabularyString.isEmpty ? basePrompt : basePrompt + " " + vocabularyString
+
  if let context = whisperContext {
- await context.setPrompt(currentPrompt)
+ await context.setPrompt(fullPrompt)
  }
  }
 } 
