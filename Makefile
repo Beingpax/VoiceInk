@@ -48,6 +48,10 @@ local: check setup
 	@echo "Building VoiceInk for local use (no Apple Developer certificate required)..."
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-xcconfig LocalBuild.xcconfig \
+		CODE_SIGN_IDENTITY="-" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=YES \
+		DEVELOPMENT_TEAM="" \
 		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/VoiceInk/VoiceInk.local.entitlements \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		build

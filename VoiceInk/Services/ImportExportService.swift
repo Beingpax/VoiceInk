@@ -235,7 +235,15 @@ class ImportExportService {
                 do {
                     let jsonData = try Data(contentsOf: url)
                     let decoder = JSONDecoder()
-                    decoder.dateDecodingStrategy = .iso8601
+                    decoder.dateDecodingStrategy = .custom { decoder in
+                        let container = try decoder.singleValueContainer()
+                        if let dateString = try? container.decode(String.self) {
+                            let formatter = ISO8601DateFormatter()
+                            if let date = formatter.date(from: dateString) { return date }
+                        }
+                        let timestamp = try container.decode(Double.self)
+                        return Date(timeIntervalSinceReferenceDate: timestamp)
+                    }
                     let importedSettings = try decoder.decode(VoiceInkExportedSettings.self, from: jsonData)
                     
                     if importedSettings.version != self.currentSettingsVersion {
