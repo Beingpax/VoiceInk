@@ -112,13 +112,13 @@ class WhisperModelManager: ObservableObject {
 
     // MARK: - Model Download & Management
 
-    private func downloadFileWithProgress(from url: URL, progressKey: String) async throws -> Data {
+    private func downloadFileWithProgress(from url: URL, progressKey: String) async throws -> URL {
         let destinationURL = modelsDirectory.appendingPathComponent(UUID().uuidString)
 
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
             let finished = ManagedAtomic(false)
 
-            func finishOnce(_ result: Result<Data, Error>) {
+            func finishOnce(_ result: Result<URL, Error>) {
                 if finished.exchange(true, ordering: .acquiring) == false {
                     continuation.resume(with: result)
                 }
@@ -139,9 +139,7 @@ class WhisperModelManager: ObservableObject {
 
                 do {
                     try FileManager.default.moveItem(at: tempURL, to: destinationURL)
-                    let data = try Data(contentsOf: destinationURL, options: .mappedIfSafe)
-                    finishOnce(.success(data))
-                    try? FileManager.default.removeItem(at: destinationURL)
+                    finishOnce(.success(destinationURL))
                 } catch {
                     finishOnce(.failure(error))
                 }
@@ -167,16 +165,8 @@ class WhisperModelManager: ObservableObject {
                 }
             }
 
-            Task {
-                await withTaskCancellationHandler {
-                    observation.invalidate()
-                    if finished.exchange(true, ordering: .acquiring) == false {
-                        continuation.resume(throwing: CancellationError())
-                    }
-                } operation: {
-                    await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
-                }
-            }
+            // Keep a reference to the observation so it isn't deallocated before the download completes
+            _ = observation
         }
     }
 
@@ -208,20 +198,20 @@ class WhisperModelManager: ObservableObject {
 
     private func downloadMainModel(_ model: LocalModel, from url: URL) async throws -> WhisperModel {
         let progressKeyMain = model.name + "_main"
-        let data = try await downloadFileWithProgress(from: url, progressKey: progressKeyMain)
+        let tempURL = try await downloadFileWithProgress(from: url, progressKey: progressKeyMain)
 
         let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
-        try data.write(to: destinationURL)
+        try FileManager.default.moveItem(at: tempURL, to: destinationURL)
 
         return WhisperModel(name: model.name, url: destinationURL)
     }
 
     private func downloadAndSetupCoreMLModel(for model: WhisperModel, from url: URL) async throws -> WhisperModel {
         let progressKeyCoreML = model.name + "_coreml"
-        let coreMLData = try await downloadFileWithProgress(from: url, progressKey: progressKeyCoreML)
+        let tempURL = try await downloadFileWithProgress(from: url, progressKey: progressKeyCoreML)
 
         let coreMLZipPath = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
-        try coreMLData.write(to: coreMLZipPath)
+        try FileManager.default.moveItem(at: tempURL, to: coreMLZipPath)
 
         return try await unzipAndSetupCoreMLModel(for: model, zipPath: coreMLZipPath, progressKey: progressKeyCoreML)
     }
@@ -305,12 +295,10 @@ class WhisperModelManager: ObservableObject {
         return didClearCurrentModel
     }
 
-    func unloadModel() {
-        Task {
-            await whisperContext?.releaseResources()
-            whisperContext = nil
-            isModelLoaded = false
-        }
+    func unloadModel() async {
+        await whisperContext?.releaseResources()
+        whisperContext = nil
+        isModelLoaded = false
     }
 
     func clearDownloadedModels() async {

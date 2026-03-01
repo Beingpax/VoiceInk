@@ -181,7 +181,16 @@ class RecordingCoordinator: ObservableObject {
     }
 
     private func requestRecordPermission(response: @escaping (Bool) -> Void) {
-        response(true)
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            response(true)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { granted in
+                DispatchQueue.main.async { response(granted) }
+            }
+        default:
+            response(false)
+        }
     }
 
     func transcribeAudio(on transcription: Transcription) async {

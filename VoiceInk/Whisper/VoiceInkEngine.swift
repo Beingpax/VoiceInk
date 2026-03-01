@@ -238,8 +238,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
     }
 
-    func unloadModel() {
-        modelManager.unloadModel()
+    func unloadModel() async {
+        await modelManager.unloadModel()
         recordingCoordinator.recordedFile = nil
     }
 

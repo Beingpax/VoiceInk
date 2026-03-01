@@ -131,10 +131,9 @@ class ModelManager: ObservableObject {
 
         if model.provider != .local {
             whisperModelManager.loadedLocalModel = nil
-        }
-
-        if model.provider != .local {
             whisperModelManager.isModelLoaded = true
+        } else {
+            whisperModelManager.isModelLoaded = false
         }
 
         NotificationCenter.default.post(name: .didChangeModel, object: nil, userInfo: ["modelName": model.name])
@@ -154,9 +153,10 @@ class ModelManager: ObservableObject {
 
         allAvailableModels = models
 
+        // Update reference only — no notifications since the selection hasn't changed
         if let currentName = currentModelName,
            let updatedModel = allAvailableModels.first(where: { $0.name == currentName }) {
-            setDefaultTranscriptionModel(updatedModel)
+            currentTranscriptionModel = updatedModel
         }
     }
 
@@ -180,8 +180,8 @@ class ModelManager: ObservableObject {
         refreshAllAvailableModels()
     }
 
-    func unloadModel() {
-        whisperModelManager.unloadModel()
+    func unloadModel() async {
+        await whisperModelManager.unloadModel()
     }
 
     func cleanupModelResources(serviceRegistry: TranscriptionServiceRegistry?) async {

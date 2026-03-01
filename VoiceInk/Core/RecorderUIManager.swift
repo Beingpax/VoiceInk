@@ -25,6 +25,7 @@ class RecorderUIManager: NSObject, ObservableObject {
 
     @Published var isMiniRecorderVisible = false {
         didSet {
+            guard isMiniRecorderVisible != oldValue else { return }
             DispatchQueue.main.async { [self] in
                 if isMiniRecorderVisible {
                     showRecorderPanel()

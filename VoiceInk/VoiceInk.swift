@@ -250,7 +250,9 @@ struct VoiceInkApp: App {
                     })
                     .onDisappear {
                         AnnouncementsService.shared.stop()
-                        engine.unloadModel()
+                        Task {
+                            await engine.unloadModel()
+                        }
                         
                         // Stop the automatic audio cleanup process
                         audioCleanupManager.stopAutomaticCleanup()
