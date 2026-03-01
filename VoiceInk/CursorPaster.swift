@@ -13,6 +13,7 @@ class CursorPaster {
     private static var shouldUseAppleScript = UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
     private static var restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
     static var appendTrailingSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+    private static var pasteMethod = UserDefaults.standard.string(forKey: "pasteMethod") ?? "default"
 
     private static let prefsObserver: NSObjectProtocol = {
         NotificationCenter.default.addObserver(
@@ -23,6 +24,7 @@ class CursorPaster {
             shouldUseAppleScript = UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
             restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
             appendTrailingSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+            pasteMethod = UserDefaults.standard.string(forKey: "pasteMethod") ?? "default"
         }
     }()
 
@@ -32,6 +34,15 @@ class CursorPaster {
 
     static func pasteAtCursor(_ text: String) {
         _ = prefsObserver
+
+        // Type-out bypasses the clipboard entirely
+        let effectiveMethod = resolvedPasteMethod
+        if effectiveMethod == "typeOut" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                typeText(text)
+            }
+            return
+        }
 
         let pasteboard = NSPasteboard.general
 
@@ -52,7 +63,7 @@ class CursorPaster {
         ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            if shouldUseAppleScript {
+            if effectiveMethod == "appleScript" {
                 pasteUsingAppleScript()
             } else {
                 pasteFromClipboard()
@@ -69,6 +80,15 @@ class CursorPaster {
                 }
             }
         }
+    }
+
+    // Resolve paste method from both old toggle and new picker
+    private static var resolvedPasteMethod: String {
+        if pasteMethod != "default" {
+            return pasteMethod
+        }
+        // Backwards compatibility: honor the old AppleScript toggle
+        return shouldUseAppleScript ? "appleScript" : "default"
     }
 
     // MARK: - AppleScript paste
@@ -190,6 +210,41 @@ class CursorPaster {
             "com.apple.keylayout.Canadian",
         ]
         return qwertyIDs.contains(id)
+    }
+
+    // MARK: - Type out text
+
+    // Type text character by character using CGEvents.
+    // Bypasses the clipboard, useful for fields that block paste.
+    static func typeText(_ text: String) {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility not trusted — cannot type")
+            return
+        }
+
+        let source = CGEventSource(stateID: .privateState)
+        let chars = Array(text.utf16)
+        // Type in chunks to balance speed and reliability
+        let chunkSize = 20
+        let delayBetweenChunks: TimeInterval = 0.01
+
+        for chunkStart in stride(from: 0, to: chars.count, by: chunkSize) {
+            let chunkEnd = min(chunkStart + chunkSize, chars.count)
+            let chunk = Array(chars[chunkStart..<chunkEnd])
+
+            let delay = Double(chunkStart / chunkSize) * delayBetweenChunks
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                for char in chunk {
+                    var utf16Char = char
+                    let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
+                    let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+                    keyDown?.keyboardSetUnicodeString(stringLength: 1, unicodeString: &utf16Char)
+                    keyUp?.keyboardSetUnicodeString(stringLength: 1, unicodeString: &utf16Char)
+                    keyDown?.post(tap: .cghidEventTap)
+                    keyUp?.post(tap: .cghidEventTap)
+                }
+            }
+        }
     }
 
     // MARK: - Enter key

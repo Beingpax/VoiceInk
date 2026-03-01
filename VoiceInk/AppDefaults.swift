@@ -12,6 +12,8 @@ enum AppDefaults {
             "restoreClipboardAfterPaste": true,
             "clipboardRestoreDelay": 0.25,
             "useAppleScriptPaste": false,
+            "pasteMethod": "default",
+            "typeOutDelay": 3.0,
 
             // Audio & Media
             "isSystemMuteEnabled": true,
@@ -26,6 +28,8 @@ enum AppDefaults {
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,
             "RecorderType": "mini",
+            "recorderScreenSelection": "mouseCursor",
+            "warnNoTextField": true,
 
             // Cleanup
             "IsTranscriptionCleanupEnabled": false,

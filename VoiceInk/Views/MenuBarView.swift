@@ -197,6 +197,10 @@ struct MenuBarView: View {
                 LastTranscriptionService.copyLastTranscription(from: whisperState.modelContext)
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
+
+            Button("Type Last Transcription") {
+                LastTranscriptionService.typeLastTranscription(from: whisperState.modelContext)
+            }
             
             Button("History") {
                 menuBarManager.openHistoryWindow()

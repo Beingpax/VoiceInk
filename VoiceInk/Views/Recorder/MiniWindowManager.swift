@@ -30,14 +30,14 @@ class MiniWindowManager: ObservableObject {
     @objc private func handleHideNotification() {
         hide()
     }
-    func show() {
+    func show(on screen: NSScreen? = nil) {
         if isVisible { return }
 
         if miniPanel == nil {
-            initializeWindow()
+            initializeWindow(on: screen)
         }
         self.isVisible = true
-        miniPanel?.show()
+        miniPanel?.show(on: screen)
     }
 
     func hide() {
@@ -47,8 +47,8 @@ class MiniWindowManager: ObservableObject {
         miniPanel?.orderOut(nil)
     }
 
-    private func initializeWindow() {
-        let metrics = MiniRecorderPanel.calculateWindowMetrics()
+    private func initializeWindow(on screen: NSScreen? = nil) {
+        let metrics = MiniRecorderPanel.calculateWindowMetrics(for: screen)
         let panel = MiniRecorderPanel(contentRect: metrics)
 
         let miniRecorderView = MiniRecorderView(whisperState: whisperState, recorder: recorder)

@@ -11,32 +11,11 @@ class NotchRecorderPanel: KeyablePanel {
     override var canBecomeMain: Bool { false }
     
     private var notchMetrics: (width: CGFloat, height: CGFloat) {
-        if let screen = NSScreen.main {
-            let safeAreaInsets = screen.safeAreaInsets
-            
-            // Simplified height calculation - matching calculateWindowMetrics
-            let notchHeight: CGFloat
-            if safeAreaInsets.top > 0 {
-                // We're definitely on a notched MacBook
-                notchHeight = safeAreaInsets.top
-            } else {
-                // For external displays or non-notched MacBooks, use system menu bar height
-                notchHeight = NSStatusBar.system.thickness
-            }
-            
-            // Get actual notch width from safe area insets
-            let baseNotchWidth: CGFloat = safeAreaInsets.left > 0 ? safeAreaInsets.left * 2 : 200
-            
-            // Calculate total width including controls and padding
-            // 16pt padding on each side + space for controls
-            let controlsWidth: CGFloat = 64 // Space for buttons on each side (increased width)
-            let paddingWidth: CGFloat = 32 // 16pt on each side
-            let totalWidth = baseNotchWidth + controlsWidth * 2 + paddingWidth
-            
-            return (totalWidth, notchHeight)
-        }
-        return (280, 24)  // Increased fallback width
+        let metrics = NotchRecorderPanel.calculateWindowMetrics(for: self.targetScreen ?? NSScreen.main)
+        return (metrics.notchWidth, metrics.notchHeight)
     }
+
+    var targetScreen: NSScreen?
     
     init(contentRect: NSRect) {
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
@@ -78,8 +57,8 @@ class NotchRecorderPanel: KeyablePanel {
         )
     }
     
-    static func calculateWindowMetrics() -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat) {
-        guard let screen = NSScreen.main else {
+    static func calculateWindowMetrics(for screen: NSScreen? = nil) -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat) {
+        guard let screen = screen ?? NSScreen.main else {
             return (NSRect(x: 0, y: 0, width: 280, height: 24), 280, 24)
         }
         
@@ -116,9 +95,9 @@ class NotchRecorderPanel: KeyablePanel {
         return (frame, baseNotchWidth, notchHeight)
     }
     
-    func show() {
-        guard let screen = NSScreen.main else { return }
-        let metrics = NotchRecorderPanel.calculateWindowMetrics()
+    func show(on screen: NSScreen? = nil) {
+        self.targetScreen = screen
+        let metrics = NotchRecorderPanel.calculateWindowMetrics(for: screen)
         setFrame(metrics.frame, display: true)
         orderFrontRegardless()
     }
@@ -128,10 +107,9 @@ class NotchRecorderPanel: KeyablePanel {
     }
     
     @objc private func handleScreenParametersChange() {
-        // Add a small delay to ensure we get the correct screen metrics
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self = self else { return }
-            let metrics = NotchRecorderPanel.calculateWindowMetrics()
+            let metrics = NotchRecorderPanel.calculateWindowMetrics(for: self.targetScreen)
             self.setFrame(metrics.frame, display: true)
         }
     }

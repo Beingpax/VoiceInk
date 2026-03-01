@@ -98,6 +98,41 @@ class LastTranscriptionService: ObservableObject {
         }
     }
     
+    static func typeLastTranscription(from modelContext: ModelContext) {
+        guard let lastTranscription = getLastTranscription(from: modelContext) else {
+            Task { @MainActor in
+                NotificationManager.shared.showNotification(
+                    title: "No transcription available",
+                    type: .error
+                )
+            }
+            return
+        }
+
+        let textToType: String = {
+            if let enhancedText = lastTranscription.enhancedText, !enhancedText.isEmpty {
+                return enhancedText
+            } else {
+                return lastTranscription.text
+            }
+        }()
+
+        let delay = UserDefaults.standard.double(forKey: "typeOutDelay")
+        let delaySeconds = delay > 0 ? delay : 3.0
+
+        Task { @MainActor in
+            NotificationManager.shared.showNotification(
+                title: "Typing in \(Int(delaySeconds))s -- click where you want to type",
+                type: .info,
+                duration: delaySeconds
+            )
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delaySeconds) {
+            CursorPaster.typeText(textToType)
+        }
+    }
+
     static func retryLastTranscription(from modelContext: ModelContext, whisperState: WhisperState) {
         Task { @MainActor in
             guard let lastTranscription = getLastTranscription(from: modelContext),

@@ -29,14 +29,14 @@ class NotchWindowManager: ObservableObject {
         hide()
     }
     
-    func show() {
+    func show(on screen: NSScreen? = nil) {
         if isVisible { return }
 
         if notchPanel == nil {
-            initializeWindow()
+            initializeWindow(on: screen)
         }
         self.isVisible = true
-        notchPanel?.show()
+        notchPanel?.show(on: screen)
     }
 
     func hide() {
@@ -46,8 +46,8 @@ class NotchWindowManager: ObservableObject {
         notchPanel?.orderOut(nil)
     }
 
-    private func initializeWindow() {
-        let metrics = NotchRecorderPanel.calculateWindowMetrics()
+    private func initializeWindow(on screen: NSScreen? = nil) {
+        let metrics = NotchRecorderPanel.calculateWindowMetrics(for: screen)
         let panel = NotchRecorderPanel(contentRect: metrics.frame)
 
         let notchRecorderView = NotchRecorderView(whisperState: whisperState, recorder: recorder)

@@ -53,6 +53,28 @@ class WhisperState: NSObject, ObservableObject {
  UserDefaults.standard.set(recorderType, forKey: "RecorderType")
  }
  }
+
+ @Published var recorderScreenSelection: String = UserDefaults.standard.string(forKey: "recorderScreenSelection") ?? "mouseCursor" {
+ didSet {
+ UserDefaults.standard.set(recorderScreenSelection, forKey: "recorderScreenSelection")
+ }
+ }
+
+ var selectedScreen: NSScreen {
+ switch recorderScreenSelection {
+ case "mouseCursor":
+ return NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) }
+  ?? NSScreen.main
+  ?? NSScreen.screens.first!
+ case "primaryDisplay":
+ return NSScreen.screens.first
+  ?? NSScreen.main
+  ?? NSScreen.screens.first!
+ default: // "activeWindow"
+ return NSScreen.main
+  ?? NSScreen.screens.first!
+ }
+ }
  
  @Published var isMiniRecorderVisible = false {
  didSet {
@@ -510,19 +532,32 @@ class WhisperState: NSObject, ObservableObject {
  """
  }
 
+ let warnEnabled = UserDefaults.standard.bool(forKey: "warnNoTextField")
+ let hasEditableField = EditableTextFieldChecker.isEditableTextFieldFocused()
+
+ if warnEnabled && !hasEditableField {
+ // Copy to clipboard but skip paste
+ let pasteboard = NSPasteboard.general
+ pasteboard.clearContents()
+ pasteboard.setString(textToPaste + (CursorPaster.appendTrailingSpace ? " " : ""), forType: .string)
+ NotificationManager.shared.showNotification(
+  title: "No text field detected -- use Paste Last Transcription to paste",
+  type: .warning,
+  duration: 3.0
+ )
+ recorder.restoreAudio()
+ } else {
  DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
  CursorPaster.pasteAtCursor(textToPaste + (CursorPaster.appendTrailingSpace ? " " : ""))
 
  let powerMode = PowerModeManager.shared
  if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.isAutoSendEnabled {
- // Slight delay to ensure the paste operation completes
- DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
- CursorPaster.pressEnter()
- }
+  DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+  CursorPaster.pressEnter()
+  }
  }
  }
 
- // Restore audio after paste (and auto-send if applicable) completes
  let audioRestoreDelay: TimeInterval
  if let activeConfig = PowerModeManager.shared.currentActiveConfiguration, activeConfig.isAutoSendEnabled {
  audioRestoreDelay = 0.35
@@ -531,6 +566,7 @@ class WhisperState: NSObject, ObservableObject {
  }
  DispatchQueue.main.asyncAfter(deadline: .now() + audioRestoreDelay) { [weak self] in
  self?.recorder.restoreAudio()
+ }
  }
  } else {
  // No text to paste -- restore audio immediately

@@ -8,17 +8,18 @@ extension WhisperState {
  // MARK: - Recorder Panel Management
  
  func showRecorderPanel() {
+ let screen = selectedScreen
  logger.notice(" Showing \(self.recorderType, privacy: .public) recorder")
  if recorderType == "notch" {
  if notchWindowManager == nil {
  notchWindowManager = NotchWindowManager(whisperState: self, recorder: recorder)
  }
- notchWindowManager?.show()
+ notchWindowManager?.show(on: screen)
  } else {
  if miniWindowManager == nil {
  miniWindowManager = MiniWindowManager(whisperState: self, recorder: recorder)
  }
- miniWindowManager?.show()
+ miniWindowManager?.show(on: screen)
  }
  }
  

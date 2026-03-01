@@ -20,6 +20,9 @@ struct SettingsView: View {
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 0.25
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
+    @AppStorage("pasteMethod") private var pasteMethod = "default"
+    @AppStorage("typeOutDelay") private var typeOutDelay = 3.0
+    @AppStorage("warnNoTextField") private var warnNoTextField = true
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = false
@@ -121,6 +124,11 @@ struct SettingsView: View {
                         .controlSize(.small)
                 }
 
+                LabeledContent("Type Last Transcription") {
+                    KeyboardShortcuts.Recorder(for: .typeLastTranscription)
+                        .controlSize(.small)
+                }
+
                 // Custom Cancel - hierarchical
                 ExpandableSettingsRow(
                     isExpanded: $isCustomCancelExpanded,
@@ -205,11 +213,31 @@ struct SettingsView: View {
                     }
                 }
 
-                // AppleScript Paste
-                Toggle(isOn: $useAppleScriptPaste) {
+                // Paste Method
+                Picker(selection: $pasteMethod) {
+                    Text("Paste").tag("default")
+                    Text("AppleScript").tag("appleScript")
+                    Text("Type Out").tag("typeOut")
+                } label: {
                     HStack(spacing: 4) {
-                        Text("Use AppleScript Paste")
-                        InfoTip("Enable this if pasting doesn't work with your keyboard layout (e.g. Neo2). Uses AppleScript instead of simulated key events.")
+                        Text("Paste Method")
+                        InfoTip("Paste uses simulated Cmd+V. AppleScript works with custom keyboard layouts (e.g. Neo2). Type Out types text character-by-character, bypassing paste restrictions in some apps.")
+                    }
+                }
+
+                Picker("Type Out Delay", selection: $typeOutDelay) {
+                    Text("1s").tag(1.0)
+                    Text("2s").tag(2.0)
+                    Text("3s").tag(3.0)
+                    Text("5s").tag(5.0)
+                    Text("8s").tag(8.0)
+                }
+
+                // Text Field Detection
+                Toggle(isOn: $warnNoTextField) {
+                    HStack(spacing: 4) {
+                        Text("Warn When No Text Field Detected")
+                        InfoTip("Shows a warning when no editable text field is focused. Transcription will be copied to clipboard instead of pasted.")
                     }
                 }
             }
@@ -225,6 +253,11 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
 
+                Picker("Display", selection: $whisperState.recorderScreenSelection) {
+                    Text("Active Window").tag("activeWindow")
+                    Text("Mouse Cursor").tag("mouseCursor")
+                    Text("Primary Display").tag("primaryDisplay")
+                }
             }
 
             // MARK: - Experimental
