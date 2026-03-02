@@ -111,6 +111,14 @@ class RecordingCoordinator: ObservableObject {
 
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
+                            // Guard against cancellation/dismiss that occurred while
+                            // CoreAudio was initialising on the background thread.
+                            guard self.recordingState != .busy, !self.shouldCancelRecording else {
+                                self.recorder.stopRecording()
+                                self.recordedFile = nil
+                                return
+                            }
+
                             await MainActor.run {
                                 self.recordingState = .recording
                             }
