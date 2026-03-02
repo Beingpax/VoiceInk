@@ -214,6 +214,14 @@ class WhisperState: NSObject, ObservableObject {
                             // Start recording immediately — no waiting for network
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
+                            // Guard against cancellation that occurred while CoreAudio
+                            // was initialising on the background thread.
+                            guard self.isMiniRecorderVisible, !self.shouldCancelRecording else {
+                                self.recorder.stopRecording()
+                                self.recordedFile = nil
+                                return
+                            }
+
                             await MainActor.run {
                                 self.recordingState = .recording
                             }

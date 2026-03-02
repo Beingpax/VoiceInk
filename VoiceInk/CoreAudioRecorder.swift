@@ -5,7 +5,7 @@ import AVFoundation
 import os
 
 // MARK: - Core Audio Recorder (AUHAL-based, does not change system default device)
-final class CoreAudioRecorder {
+final class CoreAudioRecorder: @unchecked Sendable {
 
     // MARK: - Properties
 
