@@ -124,7 +124,13 @@ class WhisperModelManager: ObservableObject {
                 }
             }
 
+            // Holds the KVO observation so it stays alive until the download completes
+            var observationHolder: NSKeyValueObservation?
+
             let task = URLSession.shared.downloadTask(with: url) { tempURL, response, error in
+                // Prevent early deallocation of the KVO observation
+                withExtendedLifetime(observationHolder) {}
+
                 if let error = error {
                     finishOnce(.failure(error))
                     return
@@ -150,7 +156,7 @@ class WhisperModelManager: ObservableObject {
             var lastUpdateTime = Date()
             var lastProgressValue: Double = 0
 
-            let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
+            observationHolder = task.progress.observe(\.fractionCompleted) { progress, _ in
                 let currentTime = Date()
                 let timeSinceLastUpdate = currentTime.timeIntervalSince(lastUpdateTime)
                 let currentProgress = round(progress.fractionCompleted * 100) / 100
@@ -164,9 +170,6 @@ class WhisperModelManager: ObservableObject {
                     }
                 }
             }
-
-            // Keep a reference to the observation so it isn't deallocated before the download completes
-            _ = observation
         }
     }
 

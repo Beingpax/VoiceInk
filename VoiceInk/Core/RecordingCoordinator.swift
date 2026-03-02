@@ -175,6 +175,13 @@ class RecordingCoordinator: ObservableObject {
                     }
                 } else {
                     logger.error("Recording permission denied.")
+                    Task {
+                        await NotificationManager.shared.showNotification(
+                            title: "Microphone access denied. Enable it in System Settings → Privacy & Security → Microphone.",
+                            type: .error,
+                            duration: 5.0
+                        )
+                    }
                 }
             }
         }

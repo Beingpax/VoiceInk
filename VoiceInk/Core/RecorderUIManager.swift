@@ -6,6 +6,7 @@ import os
 class RecorderUIManager: NSObject, ObservableObject {
     @Published var recorderType: String = UserDefaults.standard.string(forKey: "RecorderType") ?? "mini" {
         didSet {
+            guard recorderType != oldValue else { return }
             if isMiniRecorderVisible {
                 if oldValue == "notch" {
                     notchWindowManager?.hide()
