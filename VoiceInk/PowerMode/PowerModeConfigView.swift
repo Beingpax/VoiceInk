@@ -53,7 +53,7 @@ struct ConfigurationView: View {
         return model.provider == .parakeet || model.provider == .gemini
     }
     
-    // Whisper state for model selection
+    // Engine for model selection
     @EnvironmentObject private var engine: VoiceInkEngine
     
     // Computed property to check if current config is the default
