@@ -106,6 +106,28 @@ class AIEnhancementService: ObservableObject {
             object: nil
         )
 
+        // When a provider config is deleted, clear any prompt references to it
+        // so they fall back to the default provider.
+        aiService.onProviderConfigDeleted = { [weak self] deletedConfigId in
+            guard let self else { return }
+            for i in self.customPrompts.indices {
+                if self.customPrompts[i].providerConfigurationId == deletedConfigId {
+                    self.customPrompts[i] = CustomPrompt(
+                        id: self.customPrompts[i].id,
+                        title: self.customPrompts[i].title,
+                        promptText: self.customPrompts[i].promptText,
+                        isActive: self.customPrompts[i].isActive,
+                        icon: self.customPrompts[i].icon,
+                        description: self.customPrompts[i].description,
+                        isPredefined: self.customPrompts[i].isPredefined,
+                        triggerWords: self.customPrompts[i].triggerWords,
+                        useSystemInstructions: self.customPrompts[i].useSystemInstructions,
+                        providerConfigurationId: nil
+                    )
+                }
+            }
+        }
+
         initializePredefinedPrompts()
     }
 
@@ -127,7 +149,11 @@ class AIEnhancementService: ObservableObject {
     }
 
     var isConfigured: Bool {
-        aiService.isAPIKeyValid
+        let resolved = aiService.resolveProviderConfig(forId: activePrompt?.providerConfigurationId)
+        if resolved.provider == .ollama {
+            return true
+        }
+        return !resolved.apiKey.isEmpty
     }
 
     private func waitForRateLimit() async throws {
@@ -200,7 +226,9 @@ class AIEnhancementService: ObservableObject {
     }
 
     private func makeRequest(text: String, mode: EnhancementPrompt) async throws -> String {
-        guard isConfigured else {
+        let resolved = aiService.resolveProviderConfig(forId: activePrompt?.providerConfigurationId)
+        
+        guard resolved.provider == .ollama || !resolved.apiKey.isEmpty else {
             throw EnhancementError.notConfigured
         }
 
@@ -216,9 +244,9 @@ class AIEnhancementService: ObservableObject {
             self.lastUserMessageSent = formattedText
         }
 
-        if aiService.selectedProvider == .ollama {
+        if resolved.provider == .ollama {
             do {
-                let result = try await aiService.enhanceWithOllama(text: formattedText, systemPrompt: systemMessage)
+                let result = try await aiService.enhanceWithOllama(text: formattedText, systemPrompt: systemMessage, baseURL: resolved.baseURL, model: resolved.model)
                 return AIEnhancementOutputFilter.filter(result)
             } catch {
                 if let localError = error as? LocalAIError {
@@ -233,25 +261,25 @@ class AIEnhancementService: ObservableObject {
 
         do {
             let result: String
-            switch aiService.selectedProvider {
+            switch resolved.provider {
             case .anthropic:
                 result = try await AnthropicLLMClient.chatCompletion(
-                    apiKey: aiService.apiKey,
-                    model: aiService.currentModel,
+                    apiKey: resolved.apiKey,
+                    model: resolved.model,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     timeout: baseTimeout
                 )
             default:
-                guard let baseURL = URL(string: aiService.selectedProvider.baseURL) else {
-                    throw EnhancementError.customError("\(aiService.selectedProvider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
+                guard let baseURL = URL(string: resolved.baseURL) else {
+                    throw EnhancementError.customError("\(resolved.provider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
                 }
-                let temperature = aiService.currentModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
-                let reasoningEffort = ReasoningConfig.getReasoningParameter(for: aiService.currentModel)
+                let temperature = resolved.model.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
+                let reasoningEffort = ReasoningConfig.getReasoningParameter(for: resolved.model)
                 result = try await OpenAILLMClient.chatCompletion(
                     baseURL: baseURL,
-                    apiKey: aiService.apiKey,
-                    model: aiService.currentModel,
+                    apiKey: resolved.apiKey,
+                    model: resolved.model,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     temperature: temperature,
@@ -329,16 +357,18 @@ class AIEnhancementService: ObservableObject {
         throw EnhancementError.enhancementFailed
     }
 
-    func enhance(_ text: String) async throws -> (String, TimeInterval, String?) {
+    func enhance(_ text: String) async throws -> (String, TimeInterval, String?, String?) {
         let startTime = Date()
         let enhancementPrompt: EnhancementPrompt = .transcriptionEnhancement
         let promptName = activePrompt?.title
+        let resolved = aiService.resolveProviderConfig(forId: activePrompt?.providerConfigurationId)
+        let modelName = resolved.model
 
         do {
             let result = try await makeRequestWithRetry(text: text, mode: enhancementPrompt)
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
-            return (result, duration, promptName)
+            return (result, duration, promptName, modelName)
         } catch {
             throw error
         }
@@ -365,8 +395,8 @@ class AIEnhancementService: ObservableObject {
         screenCaptureService.lastCapturedText = nil
     }
 
-    func addPrompt(title: String, promptText: String, icon: PromptIcon = "doc.text.fill", description: String? = nil, triggerWords: [String] = [], useSystemInstructions: Bool = true) {
-        let newPrompt = CustomPrompt(title: title, promptText: promptText, icon: icon, description: description, isPredefined: false, triggerWords: triggerWords, useSystemInstructions: useSystemInstructions)
+    func addPrompt(title: String, promptText: String, icon: PromptIcon = "doc.text.fill", description: String? = nil, triggerWords: [String] = [], useSystemInstructions: Bool = true, providerConfigurationId: UUID? = nil) {
+        let newPrompt = CustomPrompt(title: title, promptText: promptText, icon: icon, description: description, isPredefined: false, triggerWords: triggerWords, useSystemInstructions: useSystemInstructions, providerConfigurationId: providerConfigurationId)
         customPrompts.append(newPrompt)
         if customPrompts.count == 1 {
             selectedPromptId = newPrompt.id
@@ -405,7 +435,8 @@ class AIEnhancementService: ObservableObject {
                     description: template.description,
                     isPredefined: true,
                     triggerWords: updatedPrompt.triggerWords,
-                    useSystemInstructions: template.useSystemInstructions
+                    useSystemInstructions: template.useSystemInstructions,
+                    providerConfigurationId: updatedPrompt.providerConfigurationId
                 )
                 customPrompts[existingIndex] = updatedPrompt
             } else {

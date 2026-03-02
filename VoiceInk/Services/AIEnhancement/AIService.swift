@@ -1,7 +1,7 @@
 import Foundation
 import LLMkit
 
-enum AIProvider: String, CaseIterable {
+enum AIProvider: String, CaseIterable, Codable {
     case cerebras = "Cerebras"
     case groq = "Groq"
     case gemini = "Gemini"
@@ -193,7 +193,10 @@ class AIService: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
     
-    @Published private var openRouterModels: [String] = []
+    @Published private(set) var openRouterModels: [String] = []
+    
+    @Published var providerConfigurations: [AIProviderConfiguration] = []
+    private let providerConfigurationsKey = "aiProviderConfigurations"
     
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
@@ -247,6 +250,24 @@ class AIService: ObservableObject {
 
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
+        loadProviderConfigurations()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAPIKeyChanged),
+            name: .aiProviderKeyChanged,
+            object: nil
+        )
+    }
+
+    /// Incremented when API keys change, used to force SwiftUI re-renders
+    /// of views that depend on `hasAPIKey` (a computed Keychain lookup).
+    @Published private(set) var apiKeyRevision: Int = 0
+
+    @objc private func handleAPIKeyChanged() {
+        DispatchQueue.main.async {
+            self.apiKeyRevision += 1
+        }
     }
     
     private func loadSavedModelSelections() {
@@ -371,13 +392,17 @@ class AIService: ObservableObject {
         return ollamaService.availableModels
     }
     
-    func enhanceWithOllama(text: String, systemPrompt: String) async throws -> String {
-        do {
-            let result = try await ollamaService.enhance(text, withSystemPrompt: systemPrompt)
-            return result
-        } catch {
-            throw error
-        }
+    func enhanceWithOllama(text: String, systemPrompt: String, baseURL: String? = nil, model: String? = nil) async throws -> String {
+        let effectiveBaseURL = baseURL ?? ollamaService.baseURL
+        let effectiveModel = model ?? ollamaService.selectedModel
+
+        // Use the thread-safe overload that doesn't mutate shared state
+        return try await ollamaService.enhance(
+            text,
+            withSystemPrompt: systemPrompt,
+            baseURL: effectiveBaseURL,
+            model: effectiveModel
+        )
     }
     
     func updateOllamaBaseURL(_ newURL: String) {
@@ -406,6 +431,237 @@ class AIService: ObservableObject {
                 self.openRouterModels = []
                 self.saveOpenRouterModels()
                 self.objectWillChange.send()
+            }
+        }
+    }
+
+    
+    // MARK: - Provider Configurations
+
+    /// Callback to clear `providerConfigurationId` on prompts that reference a deleted config.
+    /// Set by `AIEnhancementService` after initialization.
+    var onProviderConfigDeleted: ((_ deletedConfigId: UUID) -> Void)?
+
+    var defaultProviderConfiguration: AIProviderConfiguration? {
+        providerConfigurations.first(where: { $0.isDefault })
+    }
+
+    private func loadProviderConfigurations() {
+        if let data = userDefaults.data(forKey: providerConfigurationsKey) {
+            do {
+                providerConfigurations = try JSONDecoder().decode([AIProviderConfiguration].self, from: data)
+            } catch {
+                providerConfigurations = []
+            }
+        }
+
+        migrateExistingProviderIfNeeded()
+        ensureDefaultExists()
+    }
+
+    /// Ensures exactly one configuration is marked as default.
+    /// Repairs corrupted state (zero or multiple defaults).
+    private func ensureDefaultExists() {
+        guard !providerConfigurations.isEmpty else { return }
+
+        let defaults = providerConfigurations.filter { $0.isDefault }
+        if defaults.count == 1 { return }
+
+        // Clear all defaults, then set the first one
+        for i in providerConfigurations.indices {
+            providerConfigurations[i].isDefault = false
+        }
+        providerConfigurations[0].isDefault = true
+        saveProviderConfigurations()
+    }
+
+    private func migrateExistingProviderIfNeeded() {
+        // Only migrate when user has no configurations yet.
+        // This runs on every launch until the user has at least one config
+        // (either from migration or manually added), avoiding the problem
+        // where a one-shot migration flag gets burned on a failed attempt.
+        guard providerConfigurations.isEmpty else { return }
+
+        let enhancementProviders: [AIProvider] = AIProvider.allCases.filter {
+            $0 != .elevenLabs && $0 != .deepgram && $0 != .soniox
+        }
+
+        for provider in enhancementProviders {
+            if provider == .ollama {
+                // Create an Ollama config only if it was the selected provider
+                guard provider == selectedProvider else { continue }
+            } else {
+                guard provider.requiresAPIKey else { continue }
+                guard APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue) else { continue }
+            }
+
+            let modelKey = "\(provider.rawValue)SelectedModel"
+            let model = userDefaults.string(forKey: modelKey) ?? provider.defaultModel
+
+            var baseURL: String? = nil
+            var customModelValue: String? = nil
+            if provider == .ollama {
+                let savedURL = userDefaults.string(forKey: "ollamaBaseURL") ?? ""
+                if !savedURL.isEmpty { baseURL = savedURL }
+            } else if provider == .custom {
+                let savedBaseURL = userDefaults.string(forKey: "customProviderBaseURL") ?? ""
+                if !savedBaseURL.isEmpty { baseURL = savedBaseURL }
+                let savedModel = userDefaults.string(forKey: "customProviderModel") ?? ""
+                if !savedModel.isEmpty { customModelValue = savedModel }
+            }
+
+            // Mark the previously selected global provider as default
+            let isCurrentGlobal = (provider == selectedProvider)
+
+            let config = AIProviderConfiguration(
+                name: provider.rawValue,
+                provider: provider,
+                model: model,
+                customBaseURL: baseURL,
+                customModel: customModelValue,
+                isDefault: isCurrentGlobal
+            )
+            providerConfigurations.append(config)
+        }
+
+        if !providerConfigurations.isEmpty {
+            saveProviderConfigurations()
+        }
+    }
+
+    private func saveProviderConfigurations() {
+        do {
+            let data = try JSONEncoder().encode(providerConfigurations)
+            userDefaults.set(data, forKey: providerConfigurationsKey)
+        } catch {
+            // Encoding failed silently
+        }
+    }
+
+    func addProviderConfiguration(_ config: AIProviderConfiguration) {
+        var newConfig = config
+        // First config added automatically becomes the default
+        if providerConfigurations.isEmpty {
+            newConfig.isDefault = true
+        }
+        providerConfigurations.append(newConfig)
+        saveProviderConfigurations()
+    }
+
+    func updateProviderConfiguration(_ config: AIProviderConfiguration) {
+        guard let index = providerConfigurations.firstIndex(where: { $0.id == config.id }) else { return }
+        var updated = config
+        // Preserve isDefault — callers must use setDefaultProviderConfiguration() to change it
+        updated.isDefault = providerConfigurations[index].isDefault
+        providerConfigurations[index] = updated
+        saveProviderConfigurations()
+    }
+
+    /// Deletes a provider configuration. The default configuration cannot be deleted.
+    /// Any prompts referencing the deleted config have their assignment cleared (falling back to default).
+    /// - Returns: `true` if the config was deleted, `false` if it was the default (protected).
+    @discardableResult
+    func deleteProviderConfiguration(_ config: AIProviderConfiguration) -> Bool {
+        guard !config.isDefault else { return false }
+        providerConfigurations.removeAll { $0.id == config.id }
+        saveProviderConfigurations()
+        onProviderConfigDeleted?(config.id)
+        return true
+    }
+
+    func setDefaultProviderConfiguration(_ config: AIProviderConfiguration) {
+        guard providerConfigurations.contains(where: { $0.id == config.id }) else { return }
+        for i in providerConfigurations.indices {
+            providerConfigurations[i].isDefault = (providerConfigurations[i].id == config.id)
+        }
+        saveProviderConfigurations()
+    }
+
+    func resolveProviderConfig(forId configId: UUID?) -> ResolvedProviderConfig {
+        // Look up by explicit ID
+        if let configId = configId,
+           let config = providerConfigurations.first(where: { $0.id == configId }) {
+            return resolvedConfig(from: config)
+        }
+
+        // Fall back to the default configuration
+        if let defaultConfig = defaultProviderConfiguration {
+            return resolvedConfig(from: defaultConfig)
+        }
+
+        // Last resort: global provider settings (no configs exist yet)
+        return ResolvedProviderConfig(
+            provider: selectedProvider,
+            apiKey: apiKey,
+            model: currentModel,
+            baseURL: selectedProvider == .custom ? customBaseURL : selectedProvider.baseURL
+        )
+    }
+
+    private func resolvedConfig(from config: AIProviderConfiguration) -> ResolvedProviderConfig {
+        let key: String
+        if config.provider.requiresAPIKey {
+            key = APIKeyManager.shared.getAPIKey(forProvider: config.provider.rawValue) ?? ""
+        } else {
+            key = ""
+        }
+        return ResolvedProviderConfig(
+            provider: config.provider,
+            apiKey: key,
+            model: config.effectiveModel,
+            baseURL: config.effectiveBaseURL
+        )
+    }
+    
+    func saveAPIKeyForProvider(_ key: String, provider: AIProvider, model: String = "", completion: @escaping (Bool, String?) -> Void) {
+        guard provider.requiresAPIKey else {
+            completion(true, nil)
+            return
+        }
+
+        let effectiveModel = model.isEmpty ? provider.defaultModel : model
+
+        Task {
+            let result: (isValid: Bool, errorMessage: String?)
+            switch provider {
+            case .anthropic:
+                result = await AnthropicLLMClient.verifyAPIKey(key)
+            case .elevenLabs:
+                result = await ElevenLabsClient.verifyAPIKey(key)
+            case .deepgram:
+                result = await DeepgramClient.verifyAPIKey(key)
+            case .mistral:
+                result = await MistralTranscriptionClient.verifyAPIKey(key)
+            case .soniox:
+                result = await SonioxClient.verifyAPIKey(key)
+            case .openRouter:
+                result = await OpenRouterClient.verifyAPIKey(key, model: effectiveModel)
+            case .gemini:
+                result = await GeminiTranscriptionClient.verifyAPIKey(key)
+            default:
+                guard let baseURL = URL(string: provider.baseURL) else {
+                    DispatchQueue.main.async {
+                        completion(false, "Invalid or missing base URL configuration")
+                    }
+                    return
+                }
+                result = await OpenAILLMClient.verifyAPIKey(
+                    baseURL: baseURL,
+                    apiKey: key,
+                    model: effectiveModel
+                )
+            }
+            DispatchQueue.main.async {
+                if result.isValid {
+                    APIKeyManager.shared.saveAPIKey(key, forProvider: provider.rawValue)
+                    NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
+                    // If this is also the current global provider, update its state
+                    if provider == self.selectedProvider {
+                        self.apiKey = key
+                        self.isAPIKeyValid = true
+                    }
+                }
+                completion(result.isValid, result.errorMessage)
             }
         }
     }

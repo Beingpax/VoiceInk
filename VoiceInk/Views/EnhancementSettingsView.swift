@@ -6,18 +6,22 @@ struct EnhancementSettingsView: View {
     @State private var isEditingPrompt = false
     @State private var isShortcutsExpanded = false
     @State private var selectedPromptForEdit: CustomPrompt?
-    
+    @State private var isEditingConfig = false
+    @State private var selectedConfigForEdit: AIProviderConfiguration?
+
     private var isPanelOpen: Bool {
-        isEditingPrompt || selectedPromptForEdit != nil
+        isEditingPrompt || selectedPromptForEdit != nil || isEditingConfig || selectedConfigForEdit != nil
     }
-    
+
     private func closePanel() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
             isEditingPrompt = false
             selectedPromptForEdit = nil
+            isEditingConfig = false
+            selectedConfigForEdit = nil
         }
     }
-    
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             Form {
@@ -32,7 +36,7 @@ struct EnhancementSettingsView: View {
                         }
                     }
                     .toggleStyle(.switch)
-                    
+
                     HStack(spacing: 24) {
                         Toggle(isOn: $enhancementService.useClipboardContext) {
                             HStack(spacing: 4) {
@@ -54,10 +58,21 @@ struct EnhancementSettingsView: View {
                 } header: {
                     Text("General")
                 }
-                
-                APIKeyManagementView()
-                    .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
-                
+
+                APIKeyManagementView(
+                    onAddConfig: {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
+                            isEditingConfig = true
+                        }
+                    },
+                    onEditConfig: { config in
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) {
+                            selectedConfigForEdit = config
+                        }
+                    }
+                )
+                .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
+
                 Section {
                     ReorderablePromptGrid(
                         selectedPromptId: enhancementService.selectedPromptId,
@@ -93,7 +108,7 @@ struct EnhancementSettingsView: View {
                     }
                 }
                 .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.8)
-                
+
                 Section {
                     DisclosureGroup(isExpanded: $isShortcutsExpanded) {
                         EnhancementShortcutsView()
@@ -121,7 +136,7 @@ struct EnhancementSettingsView: View {
             .disabled(isPanelOpen)
             .blur(radius: isPanelOpen ? 2 : 0)
             .animation(.spring(response: 0.4, dampingFraction: 0.9), value: isPanelOpen)
-            
+
             if isPanelOpen {
                 Color.black.opacity(0.2)
                     .ignoresSafeArea()
@@ -131,11 +146,11 @@ struct EnhancementSettingsView: View {
                     .transition(.opacity)
                     .zIndex(1)
             }
-            
+
             if isPanelOpen {
                 HStack(spacing: 0) {
                     Spacer()
-                    
+
                     Group {
                         if let prompt = selectedPromptForEdit {
                             PromptEditorView(mode: .edit(prompt)) {
@@ -143,6 +158,14 @@ struct EnhancementSettingsView: View {
                             }
                         } else if isEditingPrompt {
                             PromptEditorView(mode: .add) {
+                                closePanel()
+                            }
+                        } else if let config = selectedConfigForEdit {
+                            ProviderConfigEditorView(mode: .edit(config)) {
+                                closePanel()
+                            }
+                        } else if isEditingConfig {
+                            ProviderConfigEditorView(mode: .add) {
                                 closePanel()
                             }
                         }
@@ -169,14 +192,15 @@ struct EnhancementSettingsView: View {
 // MARK: - Reorderable Grid
 private struct ReorderablePromptGrid: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
-    
+    @EnvironmentObject private var aiService: AIService
+
     let selectedPromptId: UUID?
     let onPromptSelected: (CustomPrompt) -> Void
     let onEditPrompt: ((CustomPrompt) -> Void)?
     let onDeletePrompt: ((CustomPrompt) -> Void)?
-    
+
     @State private var draggingItem: CustomPrompt?
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if enhancementService.customPrompts.isEmpty {
@@ -187,11 +211,12 @@ private struct ReorderablePromptGrid: View {
                 let columns = [
                     GridItem(.adaptive(minimum: 80, maximum: 100), spacing: 36)
                 ]
-                
+
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(enhancementService.customPrompts) { prompt in
                         prompt.promptIcon(
                             isSelected: selectedPromptId == prompt.id,
+                            modelName: modelName(for: prompt),
                             onTap: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     onPromptSelected(prompt)
@@ -228,12 +253,12 @@ private struct ReorderablePromptGrid: View {
                 }
                 .padding(.vertical, 12)
                 .padding(.horizontal, 16)
-                
+
                 HStack {
                     Image(systemName: "info.circle")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    
+
                     Text("Double-click to edit • Right-click for more options")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -243,6 +268,11 @@ private struct ReorderablePromptGrid: View {
             }
         }
     }
+
+    private func modelName(for prompt: CustomPrompt) -> String {
+        let resolved = aiService.resolveProviderConfig(forId: prompt.providerConfigurationId)
+        return resolved.model
+    }
 }
 
 // MARK: - Drop Delegate
@@ -250,12 +280,12 @@ private struct PromptDropDelegate: DropDelegate {
     let item: CustomPrompt
     @Binding var prompts: [CustomPrompt]
     @Binding var draggingItem: CustomPrompt?
-    
+
     func dropEntered(info: DropInfo) {
         guard let draggingItem = draggingItem, draggingItem != item else { return }
         guard let fromIndex = prompts.firstIndex(of: draggingItem),
               let toIndex = prompts.firstIndex(of: item) else { return }
-        
+
         if prompts[toIndex].id != draggingItem.id {
             withAnimation(.easeInOut(duration: 0.12)) {
                 let from = fromIndex
@@ -264,11 +294,11 @@ private struct PromptDropDelegate: DropDelegate {
             }
         }
     }
-    
+
     func dropUpdated(info: DropInfo) -> DropProposal? {
         DropProposal(operation: .move)
     }
-    
+
     func performDrop(info: DropInfo) -> Bool {
         draggingItem = nil
         return true

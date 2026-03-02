@@ -20,6 +20,7 @@ struct PromptEditorView: View {
     let mode: Mode
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @EnvironmentObject private var aiService: AIService
     var onDismiss: (() -> Void)?
     @State private var title: String
     @State private var promptText: String
@@ -27,6 +28,7 @@ struct PromptEditorView: View {
     @State private var description: String
     @State private var triggerWords: [String]
     @State private var useSystemInstructions: Bool
+    @State private var selectedConfigId: UUID?
     @State private var showingIconPicker = false
     
     private var isEditingPredefinedPrompt: Bool {
@@ -47,6 +49,7 @@ struct PromptEditorView: View {
             _description = State(initialValue: "")
             _triggerWords = State(initialValue: [])
             _useSystemInstructions = State(initialValue: true)
+            _selectedConfigId = State(initialValue: nil)
         case .edit(let prompt):
             _title = State(initialValue: prompt.title)
             _promptText = State(initialValue: prompt.promptText)
@@ -54,6 +57,7 @@ struct PromptEditorView: View {
             _description = State(initialValue: prompt.description ?? "")
             _triggerWords = State(initialValue: prompt.triggerWords)
             _useSystemInstructions = State(initialValue: prompt.useSystemInstructions)
+            _selectedConfigId = State(initialValue: prompt.providerConfigurationId)
         }
     }
     
@@ -99,11 +103,31 @@ struct PromptEditorView: View {
                                 .font(.title3)
                                 .fontWeight(.medium)
                                 .foregroundColor(.primary)
-                            
-                            Text("You can only customize the trigger words for system prompts.")
+
+                            Text("You can customize the trigger words and AI provider for system prompts.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            
+
+                            if !aiService.providerConfigurations.isEmpty {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("AI Provider")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+
+                                    Picker("AI Provider", selection: $selectedConfigId) {
+                                        if let defaultConfig = aiService.defaultProviderConfiguration {
+                                            Text("\(defaultConfig.name) (Default)")
+                                                .tag(UUID?.none)
+                                        }
+                                        ForEach(aiService.providerConfigurations.filter { !$0.isDefault }) { config in
+                                            Text("\(config.name) (\(config.provider.rawValue))")
+                                                .tag(Optional(config.id))
+                                        }
+                                    }
+                                    .pickerStyle(.automatic)
+                                }
+                            }
+
                             TriggerWordsEditor(triggerWords: $triggerWords)
                         }
                         .padding(.horizontal, 20)
@@ -162,8 +186,29 @@ struct PromptEditorView: View {
                                     )
                             }
                             
+                            // AI Provider picker
+                            if !aiService.providerConfigurations.isEmpty {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("AI Provider")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+
+                                    Picker("AI Provider", selection: $selectedConfigId) {
+                                        if let defaultConfig = aiService.defaultProviderConfiguration {
+                                            Text("\(defaultConfig.name) (Default)")
+                                                .tag(UUID?.none)
+                                        }
+                                        ForEach(aiService.providerConfigurations.filter { !$0.isDefault }) { config in
+                                            Text("\(config.name) (\(config.provider.rawValue))")
+                                                .tag(Optional(config.id))
+                                        }
+                                    }
+                                    .pickerStyle(.automatic)
+                                }
+                            }
+
                             Divider().padding(.vertical, 4)
-                            
+
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Instructions")
                                     .font(.headline)
@@ -294,8 +339,16 @@ struct PromptEditorView: View {
         }
         .frame(minWidth: 400, minHeight: 500)
         .background(Color(NSColor.windowBackgroundColor))
+        .onAppear {
+            // If the stored config ID points to the current default, normalize to nil
+            // so the picker correctly selects the "Default" row.
+            if let id = selectedConfigId,
+               aiService.providerConfigurations.first(where: { $0.id == id })?.isDefault == true {
+                selectedConfigId = nil
+            }
+        }
     }
-    
+
     private func save() {
         switch mode {
         case .add:
@@ -305,7 +358,8 @@ struct PromptEditorView: View {
                 icon: selectedIcon,
                 description: description.isEmpty ? nil : description,
                 triggerWords: triggerWords,
-                useSystemInstructions: useSystemInstructions
+                useSystemInstructions: useSystemInstructions,
+                providerConfigurationId: selectedConfigId
             )
         case .edit(let prompt):
             let updatedPrompt = CustomPrompt(
@@ -317,7 +371,8 @@ struct PromptEditorView: View {
                 description: prompt.isPredefined ? prompt.description : (description.isEmpty ? nil : description),
                 isPredefined: prompt.isPredefined,
                 triggerWords: triggerWords,
-                useSystemInstructions: useSystemInstructions
+                useSystemInstructions: useSystemInstructions,
+                providerConfigurationId: selectedConfigId
             )
             enhancementService.updatePrompt(updatedPrompt)
         }
