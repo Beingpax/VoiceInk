@@ -1,7 +1,7 @@
 import Foundation
 import NaturalLanguage
 
-struct WhisperTextFormatter {
+struct TextFormatter {
     static func format(_ text: String) -> String {
         let TARGET_WORD_COUNT = 50
         let MAX_SENTENCES_PER_CHUNK = 4

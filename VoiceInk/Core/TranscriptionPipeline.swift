@@ -87,7 +87,7 @@ class TranscriptionPipeline {
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
-                text = WhisperTextFormatter.format(text)
+                text = TextFormatter.format(text)
                 logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
             }
 
