@@ -67,6 +67,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E11473B22CBE0F0A00318EE4 /* VoiceInk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFolders = (
+				Enhancement,
+			);
 			path = VoiceInk;
 			sourceTree = "<group>";
 		};
