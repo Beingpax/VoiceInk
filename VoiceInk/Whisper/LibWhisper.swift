@@ -66,6 +66,8 @@ actor WhisperContext {
         params.no_context = true
         params.single_segment = false
         params.temperature = 0.2
+        params.suppress_nst = true       // suppress non-speech tokens that seed hallucination loops
+        params.entropy_thold = 2.8       // default 2.4 — triggers temperature fallback sooner on repetitive output
 
         whisper_reset_timings(context)
         
