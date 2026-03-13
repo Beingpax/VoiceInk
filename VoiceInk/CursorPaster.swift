@@ -26,15 +26,24 @@ class CursorPaster {
 
         ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
 
+        // Only restore the clipboard after pasting if we can actually paste.
+        // When accessibility isn't granted, paste will fail silently — in that
+        // case, keep the transcribed text on the clipboard so the user can
+        // manually Cmd+V instead of having it wiped by the restore timer.
+        let canPaste = AXIsProcessTrusted()
+        let effectiveRestore = shouldRestoreClipboard && canPaste
+
+        let useAppleScript = UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
+            if useAppleScript {
                 pasteUsingAppleScript()
             } else {
                 pasteFromClipboard()
             }
         }
 
-        if shouldRestoreClipboard {
+        if effectiveRestore {
             let restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
             let delay = max(restoreDelay, 0.25)
 
@@ -76,11 +85,6 @@ class CursorPaster {
 
     // Posts Cmd+V via CGEvent without modifying the active input source.
     private static func pasteFromClipboard() {
-        guard AXIsProcessTrusted() else {
-            logger.error("Accessibility not trusted — cannot paste")
-            return
-        }
-
         let source = CGEventSource(stateID: .privateState)
 
         let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true)
@@ -97,7 +101,12 @@ class CursorPaster {
         vUp?.post(tap: .cghidEventTap)
         cmdUp?.post(tap: .cghidEventTap)
 
-        logger.notice("CGEvents posted for Cmd+V")
+        // If accessibility isn't granted, CGEvent paste may fail silently.
+        // Try AppleScript as a fallback — it uses a different permission model
+        // (Automation) that may succeed where CGEvent doesn't.
+        if !AXIsProcessTrusted() {
+            pasteUsingAppleScript()
+        }
     }
 
     // MARK: - Enter key
