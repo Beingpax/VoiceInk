@@ -160,9 +160,14 @@ class Recorder: NSObject, ObservableObject {
         audioMeterUpdateTimer?.cancel()
         audioMeterUpdateTimer = nil
 
-        // Stop the CoreAudioRecorder on the serial hardware queue and wait for
-        // it to finish so the WAV file is fully closed before callers read it.
+        // Capture and clear shared state before awaiting so a concurrent
+        // startRecording() won't have its new state overwritten when we resume.
         let currentRecorder = self.recorder
+        recorder = nil
+        onAudioChunk = nil
+
+        // Wait for the CoreAudioRecorder to finish closing the WAV file on the
+        // serial hardware queue before returning.
         if currentRecorder != nil {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 audioSetupQueue.async {
@@ -171,8 +176,6 @@ class Recorder: NSObject, ObservableObject {
                 }
             }
         }
-        recorder = nil
-        onAudioChunk = nil
 
         smoothedValuesLock.lock()
         smoothedAverage = 0
