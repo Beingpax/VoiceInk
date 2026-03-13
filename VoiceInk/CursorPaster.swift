@@ -26,14 +26,15 @@ class CursorPaster {
 
         ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
 
-        // Only restore the clipboard after pasting if we can actually paste.
-        // When accessibility isn't granted, paste will fail silently — in that
-        // case, keep the transcribed text on the clipboard so the user can
-        // manually Cmd+V instead of having it wiped by the restore timer.
-        let canPaste = AXIsProcessTrusted()
-        let effectiveRestore = shouldRestoreClipboard && canPaste
-
         let useAppleScript = UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
+
+        // Paste can succeed via CGEvent (needs Accessibility) or AppleScript
+        // (needs Automation). When the user chose AppleScript, trust that it
+        // works. On the default CGEvent path without Accessibility, the
+        // AppleScript fallback may or may not succeed — be conservative and
+        // keep the text on the clipboard so the user can manual Cmd+V.
+        let canPaste = AXIsProcessTrusted() || useAppleScript
+        let effectiveRestore = shouldRestoreClipboard && canPaste
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             if useAppleScript {
