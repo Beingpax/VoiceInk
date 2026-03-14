@@ -141,8 +141,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
                             guard self.recorderUIManager?.isMiniRecorderVisible ?? false, !self.shouldCancelRecording else {
-                                self.recorder.stopRecording()
-                                self.recordedFile = nil
+                                let fileBeingCancelled = self.recordedFile
+                                await self.recorder.stopRecording()
+                                if self.recordedFile == fileBeingCancelled {
+                                    self.recordedFile = nil
+                                }
                                 return
                             }
 
