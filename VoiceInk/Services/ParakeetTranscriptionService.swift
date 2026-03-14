@@ -9,7 +9,8 @@ class ParakeetTranscriptionService: TranscriptionService {
     private var vadManager: VadManager?
     private var activeVersion: AsrModelVersion?
     private var cachedModels: AsrModels?
-    private var loadingTask: (version: AsrModelVersion, task: Task<AsrModels, Error>)?
+    /// Deduplicates concurrent calls to ensureModelsLoaded (model loading + AsrManager init).
+    private var initTask: (version: AsrModelVersion, task: Task<Void, Error>)?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink.parakeet", category: "ParakeetTranscriptionService")
 
     private func version(for model: any TranscriptionModel) -> AsrModelVersion {
@@ -17,6 +18,21 @@ class ParakeetTranscriptionService: TranscriptionService {
     }
 
     private func ensureModelsLoaded(for version: AsrModelVersion) async throws {
+        // Fast path: already initialized for this version
+        if asrManager != nil, activeVersion == version {
+            return
+        }
+
+        // If initialization is already in progress for this version, wait for it
+        if let (v, task) = initTask, v == version {
+            try await task.value
+            // Re-check after waiting — the other caller may have succeeded
+            if asrManager != nil, activeVersion == version {
+                return
+            }
+        }
+
+        // Double-check after possible suspension
         if asrManager != nil, activeVersion == version {
             return
         }
@@ -27,48 +43,50 @@ class ParakeetTranscriptionService: TranscriptionService {
         vadManager = nil
         activeVersion = nil
 
-        let models = try await getOrLoadModels(for: version)
+        // Single task covers model loading AND AsrManager initialization.
+        // Use Task.detached so the init is NOT cancelled when the caller's
+        // Task context is cancelled (e.g. SwiftUI view teardown).
+        let task = Task.detached { [weak self] () -> Void in
+            guard let self else { throw ASRError.notInitialized }
 
-        let manager = AsrManager(config: .default)
-        try await manager.initialize(models: models)
-        self.asrManager = manager
-        self.activeVersion = version
+            let models: AsrModels
+            if let cached = self.cachedModels, cached.version == version {
+                models = cached
+            } else {
+                models = try await AsrModels.loadFromCache(
+                    configuration: nil,
+                    version: version
+                )
+                self.cachedModels = models
+            }
+
+            let manager = AsrManager(config: .default)
+            try await manager.initialize(models: models)
+            self.asrManager = manager
+            self.activeVersion = version
+        }
+        initTask = (version, task)
+
+        do {
+            try await task.value
+            if initTask?.version == version { initTask = nil }
+        } catch {
+            if initTask?.version == version { initTask = nil }
+            throw error
+        }
     }
 
-    // Returns cached models or loads from disk; deduplicates concurrent loads
+    /// Returns cached models or loads from disk. Used by streaming provider.
     func getOrLoadModels(for version: AsrModelVersion) async throws -> AsrModels {
         if let cached = cachedModels, cached.version == version {
             return cached
         }
-
-        // Deduplicate concurrent loads for the same version
-        if let (existingVersion, existingTask) = loadingTask, existingVersion == version {
-            return try await existingTask.value
-        }
-
-        let task = Task {
-            try await AsrModels.loadFromCache(
-                configuration: nil,
-                version: version
-            )
-        }
-        loadingTask = (version, task)
-
-        do {
-            let models = try await task.value
-            self.cachedModels = models
-            // Only clear if we're still the current loading task
-            if loadingTask?.version == version {
-                self.loadingTask = nil
-            }
-            return models
-        } catch {
-            // Only clear if we're still the current loading task
-            if loadingTask?.version == version {
-                self.loadingTask = nil
-            }
-            throw error
-        }
+        let models = try await AsrModels.loadFromCache(
+            configuration: nil,
+            version: version
+        )
+        cachedModels = models
+        return models
     }
 
     func loadModel(for model: ParakeetModel) async throws {
@@ -76,51 +94,71 @@ class ParakeetTranscriptionService: TranscriptionService {
     }
 
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
-        let targetVersion = version(for: model)
-        try await ensureModelsLoaded(for: targetVersion)
-
-        guard let asrManager = asrManager else {
-            throw ASRError.notInitialized
-        }
-
+        // Read audio samples synchronously before entering the detached task
         let audioSamples = try readAudioSamples(from: audioURL)
-
-        let durationSeconds = Double(audioSamples.count) / 16000.0
+        let targetVersion = version(for: model)
         let isVADEnabled = UserDefaults.standard.bool(forKey: "IsVADEnabled")
 
-        var speechAudio = audioSamples
-        if durationSeconds >= 20.0, isVADEnabled {
-            let vadConfig = VadConfig(defaultThreshold: 0.7)
-            if vadManager == nil {
-                do {
-                    vadManager = try await VadManager(config: vadConfig)
-                } catch {
-                    logger.notice("VAD init failed; falling back to full audio: \(error.localizedDescription, privacy: .public)")
-                    vadManager = nil
+        // Run all FluidAudio work in a detached task so it is NOT cancelled
+        // when the caller's Task context is torn down (e.g. SwiftUI view lifecycle).
+        let detachedResult = Task.detached { [weak self] () -> String in
+            guard let self else { throw ASRError.notInitialized }
+
+            // Retry once on CancellationError — FluidAudio can throw this during
+            // concurrent model init or when internal resources are momentarily busy.
+            do {
+                try await self.ensureModelsLoaded(for: targetVersion)
+            } catch is CancellationError {
+                self.logger.notice("Model initialization threw CancellationError, resetting and retrying...")
+                self.asrManager?.cleanup()
+                self.asrManager = nil
+                self.activeVersion = nil
+                self.cachedModels = nil
+                self.initTask = nil
+                try await self.ensureModelsLoaded(for: targetVersion)
+            }
+
+            guard let asrManager = self.asrManager else {
+                throw ASRError.notInitialized
+            }
+
+            let durationSeconds = Double(audioSamples.count) / 16000.0
+
+            var speechAudio = audioSamples
+            if durationSeconds >= 20.0, isVADEnabled {
+                let vadConfig = VadConfig(defaultThreshold: 0.7)
+                if self.vadManager == nil {
+                    do {
+                        self.vadManager = try await VadManager(config: vadConfig)
+                    } catch {
+                        self.logger.notice("VAD init failed; falling back to full audio: \(error.localizedDescription, privacy: .public)")
+                        self.vadManager = nil
+                    }
+                }
+
+                if let vadManager = self.vadManager {
+                    do {
+                        let segments = try await vadManager.segmentSpeechAudio(audioSamples)
+                        speechAudio = segments.isEmpty ? audioSamples : segments.flatMap { $0 }
+                    } catch {
+                        self.logger.notice("VAD segmentation failed; using full audio: \(error.localizedDescription, privacy: .public)")
+                        speechAudio = audioSamples
+                    }
                 }
             }
 
-            if let vadManager {
-                do {
-                    let segments = try await vadManager.segmentSpeechAudio(audioSamples)
-                    speechAudio = segments.isEmpty ? audioSamples : segments.flatMap { $0 }
-                } catch {
-                    logger.notice("VAD segmentation failed; using full audio: \(error.localizedDescription, privacy: .public)")
-                    speechAudio = audioSamples
-                }
+            // Pad with 1s of silence to capture final punctuation at sequence boundary
+            let trailingSilenceSamples = 16_000
+            let maxSingleChunkSamples = 240_000
+            if speechAudio.count + trailingSilenceSamples <= maxSingleChunkSamples {
+                speechAudio += [Float](repeating: 0, count: trailingSilenceSamples)
             }
+
+            let result = try await asrManager.transcribe(speechAudio)
+            return result.text
         }
 
-        // Pad with 1s of silence to capture final punctuation at sequence boundary
-        let trailingSilenceSamples = 16_000
-        let maxSingleChunkSamples = 240_000
-        if speechAudio.count + trailingSilenceSamples <= maxSingleChunkSamples {
-            speechAudio += [Float](repeating: 0, count: trailingSilenceSamples)
-        }
-
-        let result = try await asrManager.transcribe(speechAudio)
-
-        return result.text
+        return try await detachedResult.value
     }
 
     private func readAudioSamples(from url: URL) throws -> [Float] {
