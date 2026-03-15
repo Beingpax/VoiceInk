@@ -64,11 +64,11 @@ struct PowerModeView: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
     @State private var configurationMode: ConfigurationMode?
-    @State private var navigationPath = NavigationPath()
+    @State private var isPanelOpen = false
+    @State private var panelID = UUID()
     @State private var isReorderMode = false
     
     var body: some View {
-        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 // Header Section
                 VStack(spacing: 12) {
@@ -95,8 +95,7 @@ struct PowerModeView: View {
                         HStack(spacing: 8) {
                             if !isReorderMode {
                                 Button(action: {
-                                    configurationMode = .add
-                                    navigationPath.append(configurationMode!)
+                                    openPanel(mode: .add)
                                 }) {
                                     HStack(spacing: 6) {
                                         Image(systemName: "plus")
@@ -234,8 +233,7 @@ struct PowerModeView: View {
                                             PowerModeConfigurationsGrid(
                                                 powerModeManager: powerModeManager,
                                                 onEditConfig: { config in
-                                                    configurationMode = .edit(config)
-                                                    navigationPath.append(configurationMode!)
+                                                    openPanel(mode: .edit(config))
                                                 }
                                             )
                                             .padding(.horizontal, 24)
@@ -254,9 +252,29 @@ struct PowerModeView: View {
                 .background(Color(NSColor.controlBackgroundColor))
             }
             .background(Color(NSColor.controlBackgroundColor))
-            .navigationDestination(for: ConfigurationMode.self) { mode in
-                ConfigurationView(mode: mode, powerModeManager: powerModeManager)
+            .slidingPanel(isPresented: .init(
+                get: { isPanelOpen },
+                set: { if !$0 { closePanel() } }
+            ), width: 450) {
+                if let mode = configurationMode {
+                    ConfigurationView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
+                        .id(panelID)
+                }
             }
+    }
+
+    private func openPanel(mode: ConfigurationMode) {
+        configurationMode = mode
+        panelID = UUID()
+        withAnimation(.smooth(duration: 0.3)) {
+            isPanelOpen = true
+        }
+    }
+
+    private func closePanel() {
+        withAnimation(.smooth(duration: 0.3)) {
+            isPanelOpen = false
+            configurationMode = nil
         }
     }
 }

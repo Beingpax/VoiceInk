@@ -46,12 +46,12 @@ struct FillerWordsSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Toggle(isOn: $removeFillerWords) {
-                    Text("Remove filler words")
-                }
-                .toggleStyle(.switch)
-
+                Text("Remove filler words")
                 InfoTip("Automatically remove filler words like 'uh', 'um', 'hmm' from transcriptions.")
+                Spacer()
+                Toggle("", isOn: $removeFillerWords)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
             }
 
             if removeFillerWords {
@@ -59,7 +59,6 @@ struct FillerWordsSettingsView: View {
                     HStack(spacing: 8) {
                         TextField("Add filler word", text: $newWord)
                             .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 12))
                             .onSubmit { addWord() }
 
                         Button(action: addWord) {
@@ -72,6 +71,7 @@ struct FillerWordsSettingsView: View {
                         .help("Add filler word")
                         .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
+                    .padding(.vertical, 4)
 
                     if !fillerWordManager.fillerWords.isEmpty {
                         FlowLayout(spacing: 6) {

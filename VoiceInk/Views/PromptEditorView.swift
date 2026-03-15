@@ -57,23 +57,26 @@ struct PromptEditorView: View {
         }
     }
     
+    private func dismissPanel() {
+        if let onDismiss = onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
+            // Header
             HStack(spacing: 12) {
                 Text(isEditingPredefinedPrompt ? "Edit Trigger Words" : (mode == .add ? "New Prompt" : "Edit Prompt"))
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
-                
+
                 Spacer()
-                
-                Button(action: {
-                    if let onDismiss = onDismiss {
-                        onDismiss()
-                    } else {
-                        dismiss()
-                    }
-                }) {
+
+                Button(action: dismissPanel) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
@@ -90,195 +93,27 @@ struct PromptEditorView: View {
             .overlay(
                 Divider().opacity(0.5), alignment: .bottom
             )
-            
-            ScrollView {
-                VStack(spacing: 24) {
-                    if isEditingPredefinedPrompt {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Editing: \(title)")
-                                .font(.title3)
-                                .fontWeight(.medium)
-                                .foregroundColor(.primary)
-                            
-                            Text("You can only customize the trigger words for system prompts.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            TriggerWordsEditor(triggerWords: $triggerWords)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 20)
-                        
-                    } else {
-                        VStack(spacing: 24) {
-                            HStack(alignment: .top, spacing: 16) {
-                                Button(action: { showingIconPicker = true }) {
-                                    Image(systemName: selectedIcon)
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.primary)
-                                        .frame(width: 56, height: 56)
-                                        .background(Color(NSColor.controlBackgroundColor))
-                                        .cornerRadius(10)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                                .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
-                                    IconPickerPopover(selectedIcon: $selectedIcon, isPresented: $showingIconPicker)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Title")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                    
-                                    TextField("Prompt Name", text: $title)
-                                        .textFieldStyle(.plain)
-                                        .font(.system(size: 14))
-                                        .padding(8)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                                .background(Color(NSColor.controlBackgroundColor).cornerRadius(6))
-                                        )
-                                }
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Description")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                
-                                TextField("Brief description of what this prompt does", text: $description)
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: 13))
-                                    .padding(8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                            .background(Color(NSColor.controlBackgroundColor).cornerRadius(6))
-                                    )
-                            }
-                            
-                            Divider().padding(.vertical, 4)
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Instructions")
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                
-                                ZStack(alignment: .topLeading) {
-                                    TextEditor(text: $promptText)
-                                        .font(.system(.body, design: .monospaced))
-                                        .frame(minHeight: 180)
-                                        .padding(8)
-                                        .background(Color(NSColor.controlBackgroundColor))
-                                        .cornerRadius(6)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                                        )
-                                    
-                                    if promptText.isEmpty {
-                                        Text("Enter your custom prompt instructions here...")
-                                            .font(.system(.body, design: .monospaced))
-                                            .foregroundColor(.secondary.opacity(0.5))
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 12)
-                                            .allowsHitTesting(false                                        )
-                                    }
-                                }
-                                
-                                if !isEditingPredefinedPrompt {
-                                    HStack(spacing: 8) {
-                                        Toggle("Use System Template", isOn: $useSystemInstructions)
-                                            .toggleStyle(.switch)
-                                            .controlSize(.small)
-                                        
-                                        InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
-                                    }
-                                    .padding(.top, 4)
-                                }
-                            }
-                            
-                            Divider().padding(.vertical, 4)
-                            
-                            TriggerWordsEditor(triggerWords: $triggerWords)
-                            
-                            if case .add = mode, !isEditingPredefinedPrompt {
-                                HStack {
-                                    Menu {
-                                        ForEach(PromptTemplates.all, id: \.title) { template in
-                                            Button {
-                                                title = template.title
-                                                promptText = template.promptText
-                                                selectedIcon = template.icon
-                                                description = template.description
-                                            } label: {
-                                                HStack {
-                                                    Text(template.title)
-                                                    Spacer()
-                                                    Image(systemName: template.icon)
-                                                }
-                                            }
-                                        }
-                                    } label: {
-                                        HStack(spacing: 6) {
-                                            Image(systemName: "sparkles")
-                                                .foregroundColor(.accentColor)
-                                            Text("Start with Template")
-                                                .foregroundColor(.primary)
-                                            Image(systemName: "chevron.down")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .padding(.vertical, 6)
-                                        .padding(.horizontal, 10)
-                                        .background(Color(NSColor.controlBackgroundColor))
-                                        .cornerRadius(6)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 6)
-                                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-                                        )
-                                    }
-                                    .menuStyle(.borderlessButton)
-                                    .fixedSize()
-                                    
-                                    Spacer()
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 20)
-                    }
-                }
+
+            // Content
+            if isEditingPredefinedPrompt {
+                predefinedPromptForm
+            } else {
+                customPromptForm
             }
-            
+
+            // Footer
             VStack(spacing: 0) {
-                Divider()
                 HStack {
-                    Button("Cancel") {
-                        if let onDismiss = onDismiss {
-                            onDismiss()
-                        } else {
-                            dismiss()
-                        }
-                    }
-                    .keyboardShortcut(.escape, modifiers: [])
-                    .buttonStyle(.plain)
-                    .foregroundColor(.secondary)
-                    
+                    Button("Cancel") { dismissPanel() }
+                        .keyboardShortcut(.escape, modifiers: [])
+                        .buttonStyle(.plain)
+                        .foregroundColor(.secondary)
+
                     Spacer()
-                    
+
                     Button {
                         save()
-                        if let onDismiss = onDismiss {
-                            onDismiss()
-                        } else {
-                            dismiss()
-                        }
+                        dismissPanel()
                     } label: {
                         Text("Save Changes")
                             .frame(minWidth: 100)
@@ -292,10 +127,122 @@ struct PromptEditorView: View {
                 .background(Color(NSColor.windowBackgroundColor))
             }
         }
-        .frame(minWidth: 400, minHeight: 500)
         .background(Color(NSColor.windowBackgroundColor))
     }
-    
+
+    // MARK: - Predefined Prompt Form
+
+    private var predefinedPromptForm: some View {
+        Form {
+            Section {
+                Text("You can only customize the trigger words for system prompts.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Editing: \(title)")
+            }
+
+            Section {
+                TriggerWordsEditor(triggerWords: $triggerWords)
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    // MARK: - Custom Prompt Form
+
+    private var customPromptForm: some View {
+        Form {
+            Section {
+                HStack(alignment: .center, spacing: 14) {
+                    Button(action: { showingIconPicker = true }) {
+                        Image(systemName: selectedIcon)
+                            .font(.system(size: 22))
+                            .foregroundColor(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
+                        IconPickerPopover(selectedIcon: $selectedIcon, isPresented: $showingIconPicker)
+                    }
+
+                    TextField("Prompt Name", text: $title)
+                        .textFieldStyle(.roundedBorder)
+                }
+
+                TextField("Brief description", text: $description)
+                    .textFieldStyle(.roundedBorder)
+            } header: {
+                Text("Details")
+            }
+
+            Section {
+                ZStack(alignment: .topLeading) {
+                    TextEditor(text: $promptText)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(minHeight: 160)
+                        .scrollContentBackground(.hidden)
+
+                    if promptText.isEmpty {
+                        Text("Enter your custom prompt instructions here...")
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                            .padding(.leading, 5)
+                            .allowsHitTesting(false)
+                    }
+                }
+
+                Toggle(isOn: $useSystemInstructions) {
+                    HStack(spacing: 4) {
+                        Text("Use System Template")
+                        InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
+                    }
+                }
+                .toggleStyle(.switch)
+            } header: {
+                Text("Instructions")
+            }
+
+            Section {
+                TriggerWordsEditor(triggerWords: $triggerWords)
+            } header: {
+                HStack(spacing: 4) {
+                    Text("Trigger Words")
+                    InfoTip("Add words that automatically activate this prompt. For example, 'summarize', 'email', 'translate'.")
+                }
+            }
+
+            if case .add = mode {
+                Section {
+                    Menu {
+                        ForEach(PromptTemplates.all, id: \.title) { template in
+                            Button {
+                                title = template.title
+                                promptText = template.promptText
+                                selectedIcon = template.icon
+                                description = template.description
+                            } label: {
+                                Label(template.title, systemImage: template.icon)
+                            }
+                        }
+                    } label: {
+                        Label("Start with Template", systemImage: "sparkles")
+                    }
+                    .menuStyle(.borderlessButton)
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+    }
+
     private func save() {
         switch mode {
         case .add:
@@ -331,40 +278,21 @@ struct TriggerWordsEditor: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("Trigger Words")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                InfoTip("Add multiple words that can activate this prompt.")
-            }
-            
             HStack {
-                TextField("Add trigger word (e.g. 'summarize')", text: $newTriggerWord)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .padding(6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-                            .background(Color(NSColor.controlBackgroundColor).cornerRadius(6))
-                    )
-                    .onSubmit {
-                        addTriggerWord()
-                    }
-                
+                TextField("Add trigger word", text: $newTriggerWord)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { addTriggerWord() }
+
                 Button(action: { addTriggerWord() }) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .bold))
-                        .frame(width: 26, height: 26)
-                        .background(Color.accentColor.opacity(0.1))
-                        .foregroundColor(.accentColor)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    Image(systemName: "plus.circle.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(Color.accentColor)
+                        .font(.system(size: 18))
                 }
                 .buttonStyle(.plain)
                 .disabled(newTriggerWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            
+
             if !triggerWords.isEmpty {
                 TagLayout(alignment: .leading, spacing: 6) {
                     ForEach(triggerWords, id: \.self) { word in
@@ -373,13 +301,11 @@ struct TriggerWordsEditor: View {
                         }
                     }
                 }
-                .padding(.top, 4)
             } else {
                 Text("No trigger words added")
                     .font(.caption)
                     .foregroundColor(.secondary.opacity(0.7))
                     .italic()
-                    .padding(.top, 2)
             }
         }
     }

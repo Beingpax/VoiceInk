@@ -1,6 +1,26 @@
 import Foundation
 import KeyboardShortcuts
 
+enum AutoSendKey: String, Codable, CaseIterable {
+    case none = "none"
+    case enter = "enter"
+    case shiftEnter = "shiftEnter"
+    case commandEnter = "commandEnter"
+
+    var displayName: String {
+        switch self {
+        case .none: return "None"
+        case .enter: return "Return (⏎)"
+        case .shiftEnter: return "Shift + Return (⇧⏎)"
+        case .commandEnter: return "Command + Return (⌘⏎)"
+        }
+    }
+
+    var isEnabled: Bool {
+        self != .none
+    }
+}
+
 struct PowerModeConfig: Codable, Identifiable, Equatable {
     var id: UUID
     var name: String
@@ -14,13 +34,13 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var useScreenCapture: Bool
     var selectedAIProvider: String?
     var selectedAIModel: String?
-    var isAutoSendEnabled: Bool = false
+    var autoSendKey: AutoSendKey = .none
     var isEnabled: Bool = true
     var isDefault: Bool = false
     var hotkeyShortcut: String? = nil
         
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, isEnabled, isDefault, hotkeyShortcut
+        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault, hotkeyShortcut
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
@@ -28,7 +48,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     init(id: UUID = UUID(), name: String, emoji: String, appConfigs: [AppConfig]? = nil,
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
-         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, isAutoSendEnabled: Bool = false, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
+         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
         self.id = id
         self.name = name
         self.emoji = emoji
@@ -37,7 +57,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.isAIEnhancementEnabled = isAIEnhancementEnabled
         self.selectedPrompt = selectedPrompt
         self.useScreenCapture = useScreenCapture
-        self.isAutoSendEnabled = isAutoSendEnabled
+        self.autoSendKey = autoSendKey
         self.selectedAIProvider = selectedAIProvider ?? UserDefaults.standard.string(forKey: "selectedAIProvider")
         self.selectedAIModel = selectedAIModel
         self.selectedTranscriptionModelName = selectedTranscriptionModelName ?? UserDefaults.standard.string(forKey: "CurrentTranscriptionModel")
@@ -60,7 +80,14 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
-        isAutoSendEnabled = try container.decodeIfPresent(Bool.self, forKey: .isAutoSendEnabled) ?? false
+        // Migrate from old isAutoSendEnabled bool to new autoSendKey enum
+        if let newKey = try container.decodeIfPresent(AutoSendKey.self, forKey: .autoSendKey) {
+            autoSendKey = newKey
+        } else if let oldBool = try container.decodeIfPresent(Bool.self, forKey: .isAutoSendEnabled), oldBool {
+            autoSendKey = .enter
+        } else {
+            autoSendKey = .none
+        }
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         isDefault = try container.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
         hotkeyShortcut = try container.decodeIfPresent(String.self, forKey: .hotkeyShortcut)
@@ -87,7 +114,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encode(useScreenCapture, forKey: .useScreenCapture)
         try container.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
         try container.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)
-        try container.encode(isAutoSendEnabled, forKey: .isAutoSendEnabled)
+        try container.encode(autoSendKey, forKey: .autoSendKey)
         try container.encodeIfPresent(selectedTranscriptionModelName, forKey: .selectedTranscriptionModelName)
         try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(isDefault, forKey: .isDefault)

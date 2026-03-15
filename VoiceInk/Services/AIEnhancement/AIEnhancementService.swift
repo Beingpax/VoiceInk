@@ -83,7 +83,6 @@ class AIEnhancementService: ObservableObject {
         self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
         self.useScreenCaptureContext = UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
-
         if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
            let decodedPrompts = try? JSONDecoder().decode([CustomPrompt].self, from: savedPromptsData) {
             self.customPrompts = decodedPrompts

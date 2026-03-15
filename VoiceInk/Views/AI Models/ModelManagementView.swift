@@ -25,12 +25,20 @@ struct ModelManagementView: View {
 
     @State private var selectedFilter: ModelFilter = .recommended
     @State private var isShowingSettings = false
-    
+
+    private let settingsPanelWidth: CGFloat = 400
+
     // State for the unified alert
     @State private var isShowingDeleteAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var deleteActionClosure: () -> Void = {}
+
+    private func closeSettings() {
+        withAnimation(.smooth(duration: 0.3)) {
+            isShowingSettings = false
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -47,6 +55,9 @@ struct ModelManagementView: View {
         }
         .frame(minWidth: 600, minHeight: 500)
         .background(Color(NSColor.controlBackgroundColor))
+        .slidingPanel(isPresented: $isShowingSettings, width: settingsPanelWidth) {
+            settingsPanelContent
+        }
         .alert(isPresented: $isShowingDeleteAlert) {
             Alert(
                 title: Text(alertTitle),
@@ -54,6 +65,40 @@ struct ModelManagementView: View {
                 primaryButton: .destructive(Text("Delete"), action: deleteActionClosure),
                 secondaryButton: .cancel()
             )
+        }
+    }
+
+    private var settingsPanelContent: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: 12) {
+                Text("Model Settings")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Button(action: { closeSettings() }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .padding(6)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("Close")
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(Color(NSColor.windowBackgroundColor))
+            .overlay(
+                Divider().opacity(0.5), alignment: .bottom
+            )
+
+            // Content
+            ModelSettingsView(whisperPrompt: whisperPrompt)
         }
     }
     
@@ -104,7 +149,7 @@ struct ModelManagementView: View {
                 Spacer()
                 
                 Button(action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.smooth(duration: 0.3)) {
                         isShowingSettings.toggle()
                     }
                 }) {
@@ -120,10 +165,7 @@ struct ModelManagementView: View {
             }
             .padding(.bottom, 12)
             
-            if isShowingSettings {
-                ModelSettingsView(whisperPrompt: whisperPrompt)
-            } else {
-                VStack(spacing: 12) {
+            VStack(spacing: 12) {
                     ForEach(filteredModels, id: \.id) { model in
                         let isWarming = (model as? LocalModel).map { localModel in
                             warmupCoordinator.isWarming(modelNamed: localModel.name)
@@ -211,9 +253,10 @@ struct ModelManagementView: View {
                     }
                 }
             }
-        }
         .padding()
     }
+
+
 
     private var intelMacWarningBanner: some View {
         HStack(spacing: 10) {

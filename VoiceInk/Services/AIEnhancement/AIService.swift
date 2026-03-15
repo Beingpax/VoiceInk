@@ -217,12 +217,16 @@ class AIService: ObservableObject {
     }
     
     var availableModels: [String] {
-        if selectedProvider == .ollama {
+        availableModels(for: selectedProvider)
+    }
+
+    func availableModels(for provider: AIProvider) -> [String] {
+        if provider == .ollama {
             return ollamaService.availableModels.map { $0.name }
-        } else if selectedProvider == .openRouter {
+        } else if provider == .openRouter {
             return openRouterModels
         }
-        return selectedProvider.availableModels
+        return provider.availableModels
     }
     
     init() {

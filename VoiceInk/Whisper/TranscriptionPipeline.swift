@@ -111,9 +111,15 @@ class TranscriptionPipeline {
                 await promptDetectionService.applyDetectionResult(detectionResult, to: enhancementService)
             }
 
+            let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
+            let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
+            let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 5
+            let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold
+
             if let enhancementService,
                enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured {
+               enhancementService.isConfigured,
+               !shouldSkipEnhancement {
                 if shouldCancel() { await onCleanup(); return }
 
                 onStateChange(.enhancing)
@@ -165,9 +171,9 @@ class TranscriptionPipeline {
                 CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
 
                 let powerMode = PowerModeManager.shared
-                if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.isAutoSendEnabled {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        CursorPaster.pressEnter()
+                if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.autoSendKey.isEnabled {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        CursorPaster.performAutoSend(activeConfig.autoSendKey)
                     }
                 }
             }
