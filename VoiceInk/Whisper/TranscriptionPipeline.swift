@@ -161,8 +161,8 @@ class TranscriptionPipeline {
         try? modelContext.save()
         NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
 
-        if shouldCancel() { await onCleanup(); return }
-
+        // Paste if transcription completed — don't check shouldCancel() here because
+        // the user should always get their text pasted once transcription succeeds.
         if var textToPaste = finalPastedText,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
             if case .trialExpired = licenseViewModel.licenseState {
