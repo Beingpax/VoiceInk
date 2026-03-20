@@ -228,6 +228,19 @@ class AIEnhancementService: ObservableObject {
             }
         }
 
+        if aiService.selectedProvider == .localCLI {
+            do {
+                let result = try await aiService.enhanceWithLocalCLI(systemPrompt: systemMessage, userPrompt: formattedText)
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let localError = error as? LocalCLIError {
+                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown Local CLI error occurred.")
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
         try await waitForRateLimit()
 
         do {
