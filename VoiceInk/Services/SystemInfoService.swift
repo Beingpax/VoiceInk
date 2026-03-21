@@ -32,6 +32,7 @@ class SystemInfoService {
         Available Audio Devices: \(getAvailableAudioDevices())
 
         HOTKEY SETTINGS:
+        Active Hotkey Profile: \(getActiveHotkeyProfile())
         Primary Hotkey: \(getPrimaryHotkey())
         Secondary Hotkey: \(getSecondaryHotkey())
 
@@ -140,6 +141,21 @@ class SystemInfoService {
             return hotkey.displayName
         }
         return "Right Command"
+    }
+
+    private func getActiveHotkeyProfile() -> String {
+        if let data = UserDefaults.standard.activationShortcutProfilesData,
+           let profiles = try? JSONDecoder().decode([ActivationShortcutProfile].self, from: data),
+           !profiles.isEmpty {
+            let activeProfileID = UserDefaults.standard.activeActivationShortcutProfileID.flatMap(UUID.init(uuidString:))
+            if let activeProfileID,
+               let activeProfile = profiles.first(where: { $0.id == activeProfileID }) {
+                return activeProfile.name
+            }
+            return profiles[0].name
+        }
+
+        return "Default"
     }
 
     private func getSecondaryHotkey() -> String {

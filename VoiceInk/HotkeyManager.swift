@@ -15,29 +15,31 @@ extension KeyboardShortcuts.Name {
 
 @MainActor
 class HotkeyManager: ObservableObject {
+    enum ActivationSlot {
+        case primary
+        case secondary
+    }
+
+    @Published private(set) var profiles: [ActivationShortcutProfile]
+    @Published private(set) var activeProfileID: UUID?
     @Published var selectedHotkey1: HotkeyOption {
         didSet {
-            UserDefaults.standard.set(selectedHotkey1.rawValue, forKey: "selectedHotkey1")
-            setupHotkeyMonitoring()
+            handleActivationConfigurationDidChange()
         }
     }
     @Published var selectedHotkey2: HotkeyOption {
         didSet {
-            if selectedHotkey2 == .none {
-                KeyboardShortcuts.setShortcut(nil, for: .toggleMiniRecorder2)
-            }
-            UserDefaults.standard.set(selectedHotkey2.rawValue, forKey: "selectedHotkey2")
-            setupHotkeyMonitoring()
+            handleActivationConfigurationDidChange()
         }
     }
     @Published var hotkeyMode1: HotkeyMode {
         didSet {
-            UserDefaults.standard.set(hotkeyMode1.rawValue, forKey: "hotkeyMode1")
+            handleActivationConfigurationDidChange()
         }
     }
     @Published var hotkeyMode2: HotkeyMode {
         didSet {
-            UserDefaults.standard.set(hotkeyMode2.rawValue, forKey: "hotkeyMode2")
+            handleActivationConfigurationDidChange()
         }
     }
     @Published var isMiddleClickToggleEnabled: Bool {
@@ -87,10 +89,11 @@ class HotkeyManager: ObservableObject {
     private var shortcutCurrentKeyState = false
     private var lastShortcutTriggerTime: Date?
     private let shortcutCooldownInterval: TimeInterval = 0.5
+    private var isApplyingProfile = false
 
     private static let hybridPressThreshold: TimeInterval = 0.5
 
-    enum HotkeyMode: String, CaseIterable {
+    enum HotkeyMode: String, CaseIterable, Codable {
         case toggle = "toggle"
         case pushToTalk = "pushToTalk"
         case hybrid = "hybrid"
@@ -104,7 +107,7 @@ class HotkeyManager: ObservableObject {
         }
     }
 
-    enum HotkeyOption: String, CaseIterable {
+    enum HotkeyOption: String, CaseIterable, Codable {
         case none = "none"
         case rightOption = "rightOption"
         case leftOption = "leftOption"
@@ -148,11 +151,22 @@ class HotkeyManager: ObservableObject {
     }
     
     init(engine: VoiceInkEngine, recorderUIManager: RecorderUIManager) {
-        self.selectedHotkey1 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey1") ?? "") ?? .rightCommand
-        self.selectedHotkey2 = HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey2") ?? "") ?? .none
+        let initialProfileState = Self.loadInitialProfileState()
+        let initialProfile = initialProfileState.activeProfile ?? LegacyActivationShortcutSettings(
+            selectedHotkey1: .rightCommand,
+            selectedHotkey2: .none,
+            hotkeyMode1: .hybrid,
+            hotkeyMode2: .hybrid,
+            toggleMiniRecorderShortcut: nil,
+            toggleMiniRecorderShortcut2: nil
+        ).makeDefaultProfile()
 
-        self.hotkeyMode1 = HotkeyMode(rawValue: UserDefaults.standard.string(forKey: "hotkeyMode1") ?? "") ?? .hybrid
-        self.hotkeyMode2 = HotkeyMode(rawValue: UserDefaults.standard.string(forKey: "hotkeyMode2") ?? "") ?? .hybrid
+        self.profiles = initialProfileState.profiles
+        self.activeProfileID = initialProfileState.activeProfileID
+        self.selectedHotkey1 = initialProfile.selectedHotkey1
+        self.selectedHotkey2 = initialProfile.selectedHotkey2
+        self.hotkeyMode1 = initialProfile.hotkeyMode1
+        self.hotkeyMode2 = initialProfile.hotkeyMode2
 
         self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled")
         self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: "middleClickActivationDelay")
@@ -198,10 +212,167 @@ class HotkeyManager: ObservableObject {
             }
         }
 
+        applyProfile(
+            initialProfile,
+            shouldPersist: true,
+            shouldPostSettingsChange: false
+        )
+
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.setupHotkeyMonitoring()
         }
+    }
+
+    var activeProfile: ActivationShortcutProfile? {
+        guard let activeProfileID else {
+            return profiles.first
+        }
+
+        return profiles.first { $0.id == activeProfileID } ?? profiles.first
+    }
+
+    var activeProfileName: String {
+        activeProfile?.name ?? "Default"
+    }
+
+    var hasAnyActivationShortcut: Bool {
+        isActivationSlotConfigured(.primary) || isActivationSlotConfigured(.secondary)
+    }
+
+    var primaryCustomShortcut: KeyboardShortcuts.Shortcut? {
+        activeProfile?.toggleMiniRecorderShortcut
+    }
+
+    var secondaryCustomShortcut: KeyboardShortcuts.Shortcut? {
+        activeProfile?.toggleMiniRecorderShortcut2
+    }
+
+    func switchProfile(to id: UUID) {
+        guard let profile = profiles.first(where: { $0.id == id }) else { return }
+        applyProfile(profile)
+    }
+
+    func createProfileFromCurrent(name: String? = nil) {
+        guard let activeProfile else { return }
+
+        var newProfile = activeProfile
+        newProfile.id = UUID()
+        newProfile.name = uniqueProfileName(for: name ?? "New Profile")
+
+        profiles.append(newProfile)
+        applyProfile(newProfile)
+    }
+
+    func duplicateActiveProfile() {
+        guard let activeProfile else { return }
+
+        var duplicatedProfile = activeProfile
+        duplicatedProfile.id = UUID()
+        duplicatedProfile.name = uniqueProfileName(for: "\(activeProfile.name) Copy")
+
+        profiles.append(duplicatedProfile)
+        applyProfile(duplicatedProfile)
+    }
+
+    func renameActiveProfile(to name: String) {
+        guard let activeProfileIndex else { return }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
+        let currentProfile = profiles[activeProfileIndex]
+        let uniqueName = uniqueProfileName(for: trimmedName, excluding: currentProfile.id)
+
+        var updatedProfiles = profiles
+        updatedProfiles[activeProfileIndex].name = uniqueName
+        profiles = updatedProfiles
+        persistProfilesState()
+    }
+
+    func deleteProfile(with id: UUID) {
+        guard profiles.count > 1,
+              let index = profiles.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+
+        let fallbackProfile: ActivationShortcutProfile?
+        if activeProfileID == id {
+            if index < profiles.count - 1 {
+                fallbackProfile = profiles[index + 1]
+            } else {
+                fallbackProfile = profiles[index - 1]
+            }
+        } else {
+            fallbackProfile = activeProfile
+        }
+
+        var updatedProfiles = profiles
+        updatedProfiles.remove(at: index)
+        profiles = updatedProfiles
+
+        if let fallbackProfile {
+            applyProfile(fallbackProfile)
+        } else {
+            persistProfilesState()
+        }
+    }
+
+    func setCustomShortcut(_ shortcut: KeyboardShortcuts.Shortcut?, for slot: ActivationSlot) {
+        guard let activeProfileIndex else { return }
+
+        var updatedProfiles = profiles
+        switch slot {
+        case .primary:
+            updatedProfiles[activeProfileIndex].toggleMiniRecorderShortcut = shortcut
+            if selectedHotkey1 == .custom {
+                KeyboardShortcuts.setShortcut(shortcut, for: .toggleMiniRecorder)
+            }
+        case .secondary:
+            updatedProfiles[activeProfileIndex].toggleMiniRecorderShortcut2 = shortcut
+            if selectedHotkey2 == .custom {
+                KeyboardShortcuts.setShortcut(shortcut, for: .toggleMiniRecorder2)
+            }
+        }
+
+        profiles = updatedProfiles
+        persistProfilesState()
+        setupHotkeyMonitoring()
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
+
+    func importProfiles(_ importedProfiles: [ActivationShortcutProfile], activeProfileID: UUID?) {
+        let importedState = ActivationShortcutProfilesState(
+            profiles: importedProfiles,
+            activeProfileID: activeProfileID
+        )
+
+        profiles = importedState.profiles
+        if let profile = importedState.activeProfile {
+            applyProfile(profile)
+        }
+    }
+
+    func importLegacyActivationSettings(
+        selectedHotkey1: HotkeyOption,
+        selectedHotkey2: HotkeyOption,
+        hotkeyMode1: HotkeyMode,
+        hotkeyMode2: HotkeyMode,
+        toggleMiniRecorderShortcut: KeyboardShortcuts.Shortcut?,
+        toggleMiniRecorderShortcut2: KeyboardShortcuts.Shortcut?
+    ) {
+        guard let activeProfileIndex else { return }
+
+        var updatedProfiles = profiles
+        updatedProfiles[activeProfileIndex].selectedHotkey1 = selectedHotkey1
+        updatedProfiles[activeProfileIndex].selectedHotkey2 = selectedHotkey2
+        updatedProfiles[activeProfileIndex].hotkeyMode1 = hotkeyMode1
+        updatedProfiles[activeProfileIndex].hotkeyMode2 = hotkeyMode2
+        updatedProfiles[activeProfileIndex].toggleMiniRecorderShortcut = toggleMiniRecorderShortcut
+        updatedProfiles[activeProfileIndex].toggleMiniRecorderShortcut2 = toggleMiniRecorderShortcut2
+        profiles = updatedProfiles
+
+        applyProfile(updatedProfiles[activeProfileIndex])
     }
     
     private func setupHotkeyMonitoring() {
@@ -212,6 +383,170 @@ class HotkeyManager: ObservableObject {
         setupMiddleClickMonitoring()
     }
     
+    private var activeProfileIndex: Int? {
+        guard let activeProfileID else {
+            return profiles.isEmpty ? nil : 0
+        }
+
+        return profiles.firstIndex(where: { $0.id == activeProfileID }) ?? (profiles.isEmpty ? nil : 0)
+    }
+
+    private func handleActivationConfigurationDidChange() {
+        guard !isApplyingProfile else { return }
+
+        updateLiveCustomShortcutsForCurrentState()
+        syncActiveProfileFromCurrentState()
+        persistProfilesState()
+        setupHotkeyMonitoring()
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
+
+    private func updateLiveCustomShortcutsForCurrentState() {
+        let primaryShortcut = selectedHotkey1 == .custom ? activeProfile?.toggleMiniRecorderShortcut : nil
+        let secondaryShortcut = selectedHotkey2 == .custom ? activeProfile?.toggleMiniRecorderShortcut2 : nil
+
+        KeyboardShortcuts.setShortcut(primaryShortcut, for: .toggleMiniRecorder)
+        KeyboardShortcuts.setShortcut(secondaryShortcut, for: .toggleMiniRecorder2)
+    }
+
+    private func syncActiveProfileFromCurrentState() {
+        guard let activeProfileIndex else { return }
+
+        var updatedProfiles = profiles
+        updatedProfiles[activeProfileIndex].selectedHotkey1 = selectedHotkey1
+        updatedProfiles[activeProfileIndex].selectedHotkey2 = selectedHotkey2
+        updatedProfiles[activeProfileIndex].hotkeyMode1 = hotkeyMode1
+        updatedProfiles[activeProfileIndex].hotkeyMode2 = hotkeyMode2
+
+        if selectedHotkey1 == .custom {
+            updatedProfiles[activeProfileIndex].toggleMiniRecorderShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
+        }
+
+        if selectedHotkey2 == .custom {
+            updatedProfiles[activeProfileIndex].toggleMiniRecorderShortcut2 = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2)
+        }
+
+        profiles = updatedProfiles
+    }
+
+    private func applyProfile(
+        _ profile: ActivationShortcutProfile,
+        shouldPersist: Bool = true,
+        shouldPostSettingsChange: Bool = true
+    ) {
+        isApplyingProfile = true
+        activeProfileID = profile.id
+        selectedHotkey1 = profile.selectedHotkey1
+        selectedHotkey2 = profile.selectedHotkey2
+        hotkeyMode1 = profile.hotkeyMode1
+        hotkeyMode2 = profile.hotkeyMode2
+        isApplyingProfile = false
+
+        KeyboardShortcuts.setShortcut(
+            profile.selectedHotkey1 == .custom ? profile.toggleMiniRecorderShortcut : nil,
+            for: .toggleMiniRecorder
+        )
+        KeyboardShortcuts.setShortcut(
+            profile.selectedHotkey2 == .custom ? profile.toggleMiniRecorderShortcut2 : nil,
+            for: .toggleMiniRecorder2
+        )
+
+        mirrorActiveProfileToLegacyDefaults()
+
+        if shouldPersist {
+            persistProfilesState()
+        }
+
+        setupHotkeyMonitoring()
+
+        if shouldPostSettingsChange {
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+    }
+
+    private func mirrorActiveProfileToLegacyDefaults() {
+        UserDefaults.standard.set(selectedHotkey1.rawValue, forKey: "selectedHotkey1")
+        UserDefaults.standard.set(selectedHotkey2.rawValue, forKey: "selectedHotkey2")
+        UserDefaults.standard.set(hotkeyMode1.rawValue, forKey: "hotkeyMode1")
+        UserDefaults.standard.set(hotkeyMode2.rawValue, forKey: "hotkeyMode2")
+    }
+
+    private func persistProfilesState() {
+        if let data = try? JSONEncoder().encode(profiles) {
+            UserDefaults.standard.activationShortcutProfilesData = data
+        }
+        UserDefaults.standard.activeActivationShortcutProfileID = activeProfileID?.uuidString
+        mirrorActiveProfileToLegacyDefaults()
+    }
+
+    private func uniqueProfileName(for baseName: String, excluding profileID: UUID? = nil) -> String {
+        let trimmedBaseName = baseName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedBaseName = trimmedBaseName.isEmpty ? "Profile" : trimmedBaseName
+        let excludedID = profileID
+
+        var candidate = sanitizedBaseName
+        var suffix = 2
+        let existingNames = profiles
+            .filter { $0.id != excludedID }
+            .map { $0.name.lowercased() }
+
+        while existingNames.contains(candidate.lowercased()) {
+            candidate = "\(sanitizedBaseName) \(suffix)"
+            suffix += 1
+        }
+
+        return candidate
+    }
+
+    private func isActivationSlotConfigured(_ slot: ActivationSlot) -> Bool {
+        switch slot {
+        case .primary:
+            switch selectedHotkey1 {
+            case .none:
+                return false
+            case .custom:
+                return KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) != nil
+            default:
+                return true
+            }
+        case .secondary:
+            switch selectedHotkey2 {
+            case .none:
+                return false
+            case .custom:
+                return KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2) != nil
+            default:
+                return true
+            }
+        }
+    }
+
+    private static func loadInitialProfileState() -> ActivationShortcutProfilesState {
+        if let data = UserDefaults.standard.activationShortcutProfilesData,
+           let decodedProfiles = try? JSONDecoder().decode([ActivationShortcutProfile].self, from: data),
+           !decodedProfiles.isEmpty {
+            return ActivationShortcutProfilesState(
+                profiles: decodedProfiles,
+                activeProfileID: UserDefaults.standard.activeActivationShortcutProfileID.flatMap(UUID.init(uuidString:))
+            )
+        }
+
+        return ActivationShortcutProfilesState.makeDefaultState(
+            from: loadLegacyActivationSettings()
+        )
+    }
+
+    private static func loadLegacyActivationSettings() -> LegacyActivationShortcutSettings {
+        LegacyActivationShortcutSettings(
+            selectedHotkey1: HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey1") ?? "") ?? .rightCommand,
+            selectedHotkey2: HotkeyOption(rawValue: UserDefaults.standard.string(forKey: "selectedHotkey2") ?? "") ?? .none,
+            hotkeyMode1: HotkeyMode(rawValue: UserDefaults.standard.string(forKey: "hotkeyMode1") ?? "") ?? .hybrid,
+            hotkeyMode2: HotkeyMode(rawValue: UserDefaults.standard.string(forKey: "hotkeyMode2") ?? "") ?? .hybrid,
+            toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
+            toggleMiniRecorderShortcut2: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2)
+        )
+    }
+
     private func setupModifierKeyMonitoring() {
         // Only set up if at least one hotkey is a modifier key
         guard (selectedHotkey1.isModifierKey && selectedHotkey1 != .none) || (selectedHotkey2.isModifierKey && selectedHotkey2 != .none) else { return }
@@ -495,15 +830,17 @@ class HotkeyManager: ObservableObject {
     
     // Computed property for backward compatibility with UI
     var isShortcutConfigured: Bool {
-        let isHotkey1Configured = (selectedHotkey1 == .custom) ? (KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) != nil) : true
-        let isHotkey2Configured = (selectedHotkey2 == .custom) ? (KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2) != nil) : true
-        return isHotkey1Configured && isHotkey2Configured
+        hasAnyActivationShortcut
     }
     
     func updateShortcutStatus() {
         // Called when a custom shortcut changes
-        if selectedHotkey1 == .custom || selectedHotkey2 == .custom {
-            setupHotkeyMonitoring()
+        if selectedHotkey1 == .custom {
+            setCustomShortcut(KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder), for: .primary)
+        }
+
+        if selectedHotkey2 == .custom {
+            setCustomShortcut(KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2), for: .secondary)
         }
     }
     

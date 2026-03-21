@@ -22,8 +22,9 @@ struct SettingsView: View {
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
+    @FocusState private var isProfileNameFocused: Bool
     @State private var showResetOnboardingAlert = false
-    @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
+    @State private var activeProfileNameDraft = ""
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
 
     // Expansion states - all collapsed by default
@@ -35,6 +36,63 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                LabeledContent("Active Profile") {
+                    HStack(spacing: 8) {
+                        Picker(
+                            "",
+                            selection: Binding(
+                                get: { hotkeyManager.activeProfileID ?? hotkeyManager.profiles.first?.id },
+                                set: { newValue in
+                                    commitActiveProfileName()
+                                    if let newValue {
+                                        hotkeyManager.switchProfile(to: newValue)
+                                    }
+                                }
+                            )
+                        ) {
+                            ForEach(hotkeyManager.profiles) { profile in
+                                Text(profile.name).tag(Optional(profile.id))
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 220)
+
+                        Button("New From Current") {
+                            commitActiveProfileName()
+                            hotkeyManager.createProfileFromCurrent()
+                        }
+
+                        Button("Duplicate") {
+                            commitActiveProfileName()
+                            hotkeyManager.duplicateActiveProfile()
+                        }
+
+                        Button("Delete") {
+                            commitActiveProfileName()
+                            if let activeProfileID = hotkeyManager.activeProfileID {
+                                hotkeyManager.deleteProfile(with: activeProfileID)
+                            }
+                        }
+                        .disabled(hotkeyManager.profiles.count == 1)
+                    }
+                }
+
+                LabeledContent("Profile Name") {
+                    TextField("Profile Name", text: $activeProfileNameDraft)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 220)
+                        .focused($isProfileNameFocused)
+                        .onSubmit {
+                            commitActiveProfileName()
+                        }
+                }
+            } header: {
+                Text("Shortcut Profiles")
+            } footer: {
+                Text("Profiles let you keep different activation shortcuts for different keyboards. Only the active profile is registered at a time.")
+            }
+
             // MARK: - Shortcuts
             Section {
                 LabeledContent("Shortcut 1") {
@@ -45,7 +103,9 @@ struct SettingsView: View {
                         }
                         hotkeyPicker(binding: $hotkeyManager.selectedHotkey1)
                         if hotkeyManager.selectedHotkey1 == .custom {
-                            KeyboardShortcuts.Recorder(for: .toggleMiniRecorder)
+                            KeyboardShortcuts.Recorder(for: .toggleMiniRecorder) { newShortcut in
+                                hotkeyManager.setCustomShortcut(newShortcut, for: .primary)
+                            }
                                 .controlSize(.small)
                         }
                     }
@@ -58,7 +118,9 @@ struct SettingsView: View {
                             hotkeyModePicker(binding: $hotkeyManager.hotkeyMode2)
                             hotkeyPicker(binding: $hotkeyManager.selectedHotkey2)
                             if hotkeyManager.selectedHotkey2 == .custom {
-                                KeyboardShortcuts.Recorder(for: .toggleMiniRecorder2)
+                                KeyboardShortcuts.Recorder(for: .toggleMiniRecorder2) { newShortcut in
+                                    hotkeyManager.setCustomShortcut(newShortcut, for: .secondary)
+                                }
                                     .controlSize(.small)
                             }
                             Button {
@@ -296,6 +358,17 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(Color(NSColor.controlBackgroundColor))
+        .onAppear {
+            syncActiveProfileNameDraft()
+        }
+        .onChange(of: hotkeyManager.activeProfileID) { _, _ in
+            syncActiveProfileNameDraft()
+        }
+        .onChange(of: isProfileNameFocused) { _, isFocused in
+            if !isFocused {
+                commitActiveProfileName()
+            }
+        }
         .alert("Reset Onboarding", isPresented: $showResetOnboardingAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Reset", role: .destructive) {
@@ -328,6 +401,21 @@ struct SettingsView: View {
         }
         .labelsHidden()
         .fixedSize()
+    }
+
+    private func syncActiveProfileNameDraft() {
+        activeProfileNameDraft = hotkeyManager.activeProfileName
+    }
+
+    private func commitActiveProfileName() {
+        let trimmedName = activeProfileNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            syncActiveProfileNameDraft()
+            return
+        }
+
+        hotkeyManager.renameActiveProfile(to: trimmedName)
+        syncActiveProfileNameDraft()
     }
 }
 

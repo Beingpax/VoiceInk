@@ -214,7 +214,7 @@ struct PermissionsView: View {
                         icon: "keyboard",
                         title: "Keyboard Shortcut",
                         description: "Set up a keyboard shortcut to use VoiceInk anywhere",
-                        isGranted: hotkeyManager.selectedHotkey1 != .none,
+                        isGranted: hotkeyManager.hasAnyActivationShortcut,
                         buttonTitle: "Configure Shortcut",
                         buttonAction: {
                             NotificationCenter.default.post(
