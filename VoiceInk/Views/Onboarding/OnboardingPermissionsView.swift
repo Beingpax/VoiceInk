@@ -472,6 +472,7 @@ struct OnboardingPermissionsView: View {
 
             if binding.wrappedValue == .custom {
                 KeyboardShortcuts.Recorder(for: shortcutName) { newShortcut in
+                    hotkeyManager.setCustomShortcut(newShortcut, for: .primary)
                     onConfigured(newShortcut != nil)
                 }
                 .controlSize(.large)

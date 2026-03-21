@@ -11,6 +11,10 @@ struct GeneralSettings: Codable {
     let retryLastTranscriptionShortcut: KeyboardShortcuts.Shortcut?
     let selectedHotkey1RawValue: String?
     let selectedHotkey2RawValue: String?
+    let hotkeyMode1RawValue: String?
+    let hotkeyMode2RawValue: String?
+    let shortcutProfiles: [ActivationShortcutProfile]?
+    let activeShortcutProfileId: UUID?
     let launchAtLoginEnabled: Bool?
     let isMenuBarOnly: Bool?
     let recorderType: String?
@@ -104,6 +108,10 @@ class ImportExportService {
             retryLastTranscriptionShortcut: KeyboardShortcuts.getShortcut(for: .retryLastTranscription),
             selectedHotkey1RawValue: hotkeyManager.selectedHotkey1.rawValue,
             selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
+            hotkeyMode1RawValue: hotkeyManager.hotkeyMode1.rawValue,
+            hotkeyMode2RawValue: hotkeyManager.hotkeyMode2.rawValue,
+            shortcutProfiles: hotkeyManager.profiles,
+            activeShortcutProfileId: hotkeyManager.activeProfileID,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
             recorderType: recorderUIManager.recorderType,
@@ -272,23 +280,33 @@ class ImportExportService {
                     }
 
                     if let general = importedSettings.generalSettings {
-                        if let shortcut = general.toggleMiniRecorderShortcut {
-                            KeyboardShortcuts.setShortcut(shortcut, for: .toggleMiniRecorder)
-                        }
-                        if let shortcut2 = general.toggleMiniRecorderShortcut2 {
-                            KeyboardShortcuts.setShortcut(shortcut2, for: .toggleMiniRecorder2)
-                        }
                         if let retryShortcut = general.retryLastTranscriptionShortcut {
                             KeyboardShortcuts.setShortcut(retryShortcut, for: .retryLastTranscription)
                         }
-                        if let hotkeyRaw = general.selectedHotkey1RawValue,
-                           let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
-                            hotkeyManager.selectedHotkey1 = hotkey
-                        }
-                        if let hotkeyRaw2 = general.selectedHotkey2RawValue,
-                           let hotkey2 = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw2) {
-                            hotkeyManager.selectedHotkey2 = hotkey2
-                        }
+
+                        let importedLegacyHotkeySettings = LegacyActivationShortcutSettings(
+                            selectedHotkey1: general.selectedHotkey1RawValue
+                                .flatMap(HotkeyManager.HotkeyOption.init(rawValue:)) ?? hotkeyManager.selectedHotkey1,
+                            selectedHotkey2: general.selectedHotkey2RawValue
+                                .flatMap(HotkeyManager.HotkeyOption.init(rawValue:)) ?? hotkeyManager.selectedHotkey2,
+                            hotkeyMode1: general.hotkeyMode1RawValue
+                                .flatMap(HotkeyManager.HotkeyMode.init(rawValue:)) ?? hotkeyManager.hotkeyMode1,
+                            hotkeyMode2: general.hotkeyMode2RawValue
+                                .flatMap(HotkeyManager.HotkeyMode.init(rawValue:)) ?? hotkeyManager.hotkeyMode2,
+                            toggleMiniRecorderShortcut: general.toggleMiniRecorderShortcut,
+                            toggleMiniRecorderShortcut2: general.toggleMiniRecorderShortcut2
+                        )
+
+                        let importedProfileState = ActivationShortcutProfilesState.fromImportedSettings(
+                            shortcutProfiles: general.shortcutProfiles,
+                            activeProfileID: general.activeShortcutProfileId,
+                            legacySettings: importedLegacyHotkeySettings
+                        )
+                        hotkeyManager.importProfiles(
+                            importedProfileState.profiles,
+                            activeProfileID: importedProfileState.activeProfileID
+                        )
+
                         if let launch = general.launchAtLoginEnabled {
                             LaunchAtLogin.isEnabled = launch
                         }

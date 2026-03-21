@@ -22,6 +22,33 @@ struct MenuBarView: View {
                 recorderUIManager.handleToggleMiniRecorder()
             }
 
+            Menu {
+                ForEach(hotkeyManager.profiles) { profile in
+                    Button {
+                        hotkeyManager.switchProfile(to: profile.id)
+                    } label: {
+                        HStack {
+                            Text(profile.name)
+                            if hotkeyManager.activeProfileID == profile.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button("Manage Profiles") {
+                    menuBarManager.openMainWindowAndNavigate(to: "Settings")
+                }
+            } label: {
+                HStack {
+                    Text("Keyboard Profile: \(hotkeyManager.activeProfileName)")
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10))
+                }
+            }
+
             Divider()
 
             Menu {
