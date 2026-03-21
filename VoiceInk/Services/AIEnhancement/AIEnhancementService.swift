@@ -219,6 +219,13 @@ class AIEnhancementService: ObservableObject {
             do {
                 let result = try await aiService.enhanceWithOllama(text: formattedText, systemPrompt: systemMessage)
                 return AIEnhancementOutputFilter.filter(result)
+            } catch is CancellationError {
+                // If the task itself was cancelled (user action), propagate cancellation.
+                try Task.checkCancellation()
+                // Otherwise the CancellationError originated inside URLSession/LLMKit
+                // (e.g. connection reset, internal timeout). Treat as transient network error
+                // so makeRequestWithRetry can retry.
+                throw EnhancementError.networkError
             } catch {
                 if let localError = error as? LocalAIError {
                     throw EnhancementError.customError(localError.errorDescription ?? "An unknown Ollama error occurred.")
@@ -335,14 +342,14 @@ class AIEnhancementService: ObservableObject {
         let enhancementPrompt: EnhancementPrompt = .transcriptionEnhancement
         let promptName = activePrompt?.title
 
-        do {
-            let result = try await makeRequestWithRetry(text: text, mode: enhancementPrompt)
-            let endTime = Date()
-            let duration = endTime.timeIntervalSince(startTime)
-            return (result, duration, promptName)
-        } catch {
-            throw error
-        }
+        // Run in a detached task so the AI request is NOT cancelled when
+        // the caller's Task context is torn down (e.g. SwiftUI view lifecycle).
+        let result = try await Task.detached {
+            try await self.makeRequestWithRetry(text: text, mode: enhancementPrompt)
+        }.value
+
+        let duration = Date().timeIntervalSince(startTime)
+        return (result, duration, promptName)
     }
 
     func captureScreenContext() async {

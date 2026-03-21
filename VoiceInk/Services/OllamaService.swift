@@ -85,6 +85,10 @@ class OllamaService: ObservableObject {
             )
         } catch let error as LLMKitError {
             throw mapLLMKitError(error)
+        } catch is CancellationError {
+            // Propagate real task cancellation; otherwise treat as service unavailable
+            try Task.checkCancellation()
+            throw LocalAIError.serviceUnavailable
         }
     }
 
