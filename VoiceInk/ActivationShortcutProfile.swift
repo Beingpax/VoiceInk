@@ -30,6 +30,17 @@ struct ActivationShortcutProfile: Codable, Identifiable {
         self.toggleMiniRecorderShortcut = toggleMiniRecorderShortcut
         self.toggleMiniRecorderShortcut2 = toggleMiniRecorderShortcut2
     }
+
+    func makeLegacySettings() -> LegacyActivationShortcutSettings {
+        LegacyActivationShortcutSettings(
+            selectedHotkey1: selectedHotkey1,
+            selectedHotkey2: selectedHotkey2,
+            hotkeyMode1: hotkeyMode1,
+            hotkeyMode2: hotkeyMode2,
+            toggleMiniRecorderShortcut: toggleMiniRecorderShortcut,
+            toggleMiniRecorderShortcut2: toggleMiniRecorderShortcut2
+        )
+    }
 }
 
 struct LegacyActivationShortcutSettings {

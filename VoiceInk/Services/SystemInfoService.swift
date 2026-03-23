@@ -32,6 +32,7 @@ class SystemInfoService {
         Available Audio Devices: \(getAvailableAudioDevices())
 
         HOTKEY SETTINGS:
+        Shortcut Profiles Enabled: \(UserDefaults.standard.shortcutProfilesEnabled)
         Active Hotkey Profile: \(getActiveHotkeyProfile())
         Primary Hotkey: \(getPrimaryHotkey())
         Secondary Hotkey: \(getSecondaryHotkey())
@@ -136,6 +137,11 @@ class SystemInfoService {
     }
 
     private func getPrimaryHotkey() -> String {
+        if UserDefaults.standard.shortcutProfilesEnabled,
+           let activeProfile = loadPersistedProfilesState()?.activeProfile {
+            return activeProfile.selectedHotkey1.displayName
+        }
+
         if let hotkeyRaw = UserDefaults.standard.string(forKey: "selectedHotkey1"),
            let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
             return hotkey.displayName
@@ -144,26 +150,41 @@ class SystemInfoService {
     }
 
     private func getActiveHotkeyProfile() -> String {
-        if let data = UserDefaults.standard.activationShortcutProfilesData,
-           let profiles = try? JSONDecoder().decode([ActivationShortcutProfile].self, from: data),
-           !profiles.isEmpty {
-            let activeProfileID = UserDefaults.standard.activeActivationShortcutProfileID.flatMap(UUID.init(uuidString:))
-            if let activeProfileID,
-               let activeProfile = profiles.first(where: { $0.id == activeProfileID }) {
-                return activeProfile.name
-            }
-            return profiles[0].name
+        guard UserDefaults.standard.shortcutProfilesEnabled else {
+            return "Single Profile Mode"
+        }
+
+        if let activeProfile = loadPersistedProfilesState()?.activeProfile {
+            return activeProfile.name
         }
 
         return "Default"
     }
 
     private func getSecondaryHotkey() -> String {
+        if UserDefaults.standard.shortcutProfilesEnabled,
+           let activeProfile = loadPersistedProfilesState()?.activeProfile {
+            return activeProfile.selectedHotkey2.displayName
+        }
+
         if let hotkeyRaw = UserDefaults.standard.string(forKey: "selectedHotkey2"),
            let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
             return hotkey.displayName
         }
         return "None"
+    }
+
+    private func loadPersistedProfilesState() -> ActivationShortcutProfilesState? {
+        guard let data = UserDefaults.standard.activationShortcutProfilesData,
+              let profiles = try? JSONDecoder().decode([ActivationShortcutProfile].self, from: data),
+              !profiles.isEmpty else {
+            return nil
+        }
+
+        return ActivationShortcutProfilesState(
+            profiles: profiles,
+            activeProfileID: UserDefaults.standard.activeActivationShortcutProfileID.flatMap(UUID.init(uuidString:))
+        )
     }
 
     private func getCurrentTranscriptionModel() -> String {

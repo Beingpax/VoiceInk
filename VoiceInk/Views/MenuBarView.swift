@@ -15,7 +15,6 @@ struct MenuBarView: View {
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var menuRefreshTrigger = false
     @State private var isHovered = false
-    @AppStorage("shortcutProfilesEnabled") private var shortcutProfilesEnabled = false
 
     var body: some View {
         VStack {
@@ -54,7 +53,7 @@ struct MenuBarView: View {
                 }
             }
 
-            if shortcutProfilesEnabled && hotkeyManager.profiles.count > 1 {
+            if hotkeyManager.shortcutProfilesEnabled && hotkeyManager.profiles.count > 1 {
                 Menu {
                     ForEach(hotkeyManager.profiles) { profile in
                         Button {

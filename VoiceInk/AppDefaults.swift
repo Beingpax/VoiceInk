@@ -36,6 +36,7 @@ enum AppDefaults {
             // UI & Behavior
             "IsMenuBarOnly": false,
             "powerModeAutoRestoreEnabled": false,
+            "shortcutProfilesEnabled": false,
             // Hotkey
             "isMiddleClickToggleEnabled": false,
             "middleClickActivationDelay": 200,

@@ -13,6 +13,7 @@ struct GeneralSettings: Codable {
     let selectedHotkey2RawValue: String?
     let hotkeyMode1RawValue: String?
     let hotkeyMode2RawValue: String?
+    let shortcutProfilesEnabled: Bool?
     let shortcutProfiles: [ActivationShortcutProfile]?
     let activeShortcutProfileId: UUID?
     let launchAtLoginEnabled: Bool?
@@ -102,14 +103,16 @@ class ImportExportService {
             exportedWordReplacements = Dictionary(uniqueKeysWithValues: replacements.map { ($0.originalText, $0.replacementText) })
         }
 
+        let legacyHotkeySettings = hotkeyManager.legacyActivationSettings
         let generalSettingsToExport = GeneralSettings(
-            toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
-            toggleMiniRecorderShortcut2: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2),
+            toggleMiniRecorderShortcut: legacyHotkeySettings.toggleMiniRecorderShortcut,
+            toggleMiniRecorderShortcut2: legacyHotkeySettings.toggleMiniRecorderShortcut2,
             retryLastTranscriptionShortcut: KeyboardShortcuts.getShortcut(for: .retryLastTranscription),
-            selectedHotkey1RawValue: hotkeyManager.selectedHotkey1.rawValue,
-            selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
-            hotkeyMode1RawValue: hotkeyManager.hotkeyMode1.rawValue,
-            hotkeyMode2RawValue: hotkeyManager.hotkeyMode2.rawValue,
+            selectedHotkey1RawValue: legacyHotkeySettings.selectedHotkey1.rawValue,
+            selectedHotkey2RawValue: legacyHotkeySettings.selectedHotkey2.rawValue,
+            hotkeyMode1RawValue: legacyHotkeySettings.hotkeyMode1.rawValue,
+            hotkeyMode2RawValue: legacyHotkeySettings.hotkeyMode2.rawValue,
+            shortcutProfilesEnabled: hotkeyManager.shortcutProfilesEnabled,
             shortcutProfiles: hotkeyManager.profiles,
             activeShortcutProfileId: hotkeyManager.activeProfileID,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
@@ -297,14 +300,19 @@ class ImportExportService {
                             toggleMiniRecorderShortcut2: general.toggleMiniRecorderShortcut2
                         )
 
-                        let importedProfileState = ActivationShortcutProfilesState.fromImportedSettings(
-                            shortcutProfiles: general.shortcutProfiles,
-                            activeProfileID: general.activeShortcutProfileId,
-                            legacySettings: importedLegacyHotkeySettings
-                        )
-                        hotkeyManager.importProfiles(
-                            importedProfileState.profiles,
-                            activeProfileID: importedProfileState.activeProfileID
+                        let importedProfiles = general.shortcutProfiles ?? []
+                        let importedProfileState: ActivationShortcutProfilesState? =
+                            importedProfiles.isEmpty
+                            ? nil
+                            : ActivationShortcutProfilesState(
+                                profiles: importedProfiles,
+                                activeProfileID: general.activeShortcutProfileId
+                            )
+                        hotkeyManager.importActivationSettings(
+                            legacySettings: importedLegacyHotkeySettings,
+                            shortcutProfiles: importedProfileState?.profiles ?? [],
+                            activeProfileID: importedProfileState?.activeProfileID,
+                            shortcutProfilesEnabled: general.shortcutProfilesEnabled ?? false
                         )
 
                         if let launch = general.launchAtLoginEnabled {

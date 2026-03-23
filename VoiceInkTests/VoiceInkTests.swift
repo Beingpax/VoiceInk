@@ -145,4 +145,65 @@ struct VoiceInkTests {
         #expect(fallbackState.activeProfile?.selectedHotkey1 == .rightOption)
         #expect(fallbackState.activeProfile?.hotkeyMode1 == .toggle)
     }
+
+    @Test
+    func activationShortcutProfileConvertsBackToLegacySettings() {
+        let shortcut = KeyboardShortcuts.Shortcut(.v, modifiers: [.command, .option])
+        let profile = ActivationShortcutProfile(
+            name: "Desk",
+            selectedHotkey1: .custom,
+            selectedHotkey2: .rightShift,
+            hotkeyMode1: .toggle,
+            hotkeyMode2: .pushToTalk,
+            toggleMiniRecorderShortcut: shortcut,
+            toggleMiniRecorderShortcut2: nil
+        )
+
+        let legacySettings = profile.makeLegacySettings()
+
+        #expect(legacySettings.selectedHotkey1 == .custom)
+        #expect(legacySettings.selectedHotkey2 == .rightShift)
+        #expect(legacySettings.hotkeyMode1 == .toggle)
+        #expect(legacySettings.hotkeyMode2 == .pushToTalk)
+        #expect(legacySettings.toggleMiniRecorderShortcut?.key == shortcut.key)
+        #expect(legacySettings.toggleMiniRecorderShortcut?.modifiers == shortcut.modifiers)
+    }
+
+    @Test
+    func generalSettingsRoundTripPreservesShortcutProfilesFlag() throws {
+        let settings = GeneralSettings(
+            toggleMiniRecorderShortcut: nil,
+            toggleMiniRecorderShortcut2: nil,
+            retryLastTranscriptionShortcut: nil,
+            selectedHotkey1RawValue: HotkeyManager.HotkeyOption.rightCommand.rawValue,
+            selectedHotkey2RawValue: HotkeyManager.HotkeyOption.none.rawValue,
+            hotkeyMode1RawValue: HotkeyManager.HotkeyMode.hybrid.rawValue,
+            hotkeyMode2RawValue: HotkeyManager.HotkeyMode.toggle.rawValue,
+            shortcutProfilesEnabled: true,
+            shortcutProfiles: nil,
+            activeShortcutProfileId: nil,
+            launchAtLoginEnabled: nil,
+            isMenuBarOnly: nil,
+            recorderType: nil,
+            isTranscriptionCleanupEnabled: nil,
+            transcriptionRetentionMinutes: nil,
+            isAudioCleanupEnabled: nil,
+            audioRetentionPeriod: nil,
+            isSoundFeedbackEnabled: nil,
+            isSystemMuteEnabled: nil,
+            isPauseMediaEnabled: nil,
+            audioResumptionDelay: nil,
+            isTextFormattingEnabled: nil,
+            isExperimentalFeaturesEnabled: nil,
+            restoreClipboardAfterPaste: nil,
+            clipboardRestoreDelay: nil,
+            useAppleScriptPaste: nil
+        )
+
+        let data = try JSONEncoder().encode(settings)
+        let decodedSettings = try JSONDecoder().decode(GeneralSettings.self, from: data)
+
+        #expect(decodedSettings.shortcutProfilesEnabled == true)
+        #expect(decodedSettings.selectedHotkey1RawValue == HotkeyManager.HotkeyOption.rightCommand.rawValue)
+    }
 }

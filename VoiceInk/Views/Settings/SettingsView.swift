@@ -27,8 +27,6 @@ struct SettingsView: View {
     @State private var activeProfileNameDraft = ""
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
 
-    @AppStorage("shortcutProfilesEnabled") private var shortcutProfilesEnabled = false
-
     // Expansion states - all collapsed by default
     @State private var isCustomCancelExpanded = false
     @State private var isMiddleClickExpanded = false
@@ -150,7 +148,10 @@ struct SettingsView: View {
             Section {
                 ExpandableSettingsRow(
                     isExpanded: $isProfilesExpanded,
-                    isEnabled: $shortcutProfilesEnabled,
+                    isEnabled: Binding(
+                        get: { hotkeyManager.shortcutProfilesEnabled },
+                        set: { hotkeyManager.setShortcutProfilesEnabled($0) }
+                    ),
                     label: "Shortcut Profiles",
                     infoMessage: "Keep different activation shortcuts for different keyboards. Only the active profile is registered at a time."
                 ) {
