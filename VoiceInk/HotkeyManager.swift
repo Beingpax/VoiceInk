@@ -87,6 +87,7 @@ class HotkeyManager: ObservableObject {
     private var shortcutCurrentKeyState = false
     private var lastShortcutTriggerTime: Date?
     private let shortcutCooldownInterval: TimeInterval = 0.5
+    private var didFinishLaunching = false
 
     private static let hybridPressThreshold: TimeInterval = 0.5
 
@@ -198,13 +199,22 @@ class HotkeyManager: ObservableObject {
             }
         }
 
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            self.setupHotkeyMonitoring()
-        }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidFinishLaunching),
+            name: NSApplication.didFinishLaunchingNotification,
+            object: nil
+        )
     }
-    
+
+    @objc private func appDidFinishLaunching(_ notification: Notification) {
+        NotificationCenter.default.removeObserver(self, name: NSApplication.didFinishLaunchingNotification, object: nil)
+        didFinishLaunching = true
+        setupHotkeyMonitoring()
+    }
+
     private func setupHotkeyMonitoring() {
+        guard didFinishLaunching else { return }
         removeAllMonitoring()
         
         setupModifierKeyMonitoring()
@@ -508,6 +518,8 @@ class HotkeyManager: ObservableObject {
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
+
         Task { @MainActor in
             removeAllMonitoring()
         }
