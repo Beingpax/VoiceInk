@@ -27,72 +27,18 @@ struct SettingsView: View {
     @State private var activeProfileNameDraft = ""
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
 
+    @AppStorage("shortcutProfilesEnabled") private var shortcutProfilesEnabled = false
+
     // Expansion states - all collapsed by default
     @State private var isCustomCancelExpanded = false
     @State private var isMiddleClickExpanded = false
     @State private var isSoundFeedbackExpanded = false
     @State private var isMuteSystemExpanded = false
     @State private var isRestoreClipboardExpanded = false
+    @State private var isProfilesExpanded = false
 
     var body: some View {
         Form {
-            Section {
-                LabeledContent("Active Profile") {
-                    HStack(spacing: 8) {
-                        Picker(
-                            "",
-                            selection: Binding(
-                                get: { hotkeyManager.activeProfileID ?? hotkeyManager.profiles.first?.id },
-                                set: { newValue in
-                                    commitActiveProfileName()
-                                    if let newValue {
-                                        hotkeyManager.switchProfile(to: newValue)
-                                    }
-                                }
-                            )
-                        ) {
-                            ForEach(hotkeyManager.profiles) { profile in
-                                Text(profile.name).tag(Optional(profile.id))
-                            }
-                        }
-                        .labelsHidden()
-                        .frame(maxWidth: 220)
-
-                        Button("New From Current") {
-                            commitActiveProfileName()
-                            hotkeyManager.createProfileFromCurrent()
-                        }
-
-                        Button("Duplicate") {
-                            commitActiveProfileName()
-                            hotkeyManager.duplicateActiveProfile()
-                        }
-
-                        Button("Delete") {
-                            commitActiveProfileName()
-                            if let activeProfileID = hotkeyManager.activeProfileID {
-                                hotkeyManager.deleteProfile(with: activeProfileID)
-                            }
-                        }
-                        .disabled(hotkeyManager.profiles.count == 1)
-                    }
-                }
-
-                LabeledContent("Profile Name") {
-                    TextField("Profile Name", text: $activeProfileNameDraft)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 220)
-                        .focused($isProfileNameFocused)
-                        .onSubmit {
-                            commitActiveProfileName()
-                        }
-                }
-            } header: {
-                Text("Shortcut Profiles")
-            } footer: {
-                Text("Profiles let you keep different activation shortcuts for different keyboards. Only the active profile is registered at a time.")
-            }
-
             // MARK: - Shortcuts
             Section {
                 LabeledContent("Shortcut 1") {
@@ -198,6 +144,69 @@ struct SettingsView: View {
                         }
                     }
                 }
+            }
+
+            // MARK: - Shortcut Profiles
+            Section {
+                ExpandableSettingsRow(
+                    isExpanded: $isProfilesExpanded,
+                    isEnabled: $shortcutProfilesEnabled,
+                    label: "Shortcut Profiles",
+                    infoMessage: "Keep different activation shortcuts for different keyboards. Only the active profile is registered at a time."
+                ) {
+                    LabeledContent("Active Profile") {
+                        HStack(spacing: 8) {
+                            Picker(
+                                "",
+                                selection: Binding(
+                                    get: { hotkeyManager.activeProfileID ?? hotkeyManager.profiles.first?.id },
+                                    set: { newValue in
+                                        commitActiveProfileName()
+                                        if let newValue {
+                                            hotkeyManager.switchProfile(to: newValue)
+                                        }
+                                    }
+                                )
+                            ) {
+                                ForEach(hotkeyManager.profiles) { profile in
+                                    Text(profile.name).tag(Optional(profile.id))
+                                }
+                            }
+                            .labelsHidden()
+                            .frame(maxWidth: 220)
+
+                            Button("New From Current") {
+                                commitActiveProfileName()
+                                hotkeyManager.createProfileFromCurrent()
+                            }
+
+                            Button("Duplicate") {
+                                commitActiveProfileName()
+                                hotkeyManager.duplicateActiveProfile()
+                            }
+
+                            Button("Delete") {
+                                commitActiveProfileName()
+                                if let activeProfileID = hotkeyManager.activeProfileID {
+                                    hotkeyManager.deleteProfile(with: activeProfileID)
+                                }
+                            }
+                            .disabled(hotkeyManager.profiles.count == 1)
+                        }
+                    }
+
+                    LabeledContent("Profile Name") {
+                        TextField("Profile Name", text: $activeProfileNameDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 220)
+                            .focused($isProfileNameFocused)
+                            .onSubmit {
+                                commitActiveProfileName()
+                            }
+                    }
+                }
+            } header: {
+                Text("Shortcut Profiles")
             }
 
             // MARK: - Recording Feedback
