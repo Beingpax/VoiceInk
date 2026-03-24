@@ -11,6 +11,7 @@ extension KeyboardShortcuts.Name {
     static let pasteLastEnhancement = Self("pasteLastEnhancement")
     static let retryLastTranscription = Self("retryLastTranscription")
     static let openHistoryWindow = Self("openHistoryWindow")
+    static let voiceConversation = Self("voiceConversation")
 }
 
 @MainActor
@@ -57,6 +58,11 @@ class HotkeyManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var miniRecorderShortcutManager: MiniRecorderShortcutManager
     private var powerModeShortcutManager: PowerModeShortcutManager
+    private(set) var voiceConversationManager: VoiceConversationManager?
+
+    func setVoiceConversationManager(_ manager: VoiceConversationManager) {
+        voiceConversationManager = manager
+    }
 
     // MARK: - Helper Properties
     private var canProcessHotkeyAction: Bool {
@@ -195,6 +201,18 @@ class HotkeyManager: ObservableObject {
                     modelContainer: self.engine.modelContext.container,
                     engine: self.engine
                 )
+            }
+        }
+
+        // Voice Conversation: hold-to-talk
+        KeyboardShortcuts.onKeyDown(for: .voiceConversation) { [weak self] in
+            Task { @MainActor in
+                self?.voiceConversationManager?.onKeyDown()
+            }
+        }
+        KeyboardShortcuts.onKeyUp(for: .voiceConversation) { [weak self] in
+            Task { @MainActor in
+                self?.voiceConversationManager?.onKeyUp()
             }
         }
 

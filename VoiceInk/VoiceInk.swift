@@ -23,6 +23,7 @@ struct VoiceInkApp: App {
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
+    @StateObject private var voiceConversationManager: VoiceConversationManager
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
@@ -144,6 +145,18 @@ struct VoiceInkApp: App {
         let hotkeyManager = HotkeyManager(engine: engine, recorderUIManager: recorderUIManager)
         _hotkeyManager = StateObject(wrappedValue: hotkeyManager)
 
+        // Voice Conversation Mode
+        let voiceConversationManager = VoiceConversationManager(
+            aiService: aiService,
+            transcriptionModelManager: transcriptionModelManager,
+            whisperModelManager: whisperModelManager,
+            modelContext: container.mainContext
+        )
+        let voiceLoopWindowManager = VoiceLoopWindowManager(manager: voiceConversationManager)
+        voiceConversationManager.windowManager = voiceLoopWindowManager
+        hotkeyManager.setVoiceConversationManager(voiceConversationManager)
+        _voiceConversationManager = StateObject(wrappedValue: voiceConversationManager)
+
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
         menuBarManager.configure(modelContainer: container, engine: engine)
@@ -260,6 +273,7 @@ struct VoiceInkApp: App {
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(voiceConversationManager)
                     .modelContainer(container)
                     .onAppear {
                         // Check if container initialization failed
