@@ -277,6 +277,12 @@ class VoiceInkEngine: NSObject, ObservableObject {
             name: .promptDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePowerModeConfigApplied),
+            name: .powerModeConfigurationApplied,
+            object: nil
+        )
     }
 
     @objc func handleLicenseStatusChanged() {
@@ -289,6 +295,43 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 ?? whisperModelManager.whisperPrompt.transcriptionPrompt
             if let context = whisperModelManager.whisperContext {
                 await context.setPrompt(currentPrompt)
+            }
+        }
+    }
+
+    /// When a Power Mode switch happens mid-recording, recreate the transcription
+    /// session with the new model so streaming/batch mode matches the selected model.
+    @objc func handlePowerModeConfigApplied() {
+        Task { @MainActor in
+            guard recordingState == .recording,
+                  let model = transcriptionModelManager.currentTranscriptionModel else { return }
+
+            // Cancel the old session without stopping the recording
+            currentSession?.cancel()
+            currentSession = nil
+            partialTranscript = ""
+
+            let session = serviceRegistry.createSession(
+                for: model,
+                onPartialTranscript: { [weak self] partial in
+                    Task { @MainActor in
+                        self?.partialTranscript = partial
+                    }
+                }
+            )
+            currentSession = session
+
+            do {
+                let realCallback = try await session.prepare(model: model)
+                if let realCallback {
+                    recorder.onAudioChunk = realCallback
+                } else {
+                    recorder.onAudioChunk = nil
+                }
+                logger.notice("Session recreated for \(model.displayName, privacy: .public)")
+            } catch {
+                logger.error("Failed to recreate session: \(error.localizedDescription, privacy: .public)")
+                recorder.onAudioChunk = nil
             }
         }
     }
