@@ -100,6 +100,79 @@ class CursorPaster {
         logger.notice("CGEvents posted for Cmd+V")
     }
 
+    // MARK: - Paste then Auto Send
+
+    /// Pastes text, then uses AX to detect when the paste has landed before sending the auto-send key.
+    ///
+    /// Strategy: snapshot the focused field's AXValue before pasting, then poll until it changes.
+    /// This works for any text length and doesn't depend on matching specific content.
+    /// For apps where AXValue isn't readable (Electron, web), falls back to a short fixed delay.
+    static func pasteAndAutoSend(_ text: String, autoSendKey: AutoSendKey) {
+        let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+        let fullText = text + (appendSpace ? " " : "")
+
+        guard autoSendKey.isEnabled else {
+            pasteAtCursor(fullText)
+            return
+        }
+
+        // Snapshot the field value BEFORE pasting
+        let baselineValue = getFocusedElementValue()
+        let canReadField = baselineValue != nil
+
+        pasteAtCursor(fullText)
+
+        Task.detached {
+            if canReadField {
+                // Strategy A: AX-based — poll until field value changes from baseline
+                let maxWait: TimeInterval = 3.0
+                let pollInterval: UInt64 = 50_000_000 // 50ms
+                let startTime = Date()
+
+                // Wait for paste keystroke to fire (pasteAtCursor has internal 50ms delay)
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+
+                while Date().timeIntervalSince(startTime) < maxWait {
+                    let currentValue = await Self.getFocusedElementValue()
+                    if currentValue != baselineValue {
+                        // Field changed — paste landed
+                        await MainActor.run { performAutoSend(autoSendKey) }
+                        return
+                    }
+                    try? await Task.sleep(nanoseconds: pollInterval)
+                }
+
+                // Timeout — send anyway
+                logger.warning("Auto-send: AX poll timed out, sending anyway")
+                await MainActor.run { performAutoSend(autoSendKey) }
+            } else {
+                // Strategy B: fixed delay for apps where AXValue isn't readable
+                // 300ms after paste keystroke (50ms internal + 250ms buffer)
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                await MainActor.run { performAutoSend(autoSendKey) }
+            }
+        }
+    }
+
+    // MARK: - Accessibility Helpers
+
+    /// Reads the AXValue of the currently focused UI element. Returns nil if not readable.
+    private static func getFocusedElementValue() -> String? {
+        guard AXIsProcessTrusted() else { return nil }
+
+        let systemWide = AXUIElementCreateSystemWide()
+        var focusedElement: AnyObject?
+        let result = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focusedElement)
+
+        guard result == .success, let element = focusedElement else { return nil }
+
+        var value: AnyObject?
+        let valueResult = AXUIElementCopyAttributeValue(element as! AXUIElement, kAXValueAttribute as CFString, &value)
+
+        guard valueResult == .success, let stringValue = value as? String else { return nil }
+        return stringValue
+    }
+
     // MARK: - Auto Send Keys
 
     static func performAutoSend(_ key: AutoSendKey) {
