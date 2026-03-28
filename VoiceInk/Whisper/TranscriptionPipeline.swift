@@ -163,6 +163,19 @@ class TranscriptionPipeline {
 
         if shouldCancel() { await onCleanup(); return }
 
+        if let result = promptDetectionResult,
+           let enhancementService,
+           result.shouldEnableAI {
+            await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
+        }
+
+        // Capture auto-send key before dismiss clears the Power Mode config.
+        let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
+
+        // Dismiss the recorder first so macOS refocuses the target window,
+        // then paste after a short delay to ensure focus has settled.
+        await onDismiss()
+
         if var textToPaste = finalPastedText,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
             if case .trialExpired = licenseViewModel.licenseState {
@@ -172,25 +185,14 @@ class TranscriptionPipeline {
                     """
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-                CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
-
-                let powerMode = PowerModeManager.shared
-                if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.autoSendKey.isEnabled {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        CursorPaster.performAutoSend(activeConfig.autoSendKey)
-                    }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                if let autoSendKey, autoSendKey.isEnabled {
+                    CursorPaster.pasteAndAutoSend(textToPaste, autoSendKey: autoSendKey)
+                } else {
+                    let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+                    CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
                 }
             }
         }
-
-        if let result = promptDetectionResult,
-           let enhancementService,
-           result.shouldEnableAI {
-            await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
-        }
-
-        await onDismiss()
     }
 }
