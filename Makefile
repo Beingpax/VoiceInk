@@ -47,7 +47,6 @@ build: setup
 # Build for local use without Apple Developer certificate
 local: check setup
 	@echo "Building VoiceInk for local use (no Apple Developer certificate required)..."
-	@rm -rf "$(LOCAL_DERIVED_DATA)"
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
@@ -57,6 +56,7 @@ local: check setup
 		DEVELOPMENT_TEAM="" \
 		CODE_SIGN_ENTITLEMENTS=$(CURDIR)/VoiceInk/VoiceInk.local.entitlements \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
+		SWIFT_STRICT_CONCURRENCY=minimal \
 		build
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoiceInk.app" && \
 	if [ -d "$$APP_PATH" ]; then \
