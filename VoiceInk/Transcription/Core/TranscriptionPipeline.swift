@@ -178,7 +178,8 @@ class TranscriptionPipeline {
 
                 let powerMode = PowerModeManager.shared
                 if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.autoSendKey.isEnabled {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    let autoSendDelay = UserDefaults.standard.bool(forKey: "useAppleScriptPaste") ? 0.3 : 0.1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + autoSendDelay) {
                         CursorPaster.performAutoSend(activeConfig.autoSendKey)
                     }
                 }

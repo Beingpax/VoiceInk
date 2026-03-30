@@ -106,6 +106,11 @@ class CursorPaster {
         guard key.isEnabled else { return }
         guard AXIsProcessTrusted() else { return }
 
+        if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
+            autoSendUsingAppleScript(key)
+            return
+        }
+
         let source = CGEventSource(stateID: .privateState)
         let enterDown = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: true)
         let enterUp   = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: false)
@@ -123,5 +128,38 @@ class CursorPaster {
 
         enterDown?.post(tap: .cghidEventTap)
         enterUp?.post(tap: .cghidEventTap)
+    }
+
+    // MARK: - AppleScript Auto Send
+
+    // Pre-compiled scripts to avoid per-send overhead.
+    private static let autoSendScriptEnter: NSAppleScript? = makeAutoSendScript("")
+    private static let autoSendScriptShiftEnter: NSAppleScript? = makeAutoSendScript("using shift down")
+    private static let autoSendScriptCommandEnter: NSAppleScript? = makeAutoSendScript("using command down")
+
+    private static func makeAutoSendScript(_ modifier: String) -> NSAppleScript? {
+        let script = NSAppleScript(source: """
+            tell application "System Events"
+                key code 36 \(modifier)
+            end tell
+            """)
+        var error: NSDictionary?
+        script?.compileAndReturnError(&error)
+        return script
+    }
+
+    private static func autoSendUsingAppleScript(_ key: AutoSendKey) {
+        let script: NSAppleScript?
+        switch key {
+        case .none: return
+        case .enter: script = autoSendScriptEnter
+        case .shiftEnter: script = autoSendScriptShiftEnter
+        case .commandEnter: script = autoSendScriptCommandEnter
+        }
+        var error: NSDictionary?
+        script?.executeAndReturnError(&error)
+        if let error = error {
+            logger.error("AppleScript auto-send failed: \(error, privacy: .public)")
+        }
     }
 }
