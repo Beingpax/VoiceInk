@@ -68,7 +68,7 @@ struct MetricsSetupView: View {
         switch index {
         case 0:
             stepInfo = (
-                isCompleted: hotkeyManager.selectedHotkey1 != .none,
+                isCompleted: hotkeyManager.hasAnyActivationShortcut,
                 icon: "command",
                 title: "Set Keyboard Shortcut",
                 description: "Use VoiceInk anywhere with a shortcut."
@@ -150,7 +150,7 @@ struct MetricsSetupView: View {
             openModelManagement()
         } else {
             // Handle different permission requests based on which one is missing
-            if hotkeyManager.selectedHotkey1 == .none {
+            if !hotkeyManager.hasAnyActivationShortcut {
                 openSettings()
             } else if !AXIsProcessTrusted() {
                 if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -167,7 +167,7 @@ struct MetricsSetupView: View {
     }
     
     private func getActionButtonTitle() -> String {
-        if hotkeyManager.selectedHotkey1 == .none {
+        if !hotkeyManager.hasAnyActivationShortcut {
             return "Configure Shortcut"
         } else if !AXIsProcessTrusted() {
             return "Enable Accessibility"
@@ -186,7 +186,7 @@ struct MetricsSetupView: View {
     }
     
     private var isShortcutAndAccessibilityGranted: Bool {
-        hotkeyManager.selectedHotkey1 != .none &&
+        hotkeyManager.hasAnyActivationShortcut &&
         AXIsProcessTrusted() && 
         CGPreflightScreenCaptureAccess()
     }
@@ -207,4 +207,3 @@ struct MetricsSetupView: View {
         )
     }
 }
-

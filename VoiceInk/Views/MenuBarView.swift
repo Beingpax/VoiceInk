@@ -15,7 +15,7 @@ struct MenuBarView: View {
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var menuRefreshTrigger = false
     @State private var isHovered = false
-    
+
     var body: some View {
         VStack {
             Button("Toggle Recorder") {
@@ -52,9 +52,38 @@ struct MenuBarView: View {
                         .font(.system(size: 10))
                 }
             }
-            
+
+            if hotkeyManager.shortcutProfilesEnabled && hotkeyManager.profiles.count > 1 {
+                Menu {
+                    ForEach(hotkeyManager.profiles) { profile in
+                        Button {
+                            hotkeyManager.switchProfile(to: profile.id)
+                        } label: {
+                            HStack {
+                                Text(profile.name)
+                                if hotkeyManager.activeProfileID == profile.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    Button("Manage Profiles") {
+                        menuBarManager.openMainWindowAndNavigate(to: "Settings")
+                    }
+                } label: {
+                    HStack {
+                        Text("Keyboard Profile: \(hotkeyManager.activeProfileName)")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10))
+                    }
+                }
+            }
+
             Divider()
-            
+
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
             
             Menu {
