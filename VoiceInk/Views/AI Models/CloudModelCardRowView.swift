@@ -20,7 +20,28 @@ struct CloudModelCardView: View {
     }
     
     private var isConfigured: Bool {
+        if supportsMultiKey {
+            return APIKeyManager.shared.apiKeyCounts(forProvider: providerKey).enabled > 0
+        }
         return APIKeyManager.shared.hasAPIKey(forProvider: providerKey)
+    }
+
+    /// Providers that opt in to the multi-key rotation UI. Extend as more
+    /// providers are wired through `APIKeyManager`'s rotation helpers.
+    private var supportsMultiKey: Bool {
+        return model.provider == .elevenLabs
+    }
+
+    private var configuredKeyCount: Int {
+        APIKeyManager.shared.apiKeyCounts(forProvider: providerKey).enabled
+    }
+
+    private var configuredBadgeText: String {
+        if supportsMultiKey {
+            let count = configuredKeyCount
+            return count > 1 ? "Configured (\(count) keys)" : "Configured"
+        }
+        return "Configured"
     }
     
     private var providerKey: String {
@@ -96,7 +117,7 @@ struct CloudModelCardView: View {
                     .background(Capsule().fill(Color.accentColor))
                     .foregroundColor(.white)
             } else if isConfigured {
-                Text("Configured")
+                Text(configuredBadgeText)
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -198,10 +219,25 @@ struct CloudModelCardView: View {
             
             if isConfigured {
                 Menu {
-                    Button {
-                        clearAPIKey()
-                    } label: {
-                        Label("Remove API Key", systemImage: "trash")
+                    if supportsMultiKey {
+                        Button {
+                            withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
+                                isExpanded.toggle()
+                            }
+                        } label: {
+                            Label(isExpanded ? "Hide Keys" : "Manage Keys", systemImage: "key.horizontal")
+                        }
+                        Button(role: .destructive) {
+                            clearAllKeys()
+                        } label: {
+                            Label("Remove All Keys", systemImage: "trash")
+                        }
+                    } else {
+                        Button {
+                            clearAPIKey()
+                        } label: {
+                            Label("Remove API Key", systemImage: "trash")
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -214,61 +250,75 @@ struct CloudModelCardView: View {
         }
     }
     
+    @ViewBuilder
     private var configurationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("API Key Configuration")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
-            
-            HStack(spacing: 8) {
-                SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
-                    .textFieldStyle(.roundedBorder)
-                    .disabled(isVerifying)
-                
-                Button(action: verifyAPIKey) {
-                    HStack(spacing: 4) {
-                        if isVerifying {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                                .frame(width: 12, height: 12)
-                        } else {
-                            Image(systemName: verificationStatus == .success ? "checkmark" : "checkmark.shield")
+        if supportsMultiKey {
+            MultiAPIKeyConfigurationView(
+                providerKey: providerKey,
+                providerDisplayName: model.provider.rawValue,
+                onKeysChanged: {
+                    transcriptionModelManager.refreshAllAvailableModels()
+                }
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("API Key Configuration")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color(.labelColor))
+
+                HStack(spacing: 8) {
+                    SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
+                        .textFieldStyle(.roundedBorder)
+                        .disabled(isVerifying)
+
+                    Button(action: verifyAPIKey) {
+                        HStack(spacing: 4) {
+                            if isVerifying {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 12, height: 12)
+                            } else {
+                                Image(systemName: verificationStatus == .success ? "checkmark" : "checkmark.shield")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            Text(isVerifying ? "Verifying..." : "Verify")
                                 .font(.system(size: 12, weight: .medium))
                         }
-                        Text(isVerifying ? "Verifying..." : "Verify")
-                            .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(
+                            Capsule()
+                                .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
+                        )
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
-                    )
+                    .buttonStyle(.plain)
+                    .disabled(apiKey.isEmpty || isVerifying)
                 }
-                .buttonStyle(.plain)
-                .disabled(apiKey.isEmpty || isVerifying)
-            }
-            
-            if verificationStatus == .failure {
-                if let error = verificationError {
-                    Text(error)
+
+                if verificationStatus == .failure {
+                    if let error = verificationError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(Color(.systemRed))
+                    } else {
+                        Text("Verification failed")
+                            .font(.caption)
+                            .foregroundColor(Color(.systemRed))
+                    }
+                } else if verificationStatus == .success {
+                    Text("API key verified successfully!")
                         .font(.caption)
-                        .foregroundColor(Color(.systemRed))
-                } else {
-                    Text("Verification failed")
-                        .font(.caption)
-                        .foregroundColor(Color(.systemRed))
+                        .foregroundColor(Color(.systemGreen))
                 }
-            } else if verificationStatus == .success {
-                Text("API key verified successfully!")
-                    .font(.caption)
-                    .foregroundColor(Color(.systemGreen))
             }
         }
     }
     
     private func loadSavedAPIKey() {
+        // For multi-key providers, the expanded view pulls its own state from
+        // APIKeyManager, so we don't prefill a single `apiKey` state here.
+        guard !supportsMultiKey else { return }
         if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: providerKey) {
             apiKey = savedKey
             verificationStatus = .success
@@ -340,6 +390,25 @@ struct CloudModelCardView: View {
             transcriptionModelManager.clearCurrentTranscriptionModel()
         }
 
+        transcriptionModelManager.refreshAllAvailableModels()
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isExpanded = false
+        }
+    }
+
+    /// Removes every stored key for a multi-key provider and resets rotation
+    /// state, so the card falls back to "Setup Required".
+    private func clearAllKeys() {
+        let keys = APIKeyManager.shared.getAPIKeys(forProvider: providerKey)
+        for entry in keys {
+            APIKeyManager.shared.removeAPIKey(id: entry.id, forProvider: providerKey)
+        }
+        APIKeyManager.shared.deleteAPIKey(forProvider: providerKey)
+
+        if isCurrent {
+            transcriptionModelManager.clearCurrentTranscriptionModel()
+        }
         transcriptionModelManager.refreshAllAvailableModels()
 
         withAnimation(.easeInOut(duration: 0.3)) {
