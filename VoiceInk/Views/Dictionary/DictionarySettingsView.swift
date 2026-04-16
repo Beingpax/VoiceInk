@@ -82,7 +82,7 @@ struct DictionarySettingsView: View {
                 } label: {
                     Image(systemName: "gear")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(isShowingSettings ? .accentColor : .secondary)
+                        .foregroundStyle(isShowingSettings ? Color.accentColor : Color.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Dictionary settings")

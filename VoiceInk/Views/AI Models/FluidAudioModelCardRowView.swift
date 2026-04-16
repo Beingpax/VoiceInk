@@ -47,7 +47,7 @@ struct FluidAudioModelCardRowView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundStyle(Color(.labelColor))
 
             statusBadge
 
@@ -77,7 +77,7 @@ struct FluidAudioModelCardRowView: View {
                     ? Color.accentColor.opacity(0.15)
                     : Color(.secondaryLabelColor).opacity(0.15))
             )
-            .foregroundColor(streamingEnabled ? Color.accentColor : Color(.secondaryLabelColor))
+            .foregroundStyle(streamingEnabled ? Color.accentColor : Color(.secondaryLabelColor))
         }
         .buttonStyle(.plain)
         .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
@@ -91,14 +91,14 @@ struct FluidAudioModelCardRowView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             } else if isDownloaded {
                 Text("Downloaded")
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color(.quaternaryLabelColor)))
-                    .foregroundColor(Color(.labelColor))
+                    .foregroundStyle(Color(.labelColor))
             }
         }
     }
@@ -119,14 +119,14 @@ struct FluidAudioModelCardRowView: View {
             .fixedSize(horizontal: true, vertical: false)
         }
         .font(.system(size: 11))
-        .foregroundColor(Color(.secondaryLabelColor))
+        .foregroundStyle(Color(.secondaryLabelColor))
         .lineLimit(1)
     }
 
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundStyle(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -149,7 +149,7 @@ struct FluidAudioModelCardRowView: View {
             if isCurrent {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
             } else if isDownloaded {
                 Button(action: {
                     Task {
@@ -172,7 +172,7 @@ struct FluidAudioModelCardRowView: View {
                         Image(systemName: "arrow.down.circle")
                     }
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(Capsule().fill(Color.accentColor))
@@ -182,7 +182,7 @@ struct FluidAudioModelCardRowView: View {
             }
 
             if isDownloaded {
-                Menu {
+                Menu("More options", systemImage: "ellipsis.circle") {
                     Button(action: {
                         fluidAudioModelManager.deleteFluidAudioModel(model)
                     }) {
@@ -194,13 +194,10 @@ struct FluidAudioModelCardRowView: View {
                     } label: {
                         Label("Show in Finder", systemImage: "folder")
                     }
-
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
+                .labelStyle(.iconOnly)
                 .frame(width: 20, height: 20)
             }
         }

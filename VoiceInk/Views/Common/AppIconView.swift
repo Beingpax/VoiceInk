@@ -13,7 +13,7 @@ struct AppIconView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 120, height: 120)
-                    .cornerRadius(30)
+                    .clipShape(.rect(cornerRadius: 30))
                     .overlay(
                         RoundedRectangle(cornerRadius: 30)
                             .stroke(.white.opacity(0.2), lineWidth: 1)

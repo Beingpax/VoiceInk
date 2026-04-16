@@ -64,7 +64,7 @@ struct MenuBarView: View {
                     } label: {
                         HStack {
                             Image(systemName: prompt.icon)
-                                .foregroundColor(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                             Text(prompt.title)
                             if enhancementService.selectedPromptId == prompt.id {
                                 Spacer()
@@ -97,7 +97,7 @@ struct MenuBarView: View {
 
                 if aiService.connectedProviders.isEmpty {
                     Text("No providers connected")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             } label: {
                 HStack {
@@ -123,7 +123,7 @@ struct MenuBarView: View {
 
                 if aiService.availableModels.isEmpty {
                     Text("No models available")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             } label: {
                 HStack {
@@ -151,7 +151,7 @@ struct MenuBarView: View {
 
                 if audioDeviceManager.availableDevices.isEmpty {
                     Text("No devices available")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             } label: {
                 HStack {

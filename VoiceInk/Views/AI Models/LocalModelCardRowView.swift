@@ -40,7 +40,7 @@ struct LocalModelCardView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundStyle(Color(.labelColor))
             
             statusBadge
             
@@ -56,14 +56,14 @@ struct LocalModelCardView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             } else if isDownloaded {
                 Text("Downloaded")
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color(.quaternaryLabelColor)))
-                    .foregroundColor(Color(.labelColor))
+                    .foregroundStyle(Color(.labelColor))
             }
         }
     }
@@ -73,20 +73,20 @@ struct LocalModelCardView: View {
             // Language
             Label(model.language, systemImage: "globe")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
             
             // Size
             Label(model.size, systemImage: "internaldrive")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
             
             // Speed
             HStack(spacing: 3) {
                 Text("Speed")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
                 progressDotsWithNumber(value: model.speed * 10)
             }
             .lineLimit(1)
@@ -96,7 +96,7 @@ struct LocalModelCardView: View {
             HStack(spacing: 3) {
                 Text("Accuracy")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
                 progressDotsWithNumber(value: model.accuracy * 10)
             }
             .lineLimit(1)
@@ -108,7 +108,7 @@ struct LocalModelCardView: View {
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundStyle(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -132,7 +132,7 @@ struct LocalModelCardView: View {
             if isCurrent {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
             } else if isDownloaded {
                 if isWarming {
                     HStack(spacing: 6) {
@@ -140,7 +140,7 @@ struct LocalModelCardView: View {
                             .controlSize(.small)
                         Text("Optimizing model for your device...")
                             .font(.system(size: 12))
-                            .foregroundColor(Color(.secondaryLabelColor))
+                            .foregroundStyle(Color(.secondaryLabelColor))
                     }
                 } else {
                     Button(action: setDefaultAction) {
@@ -158,7 +158,7 @@ struct LocalModelCardView: View {
                         Image(systemName: "arrow.down.circle")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
@@ -172,11 +172,11 @@ struct LocalModelCardView: View {
             }
             
             if isDownloaded {
-                Menu {
+                Menu("More options", systemImage: "ellipsis.circle") {
                     Button(action: deleteAction) {
                         Label("Delete Model", systemImage: "trash")
                     }
-                    
+
                     Button {
                         if let modelURL = modelURL {
                             NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
@@ -184,12 +184,10 @@ struct LocalModelCardView: View {
                     } label: {
                         Label("Show in Finder", systemImage: "folder")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
+                .labelStyle(.iconOnly)
                 .frame(width: 20, height: 20)
             }
         }
@@ -212,28 +210,28 @@ struct ImportedLocalModelCardView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(model.displayName)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color(.labelColor))
+                        .foregroundStyle(Color(.labelColor))
                     if isCurrent {
                         Text("Default")
                             .font(.system(size: 11, weight: .medium))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color.accentColor))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                     } else if isDownloaded {
                         Text("Imported")
                             .font(.system(size: 11, weight: .medium))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Color(.quaternaryLabelColor)))
-                            .foregroundColor(Color(.labelColor))
+                            .foregroundStyle(Color(.labelColor))
                     }
                     Spacer()
                 }
 
                 Text("Imported local model")
                     .font(.system(size: 11))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
@@ -244,7 +242,7 @@ struct ImportedLocalModelCardView: View {
                 if isCurrent {
                     Text("Default Model")
                         .font(.system(size: 12))
-                        .foregroundColor(Color(.secondaryLabelColor))
+                        .foregroundStyle(Color(.secondaryLabelColor))
                 } else if isDownloaded {
                     Button(action: setDefaultAction) {
                         Text("Set as Default")
@@ -255,7 +253,7 @@ struct ImportedLocalModelCardView: View {
                 }
 
                 if isDownloaded {
-                    Menu {
+                    Menu("More options", systemImage: "ellipsis.circle") {
                         Button(action: deleteAction) {
                             Label("Delete Model", systemImage: "trash")
                         }
@@ -266,12 +264,10 @@ struct ImportedLocalModelCardView: View {
                         } label: {
                             Label("Show in Finder", systemImage: "folder")
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 14))
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
+                    .labelStyle(.iconOnly)
                     .frame(width: 20, height: 20)
                 }
             }
@@ -289,7 +285,7 @@ func progressDotsWithNumber(value: Double) -> some View {
         progressDots(value: value)
         Text(String(format: "%.1f", value))
             .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundStyle(Color(.secondaryLabelColor))
     }
 }
 

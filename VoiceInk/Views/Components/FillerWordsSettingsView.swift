@@ -9,7 +9,7 @@ struct FillerWordChip: View {
         HStack(spacing: 4) {
             Text(word)
                 .font(.system(size: 12))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")

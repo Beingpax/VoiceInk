@@ -34,7 +34,7 @@ struct APIKeyManagementView: View {
                         .frame(width: 8, height: 8)
                     Text("Connected")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 } else if aiService.selectedProvider == .ollama {
                     Spacer()
                     if isCheckingOllama {
@@ -46,14 +46,14 @@ struct APIKeyManagementView: View {
                             .frame(width: 8, height: 8)
                         Text("Connected")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     } else {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 8, height: 8)
                         Text("Disconnected")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -72,7 +72,7 @@ struct APIKeyManagementView: View {
                     if aiService.availableModels.isEmpty {
                         HStack {
                             Text("No models loaded")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Spacer()
                             Button(action: {
                                 Task {
@@ -164,7 +164,7 @@ struct APIKeyManagementView: View {
                         HStack {
                             Text("Command")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Spacer()
                             Menu("Load Template") {
                                 ForEach(LocalCLITemplate.allCases) { template in
@@ -213,12 +213,12 @@ struct APIKeyManagementView: View {
 
                     Text("Environment variables available: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk also writes VOICEINK_FULL_PROMPT to stdin for every command.")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     if !aiService.isAPIKeyValid {
                         Text("Load a template or enter a command to enable Local CLI enhancement.")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                     }
 
                 } else if aiService.selectedProvider == .custom {
@@ -264,7 +264,7 @@ struct APIKeyManagementView: View {
                             Text("API Key")
                             Spacer()
                             Text("••••••••")
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                             Button("Remove", role: .destructive) {
                                 aiService.clearAPIKey()
                             }
@@ -281,11 +281,11 @@ struct APIKeyManagementView: View {
                                         Text("Get API Key")
                                     }
                                     .font(.caption)
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(.blue)
                                     .padding(.vertical, 4)
                                     .padding(.horizontal, 8)
                                     .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(6)
+                                    .clipShape(.rect(cornerRadius: 6))
                                 }
                                 .buttonStyle(.plain)
                             }

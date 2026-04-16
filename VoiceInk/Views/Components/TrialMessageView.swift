@@ -15,14 +15,14 @@ struct TrialMessageView: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 20))
-                .foregroundColor(iconColor)
+                .foregroundStyle(iconColor)
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
                 Text(message)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             Spacer()
@@ -49,7 +49,7 @@ struct TrialMessageView: View {
         }
         .padding()
         .background(backgroundColor)
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
     
     private var icon: String {

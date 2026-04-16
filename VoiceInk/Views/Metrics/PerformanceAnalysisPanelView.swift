@@ -18,7 +18,9 @@ struct PerformanceAnalysisPanelView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(Color(NSColor.windowBackgroundColor))
-                .overlay(Divider().opacity(0.5), alignment: .bottom)
+                .overlay(alignment: .bottom) {
+                    Divider().opacity(0.5)
+                }
                 .zIndex(1)
 
             ScrollView {
@@ -50,7 +52,7 @@ struct PerformanceAnalysisPanelView: View {
             Button(action: onClose) {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .padding(6)
                     .background(Color.secondary.opacity(0.1))
                     .clipShape(Circle())
@@ -77,18 +79,18 @@ struct PerformanceAnalysisPanelView: View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(color)
+                .foregroundStyle(color)
             Text(value)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
             Text(label)
                 .font(.system(size: 10))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(MetricCardBackground(color: color))
-        .cornerRadius(10)
+        .clipShape(.rect(cornerRadius: 10))
     }
 
     // MARK: - System Info
@@ -112,7 +114,7 @@ struct PerformanceAnalysisPanelView: View {
                             .stroke(Color(NSColor.quaternaryLabelColor).opacity(0.3), lineWidth: 1)
                     )
             )
-            .cornerRadius(10)
+            .clipShape(.rect(cornerRadius: 10))
         }
     }
 
@@ -120,11 +122,11 @@ struct PerformanceAnalysisPanelView: View {
         HStack {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Spacer(minLength: 4)
             Text(value)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
         }
         .padding(.horizontal, 12)
@@ -160,7 +162,7 @@ struct PerformanceAnalysisPanelView: View {
                     .minimumScaleFactor(0.7)
                 Text("\(modelStat.fileCount) transcripts")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
 
@@ -168,10 +170,10 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.1fx", modelStat.speedFactor))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.mint)
+                    .foregroundStyle(.mint)
                 Text("Faster than Real-time")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Divider()
@@ -182,10 +184,10 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(formatDuration(modelStat.avgAudioDuration))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.indigo)
+                        .foregroundStyle(.indigo)
                     Text("Avg. Audio")
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
 
@@ -196,17 +198,17 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(String(format: "%.2fs", modelStat.avgProcessingTime))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.teal)
+                        .foregroundStyle(.teal)
                     Text("Avg. Processing")
                         .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
         .padding(14)
         .background(MetricCardBackground(color: .mint))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
 
     // MARK: - Enhancement Models
@@ -233,7 +235,7 @@ struct PerformanceAnalysisPanelView: View {
                     .minimumScaleFactor(0.7)
                 Text("\(modelStat.fileCount) transcripts")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
 
@@ -241,15 +243,15 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.2f s", modelStat.avgProcessingTime))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
+                    .foregroundStyle(.indigo)
                 Text("Avg. Enhancement Time")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(14)
         .background(MetricCardBackground(color: .indigo))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
 
     // MARK: - Helpers
@@ -257,7 +259,7 @@ struct PerformanceAnalysisPanelView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .textCase(.uppercase)
             .tracking(0.5)
     }

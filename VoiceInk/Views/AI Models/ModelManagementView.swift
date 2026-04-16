@@ -75,14 +75,14 @@ struct ModelManagementView: View {
                 Text("Model Settings")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
-                Button(action: { closeSettings() }) {
+                Button(action: closeSettings) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -93,9 +93,9 @@ struct ModelManagementView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(Color(NSColor.windowBackgroundColor))
-            .overlay(
-                Divider().opacity(0.5), alignment: .bottom
-            )
+            .overlay(alignment: .bottom) {
+                Divider().opacity(0.5)
+            }
 
             // Content
             ModelSettingsView(whisperPrompt: whisperPrompt)
@@ -106,7 +106,7 @@ struct ModelManagementView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Default Model")
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text(transcriptionModelManager.currentTranscriptionModel?.displayName ?? "No model selected")
                 .font(.title2)
                 .fontWeight(.bold)
@@ -114,7 +114,7 @@ struct ModelManagementView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(CardBackground(isSelected: false))
-        .cornerRadius(10)
+        .clipShape(.rect(cornerRadius: 10))
     }
 
     private var languageSelectionSection: some View {
@@ -135,7 +135,8 @@ struct ModelManagementView: View {
                         }) {
                             Text(filter.rawValue)
                                 .font(.system(size: 14, weight: selectedFilter == filter ? .semibold : .medium))
-                                .foregroundColor(selectedFilter == filter ? .primary : .primary.opacity(0.7))
+                                .foregroundStyle(.primary)
+                                .opacity(selectedFilter == filter ? 1.0 : 0.7)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
                                 .background(
@@ -155,7 +156,7 @@ struct ModelManagementView: View {
                 }) {
                     Image(systemName: "gear")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(isShowingSettings ? .accentColor : .primary.opacity(0.7))
+                        .foregroundStyle(isShowingSettings ? Color.accentColor : Color.primary.opacity(0.7))
                         .padding(12)
                         .background(
                             CardBackground(isSelected: isShowingSettings, cornerRadius: 22)
@@ -228,7 +229,7 @@ struct ModelManagementView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(16)
                                 .background(CardBackground(isSelected: false))
-                                .cornerRadius(10)
+                                .clipShape(.rect(cornerRadius: 10))
                             }
                             .buttonStyle(.plain)
 
@@ -247,7 +248,7 @@ struct ModelManagementView: View {
                             Text("Only OpenAI-compatible transcription APIs are supported.")
                                 .font(.system(size: 12))
                         }
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(.bottom, 4)
 
                         AddCustomModelCardView(
@@ -270,11 +271,11 @@ struct ModelManagementView: View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
 
             Text("Local models don't work reliably on Intel Macs")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.primary.opacity(0.85))
+                .foregroundStyle(.primary.opacity(0.85))
 
             Spacer()
 
@@ -289,18 +290,18 @@ struct ModelManagementView: View {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 10, weight: .bold))
                 }
-                .foregroundColor(.orange)
+                .foregroundStyle(.orange)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(Color.orange.opacity(0.12))
-                .cornerRadius(6)
+                .clipShape(.rect(cornerRadius: 6))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(Color.orange.opacity(0.08))
-        .cornerRadius(8)
+        .clipShape(.rect(cornerRadius: 8))
     }
 
     private var filteredModels: [any TranscriptionModel] {

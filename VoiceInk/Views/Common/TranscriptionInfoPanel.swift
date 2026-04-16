@@ -95,12 +95,12 @@ struct TranscriptionInfoPanel: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("System Prompt")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(systemMsg)
                             .font(.system(size: 11, weight: .regular, design: .monospaced))
                             .lineSpacing(2)
                             .textSelection(.enabled)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                     }
                 }
 
@@ -108,12 +108,12 @@ struct TranscriptionInfoPanel: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("User Message")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         Text(userMsg)
                             .font(.system(size: 11, weight: .regular, design: .monospaced))
                             .lineSpacing(2)
                             .textSelection(.enabled)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                     }
                 }
             } header: {
@@ -143,18 +143,18 @@ struct TranscriptionInfoPanel: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(width: 20, height: 20)
 
             Text(label)
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Spacer(minLength: 0)
 
             Text(value)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
         }
     }

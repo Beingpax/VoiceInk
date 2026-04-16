@@ -18,14 +18,14 @@ struct EnhancementSettingsPanel: View {
                 Text("Enhancement Settings")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -36,9 +36,9 @@ struct EnhancementSettingsPanel: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(Color(NSColor.windowBackgroundColor))
-            .overlay(
-                Divider().opacity(0.5), alignment: .bottom
-            )
+            .overlay(alignment: .bottom) {
+                Divider().opacity(0.5)
+            }
 
             // Content
             Form {
@@ -65,37 +65,34 @@ struct EnhancementSettingsPanel: View {
                 Section {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack {
-                            Toggle(isOn: Binding(
-                                get: { isSkipShortEnhancementEnabled },
-                                set: { newValue in
-                                    isHandlingToggleChange = true
-                                    isSkipShortEnhancementEnabled = newValue
-                                    if newValue {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            isShortEnhancementExpanded = true
-                                        }
-                                    } else {
-                                        withAnimation(.easeInOut(duration: 0.2)) {
-                                            isShortEnhancementExpanded = false
-                                        }
-                                    }
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                        isHandlingToggleChange = false
-                                    }
-                                }
-                            )) {
+                            Toggle(isOn: $isSkipShortEnhancementEnabled) {
                                 HStack(spacing: 4) {
                                     Text("Skip short transcriptions")
                                     InfoTip("Automatically skip AI enhancement when the transcription has very few words. Short phrases like \"yes\", \"thank you\", or quick commands don't benefit from enhancement.")
                                 }
                             }
                             .toggleStyle(.switch)
+                            .onChange(of: isSkipShortEnhancementEnabled) { _, newValue in
+                                isHandlingToggleChange = true
+                                if newValue {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isShortEnhancementExpanded = true
+                                    }
+                                } else {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isShortEnhancementExpanded = false
+                                    }
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    isHandlingToggleChange = false
+                                }
+                            }
 
                             Spacer()
 
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .rotationEffect(.degrees(isSkipShortEnhancementEnabled && isShortEnhancementExpanded ? 90 : 0))
                                 .opacity(isSkipShortEnhancementEnabled ? 1 : 0.4)
                         }

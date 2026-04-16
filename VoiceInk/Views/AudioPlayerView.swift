@@ -178,7 +178,7 @@ struct WaveformView: View {
                             .controlSize(.small)
                         Text("Loading...")
                             .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -202,7 +202,7 @@ struct WaveformView: View {
                         Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
                             .font(.system(size: 10, weight: .medium))
                             .monospacedDigit()
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(Color.accentColor))
@@ -343,7 +343,7 @@ private struct StatusBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundColor(isError ? .red : .green)
+                .foregroundStyle(isError ? .red : .green)
             Text(message)
                 .font(.system(size: 14, weight: .medium))
         }
@@ -406,7 +406,7 @@ struct AudioPlayerView: View {
                 Text(formatTime(playerManager.currentTime))
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 Spacer()
 
@@ -481,7 +481,7 @@ struct AudioPlayerView: View {
                 Text(formatTime(playerManager.duration))
                     .font(.system(size: 11, weight: .medium))
                     .monospacedDigit()
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 10)
         }

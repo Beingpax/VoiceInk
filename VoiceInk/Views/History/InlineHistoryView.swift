@@ -153,7 +153,7 @@ struct InlineHistoryView: View {
         HStack(spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.system(size: 12))
                 TextField("Search transcriptions...", text: $searchText)
                     .textFieldStyle(.plain)
@@ -175,7 +175,7 @@ struct InlineHistoryView: View {
         HStack(spacing: 16) {
             Text("\(selectedTranscriptions.count) selected")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Spacer()
 
@@ -187,7 +187,7 @@ struct InlineHistoryView: View {
                     .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
 
             Button(action: {
                 exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
@@ -196,14 +196,14 @@ struct InlineHistoryView: View {
                     .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
 
             Button(action: { showDeleteConfirmation = true }) {
                 Label("Delete", systemImage: "trash")
                     .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
-            .foregroundColor(.red.opacity(0.8))
+            .foregroundStyle(.red.opacity(0.8))
 
             Divider()
                 .frame(height: 16)
@@ -214,14 +214,14 @@ struct InlineHistoryView: View {
                 }
                 .font(.system(size: 12, weight: .medium))
                 .buttonStyle(.plain)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             } else {
                 Button("Select All") {
                     Task { await selectAllTranscriptions() }
                 }
                 .font(.system(size: 12, weight: .medium))
                 .buttonStyle(.plain)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 20)
@@ -239,13 +239,13 @@ struct InlineHistoryView: View {
             Spacer()
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 40))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text(searchText.isEmpty ? "No transcriptions yet" : "No results found")
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text(searchText.isEmpty ? "Your transcription history will appear here" : "Try a different search term")
                 .font(.system(size: 13))
-                .foregroundColor(.secondary.opacity(0.8))
+                .foregroundStyle(.secondary.opacity(0.8))
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -338,7 +338,7 @@ struct InlineHistoryView: View {
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -348,7 +348,9 @@ struct InlineHistoryView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(Color(NSColor.windowBackgroundColor))
-            .overlay(Divider().opacity(0.5), alignment: .bottom)
+            .overlay(alignment: .bottom) {
+                Divider().opacity(0.5)
+            }
             .zIndex(1)
 
             if let transcription = panelTranscription {
@@ -517,36 +519,41 @@ private struct HistoryCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Toggle("", isOn: Binding(
-                    get: { isChecked },
-                    set: { _ in onToggleCheck() }
-                ))
-                .toggleStyle(CircularCheckboxStyle())
-                .labelsHidden()
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-
-                    if !isExpanded {
-                        Text(transcription.enhancedText ?? transcription.text)
-                            .font(.system(size: 13))
-                            .lineLimit(2)
-                            .foregroundColor(.primary)
-                    }
+                Button(action: onToggleCheck) {
+                    Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(isChecked ? Color(NSColor.controlAccentColor) : .secondary)
+                        .font(.system(size: 18))
                 }
+                .buttonStyle(.plain)
 
-                Spacer()
+                Button(action: onToggleExpand) {
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(.secondary)
 
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                            if !isExpanded {
+                                Text(transcription.enhancedText ?? transcription.text)
+                                    .font(.system(size: 13))
+                                    .lineLimit(2)
+                                    .foregroundStyle(.primary)
+                            }
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                            .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .contentShape(Rectangle())
-            .onTapGesture { onToggleExpand() }
 
             if isExpanded {
                 expandedContent
@@ -570,7 +577,7 @@ private struct HistoryCardRow: View {
                         } label: {
                             Text(tab.rawValue)
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(selectedTab == tab ? .primary : .secondary)
+                                .foregroundStyle(selectedTab == tab ? .primary : .secondary)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
                                 .background(
@@ -607,7 +614,7 @@ private struct HistoryCardRow: View {
                     Button(action: onShowInfo) {
                         Image(systemName: "info.circle")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                     .help("View details")

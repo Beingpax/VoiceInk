@@ -16,7 +16,7 @@ struct SaveIconButton: View {
         } label: {
             Image(systemName: saved ? "checkmark" : "square.and.arrow.down")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(saved ? .green : .secondary)
+                .foregroundStyle(saved ? .green : .secondary)
                 .frame(width: 28, height: 28)
                 .background(Color(NSColor.controlBackgroundColor).opacity(0.9))
                 .clipShape(Circle())

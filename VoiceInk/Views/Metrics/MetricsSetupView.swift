@@ -23,7 +23,7 @@ struct MetricsSetupView: View {
                         
                         Text("Complete the setup to get started")
                             .font(.system(size: 16))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
                     }
                 }
@@ -101,7 +101,7 @@ struct MetricsSetupView: View {
                 .font(.system(size: 18))
                 .frame(width: 40, height: 40)
                 .background((stepInfo.isCompleted ? Color.green : Color.accentColor).opacity(0.1))
-                .foregroundColor(stepInfo.isCompleted ? .green : Color.accentColor)
+                .foregroundStyle(stepInfo.isCompleted ? .green : Color.accentColor)
                 .clipShape(Circle())
             
             VStack(alignment: .leading, spacing: 3) {
@@ -110,7 +110,7 @@ struct MetricsSetupView: View {
                     .fontWeight(.semibold)
                 Text(stepInfo.description)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             Spacer()
@@ -118,11 +118,11 @@ struct MetricsSetupView: View {
             if stepInfo.isCompleted {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
             } else {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(NSColor.separatorColor))
+                    .foregroundStyle(Color(NSColor.separatorColor))
             }
         }
         .padding()
@@ -138,8 +138,8 @@ struct MetricsSetupView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .background(Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(12)
+            .foregroundStyle(.white)
+            .clipShape(.rect(cornerRadius: 12))
         }
         .buttonStyle(.plain)
         .shadow(color: Color.accentColor.opacity(0.3), radius: 8, y: 4)
@@ -182,7 +182,7 @@ struct MetricsSetupView: View {
     private var helpText: some View {
         Text("Need help? Check the Help menu for support options")
             .font(.caption)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
     }
     
     private var isShortcutAndAccessibilityGranted: Bool {

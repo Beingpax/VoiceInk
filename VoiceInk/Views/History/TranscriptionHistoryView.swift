@@ -167,7 +167,7 @@ struct TranscriptionHistoryView: View {
         VStack(spacing: 0) {
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.system(size: 13))
                 TextField("Search transcriptions", text: $searchText)
                     .textFieldStyle(PlainTextFieldStyle())
@@ -184,15 +184,8 @@ struct TranscriptionHistoryView: View {
 
             ZStack(alignment: .bottom) {
                 if displayedTranscriptions.isEmpty && !isLoading {
-                    VStack(spacing: 12) {
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 40))
-                            .foregroundColor(.secondary)
-                        Text("No transcriptions")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ContentUnavailableView("No Transcriptions", systemImage: "doc.text.magnifyingglass")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 8) {
@@ -246,31 +239,10 @@ struct TranscriptionHistoryView: View {
                 })
                     .id(transcription.id)
             } else {
-                ScrollView {
-                    VStack(spacing: 32) {
-                        Spacer()
-                            .frame(minHeight: 40)
-
-                        VStack(spacing: 12) {
-                            Image(systemName: "doc.text")
-                                .font(.system(size: 50))
-                                .foregroundColor(.secondary)
-                            Text("No Selection")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.secondary)
-                            Text("Select a transcription to view details")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-                        }
-
-                        HistoryShortcutTipView()
-                            .padding(.horizontal, 24)
-
-                        Spacer()
-                            .frame(minHeight: 40)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 600)
+                VStack(spacing: 24) {
+                    ContentUnavailableView("No Selection", systemImage: "doc.text", description: Text("Select a transcription to view details"))
+                    HistoryShortcutTipView()
+                        .padding(.horizontal, 24)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(NSColor.controlBackgroundColor))
@@ -284,16 +256,9 @@ struct TranscriptionHistoryView: View {
                 TranscriptionInfoPanel(transcription: transcription)
                     .id(transcription.id)
             } else {
-                VStack(spacing: 12) {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary)
-                    Text("No Metadata")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
+                ContentUnavailableView("No Metadata", systemImage: "info.circle")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(NSColor.controlBackgroundColor))
             }
         }
     }
@@ -310,14 +275,14 @@ struct TranscriptionHistoryView: View {
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             } else {
                 Button("Select All") {
                     Task { await selectAllTranscriptions() }
                 }
                 .buttonStyle(.plain)
                 .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             }
 
             if !selectedTranscriptions.isEmpty {
@@ -329,7 +294,7 @@ struct TranscriptionHistoryView: View {
                 }) {
                     Image(systemName: "chart.bar.xaxis")
                         .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Analyze")
@@ -339,7 +304,7 @@ struct TranscriptionHistoryView: View {
                 }) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Export")
@@ -347,7 +312,7 @@ struct TranscriptionHistoryView: View {
                 Button(action: { showDeleteConfirmation = true }) {
                     Image(systemName: "trash")
                         .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
                 .help("Delete")
@@ -358,7 +323,7 @@ struct TranscriptionHistoryView: View {
             if !selectedTranscriptions.isEmpty {
                 Text("\(selectedTranscriptions.count) selected")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.horizontal, 16)

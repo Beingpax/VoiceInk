@@ -43,7 +43,7 @@ struct LicenseManagementView: View {
                         
                         Text("v\(appVersion)")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .padding(.bottom, 4)
                     }
                 }
@@ -122,7 +122,7 @@ struct LicenseManagementView: View {
                 .padding(.vertical, 8)
                 .padding(.horizontal, 16)
                 .background(Color.blue.opacity(0.1))
-                .cornerRadius(12)
+                .clipShape(.rect(cornerRadius: 12))
                 
                 // Purchase Button 
                 Button(action: {
@@ -178,7 +178,7 @@ struct LicenseManagementView: View {
                 
                 if let message = licenseViewModel.validationMessage {
                     Text(message)
-                        .foregroundColor(.red)
+                        .foregroundStyle(.red)
                         .font(.callout)
                 }
             }

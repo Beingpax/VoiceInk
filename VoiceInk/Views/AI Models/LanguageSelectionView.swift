@@ -80,15 +80,15 @@ struct LanguageSelectionView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Language: Autodetected")
                             .font(.subheadline)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
 
                         Text("Current model: \(currentModel.displayName)")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Text("The transcription language is automatically detected by the model.")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .disabled(true)
                 } else if isMultilingualModel() {
@@ -111,30 +111,30 @@ struct LanguageSelectionView: View {
 
                         Text("Current model: \(currentModel.displayName)")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Text(
                             "This model supports multiple languages. Select a specific language or auto-detect(if available)"
                         )
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     }
                 } else {
                     // For English-only models, force set language to English
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Language: English")
                             .font(.subheadline)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
 
                         Text("Current model: \(currentModel.displayName)")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
 
                         Text(
                             "This is an English-optimized model and only supports English transcription."
                         )
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     }
                     .onAppear {
                         // Ensure English is set when viewing English-only model
@@ -144,13 +144,13 @@ struct LanguageSelectionView: View {
             } else {
                 Text("No model selected")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(10)
+        .clipShape(.rect(cornerRadius: 10))
     }
 
     // New compact view for menu bar
@@ -161,7 +161,7 @@ struct LanguageSelectionView: View {
                     // Do nothing, just showing info
                 } label: {
                     Text("Language: Autodetected")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .disabled(true)
             } else if isMultilingualModel() {
@@ -197,7 +197,7 @@ struct LanguageSelectionView: View {
                     // Do nothing, just showing info
                 } label: {
                     Text("Language: English (only)")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .disabled(true)
                 .onAppear {

@@ -10,7 +10,7 @@ struct EnhancementPromptPopover: View {
             // Enhancement Toggle at the top
             HStack(spacing: 8) {
                 Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundStyle(.white.opacity(0.9))
                     .font(.headline)
                     .lineLimit(1)
                 
@@ -72,17 +72,17 @@ struct EnhancementPromptRow: View {
                 // Use the icon from the prompt
                 Image(systemName: prompt.icon)
                     .font(.system(size: 14))
-                    .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.7))
+                    .foregroundStyle(isDisabled ? .white.opacity(0.4) : .white.opacity(0.7))
 
                 Text(prompt.title)
-                    .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.9))
+                    .foregroundStyle(isDisabled ? .white.opacity(0.4) : .white.opacity(0.9))
                     .font(.system(size: 13))
                     .lineLimit(1)
 
                 if isSelected {
                     Spacer()
                     Image(systemName: "checkmark")
-                        .foregroundColor(isDisabled ? .green.opacity(0.7) : .green)
+                        .foregroundStyle(isDisabled ? .green.opacity(0.7) : .green)
                         .font(.system(size: 10))
                 }
             }
@@ -93,6 +93,6 @@ struct EnhancementPromptRow: View {
         }
         .buttonStyle(.plain)
         .background(isSelected ? Color.white.opacity(0.1) : Color.clear)
-        .cornerRadius(4)
+        .clipShape(.rect(cornerRadius: 4))
     }
 } 

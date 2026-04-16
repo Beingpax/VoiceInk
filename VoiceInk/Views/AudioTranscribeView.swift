@@ -59,20 +59,20 @@ struct AudioTranscribeView: View {
                             .strokeBorder(
                                 style: StrokeStyle(lineWidth: 2, dash: [8])
                             )
-                            .foregroundColor(isDropTargeted ? .accentColor : .gray.opacity(0.5))
+                            .foregroundStyle(isDropTargeted ? Color.accentColor : Color.gray.opacity(0.5))
                     )
                     .animation(.easeInOut(duration: 0.15), value: isDropTargeted)
 
                 VStack(spacing: 14) {
                     Image(systemName: "arrow.down.doc")
                         .font(.system(size: 32))
-                        .foregroundColor(isDropTargeted ? .accentColor : .gray)
+                        .foregroundStyle(isDropTargeted ? Color.accentColor : Color.gray)
 
                     Text("Drop audio or video files here")
                         .font(.headline)
 
                     Text("or")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Button("Choose Files") {
                         selectFiles()
@@ -85,7 +85,7 @@ struct AudioTranscribeView: View {
 
             Text("Supports WAV, MP3, M4A, AIFF, MP4, MOV, AAC, FLAC, CAF, AMR, OGG, OPUS, 3GP")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.top, 12)
 
             Spacer()
@@ -132,7 +132,7 @@ struct AudioTranscribeView: View {
             .safeAreaInset(edge: .bottom) {
                 Text("Drop files anywhere to add more")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
             }
@@ -145,7 +145,7 @@ struct AudioTranscribeView: View {
         HStack(spacing: 10) {
             Text("\(transcriptionManager.queue.count) file\(transcriptionManager.queue.count == 1 ? "" : "s")")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Button {
                 selectFiles()
@@ -156,7 +156,7 @@ struct AudioTranscribeView: View {
                     Text("Add")
                         .font(.system(size: 12, weight: .medium))
                 }
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
@@ -181,7 +181,7 @@ struct AudioTranscribeView: View {
                         Text("Cancel")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
@@ -201,7 +201,7 @@ struct AudioTranscribeView: View {
                         Text("Start")
                             .font(.system(size: 12, weight: .semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
@@ -225,7 +225,7 @@ struct AudioTranscribeView: View {
                     Text("Clear")
                         .font(.system(size: 12, weight: .medium))
                 }
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
                 .background(
@@ -289,7 +289,7 @@ struct AudioTranscribeView: View {
             .overlay {
                 Text("Drop to add files")
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
             }
             .padding(16)
             .transition(.opacity)

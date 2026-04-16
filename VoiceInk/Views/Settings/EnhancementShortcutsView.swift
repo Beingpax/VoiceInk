@@ -63,7 +63,7 @@ private struct KeyChip: View {
     var body: some View {
         Text(label)
             .font(.system(size: 12, weight: .medium, design: .monospaced))
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(

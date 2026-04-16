@@ -15,7 +15,7 @@ struct DiagnosticsSettingsView: View {
                     }
 
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
+                        .foregroundStyle(.green)
                 }
 
                 Button("Export") {

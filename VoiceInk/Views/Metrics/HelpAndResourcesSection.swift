@@ -5,7 +5,7 @@ struct HelpAndResourcesSection: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Help & Resources")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                .foregroundColor(.primary.opacity(0.8))
+                .foregroundStyle(.primary.opacity(0.8))
 
             VStack(alignment: .leading, spacing: 10) {
                 resourceLink(
@@ -57,7 +57,7 @@ struct HelpAndResourcesSection: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .frame(width: 20)
                 
                 Text(title)
@@ -67,7 +67,7 @@ struct HelpAndResourcesSection: View {
                 Spacer()
                 
                 Image(systemName: "arrow.up.right")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .padding(12)
             .background(Color.primary.opacity(0.05))

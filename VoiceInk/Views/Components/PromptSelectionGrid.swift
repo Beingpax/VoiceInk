@@ -33,7 +33,7 @@ struct PromptSelectionGrid: View {
         VStack(alignment: .leading, spacing: 12) {
             if prompts.isEmpty {
                 Text("No prompts available")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .font(.caption)
             } else {
                 let columns = [
@@ -68,11 +68,11 @@ struct PromptSelectionGrid: View {
                 HStack {
                     Image(systemName: "info.circle")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                     
                     Text("Double-click to edit • Right-click for more options")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.top, 8)
                 .padding(.horizontal, 16)

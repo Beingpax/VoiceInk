@@ -11,7 +11,7 @@ struct LicenseView: View {
             if case .licensed = licenseViewModel.licenseState {
                 VStack(spacing: 10) {
                     Text("Premium Features Activated")
-                        .foregroundColor(.green)
+                        .foregroundStyle(.green)
                     
                     Button(role: .destructive, action: {
                         licenseViewModel.removeLicense()
@@ -40,7 +40,7 @@ struct LicenseView: View {
             
             if let message = licenseViewModel.validationMessage {
                 Text(message)
-                    .foregroundColor(licenseViewModel.licenseState == .licensed ? .green : .red)
+                    .foregroundStyle(licenseViewModel.licenseState == .licensed ? .green : .red)
                     .font(.caption)
             }
         }

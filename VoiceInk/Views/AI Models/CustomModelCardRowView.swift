@@ -31,7 +31,7 @@ struct CustomModelCardView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundStyle(Color(.labelColor))
             
             statusBadge
             
@@ -47,14 +47,14 @@ struct CustomModelCardView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             } else {
                 Text("Custom")
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.orange.opacity(0.2)))
-                    .foregroundColor(Color.orange)
+                    .foregroundStyle(Color.orange)
             }
         }
     }
@@ -64,19 +64,19 @@ struct CustomModelCardView: View {
             // Provider
             Label("Custom Provider", systemImage: "cloud")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
             
             // Language
             Label(model.language, systemImage: "globe")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
             
             // OpenAI Compatible
             Label("OpenAI Compatible", systemImage: "checkmark.seal")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
         }
         .lineLimit(1)
@@ -85,7 +85,7 @@ struct CustomModelCardView: View {
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundStyle(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -96,7 +96,7 @@ struct CustomModelCardView: View {
             if isCurrent {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
             } else {
                 Button(action: setDefaultAction) {
                     Text("Set as Default")

@@ -31,7 +31,7 @@ struct CustomSoundSettingsView: View {
 
         HStack(spacing: 8) {
             Text(isCustom ? (fileName ?? "Custom") : "Default")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .frame(maxWidth: 100, alignment: .leading)
                 .lineLimit(1)
                 .truncationMode(.middle)

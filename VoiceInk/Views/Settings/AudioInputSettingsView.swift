@@ -409,13 +409,13 @@ struct DevicePriorityCard: View {
                     HStack(spacing: 2) {
                         Button(action: onMoveUp) {
                             Image(systemName: "chevron.up")
-                                .foregroundStyle(canMoveUp ? .blue : .secondary.opacity(0.5))
+                                .foregroundStyle(canMoveUp ? Color.blue : Color.secondary.opacity(0.5))
                         }
                         .disabled(!canMoveUp)
                         
                         Button(action: onMoveDown) {
                             Image(systemName: "chevron.down")
-                                .foregroundStyle(canMoveDown ? .blue : .secondary.opacity(0.5))
+                                .foregroundStyle(canMoveDown ? Color.blue : Color.secondary.opacity(0.5))
                         }
                         .disabled(!canMoveDown)
                     }

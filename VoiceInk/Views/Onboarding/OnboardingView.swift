@@ -29,14 +29,14 @@ struct OnboardingView: View {
                                 VStack(spacing: 16) {
                                     Text("Welcome to the Future of Typing")
                                         .font(.system(size: min(geometry.size.width * 0.055, 42), weight: .bold, design: .rounded))
-                                        .foregroundColor(.white)
+                                        .foregroundStyle(.white)
                                         .opacity(textOpacity)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
                                     
                                     Text("A New Way to Type")
                                         .font(.system(size: min(geometry.size.width * 0.032, 24), weight: .medium, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .foregroundStyle(.white.opacity(0.7))
                                         .opacity(textOpacity)
                                         .multilineTextAlignment(.center)
                                 }
@@ -63,10 +63,10 @@ struct OnboardingView: View {
                                     }) {
                                         Text("Get Started")
                                             .font(.system(size: 18, weight: .semibold))
-                                            .foregroundColor(.black)
+                                            .foregroundStyle(.black)
                                             .frame(width: min(geometry.size.width * 0.3, 200), height: 50)
                                             .background(Color.white)
-                                            .cornerRadius(25)
+                                            .clipShape(.rect(cornerRadius: 25))
                                     }
                                     .buttonStyle(ScaleButtonStyle())
                                     
@@ -234,12 +234,14 @@ struct TypewriterRoles: View {
 struct SkipButton: View {
     let text: String
     let action: () -> Void
-    
+
     var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .regular))
-            .foregroundColor(.white.opacity(0.2))
-            .onTapGesture(perform: action)
+        Button(action: action) {
+            Text(text)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(.white.opacity(0.2))
+        }
+        .buttonStyle(.plain)
     }
 }
 

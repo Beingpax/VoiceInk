@@ -28,7 +28,7 @@ struct ModelSettingsView: View {
                     } else {
                         Text(whisperPrompt.getLanguagePrompt(for: selectedLanguage))
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         Button("Edit") {

@@ -38,7 +38,7 @@ struct AudioCleanupSettingsView: View {
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(isTranscriptionCleanupEnabled && isTranscriptExpanded ? 90 : 0))
                         .opacity(isTranscriptionCleanupEnabled ? 1 : 0.4)
                 }
@@ -115,7 +115,7 @@ struct AudioCleanupSettingsView: View {
 
                         Image(systemName: "chevron.right")
                             .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isAudioCleanupEnabled && isAudioExpanded ? 90 : 0))
                             .opacity(isAudioCleanupEnabled ? 1 : 0.4)
                     }

@@ -104,12 +104,12 @@ struct OnboardingPermissionsView: View {
                                 if permissionStates[currentPermissionIndex] {
                                     Image(systemName: "checkmark.seal.fill")
                                         .font(.system(size: 50))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundStyle(Color.accentColor)
                                         .transition(.scale.combined(with: .opacity))
                                 } else {
                                     Image(systemName: permissions[currentPermissionIndex].icon)
                                         .font(.system(size: 40))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundStyle(Color.accentColor)
                                 }
                             }
                             .scaleEffect(scale)
@@ -121,7 +121,7 @@ struct OnboardingPermissionsView: View {
                                     Text(permissions[currentPermissionIndex].title)
                                         .font(.title2)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.white)
+                                        .foregroundStyle(.white)
                                     
                                     if permissions[currentPermissionIndex].type == .screenRecording {
                                         InfoTip(
@@ -133,7 +133,7 @@ struct OnboardingPermissionsView: View {
                                 
                                 Text(permissions[currentPermissionIndex].description)
                                     .font(.body)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundStyle(.white.opacity(0.7))
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
                             }
@@ -189,7 +189,7 @@ struct OnboardingPermissionsView: View {
                                     
                                     Text("For best results, using your Mac's built-in microphone is recommended.")
                                         .font(.caption)
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .foregroundStyle(.white.opacity(0.7))
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
                                 }
@@ -220,10 +220,10 @@ struct OnboardingPermissionsView: View {
                             Button(action: requestPermission) {
                                 Text(getButtonTitle())
                                     .font(.headline)
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .frame(width: 200, height: 50)
                                     .background(Color.accentColor)
-                                    .cornerRadius(25)
+                                    .clipShape(.rect(cornerRadius: 25))
                             }
                             .buttonStyle(ScaleButtonStyle())
                             
@@ -407,7 +407,7 @@ struct OnboardingPermissionsView: View {
                 
                 Text(label)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundStyle(.white.opacity(0.8))
                 
                 Menu {
                     ForEach(options, id: \.self) { option in
@@ -426,16 +426,16 @@ struct OnboardingPermissionsView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Text(displayValue)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .font(.system(size: 16, weight: .medium))
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
+                            .foregroundStyle(.white.opacity(0.6))
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(Color.white.opacity(0.1))
-                    .cornerRadius(10)
+                    .clipShape(.rect(cornerRadius: 10))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(Color.white.opacity(0.2), lineWidth: 1)
@@ -448,7 +448,7 @@ struct OnboardingPermissionsView: View {
         }
         .padding()
         .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
 
     @ViewBuilder

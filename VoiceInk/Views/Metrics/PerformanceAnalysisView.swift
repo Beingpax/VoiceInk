@@ -201,7 +201,7 @@ struct PerformanceAnalysisView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("System Information")
                 .font(.system(.title2, design: .default, weight: .bold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             HStack(spacing: 12) {
                 SystemInfoCard(label: "Device", value: PerformanceAnalyzer.getMacModel())
@@ -215,7 +215,7 @@ struct PerformanceAnalysisView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Transcription Models")
                 .font(.system(.title2, design: .default, weight: .bold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(analysis.transcriptionModels) { modelStat in
@@ -229,7 +229,7 @@ struct PerformanceAnalysisView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Enhancement Models")
                 .font(.system(.title2, design: .default, weight: .bold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(analysis.enhancementModels) { modelStat in
@@ -259,20 +259,20 @@ struct SummaryCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: .medium))
-                .foregroundColor(color)
+                .foregroundStyle(color)
             
             Text(value)
                 .font(.system(.title2, design: .rounded, weight: .bold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
             
             Text(label)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 100)
         .background(MetricCardBackground(color: color))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
 }
 
@@ -284,11 +284,11 @@ struct InfoRow: View {
         HStack {
             Text(label)
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Spacer()
             Text(value)
                 .font(.body)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
         }
     }
 }
@@ -301,19 +301,19 @@ struct SystemInfoCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption.weight(.medium))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .textCase(.uppercase)
             
             Text(value)
                 .font(.system(.body, design: .default, weight: .semibold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
         .background(MetricCardBackground(color: .secondary))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
 }
 
@@ -334,7 +334,7 @@ struct TranscriptionModelCard: View {
                 
                 Text("\(modelStat.fileCount) transcripts")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             Divider()
@@ -344,10 +344,10 @@ struct TranscriptionModelCard: View {
                 VStack {
                     Text(String(format: "%.1fx", modelStat.speedFactor))
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.mint)
+                        .foregroundStyle(.mint)
                     Text("Faster than Real-time")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 
@@ -371,7 +371,7 @@ struct TranscriptionModelCard: View {
         }
         .padding(16)
         .background(MetricCardBackground(color: .mint))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -399,7 +399,7 @@ struct EnhancementModelCard: View {
                 
                 Text("\(modelStat.fileCount) transcripts")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             
             Divider()
@@ -407,16 +407,16 @@ struct EnhancementModelCard: View {
             VStack(alignment: .center) {
                 Text(String(format: "%.2f s", modelStat.avgProcessingTime))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
+                    .foregroundStyle(.indigo)
                 Text("Avg. Enhancement Time")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
         }
         .padding(16)
         .background(MetricCardBackground(color: .indigo))
-        .cornerRadius(12)
+        .clipShape(.rect(cornerRadius: 12))
     }
 }
 
@@ -462,13 +462,13 @@ struct MetricDisplay: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
             
             Text(value)
                 .font(.system(.body, design: .monospaced, weight: .semibold))
-                .foregroundColor(color)
+                .foregroundStyle(color)
         }
     }
 }

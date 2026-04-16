@@ -72,14 +72,14 @@ struct PromptEditorView: View {
                 Text(isEditingPredefinedPrompt ? "Edit Trigger Words" : (mode == .add ? "New Prompt" : "Edit Prompt"))
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
                 Button(action: dismissPanel) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -90,9 +90,9 @@ struct PromptEditorView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(Color(NSColor.windowBackgroundColor))
-            .overlay(
-                Divider().opacity(0.5), alignment: .bottom
-            )
+            .overlay(alignment: .bottom) {
+                Divider().opacity(0.5)
+            }
 
             // Content
             if isEditingPredefinedPrompt {
@@ -107,7 +107,7 @@ struct PromptEditorView: View {
                     Button("Cancel") { dismissPanel() }
                         .keyboardShortcut(.escape, modifiers: [])
                         .buttonStyle(.plain)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
 
                     Spacer()
 
@@ -137,7 +137,7 @@ struct PromptEditorView: View {
             Section {
                 Text("You can only customize the trigger words for system prompts.")
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text("Editing: \(title)")
             }
@@ -159,10 +159,10 @@ struct PromptEditorView: View {
                     Button(action: { showingIconPicker = true }) {
                         Image(systemName: selectedIcon)
                             .font(.system(size: 22))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                             .frame(width: 44, height: 44)
                             .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(10)
+                            .clipShape(.rect(cornerRadius: 10))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
                                     .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
@@ -304,7 +304,7 @@ struct TriggerWordsEditor: View {
             } else {
                 Text("No trigger words added")
                     .font(.caption)
-                    .foregroundColor(.secondary.opacity(0.7))
+                    .foregroundStyle(.secondary.opacity(0.7))
                     .italic()
             }
         }
@@ -335,12 +335,12 @@ struct TriggerWordItemView: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: 120, alignment: .leading)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             
             Button(action: onDelete) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
             .padding(.leading, 2)
@@ -348,7 +348,7 @@ struct TriggerWordItemView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(4)
+        .clipShape(.rect(cornerRadius: 4))
         .overlay(
             RoundedRectangle(cornerRadius: 4)
                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
@@ -435,7 +435,7 @@ struct IconPickerPopover: View {
                             
                             Image(systemName: icon)
                                 .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(.primary)
+                                .foregroundStyle(.primary)
                         }
                         .scaleEffect(selectedIcon == icon ? 1.1 : 1.0)
                         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: selectedIcon == icon)

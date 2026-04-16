@@ -135,11 +135,11 @@ struct MetricsContent: View {
         VStack(spacing: 20) {
             Image(systemName: "waveform")
                 .font(.system(size: 56, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
             Text("No Transcriptions Yet")
                 .font(.title3.weight(.semibold))
             Text("Start your first recording to unlock value insights.")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.windowBackgroundColor))
@@ -152,21 +152,14 @@ struct MetricsContent: View {
             HStack {
                 Spacer(minLength: 0)
                 
-                (Text("You have saved ")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.85))
-                 +
-                 Text(formattedTimeSaved)
-                    .fontWeight(.black)
-                    .font(.system(size: 36, design: .rounded))
-                    .foregroundStyle(.white)
-                 +
-                 Text(" with VoiceInk")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.85))
-                )
-                .font(.system(size: 30))
-                .multilineTextAlignment(.center)
+                Group {
+                    let savedPart = Text("You have saved ").fontWeight(.bold).foregroundStyle(.white.opacity(0.85))
+                    let timePart = Text(formattedTimeSaved).fontWeight(.black).font(.system(size: 36, design: .rounded)).foregroundStyle(.white)
+                    let suffixPart = Text(" with VoiceInk").fontWeight(.bold).foregroundStyle(.white.opacity(0.85))
+                    Text("\(savedPart)\(timePart)\(suffixPart)")
+                        .font(.system(size: 30))
+                        .multilineTextAlignment(.center)
+                }
                 
                 Spacer(minLength: 0)
             }
@@ -175,7 +168,7 @@ struct MetricsContent: View {
             
             Text(heroSubtitle)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.white.opacity(0.85))
+                .foregroundStyle(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
             

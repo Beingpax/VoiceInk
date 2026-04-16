@@ -87,7 +87,7 @@ struct ContentView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 28, height: 28)
-                                .cornerRadius(8)
+                                .clipShape(.rect(cornerRadius: 8))
                         }
 
                         Text("VoiceInk")
@@ -100,7 +100,7 @@ struct ContentView: View {
                                 .padding(.horizontal, 4)
                                 .padding(.vertical, 2)
                                 .background(Color.blue)
-                                .cornerRadius(4)
+                                .clipShape(.rect(cornerRadius: 4))
                         }
 
                         Spacer()
@@ -128,7 +128,7 @@ struct ContentView: View {
                     .navigationTitle(selectedView.rawValue)
             } else {
                 Text("Select a view")
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationSplitViewStyle(.balanced)

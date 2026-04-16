@@ -68,7 +68,7 @@ private struct MessageBubble: View {
             VStack(alignment: isEnhanced ? .leading : .trailing, spacing: 4) {
                 Text(label)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.7))
+                    .foregroundStyle(.secondary.opacity(0.7))
                     .padding(.horizontal, 12)
 
                 ScrollView {

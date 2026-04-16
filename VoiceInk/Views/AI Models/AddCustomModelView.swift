@@ -47,11 +47,11 @@ struct AddCustomModelCardView: View {
                         Text(editingModel != nil ? "Edit Model" : "Add Model")
                             .font(.system(size: 14, weight: .semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(Color.accentColor)
-                    .cornerRadius(12)
+                    .clipShape(.rect(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
                 .shadow(color: Color.accentColor.opacity(0.3), radius: 8, y: 4)
@@ -64,7 +64,7 @@ struct AddCustomModelCardView: View {
                     HStack {
                         Text(editingModel != nil ? "Edit Custom Model" : "Add Custom Model")
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                         
                         Spacer()
                         
@@ -76,7 +76,7 @@ struct AddCustomModelCardView: View {
                         }) {
                             Image(systemName: "xmark")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
                     }
@@ -84,16 +84,16 @@ struct AddCustomModelCardView: View {
                     // Disclaimer
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                             .font(.caption)
                         Text("Only OpenAI-compatible transcription APIs are supported")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                     .background(Color.orange.opacity(0.1))
-                    .cornerRadius(8)
+                    .clipShape(.rect(cornerRadius: 8))
                     
                     // Form fields
                     VStack(alignment: .leading, spacing: 16) {
@@ -115,11 +115,11 @@ struct AddCustomModelCardView: View {
                         }) {
                             Text("Cancel")
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
                                 .background(Color.secondary.opacity(0.1))
-                                .cornerRadius(8)
+                                .clipShape(.rect(cornerRadius: 8))
                         }
                         .buttonStyle(.plain)
                         
@@ -138,7 +138,7 @@ struct AddCustomModelCardView: View {
                                 Text(editingModel != nil ? "Update Model" : "Add Model")
                                     .font(.system(size: 13, weight: .medium))
                             }
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .background(
@@ -286,7 +286,7 @@ struct FormField: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.medium)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
             
             if isSecure {
                 SecureField(placeholder, text: $text)

@@ -34,12 +34,12 @@ struct OnboardingModelDownloadView: View {
                                 if isModelSet {
                                     Image(systemName: "checkmark.seal.fill")
                                         .font(.system(size: 50))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundStyle(Color.accentColor)
                                         .transition(.scale.combined(with: .opacity))
                                 } else {
                                     Image(systemName: "brain")
                                         .font(.system(size: 40))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundStyle(Color.accentColor)
                                 }
                             }
                             .scaleEffect(scale)
@@ -50,11 +50,11 @@ struct OnboardingModelDownloadView: View {
                                 Text("Download AI Model")
                                     .font(.title2)
                                     .fontWeight(.bold)
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                 
                                 Text("We'll download the optimized model to get you started.")
                                     .font(.body)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundStyle(.white.opacity(0.7))
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
                             }
@@ -68,10 +68,10 @@ struct OnboardingModelDownloadView: View {
                             VStack(alignment: .center, spacing: 8) {
                                 Text(turboModel.displayName)
                                     .font(.headline)
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                 Text("\(turboModel.size) • \(turboModel.language)")
                                     .font(.caption)
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundStyle(.white.opacity(0.7))
                             }
                             .frame(maxWidth: .infinity)
                             
@@ -98,7 +98,7 @@ struct OnboardingModelDownloadView: View {
                         .padding(24)
                         .frame(width: min(geometry.size.width * 0.6, 400))
                         .background(Color.black.opacity(0.3))
-                        .cornerRadius(16)
+                        .clipShape(.rect(cornerRadius: 16))
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
@@ -111,10 +111,10 @@ struct OnboardingModelDownloadView: View {
                             Button(action: handleAction) {
                                 Text(getButtonTitle())
                                     .font(.headline)
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(.white)
                                     .frame(width: 200, height: 50)
                                     .background(Color.accentColor)
-                                    .cornerRadius(25)
+                                    .clipShape(.rect(cornerRadius: 25))
                             }
                             .buttonStyle(ScaleButtonStyle())
                             .disabled(isDownloading)
@@ -203,7 +203,7 @@ struct OnboardingModelDownloadView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(.caption)
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.7))
             
             HStack(spacing: 4) {
                 ForEach(0..<5) { index in
@@ -219,11 +219,11 @@ struct OnboardingModelDownloadView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("RAM")
                 .font(.caption)
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.7))
             
             Text(String(format: "%.1f GB", gb))
                 .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundStyle(.white)
         }
     }
 }

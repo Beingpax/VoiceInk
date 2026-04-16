@@ -73,7 +73,7 @@ struct EditReplacementSheet: View {
     private var descriptionSection: some View {
         Text("Update the word or phrase that should be automatically replaced.")
             .font(.subheadline)
-            .foregroundColor(.secondary)
+            .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal)
             .padding(.top, 8)
@@ -88,7 +88,7 @@ struct EditReplacementSheet: View {
                         .font(.headline)
                     Text("Required")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 TextField("Enter word or phrase to replace (use commas for multiple)", text: $originalWord)
                     .textFieldStyle(.roundedBorder)
@@ -103,14 +103,14 @@ struct EditReplacementSheet: View {
                         .font(.headline)
                     Text("Required")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 TextEditor(text: $replacementWord)
                     .font(.body)
                     .frame(height: 100)
                     .padding(8)
                     .background(Color(.textBackgroundColor))
-                    .cornerRadius(6)
+                    .clipShape(.rect(cornerRadius: 6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(Color(.separatorColor), lineWidth: 1)

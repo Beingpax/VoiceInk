@@ -17,7 +17,7 @@ struct MetricCard: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 18, height: 18)
-                        .foregroundColor(color)
+                        .foregroundStyle(color)
                 }
                 .frame(width: 34, height: 34)
                 
@@ -35,7 +35,7 @@ struct MetricCard: View {
             if let detail, !detail.isEmpty {
                 Text(detail)
                     .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)

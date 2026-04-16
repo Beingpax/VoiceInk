@@ -44,7 +44,7 @@ struct AudioFileRow: View {
     private var pendingRow: some View {
         HStack {
             Image(systemName: "clock")
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Text(item.filename)
                 .lineLimit(1)
@@ -54,14 +54,14 @@ struct AudioFileRow: View {
 
             Text("Waiting")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
 
             Button {
                 onRemove()
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
         }
@@ -83,7 +83,7 @@ struct AudioFileRow: View {
 
             Text(phase.rawValue)
                 .font(.caption)
-                .foregroundColor(.accentColor)
+                .foregroundStyle(Color.accentColor)
         }
     }
 
@@ -93,16 +93,16 @@ struct AudioFileRow: View {
     private var completedRows: some View {
         HStack {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(.green)
+                .foregroundStyle(.green)
 
             Text(item.filename)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             if !isExpanded, let transcription = item.transcription {
                 Text(transcription.enhancedText ?? transcription.text)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
@@ -117,13 +117,13 @@ struct AudioFileRow: View {
                 if transcription.duration > 0 {
                     Text(formatDuration(transcription.duration))
                         .font(.caption.weight(.medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
             Image(systemName: "chevron.right")
                 .font(.caption2.weight(.semibold))
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 .animation(.easeInOut(duration: 0.2), value: isExpanded)
         }
@@ -151,12 +151,12 @@ struct AudioFileRow: View {
                 if let model = transcription.transcriptionModelName {
                     Label(model, systemImage: "cpu")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 if let prompt = transcription.promptName {
                     Label(prompt, systemImage: "sparkles")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -169,7 +169,7 @@ struct AudioFileRow: View {
         } label: {
             Text(tab.rawValue)
                 .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                .foregroundColor(selectedTab == tab ? .accentColor : .secondary)
+                .foregroundStyle(selectedTab == tab ? Color.accentColor : Color.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
@@ -185,7 +185,7 @@ struct AudioFileRow: View {
     private func failedRow(message: String) -> some View {
         HStack {
             Image(systemName: "exclamationmark.circle.fill")
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.filename)
@@ -194,7 +194,7 @@ struct AudioFileRow: View {
 
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(.red.opacity(0.8))
+                    .foregroundStyle(.red.opacity(0.8))
                     .lineLimit(2)
             }
 

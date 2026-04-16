@@ -11,14 +11,14 @@ struct DictionarySettingsPanel: View {
                 Text("Dictionary Settings")
                     .font(.headline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
 
                 Spacer()
 
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .clipShape(Circle())
@@ -29,9 +29,9 @@ struct DictionarySettingsPanel: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(Color(NSColor.windowBackgroundColor))
-            .overlay(
-                Divider().opacity(0.5), alignment: .bottom
-            )
+            .overlay(alignment: .bottom) {
+                Divider().opacity(0.5)
+            }
 
             // Content
             Form {

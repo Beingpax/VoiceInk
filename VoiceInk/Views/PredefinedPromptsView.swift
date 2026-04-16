@@ -35,12 +35,12 @@ struct PredefinedTemplateButton: View {
                         .overlay(
                             Image(systemName: prompt.icon)
                                 .font(.system(size: 19, weight: .medium))
-                                .foregroundColor(Color(NSColor.labelColor))
+                                .foregroundStyle(Color(NSColor.labelColor))
                         )
                     
                     Text(prompt.title)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                     
                     Spacer(minLength: 0)
@@ -48,7 +48,7 @@ struct PredefinedTemplateButton: View {
                 
                 Text(prompt.description)
                     .font(.system(size: 12))
-                    .foregroundColor(Color(NSColor.secondaryLabelColor))
+                    .foregroundStyle(Color(NSColor.secondaryLabelColor))
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)

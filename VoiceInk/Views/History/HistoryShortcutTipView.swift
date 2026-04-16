@@ -7,7 +7,7 @@ struct HistoryShortcutTipView: View {
             HStack(spacing: 12) {
                 Image(systemName: "command.circle")
                     .font(.system(size: 20))
-                    .foregroundColor(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .frame(width: 24, height: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -15,7 +15,7 @@ struct HistoryShortcutTipView: View {
                         .font(.headline)
                     Text("Open history from anywhere with a global shortcut")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -25,7 +25,7 @@ struct HistoryShortcutTipView: View {
             HStack(spacing: 12) {
                 Text("Open History Window")
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
                 KeyboardShortcuts.Recorder(for: .openHistoryWindow)
                     .controlSize(.small)

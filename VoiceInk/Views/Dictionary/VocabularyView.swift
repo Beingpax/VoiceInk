@@ -48,11 +48,11 @@ struct VocabularyView: View {
                 Label {
                     Text("Add words to help VoiceInk recognize them properly. (Requires AI enhancement)")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
                     Image(systemName: "info.circle.fill")
-                        .foregroundColor(.blue)
+                        .foregroundStyle(.blue)
                 }
             }
 
@@ -82,11 +82,11 @@ struct VocabularyView: View {
                         HStack(spacing: 4) {
                             Text("Vocabulary Words (\(vocabularyWords.count))")
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
+                                .foregroundStyle(.secondary)
 
                             Image(systemName: sortMode == .wordAsc ? "chevron.up" : "chevron.down")
                                 .font(.caption)
-                                .foregroundColor(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                     .buttonStyle(.plain)
@@ -150,7 +150,7 @@ struct VocabularyWordView: View {
             Text(item.word)
                 .font(.system(size: 13))
                 .lineLimit(1)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
 
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")

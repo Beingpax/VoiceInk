@@ -80,7 +80,7 @@ struct CloudModelCardView: View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundStyle(Color(.labelColor))
 
             statusBadge
 
@@ -100,21 +100,21 @@ struct CloudModelCardView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             } else if isConfigured {
                 Text("Configured")
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color(.systemGreen).opacity(0.2)))
-                    .foregroundColor(Color(.systemGreen))
+                    .foregroundStyle(Color(.systemGreen))
             } else {
                 Text("Setup Required")
                     .font(.system(size: 11, weight: .medium))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Color(.systemOrange).opacity(0.2)))
-                    .foregroundColor(Color(.systemOrange))
+                    .foregroundStyle(Color(.systemOrange))
             }
         }
     }
@@ -137,7 +137,7 @@ struct CloudModelCardView: View {
                     ? Color.accentColor.opacity(0.15)
                     : Color(.secondaryLabelColor).opacity(0.15))
             )
-            .foregroundColor(streamingEnabled ? Color.accentColor : Color(.secondaryLabelColor))
+            .foregroundStyle(streamingEnabled ? Color.accentColor : Color(.secondaryLabelColor))
         }
         .buttonStyle(.plain)
         .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
@@ -148,20 +148,20 @@ struct CloudModelCardView: View {
             // Provider
             Label(model.provider.rawValue, systemImage: "cloud")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
             
             // Language
             Label(model.language, systemImage: "globe")
                 .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundStyle(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
             // Speed
             HStack(spacing: 3) {
                 Text("Speed")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
                 progressDotsWithNumber(value: model.speed * 10)
             }
             .lineLimit(1)
@@ -171,7 +171,7 @@ struct CloudModelCardView: View {
             HStack(spacing: 3) {
                 Text("Accuracy")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
                 progressDotsWithNumber(value: model.accuracy * 10)
             }
             .lineLimit(1)
@@ -183,7 +183,7 @@ struct CloudModelCardView: View {
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundStyle(Color(.secondaryLabelColor))
             .lineLimit(2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
@@ -194,7 +194,7 @@ struct CloudModelCardView: View {
             if isCurrent {
                 Text("Default Model")
                     .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
+                    .foregroundStyle(Color(.secondaryLabelColor))
             } else if isConfigured {
                 Button(action: setDefaultAction) {
                     Text("Set as Default")
@@ -214,7 +214,7 @@ struct CloudModelCardView: View {
                         Image(systemName: "gear")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
@@ -227,18 +227,16 @@ struct CloudModelCardView: View {
             }
             
             if isConfigured {
-                Menu {
+                Menu("More options", systemImage: "ellipsis.circle") {
                     Button {
                         clearAPIKey()
                     } label: {
                         Label("Remove API Key", systemImage: "trash")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
+                .labelStyle(.iconOnly)
                 .frame(width: 20, height: 20)
             }
         }
@@ -248,7 +246,7 @@ struct CloudModelCardView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("API Key Configuration")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
+                .foregroundStyle(Color(.labelColor))
             
             HStack(spacing: 8) {
                 SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
@@ -268,7 +266,7 @@ struct CloudModelCardView: View {
                         Text(isVerifying ? "Verifying..." : "Verify")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(
@@ -284,16 +282,16 @@ struct CloudModelCardView: View {
                 if let error = verificationError {
                     Text(error)
                         .font(.caption)
-                        .foregroundColor(Color(.systemRed))
+                        .foregroundStyle(Color(.systemRed))
                 } else {
                     Text("Verification failed")
                         .font(.caption)
-                        .foregroundColor(Color(.systemRed))
+                        .foregroundStyle(Color(.systemRed))
                 }
             } else if verificationStatus == .success {
                 Text("API key verified successfully!")
                     .font(.caption)
-                    .foregroundColor(Color(.systemGreen))
+                    .foregroundStyle(Color(.systemGreen))
             }
         }
     }

@@ -18,7 +18,7 @@ struct InfoTip: View {
     var body: some View {
         Image(systemName: iconName)
             .imageScale(iconSize)
-            .foregroundColor(iconColor)
+            .foregroundStyle(iconColor)
             .fontWeight(.semibold)
             .padding(5)
             .contentShape(Rectangle())
@@ -27,15 +27,15 @@ struct InfoTip: View {
                     if let url = learnMoreLink {
                         Text(message + " ")
                             .font(.callout)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                         +
                         Text("Learn more")
                             .font(.callout)
-                            .foregroundColor(.accentColor)
+                            .foregroundStyle(Color.accentColor)
                     } else {
                         Text(message)
                             .font(.callout)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)

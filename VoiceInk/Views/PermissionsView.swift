@@ -105,7 +105,7 @@ struct PermissionCard: View {
 
                     Image(systemName: isGranted ? "\(icon).fill" : icon)
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(isGranted ? .green : .orange)
+                        .foregroundStyle(isGranted ? .green : .orange)
                         .symbolRenderingMode(.hierarchical)
                 }
 
@@ -123,7 +123,7 @@ struct PermissionCard: View {
                     }
                     Text(description)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Spacer()
@@ -143,7 +143,7 @@ struct PermissionCard: View {
                     }) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                             .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     }
                     .buttonStyle(.plain)
@@ -152,12 +152,12 @@ struct PermissionCard: View {
                     if isGranted {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 20))
-                            .foregroundColor(.green)
+                            .foregroundStyle(.green)
                             .symbolRenderingMode(.hierarchical)
                     } else {
                         Image(systemName: "xmark.seal.fill")
                             .font(.system(size: 20))
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.orange)
                             .symbolRenderingMode(.hierarchical)
                     }
                 }
@@ -171,7 +171,7 @@ struct PermissionCard: View {
                         Image(systemName: "arrow.right")
                     }
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(
@@ -181,14 +181,14 @@ struct PermissionCard: View {
                             endPoint: .trailing
                         )
                     )
-                    .cornerRadius(10)
+                    .clipShape(.rect(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
             }
         }
         .padding()
         .background(CardBackground(isSelected: false))
-        .cornerRadius(16)
+        .clipShape(.rect(cornerRadius: 16))
         .shadow(color: Color.black.opacity(0.05), radius: 5, y: 2)
     }
 }
