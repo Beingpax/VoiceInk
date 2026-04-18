@@ -74,7 +74,7 @@ final class AnnouncementManager {
 
     @MainActor
     private func position(_ panel: NSPanel) {
-        let screen = NSApp.keyWindow?.screen ?? NSScreen.main ?? NSScreen.screens[0]
+        let screen = ActiveScreenResolver.currentActiveScreen()
         let visibleFrame = screen.visibleFrame
         // Match MiniRecorder: bottom padding 24, centered horizontally
         let bottomPadding: CGFloat = 24
