@@ -7,6 +7,8 @@ struct FluidAudioModelCardRowView: View {
     @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
     @ObservedObject var transcriptionModelManager: TranscriptionModelManager
     @AppStorage("parakeet-streaming-enabled") private var streamingEnabled = true
+    @AppStorage("nemotron-chunk-size-ms") private var nemotronChunkMs: Int = FluidAudioModelManager.defaultNemotronChunkMs
+    @AppStorage("parakeet-eou-chunk-size-ms") private var parakeetEouChunkMs: Int = FluidAudioModelManager.defaultParakeetEouChunkMs
 
     var isCurrent: Bool {
         transcriptionModelManager.currentTranscriptionModel?.name == model.name
@@ -26,6 +28,10 @@ struct FluidAudioModelCardRowView: View {
                 headerSection
                 metadataSection
                 descriptionSection
+                if model.family == .nemotronStreaming || model.family == .parakeetEou {
+                    chunkSizePicker
+                        .padding(.top, 4)
+                }
                 progressSection
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -43,6 +49,15 @@ struct FluidAudioModelCardRowView: View {
                 .foregroundColor(Color(.labelColor))
 
             statusBadge
+            if model.family == .nemotronStreaming || model.family == .parakeetEou {
+                Text("Real-time only")
+                    .font(.caption2.weight(.medium))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.accentColor.opacity(0.15))
+                    .foregroundStyle(Color.accentColor)
+                    .clipShape(Capsule())
+            }
             Spacer()
         }
     }
@@ -88,18 +103,59 @@ struct FluidAudioModelCardRowView: View {
     }
 
     private var descriptionSection: some View {
-        Text(model.description)
-            .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 4)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(model.description)
+                .font(.system(size: 11))
+                .foregroundColor(Color(.secondaryLabelColor))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            if model.family == .nemotronStreaming || model.family == .parakeetEou {
+                Text("Batch transcription (saved recordings) falls back to Parakeet V3.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private var chunkSizePicker: some View {
+        HStack(spacing: 8) {
+            Text("Chunk size")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            switch model.family {
+            case .nemotronStreaming:
+                Picker("", selection: $nemotronChunkMs) {
+                    ForEach(FluidAudioModelManager.allowedNemotronChunkMs, id: \.self) { ms in
+                        Text("\(ms) ms").tag(ms)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+
+            case .parakeetEou:
+                Picker("", selection: $parakeetEouChunkMs) {
+                    ForEach(FluidAudioModelManager.allowedParakeetEouChunkMs, id: \.self) { ms in
+                        Text("\(ms) ms").tag(ms)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+
+            case .parakeetTdt:
+                EmptyView()
+            }
+
+            Spacer()
+        }
     }
 
     private var progressSection: some View {
         Group {
             if isDownloading {
-                let progress = fluidAudioModelManager.downloadProgress[model.name] ?? 0.0
+                let progress = fluidAudioModelManager.downloadProgress(for: model) ?? 0.0
                 ProgressView(value: progress)
                     .progressViewStyle(LinearProgressViewStyle())
                     .frame(maxWidth: .infinity, alignment: .leading)

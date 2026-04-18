@@ -51,6 +51,14 @@ struct NativeAppleModel: TranscriptionModel {
     let supportedLanguages: [String: String]
 }
 
+/// Which FluidAudio engine backs a given model. Used by FluidAudioModelManager
+/// and the streaming provider dispatcher to route to the correct SDK API.
+enum FluidAudioFamily: String, Codable, Hashable {
+    case parakeetTdt        // AsrManager / AsrModels — existing V2 / V3 sliding-window models
+    case nemotronStreaming  // StreamingNemotronAsrManager — English-only real-time
+    case parakeetEou        // StreamingEouAsrManager — English-only real-time
+}
+
 // A new struct for FluidAudio models
 struct FluidAudioModel: TranscriptionModel {
     let id = UUID()
@@ -58,6 +66,7 @@ struct FluidAudioModel: TranscriptionModel {
     let displayName: String
     let description: String
     let provider: ModelProvider = .fluidAudio
+    let family: FluidAudioFamily
     let size: String
     let speed: Double
     let accuracy: Double

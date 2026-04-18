@@ -25,7 +25,7 @@ class AudioTranscriptionService: ObservableObject {
     init(modelContext: ModelContext, engine: VoiceInkEngine) {
         self.modelContext = modelContext
         self.enhancementService = engine.enhancementService
-        self.serviceRegistry = TranscriptionServiceRegistry(modelProvider: engine.whisperModelManager, modelsDirectory: engine.whisperModelManager.modelsDirectory, modelContext: modelContext)
+        self.serviceRegistry = TranscriptionServiceRegistry(modelProvider: engine.whisperModelManager, modelsDirectory: engine.whisperModelManager.modelsDirectory, modelContext: modelContext, fluidAudioModelManager: engine.fluidAudioModelManager)
     }
 
     init(modelContext: ModelContext, serviceRegistry: TranscriptionServiceRegistry, enhancementService: AIEnhancementService?) {
@@ -47,6 +47,7 @@ class AudioTranscriptionService: ObservableObject {
             let transcriptionStart = Date()
             var text = try await serviceRegistry.transcribe(audioURL: url, model: model)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
+            let effectiveModel = serviceRegistry.effectiveBatchModel(for: model)
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -103,7 +104,7 @@ class AudioTranscriptionService: ObservableObject {
                         duration: duration,
                         enhancedText: enhancedText,
                         audioFileURL: permanentURLString,
-                        transcriptionModelName: model.displayName,
+                        transcriptionModelName: effectiveModel.displayName,
                         aiEnhancementModelName: enhancementService.getAIService()?.currentModel,
                         promptName: promptName,
                         transcriptionDuration: transcriptionDuration,
@@ -138,7 +139,7 @@ class AudioTranscriptionService: ObservableObject {
                         text: originalText,
                         duration: duration,
                         audioFileURL: permanentURLString,
-                        transcriptionModelName: model.displayName,
+                        transcriptionModelName: effectiveModel.displayName,
                         promptName: nil,
                         transcriptionDuration: transcriptionDuration,
                         powerModeName: powerModeName,
@@ -164,7 +165,7 @@ class AudioTranscriptionService: ObservableObject {
                     text: originalText,
                     duration: duration,
                     audioFileURL: permanentURLString,
-                    transcriptionModelName: model.displayName,
+                    transcriptionModelName: effectiveModel.displayName,
                     promptName: nil,
                     transcriptionDuration: transcriptionDuration,
                     powerModeName: powerModeName,
