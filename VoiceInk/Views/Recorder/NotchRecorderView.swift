@@ -30,7 +30,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     // MARK: - Screen Geometry
 
     private var notchWidth: CGFloat {
-        guard let screen = NSScreen.main else { return 180 }
+        let screen = ActiveScreenResolver.currentActiveScreen()
         if let left = screen.auxiliaryTopLeftArea?.width,
            let right = screen.auxiliaryTopRightArea?.width {
             return screen.frame.width - left - right
@@ -39,7 +39,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var notchHeight: CGFloat {
-        guard let screen = NSScreen.main else { return 37 }
+        let screen = ActiveScreenResolver.currentActiveScreen()
         if screen.safeAreaInsets.top > 0 { return screen.safeAreaInsets.top }
         return NSApplication.shared.mainMenu?.menuBarHeight ?? NSStatusBar.system.thickness
     }

@@ -46,9 +46,7 @@ class NotchRecorderPanel: KeyablePanel {
     }
 
     static func calculateWindowMetrics() -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat) {
-        guard let screen = NSScreen.main else {
-            return (NSRect(x: 0, y: 0, width: 280, height: 24), 280, 24)
-        }
+        let screen = ActiveScreenResolver.currentActiveScreen()
 
         let safeAreaInsets = screen.safeAreaInsets
         let notchHeight: CGFloat = safeAreaInsets.top > 0 ? safeAreaInsets.top : NSStatusBar.system.thickness
