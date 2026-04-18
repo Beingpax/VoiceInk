@@ -110,7 +110,7 @@ class DictionaryQuickAddPanel: NSPanel {
     }
 
     private static func centeredOrigin(for size: NSSize) -> NSPoint {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
+        let screen = ActiveScreenResolver.currentActiveScreen()
         let x = screen.visibleFrame.midX - size.width / 2
         let y = screen.visibleFrame.midY - size.height / 2 + 60
         return NSPoint(x: x, y: y)
