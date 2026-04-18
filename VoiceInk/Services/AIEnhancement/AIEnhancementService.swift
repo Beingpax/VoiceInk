@@ -244,6 +244,19 @@ class AIEnhancementService: ObservableObject {
             }
         }
 
+        if aiService.selectedProvider == .appleIntelligence {
+            do {
+                let result = try await aiService.enhanceWithAppleIntelligence(text: formattedText, systemPrompt: systemMessage)
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let aiError = error as? AppleIntelligenceError {
+                    throw EnhancementError.customError(aiError.errorDescription ?? "Apple Intelligence enhancement failed.")
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
         try await waitForRateLimit()
 
         do {

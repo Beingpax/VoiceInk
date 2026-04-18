@@ -27,7 +27,16 @@ struct APIKeyManagementView: View {
                 .pickerStyle(.automatic)
                 .tint(.blue)
                 
-                if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
+                if aiService.selectedProvider == .appleIntelligence {
+                    Spacer()
+                    Circle()
+                        .fill(aiService.appleIntelligenceIsAvailable ? Color.green : Color.red)
+                        .frame(width: 8, height: 8)
+                    Text(aiService.appleIntelligenceIsAvailable ? "Available" : "Unavailable")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .help(aiService.appleIntelligenceIsAvailable ? "Apple Intelligence is ready." : (aiService.appleIntelligenceUnavailabilityReason ?? "Apple Intelligence is not available."))
+                } else if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
                     Spacer()
                     Circle()
                         .fill(Color.green)
@@ -63,6 +72,9 @@ struct APIKeyManagementView: View {
                 }
                 if aiService.selectedProvider == .localCLI {
                     syncLocalCLIStateFromService()
+                }
+                if aiService.selectedProvider == .appleIntelligence {
+                    aiService.refreshAppleIntelligenceAvailability()
                 }
             }
 
@@ -107,6 +119,7 @@ struct APIKeyManagementView: View {
                     
                 } else if !aiService.availableModels.isEmpty &&
                             aiService.selectedProvider != .ollama &&
+                            aiService.selectedProvider != .appleIntelligence &&
                             aiService.selectedProvider != .custom {
                     Picker("Model", selection: Binding(
                         get: { aiService.currentModel },
@@ -221,6 +234,44 @@ struct APIKeyManagementView: View {
                             .foregroundColor(.orange)
                     }
 
+                } else if aiService.selectedProvider == .appleIntelligence {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "apple.logo")
+                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                if aiService.appleIntelligenceIsAvailable {
+                                    Text("Apple Intelligence is ready. Enhancement runs fully on-device — no API key, no network.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text(aiService.appleIntelligenceUnavailabilityReason ?? "Apple Intelligence is not available.")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                            }
+                        }
+
+                        HStack {
+                            Button(action: {
+                                aiService.refreshAppleIntelligenceAvailability()
+                            }) {
+                                Label("Re-check", systemImage: "arrow.clockwise")
+                            }
+
+                            if !aiService.appleIntelligenceIsAvailable {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.intelligence") {
+                                    Link(destination: url) {
+                                        HStack {
+                                            Image(systemName: "gearshape")
+                                            Text("Open System Settings")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                 } else if aiService.selectedProvider == .custom {
                     TextField("API Endpoint URL", text: $aiService.customBaseURL, prompt: Text("e.g. https://api.openai.com/v1/chat/completions"))
                         .textFieldStyle(.roundedBorder)
@@ -327,6 +378,9 @@ struct APIKeyManagementView: View {
             }
             if aiService.selectedProvider == .localCLI {
                 syncLocalCLIStateFromService()
+            }
+            if aiService.selectedProvider == .appleIntelligence {
+                aiService.refreshAppleIntelligenceAvailability()
             }
         }
     }
