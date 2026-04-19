@@ -22,18 +22,24 @@ enum ViewType: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .metrics: return "gauge.medium"
-        case .transcribeAudio: return "waveform.circle.fill"
-        case .history: return "doc.text.fill"
-        case .models: return "brain.head.profile"
+        case .transcribeAudio: return "waveform"
+        case .history: return "clock.arrow.circlepath"
+        case .models: return "brain"
         case .enhancement: return "wand.and.stars"
-        case .powerMode: return "sparkles.square.fill.on.square"
-        case .permissions: return "shield.fill"
-        case .audioInput: return "mic.fill"
-        case .dictionary: return "character.book.closed.fill"
-        case .settings: return "gearshape.fill"
-        case .license: return "checkmark.seal.fill"
+        case .powerMode: return "bolt.square"
+        case .permissions: return "lock.shield"
+        case .audioInput: return "mic"
+        case .dictionary: return "character.book.closed"
+        case .settings: return "gearshape"
+        case .license: return "checkmark.seal"
         }
     }
+}
+
+private struct SidebarSection: Identifiable {
+    let id = UUID()
+    let title: String
+    let items: [ViewType]
 }
 
 struct VisualEffectView: NSViewRepresentable {
@@ -65,62 +71,37 @@ struct ContentView: View {
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType? = .metrics
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    @StateObject private var licenseViewModel = LicenseViewModel()
 
-    private var visibleViewTypes: [ViewType] {
-        ViewType.allCases.filter { viewType in
-            if viewType == .powerMode {
-                return powerModeUIFlag
-            }
-            return true
-        }
+    private var sidebarSections: [SidebarSection] {
+        let enhancementItems: [ViewType] = powerModeUIFlag
+            ? [.enhancement, .powerMode]
+            : [.enhancement]
+
+        return [
+            SidebarSection(title: "Overview", items: [.metrics, .transcribeAudio, .history]),
+            SidebarSection(title: "Transcription", items: [.models, .audioInput, .dictionary]),
+            SidebarSection(title: "Enhancement", items: enhancementItems),
+            SidebarSection(title: "App", items: [.permissions, .settings]),
+            SidebarSection(title: "Account", items: [.license])
+        ]
     }
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedView) {
-                Section {
-                    // App Header
-                    HStack(spacing: 6) {
-                        if let appIcon = NSImage(named: "AppIcon") {
-                            Image(nsImage: appIcon)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 28, height: 28)
-                                .cornerRadius(8)
+                ForEach(sidebarSections) { section in
+                    Section(section.title) {
+                        ForEach(section.items) { viewType in
+                            NavigationLink(value: viewType) {
+                                Label(viewType.rawValue, systemImage: viewType.icon)
+                            }
                         }
-
-                        Text("VoiceInk")
-                            .font(.system(size: 14, weight: .semibold))
-
-                        if case .licensed = licenseViewModel.licenseState {
-                            Text("PRO")
-                                .font(.system(size: 9, weight: .heavy))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Color.blue)
-                                .cornerRadius(4)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                ForEach(visibleViewTypes) { viewType in
-                    Section {
-                        NavigationLink(value: viewType) {
-                            SidebarItemView(viewType: viewType)
-                        }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
                     }
                 }
             }
             .listStyle(.sidebar)
             .navigationTitle("VoiceInk")
-            .navigationSplitViewColumnWidth(210)
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } detail: {
             if let selectedView = selectedView {
                 detailView(for: selectedView)
@@ -193,27 +174,6 @@ struct ContentView: View {
         case .permissions:
             PermissionsView()
         }
-    }
-}
-
-private struct SidebarItemView: View {
-    let viewType: ViewType
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: viewType.icon)
-                .font(.system(size: 18, weight: .medium))
-                .frame(width: 24, height: 24)
-
-            Text(viewType.rawValue)
-                .font(.system(size: 14, weight: .medium))
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .padding(.vertical, 8)
-        .padding(.horizontal, 2)
     }
 }
 
