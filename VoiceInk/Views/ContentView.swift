@@ -3,11 +3,9 @@ import SwiftData
 import KeyboardShortcuts
 import OSLog
 
-// ViewType enum with all cases
 enum ViewType: String, CaseIterable, Identifiable {
-    case metrics = "Dashboard"
-    case transcribeAudio = "Transcribe Audio"
     case history = "History"
+    case statistics = "Statistics"
     case models = "AI Models"
     case enhancement = "Enhancement"
     case powerMode = "Power Mode"
@@ -21,9 +19,8 @@ enum ViewType: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .metrics: return "gauge.medium"
-        case .transcribeAudio: return "waveform"
         case .history: return "clock.arrow.circlepath"
+        case .statistics: return "chart.bar.xaxis"
         case .models: return "brain"
         case .enhancement: return "wand.and.stars"
         case .powerMode: return "bolt.square"
@@ -69,7 +66,7 @@ struct ContentView: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var hotkeyManager: HotkeyManager
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
-    @State private var selectedView: ViewType? = .metrics
+    @State private var selectedView: ViewType? = .history
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
 
     private var sidebarSections: [SidebarSection] {
@@ -78,8 +75,7 @@ struct ContentView: View {
             : [.enhancement]
 
         return [
-            SidebarSection(title: "Overview", items: [.metrics, .transcribeAudio, .history]),
-            SidebarSection(title: "Transcription", items: [.models, .audioInput, .dictionary]),
+            SidebarSection(title: "Transcription", items: [.history, .statistics, .models, .audioInput, .dictionary]),
             SidebarSection(title: "Enhancement", items: enhancementItems),
             SidebarSection(title: "App", items: [.permissions, .settings]),
             SidebarSection(title: "Account", items: [.license])
@@ -137,8 +133,6 @@ struct ContentView: View {
                     selectedView = .permissions
                 case "Enhancement":
                     selectedView = .enhancement
-                case "Transcribe Audio":
-                    selectedView = .transcribeAudio
                 case "Power Mode":
                     selectedView = .powerMode
                 default:
@@ -151,16 +145,14 @@ struct ContentView: View {
     @ViewBuilder
     private func detailView(for viewType: ViewType) -> some View {
         switch viewType {
-        case .metrics:
-            MetricsView()
+        case .history:
+            InlineHistoryView()
+        case .statistics:
+            StatisticsView()
         case .models:
             ModelManagementView()
         case .enhancement:
             EnhancementSettingsView()
-        case .transcribeAudio:
-            AudioTranscribeView()
-        case .history:
-            InlineHistoryView()
         case .audioInput:
             AudioInputSettingsView()
         case .dictionary:

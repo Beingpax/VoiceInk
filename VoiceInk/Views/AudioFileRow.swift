@@ -1,3 +1,8 @@
+// TODO: UNUSED — not referenced anywhere as of 2026-04-19.
+// Kept intentionally: a new Dashboard and a new audio-transcription feature
+// are planned and will likely reuse parts of this code. Subject to deletion
+// if not adopted by the replacement work.
+
 import SwiftUI
 
 struct AudioFileRow: View {

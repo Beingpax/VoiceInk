@@ -37,12 +37,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // Defer to SwiftUI’s WindowGroup-created ContentView and let it process this later.
             pendingOpenFileURL = url
         } else {
-            // Running: focus current window and route in-place to Transcribe Audio
             menuBarManager?.focusMainWindow()
-            NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": url])
-            }
+            // TODO: Audio-file open handling is temporarily disabled. The Transcribe Audio
+            // view was removed on 2026-04-19; a replacement feature is planned and will
+            // re-wire this path. Until then, dropping a file on the app focuses the main
+            // window but does nothing further.
+            _ = url
         }
     }
 }

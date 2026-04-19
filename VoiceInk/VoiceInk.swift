@@ -291,11 +291,10 @@ struct VoiceInkApp: App {
                         }
 
                         // Process any pending open-file request now that the main ContentView is ready.
-                        if let pendingURL = appDelegate.pendingOpenFileURL {
-                            NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
-                            }
+                        if appDelegate.pendingOpenFileURL != nil {
+                            // TODO: Audio-file open handling is temporarily disabled. The Transcribe Audio
+                            // view was removed on 2026-04-19; a replacement feature is planned and will
+                            // re-wire this path. Clearing the pending URL so it doesn't leak across launches.
                             appDelegate.pendingOpenFileURL = nil
                         }
                     }
