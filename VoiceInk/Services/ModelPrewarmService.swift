@@ -13,8 +13,7 @@ final class ModelPrewarmService: ObservableObject {
     private lazy var serviceRegistry = TranscriptionServiceRegistry(
         modelProvider: whisperModelManager,
         modelsDirectory: whisperModelManager.modelsDirectory,
-        modelContext: modelContext,
-        fluidAudioModelManager: fluidAudioModelManager
+        modelContext: modelContext
     )
     private let prewarmAudioURL = Bundle.main.url(forResource: "esc", withExtension: "wav")
     private let prewarmEnabledKey = "PrewarmModelOnWake"

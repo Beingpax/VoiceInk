@@ -50,18 +50,15 @@ class StreamingTranscriptionService {
     private var committedSegments: [String] = []
     private let modelContext: ModelContext
     private let fluidAudioService: FluidAudioTranscriptionService?
-    private weak var fluidAudioModelManager: FluidAudioModelManager?
     private var onPartialTranscript: ((String) -> Void)?
 
     init(
         modelContext: ModelContext,
         fluidAudioService: FluidAudioTranscriptionService? = nil,
-        fluidAudioModelManager: FluidAudioModelManager? = nil,
         onPartialTranscript: ((String) -> Void)? = nil
     ) {
         self.modelContext = modelContext
         self.fluidAudioService = fluidAudioService
-        self.fluidAudioModelManager = fluidAudioModelManager
         self.onPartialTranscript = onPartialTranscript
     }
 
@@ -186,23 +183,10 @@ class StreamingTranscriptionService {
         case .speechmatics:
             return SpeechmaticsStreamingProvider(modelContext: modelContext)
         case .fluidAudio:
-            switch model.name {
-            case "nemotron-streaming-0.6b":
-                guard let fluidAudioModelManager else {
-                    fatalError("FluidAudioModelManager required for Nemotron streaming. Ensure it is passed to StreamingTranscriptionService.")
-                }
-                return NemotronStreamingProvider(chunkSize: fluidAudioModelManager.nemotronChunkSize)
-            case "parakeet-eou-120m":
-                guard let fluidAudioModelManager else {
-                    fatalError("FluidAudioModelManager required for Parakeet EOU streaming. Ensure it is passed to StreamingTranscriptionService.")
-                }
-                return ParakeetEouStreamingProvider(chunkSize: fluidAudioModelManager.parakeetEouChunkSize)
-            default:
-                guard let fluidAudioService else {
-                    fatalError("FluidAudioTranscriptionService required for FluidAudio streaming. Ensure it is passed to StreamingTranscriptionService.")
-                }
-                return FluidAudioStreamingProvider(fluidAudioService: fluidAudioService)
+            guard let fluidAudioService else {
+                fatalError("FluidAudioTranscriptionService required for FluidAudio streaming. Ensure it is passed to StreamingTranscriptionService.")
             }
+            return FluidAudioStreamingProvider(fluidAudioService: fluidAudioService)
         default:
             fatalError("Unsupported streaming provider: \(model.provider). Check supportsStreaming() before calling startStreaming().")
         }

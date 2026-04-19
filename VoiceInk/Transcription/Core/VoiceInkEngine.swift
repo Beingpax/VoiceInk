@@ -49,8 +49,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
         self.serviceRegistry = TranscriptionServiceRegistry(
             modelProvider: whisperModelManager,
             modelsDirectory: whisperModelManager.modelsDirectory,
-            modelContext: modelContext,
-            fluidAudioModelManager: fluidAudioModelManager
+            modelContext: modelContext
         )
         self.pipeline = TranscriptionPipeline(
             modelContext: modelContext,
