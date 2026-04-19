@@ -109,8 +109,7 @@ struct ContentView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(width: 950)
-        .frame(minHeight: 730)
+        .frame(minWidth: 880, minHeight: 730)
         .onAppear {
             logger.notice("ContentView appeared")
         }
