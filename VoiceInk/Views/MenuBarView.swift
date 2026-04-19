@@ -18,6 +18,11 @@ struct MenuBarView: View {
     
     var body: some View {
         VStack {
+            Button("Open VoiceInk") {
+                menuBarManager.focusMainWindow()
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
+
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleMiniRecorder()
             }
