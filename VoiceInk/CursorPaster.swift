@@ -91,12 +91,12 @@ class CursorPaster {
             return
         }
         let currentID = sourceID(for: currentSource) ?? "unknown"
-        let switched = switchToQWERTYInputSource()
-        logger.notice("Pasting: inputSource=\(currentID, privacy: .public), switched=\(switched)")
+        let qwertySource = switchToQWERTYInputSource()
+        logger.notice("Pasting: inputSource=\(currentID, privacy: .public), switched=\(qwertySource != nil)")
 
         // If we switched input sources, wait 30 ms for the system to apply it
         // before posting the CGEvents. Use asyncAfter so the main thread is not blocked.
-        let eventDelay: TimeInterval = switched ? 0.03 : 0.0
+        let eventDelay: TimeInterval = qwertySource != nil ? 0.03 : 0.0
         DispatchQueue.main.asyncAfter(deadline: .now() + eventDelay) {
             let source = CGEventSource(stateID: .privateState)
 
@@ -116,28 +116,37 @@ class CursorPaster {
 
             logger.notice("CGEvents posted for Cmd+V")
 
-            if switched {
+            if let qwertySource {
                 // Restore the original input source after a short delay so the
-                // posted events are processed under ABC/US first.
+                // posted events are processed under ABC/US first. Only restore
+                // if the source is still the QWERTY one we switched to — if the
+                // user changed layouts in the meantime, leave their choice alone.
+                let qwertyID = sourceID(for: qwertySource)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    TISSelectInputSource(currentSource)
-                    logger.notice("Restored input source to \(currentID, privacy: .public)")
+                    if let nowSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+                       sourceID(for: nowSource) == qwertyID {
+                        TISSelectInputSource(currentSource)
+                        logger.notice("Restored input source to \(currentID, privacy: .public)")
+                    } else {
+                        logger.notice("Input source changed during paste — skipping restore")
+                    }
                 }
             }
         }
     }
 
-    /// Try to switch to ABC or US QWERTY. Returns true if a switch was made.
-    private static func switchToQWERTYInputSource() -> Bool {
-        guard let currentSourceRef = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else { return false }
+    /// Try to switch to ABC or US QWERTY. Returns the source switched to, or
+    /// nil if the active layout is already QWERTY-compatible.
+    private static func switchToQWERTYInputSource() -> TISInputSource? {
+        guard let currentSourceRef = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else { return nil }
         if let currentID = sourceID(for: currentSourceRef), isQWERTY(currentID) {
-            return false // already QWERTY, nothing to do
+            return nil // already QWERTY, nothing to do
         }
 
         let criteria = [kTISPropertyInputSourceCategory: kTISCategoryKeyboardInputSource] as CFDictionary
         guard let list = TISCreateInputSourceList(criteria, false)?.takeRetainedValue() as? [TISInputSource] else {
             logger.error("Failed to list input sources")
-            return false
+            return nil
         }
 
         for targetID in ["com.apple.keylayout.ABC", "com.apple.keylayout.US"] {
@@ -145,7 +154,7 @@ class CursorPaster {
                 let status = TISSelectInputSource(match)
                 if status == noErr {
                     logger.notice("Switched input source to \(targetID, privacy: .public)")
-                    return true
+                    return match
                 } else {
                     logger.error("TISSelectInputSource failed with status \(status)")
                 }
@@ -153,7 +162,7 @@ class CursorPaster {
         }
 
         logger.error("No QWERTY input source found to switch to")
-        return false
+        return nil
     }
 
     private static func sourceID(for source: TISInputSource) -> String? {
