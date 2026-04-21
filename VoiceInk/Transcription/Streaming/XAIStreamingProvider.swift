@@ -1,19 +1,16 @@
 import Foundation
-import SwiftData
 import LLMkit
 
-/// Soniox streaming provider wrapping `LLMkit.SonioxStreamingClient`.
-final class SonioxStreamingProvider: StreamingTranscriptionProvider {
+/// xAI streaming provider wrapping `LLMkit.XAIStreamingClient`.
+final class XAIStreamingProvider: StreamingTranscriptionProvider {
 
-    private let client = LLMkit.SonioxStreamingClient()
+    private let client = LLMkit.XAIStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
-    private let modelContext: ModelContext
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    init() {
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -25,20 +22,16 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
     }
 
     func connect(model: any TranscriptionModel, language: String?) async throws {
-        guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "Soniox"), !apiKey.isEmpty else {
+        guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "xAI"), !apiKey.isEmpty else {
             throw StreamingTranscriptionError.missingAPIKey
         }
 
-        let vocabulary = getCustomDictionaryTerms()
-
-        // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "stt-rt-v4", language: language, customVocabulary: vocabulary)
+            try await client.connect(apiKey: apiKey, model: model.name, language: language)
         } catch {
-            // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
             forwardingTask = nil
             throw mapError(error)
@@ -86,25 +79,6 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
         }
-    }
-
-    private func getCustomDictionaryTerms() -> [String] {
-        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
-        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
-            return []
-        }
-        var seen = Set<String>()
-        var unique: [String] = []
-        for word in vocabularyWords {
-            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            let key = trimmed.lowercased()
-            if !seen.contains(key) {
-                seen.insert(key)
-                unique.append(trimmed)
-            }
-        }
-        return unique
     }
 
     private func mapError(_ error: Error) -> Error {

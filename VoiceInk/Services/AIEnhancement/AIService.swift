@@ -102,7 +102,6 @@ enum AIProvider: String, CaseIterable {
             return [
                 "llama-3.1-8b-instant",
                 "llama-3.3-70b-versatile",
-                "moonshotai/kimi-k2-instruct-0905",
                 "qwen/qwen3-32b",
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b"

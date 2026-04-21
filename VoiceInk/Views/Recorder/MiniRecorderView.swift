@@ -5,6 +5,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: MiniWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = true
 
     @State private var activePopover: ActivePopoverState = .none
 
@@ -18,7 +19,9 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // true when live transcript is streaming in during recording
     private var hasLiveTranscript: Bool {
-        stateProvider.recordingState == .recording && !stateProvider.partialTranscript.isEmpty
+        showLiveTextPreview
+            && stateProvider.recordingState == .recording
+            && !stateProvider.partialTranscript.isEmpty
     }
 
     private var controlBar: some View {

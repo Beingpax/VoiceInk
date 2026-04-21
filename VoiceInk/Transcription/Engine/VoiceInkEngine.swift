@@ -185,7 +185,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 guard let self else { return }
 
                                 if let model = await self.transcriptionModelManager.currentTranscriptionModel,
-                                   model.provider == .local {
+                                   model.provider == .whisper {
                                     if let localWhisperModel = await self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
                                        await self.whisperModelManager.whisperContext == nil {
                                         do {

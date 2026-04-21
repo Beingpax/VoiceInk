@@ -7,6 +7,7 @@ struct ModelSettingsView: View {
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
+    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = true
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
 
@@ -73,6 +74,14 @@ struct ModelSettingsView: View {
                     HStack(spacing: 4) {
                         Text("Prewarm model (Experimental)")
                         InfoTip("Turn this on if transcriptions with local models are taking longer than expected. Runs silent background transcription on app launch and wake to trigger optimization.")
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Toggle(isOn: $showLiveTextPreview) {
+                    HStack(spacing: 4) {
+                        Text("Show Live Text Preview")
+                        InfoTip("Displays the live transcript preview in the recorder while speaking. Only applies when using real-time streaming models.")
                     }
                 }
                 .toggleStyle(.switch)

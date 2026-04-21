@@ -184,13 +184,13 @@ class PowerModeSessionManager {
         await stateProvider.setDefaultTranscriptionModel(newModel)
 
         switch newModel.provider {
-        case .local:
+        case .whisper:
             await stateProvider.cleanupModelResources()
-            if let localModel = await stateProvider.availableModels.first(where: { $0.name == newModel.name }) {
+            if let whisperModel = await stateProvider.availableModels.first(where: { $0.name == newModel.name }) {
                 do {
-                    try await stateProvider.loadModel(localModel)
+                    try await stateProvider.loadModel(whisperModel)
                 } catch {
-                    print("Power Mode: Failed to load local model '\(localModel.name)': \(error)")
+                    print("Power Mode: Failed to load local model '\(whisperModel.name)': \(error)")
                 }
             }
         case .fluidAudio:

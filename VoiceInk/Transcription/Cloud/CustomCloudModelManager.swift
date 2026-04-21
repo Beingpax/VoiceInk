@@ -1,10 +1,10 @@
 import Foundation
 import os
 
-class CustomModelManager: ObservableObject {
-    static let shared = CustomModelManager()
+class CustomCloudModelManager: ObservableObject {
+    static let shared = CustomCloudModelManager()
     
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CustomModelManager")
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CustomCloudModelManager")
     private let userDefaults = UserDefaults.standard
     private let customModelsKey = "customCloudModels"
     

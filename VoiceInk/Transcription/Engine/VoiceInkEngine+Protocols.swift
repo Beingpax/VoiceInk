@@ -15,7 +15,7 @@ extension VoiceInkEngine: PowerModeStateProvider {
         transcriptionModelManager.allAvailableModels
     }
 
-    var availableModels: [WhisperModel] {
+    var availableModels: [WhisperModelFile] {
         whisperModelManager.availableModels
     }
 
@@ -27,7 +27,7 @@ extension VoiceInkEngine: PowerModeStateProvider {
         await cleanupResources()
     }
 
-    func loadModel(_ model: WhisperModel) async throws {
+    func loadModel(_ model: WhisperModelFile) async throws {
         try await whisperModelManager.loadModel(model)
     }
 }

@@ -6,17 +6,13 @@ final class LicenseManager {
     static let shared = LicenseManager()
 
     private let keychain = KeychainService.shared
-    private let userDefaults = UserDefaults.standard
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LicenseManager")
 
     private let licenseKeyIdentifier = "voiceink.license.key"
     private let trialStartDateIdentifier = "voiceink.license.trialStartDate"
     private let activationIdIdentifier = "voiceink.license.activationId"
-    private let migrationCompletedKey = "LicenseKeychainMigrationCompleted"
 
-    private init() {
-        migrateFromUserDefaultsIfNeeded()
-    }
+    private init() {}
 
     // MARK: - License Key
 
@@ -63,57 +59,6 @@ final class LicenseManager {
                 keychain.delete(forKey: activationIdIdentifier, syncable: false)
             }
         }
-    }
-
-    // MARK: - Migration
-
-    private func migrateFromUserDefaultsIfNeeded() {
-        guard !userDefaults.bool(forKey: migrationCompletedKey) else { return }
-
-        // Migrate license key
-        if let oldLicenseKey = userDefaults.string(forKey: "VoiceInkLicense"), !oldLicenseKey.isEmpty {
-            licenseKey = oldLicenseKey
-            userDefaults.removeObject(forKey: "VoiceInkLicense")
-            logger.info("Migrated license key to Keychain")
-        }
-
-        // Migrate trial start date (from obfuscated storage)
-        if let oldTrialDate = getObfuscatedTrialStartDate() {
-            trialStartDate = oldTrialDate
-            clearObfuscatedTrialStartDate()
-            logger.info("Migrated trial start date to Keychain")
-        }
-
-        // Migrate activation ID
-        if let oldActivationId = userDefaults.string(forKey: "VoiceInkActivationId"), !oldActivationId.isEmpty {
-            activationId = oldActivationId
-            userDefaults.removeObject(forKey: "VoiceInkActivationId")
-            logger.info("Migrated activation ID to Keychain")
-        }
-
-        userDefaults.set(true, forKey: migrationCompletedKey)
-        logger.info("License migration completed")
-    }
-
-    /// Reads the old obfuscated trial start date from UserDefaults.
-    private func getObfuscatedTrialStartDate() -> Date? {
-        let salt = Obfuscator.getDeviceIdentifier()
-        let obfuscatedKey = Obfuscator.encode("VoiceInkTrialStartDate", salt: salt)
-
-        guard let obfuscatedValue = userDefaults.string(forKey: obfuscatedKey),
-              let decodedValue = Obfuscator.decode(obfuscatedValue, salt: salt),
-              let timestamp = Double(decodedValue) else {
-            return nil
-        }
-
-        return Date(timeIntervalSince1970: timestamp)
-    }
-
-    /// Clears the old obfuscated trial start date from UserDefaults.
-    private func clearObfuscatedTrialStartDate() {
-        let salt = Obfuscator.getDeviceIdentifier()
-        let obfuscatedKey = Obfuscator.encode("VoiceInkTrialStartDate", salt: salt)
-        userDefaults.removeObject(forKey: obfuscatedKey)
     }
 
     /// Removes all license data (for license removal/reset).

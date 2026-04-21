@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-struct ModelCardRowView: View {
+struct ModelCardView: View {
     let model: any TranscriptionModel
     let fluidAudioModelManager: FluidAudioModelManager
     let transcriptionModelManager: TranscriptionModelManager
@@ -19,10 +19,10 @@ struct ModelCardRowView: View {
     var body: some View {
         Group {
             switch model.provider {
-            case .local:
-                if let localModel = model as? LocalModel {
-                    LocalModelCardView(
-                        model: localModel,
+            case .whisper:
+                if let whisperModel = model as? WhisperModel {
+                    WhisperModelCardView(
+                        model: whisperModel,
                         isDownloaded: isDownloaded,
                         isCurrent: isCurrent,
                         downloadProgress: downloadProgress,
@@ -32,8 +32,8 @@ struct ModelCardRowView: View {
                         setDefaultAction: setDefaultAction,
                         downloadAction: downloadAction
                     )
-                } else if let importedModel = model as? ImportedLocalModel {
-                    ImportedLocalModelCardView(
+                } else if let importedModel = model as? ImportedWhisperModel {
+                    ImportedWhisperModelCardView(
                         model: importedModel,
                         isDownloaded: isDownloaded,
                         isCurrent: isCurrent,
@@ -44,7 +44,7 @@ struct ModelCardRowView: View {
                 }
             case .fluidAudio:
                 if let fluidAudioModel = model as? FluidAudioModel {
-                    FluidAudioModelCardRowView(
+                    FluidAudioModelCardView(
                         model: fluidAudioModel,
                         fluidAudioModelManager: fluidAudioModelManager,
                         transcriptionModelManager: transcriptionModelManager
@@ -58,14 +58,6 @@ struct ModelCardRowView: View {
                         setDefaultAction: setDefaultAction
                     )
                 }
-            case .groq, .elevenLabs, .deepgram, .mistral, .gemini, .soniox, .speechmatics:
-                if let cloudModel = model as? CloudModel {
-                    CloudModelCardView(
-                        model: cloudModel,
-                        isCurrent: isCurrent,
-                        setDefaultAction: setDefaultAction
-                    )
-                }
             case .custom:
                 if let customModel = model as? CustomCloudModel {
                     CustomModelCardView(
@@ -74,6 +66,14 @@ struct ModelCardRowView: View {
                         setDefaultAction: setDefaultAction,
                         deleteAction: deleteAction,
                         editAction: editAction ?? { _ in }
+                    )
+                }
+            default:
+                if let cloudModel = model as? CloudModel {
+                    CloudModelCardView(
+                        model: cloudModel,
+                        isCurrent: isCurrent,
+                        setDefaultAction: setDefaultAction
                     )
                 }
             }

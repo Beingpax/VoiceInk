@@ -5,6 +5,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: NotchWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = true
     @ObservedObject private var powerModeManager = PowerModeManager.shared
     @State private var activePopover: ActivePopoverState = .none
 
@@ -19,7 +20,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var displayState: DisplayState {
         switch stateProvider.recordingState {
         case .recording:
-            return stateProvider.partialTranscript.isEmpty ? .active : .liveText
+            let shouldShowLive = showLiveTextPreview && !stateProvider.partialTranscript.isEmpty
+            return shouldShowLive ? .liveText : .active
         case .transcribing, .enhancing:
             return .active
         default:

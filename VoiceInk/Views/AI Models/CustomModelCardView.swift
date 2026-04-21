@@ -1,26 +1,29 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Native Apple Model Card View
-struct NativeAppleModelCardView: View {
-    let model: NativeAppleModel
+// MARK: - Custom Model Card View
+struct CustomModelCardView: View {
+    let model: CustomCloudModel
     let isCurrent: Bool
     var setDefaultAction: () -> Void
+    var deleteAction: () -> Void
+    var editAction: (CustomCloudModel) -> Void
     
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Main Content
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
+        VStack(alignment: .leading, spacing: 0) {
+            // Main card content
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    headerSection
+                    metadataSection
+                    descriptionSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                actionSection
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            
-            // Action Controls
-            actionSection
+            .padding(16)
         }
-        .padding(16)
         .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
     }
     
@@ -30,36 +33,14 @@ struct NativeAppleModelCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
             
-            statusBadge
-            
             Spacer()
-        }
-    }
-    
-    private var statusBadge: some View {
-        Group {
-            if isCurrent {
-                Text("Default")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
-            } else {
-                Text("Built-in")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.blue.opacity(0.2)))
-                    .foregroundColor(Color.blue)
-            }
         }
     }
     
     private var metadataSection: some View {
         HStack(spacing: 12) {
-            // Native Apple
-            Label("Native Apple", systemImage: "apple.logo")
+            // Provider
+            Label("Custom Provider", systemImage: "cloud")
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
@@ -70,14 +51,8 @@ struct NativeAppleModelCardView: View {
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
             
-            // On-Device
-            Label("On-Device", systemImage: "checkmark.shield")
-                .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-            
-            // Requires macOS 26+
-            Label("macOS 26+", systemImage: "macbook")
+            // OpenAI Compatible
+            Label("OpenAI Compatible", systemImage: "checkmark.seal")
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
@@ -108,6 +83,26 @@ struct NativeAppleModelCardView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
             }
+            
+            Menu {
+                Button {
+                    editAction(model)
+                } label: {
+                    Label("Edit Model", systemImage: "pencil")
+                }
+                
+                Button(role: .destructive) {
+                    deleteAction()
+                } label: {
+                    Label("Delete Model", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 14))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(width: 20, height: 20)
         }
     }
-} 
+}

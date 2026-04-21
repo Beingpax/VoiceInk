@@ -152,7 +152,7 @@ class SystemInfoService {
 
     private func getCurrentTranscriptionModel() -> String {
         if let modelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel") {
-            if let model = PredefinedModels.models.first(where: { $0.name == modelName }) {
+            if let model = TranscriptionModelRegistry.models.first(where: { $0.name == modelName }) {
                 return model.displayName
             }
             return modelName

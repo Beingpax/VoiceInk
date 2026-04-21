@@ -1,8 +1,8 @@
 import SwiftUI
 import AppKit
 // MARK: - Local Model Card View
-struct LocalModelCardView: View {
-    let model: LocalModel
+struct WhisperModelCardView: View {
+    let model: WhisperModel
     let isDownloaded: Bool
     let isCurrent: Bool
     let downloadProgress: [String: Double]
@@ -42,29 +42,7 @@ struct LocalModelCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
             
-            statusBadge
-            
             Spacer()
-        }
-    }
-    
-    private var statusBadge: some View {
-        Group {
-            if isCurrent {
-                Text("Default")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
-            } else if isDownloaded {
-                Text("Downloaded")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color(.quaternaryLabelColor)))
-                    .foregroundColor(Color(.labelColor))
-            }
         }
     }
     
@@ -197,8 +175,8 @@ struct LocalModelCardView: View {
 }
 
 // MARK: - Imported Local Model (minimal UI)
-struct ImportedLocalModelCardView: View {
-    let model: ImportedLocalModel
+struct ImportedWhisperModelCardView: View {
+    let model: ImportedWhisperModel
     let isDownloaded: Bool
     let isCurrent: Bool
     let modelURL: URL?
@@ -213,21 +191,6 @@ struct ImportedLocalModelCardView: View {
                     Text(model.displayName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color(.labelColor))
-                    if isCurrent {
-                        Text("Default")
-                            .font(.system(size: 11, weight: .medium))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color.accentColor))
-                            .foregroundColor(.white)
-                    } else if isDownloaded {
-                        Text("Imported")
-                            .font(.system(size: 11, weight: .medium))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Color(.quaternaryLabelColor)))
-                            .foregroundColor(Color(.labelColor))
-                    }
                     Spacer()
                 }
 

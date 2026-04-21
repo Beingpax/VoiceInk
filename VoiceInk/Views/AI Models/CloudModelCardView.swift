@@ -11,6 +11,15 @@ struct CloudModelCardView: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @State private var isExpanded = false
     @State private var apiKey = ""
+    @State private var streamingEnabled: Bool
+
+    init(model: CloudModel, isCurrent: Bool, setDefaultAction: @escaping () -> Void) {
+        self.model = model
+        self.isCurrent = isCurrent
+        self.setDefaultAction = setDefaultAction
+        let key = "streaming-enabled-\(model.name)"
+        _streamingEnabled = State(initialValue: UserDefaults.standard.object(forKey: key) as? Bool ?? true)
+    }
     @State private var isVerifying = false
     @State private var verificationStatus: VerificationStatus = .none
     @State private var verificationError: String? = nil
@@ -24,24 +33,7 @@ struct CloudModelCardView: View {
     }
     
     private var providerKey: String {
-        switch model.provider {
-        case .groq:
-            return "Groq"
-        case .elevenLabs:
-            return "ElevenLabs"
-        case .deepgram:
-            return "Deepgram"
-        case .mistral:
-            return "Mistral"
-        case .gemini:
-            return "Gemini"
-        case .soniox:
-            return "Soniox"
-        case .speechmatics:
-            return "Speechmatics"
-        default:
-            return model.provider.rawValue
-        }
+        CloudProviderRegistry.provider(for: model.provider)?.providerKey ?? model.provider.rawValue
     }
     
     var body: some View {
@@ -79,40 +71,27 @@ struct CloudModelCardView: View {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
-            
-            statusBadge
-            
+
+            if model.supportsStreaming && isConfigured {
+                streamingModeBadge
+            }
+
             Spacer()
         }
     }
     
-    private var statusBadge: some View {
-        Group {
-            if isCurrent {
-                Text("Default")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
-            } else if isConfigured {
-                Text("Configured")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color(.systemGreen).opacity(0.2)))
-                    .foregroundColor(Color(.systemGreen))
-            } else {
-                Text("Setup Required")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color(.systemOrange).opacity(0.2)))
-                    .foregroundColor(Color(.systemOrange))
+    private var streamingModeBadge: some View {
+        Toggle("Real-time", isOn: $streamingEnabled)
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(Color(.secondaryLabelColor))
+            .onChange(of: streamingEnabled) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
             }
-        }
+            .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
     }
-    
+
     private var metadataSection: some View {
         HStack(spacing: 12) {
             // Provider
@@ -268,6 +247,10 @@ struct CloudModelCardView: View {
         }
     }
     
+    private var streamingDefaultsKey: String {
+        "streaming-enabled-\(model.name)"
+    }
+
     private func loadSavedAPIKey() {
         if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: providerKey) {
             apiKey = savedKey
@@ -282,35 +265,15 @@ struct CloudModelCardView: View {
         verificationStatus = .verifying
         let key = apiKey
 
+        guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
+            isVerifying = false
+            verificationStatus = .failure
+            verificationError = "Unsupported provider"
+            return
+        }
+
         Task {
-            let result: (isValid: Bool, errorMessage: String?)
-            switch model.provider {
-            case .groq:
-                result = await OpenAILLMClient.verifyAPIKey(
-                    baseURL: URL(string: "https://api.groq.com/openai/v1/chat/completions")!,
-                    apiKey: key,
-                    model: model.name
-                )
-            case .elevenLabs:
-                result = await ElevenLabsClient.verifyAPIKey(key)
-            case .deepgram:
-                result = await DeepgramClient.verifyAPIKey(key)
-            case .mistral:
-                result = await MistralTranscriptionClient.verifyAPIKey(key)
-            case .gemini:
-                result = await GeminiTranscriptionClient.verifyAPIKey(key)
-            case .soniox:
-                result = await SonioxClient.verifyAPIKey(key)
-            case .speechmatics:
-                result = await SpeechmaticsClient.verifyAPIKey(key)
-            default:
-                await MainActor.run {
-                    isVerifying = false
-                    verificationStatus = .failure
-                    verificationError = "Unsupported provider"
-                }
-                return
-            }
+            let result = await cloudProvider.verifyAPIKey(key)
 
             await MainActor.run {
                 isVerifying = false

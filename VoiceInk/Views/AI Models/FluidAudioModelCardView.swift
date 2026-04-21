@@ -2,11 +2,23 @@ import SwiftUI
 import Combine
 import AppKit
 
-struct FluidAudioModelCardRowView: View {
+struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
     @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
     @ObservedObject var transcriptionModelManager: TranscriptionModelManager
-    @AppStorage("parakeet-streaming-enabled") private var streamingEnabled = true
+    @State private var streamingEnabled: Bool
+
+    init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager, transcriptionModelManager: TranscriptionModelManager) {
+        self.model = model
+        _fluidAudioModelManager = ObservedObject(wrappedValue: fluidAudioModelManager)
+        _transcriptionModelManager = ObservedObject(wrappedValue: transcriptionModelManager)
+        let key = "streaming-enabled-\(model.name)"
+        _streamingEnabled = State(initialValue: UserDefaults.standard.object(forKey: key) as? Bool ?? true)
+    }
+
+    private var streamingDefaultsKey: String {
+        "streaming-enabled-\(model.name)"
+    }
 
     var isCurrent: Bool {
         transcriptionModelManager.currentTranscriptionModel?.name == model.name
@@ -42,28 +54,19 @@ struct FluidAudioModelCardRowView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
-            statusBadge
-            Spacer()
-        }
-    }
-
-    private var statusBadge: some View {
-        Group {
-            if isCurrent {
-                Text("Default")
+            if model.supportsStreaming && isDownloaded {
+                Toggle("Real-time", isOn: $streamingEnabled)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
                     .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.accentColor))
-                    .foregroundColor(.white)
-            } else if isDownloaded {
-                Text("Downloaded")
-                    .font(.system(size: 11, weight: .medium))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color(.quaternaryLabelColor)))
-                    .foregroundColor(Color(.labelColor))
+                    .foregroundColor(Color(.secondaryLabelColor))
+                    .onChange(of: streamingEnabled) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
+                    }
+                    .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
             }
+
+            Spacer()
         }
     }
 
@@ -159,11 +162,6 @@ struct FluidAudioModelCardRowView: View {
                         Label("Show in Finder", systemImage: "folder")
                     }
 
-                    Button {
-                        streamingEnabled.toggle()
-                    } label: {
-                        Label(streamingEnabled ? "Disable Live Streaming" : "Enable Live Streaming", systemImage: streamingEnabled ? "waveform.slash" : "waveform")
-                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .font(.system(size: 14))

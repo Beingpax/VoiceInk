@@ -13,7 +13,7 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
         warmingModels.contains(name)
     }
 
-    func scheduleWarmup(for model: LocalModel, whisperModelManager: WhisperModelManager) {
+    func scheduleWarmup(for model: WhisperModel, whisperModelManager: WhisperModelManager) {
         guard shouldWarmup(modelName: model.name),
               !warmingModels.contains(model.name) else {
             return
@@ -36,10 +36,11 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
         }
     }
 
-    private func runWarmup(for model: LocalModel, whisperModelManager: WhisperModelManager) async throws {
+    private func runWarmup(for model: WhisperModel, whisperModelManager: WhisperModelManager) async throws {
         guard let sampleURL = warmupSampleURL() else { return }
-        let service = LocalTranscriptionService(
-            modelsDirectory: whisperModelManager.modelsDirectory
+        let service = WhisperTranscriptionService(
+            modelsDirectory: whisperModelManager.modelsDirectory,
+            modelProvider: whisperModelManager
         )
         _ = try await service.transcribe(audioURL: sampleURL, model: model)
     }

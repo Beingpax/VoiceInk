@@ -4,9 +4,9 @@ import Zip
 import SwiftUI
 import Atomics
 
-// MARK: - WhisperModel
+// MARK: - WhisperModelFile
 
-struct WhisperModel: Identifiable {
+struct WhisperModelFile: Identifiable {
     let id = UUID()
     let name: String
     let url: URL
@@ -55,11 +55,11 @@ private class TaskDelegate: NSObject, URLSessionTaskDelegate {
 
 @MainActor
 class WhisperModelManager: ObservableObject {
-    @Published var availableModels: [WhisperModel] = []
+    @Published var availableModels: [WhisperModelFile] = []
     @Published var downloadProgress: [String: Double] = [:]
     @Published var whisperContext: WhisperContext?
     @Published var isModelLoaded = false
-    @Published var loadedLocalModel: WhisperModel?
+    @Published var loadedWhisperModel: WhisperModelFile?
     @Published var isModelLoading = false
 
     let modelsDirectory: URL
@@ -94,7 +94,7 @@ class WhisperModelManager: ObservableObject {
             let fileURLs = try FileManager.default.contentsOfDirectory(at: modelsDirectory, includingPropertiesForKeys: nil)
             availableModels = fileURLs.compactMap { url in
                 guard url.pathExtension == "bin" else { return nil }
-                return WhisperModel(name: url.deletingPathExtension().lastPathComponent, url: url)
+                return WhisperModelFile(name: url.deletingPathExtension().lastPathComponent, url: url)
             }
         } catch {
             logError("Error loading available models", error)
@@ -103,7 +103,7 @@ class WhisperModelManager: ObservableObject {
 
     // MARK: - Model Loading
 
-    func loadModel(_ model: WhisperModel) async throws {
+    func loadModel(_ model: WhisperModelFile) async throws {
         guard whisperContext == nil else { return }
 
         isModelLoading = true
@@ -116,7 +116,7 @@ class WhisperModelManager: ObservableObject {
             await whisperContext?.setPrompt(currentPrompt)
 
             isModelLoaded = true
-            loadedLocalModel = model
+            loadedWhisperModel = model
         } catch {
             throw VoiceInkEngineError.modelLoadFailed
         }
@@ -192,12 +192,12 @@ class WhisperModelManager: ObservableObject {
         }
     }
 
-    func downloadModel(_ model: LocalModel) async {
+    func downloadModel(_ model: WhisperModel) async {
         guard let url = URL(string: model.downloadURL) else { return }
         await performModelDownload(model, url)
     }
 
-    private func performModelDownload(_ model: LocalModel, _ url: URL) async {
+    private func performModelDownload(_ model: WhisperModel, _ url: URL) async {
         do {
             var whisperModel = try await downloadMainModel(model, from: url)
 
@@ -219,17 +219,17 @@ class WhisperModelManager: ObservableObject {
         }
     }
 
-    private func downloadMainModel(_ model: LocalModel, from url: URL) async throws -> WhisperModel {
+    private func downloadMainModel(_ model: WhisperModel, from url: URL) async throws -> WhisperModelFile {
         let progressKeyMain = model.name + "_main"
         let data = try await downloadFileWithProgress(from: url, progressKey: progressKeyMain)
 
         let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
         try data.write(to: destinationURL)
 
-        return WhisperModel(name: model.name, url: destinationURL)
+        return WhisperModelFile(name: model.name, url: destinationURL)
     }
 
-    private func downloadAndSetupCoreMLModel(for model: WhisperModel, from url: URL) async throws -> WhisperModel {
+    private func downloadAndSetupCoreMLModel(for model: WhisperModelFile, from url: URL) async throws -> WhisperModelFile {
         let progressKeyCoreML = model.name + "_coreml"
         let coreMLData = try await downloadFileWithProgress(from: url, progressKey: progressKeyCoreML)
 
@@ -239,7 +239,7 @@ class WhisperModelManager: ObservableObject {
         return try await unzipAndSetupCoreMLModel(for: model, zipPath: coreMLZipPath, progressKey: progressKeyCoreML)
     }
 
-    private func unzipAndSetupCoreMLModel(for model: WhisperModel, zipPath: URL, progressKey: String) async throws -> WhisperModel {
+    private func unzipAndSetupCoreMLModel(for model: WhisperModelFile, zipPath: URL, progressKey: String) async throws -> WhisperModelFile {
         let coreMLDestination = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
 
         try? FileManager.default.removeItem(at: coreMLDestination)
@@ -267,7 +267,7 @@ class WhisperModelManager: ObservableObject {
         }
     }
 
-    private func verifyAndCleanupCoreMLFiles(_ model: WhisperModel, _ destination: URL, _ zipPath: URL, _ progressKey: String) throws -> WhisperModel {
+    private func verifyAndCleanupCoreMLFiles(_ model: WhisperModelFile, _ destination: URL, _ zipPath: URL, _ progressKey: String) throws -> WhisperModelFile {
         var model = model
 
         var isDirectory: ObjCBool = false
@@ -283,16 +283,16 @@ class WhisperModelManager: ObservableObject {
         return model
     }
 
-    private func shouldWarmup(_ model: LocalModel) -> Bool {
+    private func shouldWarmup(_ model: WhisperModel) -> Bool {
         !model.name.contains("q5") && !model.name.contains("q8")
     }
 
-    private func handleModelDownloadError(_ model: LocalModel, _ error: Error) {
+    private func handleModelDownloadError(_ model: WhisperModel, _ error: Error) {
         self.downloadProgress.removeValue(forKey: model.name + "_main")
         self.downloadProgress.removeValue(forKey: model.name + "_coreml")
     }
 
-    func deleteModel(_ model: WhisperModel) async {
+    func deleteModel(_ model: WhisperModelFile) async {
         do {
             try FileManager.default.removeItem(at: model.url)
 
@@ -347,7 +347,7 @@ class WhisperModelManager: ObservableObject {
 
     // MARK: - Import Local Model
 
-    func importLocalModel(from sourceURL: URL) async {
+    func importWhisperModel(from sourceURL: URL) async {
         guard sourceURL.pathExtension.lowercased() == "bin" else { return }
 
         let baseName = sourceURL.deletingPathExtension().lastPathComponent
@@ -366,7 +366,7 @@ class WhisperModelManager: ObservableObject {
             try FileManager.default.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
             try FileManager.default.copyItem(at: sourceURL, to: destinationURL)
 
-            let newWhisperModel = WhisperModel(name: baseName, url: destinationURL)
+            let newWhisperModel = WhisperModelFile(name: baseName, url: destinationURL)
             availableModels.append(newWhisperModel)
 
             onModelsChanged?()
@@ -393,9 +393,9 @@ class WhisperModelManager: ObservableObject {
     }
 }
 
-// MARK: - LocalModelProvider
+// MARK: - WhisperModelProvider
 
-extension WhisperModelManager: LocalModelProvider {}
+extension WhisperModelManager: WhisperModelProvider {}
 
 // MARK: - Download Progress View
 

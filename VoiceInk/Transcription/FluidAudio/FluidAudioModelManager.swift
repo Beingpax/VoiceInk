@@ -33,7 +33,7 @@ class FluidAudioModelManager: ObservableObject {
 
     /// Legacy name-based lookup. Kept for call sites that only have a model name.
     func isFluidAudioModelDownloaded(named modelName: String) -> Bool {
-        guard let model = PredefinedModels.models
+        guard let model = TranscriptionModelRegistry.models
             .compactMap({ $0 as? FluidAudioModel })
             .first(where: { $0.name == modelName }) else {
             return false

@@ -2,20 +2,20 @@ import Foundation
 import AVFoundation
 import os
 
-class LocalTranscriptionService: TranscriptionService {
+class WhisperTranscriptionService: TranscriptionService {
 
     private var whisperContext: WhisperContext?
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LocalTranscriptionService")
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "WhisperTranscriptionService")
     private let modelsDirectory: URL
-    private weak var modelProvider: (any LocalModelProvider)?
+    private weak var modelProvider: (any WhisperModelProvider)?
 
-    init(modelsDirectory: URL, modelProvider: (any LocalModelProvider)? = nil) {
+    init(modelsDirectory: URL, modelProvider: (any WhisperModelProvider)? = nil) {
         self.modelsDirectory = modelsDirectory
         self.modelProvider = modelProvider
     }
 
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
-        guard model.provider == .local else {
+        guard model.provider == .whisper else {
             throw VoiceInkEngineError.modelLoadFailed
         }
 
@@ -25,7 +25,7 @@ class LocalTranscriptionService: TranscriptionService {
         if let provider = modelProvider,
            await provider.isModelLoaded,
            let loadedContext = await provider.whisperContext,
-           await provider.loadedLocalModel?.name == model.name {
+           await provider.loadedWhisperModel?.name == model.name {
 
             logger.notice("Using already loaded model: \(model.name, privacy: .public)")
             whisperContext = loadedContext
@@ -68,7 +68,7 @@ class LocalTranscriptionService: TranscriptionService {
 
         let text = await whisperContext.getTranscription()
 
-        logger.notice("Local transcription completed successfully.")
+        logger.notice("Whisper transcription completed successfully.")
 
         // Only release resources if we created a new context (not using the shared one)
         if await modelProvider?.whisperContext !== whisperContext {

@@ -48,88 +48,26 @@ class CloudTranscriptionService: TranscriptionService {
         let language = selectedLanguage()
 
         do {
-            switch model.provider {
-            case .groq:
-                let apiKey = try requireAPIKey(forProvider: "Groq")
-                let prompt = transcriptionPrompt()
-                return try await OpenAITranscriptionClient.transcribe(
-                    baseURL: URL(string: "https://api.groq.com/openai")!,
-                    audioData: audioData,
-                    fileName: fileName,
-                    apiKey: apiKey,
-                    model: model.name,
-                    language: language,
-                    prompt: prompt
-                )
-
-            case .elevenLabs:
-                let apiKey = try requireAPIKey(forProvider: "ElevenLabs")
-                return try await ElevenLabsClient.transcribe(
-                    audioData: audioData,
-                    fileName: fileName,
-                    apiKey: apiKey,
-                    model: model.name,
-                    language: language
-                )
-
-            case .deepgram:
-                let apiKey = try requireAPIKey(forProvider: "Deepgram")
-                return try await DeepgramClient.transcribe(
-                    audioData: audioData,
-                    apiKey: apiKey,
-                    model: model.name,
-                    language: language
-                )
-
-            case .mistral:
-                let apiKey = try requireAPIKey(forProvider: "Mistral")
-                return try await MistralTranscriptionClient.transcribe(
-                    audioData: audioData,
-                    fileName: fileName,
-                    apiKey: apiKey,
-                    model: model.name
-                )
-
-            case .gemini:
-                let apiKey = try requireAPIKey(forProvider: "Gemini")
-                return try await GeminiTranscriptionClient.transcribe(
-                    audioData: audioData,
-                    apiKey: apiKey,
-                    model: model.name
-                )
-
-            case .soniox:
-                let apiKey = try requireAPIKey(forProvider: "Soniox")
-                let customVocabulary = getCustomDictionaryTerms()
-                return try await SonioxClient.transcribe(
-                    audioData: audioData,
-                    fileName: fileName,
-                    apiKey: apiKey,
-                    model: model.name,
-                    language: language,
-                    customVocabulary: customVocabulary
-                )
-
-            case .speechmatics:
-                let apiKey = try requireAPIKey(forProvider: "Speechmatics")
-                let customVocabulary = getCustomDictionaryTerms()
-                return try await SpeechmaticsClient.transcribe(
-                    audioData: audioData,
-                    fileName: fileName,
-                    apiKey: apiKey,
-                    language: language,
-                    customVocabulary: customVocabulary
-                )
-
-            case .custom:
+            if model.provider == .custom {
                 guard let customModel = model as? CustomCloudModel else {
                     throw CloudTranscriptionError.unsupportedProvider
                 }
                 return try await openAICompatibleService.transcribe(audioURL: audioURL, model: customModel)
+            }
 
-            default:
+            guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
                 throw CloudTranscriptionError.unsupportedProvider
             }
+            let apiKey = try requireAPIKey(forProvider: cloudProvider.providerKey)
+            return try await cloudProvider.transcribe(
+                audioData: audioData,
+                fileName: fileName,
+                apiKey: apiKey,
+                model: model.name,
+                language: language,
+                prompt: transcriptionPrompt(),
+                customVocabulary: getCustomDictionaryTerms()
+            )
         } catch let error as CloudTranscriptionError {
             throw error
         } catch let error as LLMKitError {

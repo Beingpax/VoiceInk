@@ -82,7 +82,7 @@ class ImportExportService {
         let powerConfigs = powerModeManager.configurations
 
         // Export custom models
-        let customModels = CustomModelManager.shared.customModels
+        let customModels = CustomCloudModelManager.shared.customModels
 
         // Fetch vocabulary words from SwiftData
         var exportedDictionaryItems: [VocabularyWordData]? = nil
@@ -200,7 +200,7 @@ class ImportExportService {
 
                     // Import Custom Models
                     if let modelsToImport = importedSettings.customCloudModels {
-                        let customModelManager = CustomModelManager.shared
+                        let customModelManager = CustomCloudModelManager.shared
                         customModelManager.customModels = modelsToImport
                         customModelManager.saveCustomModels() // Ensure they are persisted
                         transcriptionModelManager.refreshAllAvailableModels() // Refresh the UI

@@ -5,7 +5,7 @@ import os
 @MainActor
 class TranscriptionModelManager: ObservableObject {
     @Published var currentTranscriptionModel: (any TranscriptionModel)?
-    @Published var allAvailableModels: [any TranscriptionModel] = PredefinedModels.models
+    @Published var allAvailableModels: [any TranscriptionModel] = TranscriptionModelRegistry.models
 
     private weak var whisperModelManager: WhisperModelManager?
     private weak var fluidAudioModelManager: FluidAudioModelManager?
@@ -38,32 +38,19 @@ class TranscriptionModelManager: ObservableObject {
     var usableModels: [any TranscriptionModel] {
         allAvailableModels.filter { model in
             switch model.provider {
-            case .local:
+            case .whisper:
                 return whisperModelManager?.availableModels.contains { $0.name == model.name } ?? false
             case .fluidAudio:
                 return fluidAudioModelManager?.isFluidAudioModelDownloaded(named: model.name) ?? false
             case .nativeApple:
-                if #available(macOS 26, *) {
-                    return true
-                } else {
-                    return false
-                }
-            case .groq:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "Groq")
-            case .elevenLabs:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "ElevenLabs")
-            case .deepgram:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "Deepgram")
-            case .mistral:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "Mistral")
-            case .gemini:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "Gemini")
-            case .soniox:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "Soniox")
-            case .speechmatics:
-                return APIKeyManager.shared.hasAPIKey(forProvider: "Speechmatics")
+                if #available(macOS 26, *) { return true } else { return false }
             case .custom:
                 return true
+            default:
+                if let cloudProvider = CloudProviderRegistry.provider(for: model.provider) {
+                    return APIKeyManager.shared.hasAPIKey(forProvider: cloudProvider.providerKey)
+                }
+                return false
             }
         }
     }
@@ -83,8 +70,8 @@ class TranscriptionModelManager: ObservableObject {
         self.currentTranscriptionModel = model
         UserDefaults.standard.set(model.name, forKey: "CurrentTranscriptionModel")
 
-        if model.provider != .local {
-            whisperModelManager?.loadedLocalModel = nil
+        if model.provider != .whisper {
+            whisperModelManager?.loadedWhisperModel = nil
             whisperModelManager?.isModelLoaded = true
         }
 
@@ -96,11 +83,11 @@ class TranscriptionModelManager: ObservableObject {
 
     func refreshAllAvailableModels() {
         let currentModelName = currentTranscriptionModel?.name
-        var models = PredefinedModels.models
+        var models = TranscriptionModelRegistry.models
 
         for whisperModel in whisperModelManager?.availableModels ?? [] {
             if !models.contains(where: { $0.name == whisperModel.name }) {
-                let importedModel = ImportedLocalModel(fileBaseName: whisperModel.name)
+                let importedModel = ImportedWhisperModel(fileBaseName: whisperModel.name)
                 models.append(importedModel)
             }
         }
@@ -127,7 +114,7 @@ class TranscriptionModelManager: ObservableObject {
         if currentTranscriptionModel?.name == modelName {
             currentTranscriptionModel = nil
             UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
-            whisperModelManager?.loadedLocalModel = nil
+            whisperModelManager?.loadedWhisperModel = nil
             whisperModelManager?.isModelLoaded = false
             UserDefaults.standard.removeObject(forKey: "CurrentModel")
         }

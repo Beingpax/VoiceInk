@@ -34,7 +34,6 @@ class NotchRecorderPanel: KeyablePanel {
         self.titlebarAppearsTransparent = true
         self.titleVisibility = .hidden
         self.standardWindowButton(.closeButton)?.isHidden = true
-        self.ignoresMouseEvents = false
         self.isMovable = false
 
         NotificationCenter.default.addObserver(
@@ -99,42 +98,5 @@ class NotchRecorderHostingController<Content: View>: NSHostingController<Content
         super.viewDidLoad()
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
-
-        // Add visual effect view as background
-        let visualEffect = NSVisualEffectView()
-        visualEffect.material = .dark
-        visualEffect.state = .active
-        visualEffect.blendingMode = .withinWindow
-        visualEffect.wantsLayer = true
-        visualEffect.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.95).cgColor
-
-        // Create a mask layer for the notched shape
-        let maskLayer = CAShapeLayer()
-        let path = CGMutablePath()
-        let bounds = view.bounds
-        let cornerRadius: CGFloat = 10
-
-        // Create the notched path
-        path.move(to: CGPoint(x: bounds.minX, y: bounds.minY))
-        path.addLine(to: CGPoint(x: bounds.maxX, y: bounds.minY))
-        path.addLine(to: CGPoint(x: bounds.maxX, y: bounds.maxY - cornerRadius))
-        path.addQuadCurve(to: CGPoint(x: bounds.maxX - cornerRadius, y: bounds.maxY),
-                         control: CGPoint(x: bounds.maxX, y: bounds.maxY))
-        path.addLine(to: CGPoint(x: bounds.minX + cornerRadius, y: bounds.maxY))
-        path.addQuadCurve(to: CGPoint(x: bounds.minX, y: bounds.maxY - cornerRadius),
-                         control: CGPoint(x: bounds.minX, y: bounds.maxY))
-        path.closeSubpath()
-
-        maskLayer.path = path
-        visualEffect.layer?.mask = maskLayer
-
-        view.addSubview(visualEffect, positioned: .below, relativeTo: nil)
-        visualEffect.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            visualEffect.topAnchor.constraint(equalTo: view.topAnchor),
-            visualEffect.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            visualEffect.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            visualEffect.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
     }
 }

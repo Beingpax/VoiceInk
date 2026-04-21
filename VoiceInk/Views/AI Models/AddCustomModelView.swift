@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AddCustomModelCardView: View {
-    @ObservedObject var customModelManager: CustomModelManager
+    @ObservedObject var customModelManager: CustomCloudModelManager
     var onModelAdded: () -> Void
     var editingModel: CustomCloudModel? = nil
     
