@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clone whisper.cpp
+        run: |
+          mkdir -p ~/VoiceInk-Dependencies
+          git clone https://github.com/ggerganov/whisper.cpp.git ~/VoiceInk-Dependencies/whisper.cpp
+          echo "WHISPER_SHA=$(git -C ~/VoiceInk-Dependencies/whisper.cpp rev-parse HEAD)" >> $GITHUB_ENV
+
+      - name: Cache whisper.xcframework
+        uses: actions/cache@v4
+        with:
+          path: ~/VoiceInk-Dependencies/whisper.cpp/build-apple/whisper.xcframework
+          key: whisper-xcframework-${{ env.WHISPER_SHA }}
+
+      - name: Build
+        run: make local
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceInk
+          path: .local-build/Build/Products/Debug/VoiceInk.app
+          retention-days: 14
