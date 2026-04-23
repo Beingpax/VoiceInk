@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Carbon
 import os
 
 private let logger = Logger(subsystem: "com.VoiceInk", category: "CursorPaster")
@@ -51,22 +52,28 @@ class CursorPaster {
 
     // MARK: - AppleScript paste
 
-    // Pre-compiled once on first use to avoid per-paste overhead.
-    private static let pasteScript: NSAppleScript? = {
-        let script = NSAppleScript(source: """
-            tell application "System Events"
-                keystroke "v" using command down
-            end tell
-            """)
+    // "X – QWERTY ⌘" layouts remap to QWERTY when Command is held, so keystroke "v" resolves
+    // the wrong key code. key code 9 (physical V) bypasses layout translation for those layouts.
+    private static func makeScript(_ source: String) -> NSAppleScript? {
+        let script = NSAppleScript(source: source)
         var error: NSDictionary?
         script?.compileAndReturnError(&error)
         return script
-    }()
+    }
 
-    // Paste via AppleScript. Works with custom keyboard layouts (e.g. Neo2) where CGEvent-based paste fails.
+    private static let pasteScriptKeystroke = makeScript("tell application \"System Events\" to keystroke \"v\" using command down")
+    private static let pasteScriptKeyCode   = makeScript("tell application \"System Events\" to key code 9 using command down")
+
+    private static var layoutSwitchesToQWERTYOnCommand: Bool {
+        let source = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        guard let nameRef = TISGetInputSourceProperty(source, kTISPropertyLocalizedName) else { return false }
+        return (Unmanaged<CFString>.fromOpaque(nameRef).takeUnretainedValue() as String).hasSuffix("⌘")
+    }
+
     private static func pasteUsingAppleScript() {
+        let script = layoutSwitchesToQWERTYOnCommand ? pasteScriptKeyCode : pasteScriptKeystroke
         var error: NSDictionary?
-        pasteScript?.executeAndReturnError(&error)
+        script?.executeAndReturnError(&error)
         if let error = error {
             logger.error("AppleScript paste failed: \(error, privacy: .public)")
         }

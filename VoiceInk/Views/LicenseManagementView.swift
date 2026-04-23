@@ -178,8 +178,9 @@ struct LicenseManagementView: View {
                 
                 if let message = licenseViewModel.validationMessage {
                     Text(message)
-                        .foregroundColor(.red)
+                        .foregroundColor(licenseViewModel.validationSuccess ? .green : .red)
                         .font(.callout)
+                        .multilineTextAlignment(.center)
                 }
             }
             .padding(32)
