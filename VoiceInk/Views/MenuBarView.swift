@@ -10,8 +10,25 @@ struct MenuBarView: View {
     @EnvironmentObject var menuBarManager: MenuBarManager
     @EnvironmentObject var updaterViewModel: UpdaterViewModel
     @EnvironmentObject var enhancementService: AIEnhancementService
+    @EnvironmentObject var aiService: AIService
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var isHovered = false
+
+    private var enhancementProviders: [AIProvider] {
+        aiService.connectedProviders.filter { $0 != .elevenLabs && $0 != .deepgram }
+    }
+
+    private var enhancementMenuLabel: String {
+        guard enhancementService.isEnhancementEnabled else {
+            return "AI Model: Off"
+        }
+        let provider = aiService.selectedProvider
+        let model = aiService.currentModel
+        if model.isEmpty {
+            return "AI Model: \(provider.rawValue)"
+        }
+        return "AI Model: \(provider.rawValue) / \(model)"
+    }
     
     var body: some View {
         VStack {
@@ -58,6 +75,68 @@ struct MenuBarView: View {
             Divider()
             
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
+
+            Menu {
+                if enhancementProviders.isEmpty {
+                    Text("No providers connected")
+                } else {
+                    ForEach(enhancementProviders, id: \.self) { provider in
+                        let models = aiService.availableModels(for: provider)
+                        if models.isEmpty {
+                            Button {
+                                if aiService.selectedProvider != provider {
+                                    aiService.selectedProvider = provider
+                                }
+                            } label: {
+                                HStack {
+                                    Text(provider.rawValue)
+                                    if aiService.selectedProvider == provider {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        } else {
+                            Menu {
+                                ForEach(models, id: \.self) { model in
+                                    Button {
+                                        if aiService.selectedProvider != provider {
+                                            aiService.selectedProvider = provider
+                                        }
+                                        aiService.selectModel(model)
+                                    } label: {
+                                        HStack {
+                                            Text(model)
+                                            if aiService.selectedProvider == provider && aiService.currentModel == model {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(provider.rawValue)
+                                    if aiService.selectedProvider == provider {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button("Manage Enhancement") {
+                    menuBarManager.openMainWindowAndNavigate(to: "Enhancement")
+                }
+            } label: {
+                HStack {
+                    Text(enhancementMenuLabel)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10))
+                }
+            }
+            .disabled(!enhancementService.isEnhancementEnabled)
 
             LanguageSelectionView(transcriptionModelManager: transcriptionModelManager, displayMode: .menuItem, whisperPrompt: whisperModelManager.whisperPrompt)
 
