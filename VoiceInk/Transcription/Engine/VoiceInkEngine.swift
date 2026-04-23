@@ -91,12 +91,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
             if let recordedFile {
                 if !shouldCancelRecording {
-                    let audioAsset = AVURLAsset(url: recordedFile)
-                    let duration = (try? CMTimeGetSeconds(await audioAsset.load(.duration))) ?? 0.0
-
                     let transcription = Transcription(
                         text: "",
-                        duration: duration,
+                        duration: 0,
                         audioFileURL: recordedFile.absoluteString,
                         transcriptionStatus: .pending
                     )
@@ -130,88 +127,93 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
             requestRecordPermission { [self] granted in
                 if granted {
-                    Task {
-                        do {
-                            let fileName = "\(UUID().uuidString).wav"
-                            let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
-                            self.recordedFile = permanentURL
+                    let fileName = "\(UUID().uuidString).wav"
+                    let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
+                    self.recordedFile = permanentURL
 
-                            let pendingChunks = OSAllocatedUnfairLock(initialState: [Data]())
-                            self.recorder.onAudioChunk = { data in
-                                pendingChunks.withLock { $0.append(data) }
-                            }
+                    let pendingChunks = OSAllocatedUnfairLock(initialState: [Data]())
+                    self.recorder.onAudioChunk = { data in
+                        pendingChunks.withLock { $0.append(data) }
+                    }
 
-                            try await self.recorder.startRecording(toOutputFile: permanentURL)
+                    self.recordingState = .recording
+                    self.logger.notice("toggleRecord: state=recording, starting audio hardware")
 
-                            guard self.recorderUIManager?.isMiniRecorderVisible ?? false, !self.shouldCancelRecording else {
-                                self.recorder.stopRecording()
+                    self.recorder.startRecording(toOutputFile: permanentURL) { result in
+                        Task { @MainActor [self] in
+                            do {
+                                try result.get()
+                                self.logger.notice("toggleRecord: audio hardware started successfully")
+
+                                guard self.recorderUIManager?.isMiniRecorderVisible ?? false, !self.shouldCancelRecording else {
+                                    self.recorder.stopRecording()
+                                    self.recordedFile = nil
+                                    self.recordingState = .idle
+                                    return
+                                }
+
+                                await ActiveWindowService.shared.applyConfiguration(powerModeId: powerModeId)
+
+                                if self.recordingState == .recording,
+                                   let model = self.transcriptionModelManager.currentTranscriptionModel {
+                                    let session = self.serviceRegistry.createSession(
+                                        for: model,
+                                        onPartialTranscript: { [weak self] partial in
+                                            Task { @MainActor in
+                                                self?.partialTranscript = partial
+                                            }
+                                        }
+                                    )
+                                    self.currentSession = session
+                                    let realCallback = try await session.prepare(model: model)
+
+                                    if let realCallback {
+                                        self.recorder.onAudioChunk = realCallback
+                                        let buffered = pendingChunks.withLock { chunks -> [Data] in
+                                            let result = chunks
+                                            chunks.removeAll()
+                                            return result
+                                        }
+                                        for chunk in buffered { realCallback(chunk) }
+                                    } else {
+                                        self.recorder.onAudioChunk = nil
+                                        pendingChunks.withLock { $0.removeAll() }
+                                    }
+                                }
+
+                                Task.detached { [weak self] in
+                                    guard let self else { return }
+
+                                    if let model = await self.transcriptionModelManager.currentTranscriptionModel,
+                                       model.provider == .whisper {
+                                        if let localWhisperModel = await self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
+                                           await self.whisperModelManager.whisperContext == nil {
+                                            do {
+                                                try await self.whisperModelManager.loadModel(localWhisperModel)
+                                            } catch {
+                                                await self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
+                                            }
+                                        }
+                                    } else if let fluidAudioModel = await self.transcriptionModelManager.currentTranscriptionModel as? FluidAudioModel {
+                                        try? await self.serviceRegistry.fluidAudioTranscriptionService.loadModel(for: fluidAudioModel)
+                                    }
+
+                                    if let enhancementService = await self.enhancementService {
+                                        await MainActor.run {
+                                            enhancementService.captureClipboardContext()
+                                        }
+                                        await enhancementService.captureScreenContext()
+                                    }
+                                }
+
+                            } catch {
+                                self.logger.error("❌ Failed to start recording: \(error.localizedDescription, privacy: .public)")
+                                self.recordingState = .idle
                                 self.recordedFile = nil
-                                return
+                                await NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
+                                self.logger.notice("toggleRecord: calling dismissMiniRecorder from error handler")
+                                await self.recorderUIManager?.dismissMiniRecorder()
                             }
-
-                            self.recordingState = .recording
-                            self.logger.notice("toggleRecord: recording started successfully, state=recording")
-
-                            await ActiveWindowService.shared.applyConfiguration(powerModeId: powerModeId)
-
-                            if self.recordingState == .recording,
-                               let model = self.transcriptionModelManager.currentTranscriptionModel {
-                                let session = self.serviceRegistry.createSession(
-                                    for: model,
-                                    onPartialTranscript: { [weak self] partial in
-                                        Task { @MainActor in
-                                            self?.partialTranscript = partial
-                                        }
-                                    }
-                                )
-                                self.currentSession = session
-                                let realCallback = try await session.prepare(model: model)
-
-                                if let realCallback {
-                                    self.recorder.onAudioChunk = realCallback
-                                    let buffered = pendingChunks.withLock { chunks -> [Data] in
-                                        let result = chunks
-                                        chunks.removeAll()
-                                        return result
-                                    }
-                                    for chunk in buffered { realCallback(chunk) }
-                                } else {
-                                    self.recorder.onAudioChunk = nil
-                                    pendingChunks.withLock { $0.removeAll() }
-                                }
-                            }
-
-                            Task.detached { [weak self] in
-                                guard let self else { return }
-
-                                if let model = await self.transcriptionModelManager.currentTranscriptionModel,
-                                   model.provider == .whisper {
-                                    if let localWhisperModel = await self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
-                                       await self.whisperModelManager.whisperContext == nil {
-                                        do {
-                                            try await self.whisperModelManager.loadModel(localWhisperModel)
-                                        } catch {
-                                            await self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
-                                        }
-                                    }
-                                } else if let fluidAudioModel = await self.transcriptionModelManager.currentTranscriptionModel as? FluidAudioModel {
-                                    try? await self.serviceRegistry.fluidAudioTranscriptionService.loadModel(for: fluidAudioModel)
-                                }
-
-                                if let enhancementService = await self.enhancementService {
-                                    await MainActor.run {
-                                        enhancementService.captureClipboardContext()
-                                    }
-                                    await enhancementService.captureScreenContext()
-                                }
-                            }
-
-                        } catch {
-                            self.logger.error("❌ Failed to start recording: \(error.localizedDescription, privacy: .public)")
-                            await NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
-                            self.logger.notice("toggleRecord: calling dismissMiniRecorder from error handler")
-                            await self.recorderUIManager?.dismissMiniRecorder()
-                            self.recordedFile = nil
                         }
                     }
                 } else {

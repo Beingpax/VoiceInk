@@ -52,7 +52,7 @@ class SystemInfoService {
 
         POWER MODE:
         Power Mode Enabled: \(UserDefaults.standard.bool(forKey: "powerModeUIFlag"))
-        Auto-Restore Enabled: \(UserDefaults.standard.bool(forKey: "powerModeAutoRestoreEnabled"))
+        Persist Configured Preferences: \(UserDefaults.standard.bool(forKey: "powerModePersistConfig"))
 
         DATA CLEANUP SETTINGS:
         Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled"))

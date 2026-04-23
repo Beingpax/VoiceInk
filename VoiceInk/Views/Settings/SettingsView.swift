@@ -410,7 +410,7 @@ struct ExpandableSettingsRow<Content: View>: View {
 struct PowerModeSection: View {
     @ObservedObject private var powerModeManager = PowerModeManager.shared
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
-    @AppStorage(PowerModeDefaults.autoRestoreKey) private var powerModeAutoRestoreEnabled = false
+    @AppStorage("powerModePersistConfig") private var powerModePersistSettings = false
     @State private var showDisableAlert = false
     @State private var isExpanded = false
 
@@ -423,10 +423,10 @@ struct PowerModeSection: View {
                 infoMessage: "Apply custom settings based on active app or website.",
                 infoURL: "https://tryvoiceink.com/docs/power-mode"
             ) {
-                Toggle(isOn: $powerModeAutoRestoreEnabled) {
+                Toggle(isOn: $powerModePersistSettings) {
                     HStack(spacing: 4) {
-                        Text("Auto-Restore Preferences")
-                        InfoTip("After each recording session, revert preferences to what was configured before Power Mode was activated.")
+                        Text("Persist Configured Preferences")
+                        InfoTip("When enabled, Power Mode preferences stay active after you stop recording instead of reverting to your original preferences. They will only change when a different Power Mode activates.")
                     }
                 }
             }
@@ -497,8 +497,3 @@ extension Text {
     }
 }
 
-// MARK: - Power Mode Defaults
-
-enum PowerModeDefaults {
-    static let autoRestoreKey = "powerModeAutoRestoreEnabled"
-}

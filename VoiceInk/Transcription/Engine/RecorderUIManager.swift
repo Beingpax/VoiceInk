@@ -27,12 +27,10 @@ class RecorderUIManager: ObservableObject {
 
     @Published var isMiniRecorderVisible = false {
         didSet {
-            Task { @MainActor in
-                if isMiniRecorderVisible {
-                    showRecorderPanel()
-                } else {
-                    hideRecorderPanel()
-                }
+            if isMiniRecorderVisible {
+                showRecorderPanel()
+            } else {
+                hideRecorderPanel()
             }
         }
     }
@@ -96,7 +94,9 @@ class RecorderUIManager: ObservableObject {
                 await cancelRecording()
             }
         } else {
-            SoundManager.shared.playStartSound()
+            SoundManager.shared.playStartSound {
+                Task { await MediaController.shared.muteSystemAudio() }
+            }
             await MainActor.run { isMiniRecorderVisible = true }
             await engine.toggleRecord(powerModeId: powerModeId)
         }
@@ -140,7 +140,7 @@ class RecorderUIManager: ObservableObject {
 
         await engine.cleanupResources()
 
-        if UserDefaults.standard.bool(forKey: PowerModeDefaults.autoRestoreKey) {
+        if !UserDefaults.standard.bool(forKey: "powerModePersistConfig") {
             await PowerModeSessionManager.shared.endSession()
             await MainActor.run {
                 PowerModeManager.shared.setActiveConfiguration(nil)

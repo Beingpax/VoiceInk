@@ -51,14 +51,6 @@ class TranscriptionPipeline {
             return
         }
 
-        Task {
-            let isSystemMuteEnabled = UserDefaults.standard.bool(forKey: "isSystemMuteEnabled")
-            if isSystemMuteEnabled {
-                try? await Task.sleep(nanoseconds: 200_000_000)
-            }
-            SoundManager.shared.playStopSound()
-        }
-
         var finalPastedText: String?
         var promptDetectionResult: PromptDetectionService.PromptDetectionResult?
 
@@ -174,7 +166,8 @@ class TranscriptionPipeline {
                     """
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.015) {
+                SoundManager.shared.playStopSound()
                 let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
                 CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
 
