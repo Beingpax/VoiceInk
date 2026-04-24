@@ -75,6 +75,89 @@ class FluidAudioTranscriptionService: TranscriptionService {
         try await ensureModelsLoaded(for: version(for: model))
     }
 
+    func transcribeWithSegments(audioURL: URL, model: any TranscriptionModel) async throws -> [TranscriptSegment] {
+        let targetVersion = version(for: model)
+        try await ensureModelsLoaded(for: targetVersion)
+
+        guard let asrManager = asrManager else {
+            throw ASRError.notInitialized
+        }
+
+        let audioSamples = try readAudioSamples(from: audioURL)
+
+        let durationSeconds = Double(audioSamples.count) / 16000.0
+        let isVADEnabled = UserDefaults.standard.bool(forKey: "IsVADEnabled")
+
+        var speechAudio = audioSamples
+        if durationSeconds >= 20.0, isVADEnabled {
+            let vadConfig = VadConfig(defaultThreshold: 0.7)
+            if vadManager == nil {
+                do {
+                    vadManager = try await VadManager(config: vadConfig)
+                } catch {
+                    vadManager = nil
+                }
+            }
+            if let vadManager {
+                do {
+                    let segments = try await vadManager.segmentSpeechAudio(audioSamples)
+                    speechAudio = segments.isEmpty ? audioSamples : segments.flatMap { $0 }
+                } catch {
+                    speechAudio = audioSamples
+                }
+            }
+        }
+
+        let trailingSilenceSamples = 16_000
+        let maxSingleChunkSamples = 240_000
+        if speechAudio.count + trailingSilenceSamples <= maxSingleChunkSamples {
+            speechAudio += [Float](repeating: 0, count: trailingSilenceSamples)
+        }
+
+        var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
+        let result = try await asrManager.transcribe(speechAudio, decoderState: &decoderState)
+
+        guard let tokenTimings = result.tokenTimings, !tokenTimings.isEmpty else {
+            let normalizedText = TextNormalizer.shared.normalizeSentence(result.text)
+            return [TranscriptSegment(startSec: 0, endSec: result.duration, text: normalizedText)]
+        }
+
+        return buildSegmentsFromTokenTimings(tokenTimings)
+    }
+
+    private func buildSegmentsFromTokenTimings(_ timings: [TokenTiming]) -> [TranscriptSegment] {
+        let sentenceEnders: Set<Character> = [".", "?", "!"]
+        let gapThreshold: TimeInterval = 1.0
+
+        var segments: [TranscriptSegment] = []
+        var groupStart: TimeInterval = timings[0].startTime
+        var groupEnd: TimeInterval = timings[0].endTime
+        var groupText = ""
+
+        for (index, timing) in timings.enumerated() {
+            let isLast = index == timings.count - 1
+            groupText += timing.token
+            groupEnd = timing.endTime
+
+            let endsWithSentence = sentenceEnders.contains(timing.token.last ?? " ")
+            let nextGapLarge = !isLast && (timings[index + 1].startTime - timing.endTime) > gapThreshold
+
+            if isLast || endsWithSentence || nextGapLarge {
+                let trimmed = groupText.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty {
+                    segments.append(TranscriptSegment(startSec: groupStart, endSec: groupEnd, text: trimmed))
+                }
+                if !isLast {
+                    groupStart = timings[index + 1].startTime
+                    groupEnd = timings[index + 1].endTime
+                    groupText = ""
+                }
+            }
+        }
+
+        return segments
+    }
+
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
         let targetVersion = version(for: model)
         try await ensureModelsLoaded(for: targetVersion)

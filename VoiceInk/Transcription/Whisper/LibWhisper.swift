@@ -110,6 +110,18 @@ actor WhisperContext {
         return transcription
     }
 
+    func getSegments() -> [TranscriptSegment] {
+        guard let context = context else { return [] }
+        var segments: [TranscriptSegment] = []
+        for i in 0..<whisper_full_n_segments(context) {
+            let t0 = Double(whisper_full_get_segment_t0(context, i)) / 100.0
+            let t1 = Double(whisper_full_get_segment_t1(context, i)) / 100.0
+            let text = String(cString: whisper_full_get_segment_text(context, i))
+            segments.append(TranscriptSegment(startSec: t0, endSec: t1, text: text))
+        }
+        return segments
+    }
+
     static func createContext(path: String) async throws -> WhisperContext {
         let whisperContext = WhisperContext()
         try await whisperContext.initializeModel(path: path)

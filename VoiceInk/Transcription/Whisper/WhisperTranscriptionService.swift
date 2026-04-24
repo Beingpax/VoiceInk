@@ -79,6 +79,51 @@ class WhisperTranscriptionService: TranscriptionService {
         return text
     }
 
+    func transcribeWithSegments(audioURL: URL, model: any TranscriptionModel) async throws -> [TranscriptSegment] {
+        guard model.provider == .whisper else {
+            throw VoiceInkEngineError.modelLoadFailed
+        }
+
+        if let provider = modelProvider,
+           await provider.isModelLoaded,
+           let loadedContext = await provider.whisperContext,
+           await provider.loadedWhisperModel?.name == model.name {
+            whisperContext = loadedContext
+        } else {
+            let resolvedURL: URL? = await modelProvider?.availableModels.first(where: { $0.name == model.name })?.url
+            guard let modelURL = resolvedURL, FileManager.default.fileExists(atPath: modelURL.path) else {
+                throw VoiceInkEngineError.modelLoadFailed
+            }
+            do {
+                whisperContext = try await WhisperContext.createContext(path: modelURL.path)
+            } catch {
+                throw VoiceInkEngineError.modelLoadFailed
+            }
+        }
+
+        guard let whisperContext = whisperContext else {
+            throw VoiceInkEngineError.modelLoadFailed
+        }
+
+        let data = try readAudioSamples(audioURL)
+        let currentPrompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
+        await whisperContext.setPrompt(currentPrompt)
+
+        let success = await whisperContext.fullTranscribe(samples: data)
+        guard success else {
+            throw VoiceInkEngineError.whisperCoreFailed
+        }
+
+        let segments = await whisperContext.getSegments()
+
+        if await modelProvider?.whisperContext !== whisperContext {
+            await whisperContext.releaseResources()
+            self.whisperContext = nil
+        }
+
+        return segments
+    }
+
     private func readAudioSamples(_ url: URL) throws -> [Float] {
         let data = try Data(contentsOf: url)
         let floats = stride(from: 44, to: data.count, by: 2).map {

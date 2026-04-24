@@ -71,7 +71,38 @@ struct MenuBarView: View {
                         .font(.system(size: 10))
                 }
             }
-            
+
+            Menu {
+                ForEach(transcriptionModelManager.meetingsEligibleModels, id: \.id) { model in
+                    Button {
+                        transcriptionModelManager.setMeetingsTranscriptionModel(model)
+                    } label: {
+                        HStack {
+                            Text(model.displayName)
+                            if transcriptionModelManager.currentMeetingsTranscriptionModel?.id == model.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+                if transcriptionModelManager.currentMeetingsTranscriptionModel != nil {
+                    Divider()
+                    Button("Clear Selection") {
+                        transcriptionModelManager.clearMeetingsTranscriptionModel()
+                    }
+                }
+                Divider()
+                Button("Manage Models") {
+                    menuBarManager.openMainWindowAndNavigate(to: "AI Models")
+                }
+            } label: {
+                HStack {
+                    Text("Meetings Model: \(transcriptionModelManager.currentMeetingsTranscriptionModel?.displayName ?? "Not set")")
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10))
+                }
+            }
+
             Divider()
             
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)

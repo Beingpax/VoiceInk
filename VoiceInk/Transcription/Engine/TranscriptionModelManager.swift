@@ -5,10 +5,14 @@ import os
 @MainActor
 class TranscriptionModelManager: ObservableObject {
     @Published var currentTranscriptionModel: (any TranscriptionModel)?
+    @Published var currentMeetingsTranscriptionModel: (any TranscriptionModel)?
     @Published var allAvailableModels: [any TranscriptionModel] = TranscriptionModelRegistry.models
 
     private weak var whisperModelManager: WhisperModelManager?
     private weak var fluidAudioModelManager: FluidAudioModelManager?
+    private weak var serviceRegistry: TranscriptionServiceRegistry?
+
+    private let meetingsModelDefaultsKey = "CurrentMeetingsTranscriptionModel"
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionModelManager")
 
@@ -31,6 +35,12 @@ class TranscriptionModelManager: ObservableObject {
         fluidAudioModelManager.onModelsChanged = { [weak self] in
             self?.refreshAllAvailableModels()
         }
+    }
+
+    // MARK: - Registry injection
+
+    func configure(registry: TranscriptionServiceRegistry) {
+        self.serviceRegistry = registry
     }
 
     // MARK: - Computed: usable models
@@ -61,6 +71,39 @@ class TranscriptionModelManager: ObservableObject {
         if let savedModelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel"),
            let savedModel = allAvailableModels.first(where: { $0.name == savedModelName }) {
             currentTranscriptionModel = savedModel
+        }
+    }
+
+    // MARK: - Meetings transcription model
+
+    func loadCurrentMeetingsTranscriptionModel() {
+        guard let name = UserDefaults.standard.string(forKey: meetingsModelDefaultsKey) else { return }
+        if let model = allAvailableModels.first(where: { $0.name == name }) {
+            currentMeetingsTranscriptionModel = model
+        }
+    }
+
+    func setMeetingsTranscriptionModel(_ model: any TranscriptionModel) {
+        currentMeetingsTranscriptionModel = model
+        UserDefaults.standard.set(model.name, forKey: meetingsModelDefaultsKey)
+    }
+
+    func clearMeetingsTranscriptionModel() {
+        currentMeetingsTranscriptionModel = nil
+        UserDefaults.standard.removeObject(forKey: meetingsModelDefaultsKey)
+    }
+
+    /// Models appropriate for offline file transcription (Meetings).
+    /// Hides streaming-only variants: any model whose effectiveBatchModel differs from itself
+    /// has a separate batch fallback listed — we hide the streaming variant to avoid confusion.
+    var meetingsEligibleModels: [any TranscriptionModel] {
+        guard let registry = serviceRegistry else {
+            // Registry not yet injected; fall back to all usable models.
+            return usableModels
+        }
+        return usableModels.filter { model in
+            let effective = registry.effectiveBatchModel(for: model)
+            return effective.name == model.name
         }
     }
 
@@ -117,6 +160,9 @@ class TranscriptionModelManager: ObservableObject {
             whisperModelManager?.loadedWhisperModel = nil
             whisperModelManager?.isModelLoaded = false
             UserDefaults.standard.removeObject(forKey: "CurrentModel")
+        }
+        if currentMeetingsTranscriptionModel?.name == modelName {
+            clearMeetingsTranscriptionModel()
         }
         refreshAllAvailableModels()
     }

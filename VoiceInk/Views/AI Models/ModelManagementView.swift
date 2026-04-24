@@ -48,6 +48,7 @@ struct ModelManagementView: View {
                 }
 
                 defaultModelSection
+                meetingsModelSection
                 languageSelectionSection
                 availableModelsSection
             }
@@ -110,6 +111,56 @@ struct ModelManagementView: View {
             Text(transcriptionModelManager.currentTranscriptionModel?.displayName ?? "No model selected")
                 .font(.title2)
                 .fontWeight(.bold)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(CardBackground(isSelected: false))
+        .cornerRadius(10)
+    }
+
+    private var meetingsModelSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Meetings Transcription Model")
+                .font(.headline)
+                .foregroundColor(.secondary)
+            Menu {
+                ForEach(transcriptionModelManager.meetingsEligibleModels, id: \.id) { model in
+                    Button {
+                        transcriptionModelManager.setMeetingsTranscriptionModel(model)
+                    } label: {
+                        HStack {
+                            Text(model.displayName)
+                            if transcriptionModelManager.currentMeetingsTranscriptionModel?.id == model.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+                if transcriptionModelManager.currentMeetingsTranscriptionModel != nil {
+                    Divider()
+                    Button("Clear Selection") {
+                        transcriptionModelManager.clearMeetingsTranscriptionModel()
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(transcriptionModelManager.currentMeetingsTranscriptionModel?.displayName ?? "Not set — pick one")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.06)))
+            }
+            .buttonStyle(.plain)
+            if transcriptionModelManager.currentMeetingsTranscriptionModel == nil {
+                Text("Required for importing meetings")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

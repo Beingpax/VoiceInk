@@ -142,9 +142,52 @@ class NativeAppleTranscriptionService: TranscriptionService {
         throw ServiceError.unsupportedOS
         #endif
     }
-    
-    
-    
+
+    func transcribeWithSegments(audioURL: URL, model: any TranscriptionModel) async throws -> [TranscriptSegment] {
+        guard model is NativeAppleModel else {
+            throw ServiceError.invalidModel
+        }
+        guard #available(macOS 26, *) else {
+            throw ServiceError.unsupportedOS
+        }
+
+        #if canImport(Speech) && ENABLE_NATIVE_SPEECH_ANALYZER
+        let audioFile = try AVAudioFile(forReading: audioURL)
+        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
+        let appleLocale = mapToAppleLocale(selectedLanguage)
+        let locale = Locale(identifier: appleLocale)
+
+        let supportedLocales = await SpeechTranscriber.supportedLocales
+        let isLocaleSupported = supportedLocales.map({ $0.identifier(.bcp47) }).contains(locale.identifier(.bcp47))
+        guard isLocaleSupported else {
+            throw ServiceError.localeNotSupported
+        }
+
+        let transcriber = SpeechTranscriber(
+            locale: locale,
+            transcriptionOptions: [],
+            reportingOptions: [],
+            attributeOptions: []
+        )
+        try await ensureModelIsAvailable(for: transcriber, locale: locale)
+
+        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        try await analyzer.start(inputAudioFile: audioFile, finishAfterFile: true)
+
+        var segments: [TranscriptSegment] = []
+        for try await result in transcriber.results {
+            let text = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { continue }
+            let start = CMTimeGetSeconds(result.range.start)
+            let end = CMTimeGetSeconds(CMTimeRangeGetEnd(result.range))
+            segments.append(TranscriptSegment(startSec: start, endSec: end, text: text))
+        }
+        return segments
+        #else
+        throw ServiceError.unsupportedOS
+        #endif
+    }
+
     // Forward-compatibility: Use Any here because SpeechTranscriber is only available in future macOS SDKs.
     // This avoids referencing an unavailable SDK symbol while keeping the method shape for later adoption.
     @available(macOS 26, *)

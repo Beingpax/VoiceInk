@@ -22,6 +22,7 @@ struct VoiceInkApp: App {
     @StateObject private var menuBarManager: MenuBarManager
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
+    @StateObject private var meetingPipeline: MeetingPipeline
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
@@ -51,7 +52,10 @@ struct VoiceInkApp: App {
         let schema = Schema([
             Transcription.self,
             VocabularyWord.self,
-            WordReplacement.self
+            WordReplacement.self,
+            Meeting.self,
+            Speaker.self,
+            Segment.self
         ])
         var initializationFailed = false
 
@@ -135,12 +139,27 @@ struct VoiceInkApp: App {
         whisperModelManager.loadAvailableModels()
         transcriptionModelManager.refreshAllAvailableModels()
         transcriptionModelManager.loadCurrentTranscriptionModel()
+        transcriptionModelManager.loadCurrentMeetingsTranscriptionModel()
 
         _whisperModelManager = StateObject(wrappedValue: whisperModelManager)
         _fluidAudioModelManager = StateObject(wrappedValue: fluidAudioModelManager)
         _transcriptionModelManager = StateObject(wrappedValue: transcriptionModelManager)
         _recorderUIManager = StateObject(wrappedValue: recorderUIManager)
         _engine = StateObject(wrappedValue: engine)
+
+        // Inject the service registry into the model manager so meetingsEligibleModels can filter streaming-only variants.
+        transcriptionModelManager.configure(registry: engine.serviceRegistry)
+
+        // Configure registries that need the composed AIService instance.
+        MeetingSummarizerRegistry.shared.configure(aiService: aiService)
+
+        // Build MeetingPipeline — reuses the engine's serviceRegistry so no duplicate instances.
+        let meetingPipeline = MeetingPipeline(
+            modelContext: container.mainContext,
+            transcriptionRegistry: engine.serviceRegistry,
+            engine: engine
+        )
+        _meetingPipeline = StateObject(wrappedValue: meetingPipeline)
 
         // 7. Create other services that depend on engine
         let hotkeyManager = HotkeyManager(engine: engine, recorderUIManager: recorderUIManager)
@@ -191,7 +210,7 @@ struct VoiceInkApp: App {
             let dictionaryStoreURL = appSupportURL.appendingPathComponent("dictionary.store")
 
             // Transcript configuration
-            let transcriptSchema = Schema([Transcription.self])
+            let transcriptSchema = Schema([Transcription.self, Meeting.self, Speaker.self, Segment.self])
             let transcriptConfig = ModelConfiguration(
                 "default",
                 schema: transcriptSchema,
@@ -227,7 +246,7 @@ struct VoiceInkApp: App {
     private static func createInMemoryContainer(schema: Schema, logger: Logger) -> ModelContainer? {
         do {
             // Transcript configuration
-            let transcriptSchema = Schema([Transcription.self])
+            let transcriptSchema = Schema([Transcription.self, Meeting.self, Speaker.self, Segment.self])
             let transcriptConfig = ModelConfiguration(
                 "default",
                 schema: transcriptSchema,
@@ -263,6 +282,7 @@ struct VoiceInkApp: App {
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
+                    .environmentObject(meetingPipeline)
                     .modelContainer(container)
                     .onAppear {
                         // Check if container initialization failed
@@ -347,6 +367,7 @@ struct VoiceInkApp: App {
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
+                .environmentObject(meetingPipeline)
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width
