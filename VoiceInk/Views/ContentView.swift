@@ -5,6 +5,7 @@ import OSLog
 
 enum ViewType: String, CaseIterable, Identifiable {
     case history = "History"
+    case meetings = "Meetings"
     case statistics = "Statistics"
     case models = "AI Models"
     case enhancement = "Enhancement"
@@ -20,6 +21,7 @@ enum ViewType: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .history: return "clock.arrow.circlepath"
+        case .meetings: return "person.wave.2"
         case .statistics: return "chart.bar.xaxis"
         case .models: return "brain"
         case .enhancement: return "wand.and.stars"
@@ -75,7 +77,7 @@ struct ContentView: View {
             : [.enhancement]
 
         return [
-            SidebarSection(title: "Transcription", items: [.history, .statistics, .models, .audioInput, .dictionary]),
+            SidebarSection(title: "Transcription", items: [.history, .meetings, .statistics, .models, .audioInput, .dictionary]),
             SidebarSection(title: "Enhancement", items: enhancementItems),
             SidebarSection(title: "App", items: [.permissions, .settings]),
             SidebarSection(title: "Account", items: [.license])
@@ -146,6 +148,8 @@ struct ContentView: View {
         switch viewType {
         case .history:
             InlineHistoryView()
+        case .meetings:
+            MeetingsListView()
         case .statistics:
             StatisticsView()
         case .models:

@@ -1,14 +1,28 @@
 import Foundation
+import AVFoundation
+import CoreMedia
 
-/// A protocol defining the interface for a transcription service.
-/// This allows for a unified way to handle both local and cloud-based transcription models.
+struct TranscriptSegment: Equatable, Hashable, Sendable {
+    let startSec: Double
+    let endSec: Double
+    let text: String
+}
+
 protocol TranscriptionService {
-    /// Transcribes the audio from a given file URL.
-    ///
-    /// - Parameters:
-    ///   - audioURL: The URL of the audio file to transcribe.
-    ///   - model: The `TranscriptionModel` to use for transcription. This provides context about the provider (local, OpenAI, etc.).
-    /// - Returns: The transcribed text as a `String`.
-    /// - Throws: An error if the transcription fails.
     func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String
-} 
+    func transcribeWithSegments(audioURL: URL, model: any TranscriptionModel) async throws -> [TranscriptSegment]
+}
+
+extension TranscriptionService {
+    func transcribeWithSegments(audioURL: URL, model: any TranscriptionModel) async throws -> [TranscriptSegment] {
+        let text = try await transcribe(audioURL: audioURL, model: model)
+        let durationSec = try await audioDurationSeconds(url: audioURL)
+        return [TranscriptSegment(startSec: 0, endSec: durationSec, text: text)]
+    }
+}
+
+private func audioDurationSeconds(url: URL) async throws -> Double {
+    let asset = AVURLAsset(url: url)
+    let duration = try await asset.load(.duration)
+    return CMTimeGetSeconds(duration)
+}
