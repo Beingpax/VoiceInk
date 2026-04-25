@@ -103,8 +103,10 @@ struct MenuBarView: View {
                 }
             }
 
+            LanguageSelectionView(transcriptionModelManager: transcriptionModelManager, displayMode: .menuItem, whisperPrompt: whisperModelManager.whisperPrompt)
+
             Divider()
-            
+
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
 
             Menu {
@@ -168,8 +170,6 @@ struct MenuBarView: View {
                 }
             }
             .disabled(!enhancementService.isEnhancementEnabled)
-
-            LanguageSelectionView(transcriptionModelManager: transcriptionModelManager, displayMode: .menuItem, whisperPrompt: whisperModelManager.whisperPrompt)
 
             Divider()
 

@@ -1,6 +1,5 @@
 import Foundation
 import SwiftData
-import LLMkit
 
 struct SonioxProvider: CloudProvider {
     let modelProvider: ModelProvider = .soniox
@@ -30,12 +29,12 @@ struct SonioxProvider: CloudProvider {
     ]}
 
     func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, prompt: String?, customVocabulary: [String]) async throws -> String {
-        return try await SonioxClient.transcribe(
+        return try await SonioxLocalClient.transcribe(
             audioData: audioData,
             fileName: fileName,
             apiKey: apiKey,
             model: model,
-            language: language,
+            languageHints: SelectedLanguagesStore.languageHints(),
             customVocabulary: customVocabulary
         )
     }
@@ -45,6 +44,6 @@ struct SonioxProvider: CloudProvider {
     }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {
-        return await SonioxClient.verifyAPIKey(key)
+        return await SonioxLocalClient.verifyAPIKey(key)
     }
 }

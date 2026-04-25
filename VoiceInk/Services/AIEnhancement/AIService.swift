@@ -381,7 +381,7 @@ class AIService: ObservableObject {
             case .mistral:
                 result = await MistralTranscriptionClient.verifyAPIKey(key)
             case .soniox:
-                result = await SonioxClient.verifyAPIKey(key)
+                result = await SonioxLocalClient.verifyAPIKey(key)
             case .speechmatics:
                 result = await SpeechmaticsClient.verifyAPIKey(key)
             case .openRouter:

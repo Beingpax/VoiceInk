@@ -24,6 +24,7 @@ enum AppDefaults {
             "IsVADEnabled": true,
             "RemoveFillerWords": true,
             "SelectedLanguage": "en",
+            "SelectedLanguages": "en",
             "AppendTrailingSpace": true,
             "RecorderType": "mini",
 

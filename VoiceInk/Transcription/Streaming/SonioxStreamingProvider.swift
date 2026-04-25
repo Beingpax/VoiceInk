@@ -1,11 +1,13 @@
 import Foundation
 import SwiftData
-import LLMkit
 
-/// Soniox streaming provider wrapping `LLMkit.SonioxStreamingClient`.
+/// Soniox streaming provider wrapping `SonioxLocalStreamingClient`.
+///
+/// Uses the local client (instead of `LLMkit.SonioxStreamingClient`) so we can pass an array
+/// of language hints — Soniox's `language_hints` is a list, but LLMkit only accepts a single code.
 final class SonioxStreamingProvider: StreamingTranscriptionProvider {
 
-    private let client = LLMkit.SonioxStreamingClient()
+    private let client = SonioxLocalStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
     private let modelContext: ModelContext
@@ -30,15 +32,14 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         }
 
         let vocabulary = getCustomDictionaryTerms()
+        let hints = SelectedLanguagesStore.languageHints()
 
-        // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "stt-rt-v4", language: language, customVocabulary: vocabulary)
+            try await client.connect(apiKey: apiKey, model: "stt-rt-v4", languageHints: hints, customVocabulary: vocabulary)
         } catch {
-            // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
             forwardingTask = nil
             throw mapError(error)
@@ -108,16 +109,18 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
     }
 
     private func mapError(_ error: Error) -> Error {
-        guard let llmError = error as? LLMKitError else { return error }
-        switch llmError {
-        case .missingAPIKey:
-            return StreamingTranscriptionError.missingAPIKey
-        case .httpError(_, let message):
-            return StreamingTranscriptionError.serverError(message)
-        case .networkError(let detail):
-            return StreamingTranscriptionError.connectionFailed(detail)
-        default:
-            return StreamingTranscriptionError.serverError(llmError.localizedDescription ?? "Unknown error")
+        if let local = error as? SonioxLocalError {
+            switch local {
+            case .missingAPIKey:
+                return StreamingTranscriptionError.missingAPIKey
+            case .httpError(_, let message), .serverError(let message):
+                return StreamingTranscriptionError.serverError(message)
+            case .timeout:
+                return StreamingTranscriptionError.timeout
+            default:
+                return StreamingTranscriptionError.serverError(local.errorDescription ?? "Unknown error")
+            }
         }
+        return error
     }
 }
