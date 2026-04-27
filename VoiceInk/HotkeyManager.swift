@@ -12,6 +12,7 @@ extension KeyboardShortcuts.Name {
     static let retryLastTranscription = Self("retryLastTranscription")
     static let openHistoryWindow = Self("openHistoryWindow")
     static let quickAddToDictionary = Self("quickAddToDictionary")
+    static let cycleLanguageMode = Self("cycleLanguageMode")
 }
 
 @MainActor
@@ -203,6 +204,13 @@ class HotkeyManager: ObservableObject {
             guard let self else { return }
             Task { @MainActor in
                 DictionaryQuickAddManager.shared.toggle(modelContainer: self.engine.modelContext.container)
+            }
+        }
+
+        LanguageModeManager.shared.configure(engine: engine, recorderUIManager: recorderUIManager)
+        KeyboardShortcuts.onKeyUp(for: .cycleLanguageMode) {
+            Task { @MainActor in
+                await LanguageModeManager.shared.cycleToNext()
             }
         }
 
