@@ -85,17 +85,19 @@ class TranscriptionPipeline {
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             logger.notice("📝 WordReplacement: \(text, privacy: .public)")
+            let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
+            logger.notice("📝 User cleanup result: \(cleanedText, privacy: .public)")
 
             let audioAsset = AVURLAsset(url: audioURL)
             let actualDuration = (try? CMTimeGetSeconds(await audioAsset.load(.duration))) ?? 0.0
 
-            transcription.text = text
+            transcription.text = cleanedText
             transcription.duration = actualDuration
             transcription.transcriptionModelName = model.displayName
             transcription.transcriptionDuration = transcriptionDuration
             transcription.powerModeName = powerModeName
             transcription.powerModeEmoji = powerModeEmoji
-            finalPastedText = text
+            finalPastedText = cleanedText
 
             if let enhancementService, enhancementService.isConfigured {
                 let detectionResult = await promptDetectionService.analyzeText(text, with: enhancementService)

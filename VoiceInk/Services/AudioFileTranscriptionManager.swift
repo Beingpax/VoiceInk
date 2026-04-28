@@ -169,6 +169,7 @@ class AudioTranscriptionManager: ObservableObject {
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
+            let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
             try Task.checkCancellation()
 
             // Handle enhancement if enabled
@@ -181,7 +182,7 @@ class AudioTranscriptionManager: ObservableObject {
                 do {
                     let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(text)
                     transcription = Transcription(
-                        text: text,
+                        text: cleanedText,
                         duration: duration,
                         enhancedText: enhancedText,
                         audioFileURL: permanentURL.absoluteString,
@@ -198,7 +199,7 @@ class AudioTranscriptionManager: ObservableObject {
                 } catch {
                     logger.error("Enhancement failed: \(error.localizedDescription, privacy: .public)")
                     transcription = Transcription(
-                        text: text,
+                        text: cleanedText,
                         duration: duration,
                         enhancedText: "Enhancement failed: \(error.localizedDescription)",
                         audioFileURL: permanentURL.absoluteString,
@@ -211,7 +212,7 @@ class AudioTranscriptionManager: ObservableObject {
                 }
             } else {
                 transcription = Transcription(
-                    text: text,
+                    text: cleanedText,
                     duration: duration,
                     audioFileURL: permanentURL.absoluteString,
                     transcriptionModelName: currentModel.displayName,
