@@ -94,10 +94,11 @@ struct WhisperModelCardView: View {
     
     private var progressSection: some View {
         Group {
-            if isDownloading {
+            if isDownloading || isWarming {
                 DownloadProgressView(
                     modelName: model.name,
-                    downloadProgress: downloadProgress
+                    downloadProgress: downloadProgress,
+                    isOptimizing: isWarming && !isDownloading
                 )
                 .padding(.top, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -112,22 +113,12 @@ struct WhisperModelCardView: View {
                     .font(.system(size: 12))
                     .foregroundColor(Color(.secondaryLabelColor))
             } else if isDownloaded {
-                if isWarming {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Optimizing model for your device...")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color(.secondaryLabelColor))
-                    }
-                } else {
-                    Button(action: setDefaultAction) {
-                        Text("Set as Default")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                Button(action: setDefaultAction) {
+                    Text("Set as Default")
+                        .font(.system(size: 12))
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             } else {
                 Button(action: downloadAction) {
                     HStack(spacing: 4) {

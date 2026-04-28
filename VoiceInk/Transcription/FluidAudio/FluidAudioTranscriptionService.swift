@@ -47,7 +47,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         let task = Task {
-            try await AsrModels.loadFromCache(
+            try await AsrModels.downloadAndLoad(
                 configuration: nil,
                 version: version
             )

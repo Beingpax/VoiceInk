@@ -101,12 +101,26 @@ struct FluidAudioModelCardView: View {
 
     private var progressSection: some View {
         Group {
-            if isDownloading {
-                let progress = fluidAudioModelManager.downloadProgress[model.name] ?? 0.0
-                ProgressView(value: progress)
-                    .progressViewStyle(LinearProgressViewStyle())
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 8)
+            if let status = fluidAudioModelManager.downloadStatus(for: model) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(status.message)
+                            .lineLimit(1)
+
+                        Spacer()
+
+                        Text("\(Int(status.fractionCompleted * 100))%")
+                            .fontDesign(.monospaced)
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(.secondaryLabelColor))
+
+                    ProgressView(value: status.fractionCompleted)
+                        .progressViewStyle(LinearProgressViewStyle())
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+                .animation(.smooth, value: status.fractionCompleted)
             }
         }
     }

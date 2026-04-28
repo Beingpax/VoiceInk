@@ -402,6 +402,7 @@ extension WhisperModelManager: WhisperModelProvider {}
 struct DownloadProgressView: View {
     let modelName: String
     let downloadProgress: [String: Double]
+    var isOptimizing = false
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -418,10 +419,18 @@ struct DownloadProgressView: View {
     }
 
     private var totalProgress: Double {
-        supportsCoreML ? (mainProgress * 0.5) + (coreMLProgress * 0.5) : mainProgress
+        if isOptimizing {
+            return 1
+        }
+
+        return supportsCoreML ? (mainProgress * 0.5) + (coreMLProgress * 0.5) : mainProgress
     }
 
     private var downloadPhase: String {
+        if isOptimizing {
+            return "Optimizing model for your device"
+        }
+
         if supportsCoreML && downloadProgress[modelName + "_coreml"] != nil {
             return "Downloading Core ML Model for \(modelName)"
         }
@@ -430,7 +439,15 @@ struct DownloadProgressView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(downloadPhase)
+            HStack {
+                Text(downloadPhase)
+                    .lineLimit(1)
+
+                Spacer()
+
+                Text("\(Int(totalProgress * 100))%")
+                    .fontDesign(.monospaced)
+            }
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(Color(.secondaryLabelColor))
 
@@ -446,13 +463,6 @@ struct DownloadProgressView: View {
                 }
             }
             .frame(height: 6)
-
-            HStack {
-                Spacer()
-                Text("\(Int(totalProgress * 100))%")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            }
         }
         .padding(.vertical, 4)
         .animation(.smooth, value: totalProgress)
