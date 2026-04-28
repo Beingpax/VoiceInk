@@ -101,8 +101,10 @@ class RecorderUIManager: ObservableObject {
                 logger.notice("toggleMiniRecorder: ignored while hidden and state=\(String(describing: engine.recordingState), privacy: .public)")
                 return
             }
-            SoundManager.shared.playStartSound {
-                Task { await MediaController.shared.muteSystemAudio() }
+            SoundManager.shared.playStartSound()
+            Task {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                await MediaController.shared.muteSystemAudio()
             }
             await MainActor.run { isMiniRecorderVisible = true }
             await engine.toggleRecord(powerModeId: powerModeId)
