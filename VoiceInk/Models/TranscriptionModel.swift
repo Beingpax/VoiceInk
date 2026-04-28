@@ -85,6 +85,11 @@ struct FluidAudioModel: TranscriptionModel {
     }
     let supportedLanguages: [String: String]
 
+    var language: String {
+        if isMultilingualModel { return "Multilingual" }
+        return supportedLanguages.first?.value ?? "English"
+    }
+
     init(name: String, displayName: String, description: String, size: String, speed: Double, accuracy: Double, ramUsage: Double, supportsStreaming: Bool = false, supportedLanguages: [String: String]) {
         self.name = name
         self.displayName = displayName

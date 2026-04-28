@@ -22,6 +22,7 @@ class FluidAudioModelManager: ObservableObject {
     private static let modelVersionMap: [String: AsrModelVersion] = [
         "parakeet-tdt-0.6b-v2": .v2,
         "parakeet-tdt-0.6b-v3": .v3,
+        "parakeet-tdt-0.6b-ja": .tdtJa,
     ]
 
     nonisolated static func asrVersion(for modelName: String) -> AsrModelVersion {

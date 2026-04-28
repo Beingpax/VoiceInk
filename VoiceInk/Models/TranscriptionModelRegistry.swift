@@ -40,6 +40,17 @@ enum TranscriptionModelRegistry {
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
             ),
+            FluidAudioModel(
+                name: "parakeet-tdt-0.6b-ja",
+                displayName: "Parakeet (Japanese)",
+                description: "Parakeet 0.6B TDT model fine-tuned for Japanese (ja) transcription",
+                size: "600 MB",
+                speed: 0.99,
+                accuracy: 0.94,
+                ramUsage: 0.8,
+                supportsStreaming: false,
+                supportedLanguages: ["ja": "Japanese"]
+            ),
 
             // Local Models
             WhisperModel(
