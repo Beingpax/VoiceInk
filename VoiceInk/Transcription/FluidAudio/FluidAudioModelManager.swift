@@ -11,6 +11,7 @@ struct FluidAudioDownloadStatus {
 @MainActor
 class FluidAudioModelManager: ObservableObject {
     @Published private var downloadStatuses: [String: FluidAudioDownloadStatus] = [:]
+    private var activeDownloadIDs: [String: UUID] = [:]
 
     var onModelDeleted: ((String) -> Void)?
     var onModelsChanged: (() -> Void)?
@@ -56,15 +57,21 @@ class FluidAudioModelManager: ObservableObject {
         }
 
         let modelName = model.name
+        let downloadID = UUID()
+        activeDownloadIDs[modelName] = downloadID
         downloadStatuses[modelName] = FluidAudioDownloadStatus(
             fractionCompleted: 0.0,
             message: "Preparing FluidAudio download..."
         )
+        defer {
+            clearDownloadStatus(for: modelName, downloadID: downloadID)
+            onModelsChanged?()
+        }
 
         let version = FluidAudioModelManager.asrVersion(for: modelName)
         let progressHandler: DownloadUtils.ProgressHandler = { [weak self] progress in
             Task { @MainActor [weak self] in
-                self?.updateDownloadProgress(progress, for: modelName)
+                self?.updateDownloadProgress(progress, for: modelName, downloadID: downloadID)
             }
         }
 
@@ -76,10 +83,6 @@ class FluidAudioModelManager: ObservableObject {
         } catch {
             logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
-
-        downloadStatuses[modelName] = nil
-
-        onModelsChanged?()
     }
 
     // MARK: - Delete
@@ -119,7 +122,15 @@ class FluidAudioModelManager: ObservableObject {
         AsrModels.defaultCacheDirectory(for: version)
     }
 
-    private func updateDownloadProgress(_ progress: DownloadUtils.DownloadProgress, for modelName: String) {
+    private func clearDownloadStatus(for modelName: String, downloadID: UUID) {
+        guard activeDownloadIDs[modelName] == downloadID else { return }
+        activeDownloadIDs[modelName] = nil
+        downloadStatuses[modelName] = nil
+    }
+
+    private func updateDownloadProgress(_ progress: DownloadUtils.DownloadProgress, for modelName: String, downloadID: UUID) {
+        guard activeDownloadIDs[modelName] == downloadID else { return }
+
         downloadStatuses[modelName] = FluidAudioDownloadStatus(
             fractionCompleted: min(max(progress.fractionCompleted, 0.0), 1.0),
             message: FluidAudioModelManager.statusMessage(for: progress)
