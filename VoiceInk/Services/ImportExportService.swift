@@ -9,6 +9,7 @@ struct GeneralSettings: Codable {
     let toggleMiniRecorderShortcut: KeyboardShortcuts.Shortcut?
     let toggleMiniRecorderShortcut2: KeyboardShortcuts.Shortcut?
     let retryLastTranscriptionShortcut: KeyboardShortcuts.Shortcut?
+    let cycleLanguageModeShortcut: KeyboardShortcuts.Shortcut?
     let selectedHotkey1RawValue: String?
     let selectedHotkey2RawValue: String?
     let launchAtLoginEnabled: Bool?
@@ -44,6 +45,8 @@ struct VoiceInkExportedSettings: Codable {
     let generalSettings: GeneralSettings?
     let customEmojis: [String]?
     let customCloudModels: [CustomCloudModel]?
+    let languageModes: [LanguageMode]?
+    let activeLanguageModeId: String?
 }
 
 class ImportExportService {
@@ -102,6 +105,7 @@ class ImportExportService {
             toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
             toggleMiniRecorderShortcut2: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2),
             retryLastTranscriptionShortcut: KeyboardShortcuts.getShortcut(for: .retryLastTranscription),
+            cycleLanguageModeShortcut: KeyboardShortcuts.getShortcut(for: .cycleLanguageMode),
             selectedHotkey1RawValue: hotkeyManager.selectedHotkey1.rawValue,
             selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
@@ -131,7 +135,9 @@ class ImportExportService {
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
-            customCloudModels: customModels
+            customCloudModels: customModels,
+            languageModes: LanguageModeManager.shared.modes,
+            activeLanguageModeId: LanguageModeManager.shared.activeModeId?.uuidString
         )
 
         let encoder = JSONEncoder()
@@ -197,6 +203,11 @@ class ImportExportService {
                     let powerModeManager = PowerModeManager.shared
                     powerModeManager.configurations = importedSettings.powerModeConfigs
                     powerModeManager.saveConfigurations()
+
+                    if let importedLanguageModes = importedSettings.languageModes {
+                        let activeId = importedSettings.activeLanguageModeId.flatMap(UUID.init)
+                        LanguageModeManager.shared.replaceAll(modes: importedLanguageModes, activeId: activeId)
+                    }
 
                     // Import Custom Models
                     if let modelsToImport = importedSettings.customCloudModels {
@@ -280,6 +291,9 @@ class ImportExportService {
                         }
                         if let retryShortcut = general.retryLastTranscriptionShortcut {
                             KeyboardShortcuts.setShortcut(retryShortcut, for: .retryLastTranscription)
+                        }
+                        if let cycleShortcut = general.cycleLanguageModeShortcut {
+                            KeyboardShortcuts.setShortcut(cycleShortcut, for: .cycleLanguageMode)
                         }
                         if let hotkeyRaw = general.selectedHotkey1RawValue,
                            let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
