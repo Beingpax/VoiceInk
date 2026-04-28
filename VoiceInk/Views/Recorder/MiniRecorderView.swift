@@ -5,7 +5,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: MiniWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
-    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = true
+    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
 
     @State private var activePopover: ActivePopoverState = .none
 

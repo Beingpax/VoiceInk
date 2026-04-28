@@ -7,7 +7,7 @@ struct ModelSettingsView: View {
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
-    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = true
+    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
 
