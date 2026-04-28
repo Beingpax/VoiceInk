@@ -32,7 +32,7 @@ enum TranscriptionModelRegistry {
             FluidAudioModel(
                 name: "parakeet-tdt-0.6b-v3",
                 displayName: "Parakeet V3",
-                description: "NVIDIA's Parakeet V3 model with multilingual support across English and 25 European languages",
+                description: "Parakeet V3 with English and 25 European language support",
                 size: "494 MB",
                 speed: 0.99,
                 accuracy: 0.94,
