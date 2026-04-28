@@ -61,6 +61,7 @@ class AudioTranscriptionService: ObservableObject {
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             logger.notice("✅ Word replacements applied")
+            let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
 
             let audioAsset = AVURLAsset(url: url)
             let duration = CMTimeGetSeconds(try await audioAsset.load(.duration))
@@ -82,7 +83,7 @@ class AudioTranscriptionService: ObservableObject {
             let permanentURLString = permanentURL.absoluteString
 
             // Apply prompt detection for trigger words
-            let originalText = text
+            let originalText = cleanedText
             var promptDetectionResult: PromptDetectionService.PromptDetectionResult? = nil
 
             if let enhancementService = enhancementService, enhancementService.isConfigured {
