@@ -19,6 +19,7 @@ final class APIKeyManager {
         "soniox": "sonioxAPIKey",
         "speechmatics": "speechmaticsAPIKey",
         "xai": "xaiAPIKey",
+        "cartesia": "cartesiaAPIKey",
         "openai": "openAIAPIKey",
         "anthropic": "anthropicAPIKey",
         "openrouter": "openRouterAPIKey"
