@@ -123,6 +123,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             HStack(spacing: 10) {
                 RecorderPromptButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
                 RecorderPowerModeButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
+                RecorderLanguageModeButton(buttonSize: 20, padding: EdgeInsets())
                 Spacer(minLength: 0)
             }
             .padding(.leading, displayState == .liveText ? 18 : 14)
