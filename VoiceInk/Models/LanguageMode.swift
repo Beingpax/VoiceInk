@@ -126,6 +126,19 @@ class LanguageModeManager: ObservableObject {
         saveModes()
     }
 
+    /// Replace all modes in one shot. Used by settings import to restore a backup.
+    func replaceAll(modes newModes: [LanguageMode], activeId: UUID?) {
+        modes = newModes
+        saveModes()
+        if let activeId = activeId, newModes.contains(where: { $0.id == activeId }) {
+            activeModeId = activeId
+            UserDefaults.standard.set(activeId.uuidString, forKey: activeIdKey)
+        } else {
+            activeModeId = nil
+            UserDefaults.standard.removeObject(forKey: activeIdKey)
+        }
+    }
+
     var activeMode: LanguageMode? {
         guard let id = activeModeId else { return nil }
         return modes.first { $0.id == id }
@@ -185,7 +198,15 @@ class LanguageModeManager: ObservableObject {
            let stateProvider = stateProvider,
            stateProvider.currentTranscriptionModel?.name != modelName,
            let selectedModel = stateProvider.allAvailableModels.first(where: { $0.name == modelName }) {
-            await switchModel(to: selectedModel, using: stateProvider)
+            if selectedModel.provider == .whisper,
+               !stateProvider.availableModels.contains(where: { $0.name == modelName }) {
+                NotificationManager.shared.showNotification(
+                    title: "Model '\(selectedModel.displayName)' is not downloaded",
+                    type: .error
+                )
+            } else {
+                await switchModel(to: selectedModel, using: stateProvider)
+            }
         }
 
         NotificationManager.shared.showNotification(
