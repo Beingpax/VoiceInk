@@ -70,6 +70,8 @@ class PowerModeShortcutManager {
     }
 
     private func canProcessHotkeyAction(engine: VoiceInkEngine) -> Bool {
+        engine.recordingState != .starting &&
+        engine.recordingState != .stopping &&
         engine.recordingState != .transcribing &&
         engine.recordingState != .enhancing &&
         engine.recordingState != .busy

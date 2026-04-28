@@ -86,14 +86,21 @@ class RecorderUIManager: ObservableObject {
         logger.notice("toggleMiniRecorder called – visible=\(self.isMiniRecorderVisible, privacy: .public), state=\(String(describing: engine.recordingState), privacy: .public)")
 
         if isMiniRecorderVisible {
-            if engine.recordingState == .recording {
+            switch engine.recordingState {
+            case .recording:
                 logger.notice("toggleMiniRecorder: stopping recording (was recording)")
                 await engine.toggleRecord(powerModeId: powerModeId)
-            } else {
+            case .idle:
                 logger.notice("toggleMiniRecorder: cancelling (was not recording)")
                 await cancelRecording()
+            case .starting, .stopping, .transcribing, .enhancing, .busy:
+                logger.notice("toggleMiniRecorder: ignored while state=\(String(describing: engine.recordingState), privacy: .public)")
             }
         } else {
+            guard engine.recordingState == .idle else {
+                logger.notice("toggleMiniRecorder: ignored while hidden and state=\(String(describing: engine.recordingState), privacy: .public)")
+                return
+            }
             SoundManager.shared.playStartSound {
                 Task { await MediaController.shared.muteSystemAudio() }
             }
@@ -111,7 +118,9 @@ class RecorderUIManager: ObservableObject {
             return
         }
 
-        let wasRecording = engine.recordingState == .recording
+        let shouldStopRecorder = engine.recordingState == .starting ||
+            engine.recordingState == .recording ||
+            engine.recordingState == .stopping
 
         await MainActor.run {
             engine.recordingState = .busy
@@ -121,7 +130,7 @@ class RecorderUIManager: ObservableObject {
         engine.currentSession?.cancel()
         engine.currentSession = nil
 
-        if wasRecording {
+        if shouldStopRecorder {
             await recorder.stopRecording()
         }
 

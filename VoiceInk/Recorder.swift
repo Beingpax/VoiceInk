@@ -95,9 +95,8 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    func startRecording(toOutputFile url: URL, completion: @escaping (Result<Void, Error>) -> Void) {
+    func startRecording(toOutputFile url: URL) async throws {
         logger.notice("startRecording called – deviceID=\(self.deviceManager.getCurrentDevice(), privacy: .public), file=\(url.lastPathComponent, privacy: .public)")
-        deviceManager.isRecordingActive = true
 
         let currentDeviceID = deviceManager.getCurrentDevice()
         let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
@@ -118,42 +117,46 @@ class Recorder: NSObject, ObservableObject {
         audioRestorationTask = nil
         audioMeterUpdateTimer?.cancel()
 
-        let capturedLogger = logger
         // Offload initialization to background thread to avoid hotkey lag.
-        audioSetupQueue.async { [weak self] in
-            do {
-                try coreAudioRecorder.startRecording(toOutputFile: url, deviceID: deviceID)
-                capturedLogger.notice("startRecording: CoreAudioRecorder started successfully")
-                DispatchQueue.main.async { [weak self] in
-                    self?.startAudioMeterTimer()
-                }
-                Task { [weak self] in
-                    guard let self = self else { return }
-                    await self.playbackController.pauseMedia()
-                }
-                DispatchQueue.main.async {
-                    completion(.success(()))
-                }
-            } catch {
-                capturedLogger.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
-                DispatchQueue.main.async { [weak self] in
-                    self?.stopRecording()
-                    self?.deviceManager.isRecordingActive = false
-                    completion(.failure(error))
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                audioSetupQueue.async {
+                    do {
+                        try coreAudioRecorder.startRecording(toOutputFile: url, deviceID: deviceID)
+                        continuation.resume()
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
+
+            logger.notice("startRecording: CoreAudioRecorder started successfully")
+            deviceManager.isRecordingActive = true
+            startAudioMeterTimer()
+
+            Task { [weak self] in
+                guard let self = self else { return }
+                await self.playbackController.pauseMedia()
+            }
+        } catch {
+            logger.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
+            await stopRecording()
+            throw error
         }
     }
 
-    func stopRecording() {
+    func stopRecording() async {
         logger.notice("stopRecording called")
         audioMeterUpdateTimer?.cancel()
         audioMeterUpdateTimer = nil
 
-        // Capture current recorder to stop it on the serial hardware queue
+        // Capture current recorder to stop it on the serial hardware queue.
         let currentRecorder = self.recorder
-        audioSetupQueue.async {
-            currentRecorder?.stopRecording()
+        await withCheckedContinuation { continuation in
+            audioSetupQueue.async {
+                currentRecorder?.stopRecording()
+                continuation.resume()
+            }
         }
         recorder = nil
         onAudioChunk = nil
@@ -176,7 +179,7 @@ class Recorder: NSObject, ObservableObject {
         logger.error("❌ Recording error occurred: \(error.localizedDescription, privacy: .public)")
 
         // Stop the recording
-        stopRecording()
+        await stopRecording()
 
         // Notify the user about the recording failure
         await MainActor.run {
