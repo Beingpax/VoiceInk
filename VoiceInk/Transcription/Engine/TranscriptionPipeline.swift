@@ -169,10 +169,10 @@ class TranscriptionPipeline {
             if didInsertSessionMetric {
                 NotificationCenter.default.post(name: .sessionMetricsDidChange, object: nil)
             }
+            NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
         } catch {
             logger.error("Failed to save transcription: \(error.localizedDescription, privacy: .public)")
         }
-        NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
 
         if shouldCancel() { await onCleanup(); return }
 

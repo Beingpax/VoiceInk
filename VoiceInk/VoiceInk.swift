@@ -170,11 +170,11 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
-        // Migrate stats before transcript cleanup can remove historical recorder sessions.
-        SessionMetricMigrationService.shared.runIfNeeded(modelContainer: container)
-
-        // Start cleanup service for the app's lifetime, not tied to window lifecycle
-        TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: container.mainContext)
+        let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: container)
+        Task {
+            await migrationTask?.value
+            TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: container.mainContext)
+        }
     }
 
     // MARK: - Container Creation Helpers

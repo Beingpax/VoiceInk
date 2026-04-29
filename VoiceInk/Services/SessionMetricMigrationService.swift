@@ -12,14 +12,15 @@ final class SessionMetricMigrationService {
 
     private init() {}
 
-    func runIfNeeded(modelContainer: ModelContainer) {
-        guard !UserDefaults.standard.bool(forKey: completionKey), !isRunning else { return }
+    @discardableResult
+    func runIfNeeded(modelContainer: ModelContainer) -> Task<Void, Never>? {
+        guard !UserDefaults.standard.bool(forKey: completionKey), !isRunning else { return nil }
         isRunning = true
 
         let logger = self.logger
         let completionKey = self.completionKey
 
-        Task.detached(priority: .utility) {
+        return Task.detached(priority: .utility) {
             let backgroundContext = ModelContext(modelContainer)
             var insertedCount = 0
 
@@ -71,9 +72,6 @@ final class SessionMetricMigrationService {
 
                 if insertedCount > 0 {
                     try backgroundContext.save()
-                    await MainActor.run {
-                        NotificationCenter.default.post(name: .sessionMetricsDidChange, object: nil)
-                    }
                 }
 
                 UserDefaults.standard.set(true, forKey: completionKey)
@@ -84,6 +82,7 @@ final class SessionMetricMigrationService {
 
             await MainActor.run {
                 SessionMetricMigrationService.shared.isRunning = false
+                NotificationCenter.default.post(name: .sessionMetricsDidChange, object: nil)
             }
         }
     }
