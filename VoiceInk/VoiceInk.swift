@@ -50,6 +50,7 @@ struct VoiceInkApp: App {
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
         let schema = Schema([
             Transcription.self,
+            SessionMetric.self,
             VocabularyWord.self,
             WordReplacement.self
         ])
@@ -169,6 +170,9 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
+        // Migrate stats before transcript cleanup can remove historical recorder sessions.
+        SessionMetricMigrationService.shared.runIfNeeded(modelContainer: container)
+
         // Start cleanup service for the app's lifetime, not tied to window lifecycle
         TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: container.mainContext)
     }
@@ -187,6 +191,7 @@ struct VoiceInkApp: App {
             // Define storage locations
             let defaultStoreURL = appSupportURL.appendingPathComponent("default.store")
             let dictionaryStoreURL = appSupportURL.appendingPathComponent("dictionary.store")
+            let statsStoreURL = appSupportURL.appendingPathComponent("stats.store")
 
             // Transcript configuration
             let transcriptSchema = Schema([Transcription.self])
@@ -211,10 +216,19 @@ struct VoiceInkApp: App {
                 cloudKitDatabase: dictionaryCloudKit
             )
 
+            // Recorder session metrics configuration
+            let statsSchema = Schema([SessionMetric.self])
+            let statsConfig = ModelConfiguration(
+                "stats",
+                schema: statsSchema,
+                url: statsStoreURL,
+                cloudKitDatabase: .none
+            )
+
             // Initialize container
             return try ModelContainer(
                 for: schema,
-                configurations: transcriptConfig, dictionaryConfig
+                configurations: transcriptConfig, dictionaryConfig, statsConfig
             )
         } catch {
             logger.error("❌ Failed to create persistent ModelContainer: \(error.localizedDescription, privacy: .public)")
@@ -240,7 +254,14 @@ struct VoiceInkApp: App {
                 isStoredInMemoryOnly: true
             )
 
-            return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig)
+            let statsSchema = Schema([SessionMetric.self])
+            let statsConfig = ModelConfiguration(
+                "stats",
+                schema: statsSchema,
+                isStoredInMemoryOnly: true
+            )
+
+            return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
         } catch {
             logger.error("❌ Failed to create in-memory ModelContainer: \(error.localizedDescription, privacy: .public)")
             return nil
