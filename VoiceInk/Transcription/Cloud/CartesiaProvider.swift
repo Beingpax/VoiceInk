@@ -17,7 +17,7 @@ struct CartesiaProvider: CloudProvider {
         "ro", "ru", "sa", "sd", "si", "sk", "sl", "sn", "so", "sq",
         "sr", "su", "sv", "sw", "ta", "te", "tg", "th", "tk", "tl",
         "tr", "tt", "uk", "ur", "uz", "vi", "yi", "yo", "yue", "zh",
-        "zh", "zu"
+        "zu"
     ]
     let includesAutoDetect: Bool = false
 
