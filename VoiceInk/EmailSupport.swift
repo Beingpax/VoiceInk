@@ -3,11 +3,13 @@ import SwiftUI
 import AppKit
 
 struct EmailSupport {
-    static func generateSupportEmailURL() -> URL? {
-        let subject = "VoiceInk Support Request"
+    private static let supportEmailAddress = "prakashjoshipax@gmail.com"
+    private static let supportEmailSubject = "VoiceInk Support Request"
+
+    static func generateSupportEmailBody() -> String {
         let systemInfo = SystemInfoService.shared.getSystemInfoString()
 
-        let body = """
+        return """
 
         ------------------------
         ✨ **SCREEN RECORDING HIGHLY RECOMMENDED** ✨
@@ -29,18 +31,27 @@ struct EmailSupport {
 
 
         """
-        
-        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let encodedBody = body.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        
-        return URL(string: "mailto:prakashjoshipax@gmail.com?subject=\(encodedSubject)&body=\(encodedBody)")
     }
-    
+
+    static func generateSupportEmailURL() -> URL? {
+        let encodedSubject = supportEmailSubject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        return URL(string: "mailto:\(supportEmailAddress)?subject=\(encodedSubject)")
+    }
+
     static func openSupportEmail() {
+        let body = generateSupportEmailBody()
+
+        if let sharingService = NSSharingService(named: .composeEmail) {
+            sharingService.recipients = [supportEmailAddress]
+            sharingService.subject = supportEmailSubject
+            sharingService.perform(withItems: [body])
+            return
+        }
+
+        SystemInfoService.shared.copySystemInfoToClipboard()
+
         if let emailURL = generateSupportEmailURL() {
             NSWorkspace.shared.open(emailURL)
         }
     }
-    
-    
 }
