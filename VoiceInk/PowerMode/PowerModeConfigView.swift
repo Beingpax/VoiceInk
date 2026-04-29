@@ -58,6 +58,17 @@ struct ConfigurationView: View {
         return model.provider == .fluidAudio || model.provider == .gemini
     }
 
+    private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {
+        TranscriptionLanguageSupport.languages(for: model)
+    }
+
+    private func useCompatibleLanguage(for model: any TranscriptionModel) {
+        selectedLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(
+            selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            for: model
+        )
+    }
+
     init(mode: ConfigurationMode, powerModeManager: PowerModeManager, onDismiss: @escaping () -> Void) {
         self.mode = mode
         self.powerModeManager = powerModeManager
@@ -287,11 +298,13 @@ struct ConfigurationView: View {
                             }
                         }
                         .onChange(of: selectedTranscriptionModelName) { _, newModelName in
-                            // Auto-set language to "auto" for models that only support auto-detection
                             if let modelName = newModelName ?? transcriptionModelManager.currentTranscriptionModel?.name,
-                               let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),
-                               model.provider == .fluidAudio || model.provider == .gemini {
-                                selectedLanguage = "auto"
+                               let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
+                                if model.provider == .fluidAudio || model.provider == .gemini {
+                                    selectedLanguage = "auto"
+                                } else {
+                                    useCompatibleLanguage(for: model)
+                                }
                             }
                         }
                     }
@@ -313,7 +326,7 @@ struct ConfigurationView: View {
                         )
 
                         Picker("Language", selection: languageBinding) {
-                            ForEach(modelInfo.supportedLanguages.sorted(by: {
+                            ForEach(availableLanguages(for: modelInfo).sorted(by: {
                                 if $0.key == "auto" { return true }
                                 if $1.key == "auto" { return false }
                                 return $0.value < $1.value
@@ -543,6 +556,13 @@ struct ConfigurationView: View {
 
                 if isAIEnhancementEnabled && selectedPromptId == nil {
                     selectedPromptId = enhancementService.allPrompts.first?.id
+                }
+
+                if let selectedModelName = effectiveModelName,
+                   let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
+                   model.provider != .fluidAudio,
+                   model.provider != .gemini {
+                    useCompatibleLanguage(for: model)
                 }
 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {

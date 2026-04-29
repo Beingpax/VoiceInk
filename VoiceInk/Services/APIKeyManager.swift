@@ -18,6 +18,7 @@ final class APIKeyManager {
         "elevenlabs": "elevenLabsAPIKey",
         "soniox": "sonioxAPIKey",
         "speechmatics": "speechmaticsAPIKey",
+        "assemblyai": "assemblyAIAPIKey",
         "xai": "xaiAPIKey",
         "cartesia": "cartesiaAPIKey",
         "openai": "openAIAPIKey",

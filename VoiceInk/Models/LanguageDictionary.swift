@@ -1,7 +1,70 @@
 import Foundation
 
-enum LanguageDictionary {
+enum TranscriptionLanguageSupport {
+    private static let assemblyAIRealtimeLanguageCodes = ["en", "es", "de", "fr", "pt", "it"]
 
+    private static let assemblyAIBatchLanguageCodes = [
+        "en", "en_au", "en_uk", "en_us", "es", "fr", "de", "it", "pt", "nl",
+        "hi", "ja", "zh", "fi", "ko", "pl", "ru", "tr", "uk", "vi", "af",
+        "sq", "am", "ar", "hy", "as", "az", "ba", "eu", "be", "bn", "bs",
+        "br", "bg", "my", "ca", "hr", "cs", "da", "et", "fo", "gl", "ka",
+        "el", "gu", "ht", "ha", "haw", "he", "hu", "is", "id", "jw", "kn",
+        "kk", "km", "lo", "la", "lv", "ln", "lt", "lb", "mk", "mg", "ms",
+        "ml", "mt", "mi", "mr", "mn", "ne", "no", "nn", "oc", "pa", "ps",
+        "fa", "ro", "sa", "sr", "sn", "sd", "si", "sk", "sl", "so", "su",
+        "sw", "sv", "de_ch", "tl", "tg", "ta", "tt", "te", "th", "bo",
+        "tk", "ur", "uz", "cy", "yi", "yo"
+    ]
+
+    static func languages(for model: any TranscriptionModel) -> [String: String] {
+        if model.provider == .assemblyAI {
+            return assemblyAILanguages(usesRealtime: assemblyAIUsesRealtime(for: model))
+        }
+
+        return model.supportedLanguages
+    }
+
+    static func validLanguageOrFallback(_ language: String?, for model: any TranscriptionModel) -> String {
+        let languages = languages(for: model)
+
+        if let language, languages[language] != nil {
+            return language
+        }
+
+        if languages["auto"] != nil {
+            return "auto"
+        }
+
+        if languages["en"] != nil {
+            return "en"
+        }
+
+        return languages.keys.sorted { lhs, rhs in
+            languages[lhs, default: lhs] < languages[rhs, default: rhs]
+        }.first ?? "en"
+    }
+
+    private static func assemblyAILanguages(usesRealtime: Bool) -> [String: String] {
+        let codes = usesRealtime ? assemblyAIRealtimeLanguageCodes : assemblyAIBatchLanguageCodes
+        var filtered = LanguageDictionary.all.filter { codes.contains($0.key) }
+        filtered["auto"] = "Auto-detect"
+        return filtered
+    }
+
+    private static func assemblyAIUsesRealtime(for model: any TranscriptionModel) -> Bool {
+        guard model.provider == .assemblyAI, model.supportsStreaming else {
+            return false
+        }
+
+        if let cloudProvider = CloudProviderRegistry.provider(for: model.provider), cloudProvider.isStreamingOnly {
+            return true
+        }
+
+        return UserDefaults.standard.object(forKey: "streaming-enabled-\(model.name)") as? Bool ?? true
+    }
+}
+
+enum LanguageDictionary {
     static func forProvider(isMultilingual: Bool, provider: ModelProvider = .whisper) -> [String: String] {
         if !isMultilingual {
             return ["en": "English"]
@@ -97,8 +160,12 @@ enum LanguageDictionary {
         "cy": "Welsh",
         "da": "Danish",
         "de": "German",
+        "de_ch": "Swiss German",
         "el": "Greek",
         "en": "English",
+        "en_au": "Australian English",
+        "en_uk": "British English",
+        "en_us": "US English",
         "es": "Spanish",
         "et": "Estonian",
         "eu": "Basque",

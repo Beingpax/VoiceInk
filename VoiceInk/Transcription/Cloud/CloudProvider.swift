@@ -34,6 +34,7 @@ enum CloudProviderRegistry {
         GeminiProvider(),
         SonioxProvider(),
         SpeechmaticsProvider(),
+        AssemblyAIProvider(),
         XAIProvider(),
         CartesiaProvider()
     ]

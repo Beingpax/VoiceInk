@@ -1,5 +1,5 @@
 {
-  "originHash" : "eadadded1c8ce49b3caee497a94e9bc0256a4a1c5803c086708e0e7a1e607542",
+  "originHash" : "5dc68de35f4d6eec8fea143f61dfe738594a7599418f5987952d77992d7d1d37",
   "pins" : [
     {
       "identity" : "axswift",
@@ -13,10 +13,10 @@
     {
       "identity" : "fluidaudio",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/FluidInference/FluidAudio",
+      "location" : "https://github.com/FluidInference/FluidAudio.git",
       "state" : {
         "branch" : "main",
-        "revision" : "eff1752ebfa97cf57377b261789d18df39240aad"
+        "revision" : "e332c18b49af64aa9ccae20af7a02d91cef444e5"
       }
     },
     {
@@ -44,6 +44,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "a04ec1c363be3627734f6dad757d82f5d4fa8fcc"
+      }
+    },
+    {
+      "identity" : "llmkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Beingpax/LLMkit.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "2ccd37ec0025c5b7804959cc98cb18ba7b86d2af"
       }
     },
     {

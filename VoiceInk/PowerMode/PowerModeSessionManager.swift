@@ -139,11 +139,6 @@ class PowerModeSessionManager {
                 }
             }
 
-            if let language = config.selectedLanguage {
-                UserDefaults.standard.set(language, forKey: "SelectedLanguage")
-                NotificationCenter.default.post(name: .languageDidChange, object: nil)
-            }
-
             UserDefaults.standard.set(config.isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
             UserDefaults.standard.set(config.removePunctuation, forKey: "RemovePunctuation")
             UserDefaults.standard.set(config.lowercaseTranscription, forKey: "LowercaseTranscription")
@@ -153,6 +148,10 @@ class PowerModeSessionManager {
            let selectedModel = await stateProvider.allAvailableModels.first(where: { $0.name == modelName }),
            stateProvider.currentTranscriptionModel?.name != modelName {
             await handleModelChange(to: selectedModel)
+        }
+
+        if let language = config.selectedLanguage {
+            applyCompatibleLanguage(language, preferredModelName: config.selectedTranscriptionModelName)
         }
 
         await MainActor.run {
@@ -178,11 +177,6 @@ class PowerModeSessionManager {
                 }
             }
 
-            if let language = state.selectedLanguage {
-                UserDefaults.standard.set(language, forKey: "SelectedLanguage")
-                NotificationCenter.default.post(name: .languageDidChange, object: nil)
-            }
-
             if let isTextFormattingEnabled = state.isTextFormattingEnabled {
                 UserDefaults.standard.set(isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
             }
@@ -199,6 +193,27 @@ class PowerModeSessionManager {
            stateProvider.currentTranscriptionModel?.name != modelName {
             await handleModelChange(to: selectedModel)
         }
+
+        if let language = state.selectedLanguage {
+            applyCompatibleLanguage(language, preferredModelName: state.transcriptionModelName)
+        }
+    }
+
+    private func applyCompatibleLanguage(_ language: String, preferredModelName: String?) {
+        guard let model = model(named: preferredModelName) ?? stateProvider?.currentTranscriptionModel else {
+            UserDefaults.standard.set(language, forKey: "SelectedLanguage")
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
+            return
+        }
+
+        let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(language, for: model)
+        UserDefaults.standard.set(compatibleLanguage, forKey: "SelectedLanguage")
+        NotificationCenter.default.post(name: .languageDidChange, object: nil)
+    }
+
+    private func model(named modelName: String?) -> (any TranscriptionModel)? {
+        guard let modelName else { return nil }
+        return stateProvider?.allAvailableModels.first { $0.name == modelName }
     }
 
     private func handleModelChange(to newModel: any TranscriptionModel) async {
