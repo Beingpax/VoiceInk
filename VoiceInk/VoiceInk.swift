@@ -55,14 +55,15 @@ struct VoiceInkApp: App {
             WordReplacement.self
         ])
         var initializationFailed = false
+        let resolvedContainer: ModelContainer
 
         // Attempt 1: Try persistent storage
         if let persistentContainer = Self.createPersistentContainer(schema: schema, logger: logger) {
-            container = persistentContainer
+            resolvedContainer = persistentContainer
         }
         // Attempt 2: Try in-memory storage
         else if let memoryContainer = Self.createInMemoryContainer(schema: schema, logger: logger) {
-            container = memoryContainer
+            resolvedContainer = memoryContainer
 
             logger.warning("Using in-memory storage as fallback. Data will not persist between sessions.")
 
@@ -83,11 +84,12 @@ struct VoiceInkApp: App {
 
             // Create minimal in-memory container to satisfy initialization
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            container = (try? ModelContainer(for: schema, configurations: [config])) ?? {
+            resolvedContainer = (try? ModelContainer(for: schema, configurations: [config])) ?? {
                 preconditionFailure("Unable to create ModelContainer. SwiftData is unavailable.")
             }()
         }
 
+        container = resolvedContainer
         containerInitializationFailed = initializationFailed
 
         // Initialize services with proper sharing of instances
@@ -97,7 +99,7 @@ struct VoiceInkApp: App {
         let updaterViewModel = UpdaterViewModel()
         _updaterViewModel = StateObject(wrappedValue: updaterViewModel)
 
-        let enhancementService = AIEnhancementService(aiService: aiService, modelContext: container.mainContext)
+        let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
 
         // 1. Create modelsDirectory URL
@@ -118,7 +120,7 @@ struct VoiceInkApp: App {
 
         // 4. Create engine
         let engine = VoiceInkEngine(
-            modelContext: container.mainContext,
+            modelContext: resolvedContainer.mainContext,
             whisperModelManager: whisperModelManager,
             transcriptionModelManager: transcriptionModelManager,
             enhancementService: enhancementService
@@ -148,7 +150,7 @@ struct VoiceInkApp: App {
 
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
-        menuBarManager.configure(modelContainer: container, engine: engine)
+        menuBarManager.configure(modelContainer: resolvedContainer, engine: engine)
 
         let activeWindowService = ActiveWindowService.shared
         activeWindowService.configure(with: enhancementService)
@@ -157,7 +159,7 @@ struct VoiceInkApp: App {
         let prewarmService = ModelPrewarmService(
             transcriptionModelManager: transcriptionModelManager,
             whisperModelManager: whisperModelManager,
-            modelContext: container.mainContext
+            modelContext: resolvedContainer.mainContext
         )
         _prewarmService = StateObject(wrappedValue: prewarmService)
 
@@ -170,8 +172,8 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
-        let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: container)
-        let mainContext = container.mainContext
+        let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: resolvedContainer)
+        let mainContext = resolvedContainer.mainContext
         Task {
             await migrationTask?.value
             TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)

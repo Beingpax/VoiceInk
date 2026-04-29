@@ -4,7 +4,7 @@ import SwiftData
 import os
 
 /// Handles the full post-recording pipeline:
-/// transcribe → filter → format → word-replace → prompt-detect → AI enhance → save → paste → dismiss
+/// transcribe → filter → format → word-replace → prompt-detect → AI enhance → start paste + dismiss → save
 @MainActor
 class TranscriptionPipeline {
     private let modelContext: ModelContext
@@ -35,7 +35,7 @@ class TranscriptionPipeline {
     ///   - onStateChange: Called when the pipeline moves to a new recording state (e.g. `.enhancing`).
     ///   - shouldCancel: Returns true if the user requested cancellation.
     ///   - onCleanup: Called when cancellation is detected to release model resources.
-    ///   - onDismiss: Called at the end to dismiss the recorder panel.
+    ///   - onDismiss: Called as soon as paste is initiated to dismiss the recorder panel.
     func run(
         transcription: Transcription,
         audioURL: URL,
@@ -145,16 +145,6 @@ class TranscriptionPipeline {
             }
 
             transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
-            do {
-                didInsertSessionMetric = try SessionMetricRecorder.recordRecorderSession(
-                    transcription: transcription,
-                    model: model,
-                    in: modelContext
-                )
-            } catch {
-                logger.error("Failed to record session metric: \(error.localizedDescription, privacy: .public)")
-            }
-
         } catch {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             let recoverySuggestion = (error as? LocalizedError)?.recoverySuggestion ?? ""
@@ -164,18 +154,45 @@ class TranscriptionPipeline {
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
         }
 
-        do {
-            try modelContext.save()
-            if didInsertSessionMetric {
-                NotificationCenter.default.post(name: .sessionMetricsDidChange, object: nil)
+        func saveTranscriptionAndPostCompletion() {
+            if transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
+                do {
+                    didInsertSessionMetric = try SessionMetricRecorder.recordRecorderSession(
+                        transcription: transcription,
+                        model: model,
+                        in: modelContext
+                    )
+                } catch {
+                    logger.error("Failed to record session metric: \(error.localizedDescription, privacy: .public)")
+                }
             }
-            NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
-        } catch {
-            logger.error("Failed to save transcription: \(error.localizedDescription, privacy: .public)")
+
+            do {
+                try modelContext.save()
+                if didInsertSessionMetric {
+                    NotificationCenter.default.post(name: .sessionMetricsDidChange, object: nil)
+                }
+                NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
+            } catch {
+                logger.error("Failed to save transcription: \(error.localizedDescription, privacy: .public)")
+            }
         }
 
-        if shouldCancel() { await onCleanup(); return }
+        func restorePromptDetectionSettingsIfNeeded() async {
+            if let result = promptDetectionResult,
+               let enhancementService,
+               result.shouldEnableAI {
+                await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
+            }
+        }
 
+        if shouldCancel() {
+            await onCleanup()
+            saveTranscriptionAndPostCompletion()
+            return
+        }
+
+        let dismissTask: Task<Void, Never>?
         if var textToPaste = finalPastedText,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
             if case .trialExpired = licenseViewModel.licenseState {
@@ -185,26 +202,31 @@ class TranscriptionPipeline {
                     """
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.015) {
-                SoundManager.shared.playStopSound()
-                let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-                CursorPaster.pasteAtCursor(textToPaste + (appendSpace ? " " : ""))
+            let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+            let pastedText = textToPaste + (appendSpace ? " " : "")
+            let pastePostTask = CursorPaster.startPasteAtCursor(pastedText)
+            SoundManager.shared.playStopSound()
+            let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
+            await restorePromptDetectionSettingsIfNeeded()
+            dismissTask = Task { @MainActor in
+                await onDismiss()
+            }
+            await pastePostTask.value
 
-                let powerMode = PowerModeManager.shared
-                if let activeConfig = powerMode.currentActiveConfiguration, activeConfig.autoSendKey.isEnabled {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        CursorPaster.performAutoSend(activeConfig.autoSendKey)
-                    }
+            if let autoSendKey, autoSendKey.isEnabled {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    CursorPaster.performAutoSend(autoSendKey)
                 }
             }
+        } else {
+            await restorePromptDetectionSettingsIfNeeded()
+            await onDismiss()
+            dismissTask = nil
         }
 
-        if let result = promptDetectionResult,
-           let enhancementService,
-           result.shouldEnableAI {
-            await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
-        }
+        saveTranscriptionAndPostCompletion()
 
-        await onDismiss()
+        await dismissTask?.value
     }
 }
