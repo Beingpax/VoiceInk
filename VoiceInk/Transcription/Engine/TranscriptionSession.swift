@@ -61,6 +61,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
     func prepare(model: any TranscriptionModel) async throws -> ((Data) -> Void)? {
         self.model = model
+        logger.notice("Streaming session prepare model=\(model.displayName, privacy: .public)")
 
         // Return callback immediately; WebSocket connects in background
         let service = streamingService
@@ -68,19 +69,16 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             service?.sendAudioChunk(data)
         }
 
-        Task.detached { [weak self] in
+        Task { [weak self] in
             guard let self = self else { return }
             do {
+                let start = Date()
                 try await self.streamingService.startStreaming(model: model)
-                await MainActor.run {
-                    self.logger.notice("Streaming connected for \(model.displayName, privacy: .public)")
-                }
+                self.logger.notice("Streaming session connected model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s")
             } catch {
                 let desc = error.localizedDescription
-                await MainActor.run {
-                    self.logger.error("❌ Failed to start streaming, will fall back to batch: \(desc, privacy: .public)")
-                    self.streamingFailed = true
-                }
+                self.logger.error("❌ Failed to start streaming, will fall back to batch: \(desc, privacy: .public)")
+                self.streamingFailed = true
             }
         }
 
@@ -94,8 +92,10 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         if !streamingFailed {
             do {
+                let start = Date()
+                logger.notice("Streaming stop/transcribe started model=\(model.displayName, privacy: .public)")
                 let text = try await streamingService.stopAndGetFinalText()
-                logger.notice("Streaming transcript received")
+                logger.notice("Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)")
                 return text
             } catch {
                 logger.error("❌ Streaming failed, falling back to batch: \(error.localizedDescription, privacy: .public)")
@@ -105,8 +105,11 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             streamingService.cancel()
         }
 
-        logger.notice("Using batch fallback for \(model.displayName, privacy: .public)")
-        return try await fallbackService.transcribe(audioURL: audioURL, model: model)
+        let fallbackStart = Date()
+        logger.notice("Using batch fallback for \(model.displayName, privacy: .public) file=\(audioURL.lastPathComponent, privacy: .public)")
+        let text = try await fallbackService.transcribe(audioURL: audioURL, model: model)
+        logger.notice("Batch fallback completed elapsed=\(Date().timeIntervalSince(fallbackStart), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)")
+        return text
     }
 
     func cancel() {

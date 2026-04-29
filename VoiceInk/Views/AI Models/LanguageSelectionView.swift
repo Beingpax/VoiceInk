@@ -12,8 +12,11 @@ struct LanguageSelectionView: View {
     // Add display mode parameter with full as the default
     var displayMode: LanguageDisplayMode = .full
     @ObservedObject var whisperPrompt: WhisperPrompt
+    @State private var languageOptionsRefreshID = UUID()
 
     private func updateLanguage(_ language: String) {
+        guard selectedLanguage != language else { return }
+
         // Update UI state - the UserDefaults updating is now automatic with @AppStorage
         selectedLanguage = language
 
@@ -40,25 +43,40 @@ struct LanguageSelectionView: View {
         return provider == .fluidAudio || provider == .gemini
     }
 
-    // Function to get current model's supported languages
-    private func getCurrentModelLanguages() -> [String: String] {
+    private func availableLanguagesForCurrentModel() -> [String: String] {
         guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
             return ["en": "English"] // Default to English if no model found
         }
-        return currentModel.supportedLanguages
+        return TranscriptionLanguageSupport.languages(for: currentModel)
+    }
+
+    private func useCompatibleLanguageForCurrentModel() {
+        guard let currentModel = transcriptionModelManager.currentTranscriptionModel else { return }
+        updateLanguage(TranscriptionLanguageSupport.validLanguageOrFallback(selectedLanguage, for: currentModel))
     }
 
     // Get the display name of the current language
     private func currentLanguageDisplayName() -> String {
-        return getCurrentModelLanguages()[selectedLanguage] ?? "Unknown"
+        return availableLanguagesForCurrentModel()[selectedLanguage] ?? "Unknown"
     }
 
     var body: some View {
-        switch displayMode {
-        case .full:
-            fullView
-        case .menuItem:
-            menuItemView
+        Group {
+            switch displayMode {
+            case .full:
+                fullView
+            case .menuItem:
+                menuItemView
+            }
+        }
+        .id(languageOptionsRefreshID)
+        .onAppear(perform: useCompatibleLanguageForCurrentModel)
+        .onChange(of: transcriptionModelManager.currentTranscriptionModel?.name) { _, _ in
+            useCompatibleLanguageForCurrentModel()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .AppSettingsDidChange)) { _ in
+            languageOptionsRefreshID = UUID()
+            useCompatibleLanguageForCurrentModel()
         }
     }
 
@@ -95,7 +113,7 @@ struct LanguageSelectionView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Picker("Select Language", selection: $selectedLanguage) {
                             ForEach(
-                                currentModel.supportedLanguages.sorted(by: {
+                                availableLanguagesForCurrentModel().sorted(by: {
                                     if $0.key == "auto" { return true }
                                     if $1.key == "auto" { return false }
                                     return $0.value < $1.value
@@ -167,7 +185,7 @@ struct LanguageSelectionView: View {
             } else if isMultilingualModel() {
                 Menu {
                     ForEach(
-                        getCurrentModelLanguages().sorted(by: {
+                        availableLanguagesForCurrentModel().sorted(by: {
                             if $0.key == "auto" { return true }
                             if $1.key == "auto" { return false }
                             return $0.value < $1.value

@@ -9,6 +9,7 @@ struct CloudModelCardView: View {
     var setDefaultAction: () -> Void
 
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @State private var isExpanded = false
     @State private var apiKey = ""
     @State private var streamingEnabled: Bool
@@ -80,16 +81,37 @@ struct CloudModelCardView: View {
         }
     }
     
+    private var isStreamingOnly: Bool {
+        CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly ?? false
+    }
+
     private var streamingModeBadge: some View {
-        Toggle("Real-time", isOn: $streamingEnabled)
+        Toggle("Real-time", isOn: isStreamingOnly ? .constant(true) : $streamingEnabled)
             .toggleStyle(.switch)
             .controlSize(.mini)
             .font(.system(size: 11, weight: .medium))
             .foregroundColor(Color(.secondaryLabelColor))
+            .disabled(isStreamingOnly)
             .onChange(of: streamingEnabled) { _, newValue in
-                UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
+                if !isStreamingOnly {
+                    UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
+                    ensureCurrentModelLanguageIsStillValid()
+                    NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+                }
             }
-            .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
+            .help(isStreamingOnly ? "This model only supports real-time streaming" : (streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming"))
+    }
+
+    private func ensureCurrentModelLanguageIsStillValid() {
+        guard transcriptionModelManager.currentTranscriptionModel?.name == model.name else {
+            return
+        }
+
+        let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(selectedLanguage, for: model)
+        if selectedLanguage != compatibleLanguage {
+            selectedLanguage = compatibleLanguage
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
+        }
     }
 
     private var metadataSection: some View {

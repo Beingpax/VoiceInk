@@ -61,6 +61,7 @@ class TranscriptionModelManager: ObservableObject {
         if let savedModelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel"),
            let savedModel = allAvailableModels.first(where: { $0.name == savedModelName }) {
             currentTranscriptionModel = savedModel
+            ensureSelectedLanguageIsSupported(by: savedModel)
         }
     }
 
@@ -69,6 +70,7 @@ class TranscriptionModelManager: ObservableObject {
     func setDefaultTranscriptionModel(_ model: any TranscriptionModel) {
         self.currentTranscriptionModel = model
         UserDefaults.standard.set(model.name, forKey: "CurrentTranscriptionModel")
+        ensureSelectedLanguageIsSupported(by: model)
 
         if model.provider != .whisper {
             whisperModelManager?.loadedWhisperModel = nil
@@ -77,6 +79,16 @@ class TranscriptionModelManager: ObservableObject {
 
         NotificationCenter.default.post(name: .didChangeModel, object: nil, userInfo: ["modelName": model.name])
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
+
+    private func ensureSelectedLanguageIsSupported(by model: any TranscriptionModel) {
+        let currentLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage")
+        let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(currentLanguage, for: model)
+
+        if currentLanguage != compatibleLanguage {
+            UserDefaults.standard.set(compatibleLanguage, forKey: "SelectedLanguage")
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
+        }
     }
 
     // MARK: - Refresh all available models

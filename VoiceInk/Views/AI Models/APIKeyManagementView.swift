@@ -20,7 +20,7 @@ struct APIKeyManagementView: View {
         Section("AI Provider Integration") {
             HStack {
                 Picker("Provider", selection: $aiService.selectedProvider) {
-                    ForEach(AIProvider.allCases.filter { $0 != .elevenLabs && $0 != .deepgram && $0 != .soniox && $0 != .speechmatics }, id: \.self) { provider in
+                    ForEach(AIProvider.allCases.filter { $0 != .elevenLabs && $0 != .deepgram && $0 != .soniox && $0 != .speechmatics && $0 != .assemblyAI }, id: \.self) { provider in
                         Text(provider.rawValue).tag(provider)
                     }
                 }
@@ -368,6 +368,7 @@ struct APIKeyManagementView: View {
         case .deepgram: return URL(string: "https://console.deepgram.com/api-keys")
         case .soniox: return URL(string: "https://console.soniox.com/")
         case .speechmatics: return URL(string: "https://portal.speechmatics.com/manage-access/")
+        case .assemblyAI: return URL(string: "https://www.assemblyai.com/dashboard/api-keys")
         case .openRouter: return URL(string: "https://openrouter.ai/keys")
         case .cerebras: return URL(string: "https://cloud.cerebras.ai/")
         default: return nil

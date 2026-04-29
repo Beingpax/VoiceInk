@@ -61,6 +61,10 @@ class TranscriptionServiceRegistry {
     /// Whether the given model supports streaming transcription
     private func supportsStreaming(model: any TranscriptionModel) -> Bool {
         guard model.supportsStreaming else { return false }
+        // Streaming-only providers (e.g. Cartesia) have no batch endpoint — always stream.
+        if let cloudProvider = CloudProviderRegistry.provider(for: model.provider), cloudProvider.isStreamingOnly {
+            return true
+        }
         return UserDefaults.standard.object(forKey: "streaming-enabled-\(model.name)") as? Bool ?? true
     }
 
