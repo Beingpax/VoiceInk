@@ -55,8 +55,6 @@ class TranscriptionPipeline {
         var promptDetectionResult: PromptDetectionService.PromptDetectionResult?
         var didInsertSessionMetric = false
 
-        logger.notice("🔄 Starting transcription...")
-
         do {
             let transcriptionStart = Date()
             var text: String
@@ -65,9 +63,7 @@ class TranscriptionPipeline {
             } else {
                 text = try await serviceRegistry.transcribe(audioURL: audioURL, model: model)
             }
-            logger.notice("📝 Transcript: \(text, privacy: .public)")
             text = TranscriptionOutputFilter.filter(text)
-            logger.notice("📝 Output filter result: \(text, privacy: .public)")
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
             let powerModeManager = PowerModeManager.shared
@@ -81,13 +77,10 @@ class TranscriptionPipeline {
 
             if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
                 text = WhisperTextFormatter.format(text)
-                logger.notice("📝 Formatted transcript: \(text, privacy: .public)")
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            logger.notice("📝 WordReplacement: \(text, privacy: .public)")
             let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
-            logger.notice("📝 User cleanup result: \(cleanedText, privacy: .public)")
 
             let audioAsset = AVURLAsset(url: audioURL)
             let actualDuration = (try? CMTimeGetSeconds(await audioAsset.load(.duration))) ?? 0.0
@@ -122,7 +115,6 @@ class TranscriptionPipeline {
 
                 do {
                     let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
-                    logger.notice("📝 AI enhancement: \(enhancedText, privacy: .public)")
                     transcription.enhancedText = enhancedText
                     transcription.aiEnhancementModelName = enhancementService.getAIService()?.currentModel
                     transcription.promptName = promptName
@@ -147,10 +139,19 @@ class TranscriptionPipeline {
             transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
         } catch {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            let recoverySuggestion = (error as? LocalizedError)?.recoverySuggestion ?? ""
-            let fullErrorText = recoverySuggestion.isEmpty ? errorDescription : "\(errorDescription) \(recoverySuggestion)"
 
-            transcription.text = "Transcription Failed: \(fullErrorText)"
+            if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError,
+               case .assetDownloadRequired = nativeAppleError {
+                await MainActor.run {
+                    NotificationManager.shared.showNotification(
+                        title: errorDescription,
+                        type: .error,
+                        duration: 5.0
+                    )
+                }
+            }
+
+            transcription.text = "Transcription Failed: \(errorDescription)"
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
         }
 

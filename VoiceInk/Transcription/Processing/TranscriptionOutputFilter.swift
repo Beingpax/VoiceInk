@@ -1,8 +1,6 @@
 import Foundation
-import os
 
 struct TranscriptionOutputFilter {
-    private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionOutputFilter")
     private static let removePunctuationKey = "RemovePunctuation"
     private static let lowercaseTranscriptionKey = "LowercaseTranscription"
     private static let apostropheLikeCharacters = CharacterSet(charactersIn: "'’‘ʼ＇")
@@ -45,13 +43,6 @@ struct TranscriptionOutputFilter {
         // Clean whitespace
         filteredText = filteredText.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Log results
-        if filteredText != text {
-            logger.notice("📝 Output filter result: \(filteredText, privacy: .public)")
-        } else {
-            logger.notice("📝 Output filter result (unchanged): \(filteredText, privacy: .public)")
-        }
 
         return filteredText
     }

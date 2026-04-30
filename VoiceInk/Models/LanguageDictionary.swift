@@ -31,6 +31,12 @@ enum TranscriptionLanguageSupport {
             return language
         }
 
+        if model.provider == .nativeApple {
+            if languages["en-US"] != nil {
+                return "en-US"
+            }
+        }
+
         if languages["auto"] != nil {
             return "auto"
         }
@@ -81,8 +87,7 @@ enum LanguageDictionary {
 
         switch provider {
         case .nativeApple:
-            let codes = ["ar", "de", "en", "es", "fr", "it", "ja", "ko", "pt", "yue", "zh"]
-            return all.filter { codes.contains($0.key) }
+            return appleNative
 
         case .fluidAudio:
             let codes = [
@@ -99,46 +104,39 @@ enum LanguageDictionary {
         }
     }
 
-    // Apple Native Speech languages in BCP-47 format
-    // Based on actual supported locales from SpeechTranscriber.supportedLocales
+    // Apple Native Speech languages in BCP-47 format.
+    // Queried from SpeechTranscriber.supportedLocales on macOS 26.4.
     static let appleNative: [String: String] = [
-        "en-US": "English (United States)",
-        "en-GB": "English (United Kingdom)",
-        "en-CA": "English (Canada)",
-        "en-AU": "English (Australia)",
-        "en-IN": "English (India)",
-        "en-IE": "English (Ireland)",
-        "en-NZ": "English (New Zealand)",
-        "en-ZA": "English (South Africa)",
-        "en-SA": "English (Saudi Arabia)",
-        "en-AE": "English (UAE)",
-        "en-SG": "English (Singapore)",
-        "en-PH": "English (Philippines)",
-        "en-ID": "English (Indonesia)",
-        "es-ES": "Spanish (Spain)",
-        "es-MX": "Spanish (Mexico)",
-        "es-US": "Spanish (United States)",
-        "es-CO": "Spanish (Colombia)",
-        "es-CL": "Spanish (Chile)",
-        "es-419": "Spanish (Latin America)",
-        "fr-FR": "French (France)",
-        "fr-CA": "French (Canada)",
-        "fr-BE": "French (Belgium)",
-        "fr-CH": "French (Switzerland)",
         "de-DE": "German (Germany)",
         "de-AT": "German (Austria)",
         "de-CH": "German (Switzerland)",
-        "zh-CN": "Chinese Simplified (China)",
-        "zh-TW": "Chinese Traditional (Taiwan)",
-        "zh-HK": "Chinese Traditional (Hong Kong)",
+        "en-AU": "English (Australia)",
+        "en-CA": "English (Canada)",
+        "en-GB": "English (United Kingdom)",
+        "en-IE": "English (Ireland)",
+        "en-IN": "English (India)",
+        "en-NZ": "English (New Zealand)",
+        "en-SG": "English (Singapore)",
+        "en-US": "English (United States)",
+        "en-ZA": "English (South Africa)",
+        "es-CL": "Spanish (Chile)",
+        "es-ES": "Spanish (Spain)",
+        "es-MX": "Spanish (Mexico)",
+        "es-US": "Spanish (United States)",
+        "fr-BE": "French (Belgium)",
+        "fr-CA": "French (Canada)",
+        "fr-CH": "French (Switzerland)",
+        "fr-FR": "French (France)",
+        "it-CH": "Italian (Switzerland)",
+        "it-IT": "Italian (Italy)",
         "ja-JP": "Japanese (Japan)",
         "ko-KR": "Korean (South Korea)",
-        "yue-CN": "Cantonese (China)",
         "pt-BR": "Portuguese (Brazil)",
         "pt-PT": "Portuguese (Portugal)",
-        "it-IT": "Italian (Italy)",
-        "it-CH": "Italian (Switzerland)",
-        "ar-SA": "Arabic (Saudi Arabia)"
+        "yue-CN": "Cantonese (China mainland)",
+        "zh-CN": "Chinese (China mainland)",
+        "zh-HK": "Chinese (Hong Kong)",
+        "zh-TW": "Chinese (Taiwan)"
     ]
 
     static let all: [String: String] = [

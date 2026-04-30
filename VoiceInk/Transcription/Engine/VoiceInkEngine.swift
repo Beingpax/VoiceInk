@@ -86,7 +86,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             logger.notice("toggleRecord: cancelling in-flight recording start")
             shouldCancelRecording = true
             activeRecordingStartID = nil
-            recorder.stopRecording()
+            await recorder.stopRecording()
             recordedFile = nil
             recordingState = .idle
             return
@@ -160,7 +160,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                   self.recorderUIManager?.isMiniRecorderVisible ?? false,
                                   !self.shouldCancelRecording else {
                                 if self.activeRecordingStartID == startID {
-                                    self.recorder.stopRecording()
+                                    await self.recorder.stopRecording()
                                     self.recordedFile = nil
                                     self.recordingState = .idle
                                     self.activeRecordingStartID = nil
