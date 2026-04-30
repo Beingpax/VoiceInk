@@ -176,9 +176,13 @@ struct NativeAppleLanguageAssetControl: View {
 
             let reserved = try await AssetInventory.reserve(locale: locale)
 
-            guard reserved else {
-                logger.error("Apple Speech asset reservation returned false for '\(normalizedIdentifier, privacy: .public)'.")
-                return .failed("Could not reserve Apple Speech assets for \(normalizedIdentifier).")
+            if !reserved {
+                let currentState = await assetState(for: localeIdentifier)
+                if currentState != .needsDownload {
+                    return currentState
+                }
+
+                logger.warning("Apple Speech asset reservation returned false for '\(normalizedIdentifier, privacy: .public)'. Continuing to request installation after confirming the asset still needs download.")
             }
 
             guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else {
