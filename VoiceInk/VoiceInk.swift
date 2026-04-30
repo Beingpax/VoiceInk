@@ -48,11 +48,12 @@ struct VoiceInkApp: App {
         }
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
+        // Keep existing model order stable; append new models after synced entities.
         let schema = Schema([
             Transcription.self,
-            SessionMetric.self,
             VocabularyWord.self,
-            WordReplacement.self
+            WordReplacement.self,
+            SessionMetric.self
         ])
         var initializationFailed = false
         let resolvedContainer: ModelContainer
@@ -221,11 +222,16 @@ struct VoiceInkApp: App {
 
             // Recorder session metrics configuration
             let statsSchema = Schema([SessionMetric.self])
+            #if LOCAL_BUILD
+            let statsCloudKit: ModelConfiguration.CloudKitDatabase = .none
+            #else
+            let statsCloudKit: ModelConfiguration.CloudKitDatabase = .private("iCloud.com.prakashjoshipax.VoiceInk")
+            #endif
             let statsConfig = ModelConfiguration(
                 "stats",
                 schema: statsSchema,
                 url: statsStoreURL,
-                cloudKitDatabase: .none
+                cloudKitDatabase: statsCloudKit
             )
 
             // Initialize container

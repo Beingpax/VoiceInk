@@ -3,12 +3,12 @@ import SwiftData
 
 @Model
 final class SessionMetric {
-    var id: UUID
-    @Attribute(.unique) var transcriptionId: UUID
-    var timestamp: Date
-    var source: String
-    var wordCount: Int
-    var audioDuration: TimeInterval
+    var id: UUID = UUID()
+    var transcriptionId: UUID = UUID()
+    var timestamp: Date = Date()
+    var source: String?
+    var wordCount: Int = 0
+    var audioDuration: TimeInterval = 0
     var transcriptionModelName: String?
     var transcriptionDuration: TimeInterval?
     var speedFactor: Double?
@@ -19,7 +19,7 @@ final class SessionMetric {
     init(
         transcriptionId: UUID,
         timestamp: Date = Date(),
-        source: String = "recorder",
+        source: String? = "recorder",
         wordCount: Int,
         audioDuration: TimeInterval,
         transcriptionModelName: String?,
