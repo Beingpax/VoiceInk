@@ -12,7 +12,6 @@ struct LanguageSelectionView: View {
     // Add display mode parameter with full as the default
     var displayMode: LanguageDisplayMode = .full
     @ObservedObject var whisperPrompt: WhisperPrompt
-    @State private var languageOptionsRefreshID = UUID()
 
     private func updateLanguage(_ language: String) {
         guard selectedLanguage != language else { return }
@@ -43,6 +42,10 @@ struct LanguageSelectionView: View {
         return provider == .fluidAudio || provider == .gemini
     }
 
+    private func isNativeAppleModelSelected() -> Bool {
+        transcriptionModelManager.currentTranscriptionModel?.provider == .nativeApple
+    }
+
     private func availableLanguagesForCurrentModel() -> [String: String] {
         guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
             return ["en": "English"] // Default to English if no model found
@@ -60,6 +63,21 @@ struct LanguageSelectionView: View {
         return availableLanguagesForCurrentModel()[selectedLanguage] ?? "Unknown"
     }
 
+    private var selectedLanguageBinding: Binding<String> {
+        Binding(
+            get: { selectedLanguage },
+            set: { updateLanguage($0) }
+        )
+    }
+
+    private var nativeAppleAssetControl: some View {
+        NativeAppleLanguageAssetControl(
+            localeIdentifier: selectedLanguage,
+            isVisible: true
+        )
+        .layoutPriority(1)
+    }
+
     var body: some View {
         Group {
             switch displayMode {
@@ -69,13 +87,13 @@ struct LanguageSelectionView: View {
                 menuItemView
             }
         }
-        .id(languageOptionsRefreshID)
-        .onAppear(perform: useCompatibleLanguageForCurrentModel)
+        .onAppear {
+            useCompatibleLanguageForCurrentModel()
+        }
         .onChange(of: transcriptionModelManager.currentTranscriptionModel?.name) { _, _ in
             useCompatibleLanguageForCurrentModel()
         }
         .onReceive(NotificationCenter.default.publisher(for: .AppSettingsDidChange)) { _ in
-            languageOptionsRefreshID = UUID()
             useCompatibleLanguageForCurrentModel()
         }
     }
@@ -111,20 +129,24 @@ struct LanguageSelectionView: View {
                     .disabled(true)
                 } else if isMultilingualModel() {
                     VStack(alignment: .leading, spacing: 8) {
-                        Picker("Select Language", selection: $selectedLanguage) {
-                            ForEach(
-                                availableLanguagesForCurrentModel().sorted(by: {
-                                    if $0.key == "auto" { return true }
-                                    if $1.key == "auto" { return false }
-                                    return $0.value < $1.value
-                                }), id: \.key
-                            ) { key, value in
-                                Text(value).tag(key)
+                        HStack(spacing: 8) {
+                            Picker("Select Language", selection: selectedLanguageBinding) {
+                                ForEach(
+                                    availableLanguagesForCurrentModel().sorted(by: {
+                                        if $0.key == "auto" { return true }
+                                        if $1.key == "auto" { return false }
+                                        return $0.value < $1.value
+                                    }), id: \.key
+                                ) { key, value in
+                                    Text(value).tag(key)
+                                }
                             }
-                        }
-                        .pickerStyle(MenuPickerStyle())
-                        .onChange(of: selectedLanguage) { oldValue, newValue in
-                            updateLanguage(newValue)
+                            .pickerStyle(MenuPickerStyle())
+                            .frame(maxWidth: isNativeAppleModelSelected() ? 280 : .infinity, alignment: .leading)
+
+                            if isNativeAppleModelSelected() {
+                                nativeAppleAssetControl
+                            }
                         }
 
                         Text("Current model: \(currentModel.displayName)")
@@ -183,30 +205,36 @@ struct LanguageSelectionView: View {
                 }
                 .disabled(true)
             } else if isMultilingualModel() {
-                Menu {
-                    ForEach(
-                        availableLanguagesForCurrentModel().sorted(by: {
-                            if $0.key == "auto" { return true }
-                            if $1.key == "auto" { return false }
-                            return $0.value < $1.value
-                        }), id: \.key
-                    ) { key, value in
-                        Button {
-                            updateLanguage(key)
-                        } label: {
-                            HStack {
-                                Text(value)
-                                if selectedLanguage == key {
-                                    Image(systemName: "checkmark")
+                HStack(spacing: 8) {
+                    Menu {
+                        ForEach(
+                            availableLanguagesForCurrentModel().sorted(by: {
+                                if $0.key == "auto" { return true }
+                                if $1.key == "auto" { return false }
+                                return $0.value < $1.value
+                            }), id: \.key
+                        ) { key, value in
+                            Button {
+                                updateLanguage(key)
+                            } label: {
+                                HStack {
+                                    Text(value)
+                                    if selectedLanguage == key {
+                                        Image(systemName: "checkmark")
+                                    }
                                 }
                             }
                         }
+                    } label: {
+                        HStack {
+                            Text("Language: \(currentLanguageDisplayName())")
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 10))
+                        }
                     }
-                } label: {
-                    HStack {
-                        Text("Language: \(currentLanguageDisplayName())")
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 10))
+
+                    if isNativeAppleModelSelected() {
+                        nativeAppleAssetControl
                     }
                 }
             } else {

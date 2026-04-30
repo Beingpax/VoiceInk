@@ -55,11 +55,26 @@ class TranscriptionModelManager: ObservableObject {
         }
     }
 
+    func isAvailableOnCurrentOS(_ model: any TranscriptionModel) -> Bool {
+        switch model.provider {
+        case .nativeApple:
+            if #available(macOS 26, *) { return true } else { return false }
+        default:
+            return true
+        }
+    }
+
     // MARK: - Model loading from UserDefaults
 
     func loadCurrentTranscriptionModel() {
         if let savedModelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel"),
            let savedModel = allAvailableModels.first(where: { $0.name == savedModelName }) {
+            guard isAvailableOnCurrentOS(savedModel) else {
+                UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+                currentTranscriptionModel = nil
+                return
+            }
+
             currentTranscriptionModel = savedModel
             ensureSelectedLanguageIsSupported(by: savedModel)
         }
@@ -68,6 +83,14 @@ class TranscriptionModelManager: ObservableObject {
     // MARK: - Set default model
 
     func setDefaultTranscriptionModel(_ model: any TranscriptionModel) {
+        guard isAvailableOnCurrentOS(model) else {
+            NotificationManager.shared.showNotification(
+                title: "\(model.displayName) requires macOS 26 or later",
+                type: .error
+            )
+            return
+        }
+
         self.currentTranscriptionModel = model
         UserDefaults.standard.set(model.name, forKey: "CurrentTranscriptionModel")
         ensureSelectedLanguageIsSupported(by: model)

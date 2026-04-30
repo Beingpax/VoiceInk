@@ -316,7 +316,10 @@ struct ModelManagementView: View {
                 return index1 < index2
             }
         case .local:
-            return transcriptionModelManager.allAvailableModels.filter { $0.provider == .whisper || $0.provider == .nativeApple || $0.provider == .fluidAudio }
+            return transcriptionModelManager.allAvailableModels.filter {
+                ($0.provider == .whisper || $0.provider == .nativeApple || $0.provider == .fluidAudio)
+                    && transcriptionModelManager.isAvailableOnCurrentOS($0)
+            }
         case .cloud:
             return transcriptionModelManager.allAvailableModels.filter { CloudProviderRegistry.provider(for: $0.provider) != nil }
         case .custom:

@@ -149,12 +149,12 @@ class Recorder: NSObject, ObservableObject {
             }
         } catch {
             logger.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
-            stopRecording()
+            await stopRecording()
             throw RecorderError.couldNotStartRecording
         }
     }
 
-    func stopRecording() {
+    func stopRecording() async {
         logger.notice("stopRecording called")
         audioMuteTask?.cancel()
         audioMuteTask = nil
@@ -163,11 +163,15 @@ class Recorder: NSObject, ObservableObject {
 
         // Capture current recorder to stop it on the serial hardware queue
         let currentRecorder = self.recorder
-        audioSetupQueue.async {
-            currentRecorder?.stopRecording()
-        }
         recorder = nil
         onAudioChunk = nil
+
+        await withCheckedContinuation { continuation in
+            audioSetupQueue.async {
+                currentRecorder?.stopRecording()
+                continuation.resume()
+            }
+        }
 
         smoothedValuesLock.lock()
         smoothedAverage = 0
@@ -187,7 +191,7 @@ class Recorder: NSObject, ObservableObject {
         logger.error("❌ Recording error occurred: \(error.localizedDescription, privacy: .public)")
 
         // Stop the recording
-        stopRecording()
+        await stopRecording()
 
         // Notify the user about the recording failure
         await MainActor.run {
