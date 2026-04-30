@@ -94,9 +94,7 @@ class RecorderUIManager: ObservableObject {
                 await cancelRecording()
             }
         } else {
-            SoundManager.shared.playStartSound {
-                Task { await MediaController.shared.muteSystemAudio() }
-            }
+            SoundManager.shared.playStartSound()
             await MainActor.run { isMiniRecorderVisible = true }
             await engine.toggleRecord(powerModeId: powerModeId)
         }
@@ -111,7 +109,7 @@ class RecorderUIManager: ObservableObject {
             return
         }
 
-        let wasRecording = engine.recordingState == .recording
+        let wasRecording = engine.recordingState == .recording || engine.recordingState == .starting
 
         await MainActor.run {
             engine.recordingState = .busy
