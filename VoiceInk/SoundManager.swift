@@ -2,14 +2,6 @@ import Foundation
 import AVFoundation
 import SwiftUI
 
-private final class AudioPlayerCompletionDelegate: NSObject, AVAudioPlayerDelegate {
-    private let onFinished: () -> Void
-    init(_ onFinished: @escaping () -> Void) { self.onFinished = onFinished }
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        DispatchQueue.main.async { self.onFinished() }
-    }
-}
-
 @MainActor
 class SoundManager: ObservableObject {
     static let shared = SoundManager()
@@ -19,7 +11,6 @@ class SoundManager: ObservableObject {
     private var escSound: AVAudioPlayer?
     private var customStartSound: AVAudioPlayer?
     private var customStopSound: AVAudioPlayer?
-    private var startSoundDelegate: AudioPlayerCompletionDelegate?
 
     @AppStorage("isSoundFeedbackEnabled") private var isSoundFeedbackEnabled = true
 
@@ -92,25 +83,15 @@ class SoundManager: ObservableObject {
         }
     }
 
-    func playStartSound(onFinished: (() -> Void)? = nil) {
-        guard isSoundFeedbackEnabled else {
-            onFinished?()
-            return
-        }
-        guard let player = customStartSound ?? startSound else {
-            onFinished?()
-            return
-        }
-        player.volume = 0.4
-        if let onFinished {
-            let delegate = AudioPlayerCompletionDelegate(onFinished)
-            startSoundDelegate = delegate
-            player.delegate = delegate
+    func playStartSound() {
+        guard isSoundFeedbackEnabled else { return }
+
+        if let custom = customStartSound {
+            custom.play()
         } else {
-            startSoundDelegate = nil
-            player.delegate = nil
+            startSound?.volume = 0.4
+            startSound?.play()
         }
-        player.play()
     }
 
     func playStopSound() {

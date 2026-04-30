@@ -17,6 +17,7 @@ class Recorder: NSObject, ObservableObject {
     private let audioMeterQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audiometer", qos: .userInteractive)
     /// Dedicated serial queue for hardware setup.
     private let audioSetupQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audioSetup", qos: .userInitiated)
+    private var audioMuteTask: Task<Void, Never>?
     private var audioRestorationTask: Task<Void, Never>?
     private let smoothedValuesLock = NSLock()
     private var smoothedAverage: Float = 0
@@ -95,7 +96,16 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    func startRecording(toOutputFile url: URL, completion: @escaping (Result<Void, Error>) -> Void) {
+    func scheduleSystemMute(afterDelayNanoseconds delay: UInt64 = 250_000_000) {
+        audioMuteTask?.cancel()
+        audioMuteTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled, let self else { return }
+            _ = await self.mediaController.muteSystemAudio()
+        }
+    }
+
+    func startRecording(toOutputFile url: URL) async throws {
         logger.notice("startRecording called – deviceID=\(self.deviceManager.getCurrentDevice(), privacy: .public), file=\(url.lastPathComponent, privacy: .public)")
         deviceManager.isRecordingActive = true
 
@@ -110,43 +120,44 @@ class Recorder: NSObject, ObservableObject {
 
         let deviceID = currentDeviceID
 
-        let coreAudioRecorder = CoreAudioRecorder()
-        coreAudioRecorder.onAudioChunk = onAudioChunk
-        recorder = coreAudioRecorder
-
         audioRestorationTask?.cancel()
         audioRestorationTask = nil
         audioMeterUpdateTimer?.cancel()
 
-        let capturedLogger = logger
-        // Offload initialization to background thread to avoid hotkey lag.
-        audioSetupQueue.async { [weak self] in
-            do {
-                try coreAudioRecorder.startRecording(toOutputFile: url, deviceID: deviceID)
-                capturedLogger.notice("startRecording: CoreAudioRecorder started successfully")
-                DispatchQueue.main.async { [weak self] in
-                    self?.startAudioMeterTimer()
-                }
-                Task { [weak self] in
-                    guard let self = self else { return }
-                    await self.playbackController.pauseMedia()
-                }
-                DispatchQueue.main.async {
-                    completion(.success(()))
-                }
-            } catch {
-                capturedLogger.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
-                DispatchQueue.main.async { [weak self] in
-                    self?.stopRecording()
-                    self?.deviceManager.isRecordingActive = false
-                    completion(.failure(error))
+        let coreAudioRecorder = CoreAudioRecorder()
+        coreAudioRecorder.onAudioChunk = onAudioChunk
+        recorder = coreAudioRecorder
+
+        do {
+            // Offload initialization to background thread to avoid hotkey lag.
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                audioSetupQueue.async {
+                    do {
+                        try coreAudioRecorder.startRecording(toOutputFile: url, deviceID: deviceID)
+                        continuation.resume()
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
+            logger.notice("startRecording: CoreAudioRecorder started successfully")
+
+            startAudioMeterTimer()
+            Task { [weak self] in
+                guard let self else { return }
+                await self.playbackController.pauseMedia()
+            }
+        } catch {
+            logger.error("Failed to start recording: \(error.localizedDescription, privacy: .public)")
+            stopRecording()
+            throw RecorderError.couldNotStartRecording
         }
     }
 
     func stopRecording() {
         logger.notice("stopRecording called")
+        audioMuteTask?.cancel()
+        audioMuteTask = nil
         audioMeterUpdateTimer?.cancel()
         audioMeterUpdateTimer = nil
 
