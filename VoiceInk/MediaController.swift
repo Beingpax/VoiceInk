@@ -38,10 +38,12 @@ final class MediaController: ObservableObject {
         unmuteTask = nil
         muteGeneration += 1
 
-        // Start each cycle with a clean mode. The successful path below sets
-        // it; on failure or no-op (0%) it stays .none so a later stop won't
-        // restore a stale saved volume from a previous recording.
-        activeDuckingMode = .none
+        // If the previous cycle was cancelled before its restore ran, system
+        // audio is still in a ducked/muted state. Apply that restore now so
+        // the new cycle starts from the user's actual volume — and so a
+        // later stop won't try to restore a stale saved value if the new
+        // cycle ends up being a no-op (0% or failure).
+        applyPendingRestoreImmediately()
 
         let percent = max(0, min(100, audioDuckingPercent))
 
@@ -88,6 +90,24 @@ final class MediaController: ObservableObject {
 
         activeDuckingMode = .volume(savedVolume: currentVolume)
         return true
+    }
+
+    private func applyPendingRestoreImmediately() {
+        let shouldUnmute = didMuteAudio && !wasAudioMutedBeforeRecording
+
+        switch activeDuckingMode {
+        case .mute:
+            if shouldUnmute {
+                _ = setSystemMuted(false)
+            }
+        case .volume(let savedVolume):
+            _ = setSystemVolume(savedVolume)
+        case .none:
+            break
+        }
+
+        didMuteAudio = false
+        activeDuckingMode = .none
     }
 
     func unmuteSystemAudio() async {
