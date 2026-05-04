@@ -15,6 +15,7 @@ enum AppDefaults {
             // Audio & Media
             "isSystemMuteEnabled": true,
             "audioResumptionDelay": 0.0,
+            "audioDuckingPercent": 100,
             "isPauseMediaEnabled": false,
             "isSoundFeedbackEnabled": true,
             CustomSoundManager.SoundType.start.builtInSoundKey: CustomSoundManager.SoundType.start.defaultBuiltInSound.rawValue,
