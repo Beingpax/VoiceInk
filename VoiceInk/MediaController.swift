@@ -38,6 +38,11 @@ final class MediaController: ObservableObject {
         unmuteTask = nil
         muteGeneration += 1
 
+        // Start each cycle with a clean mode. The successful path below sets
+        // it; on failure or no-op (0%) it stays .none so a later stop won't
+        // restore a stale saved volume from a previous recording.
+        activeDuckingMode = .none
+
         let percent = max(0, min(100, audioDuckingPercent))
 
         // Full mute path preserves the original behavior and the macOS
