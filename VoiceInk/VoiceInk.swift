@@ -222,16 +222,11 @@ struct VoiceInkApp: App {
 
             // Recorder session metrics configuration
             let statsSchema = Schema([SessionMetric.self])
-            #if LOCAL_BUILD
-            let statsCloudKit: ModelConfiguration.CloudKitDatabase = .none
-            #else
-            let statsCloudKit: ModelConfiguration.CloudKitDatabase = .private("iCloud.com.prakashjoshipax.VoiceInk")
-            #endif
             let statsConfig = ModelConfiguration(
                 "stats",
                 schema: statsSchema,
                 url: statsStoreURL,
-                cloudKitDatabase: statsCloudKit
+                cloudKitDatabase: .none
             )
 
             // Initialize container
