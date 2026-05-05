@@ -81,14 +81,25 @@ final class MediaController: ObservableObject {
     }
 
     private func applyVolumeDucking(percent: Int) -> Bool {
-        guard let currentVolume = getSystemVolume() else { return false }
+        // If a prior cycle's saved volume is still pending (its restore
+        // failed and applyPendingRestoreImmediately kept the state), reuse
+        // it as the baseline. Reading current volume here would anchor on
+        // the still-ducked level and drift the user's true volume on stop.
+        let baselineVolume: Float
+        if case .volume(let prevSaved) = activeDuckingMode {
+            baselineVolume = prevSaved
+        } else if let current = getSystemVolume() {
+            baselineVolume = current
+        } else {
+            return false
+        }
 
         let factor = Float(100 - percent) / 100.0
-        let targetVolume = max(0.0, min(1.0, currentVolume * factor))
+        let targetVolume = max(0.0, min(1.0, baselineVolume * factor))
 
         guard setSystemVolume(targetVolume) else { return false }
 
-        activeDuckingMode = .volume(savedVolume: currentVolume)
+        activeDuckingMode = .volume(savedVolume: baselineVolume)
         return true
     }
 
@@ -98,10 +109,16 @@ final class MediaController: ObservableObject {
         switch activeDuckingMode {
         case .mute:
             if shouldUnmute {
-                _ = setSystemMuted(false)
+                // Keep state (mode + didMuteAudio) on failure so the next
+                // unmuteSystemAudio or applyPendingRestoreImmediately can
+                // retry the restore instead of forgetting we own the mute.
+                guard setSystemMuted(false) else { return }
             }
         case .volume(let savedVolume):
-            _ = setSystemVolume(savedVolume)
+            // Same here: if the restore fails, leave .volume(savedVolume)
+            // in place so applyVolumeDucking can carry the baseline forward
+            // and a later cycle still has a path back to the user's volume.
+            guard setSystemVolume(savedVolume) else { return }
         case .none:
             break
         }
