@@ -60,6 +60,14 @@ final class MediaController: ObservableObject {
     }
 
     private func applyFullMute() async -> Bool {
+        // A prior .volume restore is still unresolved. Switching to .mute
+        // here would overwrite the saved volume, so a later stop would
+        // unmute but never restore the user's volume — the device would
+        // stay at the ducked level. Bail so the prior mode survives.
+        if case .volume = activeDuckingMode {
+            return false
+        }
+
         let currentlyMuted = isSystemAudioMuted()
 
         if currentlyMuted {
@@ -85,13 +93,17 @@ final class MediaController: ObservableObject {
         // failed and applyPendingRestoreImmediately kept the state), reuse
         // it as the baseline. Reading current volume here would anchor on
         // the still-ducked level and drift the user's true volume on stop.
+        // If the unresolved mode is .mute instead, refuse to overwrite —
+        // a stop with mode=.volume would never unmute the device.
         let baselineVolume: Float
-        if case .volume(let prevSaved) = activeDuckingMode {
+        switch activeDuckingMode {
+        case .volume(let prevSaved):
             baselineVolume = prevSaved
-        } else if let current = getSystemVolume() {
-            baselineVolume = current
-        } else {
+        case .mute:
             return false
+        case .none:
+            guard let current = getSystemVolume() else { return false }
+            baselineVolume = current
         }
 
         let factor = Float(100 - percent) / 100.0
