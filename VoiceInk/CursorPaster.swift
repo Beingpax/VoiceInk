@@ -108,30 +108,111 @@ class CursorPaster {
 
     // MARK: - CGEvent paste
 
-    // Posts Cmd+V via CGEvent without modifying the active input source.
+    /// Paste from the clipboard using CGEvent, temporarily switching to a
+    /// QWERTY-compatible input source when needed so that virtual key 0x09 is
+    /// reliably interpreted as "V" for Cmd+V regardless of active layout
+    /// (Dvorak, Colemak, etc.). QWERTY users are unaffected — the switch is
+    /// skipped when the current layout is already QWERTY-compatible.
     private static func pasteFromClipboard() {
         guard AXIsProcessTrusted() else {
             logger.error("Accessibility not trusted — cannot paste")
             return
         }
 
-        let source = CGEventSource(stateID: .privateState)
+        guard let currentSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
+            logger.error("TISCopyCurrentKeyboardInputSource returned nil")
+            return
+        }
+        let currentID = sourceID(for: currentSource) ?? "unknown"
+        let qwertySource = switchToQWERTYInputSource()
+        logger.notice("Pasting: inputSource=\(currentID, privacy: .public), switched=\(qwertySource != nil)")
 
-        let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true)
-        let vDown   = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
-        let vUp     = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-        let cmdUp   = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false)
+        // If we switched input sources, wait 30 ms for the system to apply it
+        // before posting the CGEvents. Use asyncAfter so the main thread is not blocked.
+        let eventDelay: TimeInterval = qwertySource != nil ? 0.03 : 0.0
+        DispatchQueue.main.asyncAfter(deadline: .now() + eventDelay) {
+            let source = CGEventSource(stateID: .privateState)
 
-        cmdDown?.flags = .maskCommand
-        vDown?.flags   = .maskCommand
-        vUp?.flags     = .maskCommand
+            let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true)
+            let vDown   = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
+            let vUp     = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
+            let cmdUp   = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false)
 
-        cmdDown?.post(tap: .cghidEventTap)
-        vDown?.post(tap: .cghidEventTap)
-        vUp?.post(tap: .cghidEventTap)
-        cmdUp?.post(tap: .cghidEventTap)
+            cmdDown?.flags = .maskCommand
+            vDown?.flags   = .maskCommand
+            vUp?.flags     = .maskCommand
 
-        logger.notice("CGEvents posted for Cmd+V")
+            cmdDown?.post(tap: .cghidEventTap)
+            vDown?.post(tap: .cghidEventTap)
+            vUp?.post(tap: .cghidEventTap)
+            cmdUp?.post(tap: .cghidEventTap)
+
+            logger.notice("CGEvents posted for Cmd+V")
+
+            if let qwertySource {
+                // Restore the original input source after a short delay so the
+                // posted events are processed under ABC/US first. Only restore
+                // if the source is still the QWERTY one we switched to — if the
+                // user changed layouts in the meantime, leave their choice alone.
+                let qwertyID = sourceID(for: qwertySource)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if let nowSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+                       sourceID(for: nowSource) == qwertyID {
+                        TISSelectInputSource(currentSource)
+                        logger.notice("Restored input source to \(currentID, privacy: .public)")
+                    } else {
+                        logger.notice("Input source changed during paste — skipping restore")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Try to switch to ABC or US QWERTY. Returns the source switched to, or
+    /// nil if the active layout is already QWERTY-compatible.
+    private static func switchToQWERTYInputSource() -> TISInputSource? {
+        guard let currentSourceRef = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else { return nil }
+        if let currentID = sourceID(for: currentSourceRef), isQWERTY(currentID) {
+            return nil // already QWERTY, nothing to do
+        }
+
+        let criteria = [kTISPropertyInputSourceCategory: kTISCategoryKeyboardInputSource] as CFDictionary
+        guard let list = TISCreateInputSourceList(criteria, false)?.takeRetainedValue() as? [TISInputSource] else {
+            logger.error("Failed to list input sources")
+            return nil
+        }
+
+        for targetID in ["com.apple.keylayout.ABC", "com.apple.keylayout.US"] {
+            if let match = list.first(where: { sourceID(for: $0) == targetID }) {
+                let status = TISSelectInputSource(match)
+                if status == noErr {
+                    logger.notice("Switched input source to \(targetID, privacy: .public)")
+                    return match
+                } else {
+                    logger.error("TISSelectInputSource failed with status \(status)")
+                }
+            }
+        }
+
+        logger.error("No QWERTY input source found to switch to")
+        return nil
+    }
+
+    private static func sourceID(for source: TISInputSource) -> String? {
+        guard let raw = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { return nil }
+        return Unmanaged<CFString>.fromOpaque(raw).takeUnretainedValue() as String
+    }
+
+    private static func isQWERTY(_ id: String) -> Bool {
+        let qwertyIDs: Set<String> = [
+            "com.apple.keylayout.ABC",
+            "com.apple.keylayout.US",
+            "com.apple.keylayout.USInternational-PC",
+            "com.apple.keylayout.British",
+            "com.apple.keylayout.Australian",
+            "com.apple.keylayout.Canadian",
+        ]
+        return qwertyIDs.contains(id)
     }
 
     // MARK: - Auto Send Keys
