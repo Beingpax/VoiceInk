@@ -16,7 +16,7 @@
       "location" : "https://github.com/FluidInference/FluidAudio.git",
       "state" : {
         "branch" : "main",
-        "revision" : "e332c18b49af64aa9ccae20af7a02d91cef444e5"
+        "revision" : "a53aff438bed437bc23490bf0f8d1b57fa3845c7"
       }
     },
     {
@@ -52,7 +52,7 @@
       "location" : "https://github.com/Beingpax/LLMkit.git",
       "state" : {
         "branch" : "main",
-        "revision" : "2ccd37ec0025c5b7804959cc98cb18ba7b86d2af"
+        "revision" : "7de91e09a23ae87622384300bae4c898f05bc36b"
       }
     },
     {
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/sparkle-project/Sparkle",
       "state" : {
-        "revision" : "9a1d2a19d3595fcf8d9c447173f9a1687b3dcadb",
-        "version" : "2.8.0"
+        "revision" : "066e75a8b3e99962685d6a90cdd5293ebffd9261",
+        "version" : "2.9.1"
       }
     },
     {
