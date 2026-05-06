@@ -5,8 +5,15 @@ final class MediaController: ObservableObject {
 
     static let shared = MediaController()
 
+    private enum DuckingMode {
+        case none
+        case mute
+        case volume(savedVolume: Float)
+    }
+
     private var didMuteAudio = false
     private var wasAudioMutedBeforeRecording = false
+    private var activeDuckingMode: DuckingMode = .none
     private var unmuteTask: Task<Void, Never>?
     private var muteGeneration: Int = 0
 
@@ -18,6 +25,10 @@ final class MediaController: ObservableObject {
         didSet { UserDefaults.standard.set(audioResumptionDelay, forKey: "audioResumptionDelay") }
     }
 
+    @Published var audioDuckingPercent: Int = UserDefaults.standard.integer(forKey: "audioDuckingPercent") {
+        didSet { UserDefaults.standard.set(audioDuckingPercent, forKey: "audioDuckingPercent") }
+    }
+
     private init() {}
 
     func muteSystemAudio() async -> Bool {
@@ -27,30 +38,112 @@ final class MediaController: ObservableObject {
         unmuteTask = nil
         muteGeneration += 1
 
+        // If the previous cycle was cancelled before its restore ran, system
+        // audio is still in a ducked/muted state. Apply that restore now so
+        // the new cycle starts from the user's actual volume — and so a
+        // later stop won't try to restore a stale saved value if the new
+        // cycle ends up being a no-op (0% or failure).
+        applyPendingRestoreImmediately()
+
+        let percent = max(0, min(100, audioDuckingPercent))
+
+        // Full mute path preserves the original behavior and the macOS
+        // volume-slider state. Use volume scalar only for partial ducking.
+        if percent >= 100 {
+            return await applyFullMute()
+        } else if percent > 0 {
+            return applyVolumeDucking(percent: percent)
+        } else {
+            // 0% reduction means "do nothing".
+            return false
+        }
+    }
+
+    private func applyFullMute() async -> Bool {
+        // A prior .volume restore is still unresolved. Switching to .mute
+        // here would overwrite the saved volume, so a later stop would
+        // unmute but never restore the user's volume — the device would
+        // stay at the ducked level. Bail so the prior mode survives.
+        if case .volume = activeDuckingMode {
+            return false
+        }
+
         let currentlyMuted = isSystemAudioMuted()
 
         if currentlyMuted {
             if didMuteAudio {
-                // We muted it previously, stay responsible for unmuting
                 wasAudioMutedBeforeRecording = false
             } else {
-                // User muted it, don't unmute when done
                 wasAudioMutedBeforeRecording = true
                 didMuteAudio = false
             }
+            activeDuckingMode = .mute
             return true
         }
 
         wasAudioMutedBeforeRecording = false
         let success = setSystemMuted(true)
         didMuteAudio = success
+        activeDuckingMode = success ? .mute : .none
         return success
+    }
+
+    private func applyVolumeDucking(percent: Int) -> Bool {
+        // If a prior cycle's saved volume is still pending (its restore
+        // failed and applyPendingRestoreImmediately kept the state), reuse
+        // it as the baseline. Reading current volume here would anchor on
+        // the still-ducked level and drift the user's true volume on stop.
+        // If the unresolved mode is .mute instead, refuse to overwrite —
+        // a stop with mode=.volume would never unmute the device.
+        let baselineVolume: Float
+        switch activeDuckingMode {
+        case .volume(let prevSaved):
+            baselineVolume = prevSaved
+        case .mute:
+            return false
+        case .none:
+            guard let current = getSystemVolume() else { return false }
+            baselineVolume = current
+        }
+
+        let factor = Float(100 - percent) / 100.0
+        let targetVolume = max(0.0, min(1.0, baselineVolume * factor))
+
+        guard setSystemVolume(targetVolume) else { return false }
+
+        activeDuckingMode = .volume(savedVolume: baselineVolume)
+        return true
+    }
+
+    private func applyPendingRestoreImmediately() {
+        let shouldUnmute = didMuteAudio && !wasAudioMutedBeforeRecording
+
+        switch activeDuckingMode {
+        case .mute:
+            if shouldUnmute {
+                // Keep state (mode + didMuteAudio) on failure so the next
+                // unmuteSystemAudio or applyPendingRestoreImmediately can
+                // retry the restore instead of forgetting we own the mute.
+                guard setSystemMuted(false) else { return }
+            }
+        case .volume(let savedVolume):
+            // Same here: if the restore fails, leave .volume(savedVolume)
+            // in place so applyVolumeDucking can carry the baseline forward
+            // and a later cycle still has a path back to the user's volume.
+            guard setSystemVolume(savedVolume) else { return }
+        case .none:
+            break
+        }
+
+        didMuteAudio = false
+        activeDuckingMode = .none
     }
 
     func unmuteSystemAudio() async {
         guard isSystemMuteEnabled else { return }
 
         let delay = audioResumptionDelay
+        let mode = activeDuckingMode
         let shouldUnmute = didMuteAudio && !wasAudioMutedBeforeRecording
         let myGeneration = muteGeneration
 
@@ -63,11 +156,19 @@ final class MediaController: ObservableObject {
             guard !Task.isCancelled else { return }
             guard self.muteGeneration == myGeneration else { return }
 
-            if shouldUnmute {
-                _ = self.setSystemMuted(false)
+            switch mode {
+            case .mute:
+                if shouldUnmute {
+                    _ = self.setSystemMuted(false)
+                }
+            case .volume(let savedVolume):
+                _ = self.setSystemVolume(savedVolume)
+            case .none:
+                break
             }
 
             self.didMuteAudio = false
+            self.activeDuckingMode = .none
         }
 
         unmuteTask = task
@@ -139,6 +240,53 @@ final class MediaController: ObservableObject {
         if status != noErr || !isSettable.boolValue { return false }
 
         status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, propertySize, &muteValue)
+        return status == noErr
+    }
+
+    private func getSystemVolume() -> Float? {
+        guard let deviceID = getDefaultOutputDevice() else { return nil }
+
+        var volume: Float = 0
+        var propertySize = UInt32(MemoryLayout<Float>.size)
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        if !AudioObjectHasProperty(deviceID, &address) {
+            // Some devices expose volume only on the master channel.
+            address.mElement = 0
+            if !AudioObjectHasProperty(deviceID, &address) { return nil }
+        }
+
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, &volume)
+        return status == noErr ? volume : nil
+    }
+
+    private func setSystemVolume(_ volume: Float) -> Bool {
+        guard let deviceID = getDefaultOutputDevice() else { return false }
+
+        var newValue = max(0.0, min(1.0, volume))
+        let propertySize = UInt32(MemoryLayout<Float>.size)
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyVolumeScalar,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        if !AudioObjectHasProperty(deviceID, &address) {
+            address.mElement = 0
+            if !AudioObjectHasProperty(deviceID, &address) { return false }
+        }
+
+        var isSettable: DarwinBoolean = false
+        var status = AudioObjectIsPropertySettable(deviceID, &address, &isSettable)
+        if status != noErr || !isSettable.boolValue { return false }
+
+        status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, propertySize, &newValue)
         return status == noErr
     }
 }

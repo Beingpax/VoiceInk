@@ -155,13 +155,34 @@ struct SettingsView: View {
                     isEnabled: $mediaController.isSystemMuteEnabled,
                     label: "Mute Audio While Recording"
                 ) {
-                    Picker("Resume Delay", selection: $mediaController.audioResumptionDelay) {
-                        Text("0s").tag(0.0)
-                        Text("1s").tag(1.0)
-                        Text("2s").tag(2.0)
-                        Text("3s").tag(3.0)
-                        Text("4s").tag(4.0)
-                        Text("5s").tag(5.0)
+                    VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Ducking Amount")
+                                InfoTip("How much to lower system audio while recording. 100% fully mutes (default); lower values keep audio audible at a reduced volume — useful when listening to music or video.")
+                                Spacer()
+                                Text("\(mediaController.audioDuckingPercent)%")
+                                    .foregroundColor(.secondary)
+                                    .monospacedDigit()
+                            }
+                            Slider(
+                                value: Binding(
+                                    get: { Double(mediaController.audioDuckingPercent) },
+                                    set: { mediaController.audioDuckingPercent = Int($0) }
+                                ),
+                                in: 0...100,
+                                step: 5
+                            )
+                        }
+
+                        Picker("Resume Delay", selection: $mediaController.audioResumptionDelay) {
+                            Text("0s").tag(0.0)
+                            Text("1s").tag(1.0)
+                            Text("2s").tag(2.0)
+                            Text("3s").tag(3.0)
+                            Text("4s").tag(4.0)
+                            Text("5s").tag(5.0)
+                        }
                     }
                 }
 
