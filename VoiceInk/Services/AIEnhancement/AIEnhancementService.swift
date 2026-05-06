@@ -262,8 +262,14 @@ class AIEnhancementService: ObservableObject {
                     throw EnhancementError.customError("\(aiService.selectedProvider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
                 }
                 let temperature = aiService.currentModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
-                let reasoningEffort = ReasoningConfig.getReasoningParameter(for: aiService.currentModel)
-                let extraBody = ReasoningConfig.getExtraBodyParameters(for: aiService.currentModel)
+                let reasoningEffort = ReasoningConfig.getReasoningParameter(
+                    for: aiService.selectedProvider,
+                    modelName: aiService.currentModel
+                )
+                let extraBody = ReasoningConfig.getExtraBodyParameters(
+                    for: aiService.selectedProvider,
+                    modelName: aiService.currentModel
+                )
                 result = try await OpenAILLMClient.chatCompletion(
                     baseURL: baseURL,
                     apiKey: aiService.apiKey,

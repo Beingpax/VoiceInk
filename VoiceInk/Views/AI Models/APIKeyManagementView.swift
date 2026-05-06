@@ -227,7 +227,7 @@ struct APIKeyManagementView: View {
 
                     Divider()
 
-                    TextField("Model Name", text: $aiService.customModel, prompt: Text("e.g. gemini-3.1-pro-preview, gpt-oss-120b"))
+                    TextField("Model Name", text: $aiService.customModel, prompt: Text("e.g. gemini-3.1-pro-preview, gpt-5.5"))
                         .textFieldStyle(.roundedBorder)
 
                     Divider()

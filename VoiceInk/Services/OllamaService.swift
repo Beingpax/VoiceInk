@@ -81,7 +81,8 @@ class OllamaService: ObservableObject {
                 model: selectedModel,
                 prompt: text,
                 systemPrompt: systemPrompt,
-                temperature: defaultTemperature
+                temperature: defaultTemperature,
+                think: false
             )
         } catch let error as LLMKitError {
             throw mapLLMKitError(error)
