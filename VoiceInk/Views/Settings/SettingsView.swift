@@ -17,7 +17,6 @@ struct SettingsView: View {
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
@@ -213,10 +212,10 @@ struct SettingsView: View {
 
                 LaunchAtLogin.Toggle("Launch at Login")
 
-                Toggle("Auto-check Updates", isOn: $autoUpdateCheck)
-                    .onChange(of: autoUpdateCheck) { _, newValue in
-                        updaterViewModel.toggleAutoUpdates(newValue)
-                    }
+                Toggle("Auto-check Updates", isOn: Binding(
+                    get: { updaterViewModel.automaticallyChecksForUpdates },
+                    set: { updaterViewModel.setAutomaticallyChecksForUpdates($0) }
+                ))
 
                 Toggle("Show Announcements", isOn: $enableAnnouncements)
                     .onChange(of: enableAnnouncements) { _, newValue in

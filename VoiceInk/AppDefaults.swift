@@ -6,7 +6,6 @@ enum AppDefaults {
             // Onboarding & General
             "hasCompletedOnboarding": false,
             "enableAnnouncements": true,
-            "autoUpdateCheck": true,
 
             // Clipboard
             "restoreClipboardAfterPaste": true,

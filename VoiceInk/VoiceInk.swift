@@ -301,7 +301,6 @@ struct VoiceInkApp: App {
                             return
                         }
 
-                        updaterViewModel.silentlyCheckForUpdates()
                         if enableAnnouncements {
                             AnnouncementsService.shared.start()
                         }
@@ -394,35 +393,30 @@ struct VoiceInkApp: App {
 }
 
 class UpdaterViewModel: ObservableObject {
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
-
     private let updaterController: SPUStandardUpdaterController
 
     @Published var canCheckForUpdates = false
+    @Published var automaticallyChecksForUpdates = false
 
     init() {
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
-        // Enable automatic update checking
-        updaterController.updater.automaticallyChecksForUpdates = autoUpdateCheck
-        updaterController.updater.updateCheckInterval = 24 * 60 * 60
+        automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
         updaterController.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+
+        updaterController.updater.publisher(for: \.automaticallyChecksForUpdates)
+            .assign(to: &$automaticallyChecksForUpdates)
     }
 
-    func toggleAutoUpdates(_ value: Bool) {
+    func setAutomaticallyChecksForUpdates(_ value: Bool) {
         updaterController.updater.automaticallyChecksForUpdates = value
     }
 
     func checkForUpdates() {
         // This is for manual checks - will show UI
         updaterController.checkForUpdates(nil)
-    }
-
-    func silentlyCheckForUpdates() {
-        // This checks for updates in the background without showing UI unless an update is found
-        updaterController.updater.checkForUpdatesInBackground()
     }
 }
 
