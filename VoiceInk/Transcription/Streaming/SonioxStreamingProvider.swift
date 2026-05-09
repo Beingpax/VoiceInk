@@ -36,7 +36,13 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "stt-rt-v4", language: language, customVocabulary: vocabulary)
+            try await client.connect(
+                apiKey: apiKey,
+                model: "stt-rt-v4",
+                language: language,
+                customVocabulary: vocabulary,
+                webSocketURL: SonioxRegion.current.realtimeWebSocketURL
+            )
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
@@ -117,7 +123,7 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         case .networkError(let detail):
             return StreamingTranscriptionError.connectionFailed(detail)
         default:
-            return StreamingTranscriptionError.serverError(llmError.localizedDescription ?? "Unknown error")
+            return StreamingTranscriptionError.serverError(llmError.errorDescription ?? "Unknown error")
         }
     }
 }

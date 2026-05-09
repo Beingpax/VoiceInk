@@ -175,9 +175,7 @@ struct CloudModelCardView: View {
                 .controlSize(.small)
             } else {
                 Button(action: {
-                    withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
-                        isExpanded.toggle()
-                    }
+                    toggleConfiguration()
                 }) {
                     HStack(spacing: 4) {
                         Text("Configure")
@@ -199,6 +197,14 @@ struct CloudModelCardView: View {
             
             if isConfigured {
                 Menu {
+                    if hasProviderConfiguration {
+                        Button {
+                            toggleConfiguration()
+                        } label: {
+                            Label(isExpanded ? "Hide Configuration" : "Configure", systemImage: "gearshape")
+                        }
+                    }
+
                     Button {
                         clearAPIKey()
                     } label: {
@@ -217,6 +223,11 @@ struct CloudModelCardView: View {
     
     private var configurationSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if hasProviderConfiguration {
+                CloudProviderConfigurationSection(provider: model.provider)
+                Divider()
+            }
+
             Text("API Key Configuration")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
@@ -271,6 +282,16 @@ struct CloudModelCardView: View {
     
     private var streamingDefaultsKey: String {
         "streaming-enabled-\(model.name)"
+    }
+
+    private var hasProviderConfiguration: Bool {
+        CloudProviderConfigurationSection.hasConfiguration(for: model.provider)
+    }
+
+    private func toggleConfiguration() {
+        withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
+            isExpanded.toggle()
+        }
     }
 
     private func loadSavedAPIKey() {

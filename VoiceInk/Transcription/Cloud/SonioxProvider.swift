@@ -36,7 +36,8 @@ struct SonioxProvider: CloudProvider {
             apiKey: apiKey,
             model: model,
             language: language,
-            customVocabulary: customVocabulary
+            customVocabulary: customVocabulary,
+            baseURL: SonioxRegion.current.restBaseURL
         )
     }
 
@@ -45,6 +46,54 @@ struct SonioxProvider: CloudProvider {
     }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {
-        return await SonioxClient.verifyAPIKey(key)
+        return await SonioxClient.verifyAPIKey(key, baseURL: SonioxRegion.current.restBaseURL)
+    }
+}
+
+enum SonioxRegion: String, CaseIterable, Identifiable {
+    case us
+    case eu
+    case jp
+
+    static let defaultsKey = "SonioxRegion"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .us:
+            return "United States"
+        case .eu:
+            return "European Union"
+        case .jp:
+            return "Japan"
+        }
+    }
+
+    var restBaseURL: URL {
+        switch self {
+        case .us:
+            return URL(string: "https://api.soniox.com/v1")!
+        case .eu:
+            return URL(string: "https://api.eu.soniox.com/v1")!
+        case .jp:
+            return URL(string: "https://api.jp.soniox.com/v1")!
+        }
+    }
+
+    var realtimeWebSocketURL: URL {
+        switch self {
+        case .us:
+            return URL(string: "wss://stt-rt.soniox.com/transcribe-websocket")!
+        case .eu:
+            return URL(string: "wss://stt-rt.eu.soniox.com/transcribe-websocket")!
+        case .jp:
+            return URL(string: "wss://stt-rt.jp.soniox.com/transcribe-websocket")!
+        }
+    }
+
+    static var current: SonioxRegion {
+        let rawValue = UserDefaults.standard.string(forKey: defaultsKey) ?? SonioxRegion.us.rawValue
+        return SonioxRegion(rawValue: rawValue) ?? .us
     }
 }
