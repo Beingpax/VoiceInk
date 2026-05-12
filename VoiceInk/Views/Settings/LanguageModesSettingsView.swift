@@ -23,16 +23,26 @@ struct LanguageModesSettingsView: View {
                         LanguageModeRow(
                             mode: bindingForMode(mode),
                             isActive: manager.activeModeId == mode.id,
-                            availableModels: transcriptionModelManager.allAvailableModels,
+                            availableModels: transcriptionModelManager.usableModels,
                             onDelete: { manager.removeMode(id: mode.id) }
                         )
                     }
                 }
 
                 Button {
+                    let currentModel = transcriptionModelManager.currentTranscriptionModel
+                    let supported = currentModel?.supportedLanguages.keys
+                    let language: String = {
+                        if let supported = supported {
+                            if supported.contains("en") { return "en" }
+                            if supported.contains("auto") { return "auto" }
+                            return supported.first ?? "en"
+                        }
+                        return "en"
+                    }()
                     let newMode = LanguageMode(
-                        transcriptionModelName: transcriptionModelManager.currentTranscriptionModel?.name,
-                        language: "en"
+                        transcriptionModelName: currentModel?.name,
+                        language: language
                     )
                     manager.addMode(newMode)
                 } label: {

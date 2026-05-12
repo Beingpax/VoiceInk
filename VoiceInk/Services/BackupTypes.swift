@@ -7,6 +7,7 @@ enum BackupCategory: String, CaseIterable, Hashable {
     case powerMode
     case dictionary
     case customModels
+    case languageModes
 
     var title: String {
         switch self {
@@ -20,6 +21,8 @@ enum BackupCategory: String, CaseIterable, Hashable {
             return "Dictionary"
         case .customModels:
             return "Custom Model Definitions"
+        case .languageModes:
+            return "Language Modes"
         }
     }
 }
@@ -77,6 +80,7 @@ struct GeneralBackup: Codable {
     let openHistoryWindowShortcut: KeyboardShortcuts.Shortcut?
     let quickAddToDictionaryShortcut: KeyboardShortcuts.Shortcut?
     let toggleEnhancementShortcut: KeyboardShortcuts.Shortcut?
+    let cycleLanguageModeShortcut: KeyboardShortcuts.Shortcut?
     let selectedHotkey1RawValue: String?
     let selectedHotkey2RawValue: String?
     let hotkeyMode1RawValue: String?
@@ -122,12 +126,14 @@ struct BackupFile: Codable {
     let generalSettings: GeneralBackup?
     let customEmojis: [String]?
     let customCloudModels: [CustomModelBackup]?
+    let languageModes: [LanguageMode]?
+    let activeLanguageModeId: String?
 
     private enum CodingKeys: String, CodingKey {
-        case version, customPrompts, powerModeConfigs, powerModeShortcuts, vocabularyWords, wordReplacements, generalSettings, customEmojis, customCloudModels
+        case version, customPrompts, powerModeConfigs, powerModeShortcuts, vocabularyWords, wordReplacements, generalSettings, customEmojis, customCloudModels, languageModes, activeLanguageModeId
     }
 
-    init(version: String, customPrompts: [CustomPrompt], powerModeConfigs: [PowerModeConfig], powerModeShortcuts: [String: KeyboardShortcuts.Shortcut]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?, generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?) {
+    init(version: String, customPrompts: [CustomPrompt], powerModeConfigs: [PowerModeConfig], powerModeShortcuts: [String: KeyboardShortcuts.Shortcut]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?, generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?, languageModes: [LanguageMode]?, activeLanguageModeId: String?) {
         self.version = version
         self.customPrompts = customPrompts
         self.powerModeConfigs = powerModeConfigs
@@ -137,6 +143,8 @@ struct BackupFile: Codable {
         self.generalSettings = generalSettings
         self.customEmojis = customEmojis
         self.customCloudModels = customCloudModels
+        self.languageModes = languageModes
+        self.activeLanguageModeId = activeLanguageModeId
     }
 
     init(from decoder: Decoder) throws {
@@ -150,5 +158,7 @@ struct BackupFile: Codable {
         generalSettings = try container.decodeIfPresent(GeneralBackup.self, forKey: .generalSettings)
         customEmojis = try container.decodeIfPresent([String].self, forKey: .customEmojis)
         customCloudModels = try container.decodeIfPresent([CustomModelBackup].self, forKey: .customCloudModels)
+        languageModes = try container.decodeIfPresent([LanguageMode].self, forKey: .languageModes)
+        activeLanguageModeId = try container.decodeIfPresent(String.self, forKey: .activeLanguageModeId)
     }
 }
