@@ -191,6 +191,9 @@ struct SettingsView: View {
                 }
             }
 
+            // MARK: - Language Modes
+            LanguageModesSettingsView()
+
             // MARK: - Power Mode
             PowerModeSection()
 

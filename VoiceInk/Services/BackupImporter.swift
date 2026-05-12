@@ -73,6 +73,16 @@ enum BackupImporter {
         if categories.contains(.customModels) {
             importCustomModels(backup.customCloudModels, transcriptionModelManager: transcriptionModelManager)
         }
+
+        if categories.contains(.languageModes) {
+            if let modes = backup.languageModes {
+                let activeId = backup.activeLanguageModeId.flatMap(UUID.init)
+                LanguageModeManager.shared.replaceAll(modes: modes, activeId: activeId)
+                print("Successfully imported \(modes.count) Language Modes.")
+            } else {
+                print("No Language Modes found in the imported file.")
+            }
+        }
     }
 
     @MainActor
@@ -108,6 +118,9 @@ enum BackupImporter {
         }
         if let enhancementShortcut = general.toggleEnhancementShortcut {
             KeyboardShortcuts.setShortcut(enhancementShortcut, for: .toggleEnhancement)
+        }
+        if let cycleShortcut = general.cycleLanguageModeShortcut {
+            KeyboardShortcuts.setShortcut(cycleShortcut, for: .cycleLanguageMode)
         }
 
         if let hotkeyRaw = general.selectedHotkey1RawValue,

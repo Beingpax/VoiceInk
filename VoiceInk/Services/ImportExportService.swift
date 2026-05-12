@@ -164,6 +164,7 @@ class ImportExportService {
             openHistoryWindowShortcut: KeyboardShortcuts.getShortcut(for: .openHistoryWindow),
             quickAddToDictionaryShortcut: KeyboardShortcuts.getShortcut(for: .quickAddToDictionary),
             toggleEnhancementShortcut: KeyboardShortcuts.getShortcut(for: .toggleEnhancement),
+            cycleLanguageModeShortcut: KeyboardShortcuts.getShortcut(for: .cycleLanguageMode),
             selectedHotkey1RawValue: hotkeyManager.selectedHotkey1.rawValue,
             selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
             hotkeyMode1RawValue: hotkeyManager.hotkeyMode1.rawValue,
@@ -200,7 +201,9 @@ class ImportExportService {
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
-            customCloudModels: customModels
+            customCloudModels: customModels,
+            languageModes: LanguageModeManager.shared.modes,
+            activeLanguageModeId: LanguageModeManager.shared.activeModeId?.uuidString
         )
 
         let encoder = JSONEncoder()

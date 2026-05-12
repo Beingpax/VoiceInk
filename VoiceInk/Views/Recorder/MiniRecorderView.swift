@@ -47,6 +47,11 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 buttonSize: 22,
                 padding: EdgeInsets()
             )
+
+            RecorderLanguageModeButton(
+                buttonSize: 22,
+                padding: EdgeInsets()
+            )
             .padding(.trailing, 12)
         }
         .frame(height: controlBarHeight)
