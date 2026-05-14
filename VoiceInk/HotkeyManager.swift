@@ -95,12 +95,14 @@ class HotkeyManager: ObservableObject {
         case toggle = "toggle"
         case pushToTalk = "pushToTalk"
         case hybrid = "hybrid"
+        case delayedHold = "delayedHold"
 
         var displayName: String {
             switch self {
             case .toggle: return "Toggle"
             case .pushToTalk: return "Push to Talk"
             case .hybrid: return "Hybrid"
+            case .delayedHold: return "Hold to Start"
             }
         }
     }
@@ -408,6 +410,22 @@ class HotkeyManager: ObservableObject {
                     logger.notice("processKeyPress: starting recording (push-to-talk key down)")
                     await recorderUIManager.toggleMiniRecorder()
                 }
+
+            case .delayedHold:
+                let pressStartTime = eventTime
+                Task { [weak self] in
+                    try? await Task.sleep(nanoseconds: UInt64(Self.hybridPressThreshold * 1_000_000_000))
+                    await MainActor.run {
+                        guard let self = self else { return }
+                        if self.currentKeyState
+                            && self.keyPressEventTime == pressStartTime
+                            && !self.recorderUIManager.isMiniRecorderVisible
+                            && self.canProcessHotkeyAction {
+                            self.logger.notice("processKeyPress: starting recording (delayed-hold threshold reached)")
+                            Task { await self.recorderUIManager.toggleMiniRecorder() }
+                        }
+                    }
+                }
             }
         } else {
             switch mode {
@@ -429,6 +447,16 @@ class HotkeyManager: ObservableObject {
                     await recorderUIManager.toggleMiniRecorder()
                 } else {
                     isHandsFreeMode = true
+                }
+
+            case .delayedHold:
+                if recorderUIManager.isMiniRecorderVisible && engine.recordingState == .recording {
+                    guard canProcessHotkeyAction else {
+                        keyPressEventTime = nil
+                        return
+                    }
+                    logger.notice("processKeyPress: stopping recording (delayed-hold key up)")
+                    await recorderUIManager.toggleMiniRecorder()
                 }
             }
 
@@ -469,6 +497,22 @@ class HotkeyManager: ObservableObject {
                 logger.notice("handleCustomShortcutKeyDown: starting recording (push-to-talk key down)")
                 await recorderUIManager.toggleMiniRecorder()
             }
+
+        case .delayedHold:
+            let pressStartTime = eventTime
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(Self.hybridPressThreshold * 1_000_000_000))
+                await MainActor.run {
+                    guard let self = self else { return }
+                    if self.shortcutCurrentKeyState
+                        && self.shortcutKeyPressEventTime == pressStartTime
+                        && !self.recorderUIManager.isMiniRecorderVisible
+                        && self.canProcessHotkeyAction {
+                        self.logger.notice("handleCustomShortcutKeyDown: starting recording (delayed-hold threshold reached)")
+                        Task { await self.recorderUIManager.toggleMiniRecorder() }
+                    }
+                }
+            }
         }
     }
 
@@ -495,6 +539,16 @@ class HotkeyManager: ObservableObject {
                 await recorderUIManager.toggleMiniRecorder()
             } else {
                 isShortcutHandsFreeMode = true
+            }
+
+        case .delayedHold:
+            if recorderUIManager.isMiniRecorderVisible && engine.recordingState == .recording {
+                guard canProcessHotkeyAction else {
+                    shortcutKeyPressEventTime = nil
+                    return
+                }
+                logger.notice("handleCustomShortcutKeyUp: stopping recording (delayed-hold key up)")
+                await recorderUIManager.toggleMiniRecorder()
             }
         }
 
