@@ -188,7 +188,8 @@ class ImportExportService {
             isExperimentalFeaturesEnabled: UserDefaults.standard.bool(forKey: "isExperimentalFeaturesEnabled"),
             restoreClipboardAfterPaste: UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"),
             clipboardRestoreDelay: UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
-            useAppleScriptPaste: UserDefaults.standard.bool(forKey: "useAppleScriptPaste")
+            useAppleScriptPaste: nil,
+            pasteMethod: UserDefaults.standard.string(forKey: "pasteMethod")
         )
 
         let exportedSettings = BackupFile(

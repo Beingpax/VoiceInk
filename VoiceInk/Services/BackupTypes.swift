@@ -101,7 +101,8 @@ struct GeneralBackup: Codable {
     let isExperimentalFeaturesEnabled: Bool?
     let restoreClipboardAfterPaste: Bool?
     let clipboardRestoreDelay: Double?
-    let useAppleScriptPaste: Bool?
+    let useAppleScriptPaste: Bool?   // legacy — kept for backward-compat import
+    let pasteMethod: String?
 }
 
 struct WordBackup: Codable {

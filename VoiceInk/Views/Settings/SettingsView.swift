@@ -21,7 +21,7 @@ struct SettingsView: View {
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
-    @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
+    @AppStorage("pasteMethod") private var pasteMethod = PasteMethod.cgEvent.rawValue
     @State private var showResetOnboardingAlert = false
     @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
     @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
@@ -182,11 +182,19 @@ struct SettingsView: View {
                     }
                 }
 
-                // AppleScript Paste
-                Toggle(isOn: $useAppleScriptPaste) {
+                // Paste Method
+                LabeledContent {
+                    Picker("", selection: $pasteMethod) {
+                        ForEach(PasteMethod.allCases, id: \.rawValue) { method in
+                            Text(method.displayName).tag(method.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                } label: {
                     HStack(spacing: 4) {
-                        Text("Use AppleScript Paste")
-                        InfoTip("Enable this if pasting doesn't work with your keyboard layout (e.g. Neo2). Uses AppleScript instead of simulated key events.")
+                        Text("Paste Method")
+                        InfoTip("Standard uses simulated Cmd+V key events. AppleScript works better with some keyboard layouts (e.g. Neo2). Direct Typing types character by character — use this when dictating into a remote desktop or virtual machine.")
                     }
                 }
             }

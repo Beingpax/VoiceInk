@@ -5,6 +5,25 @@ import os
 
 private let logger = Logger(subsystem: "com.VoiceInk", category: "CursorPaster")
 
+enum PasteMethod: String, CaseIterable {
+    case cgEvent      = "cgEvent"
+    case appleScript  = "appleScript"
+    case directTyping = "directTyping"
+
+    static var current: PasteMethod {
+        let raw = UserDefaults.standard.string(forKey: "pasteMethod") ?? "cgEvent"
+        return PasteMethod(rawValue: raw) ?? .cgEvent
+    }
+
+    var displayName: String {
+        switch self {
+        case .cgEvent:      return "Standard (CGEvent)"
+        case .appleScript:  return "AppleScript"
+        case .directTyping: return "Direct Typing (Remote Desktop)"
+        }
+    }
+}
+
 class CursorPaster {
     private typealias ClipboardSnapshot = [(NSPasteboard.PasteboardType, Data)]
 
@@ -19,6 +38,12 @@ class CursorPaster {
     @MainActor
     @discardableResult
     static func startPasteAtCursor(_ text: String) -> Task<Void, Never> {
+        if PasteMethod.current == .directTyping {
+            return Task { @MainActor in
+                await typeTextDirectly(text)
+            }
+        }
+
         let pasteboard = NSPasteboard.general
         let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
@@ -56,10 +81,9 @@ class CursorPaster {
     }
 
     private static func postPasteCommand() {
-        if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
-            pasteUsingAppleScript()
-        } else {
-            pasteFromClipboard()
+        switch PasteMethod.current {
+        case .appleScript:  pasteUsingAppleScript()
+        case .cgEvent, .directTyping: pasteFromClipboard()
         }
     }
 
@@ -132,6 +156,42 @@ class CursorPaster {
         cmdUp?.post(tap: .cghidEventTap)
 
         logger.notice("CGEvents posted for Cmd+V")
+    }
+
+    // MARK: - Direct Typing (for Remote Desktop / virtual machine sessions)
+
+    // Types text character-by-character via CGEvent instead of using clipboard paste.
+    // Remote desktop clients forward individual keystrokes to the remote machine, so
+    // this bypasses the Mac↔Windows clipboard sync problem entirely.
+    @MainActor
+    private static func typeTextDirectly(_ text: String) async {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility not trusted — cannot type text directly")
+            return
+        }
+
+        let source = CGEventSource(stateID: .privateState)
+        // 5 ms between key-pairs: enough for RD clients to queue and forward each
+        // keystroke without dropping characters, fast enough for normal usage.
+        let interKeyDelay: UInt64 = 5_000_000
+
+        for scalar in text.unicodeScalars {
+            // Represent each Unicode scalar as a UTF-16 code unit sequence so that
+            // characters outside the BMP (e.g. emoji) are encoded as surrogate pairs.
+            var utf16Units = Array(String(scalar).utf16)
+
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
+            keyDown?.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+            keyDown?.post(tap: .cghidEventTap)
+
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+            keyUp?.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+            keyUp?.post(tap: .cghidEventTap)
+
+            try? await Task.sleep(nanoseconds: interKeyDelay)
+        }
+
+        logger.notice("Direct-typed \(text.unicodeScalars.count) characters")
     }
 
     // MARK: - Auto Send Keys
