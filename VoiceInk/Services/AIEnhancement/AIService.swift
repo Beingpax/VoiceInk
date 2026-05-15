@@ -161,7 +161,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return []
         case .appleIntelligence:
-            return ["system"]
+            return []
         case .custom:
             return []
         case .openRouter:
