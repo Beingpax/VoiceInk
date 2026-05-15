@@ -20,14 +20,26 @@ struct APIKeyManagementView: View {
         Section("AI Provider Integration") {
             HStack {
                 Picker("Provider", selection: $aiService.selectedProvider) {
-                    ForEach(AIProvider.allCases.filter { $0 != .elevenLabs && $0 != .deepgram && $0 != .soniox && $0 != .speechmatics && $0 != .assemblyAI }, id: \.self) { provider in
+                    ForEach(AIProvider.allCases.filter { provider in
+                        if provider == .elevenLabs || provider == .deepgram || provider == .soniox || provider == .speechmatics || provider == .assemblyAI {
+                            return false
+                        }
+                        if provider == .appleIntelligence {
+                            if #available(macOS 26.0, *) {
+                                return true
+                            } else {
+                                return false
+                            }
+                        }
+                        return true
+                    }, id: \.self) { provider in
                         Text(provider.rawValue).tag(provider)
                     }
                 }
                 .pickerStyle(.automatic)
                 .tint(.blue)
                 
-                if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
+                if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama && aiService.selectedProvider != .appleIntelligence {
                     Spacer()
                     Circle()
                         .fill(Color.green)
@@ -55,6 +67,15 @@ struct APIKeyManagementView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
+                } else if aiService.selectedProvider == .appleIntelligence {
+                    Spacer()
+                    let isReady = aiService.appleIntelligenceAvailability.isAvailable
+                    Circle()
+                        .fill(isReady ? Color.green : Color.orange)
+                        .frame(width: 8, height: 8)
+                    Text(isReady ? "Ready" : "Unavailable")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
             }
             .onChange(of: aiService.selectedProvider) { oldValue, newValue in
@@ -63,6 +84,9 @@ struct APIKeyManagementView: View {
                 }
                 if aiService.selectedProvider == .localCLI {
                     syncLocalCLIStateFromService()
+                }
+                if aiService.selectedProvider == .appleIntelligence {
+                    aiService.refreshAppleIntelligenceAvailability()
                 }
             }
 
@@ -107,7 +131,8 @@ struct APIKeyManagementView: View {
                     
                 } else if !aiService.availableModels.isEmpty &&
                             aiService.selectedProvider != .ollama &&
-                            aiService.selectedProvider != .custom {
+                            aiService.selectedProvider != .custom &&
+                            aiService.selectedProvider != .appleIntelligence {
                     Picker("Model", selection: Binding(
                         get: { aiService.currentModel },
                         set: { aiService.selectModel($0) }
@@ -221,6 +246,31 @@ struct APIKeyManagementView: View {
                             .foregroundColor(.orange)
                     }
 
+                } else if aiService.selectedProvider == .appleIntelligence {
+                    let availability = aiService.appleIntelligenceAvailability
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: availability.isAvailable ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundColor(availability.isAvailable ? .green : .orange)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(availability.userFacingMessage)
+                                .font(.subheadline)
+                            if availability == .appleIntelligenceNotEnabled {
+                                Link("Open System Settings", destination: URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension")!)
+                                    .font(.caption)
+                            }
+                            Text("Runs entirely on-device. No data leaves your Mac. Best suited for short transcripts — context is automatically trimmed to fit Apple Intelligence's smaller window.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button(action: {
+                            aiService.refreshAppleIntelligenceAvailability()
+                        }) {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .help("Re-check availability")
+                    }
+
                 } else if aiService.selectedProvider == .custom {
                     TextField("API Endpoint URL", text: $aiService.customBaseURL, prompt: Text("e.g. https://api.openai.com/v1/chat/completions"))
                         .textFieldStyle(.roundedBorder)
@@ -327,6 +377,9 @@ struct APIKeyManagementView: View {
             }
             if aiService.selectedProvider == .localCLI {
                 syncLocalCLIStateFromService()
+            }
+            if aiService.selectedProvider == .appleIntelligence {
+                aiService.refreshAppleIntelligenceAvailability()
             }
         }
     }

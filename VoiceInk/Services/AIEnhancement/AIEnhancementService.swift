@@ -142,7 +142,18 @@ class AIEnhancementService: ObservableObject {
         lastRequestTime = Date()
     }
 
-    private func getSystemMessage(for mode: EnhancementPrompt) async -> String {
+    private struct EnhancementContextSections {
+        var selectedText: String
+        var clipboard: String
+        var screenCapture: String
+        var customVocabulary: String
+
+        var concatenated: String {
+            selectedText + clipboard + screenCapture + customVocabulary
+        }
+    }
+
+    private func collectContextSections() async -> EnhancementContextSections {
         let selectedTextContext: String
         if AXIsProcessTrusted() {
             if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
@@ -171,9 +182,6 @@ class AIEnhancementService: ObservableObject {
         }
 
         let customVocabulary = customVocabularyService.getCustomVocabulary(from: modelContext)
-
-        let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
-
         let customVocabularySection = if !customVocabulary.isEmpty {
             """
 
@@ -187,19 +195,84 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
-        let finalContextSection = allContextSections + customVocabularySection
+        return EnhancementContextSections(
+            selectedText: selectedTextContext,
+            clipboard: clipboardContext,
+            screenCapture: screenCaptureContext,
+            customVocabulary: customVocabularySection
+        )
+    }
 
+    private func basePromptText() -> String {
         if let activePrompt = activePrompt {
             if activePrompt.id == PredefinedPrompts.assistantPromptId {
-                return activePrompt.promptText + finalContextSection
+                return activePrompt.promptText
             } else {
-                return activePrompt.finalPromptText + finalContextSection
+                return activePrompt.finalPromptText
             }
         } else {
             let defaultPrompt = allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId }) ?? allPrompts.first!
-            return defaultPrompt.finalPromptText + finalContextSection
+            return defaultPrompt.finalPromptText
         }
     }
+
+    private func getSystemMessage(for mode: EnhancementPrompt) async -> String {
+        let basePrompt = basePromptText()
+        let context = await collectContextSections()
+        return basePrompt + context.concatenated
+    }
+
+    /// Budgets the system prompt for providers with a small context window
+    /// (currently only Apple Intelligence). Drops context sections in priority
+    /// order — screen capture, then clipboard, then selected text — until the
+    /// total character count fits the budget. The base prompt and custom
+    /// vocabulary are preserved so spelling guidance and the user's chosen
+    /// behaviour are never silently lost.
+    private func getBudgetedSystemMessage(
+        for mode: EnhancementPrompt,
+        transcriptLength: Int,
+        characterBudget: Int
+    ) async -> String {
+        let basePrompt = basePromptText()
+        var context = await collectContextSections()
+
+        let nonTrimmableLength = basePrompt.count + context.customVocabulary.count + transcriptLength
+        var remaining = max(0, characterBudget - nonTrimmableLength)
+
+        let totalContextLength = context.selectedText.count + context.clipboard.count + context.screenCapture.count
+        if totalContextLength <= remaining {
+            return basePrompt + context.concatenated
+        }
+
+        // Keep highest-priority sections first; drop the lowest-priority
+        // section (screen capture) if budget runs out before we get to it.
+        if context.selectedText.count <= remaining {
+            remaining -= context.selectedText.count
+        } else {
+            logger.info("Dropping selected text context (\(context.selectedText.count, privacy: .public) chars) to fit Apple Intelligence budget")
+            context.selectedText = ""
+        }
+
+        if context.clipboard.count <= remaining {
+            remaining -= context.clipboard.count
+        } else {
+            logger.info("Dropping clipboard context (\(context.clipboard.count, privacy: .public) chars) to fit Apple Intelligence budget")
+            context.clipboard = ""
+        }
+
+        if context.screenCapture.count > remaining {
+            logger.info("Dropping screen capture context (\(context.screenCapture.count, privacy: .public) chars) to fit Apple Intelligence budget")
+            context.screenCapture = ""
+        }
+
+        return basePrompt + context.concatenated
+    }
+
+    /// Approximate character budget for the system prompt + transcript when
+    /// targeting Apple Intelligence's ~4k-token on-device window. We reserve
+    /// headroom for the model's response and prompt scaffolding using a rough
+    /// 4 chars/token heuristic.
+    private static let appleIntelligenceCharacterBudget = 10_000
 
     private func makeRequest(text: String, mode: EnhancementPrompt) async throws -> String {
         guard isConfigured else {
@@ -211,7 +284,16 @@ class AIEnhancementService: ObservableObject {
         }
 
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
-        let systemMessage = await getSystemMessage(for: mode)
+        let systemMessage: String
+        if aiService.selectedProvider == .appleIntelligence {
+            systemMessage = await getBudgetedSystemMessage(
+                for: mode,
+                transcriptLength: formattedText.count,
+                characterBudget: Self.appleIntelligenceCharacterBudget
+            )
+        } else {
+            systemMessage = await getSystemMessage(for: mode)
+        }
 
         await MainActor.run {
             self.lastSystemMessageSent = systemMessage
@@ -241,6 +323,22 @@ class AIEnhancementService: ObservableObject {
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }
+            }
+        }
+
+        if aiService.selectedProvider == .appleIntelligence {
+            do {
+                let result = try await aiService.enhanceWithAppleIntelligence(systemPrompt: systemMessage, userPrompt: formattedText)
+                return AIEnhancementOutputFilter.filter(result)
+            } catch let error as AppleIntelligenceError {
+                switch error {
+                case .guardrailViolation:
+                    throw EnhancementError.guardrailViolation
+                case .notAvailable, .requestFailed:
+                    throw EnhancementError.customError(error.errorDescription ?? "An unknown Apple Intelligence error occurred.")
+                }
+            } catch {
+                throw EnhancementError.customError(error.localizedDescription)
             }
         }
 
@@ -465,6 +563,7 @@ enum EnhancementError: Error {
     case serverError
     case rateLimitExceeded
     case timeout
+    case guardrailViolation
     case customError(String)
 }
 
@@ -485,6 +584,8 @@ extension EnhancementError: LocalizedError {
             return "Rate limit exceeded. Please try again later."
         case .timeout:
             return "Enhancement request timed out. Check your connection or increase the timeout duration."
+        case .guardrailViolation:
+            return "Apple Intelligence declined to process this text because it triggered the on-device safety filter. Try rephrasing or switch to another provider for this transcript."
         case .customError(let message):
             return message
         }
