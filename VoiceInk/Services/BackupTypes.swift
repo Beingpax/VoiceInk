@@ -1,5 +1,4 @@
 import Foundation
-import KeyboardShortcuts
 
 enum BackupCategory: String, CaseIterable, Hashable {
     case general
@@ -68,19 +67,19 @@ struct CustomModelBackup: Codable {
 }
 
 struct GeneralBackup: Codable {
-    let toggleMiniRecorderShortcut: KeyboardShortcuts.Shortcut?
-    let toggleMiniRecorderShortcut2: KeyboardShortcuts.Shortcut?
-    let pasteLastTranscriptionShortcut: KeyboardShortcuts.Shortcut?
-    let pasteLastEnhancementShortcut: KeyboardShortcuts.Shortcut?
-    let retryLastTranscriptionShortcut: KeyboardShortcuts.Shortcut?
-    let cancelRecorderShortcut: KeyboardShortcuts.Shortcut?
-    let openHistoryWindowShortcut: KeyboardShortcuts.Shortcut?
-    let quickAddToDictionaryShortcut: KeyboardShortcuts.Shortcut?
-    let toggleEnhancementShortcut: KeyboardShortcuts.Shortcut?
-    let selectedHotkey1RawValue: String?
-    let selectedHotkey2RawValue: String?
-    let hotkeyMode1RawValue: String?
-    let hotkeyMode2RawValue: String?
+    let primaryRecordingShortcut: ShortcutBackup?
+    let secondaryRecordingShortcut: ShortcutBackup?
+    let pasteLastTranscriptionShortcut: ShortcutBackup?
+    let pasteLastEnhancementShortcut: ShortcutBackup?
+    let retryLastTranscriptionShortcut: ShortcutBackup?
+    let cancelRecorderShortcut: ShortcutBackup?
+    let openHistoryWindowShortcut: ShortcutBackup?
+    let quickAddToDictionaryShortcut: ShortcutBackup?
+    let toggleEnhancementShortcut: ShortcutBackup?
+    let primaryRecordingShortcutRawValue: String?
+    let secondaryRecordingShortcutRawValue: String?
+    let primaryRecordingShortcutModeRawValue: String?
+    let secondaryRecordingShortcutModeRawValue: String?
     let isMiddleClickToggleEnabled: Bool?
     let middleClickActivationDelay: Int?
     let launchAtLoginEnabled: Bool?
@@ -116,7 +115,7 @@ struct BackupFile: Codable {
     let version: String
     let customPrompts: [CustomPrompt]
     let powerModeConfigs: [PowerModeConfig]
-    let powerModeShortcuts: [String: KeyboardShortcuts.Shortcut]?
+    let powerModeShortcuts: [String: ShortcutBackup]?
     let vocabularyWords: [WordBackup]?
     let wordReplacements: [String: String]?
     let generalSettings: GeneralBackup?
@@ -127,7 +126,7 @@ struct BackupFile: Codable {
         case version, customPrompts, powerModeConfigs, powerModeShortcuts, vocabularyWords, wordReplacements, generalSettings, customEmojis, customCloudModels
     }
 
-    init(version: String, customPrompts: [CustomPrompt], powerModeConfigs: [PowerModeConfig], powerModeShortcuts: [String: KeyboardShortcuts.Shortcut]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?, generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?) {
+    init(version: String, customPrompts: [CustomPrompt], powerModeConfigs: [PowerModeConfig], powerModeShortcuts: [String: ShortcutBackup]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?, generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?) {
         self.version = version
         self.customPrompts = customPrompts
         self.powerModeConfigs = powerModeConfigs
@@ -144,7 +143,7 @@ struct BackupFile: Codable {
         version = try container.decodeIfPresent(String.self, forKey: .version) ?? "0.0.0"
         customPrompts = try container.decodeIfPresent([CustomPrompt].self, forKey: .customPrompts) ?? []
         powerModeConfigs = try container.decodeIfPresent([PowerModeConfig].self, forKey: .powerModeConfigs) ?? []
-        powerModeShortcuts = try container.decodeIfPresent([String: KeyboardShortcuts.Shortcut].self, forKey: .powerModeShortcuts)
+        powerModeShortcuts = try container.decodeIfPresent([String: ShortcutBackup].self, forKey: .powerModeShortcuts)
         vocabularyWords = try container.decodeIfPresent([WordBackup].self, forKey: .vocabularyWords)
         wordReplacements = try container.decodeIfPresent([String: String].self, forKey: .wordReplacements)
         generalSettings = try container.decodeIfPresent(GeneralBackup.self, forKey: .generalSettings)

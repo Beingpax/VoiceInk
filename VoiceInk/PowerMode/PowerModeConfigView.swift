@@ -1,5 +1,4 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct ConfigurationView: View {
     let mode: ConfigurationMode
@@ -36,6 +35,7 @@ struct ConfigurationView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var powerModeConfigId: UUID = UUID()
     @State private var isTranscriptFormattingExpanded = false
+    @State private var didSaveConfiguration = false
 
     private var effectiveModelName: String? {
         selectedTranscriptionModelName ?? transcriptionModelManager.currentTranscriptionModel?.name
@@ -516,8 +516,7 @@ struct ConfigurationView: View {
 
                         Spacer()
 
-                        KeyboardShortcuts.Recorder(for: .powerMode(id: powerModeConfigId))
-                            .controlSize(.regular)
+                        ShortcutRecorder(action: .powerMode(powerModeConfigId))
                             .frame(minHeight: 28)
                     }
                 }
@@ -569,6 +568,9 @@ struct ConfigurationView: View {
                     isNameFieldFocused = true
                 }
             }
+            .onDisappear {
+                cleanupUnsavedShortcutIfNeeded()
+            }
 
             // Footer
             VStack(spacing: 0) {
@@ -614,9 +616,6 @@ struct ConfigurationView: View {
     }
 
     private func getConfigForForm() -> PowerModeConfig {
-        let shortcut = KeyboardShortcuts.getShortcut(for: .powerMode(id: powerModeConfigId))
-        let hotkeyString = shortcut != nil ? "configured" : nil
-
         switch mode {
         case .add:
             return PowerModeConfig(
@@ -636,8 +635,7 @@ struct ConfigurationView: View {
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 autoSendKey: autoSendKey,
-                isDefault: isDefault,
-                hotkeyShortcut: hotkeyString
+                isDefault: isDefault
             )
         case .edit(let config):
             var updatedConfig = config
@@ -657,7 +655,6 @@ struct ConfigurationView: View {
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.isDefault = isDefault
-            updatedConfig.hotkeyShortcut = hotkeyString
             return updatedConfig
         }
     }
@@ -738,6 +735,15 @@ struct ConfigurationView: View {
             powerModeManager.updateConfiguration(config)
         }
 
+        didSaveConfiguration = true
         onDismiss()
+    }
+
+    private func cleanupUnsavedShortcutIfNeeded() {
+        guard case .add = mode, !didSaveConfiguration else {
+            return
+        }
+
+        ShortcutStore.removeShortcutStorage(for: .powerMode(powerModeConfigId))
     }
 }

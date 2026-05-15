@@ -1,6 +1,5 @@
 import SwiftUI
 import Cocoa
-import KeyboardShortcuts
 import LaunchAtLogin
 import AVFoundation
 
@@ -8,7 +7,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
-    @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
     @EnvironmentObject private var recorderUIManager: RecorderUIManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
@@ -22,8 +21,7 @@ struct SettingsView: View {
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
     @State private var showResetOnboardingAlert = false
-    @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
-    @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
+    @State private var isCustomCancelEnabled = ShortcutStore.shortcut(for: .cancelRecorder) != nil
 
     // Expansion states - all collapsed by default
     @State private var isCustomCancelExpanded = false
@@ -39,29 +37,27 @@ struct SettingsView: View {
                 LabeledContent("Shortcut 1") {
                     HStack(spacing: 8) {
                         Spacer()
-                        if hotkeyManager.selectedHotkey1 != .none {
-                            hotkeyModePicker(binding: $hotkeyManager.hotkeyMode1)
+                        shortcutModePicker(binding: $recordingShortcutManager.primaryRecordingShortcutMode)
+                        ShortcutRecorder(action: .primaryRecording) {
+                            recordingShortcutManager.primaryRecordingShortcut = .custom
+                            recordingShortcutManager.updateShortcutStatus()
                         }
-                        hotkeyPicker(binding: $hotkeyManager.selectedHotkey1)
-                        if hotkeyManager.selectedHotkey1 == .custom {
-                            KeyboardShortcuts.Recorder(for: .toggleMiniRecorder)
-                                .controlSize(.small)
-                        }
+                        .controlSize(.small)
                     }
                 }
 
-                if hotkeyManager.selectedHotkey2 != .none {
+                if recordingShortcutManager.secondaryRecordingShortcut != .none {
                     LabeledContent("Shortcut 2") {
                         HStack(spacing: 8) {
                             Spacer()
-                            hotkeyModePicker(binding: $hotkeyManager.hotkeyMode2)
-                            hotkeyPicker(binding: $hotkeyManager.selectedHotkey2)
-                            if hotkeyManager.selectedHotkey2 == .custom {
-                                KeyboardShortcuts.Recorder(for: .toggleMiniRecorder2)
-                                    .controlSize(.small)
+                            shortcutModePicker(binding: $recordingShortcutManager.secondaryRecordingShortcutMode)
+                            ShortcutRecorder(action: .secondaryRecording) {
+                                recordingShortcutManager.secondaryRecordingShortcut = .custom
+                                recordingShortcutManager.updateShortcutStatus()
                             }
+                            .controlSize(.small)
                             Button {
-                                withAnimation { hotkeyManager.selectedHotkey2 = .none }
+                                withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .none }
                             } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundColor(.secondary)
@@ -71,9 +67,9 @@ struct SettingsView: View {
                     }
                 }
 
-                if hotkeyManager.selectedHotkey1 != .none && hotkeyManager.selectedHotkey2 == .none {
+                if recordingShortcutManager.secondaryRecordingShortcut == .none {
                     Button("Add Second Shortcut") {
-                        withAnimation { hotkeyManager.selectedHotkey2 = .rightOption }
+                        withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .custom }
                     }
                 }
             } header: {
@@ -83,17 +79,23 @@ struct SettingsView: View {
             // MARK: - Additional Shortcuts
             Section("Additional Shortcuts") {
                 LabeledContent("Paste Last Transcription (Original)") {
-                    KeyboardShortcuts.Recorder(for: .pasteLastTranscription)
+                    ShortcutRecorder(action: .pasteLastTranscription) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
                         .controlSize(.small)
                 }
 
                 LabeledContent("Paste Last Transcription (Enhanced)") {
-                    KeyboardShortcuts.Recorder(for: .pasteLastEnhancement)
+                    ShortcutRecorder(action: .pasteLastEnhancement) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
                         .controlSize(.small)
                 }
 
                 LabeledContent("Retry Last Transcription") {
-                    KeyboardShortcuts.Recorder(for: .retryLastTranscription)
+                    ShortcutRecorder(action: .retryLastTranscription) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
                         .controlSize(.small)
                 }
 
@@ -104,13 +106,16 @@ struct SettingsView: View {
                     label: "Custom Cancel Shortcut"
                 ) {
                     LabeledContent("Shortcut") {
-                        KeyboardShortcuts.Recorder(for: .cancelRecorder)
+                        ShortcutRecorder(action: .cancelRecorder) {
+                            isCustomCancelEnabled = true
+                            isCustomCancelExpanded = true
+                        }
                             .controlSize(.small)
                     }
                 }
                 .onChange(of: isCustomCancelEnabled) { _, newValue in
                     if !newValue {
-                        KeyboardShortcuts.setShortcut(nil, for: .cancelRecorder)
+                        ShortcutStore.setShortcut(nil, for: .cancelRecorder)
                         isCustomCancelExpanded = false
                     }
                 }
@@ -118,12 +123,12 @@ struct SettingsView: View {
                 // Middle-Click
                 ExpandableSettingsRow(
                     isExpanded: $isMiddleClickExpanded,
-                    isEnabled: $hotkeyManager.isMiddleClickToggleEnabled,
+                    isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
                     label: "Middle-Click Recording"
                 ) {
                     LabeledContent("Activation Delay") {
                         HStack {
-                            TextField("", value: $hotkeyManager.middleClickActivationDelay, formatter: {
+                            TextField("", value: $recordingShortcutManager.middleClickActivationDelay, formatter: {
                                 let formatter = NumberFormatter()
                                 formatter.minimum = 0
                                 return formatter
@@ -253,8 +258,7 @@ struct SettingsView: View {
                     Button("Export") {
                         ImportExportService.shared.exportSettings(
                             enhancementService: enhancementService,
-                            whisperPrompt: WhisperPrompt(),
-                            hotkeyManager: hotkeyManager,
+                            recordingShortcutManager: recordingShortcutManager,
                             menuBarManager: menuBarManager,
                             mediaController: mediaController,
                             playbackController: playbackController,
@@ -269,8 +273,7 @@ struct SettingsView: View {
                     Button("Import") {
                         ImportExportService.shared.importSettings(
                             enhancementService: enhancementService,
-                            whisperPrompt: WhisperPrompt(),
-                            hotkeyManager: hotkeyManager,
+                            recordingShortcutManager: recordingShortcutManager,
                             menuBarManager: menuBarManager,
                             mediaController: mediaController,
                             playbackController: playbackController,
@@ -308,20 +311,9 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func hotkeyPicker(binding: Binding<HotkeyManager.HotkeyOption>) -> some View {
+    private func shortcutModePicker(binding: Binding<RecordingShortcutManager.Mode>) -> some View {
         Picker("", selection: binding) {
-            ForEach(HotkeyManager.HotkeyOption.allCases, id: \.self) { option in
-                Text(option.displayName).tag(option)
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
-    }
-
-    @ViewBuilder
-    private func hotkeyModePicker(binding: Binding<HotkeyManager.HotkeyMode>) -> some View {
-        Picker("", selection: binding) {
-            ForEach(HotkeyManager.HotkeyMode.allCases, id: \.self) { mode in
+            ForEach(RecordingShortcutManager.Mode.allCases, id: \.self) { mode in
                 Text(mode.displayName).tag(mode)
             }
         }
@@ -445,8 +437,10 @@ struct PowerModeSection: View {
             set: { newValue in
                 if newValue {
                     powerModeUIFlag = true
+                    NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
                 } else if powerModeManager.configurations.allSatisfy({ !$0.isEnabled }) {
                     powerModeUIFlag = false
+                    NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
                 } else {
                     showDisableAlert = true
                 }
