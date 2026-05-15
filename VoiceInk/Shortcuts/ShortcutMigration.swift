@@ -129,10 +129,7 @@ enum ShortcutMigration {
         }
 
         if let shortcut = legacyPresetShortcut(for: storedValue) {
-            if ShortcutStore.shortcut(for: action) == nil {
-                ShortcutStore.setShortcut(shortcut, for: action)
-            }
-
+            ShortcutStore.setShortcut(shortcut, for: action)
             saveShortcutSelection(.custom, forKey: userDefaultsKey, removing: legacyKey)
             return .custom
         }
