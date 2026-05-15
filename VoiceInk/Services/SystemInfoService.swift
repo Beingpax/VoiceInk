@@ -144,19 +144,15 @@ class SystemInfoService {
     }
 
     private func getPrimaryShortcut() -> String {
-        if let shortcutRawValue = UserDefaults.standard.string(forKey: "primaryRecordingShortcut"),
-           let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue) {
-            return shortcut.displayName
-        }
-        return "Right Command"
+        shortcutDescription(for: .primaryRecording)
     }
 
     private func getSecondaryShortcut() -> String {
-        if let shortcutRawValue = UserDefaults.standard.string(forKey: "secondaryRecordingShortcut"),
-           let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue) {
-            return shortcut.displayName
-        }
-        return "None"
+        shortcutDescription(for: .secondaryRecording)
+    }
+
+    private func shortcutDescription(for action: ShortcutAction) -> String {
+        ShortcutStore.shortcut(for: action)?.displayString ?? ""
     }
 
     private func getCurrentTranscriptionModel() -> String {

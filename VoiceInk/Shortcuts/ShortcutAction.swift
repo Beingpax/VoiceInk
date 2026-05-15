@@ -62,9 +62,9 @@ enum ShortcutAction: Hashable {
     var displayName: String {
         switch self {
         case .primaryRecording:
-            return "Shortcut 1"
+            return "Primary Shortcut"
         case .secondaryRecording:
-            return "Shortcut 2"
+            return "Secondary Shortcut"
         case .pasteLastTranscription:
             return "Paste Last Transcription"
         case .pasteLastEnhancement:

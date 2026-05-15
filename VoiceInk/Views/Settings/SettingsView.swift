@@ -34,7 +34,7 @@ struct SettingsView: View {
         Form {
             // MARK: - Shortcuts
             Section {
-                LabeledContent("Shortcut 1") {
+                LabeledContent("Primary Shortcut") {
                     HStack(spacing: 8) {
                         Spacer()
                         shortcutModePicker(binding: $recordingShortcutManager.primaryRecordingShortcutMode)
@@ -47,7 +47,7 @@ struct SettingsView: View {
                 }
 
                 if recordingShortcutManager.secondaryRecordingShortcut != .none {
-                    LabeledContent("Shortcut 2") {
+                    LabeledContent("Secondary Shortcut") {
                         HStack(spacing: 8) {
                             Spacer()
                             shortcutModePicker(binding: $recordingShortcutManager.secondaryRecordingShortcutMode)
