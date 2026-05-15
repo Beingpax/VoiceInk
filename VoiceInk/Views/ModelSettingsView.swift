@@ -4,7 +4,7 @@ struct ModelSettingsView: View {
     @ObservedObject var whisperPrompt: WhisperPrompt
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @AppStorage("IsTextFormattingEnabled") private var isTextFormattingEnabled = true
-    @AppStorage("RemovePunctuation") private var removePunctuation = false
+    @AppStorage(PunctuationCleanupMode.userDefaultsKey) private var punctuationCleanupModeRawValue = PunctuationCleanupMode.keep.rawValue
     @AppStorage("LowercaseTranscription") private var lowercaseTranscription = false
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
@@ -12,6 +12,16 @@ struct ModelSettingsView: View {
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
+
+    private var punctuationCleanupMode: Binding<PunctuationCleanupMode> {
+        Binding(
+            get: { PunctuationCleanupMode(rawValue: punctuationCleanupModeRawValue) ?? .keep },
+            set: { mode in
+                punctuationCleanupModeRawValue = mode.rawValue
+                PunctuationCleanupMode.persist(mode)
+            }
+        )
+    }
 
     var body: some View {
         Form {
@@ -59,13 +69,17 @@ struct ModelSettingsView: View {
                 }
                 .toggleStyle(.switch)
 
-                Toggle(isOn: $removePunctuation) {
+                Picker(selection: punctuationCleanupMode) {
+                    ForEach(PunctuationCleanupMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                } label: {
                     HStack(spacing: 4) {
-                        Text("Remove punctuation")
-                        InfoTip("Remove punctuation marks from transcription output.")
+                        Text("Punctuation")
+                        InfoTip("Choose whether VoiceInk keeps punctuation, removes only a final period, or removes all punctuation from transcription output.")
                     }
                 }
-                .toggleStyle(.switch)
+                .pickerStyle(.menu)
 
                 Toggle(isOn: $lowercaseTranscription) {
                     HStack(spacing: 4) {

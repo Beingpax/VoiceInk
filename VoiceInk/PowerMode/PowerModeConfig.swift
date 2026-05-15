@@ -31,7 +31,21 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var selectedTranscriptionModelName: String?
     var selectedLanguage: String?
     var isTextFormattingEnabled: Bool = false
-    var removePunctuation: Bool = false
+    var punctuationCleanupModeRawValue: String = PunctuationCleanupMode.keep.rawValue
+    var removePunctuation: Bool {
+        get { punctuationCleanupMode.removesAllPunctuation }
+        set {
+            if newValue {
+                punctuationCleanupMode = .all
+            } else if punctuationCleanupMode == .all {
+                punctuationCleanupMode = .keep
+            }
+        }
+    }
+    var punctuationCleanupMode: PunctuationCleanupMode {
+        get { PunctuationCleanupMode.mode(rawValue: punctuationCleanupModeRawValue, legacyRemovePunctuation: false) }
+        set { punctuationCleanupModeRawValue = newValue.rawValue }
+    }
     var lowercaseTranscription: Bool = false
     var useScreenCapture: Bool
     var selectedAIProvider: String?
@@ -41,7 +55,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var isDefault: Bool = false
         
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, removePunctuation, lowercaseTranscription, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
+        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
@@ -50,6 +64,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
          isTextFormattingEnabled: Bool = false, removePunctuation: Bool = false, lowercaseTranscription: Bool = false,
+         punctuationCleanupModeRawValue: String? = nil,
          selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false) {
         self.id = id
         self.name = name
@@ -65,7 +80,10 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.selectedTranscriptionModelName = selectedTranscriptionModelName ?? UserDefaults.standard.string(forKey: "CurrentTranscriptionModel")
         self.selectedLanguage = selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
         self.isTextFormattingEnabled = isTextFormattingEnabled
-        self.removePunctuation = removePunctuation
+        self.punctuationCleanupModeRawValue = PunctuationCleanupMode.mode(
+            rawValue: punctuationCleanupModeRawValue,
+            legacyRemovePunctuation: removePunctuation
+        ).rawValue
         self.lowercaseTranscription = lowercaseTranscription
         self.isEnabled = isEnabled
         self.isDefault = isDefault
@@ -82,7 +100,12 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         selectedPrompt = try container.decodeIfPresent(String.self, forKey: .selectedPrompt)
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
         isTextFormattingEnabled = try container.decodeIfPresent(Bool.self, forKey: .isTextFormattingEnabled) ?? false
-        removePunctuation = try container.decodeIfPresent(Bool.self, forKey: .removePunctuation) ?? false
+        let legacyRemovePunctuation = try container.decodeIfPresent(Bool.self, forKey: .removePunctuation) ?? false
+        let rawPunctuationCleanupMode = try container.decodeIfPresent(String.self, forKey: .punctuationCleanupMode)
+        punctuationCleanupModeRawValue = PunctuationCleanupMode.mode(
+            rawValue: rawPunctuationCleanupMode,
+            legacyRemovePunctuation: legacyRemovePunctuation
+        ).rawValue
         lowercaseTranscription = try container.decodeIfPresent(Bool.self, forKey: .lowercaseTranscription) ?? false
         useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
@@ -119,6 +142,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(selectedPrompt, forKey: .selectedPrompt)
         try container.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
         try container.encode(isTextFormattingEnabled, forKey: .isTextFormattingEnabled)
+        try container.encode(punctuationCleanupModeRawValue, forKey: .punctuationCleanupMode)
         try container.encode(removePunctuation, forKey: .removePunctuation)
         try container.encode(lowercaseTranscription, forKey: .lowercaseTranscription)
         try container.encode(useScreenCapture, forKey: .useScreenCapture)

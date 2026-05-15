@@ -40,6 +40,7 @@ struct VoiceInkApp: App {
         // Disable HTTP response caching — prevents API responses from being stored in Cache.db
         URLCache.shared = URLCache(memoryCapacity: 0, diskCapacity: 0)
 
+        AppDefaults.migrateDefaultsIfNeeded()
         AppDefaults.registerDefaults()
 
         if UserDefaults.standard.object(forKey: "powerModeUIFlag") == nil {

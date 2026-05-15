@@ -1,6 +1,17 @@
 import Foundation
 
 enum AppDefaults {
+    static func migrateDefaultsIfNeeded() {
+        guard UserDefaults.standard.object(forKey: PunctuationCleanupMode.userDefaultsKey) == nil else {
+            return
+        }
+
+        if UserDefaults.standard.object(forKey: PunctuationCleanupMode.legacyRemovePunctuationKey) != nil {
+            let mode: PunctuationCleanupMode = UserDefaults.standard.bool(forKey: PunctuationCleanupMode.legacyRemovePunctuationKey) ? .all : .keep
+            PunctuationCleanupMode.persist(mode)
+        }
+    }
+
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             // Onboarding & General
@@ -22,6 +33,7 @@ enum AppDefaults {
             "IsTextFormattingEnabled": true,
             "IsVADEnabled": true,
             "RemoveFillerWords": true,
+            "PunctuationCleanupMode": PunctuationCleanupMode.keep.rawValue,
             "RemovePunctuation": false,
             "LowercaseTranscription": false,
             "SelectedLanguage": "en",

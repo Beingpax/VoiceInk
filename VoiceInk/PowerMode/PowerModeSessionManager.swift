@@ -10,6 +10,7 @@ struct ApplicationState: Codable {
     var selectedLanguage: String?
     var transcriptionModelName: String?
     var isTextFormattingEnabled: Bool?
+    var punctuationCleanupModeRawValue: String?
     var removePunctuation: Bool?
     var lowercaseTranscription: Bool?
 }
@@ -56,6 +57,7 @@ class PowerModeSessionManager {
                 selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
                 transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
                 isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
+                punctuationCleanupModeRawValue: PunctuationCleanupMode.current.rawValue,
                 removePunctuation: UserDefaults.standard.bool(forKey: "RemovePunctuation"),
                 lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
             )
@@ -108,6 +110,7 @@ class PowerModeSessionManager {
             selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
             transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
             isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
+            punctuationCleanupModeRawValue: PunctuationCleanupMode.current.rawValue,
             removePunctuation: UserDefaults.standard.bool(forKey: "RemovePunctuation"),
             lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
         )
@@ -140,7 +143,7 @@ class PowerModeSessionManager {
             }
 
             UserDefaults.standard.set(config.isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
-            UserDefaults.standard.set(config.removePunctuation, forKey: "RemovePunctuation")
+            PunctuationCleanupMode.persist(config.punctuationCleanupMode)
             UserDefaults.standard.set(config.lowercaseTranscription, forKey: "LowercaseTranscription")
         }
 
@@ -180,8 +183,10 @@ class PowerModeSessionManager {
             if let isTextFormattingEnabled = state.isTextFormattingEnabled {
                 UserDefaults.standard.set(isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
             }
-            if let removePunctuation = state.removePunctuation {
-                UserDefaults.standard.set(removePunctuation, forKey: "RemovePunctuation")
+            if let punctuationCleanupModeRawValue = state.punctuationCleanupModeRawValue {
+                PunctuationCleanupMode.persist(rawValue: punctuationCleanupModeRawValue)
+            } else if let removePunctuation = state.removePunctuation {
+                PunctuationCleanupMode.persist(removePunctuation ? .all : .keep)
             }
             if let lowercaseTranscription = state.lowercaseTranscription {
                 UserDefaults.standard.set(lowercaseTranscription, forKey: "LowercaseTranscription")
