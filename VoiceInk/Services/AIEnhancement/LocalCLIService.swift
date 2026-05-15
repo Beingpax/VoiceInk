@@ -26,7 +26,7 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
         case .codex:
             return "TMPFILE=$(mktemp) && codex exec --skip-git-repo-check --output-last-message \"$TMPFILE\" \"$VOICEINK_FULL_PROMPT\" > /dev/null 2>&1 && cat \"$TMPFILE\" && rm \"$TMPFILE\""
         case .copilot:
-            return "copilot -p \"$VOICEINK_FULL_PROMPT\" -s --no-ask-user 2>/dev/null"
+            return "copilot -p \"$VOICEINK_FULL_PROMPT\" -s --no-ask-user --deny-tool=\"shell,write,read,url,memory\" 2>/dev/null"
         }
     }
 }
