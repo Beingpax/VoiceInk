@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import KeyboardShortcuts
 import OSLog
 
 // ViewType enum with all cases
@@ -61,7 +60,7 @@ struct ContentView: View {
     @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var whisperModelManager: WhisperModelManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType? = .metrics
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
@@ -216,4 +215,3 @@ private struct SidebarItemView: View {
         .padding(.horizontal, 2)
     }
 }
-

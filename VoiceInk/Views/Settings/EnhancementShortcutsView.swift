@@ -1,5 +1,4 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct EnhancementShortcutsView: View {
     var body: some View {
@@ -18,7 +17,7 @@ struct EnhancementShortcutsView: View {
 
                 Spacer()
 
-                KeyboardShortcuts.Recorder(for: .toggleEnhancement)
+                ShortcutRecorder(action: .toggleEnhancement)
                     .controlSize(.small)
             }
 
