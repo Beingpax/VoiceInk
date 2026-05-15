@@ -22,6 +22,7 @@ enum BackupImporter {
 
     private static let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
     private static let keyRemovePunctuation = "RemovePunctuation"
+    private static let keyRemoveTrailingPeriod = "RemoveTrailingPeriod"
     private static let keyLowercaseTranscription = "LowercaseTranscription"
 
     @MainActor
@@ -178,6 +179,9 @@ enum BackupImporter {
         }
         if let removePunctuation = general.removePunctuation {
             UserDefaults.standard.set(removePunctuation, forKey: keyRemovePunctuation)
+        }
+        if let removeTrailingPeriod = general.removeTrailingPeriod {
+            UserDefaults.standard.set(removeTrailingPeriod, forKey: keyRemoveTrailingPeriod)
         }
         if let lowercaseTranscription = general.lowercaseTranscription {
             UserDefaults.standard.set(lowercaseTranscription, forKey: keyLowercaseTranscription)

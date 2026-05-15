@@ -113,6 +113,7 @@ class ImportExportService {
 
     private let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
     private let keyRemovePunctuation = "RemovePunctuation"
+    private let keyRemoveTrailingPeriod = "RemoveTrailingPeriod"
     private let keyLowercaseTranscription = "LowercaseTranscription"
 
     private init() {
@@ -184,6 +185,7 @@ class ImportExportService {
             audioResumptionDelay: mediaController.audioResumptionDelay,
             isTextFormattingEnabled: UserDefaults.standard.bool(forKey: keyIsTextFormattingEnabled),
             removePunctuation: UserDefaults.standard.bool(forKey: keyRemovePunctuation),
+            removeTrailingPeriod: UserDefaults.standard.bool(forKey: keyRemoveTrailingPeriod),
             lowercaseTranscription: UserDefaults.standard.bool(forKey: keyLowercaseTranscription),
             isExperimentalFeaturesEnabled: UserDefaults.standard.bool(forKey: "isExperimentalFeaturesEnabled"),
             restoreClipboardAfterPaste: UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"),

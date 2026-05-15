@@ -3,6 +3,7 @@ import Foundation
 struct TranscriptionOutputFilter {
     private static let removePunctuationKey = "RemovePunctuation"
     private static let lowercaseTranscriptionKey = "LowercaseTranscription"
+    private static let removeTrailingPeriodKey = "RemoveTrailingPeriod"
     private static let apostropheLikeCharacters = CharacterSet(charactersIn: "'’‘ʼ＇")
     
     private static let hallucinationPatterns = [
@@ -50,8 +51,9 @@ struct TranscriptionOutputFilter {
     static func applyUserCleanupPreferences(_ text: String) -> String {
         let shouldRemovePunctuation = UserDefaults.standard.bool(forKey: removePunctuationKey)
         let shouldLowercase = UserDefaults.standard.bool(forKey: lowercaseTranscriptionKey)
+        let shouldRemoveTrailingPeriod = UserDefaults.standard.bool(forKey: removeTrailingPeriodKey)
 
-        guard shouldRemovePunctuation || shouldLowercase else {
+        guard shouldRemovePunctuation || shouldLowercase || shouldRemoveTrailingPeriod else {
             return text
         }
 
@@ -59,11 +61,29 @@ struct TranscriptionOutputFilter {
         if shouldRemovePunctuation {
             cleanedText = removePunctuation(from: cleanedText)
         }
+        if shouldRemoveTrailingPeriod {
+            cleanedText = removeTrailingPeriod(from: cleanedText)
+        }
         if shouldLowercase {
             cleanedText = cleanedText.lowercased()
         }
 
         return cleanedText
+    }
+
+    static func removeTrailingPeriod(from text: String) -> String {
+        guard !text.isEmpty else { return text }
+
+        let trailingWhitespace = text.reversed().prefix { $0.isWhitespace || $0.isNewline }
+        let trimmedEndIndex = text.index(text.endIndex, offsetBy: -trailingWhitespace.count)
+        guard trimmedEndIndex > text.startIndex else { return text }
+
+        let lastCharIndex = text.index(before: trimmedEndIndex)
+        guard text[lastCharIndex] == "." else { return text }
+
+        var result = text
+        result.remove(at: lastCharIndex)
+        return result
     }
 
     static func removePunctuation(from text: String) -> String {

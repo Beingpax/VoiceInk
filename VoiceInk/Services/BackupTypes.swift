@@ -97,6 +97,7 @@ struct GeneralBackup: Codable {
     let audioResumptionDelay: Double?
     let isTextFormattingEnabled: Bool?
     let removePunctuation: Bool?
+    let removeTrailingPeriod: Bool?
     let lowercaseTranscription: Bool?
     let isExperimentalFeaturesEnabled: Bool?
     let restoreClipboardAfterPaste: Bool?

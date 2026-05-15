@@ -11,6 +11,7 @@ struct ApplicationState: Codable {
     var transcriptionModelName: String?
     var isTextFormattingEnabled: Bool?
     var removePunctuation: Bool?
+    var removeTrailingPeriod: Bool?
     var lowercaseTranscription: Bool?
 }
 
@@ -57,6 +58,7 @@ class PowerModeSessionManager {
                 transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
                 isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
                 removePunctuation: UserDefaults.standard.bool(forKey: "RemovePunctuation"),
+                removeTrailingPeriod: UserDefaults.standard.bool(forKey: "RemoveTrailingPeriod"),
                 lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
             )
 
@@ -109,6 +111,7 @@ class PowerModeSessionManager {
             transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
             isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
             removePunctuation: UserDefaults.standard.bool(forKey: "RemovePunctuation"),
+            removeTrailingPeriod: UserDefaults.standard.bool(forKey: "RemoveTrailingPeriod"),
             lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
         )
 
@@ -141,6 +144,7 @@ class PowerModeSessionManager {
 
             UserDefaults.standard.set(config.isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
             UserDefaults.standard.set(config.removePunctuation, forKey: "RemovePunctuation")
+            UserDefaults.standard.set(config.removeTrailingPeriod, forKey: "RemoveTrailingPeriod")
             UserDefaults.standard.set(config.lowercaseTranscription, forKey: "LowercaseTranscription")
         }
 
@@ -182,6 +186,9 @@ class PowerModeSessionManager {
             }
             if let removePunctuation = state.removePunctuation {
                 UserDefaults.standard.set(removePunctuation, forKey: "RemovePunctuation")
+            }
+            if let removeTrailingPeriod = state.removeTrailingPeriod {
+                UserDefaults.standard.set(removeTrailingPeriod, forKey: "RemoveTrailingPeriod")
             }
             if let lowercaseTranscription = state.lowercaseTranscription {
                 UserDefaults.standard.set(lowercaseTranscription, forKey: "LowercaseTranscription")

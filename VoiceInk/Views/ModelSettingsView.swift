@@ -5,6 +5,7 @@ struct ModelSettingsView: View {
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @AppStorage("IsTextFormattingEnabled") private var isTextFormattingEnabled = true
     @AppStorage("RemovePunctuation") private var removePunctuation = false
+    @AppStorage("RemoveTrailingPeriod") private var removeTrailingPeriod = false
     @AppStorage("LowercaseTranscription") private var lowercaseTranscription = false
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
@@ -63,6 +64,14 @@ struct ModelSettingsView: View {
                     HStack(spacing: 4) {
                         Text("Remove punctuation")
                         InfoTip("Remove punctuation marks from transcription output.")
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Toggle(isOn: $removeTrailingPeriod) {
+                    HStack(spacing: 4) {
+                        Text("Remove trailing period")
+                        InfoTip("Strip the period at the end of the transcription. Useful for chat apps like Slack where a trailing period feels too formal.")
                     }
                 }
                 .toggleStyle(.switch)

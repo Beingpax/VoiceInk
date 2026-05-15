@@ -20,6 +20,7 @@ struct ConfigurationView: View {
     @State private var selectedLanguage: String?
     @State private var isTextFormattingEnabled = false
     @State private var removePunctuation = false
+    @State private var removeTrailingPeriod = false
     @State private var lowercaseTranscription = false
     @State private var installedApps: [(url: URL, name: String, bundleId: String, icon: NSImage)] = []
     @State private var searchText = ""
@@ -84,6 +85,7 @@ struct ConfigurationView: View {
             _selectedLanguage = State(initialValue: nil)
             _isTextFormattingEnabled = State(initialValue: false)
             _removePunctuation = State(initialValue: false)
+            _removeTrailingPeriod = State(initialValue: false)
             _lowercaseTranscription = State(initialValue: false)
             _configName = State(initialValue: "")
             _selectedEmoji = State(initialValue: "✏️")
@@ -104,6 +106,7 @@ struct ConfigurationView: View {
             _selectedLanguage = State(initialValue: latestConfig.selectedLanguage)
             _isTextFormattingEnabled = State(initialValue: latestConfig.isTextFormattingEnabled)
             _removePunctuation = State(initialValue: latestConfig.removePunctuation)
+            _removeTrailingPeriod = State(initialValue: latestConfig.removeTrailingPeriod)
             _lowercaseTranscription = State(initialValue: latestConfig.lowercaseTranscription)
             _configName = State(initialValue: latestConfig.name)
             _selectedEmoji = State(initialValue: latestConfig.emoji)
@@ -114,7 +117,7 @@ struct ConfigurationView: View {
             _isDefault = State(initialValue: latestConfig.isDefault)
             _selectedAIProvider = State(initialValue: latestConfig.selectedAIProvider)
             _selectedAIModel = State(initialValue: latestConfig.selectedAIModel)
-            _isTranscriptFormattingExpanded = State(initialValue: latestConfig.isTextFormattingEnabled || latestConfig.removePunctuation || latestConfig.lowercaseTranscription)
+            _isTranscriptFormattingExpanded = State(initialValue: latestConfig.isTextFormattingEnabled || latestConfig.removePunctuation || latestConfig.removeTrailingPeriod || latestConfig.lowercaseTranscription)
         }
     }
 
@@ -377,6 +380,13 @@ struct ConfigurationView: View {
                                 }
                             }
 
+                            Toggle(isOn: $removeTrailingPeriod) {
+                                HStack(spacing: 4) {
+                                    Text("Remove trailing period")
+                                    InfoTip("Strip the period at the end of the transcription. Useful for chat apps like Slack where a trailing period feels too formal.")
+                                }
+                            }
+
                             Toggle(isOn: $lowercaseTranscription) {
                                 HStack(spacing: 4) {
                                     Text("Lowercase output")
@@ -632,6 +642,7 @@ struct ConfigurationView: View {
                 useScreenCapture: useScreenCapture,
                 isTextFormattingEnabled: isTextFormattingEnabled,
                 removePunctuation: removePunctuation,
+                removeTrailingPeriod: removeTrailingPeriod,
                 lowercaseTranscription: lowercaseTranscription,
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
@@ -649,6 +660,7 @@ struct ConfigurationView: View {
             updatedConfig.selectedLanguage = selectedLanguage
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
             updatedConfig.removePunctuation = removePunctuation
+            updatedConfig.removeTrailingPeriod = removeTrailingPeriod
             updatedConfig.lowercaseTranscription = lowercaseTranscription
             updatedConfig.appConfigs = selectedAppConfigs.isEmpty ? nil : selectedAppConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
