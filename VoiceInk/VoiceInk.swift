@@ -17,7 +17,7 @@ struct VoiceInkApp: App {
     @StateObject private var fluidAudioModelManager: FluidAudioModelManager
     @StateObject private var transcriptionModelManager: TranscriptionModelManager
     @StateObject private var recorderUIManager: RecorderUIManager
-    @StateObject private var hotkeyManager: HotkeyManager
+    @StateObject private var recordingShortcutManager: RecordingShortcutManager
     @StateObject private var updaterViewModel: UpdaterViewModel
     @StateObject private var menuBarManager: MenuBarManager
     @StateObject private var aiService = AIService()
@@ -146,8 +146,8 @@ struct VoiceInkApp: App {
         _engine = StateObject(wrappedValue: engine)
 
         // 7. Create other services that depend on engine
-        let hotkeyManager = HotkeyManager(engine: engine, recorderUIManager: recorderUIManager)
-        _hotkeyManager = StateObject(wrappedValue: hotkeyManager)
+        let recordingShortcutManager = RecordingShortcutManager(engine: engine, recorderUIManager: recorderUIManager)
+        _recordingShortcutManager = StateObject(wrappedValue: recordingShortcutManager)
 
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
@@ -281,7 +281,7 @@ struct VoiceInkApp: App {
                     .environmentObject(fluidAudioModelManager)
                     .environmentObject(transcriptionModelManager)
                     .environmentObject(recorderUIManager)
-                    .environmentObject(hotkeyManager)
+                    .environmentObject(recordingShortcutManager)
                     .environmentObject(updaterViewModel)
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
@@ -301,7 +301,6 @@ struct VoiceInkApp: App {
                             return
                         }
 
-                        updaterViewModel.silentlyCheckForUpdates()
                         if enableAnnouncements {
                             AnnouncementsService.shared.start()
                         }
@@ -332,7 +331,7 @@ struct VoiceInkApp: App {
                     }
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .environmentObject(hotkeyManager)
+                    .environmentObject(recordingShortcutManager)
                     .environmentObject(engine)
                     .environmentObject(whisperModelManager)
                     .environmentObject(fluidAudioModelManager)
@@ -366,7 +365,7 @@ struct VoiceInkApp: App {
                 .environmentObject(fluidAudioModelManager)
                 .environmentObject(transcriptionModelManager)
                 .environmentObject(recorderUIManager)
-                .environmentObject(hotkeyManager)
+                .environmentObject(recordingShortcutManager)
                 .environmentObject(menuBarManager)
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
@@ -394,35 +393,30 @@ struct VoiceInkApp: App {
 }
 
 class UpdaterViewModel: ObservableObject {
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
-
     private let updaterController: SPUStandardUpdaterController
 
     @Published var canCheckForUpdates = false
+    @Published var automaticallyChecksForUpdates = false
 
     init() {
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
-        // Enable automatic update checking
-        updaterController.updater.automaticallyChecksForUpdates = autoUpdateCheck
-        updaterController.updater.updateCheckInterval = 24 * 60 * 60
+        automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
         updaterController.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+
+        updaterController.updater.publisher(for: \.automaticallyChecksForUpdates)
+            .assign(to: &$automaticallyChecksForUpdates)
     }
 
-    func toggleAutoUpdates(_ value: Bool) {
+    func setAutomaticallyChecksForUpdates(_ value: Bool) {
         updaterController.updater.automaticallyChecksForUpdates = value
     }
 
     func checkForUpdates() {
         // This is for manual checks - will show UI
         updaterController.checkForUpdates(nil)
-    }
-
-    func silentlyCheckForUpdates() {
-        // This checks for updates in the background without showing UI unless an update is found
-        updaterController.updater.checkForUpdatesInBackground()
     }
 }
 

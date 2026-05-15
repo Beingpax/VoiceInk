@@ -1,5 +1,4 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct HistoryShortcutTipView: View {
     var body: some View {
@@ -27,7 +26,7 @@ struct HistoryShortcutTipView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
 
-                KeyboardShortcuts.Recorder(for: .openHistoryWindow)
+                ShortcutRecorder(action: .openHistoryWindow)
                     .controlSize(.small)
 
                 Spacer()

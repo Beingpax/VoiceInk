@@ -1,7 +1,6 @@
 import SwiftUI
 import AVFoundation
 import AppKit
-import KeyboardShortcuts
 
 struct OnboardingPermission: Identifiable {
     let id = UUID()
@@ -31,7 +30,7 @@ struct OnboardingPermission: Identifiable {
 
 struct OnboardingPermissionsView: View {
     @Binding var hasCompletedOnboarding: Bool
-    @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     @State private var currentPermissionIndex = 0
     @State private var permissionStates: [Bool] = [false, false, false, false, false]
@@ -199,10 +198,7 @@ struct OnboardingPermissionsView: View {
                             
                             // Keyboard shortcut recorder (only shown for keyboard shortcut step)
                             if permissions[currentPermissionIndex].type == .keyboardShortcut {
-                                hotkeyView(
-                                    binding: $hotkeyManager.selectedHotkey1,
-                                    shortcutName: .toggleMiniRecorder
-                                ) { isConfigured in
+                                shortcutView { isConfigured in
                                     withAnimation {
                                         permissionStates[currentPermissionIndex] = isConfigured
                                         showAnimation = isConfigured
@@ -281,7 +277,7 @@ struct OnboardingPermissionsView: View {
         permissionStates[3] = CGPreflightScreenCaptureAccess()
         
         // Check keyboard shortcut
-        permissionStates[4] = hotkeyManager.isShortcutConfigured
+        permissionStates[4] = recordingShortcutManager.isShortcutConfigured
     }
     
     private func requestPermission() {
@@ -363,7 +359,7 @@ struct OnboardingPermissionsView: View {
             }
             
         case .keyboardShortcut:
-            // The keyboard shortcut is handled by the KeyboardShortcuts.Recorder
+            // The shortcut recorder handles this step directly.
             break
         }
     }
@@ -452,33 +448,27 @@ struct OnboardingPermissionsView: View {
     }
 
     @ViewBuilder
-    private func hotkeyView(
-        binding: Binding<HotkeyManager.HotkeyOption>,
-        shortcutName: KeyboardShortcuts.Name,
-        onConfigured: @escaping (Bool) -> Void
-    ) -> some View {
-        VStack(spacing: 16) {
-            styledPicker(
-                label: "Shortcut:",
-                selectedValue: binding.wrappedValue,
-                displayValue: binding.wrappedValue.displayName,
-                options: HotkeyManager.HotkeyOption.allCases.filter { $0 != .none && $0 != .custom },
-                optionDisplayName: { $0.displayName },
-                onSelection: { option in
-                    binding.wrappedValue = option
-                    onConfigured(option.isModifierKey)
-                }
-            )
+    private func shortcutView(onConfigured: @escaping (Bool) -> Void) -> some View {
+        HStack(spacing: 12) {
+            Spacer()
 
-            if binding.wrappedValue == .custom {
-                KeyboardShortcuts.Recorder(for: shortcutName) { newShortcut in
-                    onConfigured(newShortcut != nil)
-                }
-                .controlSize(.large)
+            Text("Shortcut:")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
+
+            ShortcutRecorder(action: .primaryRecording) {
+                recordingShortcutManager.primaryRecordingShortcut = .custom
+                recordingShortcutManager.updateShortcutStatus()
+                onConfigured(ShortcutStore.shortcut(for: .primaryRecording) != nil)
             }
+            .controlSize(.large)
+
+            Spacer()
         }
-        .onChange(of: binding.wrappedValue) { newValue in
-            onConfigured(newValue != .none)
+        .padding()
+        .onAppear {
+            recordingShortcutManager.primaryRecordingShortcut = .custom
+            onConfigured(ShortcutStore.shortcut(for: .primaryRecording) != nil)
         }
     }
 }

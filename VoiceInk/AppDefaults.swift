@@ -6,7 +6,6 @@ enum AppDefaults {
             // Onboarding & General
             "hasCompletedOnboarding": false,
             "enableAnnouncements": true,
-            "autoUpdateCheck": true,
 
             // Clipboard
             "restoreClipboardAfterPaste": true,
@@ -39,7 +38,7 @@ enum AppDefaults {
             // UI & Behavior
             "IsMenuBarOnly": false,
             "powerModePersistConfig": false,
-            // Hotkey
+            // Shortcuts
             "isMiddleClickToggleEnabled": false,
             "middleClickActivationDelay": 200,
 

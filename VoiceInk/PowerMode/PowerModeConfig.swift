@@ -1,5 +1,4 @@
 import Foundation
-import KeyboardShortcuts
 
 enum AutoSendKey: String, Codable, CaseIterable {
     case none = "none"
@@ -40,10 +39,9 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var autoSendKey: AutoSendKey = .none
     var isEnabled: Bool = true
     var isDefault: Bool = false
-    var hotkeyShortcut: String? = nil
         
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, removePunctuation, lowercaseTranscription, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault, hotkeyShortcut
+        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, removePunctuation, lowercaseTranscription, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
@@ -52,7 +50,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
          isTextFormattingEnabled: Bool = false, removePunctuation: Bool = false, lowercaseTranscription: Bool = false,
-         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false, hotkeyShortcut: String? = nil) {
+         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false) {
         self.id = id
         self.name = name
         self.emoji = emoji
@@ -71,7 +69,6 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.lowercaseTranscription = lowercaseTranscription
         self.isEnabled = isEnabled
         self.isDefault = isDefault
-        self.hotkeyShortcut = hotkeyShortcut
     }
 
     init(from decoder: Decoder) throws {
@@ -101,7 +98,6 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         }
         isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         isDefault = try container.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
-        hotkeyShortcut = try container.decodeIfPresent(String.self, forKey: .hotkeyShortcut)
 
         if let newModelName = try container.decodeIfPresent(String.self, forKey: .selectedTranscriptionModelName) {
             selectedTranscriptionModelName = newModelName
@@ -132,7 +128,6 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(selectedTranscriptionModelName, forKey: .selectedTranscriptionModelName)
         try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(isDefault, forKey: .isDefault)
-        try container.encodeIfPresent(hotkeyShortcut, forKey: .hotkeyShortcut)
     }
     
     
@@ -201,20 +196,24 @@ class PowerModeManager: ObservableObject {
         if let data = try? JSONEncoder().encode(configurations) {
             UserDefaults.standard.set(data, forKey: configKey)
         }
-        NotificationCenter.default.post(name: NSNotification.Name("PowerModeConfigurationsDidChange"), object: nil)
+        NotificationCenter.default.post(name: .powerModeConfigurationsDidChange, object: nil)
     }
 
     func addConfiguration(_ config: PowerModeConfig) {
         if !configurations.contains(where: { $0.id == config.id }) {
+            let previousEnabledConfigIds = enabledConfigurationIds
             configurations.append(config)
             saveConfigurations()
+            postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
         }
     }
 
     func removeConfiguration(with id: UUID) {
-        KeyboardShortcuts.setShortcut(nil, for: .powerMode(id: id))
+        let previousEnabledConfigIds = enabledConfigurationIds
+        ShortcutStore.removeShortcutStorage(for: .powerMode(id))
         configurations.removeAll { $0.id == id }
         saveConfigurations()
+        postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
     }
 
     func getConfiguration(with id: UUID) -> PowerModeConfig? {
@@ -223,8 +222,10 @@ class PowerModeManager: ObservableObject {
 
     func updateConfiguration(_ config: PowerModeConfig) {
         if let index = configurations.firstIndex(where: { $0.id == config.id }) {
+            let previousEnabledConfigIds = enabledConfigurationIds
             configurations[index] = config
             saveConfigurations()
+            postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
         }
     }
 
@@ -285,20 +286,36 @@ class PowerModeManager: ObservableObject {
     
     func enableConfiguration(with id: UUID) {
         if let index = configurations.firstIndex(where: { $0.id == id }) {
+            let previousEnabledConfigIds = enabledConfigurationIds
             configurations[index].isEnabled = true
             saveConfigurations()
+            postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
         }
     }
     
     func disableConfiguration(with id: UUID) {
         if let index = configurations.firstIndex(where: { $0.id == id }) {
+            let previousEnabledConfigIds = enabledConfigurationIds
             configurations[index].isEnabled = false
             saveConfigurations()
+            postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
         }
     }
     
     var enabledConfigurations: [PowerModeConfig] {
         return configurations.filter { $0.isEnabled }
+    }
+
+    private var enabledConfigurationIds: Set<UUID> {
+        Set(enabledConfigurations.map(\.id))
+    }
+
+    private func postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: Set<UUID>) {
+        guard previousEnabledConfigIds != enabledConfigurationIds else {
+            return
+        }
+
+        NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
     }
 
     func addAppConfig(_ appConfig: AppConfig, to config: PowerModeConfig) {
