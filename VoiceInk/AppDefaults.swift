@@ -52,5 +52,7 @@ enum AppDefaults {
             "PrewarmModelOnWake": true,
 
         ])
+
+        PunctuationCleanupMode.migrateLegacyUserDefaultIfNeeded()
     }
 }
