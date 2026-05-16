@@ -77,6 +77,7 @@ final class ShortcutMonitor {
             let monitor = Unmanaged<ShortcutMonitor>.fromOpaque(userInfo).takeUnretainedValue()
 
             if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                monitor.resetPressedShortcutsAfterTapInterruption()
                 if let eventTap = monitor.eventTap {
                     CGEvent.tapEnable(tap: eventTap, enable: true)
                 }
@@ -136,6 +137,25 @@ final class ShortcutMonitor {
             modifierFlags: modifierFlags,
             eventTime: ProcessInfo.processInfo.systemUptime
         )
+    }
+
+    private func resetPressedShortcutsAfterTapInterruption() {
+        let eventTime = ProcessInfo.processInfo.systemUptime
+        let pressedActions = shortcuts.compactMap { action, state in
+            state.isDown ? action : nil
+        }
+
+        guard !pressedActions.isEmpty else {
+            return
+        }
+
+        for action in pressedActions {
+            if var state = shortcuts[action] {
+                state.isDown = false
+                shortcuts[action] = state
+            }
+            dispatchKeyUp(for: action, eventTime: eventTime)
+        }
     }
 
     private func handleEvent(
