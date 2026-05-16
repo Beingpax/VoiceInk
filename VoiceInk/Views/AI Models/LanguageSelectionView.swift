@@ -39,7 +39,7 @@ struct LanguageSelectionView: View {
         guard let provider = transcriptionModelManager.currentTranscriptionModel?.provider else {
             return false
         }
-        return provider == .fluidAudio || provider == .gemini
+        return provider == .gemini
     }
 
     private func isNativeAppleModelSelected() -> Bool {
