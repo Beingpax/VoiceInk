@@ -2,6 +2,8 @@ import Foundation
 
 enum AppDefaults {
     static func registerDefaults() {
+        PunctuationMode.migrateLegacyDefaultIfNeeded()
+
         UserDefaults.standard.register(defaults: [
             // Onboarding & General
             "hasCompletedOnboarding": false,
@@ -22,7 +24,7 @@ enum AppDefaults {
             "IsTextFormattingEnabled": true,
             "IsVADEnabled": true,
             "RemoveFillerWords": true,
-            "RemovePunctuation": false,
+            PunctuationMode.defaultsKey: PunctuationMode.keep.rawValue,
             "LowercaseTranscription": false,
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,

@@ -10,6 +10,7 @@ struct ApplicationState: Codable {
     var selectedLanguage: String?
     var transcriptionModelName: String?
     var isTextFormattingEnabled: Bool?
+    var punctuationMode: PunctuationMode?
     var removePunctuation: Bool?
     var lowercaseTranscription: Bool?
 }
@@ -56,7 +57,8 @@ class PowerModeSessionManager {
                 selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
                 transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
                 isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
-                removePunctuation: UserDefaults.standard.bool(forKey: "RemovePunctuation"),
+                punctuationMode: UserDefaults.standard.punctuationMode,
+                removePunctuation: nil,
                 lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
             )
 
@@ -108,7 +110,8 @@ class PowerModeSessionManager {
             selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
             transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
             isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
-            removePunctuation: UserDefaults.standard.bool(forKey: "RemovePunctuation"),
+            punctuationMode: UserDefaults.standard.punctuationMode,
+            removePunctuation: nil,
             lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
         )
 
@@ -140,7 +143,7 @@ class PowerModeSessionManager {
             }
 
             UserDefaults.standard.set(config.isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
-            UserDefaults.standard.set(config.removePunctuation, forKey: "RemovePunctuation")
+            UserDefaults.standard.punctuationMode = config.punctuationMode
             UserDefaults.standard.set(config.lowercaseTranscription, forKey: "LowercaseTranscription")
         }
 
@@ -180,8 +183,10 @@ class PowerModeSessionManager {
             if let isTextFormattingEnabled = state.isTextFormattingEnabled {
                 UserDefaults.standard.set(isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
             }
-            if let removePunctuation = state.removePunctuation {
-                UserDefaults.standard.set(removePunctuation, forKey: "RemovePunctuation")
+            if let punctuationMode = state.punctuationMode {
+                UserDefaults.standard.punctuationMode = punctuationMode
+            } else if let removePunctuation = state.removePunctuation {
+                UserDefaults.standard.punctuationMode = PunctuationMode(removePunctuation: removePunctuation)
             }
             if let lowercaseTranscription = state.lowercaseTranscription {
                 UserDefaults.standard.set(lowercaseTranscription, forKey: "LowercaseTranscription")

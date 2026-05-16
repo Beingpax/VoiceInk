@@ -20,7 +20,6 @@ enum BackupImporter {
     private static let keyAudioRetentionPeriod = "AudioRetentionPeriod"
 
     private static let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
-    private static let keyRemovePunctuation = "RemovePunctuation"
     private static let keyLowercaseTranscription = "LowercaseTranscription"
 
     @MainActor
@@ -188,8 +187,10 @@ enum BackupImporter {
         if let textFormattingEnabled = general.isTextFormattingEnabled {
             UserDefaults.standard.set(textFormattingEnabled, forKey: keyIsTextFormattingEnabled)
         }
-        if let removePunctuation = general.removePunctuation {
-            UserDefaults.standard.set(removePunctuation, forKey: keyRemovePunctuation)
+        if let punctuationMode = general.punctuationMode {
+            UserDefaults.standard.punctuationMode = punctuationMode
+        } else {
+            UserDefaults.standard.punctuationMode = .keep
         }
         if let lowercaseTranscription = general.lowercaseTranscription {
             UserDefaults.standard.set(lowercaseTranscription, forKey: keyLowercaseTranscription)

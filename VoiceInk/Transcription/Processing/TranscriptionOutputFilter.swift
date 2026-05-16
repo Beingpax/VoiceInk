@@ -1,7 +1,74 @@
 import Foundation
 
+enum PunctuationMode: String, Codable, CaseIterable, Identifiable {
+    case keep
+    case removeTrailing
+    case removeAll
+
+    static let defaultsKey = "PunctuationMode"
+    static let legacyRemovePunctuationKey = "RemovePunctuation"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .keep:
+            return "Keep"
+        case .removeTrailing:
+            return "Remove ending"
+        case .removeAll:
+            return "Remove all"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .keep:
+            return "Keep punctuation from recording transcription output."
+        case .removeTrailing:
+            return "Remove punctuation only from the end of recording transcription output."
+        case .removeAll:
+            return "Remove all punctuation marks from recording transcription output."
+        }
+    }
+
+    init(removePunctuation: Bool) {
+        self = removePunctuation ? .removeAll : .keep
+    }
+
+    static func stored(in defaults: UserDefaults = .standard) -> PunctuationMode {
+        if let rawValue = defaults.string(forKey: defaultsKey),
+           let mode = PunctuationMode(rawValue: rawValue) {
+            return mode
+        }
+
+        return PunctuationMode(
+            removePunctuation: defaults.bool(forKey: legacyRemovePunctuationKey)
+        )
+    }
+
+    static func persist(_ mode: PunctuationMode, in defaults: UserDefaults = .standard) {
+        defaults.set(mode.rawValue, forKey: defaultsKey)
+    }
+
+    static func migrateLegacyDefaultIfNeeded(in defaults: UserDefaults = .standard) {
+        guard defaults.object(forKey: defaultsKey) == nil else { return }
+        persist(stored(in: defaults), in: defaults)
+    }
+}
+
+extension UserDefaults {
+    var punctuationMode: PunctuationMode {
+        get {
+            PunctuationMode.stored(in: self)
+        }
+        set {
+            PunctuationMode.persist(newValue, in: self)
+        }
+    }
+}
+
 struct TranscriptionOutputFilter {
-    private static let removePunctuationKey = "RemovePunctuation"
     private static let lowercaseTranscriptionKey = "LowercaseTranscription"
     private static let apostropheLikeCharacters = CharacterSet(charactersIn: "'’‘ʼ＇")
     
@@ -48,17 +115,30 @@ struct TranscriptionOutputFilter {
     }
 
     static func applyUserCleanupPreferences(_ text: String) -> String {
-        let shouldRemovePunctuation = UserDefaults.standard.bool(forKey: removePunctuationKey)
+        applyCleanupPreferences(text, punctuationMode: .keep)
+    }
+
+    static func applyRecordingCleanupPreferences(_ text: String) -> String {
+        applyCleanupPreferences(text, punctuationMode: UserDefaults.standard.punctuationMode)
+    }
+
+    private static func applyCleanupPreferences(_ text: String, punctuationMode: PunctuationMode) -> String {
         let shouldLowercase = UserDefaults.standard.bool(forKey: lowercaseTranscriptionKey)
 
-        guard shouldRemovePunctuation || shouldLowercase else {
+        guard punctuationMode != .keep || shouldLowercase else {
             return text
         }
 
         var cleanedText = text
-        if shouldRemovePunctuation {
+        switch punctuationMode {
+        case .keep:
+            break
+        case .removeTrailing:
+            cleanedText = removeTrailingPunctuation(from: cleanedText)
+        case .removeAll:
             cleanedText = removePunctuation(from: cleanedText)
         }
+
         if shouldLowercase {
             cleanedText = cleanedText.lowercased()
         }
@@ -83,6 +163,21 @@ struct TranscriptionOutputFilter {
         }
 
         return normalizeWhitespace(cleanedScalars.joined())
+    }
+
+    static func removeTrailingPunctuation(from text: String) -> String {
+        guard !text.isEmpty else { return text }
+
+        let punctuationCharacters = CharacterSet.punctuationCharacters.union(apostropheLikeCharacters)
+        var cleanedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        while let lastScalar = cleanedText.unicodeScalars.last,
+              punctuationCharacters.contains(lastScalar) {
+            cleanedText.removeLast()
+            cleanedText = cleanedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return cleanedText
     }
 
     private static func normalizeWhitespace(_ text: String) -> String {

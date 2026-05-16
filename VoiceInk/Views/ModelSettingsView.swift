@@ -4,7 +4,7 @@ struct ModelSettingsView: View {
     @ObservedObject var whisperPrompt: WhisperPrompt
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @AppStorage("IsTextFormattingEnabled") private var isTextFormattingEnabled = true
-    @AppStorage("RemovePunctuation") private var removePunctuation = false
+    @AppStorage(PunctuationMode.defaultsKey) private var punctuationMode: PunctuationMode = .keep
     @AppStorage("LowercaseTranscription") private var lowercaseTranscription = false
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
@@ -12,6 +12,16 @@ struct ModelSettingsView: View {
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
+
+    private var punctuationModeBinding: Binding<PunctuationMode> {
+        Binding(
+            get: { punctuationMode },
+            set: { newValue in
+                punctuationMode = newValue
+                UserDefaults.standard.punctuationMode = newValue
+            }
+        )
+    }
 
     var body: some View {
         Form {
@@ -59,13 +69,17 @@ struct ModelSettingsView: View {
                 }
                 .toggleStyle(.switch)
 
-                Toggle(isOn: $removePunctuation) {
+                Picker(selection: punctuationModeBinding) {
+                    ForEach(PunctuationMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                } label: {
                     HStack(spacing: 4) {
-                        Text("Remove punctuation")
-                        InfoTip("Remove punctuation marks from transcription output.")
+                        Text("Punctuation")
+                        InfoTip("Choose how you want punctuation handled in recording transcriptions. Keep leaves punctuation as-is, Remove ending removes punctuation from the end, and Remove all removes punctuation throughout the entire transcription text.")
                     }
                 }
-                .toggleStyle(.switch)
+                .pickerStyle(.menu)
 
                 Toggle(isOn: $lowercaseTranscription) {
                     HStack(spacing: 4) {
