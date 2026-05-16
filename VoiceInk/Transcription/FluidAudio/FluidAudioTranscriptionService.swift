@@ -16,6 +16,13 @@ class FluidAudioTranscriptionService: TranscriptionService {
         FluidAudioModelManager.asrVersion(for: model.name)
     }
 
+    static func languageHint(from selectedLanguage: String?, model: any TranscriptionModel) -> Language? {
+        guard model.provider == .fluidAudio else {
+            return nil
+        }
+        return FluidAudioModelManager.languageHint(from: selectedLanguage, for: model.name)
+    }
+
     private func ensureModelsLoaded(for version: AsrModelVersion) async throws {
         if asrManager != nil, activeVersion == version {
             return
@@ -83,6 +90,10 @@ class FluidAudioTranscriptionService: TranscriptionService {
             throw ASRError.notInitialized
         }
 
+        let languageHint = Self.languageHint(
+            from: UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            model: model
+        )
         let audioSamples = try readAudioSamples(from: audioURL)
 
         let durationSeconds = Double(audioSamples.count) / 16000.0
@@ -119,11 +130,11 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
-        let languageHint = FluidAudioModelManager.languageHint(
-            from: UserDefaults.standard.string(forKey: "SelectedLanguage"),
-            for: model.name
+        let result = try await asrManager.transcribe(
+            speechAudio,
+            decoderState: &decoderState,
+            language: languageHint
         )
-        let result = try await asrManager.transcribe(speechAudio, decoderState: &decoderState, language: languageHint)
 
         return TextNormalizer.shared.normalizeSentence(result.text)
     }

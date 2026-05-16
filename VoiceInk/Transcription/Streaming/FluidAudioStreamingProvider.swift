@@ -28,6 +28,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
     private var lastTranscribedSampleCount = 0
     private let minimumAudioSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
     private let minNewSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
+    private let maxBufferSamples = 480_000 // 30s hard cap
 
     init(fluidAudioService: FluidAudioTranscriptionService, config: AgreementConfig = AgreementConfig()) {
         self.fluidAudioService = fluidAudioService
@@ -52,7 +53,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         try await manager.loadModels(models)
         self.asrManager = manager
         self.decoderLayerCount = await manager.decoderLayerCount
-        self.languageHint = FluidAudioModelManager.languageHint(from: language, for: model.name)
+        self.languageHint = FluidAudioTranscriptionService.languageHint(from: language, model: model)
 
         agreementEngine.reset()
         audioBuffer = []
@@ -161,7 +162,11 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
         do {
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-            let result = try await asrManager.transcribe(audioSlice, decoderState: &state, language: languageHint)
+            let result = try await asrManager.transcribe(
+                audioSlice,
+                decoderState: &state,
+                language: languageHint
+            )
             lastTranscribedSampleCount = absoluteSampleCount
 
             guard let tokenTimings = result.tokenTimings, !tokenTimings.isEmpty else {
@@ -199,6 +204,23 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
 
+            // Hard cap: if no words are confirmed for a while, keep memory bounded.
+            bufferLock.lock()
+            if audioBuffer.count > maxBufferSamples {
+                let trimTarget: Int
+                if agreementEngine.confirmedEndTime > 0 {
+                    trimTarget = max(0, Int(agreementEngine.confirmedEndTime * sampleRate) - trimmedSampleCount)
+                } else {
+                    trimTarget = audioBuffer.count - maxBufferSamples
+                }
+                let actualTrim = min(max(trimTarget, audioBuffer.count - maxBufferSamples), audioBuffer.count)
+                if actualTrim > 0 {
+                    audioBuffer.removeFirst(actualTrim)
+                    trimmedSampleCount += actualTrim
+                }
+            }
+            bufferLock.unlock()
+
         } catch {
             logger.error("Transcription pass failed: \(error.localizedDescription, privacy: .public)")
             eventsContinuation?.yield(.error(error))
@@ -233,7 +255,11 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
         do {
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-            let result = try await asrManager.transcribe(samples, decoderState: &state, language: languageHint)
+            let result = try await asrManager.transcribe(
+                samples,
+                decoderState: &state,
+                language: languageHint
+            )
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             return TextNormalizer.shared.normalizeSentence(text)
