@@ -94,8 +94,6 @@ enum AIProvider: String, CaseIterable {
         case .cerebras:
             return [
                 "gpt-oss-120b",
-                "llama3.1-8b",
-                "qwen-3-235b-a22b-instruct-2507",
                 "zai-glm-4.7"
             ]
         case .groq:
@@ -110,7 +108,7 @@ enum AIProvider: String, CaseIterable {
             return [
                 "gemini-3.1-pro-preview",
                 "gemini-3-flash-preview",
-                "gemini-3.1-flash-lite-preview",
+                "gemini-3.1-flash-lite",
                 "gemini-2.5-pro",
                 "gemini-2.5-flash",
                 "gemini-2.5-flash-lite"
@@ -142,7 +140,7 @@ enum AIProvider: String, CaseIterable {
                 "mistral-small-latest"
             ]
         case .elevenLabs:
-            return ["scribe_v1", "scribe_v1_experimental"]
+            return ["scribe_v1", "scribe_v2"]
         case .deepgram:
             return ["whisper-1"]
         case .soniox:
