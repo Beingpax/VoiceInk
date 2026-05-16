@@ -6,7 +6,8 @@ import os
 private let logger = Logger(subsystem: "com.VoiceInk", category: "CursorPaster")
 
 class CursorPaster {
-    private typealias ClipboardSnapshot = [(NSPasteboard.PasteboardType, Data)]
+    private typealias ClipboardItemSnapshot = [(NSPasteboard.PasteboardType, Data)]
+    private typealias ClipboardSnapshot = [ClipboardItemSnapshot]
 
     static func pasteAtCursor(_ text: String) {
         Task {
@@ -24,15 +25,13 @@ class CursorPaster {
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
 
         _ = ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
+        postPasteCommand()
 
-        return Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 50_000_000)
-            postPasteCommand()
-
-            if shouldRestoreClipboard {
-                scheduleClipboardRestore(savedContents, on: pasteboard)
-            }
+        if shouldRestoreClipboard {
+            scheduleClipboardRestore(savedContents, on: pasteboard)
         }
+
+        return Task { @MainActor in }
     }
 
     @MainActor
@@ -41,18 +40,14 @@ class CursorPaster {
     }
 
     private static func snapshotClipboard(from pasteboard: NSPasteboard) -> ClipboardSnapshot {
-        var savedContents: ClipboardSnapshot = []
-        let currentItems = pasteboard.pasteboardItems ?? []
-
-        for item in currentItems {
-            for type in item.types {
+        (pasteboard.pasteboardItems ?? []).map { item in
+            item.types.compactMap { type in
                 if let data = item.data(forType: type) {
-                    savedContents.append((type, data))
+                    return (type, data)
                 }
+                return nil
             }
         }
-
-        return savedContents
     }
 
     private static func postPasteCommand() {
@@ -68,12 +63,20 @@ class CursorPaster {
         let delay = max(restoreDelay, 0.25)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            pasteboard.clearContents()
             if !savedContents.isEmpty {
-                pasteboard.clearContents()
-                for (type, data) in savedContents {
-                    pasteboard.setData(data, forType: type)
-                }
+                pasteboard.writeObjects(pasteboardItems(from: savedContents))
             }
+        }
+    }
+
+    private static func pasteboardItems(from snapshot: ClipboardSnapshot) -> [NSPasteboardItem] {
+        snapshot.map { itemSnapshot in
+            let item = NSPasteboardItem()
+            for (type, data) in itemSnapshot {
+                item.setData(data, forType: type)
+            }
+            return item
         }
     }
 
