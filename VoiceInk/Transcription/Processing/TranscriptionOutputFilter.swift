@@ -2,7 +2,7 @@ import Foundation
 
 enum PunctuationCleanupMode: String, CaseIterable, Codable {
     case keep
-    case trailingPeriod
+    case trailingPunctuation
     case all
 
     static let userDefaultsKey = "PunctuationCleanupMode"
@@ -12,8 +12,8 @@ enum PunctuationCleanupMode: String, CaseIterable, Codable {
         switch self {
         case .keep:
             return "Keep punctuation"
-        case .trailingPeriod:
-            return "Remove trailing period"
+        case .trailingPunctuation:
+            return "Remove trailing punctuation"
         case .all:
             return "Remove all punctuation"
         }
@@ -31,6 +31,10 @@ enum PunctuationCleanupMode: String, CaseIterable, Codable {
     }
 
     static func mode(rawValue: String?, legacyRemovePunctuation: Bool) -> PunctuationCleanupMode {
+        if rawValue == "trailingPeriod" {
+            return .trailingPunctuation
+        }
+
         if let rawValue, let mode = PunctuationCleanupMode(rawValue: rawValue) {
             return mode
         }
@@ -51,6 +55,7 @@ enum PunctuationCleanupMode: String, CaseIterable, Codable {
 struct TranscriptionOutputFilter {
     private static let lowercaseTranscriptionKey = "LowercaseTranscription"
     private static let apostropheLikeCharacters = CharacterSet(charactersIn: "'’‘ʼ＇")
+    private static let trailingPunctuationCharacters = CharacterSet.punctuationCharacters.subtracting(apostropheLikeCharacters)
     
     private static let hallucinationPatterns = [
         #"\[.*?\]"#,     // []
@@ -106,8 +111,8 @@ struct TranscriptionOutputFilter {
         switch punctuationCleanupMode {
         case .keep:
             break
-        case .trailingPeriod:
-            cleanedText = removeTrailingPeriod(from: cleanedText)
+        case .trailingPunctuation:
+            cleanedText = removeTrailingPunctuation(from: cleanedText)
         case .all:
             cleanedText = removePunctuation(from: cleanedText)
         }
@@ -137,7 +142,7 @@ struct TranscriptionOutputFilter {
         return normalizeWhitespace(cleanedScalars.joined())
     }
 
-    static func removeTrailingPeriod(from text: String) -> String {
+    static func removeTrailingPunctuation(from text: String) -> String {
         guard !text.isEmpty else { return text }
 
         var endOfContent = text.endIndex
@@ -152,19 +157,23 @@ struct TranscriptionOutputFilter {
 
         guard endOfContent > text.startIndex else { return text }
 
-        let lastCharacterIndex = text.index(before: endOfContent)
-        guard text[lastCharacterIndex] == "." else { return text }
-
-        if lastCharacterIndex > text.startIndex {
-            let previousIndex = text.index(before: lastCharacterIndex)
-            if text[previousIndex] == "." {
-                return text
+        var punctuationStart = endOfContent
+        while punctuationStart > text.startIndex {
+            let previousIndex = text.index(before: punctuationStart)
+            if isTrailingPunctuation(text[previousIndex]) {
+                punctuationStart = previousIndex
+            } else {
+                break
             }
         }
 
-        var cleanedText = text
-        cleanedText.remove(at: lastCharacterIndex)
-        return cleanedText
+        guard punctuationStart < endOfContent else { return text }
+
+        return String(text[..<punctuationStart] + text[endOfContent...])
+    }
+
+    private static func isTrailingPunctuation(_ character: Character) -> Bool {
+        character.unicodeScalars.allSatisfy { trailingPunctuationCharacters.contains($0) }
     }
 
     private static func normalizeWhitespace(_ text: String) -> String {

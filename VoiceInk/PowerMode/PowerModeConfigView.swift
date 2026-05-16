@@ -377,7 +377,7 @@ struct ConfigurationView: View {
                             } label: {
                                 HStack(spacing: 4) {
                                     Text("Punctuation")
-                                    InfoTip("Choose whether VoiceInk keeps punctuation, removes only a final period, or removes all punctuation from transcription output.")
+                                    InfoTip("Choose whether VoiceInk keeps punctuation, removes punctuation only from the end, or removes all punctuation from transcription output.")
                                 }
                             }
                             .pickerStyle(.menu)
