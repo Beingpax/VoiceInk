@@ -25,7 +25,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
     private var transcriptionTask: Task<Void, Never>?
     private var isTranscribing = false
     private var lastTranscribedSampleCount = 0
-    private let minNewSamples = 8000 // ~0.5s
+    private let minimumAudioSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
+    private let minNewSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
 
     init(fluidAudioService: FluidAudioTranscriptionService, config: AgreementConfig = AgreementConfig()) {
         self.fluidAudioService = fluidAudioService
@@ -125,7 +126,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         bufferLock.unlock()
 
         guard absoluteSampleCount - lastTranscribedSampleCount >= minNewSamples else { return }
-        guard absoluteSampleCount >= Int(sampleRate) else { return }
+        guard absoluteSampleCount >= minimumAudioSamples else { return }
 
         isTranscribing = true
         defer { isTranscribing = false }
@@ -153,7 +154,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             audioSlice += [Float](repeating: 0, count: trailingSilenceSamples)
         }
 
-        guard audioSlice.count >= Int(sampleRate) else { return }
+        guard audioSlice.count >= minimumAudioSamples else { return }
 
         do {
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
@@ -219,7 +220,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         var samples = Array(audioBuffer[bufferRelativeSeek...])
         bufferLock.unlock()
 
-        guard samples.count >= Int(sampleRate) else { return nil }
+        guard samples.count >= minimumAudioSamples else { return nil }
 
         let trailingSilenceSamples = 16_000
         let maxSingleChunkSamples = 240_000
