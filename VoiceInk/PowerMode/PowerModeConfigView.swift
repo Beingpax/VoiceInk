@@ -55,7 +55,7 @@ struct ConfigurationView: View {
         guard let selectedModelName = effectiveModelName,
               let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName })
         else { return false }
-        return model.provider == .fluidAudio || model.provider == .gemini
+        return model.provider == .gemini
     }
 
     private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {
@@ -300,7 +300,7 @@ struct ConfigurationView: View {
                         .onChange(of: selectedTranscriptionModelName) { _, newModelName in
                             if let modelName = newModelName ?? transcriptionModelManager.currentTranscriptionModel?.name,
                                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
-                                if model.provider == .fluidAudio || model.provider == .gemini {
+                                if model.provider == .gemini {
                                     selectedLanguage = "auto"
                                 } else {
                                     useCompatibleLanguage(for: model)
@@ -564,7 +564,6 @@ struct ConfigurationView: View {
 
                 if let selectedModelName = effectiveModelName,
                    let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
-                   model.provider != .fluidAudio,
                    model.provider != .gemini {
                     useCompatibleLanguage(for: model)
                 }

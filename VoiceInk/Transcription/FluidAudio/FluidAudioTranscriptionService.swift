@@ -119,7 +119,11 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
-        let result = try await asrManager.transcribe(speechAudio, decoderState: &decoderState)
+        let languageHint = FluidAudioModelManager.languageHint(
+            from: UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            for: model.name
+        )
+        let result = try await asrManager.transcribe(speechAudio, decoderState: &decoderState, language: languageHint)
 
         return TextNormalizer.shared.normalizeSentence(result.text)
     }

@@ -19,6 +19,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
     private var asrManager: AsrManager?
     private var decoderLayerCount: Int = 0
+    private var languageHint: Language?
     private let agreementEngine: WordAgreementEngine
     private let config: AgreementConfig
 
@@ -51,6 +52,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         try await manager.loadModels(models)
         self.asrManager = manager
         self.decoderLayerCount = await manager.decoderLayerCount
+        self.languageHint = FluidAudioModelManager.languageHint(from: language, for: model.name)
 
         agreementEngine.reset()
         audioBuffer = []
@@ -88,6 +90,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         await asrManager?.cleanup()
         asrManager = nil
         decoderLayerCount = 0
+        languageHint = nil
 
         bufferLock.lock()
         audioBuffer = []
@@ -158,7 +161,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
         do {
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-            let result = try await asrManager.transcribe(audioSlice, decoderState: &state)
+            let result = try await asrManager.transcribe(audioSlice, decoderState: &state, language: languageHint)
             lastTranscribedSampleCount = absoluteSampleCount
 
             guard let tokenTimings = result.tokenTimings, !tokenTimings.isEmpty else {
@@ -230,7 +233,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
         do {
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-            let result = try await asrManager.transcribe(samples, decoderState: &state)
+            let result = try await asrManager.transcribe(samples, decoderState: &state, language: languageHint)
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             return TextNormalizer.shared.normalizeSentence(text)
