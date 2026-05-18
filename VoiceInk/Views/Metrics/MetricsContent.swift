@@ -1,6 +1,72 @@
 import SwiftUI
 import SwiftData
+import Foundation
 import os
+
+private struct DashboardMetricsSummary: Equatable, Sendable {
+    var totalCount: Int = 0
+    var totalWords: Int = 0
+    var totalDuration: TimeInterval = 0
+}
+
+private final class DashboardMetricsCache: @unchecked Sendable {
+    static let shared = DashboardMetricsCache()
+
+    private let lock = NSLock()
+    private var summary: DashboardMetricsSummary?
+
+    private init() {}
+
+    func currentSummary() -> DashboardMetricsSummary? {
+        lock.lock()
+        defer { lock.unlock() }
+        return summary
+    }
+
+    func update(_ summary: DashboardMetricsSummary) {
+        lock.lock()
+        self.summary = summary
+        lock.unlock()
+    }
+}
+
+private enum DashboardMetricsLoader {
+    static func load(from modelContainer: ModelContainer) async throws -> DashboardMetricsSummary {
+        let task = Task.detached(priority: .utility) {
+            try Task.checkCancellation()
+
+            let backgroundContext = ModelContext(modelContainer)
+            let count = try backgroundContext.fetchCount(FetchDescriptor<SessionMetric>())
+
+            try Task.checkCancellation()
+
+            var descriptor = FetchDescriptor<SessionMetric>()
+            descriptor.propertiesToFetch = [\.wordCount, \.audioDuration]
+
+            var words = 0
+            var duration: TimeInterval = 0
+
+            try backgroundContext.enumerate(descriptor) { metric in
+                words += metric.wordCount
+                duration += metric.audioDuration
+            }
+
+            try Task.checkCancellation()
+
+            return DashboardMetricsSummary(
+                totalCount: count,
+                totalWords: words,
+                totalDuration: duration
+            )
+        }
+
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+}
 
 struct MetricsContent: View {
     private let logger = Logger(subsystem: "com.prakashjoshipax.VoiceInk", category: "MetricsContent")
@@ -10,18 +76,26 @@ struct MetricsContent: View {
     @State private var totalCount: Int = 0
     @State private var totalWords: Int = 0
     @State private var totalDuration: TimeInterval = 0
-    @State private var isLoadingMetrics: Bool = true
+    @State private var hasLoadedMetricsSnapshot: Bool = false
     @State private var metricsTask: Task<Void, Never>?
     @State private var isModelStatsPanelPresented = false
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
 
+    init(modelContext: ModelContext, licenseState: LicenseViewModel.LicenseState) {
+        self.modelContext = modelContext
+        self.licenseState = licenseState
+
+        let cachedSummary = DashboardMetricsCache.shared.currentSummary()
+        _totalCount = State(initialValue: cachedSummary?.totalCount ?? 0)
+        _totalWords = State(initialValue: cachedSummary?.totalWords ?? 0)
+        _totalDuration = State(initialValue: cachedSummary?.totalDuration ?? 0)
+        _hasLoadedMetricsSnapshot = State(initialValue: cachedSummary != nil)
+    }
+
     var body: some View {
         Group {
-            if totalCount == 0 && !isLoadingMetrics {
+            if totalCount == 0 && hasLoadedMetricsSnapshot {
                 emptyStateView
-            } else if isLoadingMetrics {
-                ProgressView("Loading metrics...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 GeometryReader { geometry in
                     ScrollView {
@@ -120,60 +194,29 @@ struct MetricsContent: View {
     }
     
     private func loadMetricsEfficiently() async {
-        await MainActor.run {
-            self.isLoadingMetrics = true
-        }
-
-        let modelContainer = modelContext.container
-
-        let backgroundContext = ModelContext(modelContainer)
-
         do {
+            let summary = try await DashboardMetricsLoader.load(from: modelContext.container)
+
             guard !Task.isCancelled else {
-                await MainActor.run {
-                    self.isLoadingMetrics = false
-                }
                 return
             }
 
-            let count = try backgroundContext.fetchCount(FetchDescriptor<SessionMetric>())
-
-            guard !Task.isCancelled else {
-                await MainActor.run {
-                    self.isLoadingMetrics = false
-                }
-                return
-            }
-
-            var descriptor = FetchDescriptor<SessionMetric>()
-            descriptor.propertiesToFetch = [\.wordCount, \.audioDuration]
-
-            var words = 0
-            var duration: TimeInterval = 0
-
-            try backgroundContext.enumerate(descriptor) { metric in
-                words += metric.wordCount
-                duration += metric.audioDuration
-            }
-
-            guard !Task.isCancelled else {
-                await MainActor.run { self.isLoadingMetrics = false }
-                return
-            }
+            let shouldAcceptSummary = summary.totalCount > 0 || !SessionMetricMigrationService.shared.isRunning
 
             await MainActor.run {
-                self.totalCount = count
-                self.totalWords = words
-                self.totalDuration = duration
-                // Stay in loading state if migration is still running and no data yet —
-                // sessionMetricsDidChange will trigger a reload when it finishes.
-                if count > 0 || !SessionMetricMigrationService.shared.isRunning {
-                    self.isLoadingMetrics = false
+                guard shouldAcceptSummary else {
+                    return
                 }
+
+                self.totalCount = summary.totalCount
+                self.totalWords = summary.totalWords
+                self.totalDuration = summary.totalDuration
+                DashboardMetricsCache.shared.update(summary)
+                self.hasLoadedMetricsSnapshot = true
             }
+        } catch is CancellationError {
         } catch {
             logger.error("Error loading metrics: \(error.localizedDescription, privacy: .public)")
-            await MainActor.run { self.isLoadingMetrics = false }
         }
     }
 
@@ -210,22 +253,29 @@ struct MetricsContent: View {
         VStack(spacing: 10) {
             HStack {
                 Spacer(minLength: 0)
-                
-                (Text("You have saved ")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.85))
-                 +
-                 Text(formattedTimeSaved)
-                    .fontWeight(.black)
-                    .font(.system(size: 36, design: .rounded))
-                    .foregroundStyle(.white)
-                 +
-                 Text(" with VoiceInk")
-                    .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.85))
-                )
-                .font(.system(size: 30))
-                .multilineTextAlignment(.center)
+
+                if hasLoadedMetricsSnapshot {
+                    (Text("You have saved ")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white.opacity(0.85))
+                     +
+                     Text(formattedTimeSaved)
+                        .fontWeight(.black)
+                        .font(.system(size: 36, design: .rounded))
+                        .foregroundStyle(.white)
+                     +
+                     Text(" with VoiceInk")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white.opacity(0.85))
+                    )
+                    .font(.system(size: 30))
+                    .multilineTextAlignment(.center)
+                } else {
+                    Text("VoiceInk Insights")
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                }
                 
                 Spacer(minLength: 0)
             }
@@ -257,7 +307,7 @@ struct MetricsContent: View {
             MetricCard(
                 icon: "mic.fill",
                 title: "Sessions Recorded",
-                value: "\(totalCount)",
+                value: hasLoadedMetricsSnapshot ? "\(totalCount)" : "–",
                 detail: "VoiceInk sessions completed",
                 color: .purple
             )
@@ -265,7 +315,7 @@ struct MetricsContent: View {
             MetricCard(
                 icon: "text.alignleft",
                 title: "Words Dictated",
-                value: Formatters.formattedNumber(totalWords),
+                value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalWords) : "–",
                 detail: "words generated",
                 color: Color(nsColor: .controlAccentColor)
             )
@@ -273,7 +323,7 @@ struct MetricsContent: View {
             MetricCard(
                 icon: "speedometer",
                 title: "Words Per Minute",
-                value: averageWordsPerMinute > 0
+                value: hasLoadedMetricsSnapshot && averageWordsPerMinute > 0
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
                 detail: "VoiceInk vs. typing by hand",
@@ -283,7 +333,7 @@ struct MetricsContent: View {
             MetricCard(
                 icon: "keyboard.fill",
                 title: "Keystrokes Saved",
-                value: Formatters.formattedNumber(totalKeystrokesSaved),
+                value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalKeystrokesSaved) : "–",
                 detail: "fewer keystrokes",
                 color: .orange
             )
@@ -316,6 +366,10 @@ struct MetricsContent: View {
     }
     
     private var heroSubtitle: String {
+        guard hasLoadedMetricsSnapshot else {
+            return "Your usage summary will appear here."
+        }
+
         guard totalCount > 0 else {
             return "Your VoiceInk journey starts with your first recording."
         }
