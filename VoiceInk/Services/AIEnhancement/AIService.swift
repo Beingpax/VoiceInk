@@ -413,13 +413,8 @@ class AIService: ObservableObject {
         return ollamaService.availableModels
     }
     
-    func enhanceWithOllama(text: String, systemPrompt: String) async throws -> String {
-        do {
-            let result = try await ollamaService.enhance(text, withSystemPrompt: systemPrompt)
-            return result
-        } catch {
-            throw error
-        }
+    func enhanceWithOllama(text: String, systemPrompt: String, timeout: TimeInterval = 30) async throws -> String {
+        try await ollamaService.enhance(text, withSystemPrompt: systemPrompt, timeout: timeout)
     }
     
     func updateOllamaBaseURL(_ newURL: String) {
