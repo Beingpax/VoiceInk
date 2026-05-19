@@ -28,7 +28,6 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
     private var lastTranscribedSampleCount = 0
     private let minimumAudioSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
     private let minNewSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
-    private let maxBufferSamples = 480_000 // 30s hard cap
 
     init(fluidAudioService: FluidAudioTranscriptionService, config: AgreementConfig = AgreementConfig()) {
         self.fluidAudioService = fluidAudioService
@@ -203,23 +202,6 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
                     bufferLock.unlock()
                 }
             }
-
-            // Hard cap: if no words are confirmed for a while, keep memory bounded.
-            bufferLock.lock()
-            if audioBuffer.count > maxBufferSamples {
-                let trimTarget: Int
-                if agreementEngine.confirmedEndTime > 0 {
-                    trimTarget = max(0, Int(agreementEngine.confirmedEndTime * sampleRate) - trimmedSampleCount)
-                } else {
-                    trimTarget = audioBuffer.count - maxBufferSamples
-                }
-                let actualTrim = min(max(trimTarget, audioBuffer.count - maxBufferSamples), audioBuffer.count)
-                if actualTrim > 0 {
-                    audioBuffer.removeFirst(actualTrim)
-                    trimmedSampleCount += actualTrim
-                }
-            }
-            bufferLock.unlock()
 
         } catch {
             logger.error("Transcription pass failed: \(error.localizedDescription, privacy: .public)")
