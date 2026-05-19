@@ -72,7 +72,5 @@ class OpenAICompatibleTranscriptionService {
 
     private struct TranscriptionResponse: Decodable {
         let text: String
-        let language: String?
-        let duration: Double?
     }
 }
