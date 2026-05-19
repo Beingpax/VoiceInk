@@ -193,7 +193,6 @@ class TranscriptionPipeline {
             return
         }
 
-        let dismissTask: Task<Void, Never>?
         if var textToPaste = finalPastedText,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
             if case .trialExpired = licenseViewModel.licenseState {
@@ -205,14 +204,10 @@ class TranscriptionPipeline {
 
             let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
             let pastedText = textToPaste + (appendSpace ? " " : "")
-            let pastePostTask = CursorPaster.startPasteAtCursor(pastedText)
-            SoundManager.shared.playStopSound()
+            CursorPaster.startPasteAtCursor(pastedText)
             let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
+            SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsIfNeeded()
-            dismissTask = Task { @MainActor in
-                await onDismiss()
-            }
-            await pastePostTask.value
 
             if let autoSendKey, autoSendKey.isEnabled {
                 Task { @MainActor in
@@ -220,14 +215,13 @@ class TranscriptionPipeline {
                     CursorPaster.performAutoSend(autoSendKey)
                 }
             }
+
+            await onDismiss()
         } else {
             await restorePromptDetectionSettingsIfNeeded()
             await onDismiss()
-            dismissTask = nil
         }
 
         saveTranscriptionAndPostCompletion()
-
-        await dismissTask?.value
     }
 }

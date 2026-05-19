@@ -129,7 +129,7 @@ class Recorder: NSObject, ObservableObject {
         recorder = coreAudioRecorder
 
         do {
-            // Offload initialization to background thread to avoid hotkey lag.
+            // Offload initialization to avoid shortcut lag.
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 audioSetupQueue.async {
                     do {

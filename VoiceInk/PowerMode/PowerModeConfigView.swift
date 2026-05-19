@@ -1,5 +1,4 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct ConfigurationView: View {
     let mode: ConfigurationMode
@@ -19,7 +18,7 @@ struct ConfigurationView: View {
     @State private var selectedTranscriptionModelName: String?
     @State private var selectedLanguage: String?
     @State private var isTextFormattingEnabled = false
-    @State private var removePunctuation = false
+    @State private var punctuationCleanupMode: PunctuationCleanupMode = .keep
     @State private var lowercaseTranscription = false
     @State private var installedApps: [(url: URL, name: String, bundleId: String, icon: NSImage)] = []
     @State private var searchText = ""
@@ -36,6 +35,7 @@ struct ConfigurationView: View {
     @State private var isShowingDeleteConfirmation = false
     @State private var powerModeConfigId: UUID = UUID()
     @State private var isTranscriptFormattingExpanded = false
+    @State private var didSaveConfiguration = false
 
     private var effectiveModelName: String? {
         selectedTranscriptionModelName ?? transcriptionModelManager.currentTranscriptionModel?.name
@@ -55,7 +55,7 @@ struct ConfigurationView: View {
         guard let selectedModelName = effectiveModelName,
               let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName })
         else { return false }
-        return model.provider == .fluidAudio || model.provider == .gemini
+        return model.provider == .gemini
     }
 
     private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {
@@ -83,7 +83,7 @@ struct ConfigurationView: View {
             _selectedTranscriptionModelName = State(initialValue: nil)
             _selectedLanguage = State(initialValue: nil)
             _isTextFormattingEnabled = State(initialValue: false)
-            _removePunctuation = State(initialValue: false)
+            _punctuationCleanupMode = State(initialValue: .keep)
             _lowercaseTranscription = State(initialValue: false)
             _configName = State(initialValue: "")
             _selectedEmoji = State(initialValue: "✏️")
@@ -103,7 +103,7 @@ struct ConfigurationView: View {
             _selectedTranscriptionModelName = State(initialValue: latestConfig.selectedTranscriptionModelName)
             _selectedLanguage = State(initialValue: latestConfig.selectedLanguage)
             _isTextFormattingEnabled = State(initialValue: latestConfig.isTextFormattingEnabled)
-            _removePunctuation = State(initialValue: latestConfig.removePunctuation)
+            _punctuationCleanupMode = State(initialValue: latestConfig.punctuationCleanupMode)
             _lowercaseTranscription = State(initialValue: latestConfig.lowercaseTranscription)
             _configName = State(initialValue: latestConfig.name)
             _selectedEmoji = State(initialValue: latestConfig.emoji)
@@ -114,7 +114,7 @@ struct ConfigurationView: View {
             _isDefault = State(initialValue: latestConfig.isDefault)
             _selectedAIProvider = State(initialValue: latestConfig.selectedAIProvider)
             _selectedAIModel = State(initialValue: latestConfig.selectedAIModel)
-            _isTranscriptFormattingExpanded = State(initialValue: latestConfig.isTextFormattingEnabled || latestConfig.removePunctuation || latestConfig.lowercaseTranscription)
+            _isTranscriptFormattingExpanded = State(initialValue: latestConfig.isTextFormattingEnabled || latestConfig.punctuationCleanupMode != .keep || latestConfig.lowercaseTranscription)
         }
     }
 
@@ -300,7 +300,7 @@ struct ConfigurationView: View {
                         .onChange(of: selectedTranscriptionModelName) { _, newModelName in
                             if let modelName = newModelName ?? transcriptionModelManager.currentTranscriptionModel?.name,
                                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
-                                if model.provider == .fluidAudio || model.provider == .gemini {
+                                if model.provider == .gemini {
                                     selectedLanguage = "auto"
                                 } else {
                                     useCompatibleLanguage(for: model)
@@ -370,12 +370,17 @@ struct ConfigurationView: View {
                                 }
                             }
 
-                            Toggle(isOn: $removePunctuation) {
+                            Picker(selection: $punctuationCleanupMode) {
+                                ForEach(PunctuationCleanupMode.allCases) { mode in
+                                    Text(mode.displayName).tag(mode)
+                                }
+                            } label: {
                                 HStack(spacing: 4) {
-                                    Text("Remove punctuation")
-                                    InfoTip("Remove punctuation marks from transcription output.")
+                                    Text("Punctuation")
+                                    InfoTip("Keep preserves punctuation as transcribed. Remove all strips punctuation marks from the transcribed text. Remove trailing period only removes a final period from the transcribed text.")
                                 }
                             }
+                            .pickerStyle(.menu)
 
                             Toggle(isOn: $lowercaseTranscription) {
                                 HStack(spacing: 4) {
@@ -516,8 +521,7 @@ struct ConfigurationView: View {
 
                         Spacer()
 
-                        KeyboardShortcuts.Recorder(for: .powerMode(id: powerModeConfigId))
-                            .controlSize(.regular)
+                        ShortcutRecorder(action: .powerMode(powerModeConfigId))
                             .frame(minHeight: 28)
                     }
                 }
@@ -560,7 +564,6 @@ struct ConfigurationView: View {
 
                 if let selectedModelName = effectiveModelName,
                    let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
-                   model.provider != .fluidAudio,
                    model.provider != .gemini {
                     useCompatibleLanguage(for: model)
                 }
@@ -568,6 +571,9 @@ struct ConfigurationView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isNameFieldFocused = true
                 }
+            }
+            .onDisappear {
+                cleanupUnsavedShortcutIfNeeded()
             }
 
             // Footer
@@ -614,9 +620,6 @@ struct ConfigurationView: View {
     }
 
     private func getConfigForForm() -> PowerModeConfig {
-        let shortcut = KeyboardShortcuts.getShortcut(for: .powerMode(id: powerModeConfigId))
-        let hotkeyString = shortcut != nil ? "configured" : nil
-
         switch mode {
         case .add:
             return PowerModeConfig(
@@ -631,13 +634,12 @@ struct ConfigurationView: View {
                 selectedLanguage: selectedLanguage,
                 useScreenCapture: useScreenCapture,
                 isTextFormattingEnabled: isTextFormattingEnabled,
-                removePunctuation: removePunctuation,
+                punctuationCleanupMode: punctuationCleanupMode,
                 lowercaseTranscription: lowercaseTranscription,
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 autoSendKey: autoSendKey,
-                isDefault: isDefault,
-                hotkeyShortcut: hotkeyString
+                isDefault: isDefault
             )
         case .edit(let config):
             var updatedConfig = config
@@ -648,7 +650,7 @@ struct ConfigurationView: View {
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName
             updatedConfig.selectedLanguage = selectedLanguage
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
-            updatedConfig.removePunctuation = removePunctuation
+            updatedConfig.punctuationCleanupMode = punctuationCleanupMode
             updatedConfig.lowercaseTranscription = lowercaseTranscription
             updatedConfig.appConfigs = selectedAppConfigs.isEmpty ? nil : selectedAppConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
@@ -657,7 +659,6 @@ struct ConfigurationView: View {
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.isDefault = isDefault
-            updatedConfig.hotkeyShortcut = hotkeyString
             return updatedConfig
         }
     }
@@ -738,6 +739,15 @@ struct ConfigurationView: View {
             powerModeManager.updateConfiguration(config)
         }
 
+        didSaveConfiguration = true
         onDismiss()
+    }
+
+    private func cleanupUnsavedShortcutIfNeeded() {
+        guard case .add = mode, !didSaveConfiguration else {
+            return
+        }
+
+        ShortcutStore.removeShortcutStorage(for: .powerMode(powerModeConfigId))
     }
 }

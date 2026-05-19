@@ -32,8 +32,8 @@ class SystemInfoService {
         Available Audio Devices: \(getAvailableAudioDevices())
 
         HOTKEY SETTINGS:
-        Primary Hotkey: \(getPrimaryHotkey())
-        Secondary Hotkey: \(getSecondaryHotkey())
+        Primary Shortcut: \(getPrimaryShortcut())
+        Secondary Shortcut: \(getSecondaryShortcut())
         Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
         Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
@@ -143,20 +143,16 @@ class SystemInfoService {
         return devices.map { $0.name }.joined(separator: ", ")
     }
 
-    private func getPrimaryHotkey() -> String {
-        if let hotkeyRaw = UserDefaults.standard.string(forKey: "selectedHotkey1"),
-           let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
-            return hotkey.displayName
-        }
-        return "Right Command"
+    private func getPrimaryShortcut() -> String {
+        shortcutDescription(for: .primaryRecording)
     }
 
-    private func getSecondaryHotkey() -> String {
-        if let hotkeyRaw = UserDefaults.standard.string(forKey: "selectedHotkey2"),
-           let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
-            return hotkey.displayName
-        }
-        return "None"
+    private func getSecondaryShortcut() -> String {
+        shortcutDescription(for: .secondaryRecording)
+    }
+
+    private func shortcutDescription(for action: ShortcutAction) -> String {
+        ShortcutStore.shortcut(for: action)?.displayString ?? ""
     }
 
     private func getCurrentTranscriptionModel() -> String {

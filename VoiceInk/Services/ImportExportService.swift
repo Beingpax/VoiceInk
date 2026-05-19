@@ -1,7 +1,6 @@
 import Foundation
 import AppKit
 import UniformTypeIdentifiers
-import KeyboardShortcuts
 import LaunchAtLogin
 import SwiftData
 
@@ -112,7 +111,6 @@ class ImportExportService {
     private let keyAudioRetentionPeriod = "AudioRetentionPeriod"
 
     private let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
-    private let keyRemovePunctuation = "RemovePunctuation"
     private let keyLowercaseTranscription = "LowercaseTranscription"
 
     private init() {
@@ -124,17 +122,16 @@ class ImportExportService {
     }
 
     @MainActor
-    func exportSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext) {
+    func exportSettings(enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext) {
         let powerModeManager = PowerModeManager.shared
         let emojiManager = EmojiManager.shared
 
         let exportablePrompts = enhancementService.customPrompts.filter { !$0.isPredefined }
 
         let powerConfigs = powerModeManager.configurations
-        let powerModeShortcuts = Dictionary(uniqueKeysWithValues: powerConfigs.compactMap { config -> (String, KeyboardShortcuts.Shortcut)? in
-            guard config.hotkeyShortcut != nil else { return nil }
-            guard let shortcut = KeyboardShortcuts.getShortcut(for: .powerMode(id: config.id)) else { return nil }
-            return (config.id.uuidString, shortcut)
+        let powerModeShortcuts = Dictionary(uniqueKeysWithValues: powerConfigs.compactMap { config -> (String, ShortcutBackup)? in
+            guard let shortcut = ShortcutStore.shortcut(for: .powerMode(config.id)) else { return nil }
+            return (config.id.uuidString, ShortcutBackup(shortcut))
         })
 
         // Export custom models
@@ -154,22 +151,23 @@ class ImportExportService {
             exportedWordReplacements = Dictionary(replacements.map { ($0.originalText, $0.replacementText) }, uniquingKeysWith: { _, last in last })
         }
 
+        let punctuationCleanupMode = PunctuationCleanupMode.current()
         let generalSettingsToExport = GeneralBackup(
-            toggleMiniRecorderShortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder),
-            toggleMiniRecorderShortcut2: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder2),
-            pasteLastTranscriptionShortcut: KeyboardShortcuts.getShortcut(for: .pasteLastTranscription),
-            pasteLastEnhancementShortcut: KeyboardShortcuts.getShortcut(for: .pasteLastEnhancement),
-            retryLastTranscriptionShortcut: KeyboardShortcuts.getShortcut(for: .retryLastTranscription),
-            cancelRecorderShortcut: KeyboardShortcuts.getShortcut(for: .cancelRecorder),
-            openHistoryWindowShortcut: KeyboardShortcuts.getShortcut(for: .openHistoryWindow),
-            quickAddToDictionaryShortcut: KeyboardShortcuts.getShortcut(for: .quickAddToDictionary),
-            toggleEnhancementShortcut: KeyboardShortcuts.getShortcut(for: .toggleEnhancement),
-            selectedHotkey1RawValue: hotkeyManager.selectedHotkey1.rawValue,
-            selectedHotkey2RawValue: hotkeyManager.selectedHotkey2.rawValue,
-            hotkeyMode1RawValue: hotkeyManager.hotkeyMode1.rawValue,
-            hotkeyMode2RawValue: hotkeyManager.hotkeyMode2.rawValue,
-            isMiddleClickToggleEnabled: hotkeyManager.isMiddleClickToggleEnabled,
-            middleClickActivationDelay: hotkeyManager.middleClickActivationDelay,
+            primaryRecordingShortcut: ShortcutStore.shortcut(for: .primaryRecording).map(ShortcutBackup.init),
+            secondaryRecordingShortcut: ShortcutStore.shortcut(for: .secondaryRecording).map(ShortcutBackup.init),
+            pasteLastTranscriptionShortcut: ShortcutStore.shortcut(for: .pasteLastTranscription).map(ShortcutBackup.init),
+            pasteLastEnhancementShortcut: ShortcutStore.shortcut(for: .pasteLastEnhancement).map(ShortcutBackup.init),
+            retryLastTranscriptionShortcut: ShortcutStore.shortcut(for: .retryLastTranscription).map(ShortcutBackup.init),
+            cancelRecorderShortcut: ShortcutStore.shortcut(for: .cancelRecorder).map(ShortcutBackup.init),
+            openHistoryWindowShortcut: ShortcutStore.shortcut(for: .openHistoryWindow).map(ShortcutBackup.init),
+            quickAddToDictionaryShortcut: ShortcutStore.shortcut(for: .quickAddToDictionary).map(ShortcutBackup.init),
+            toggleEnhancementShortcut: ShortcutStore.shortcut(for: .toggleEnhancement).map(ShortcutBackup.init),
+            primaryRecordingShortcutRawValue: recordingShortcutManager.primaryRecordingShortcut.rawValue,
+            secondaryRecordingShortcutRawValue: recordingShortcutManager.secondaryRecordingShortcut.rawValue,
+            primaryRecordingShortcutModeRawValue: recordingShortcutManager.primaryRecordingShortcutMode.rawValue,
+            secondaryRecordingShortcutModeRawValue: recordingShortcutManager.secondaryRecordingShortcutMode.rawValue,
+            isMiddleClickToggleEnabled: recordingShortcutManager.isMiddleClickToggleEnabled,
+            middleClickActivationDelay: recordingShortcutManager.middleClickActivationDelay,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
             recorderType: recorderUIManager.recorderType,
@@ -183,7 +181,8 @@ class ImportExportService {
             isPauseMediaEnabled: playbackController.isPauseMediaEnabled,
             audioResumptionDelay: mediaController.audioResumptionDelay,
             isTextFormattingEnabled: UserDefaults.standard.bool(forKey: keyIsTextFormattingEnabled),
-            removePunctuation: UserDefaults.standard.bool(forKey: keyRemovePunctuation),
+            punctuationCleanupMode: punctuationCleanupMode,
+            removePunctuation: punctuationCleanupMode == .removeAll,
             lowercaseTranscription: UserDefaults.standard.bool(forKey: keyLowercaseTranscription),
             isExperimentalFeaturesEnabled: UserDefaults.standard.bool(forKey: "isExperimentalFeaturesEnabled"),
             restoreClipboardAfterPaste: UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"),
@@ -235,7 +234,7 @@ class ImportExportService {
     }
 
     @MainActor
-    func importSettings(enhancementService: AIEnhancementService, whisperPrompt: WhisperPrompt, hotkeyManager: HotkeyManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) {
+    func importSettings(enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) {
         let openPanel = NSOpenPanel()
         openPanel.allowedContentTypes = [UTType.json]
         openPanel.canChooseFiles = true
@@ -277,7 +276,7 @@ class ImportExportService {
                 backup,
                 categories: selectedCategories,
                 enhancementService: enhancementService,
-                hotkeyManager: hotkeyManager,
+                recordingShortcutManager: recordingShortcutManager,
                 menuBarManager: menuBarManager,
                 mediaController: mediaController,
                 playbackController: playbackController,

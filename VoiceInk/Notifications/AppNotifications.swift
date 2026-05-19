@@ -12,6 +12,8 @@ extension Notification.Name {
     static let navigateToDestination = Notification.Name("navigateToDestination")
     static let promptSelectionChanged = Notification.Name("promptSelectionChanged")
     static let powerModeConfigurationApplied = Notification.Name("powerModeConfigurationApplied")
+    static let powerModeConfigurationsDidChange = Notification.Name("PowerModeConfigurationsDidChange")
+    static let powerModeShortcutAvailabilityDidChange = Notification.Name("powerModeShortcutAvailabilityDidChange")
     static let transcriptionCreated = Notification.Name("transcriptionCreated")
     static let transcriptionCompleted = Notification.Name("transcriptionCompleted")
     static let transcriptionDeleted = Notification.Name("transcriptionDeleted")

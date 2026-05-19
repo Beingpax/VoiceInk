@@ -28,6 +28,15 @@ class FluidAudioModelManager: ObservableObject {
         modelVersionMap[modelName] ?? .v3
     }
 
+    nonisolated static func languageHint(from languageCode: String?, for modelName: String) -> Language? {
+        guard asrVersion(for: modelName) == .v3,
+              let languageCode,
+              languageCode != "auto"
+        else { return nil }
+
+        return Language(rawValue: languageCode)
+    }
+
     init() {}
 
     // MARK: - Query helpers

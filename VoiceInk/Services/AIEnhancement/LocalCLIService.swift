@@ -4,6 +4,7 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
     case pi
     case claude
     case codex
+    case copilot
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
         case .pi: return "Pi"
         case .claude: return "Claude"
         case .codex: return "Codex"
+        case .copilot: return "Copilot"
         }
     }
 
@@ -23,6 +25,8 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
             return "claude -p \"$VOICEINK_FULL_PROMPT\""
         case .codex:
             return "TMPFILE=$(mktemp) && codex exec --skip-git-repo-check --output-last-message \"$TMPFILE\" \"$VOICEINK_FULL_PROMPT\" > /dev/null 2>&1 && cat \"$TMPFILE\" && rm \"$TMPFILE\""
+        case .copilot:
+            return "copilot -p \"$VOICEINK_FULL_PROMPT\" -s --no-ask-user --available-tools=__none__ 2>/dev/null"
         }
     }
 }

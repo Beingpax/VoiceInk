@@ -1,9 +1,8 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct OnboardingTutorialView: View {
     @Binding var hasCompletedOnboarding: Bool
-    @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
     @State private var scale: CGFloat = 0.8
     @State private var opacity: CGFloat = 0
     @State private var transcribedText: String = ""
@@ -42,19 +41,8 @@ struct OnboardingTutorialView: View {
                                 
                             }
                             
-                            if hotkeyManager.selectedHotkey1 == .custom,
-                               let shortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder) {
-                                KeyboardShortcutView(shortcut: shortcut)
-                                    .scaleEffect(1.2)
-                            } else if hotkeyManager.selectedHotkey1 != .none && hotkeyManager.selectedHotkey1 != .custom {
-                                Text(hotkeyManager.selectedHotkey1.displayName)
-                                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                                    .foregroundColor(.accentColor)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color.white.opacity(0.1))
-                                    .cornerRadius(8)
-                            }
+                            ShortcutPreviewView(shortcut: ShortcutStore.shortcut(for: .primaryRecording))
+                                .scaleEffect(1.2)
                         }
                         
                         // Instructions
@@ -200,4 +188,4 @@ struct OnboardingTutorialView: View {
             opacity = 1
         }
     }
-} 
+}
