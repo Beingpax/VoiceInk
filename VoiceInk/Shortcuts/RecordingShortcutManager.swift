@@ -64,6 +64,7 @@ class RecordingShortcutManager: ObservableObject {
     private var isShortcutPressed = false
     private var activeRecordingShortcutAction: ShortcutAction?
     private var interruptedRecordingActions = Set<ShortcutAction>()
+    private var activeShortcutCanCancelAccidentalStart = false
     private var lastShortcutPressTime: Date?
     private let shortcutPressCooldown: TimeInterval = 0.5
 
@@ -279,6 +280,7 @@ class RecordingShortcutManager: ObservableObject {
         isHandsFreeRecording = false
         activeRecordingShortcutAction = nil
         interruptedRecordingActions.removeAll()
+        activeShortcutCanCancelAccidentalStart = false
     }
     
     private func handleShortcutKeyDown(action: ShortcutAction, eventTime: TimeInterval, mode: Mode) async {
@@ -294,6 +296,7 @@ class RecordingShortcutManager: ObservableObject {
         guard !isShortcutPressed else { return }
         isShortcutPressed = true
         activeRecordingShortcutAction = action
+        activeShortcutCanCancelAccidentalStart = canCurrentShortcutPressCancelAccidentalStart
         lastShortcutPressTime = Date()
         shortcutPressStartTime = eventTime
 
@@ -326,6 +329,7 @@ class RecordingShortcutManager: ObservableObject {
         guard isShortcutPressed, activeRecordingShortcutAction == action else { return }
         isShortcutPressed = false
         activeRecordingShortcutAction = nil
+        activeShortcutCanCancelAccidentalStart = false
 
         switch mode {
         case .toggle:
@@ -356,13 +360,21 @@ class RecordingShortcutManager: ObservableObject {
         guard recordingMode(for: action) != nil else { return }
 
         guard isShortcutPressed, activeRecordingShortcutAction == action else {
-            interruptedRecordingActions.insert(action)
+            if canCurrentShortcutPressCancelAccidentalStart {
+                interruptedRecordingActions.insert(action)
+            }
             return
         }
+
+        guard activeShortcutCanCancelAccidentalStart else { return }
 
         logger.notice("handleShortcutInterruption: cancelling recording shortcut that became part of a larger key chord")
         resetKeyStates()
         await recorderUIManager.cancelRecording(playFeedback: false)
+    }
+
+    private var canCurrentShortcutPressCancelAccidentalStart: Bool {
+        !recorderUIManager.isMiniRecorderVisible && engine.recordingState == .idle
     }
     
     var isShortcutConfigured: Bool {

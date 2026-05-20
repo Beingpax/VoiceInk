@@ -5,6 +5,7 @@ class PowerModeShortcutManager {
     private weak var engine: VoiceInkEngine?
     private let shortcutMonitor = ShortcutMonitor()
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var interruptedPowerModeActions = Set<ShortcutAction>()
 
     init(engine: VoiceInkEngine) {
         self.engine = engine
@@ -67,11 +68,17 @@ class PowerModeShortcutManager {
 
         shortcutMonitor.start(
             shortcuts: shortcuts,
+            interruptibleActions: Set(shortcuts.keys),
             onKeyDown: { _, _ in },
             onKeyUp: { [weak self] action, _ in
                 Task { @MainActor in
                     guard case .powerMode(let powerModeId) = action else { return }
                     await self?.handlePowerModeShortcut(powerModeId: powerModeId)
+                }
+            },
+            onShortcutInterrupted: { [weak self] action, _ in
+                Task { @MainActor in
+                    self?.handlePowerModeShortcutInterruption(action)
                 }
             }
         )
@@ -87,12 +94,32 @@ class PowerModeShortcutManager {
             return
         }
 
+        let action = ShortcutAction.powerMode(powerModeId)
+        if interruptedPowerModeActions.remove(action) != nil,
+           canCurrentShortcutPressCancelAccidentalStart(engine: engine) {
+            return
+        }
+
         await engine.recorderUIManager?.toggleMiniRecorder(powerModeId: powerModeId)
+    }
+
+    private func handlePowerModeShortcutInterruption(_ action: ShortcutAction) {
+        guard case .powerMode = action,
+              let engine,
+              canCurrentShortcutPressCancelAccidentalStart(engine: engine) else {
+            return
+        }
+
+        interruptedPowerModeActions.insert(action)
     }
 
     private func canHandleShortcutAction(engine: VoiceInkEngine) -> Bool {
         engine.recordingState != .transcribing &&
         engine.recordingState != .enhancing &&
         engine.recordingState != .busy
+    }
+
+    private func canCurrentShortcutPressCancelAccidentalStart(engine: VoiceInkEngine) -> Bool {
+        engine.recorderUIManager?.isMiniRecorderVisible != true && engine.recordingState == .idle
     }
 }

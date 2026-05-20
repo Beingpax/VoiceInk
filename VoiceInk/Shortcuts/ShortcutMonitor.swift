@@ -153,23 +153,21 @@ final class ShortcutMonitor {
     private func resetPressedShortcutsAfterTapInterruption() {
         let eventTime = ProcessInfo.processInfo.systemUptime
         let pressedActions = shortcuts.compactMap { action, state in
-            state.isDown ? (action, state.isInterrupted) : nil
+            state.isDown ? action : nil
         }
 
         guard !pressedActions.isEmpty else {
             return
         }
 
-        for (action, wasInterrupted) in pressedActions {
+        for action in pressedActions {
             if var state = shortcuts[action] {
                 state.isDown = false
                 state.pressedAt = nil
                 state.isInterrupted = false
                 shortcuts[action] = state
             }
-            if !wasInterrupted {
-                dispatchKeyUp(for: action, eventTime: eventTime)
-            }
+            dispatchKeyUp(for: action, eventTime: eventTime)
         }
     }
 
@@ -223,15 +221,12 @@ final class ShortcutMonitor {
                 shouldSuppress = true
                 dispatchKeyDown(for: action, eventTime: eventTime)
             case .keyUp:
-                let wasInterrupted = state.isInterrupted
                 state.isDown = false
                 state.pressedAt = nil
                 state.isInterrupted = false
                 shortcuts[action] = state
                 shouldSuppress = true
-                if !wasInterrupted {
-                    dispatchKeyUp(for: action, eventTime: eventTime)
-                }
+                dispatchKeyUp(for: action, eventTime: eventTime)
             }
         }
 
@@ -290,14 +285,11 @@ final class ShortcutMonitor {
 
         if state.isDown {
             if state.shortcut.shouldReleaseModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags) {
-                let wasInterrupted = state.isInterrupted
                 state.isDown = false
                 state.pressedAt = nil
                 state.isInterrupted = false
                 shortcuts[action] = state
-                if !wasInterrupted {
-                    dispatchKeyUp(for: action, eventTime: eventTime)
-                }
+                dispatchKeyUp(for: action, eventTime: eventTime)
             }
 
             return
