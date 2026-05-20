@@ -138,7 +138,6 @@ class MiniRecorderShortcutManager: ObservableObject {
         }
 
         firstEscapePressTime = now
-        SoundManager.shared.playEscSound()
         NotificationManager.shared.showNotification(
             title: "Press ESC again to cancel recording",
             type: .info,
