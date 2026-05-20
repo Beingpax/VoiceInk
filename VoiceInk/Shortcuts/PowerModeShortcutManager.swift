@@ -91,7 +91,7 @@ class PowerModeShortcutManager {
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self,
-                          let powerModeId = self.powerModeId(for: action) else {
+                          case .powerMode(let powerModeId) = action else {
                         return
                     }
 
