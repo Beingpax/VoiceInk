@@ -1,5 +1,5 @@
 {
-  "originHash" : "5dc68de35f4d6eec8fea143f61dfe738594a7599418f5987952d77992d7d1d37",
+  "originHash" : "d831b109b089cfc6a97c0c12cf31d8f5a0bb05a3abdc76065c515877d300da33",
   "pins" : [
     {
       "identity" : "axswift",
@@ -16,16 +16,7 @@
       "location" : "https://github.com/FluidInference/FluidAudio.git",
       "state" : {
         "branch" : "main",
-        "revision" : "a53aff438bed437bc23490bf0f8d1b57fa3845c7"
-      }
-    },
-    {
-      "identity" : "keyboardshortcuts",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/sindresorhus/KeyboardShortcuts",
-      "state" : {
-        "revision" : "1aef85578fdd4f9eaeeb8d53b7b4fc31bf08fe27",
-        "version" : "2.4.0"
+        "revision" : "9782d877bc24b23bd99c66ad70fd8d2669377fa7"
       }
     },
     {
@@ -52,7 +43,7 @@
       "location" : "https://github.com/Beingpax/LLMkit.git",
       "state" : {
         "branch" : "main",
-        "revision" : "2a84ea31fa3fc73a84e015fb3df33e6eba8653d8"
+        "revision" : "adc2239e2a3c586fd442a8ec1d96dec8e9ae8917"
       }
     },
     {

@@ -12,6 +12,8 @@
 	<false/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>14400</integer>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>VoiceInk needs access to your microphone to record audio for transcription.</string>
 	<key>NSAppleEventsUsageDescription</key>

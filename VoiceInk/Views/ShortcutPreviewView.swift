@@ -1,14 +1,17 @@
 import SwiftUI
-import KeyboardShortcuts
 
-struct KeyboardShortcutView: View {
-    let shortcut: KeyboardShortcuts.Shortcut?
+struct ShortcutPreviewView: View {
+    private let components: [String]?
     @Environment(\.colorScheme) private var colorScheme
+
+    init(shortcut: Shortcut?) {
+        self.components = shortcut?.displayTokens
+    }
     
     var body: some View {
-        if let shortcut = shortcut {
+        if let components, !components.isEmpty {
             HStack(spacing: 6) {
-                ForEach(shortcutComponents(from: shortcut), id: \.self) { component in
+                ForEach(components, id: \.self) { component in
                     KeyCapView(text: component)
                 }
             }
@@ -18,96 +21,6 @@ struct KeyboardShortcutView: View {
         }
     }
     
-    private func shortcutComponents(from shortcut: KeyboardShortcuts.Shortcut) -> [String] {
-        var components: [String] = []
-        
-        // Add modifiers
-        if shortcut.modifiers.contains(.command) { components.append("⌘") }
-        if shortcut.modifiers.contains(.option) { components.append("⌥") }
-        if shortcut.modifiers.contains(.shift) { components.append("⇧") }
-        if shortcut.modifiers.contains(.control) { components.append("⌃") }
-        
-        // Add key
-        if let key = shortcut.key {
-            components.append(keyToString(key))
-        }
-        
-        return components
-    }
-    
-    private func keyToString(_ key: KeyboardShortcuts.Key) -> String {
-        switch key {
-        case .space: return "Space"
-        case .return: return "↩"
-        case .escape: return "⎋"
-        case .tab: return "⇥"
-        case .delete: return "⌫"
-        case .home: return "↖"
-        case .end: return "↘"
-        case .pageUp: return "⇞"
-        case .pageDown: return "⇟"
-        case .upArrow: return "↑"
-        case .downArrow: return "↓"
-        case .leftArrow: return "←"
-        case .rightArrow: return "→"
-        case .period: return "."
-        case .comma: return ","
-        case .semicolon: return ";"
-        case .quote: return "'"
-        case .slash: return "/"
-        case .backslash: return "\\"
-        case .minus: return "-"
-        case .equal: return "="
-        case .keypad0: return "0"
-        case .keypad1: return "1"
-        case .keypad2: return "2"
-        case .keypad3: return "3"
-        case .keypad4: return "4"
-        case .keypad5: return "5"
-        case .keypad6: return "6"
-        case .keypad7: return "7"
-        case .keypad8: return "8"
-        case .keypad9: return "9"
-        case .a: return "A"
-        case .b: return "B"
-        case .c: return "C"
-        case .d: return "D"
-        case .e: return "E"
-        case .f: return "F"
-        case .g: return "G"
-        case .h: return "H"
-        case .i: return "I"
-        case .j: return "J"
-        case .k: return "K"
-        case .l: return "L"
-        case .m: return "M"
-        case .n: return "N"
-        case .o: return "O"
-        case .p: return "P"
-        case .q: return "Q"
-        case .r: return "R"
-        case .s: return "S"
-        case .t: return "T"
-        case .u: return "U"
-        case .v: return "V"
-        case .w: return "W"
-        case .x: return "X"
-        case .y: return "Y"
-        case .z: return "Z"
-        case .zero: return "0"
-        case .one: return "1"
-        case .two: return "2"
-        case .three: return "3"
-        case .four: return "4"
-        case .five: return "5"
-        case .six: return "6"
-        case .seven: return "7"
-        case .eight: return "8"
-        case .nine: return "9"
-        default:
-              return String(key.rawValue).uppercased()
-        }
-    }
 }
 
 struct KeyCapView: View {
@@ -236,8 +149,8 @@ struct KeyCapView: View {
 
 #Preview {
     VStack(spacing: 20) {
-        KeyboardShortcutView(shortcut: KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder))
-        KeyboardShortcutView(shortcut: nil)
+        ShortcutPreviewView(shortcut: ShortcutStore.shortcut(for: .primaryRecording))
+        ShortcutPreviewView(shortcut: nil)
     }
     .padding()
 } 

@@ -5,10 +5,13 @@ enum TranscriptionStatus: String, Codable {
     case pending
     case completed
     case failed
+    case canceled
 }
 
 @Model
 final class Transcription {
+    static let canceledTranscriptionText = "The transcription was canceled."
+
     var id: UUID
     var text: String
     var enhancedText: String?
@@ -56,5 +59,26 @@ final class Transcription {
         self.powerModeName = powerModeName
         self.powerModeEmoji = powerModeEmoji
         self.transcriptionStatus = transcriptionStatus.rawValue
+    }
+
+    func markAsCanceledTranscription(
+        duration: TimeInterval? = nil,
+        modelName: String? = nil
+    ) {
+        text = Self.canceledTranscriptionText
+        enhancedText = nil
+        transcriptionStatus = TranscriptionStatus.canceled.rawValue
+        if let duration {
+            self.duration = duration
+        }
+        if let modelName {
+            transcriptionModelName = modelName
+        }
+        transcriptionDuration = nil
+        enhancementDuration = nil
+        aiEnhancementModelName = nil
+        promptName = nil
+        aiRequestSystemMessage = nil
+        aiRequestUserMessage = nil
     }
 }

@@ -1,5 +1,4 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct DictionarySettingsPanel: View {
     let onDismiss: () -> Void
@@ -37,7 +36,7 @@ struct DictionarySettingsPanel: View {
             Form {
                 Section {
                     LabeledContent("Quick Add to Dictionary") {
-                        KeyboardShortcuts.Recorder(for: .quickAddToDictionary)
+                        ShortcutRecorder(action: .quickAddToDictionary)
                             .controlSize(.small)
                     }
                 } header: {

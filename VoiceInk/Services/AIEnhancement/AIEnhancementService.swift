@@ -220,11 +220,20 @@ class AIEnhancementService: ObservableObject {
 
         if aiService.selectedProvider == .ollama {
             do {
-                let result = try await aiService.enhanceWithOllama(text: formattedText, systemPrompt: systemMessage)
+                let result = try await aiService.enhanceWithOllama(
+                    text: formattedText,
+                    systemPrompt: systemMessage,
+                    timeout: baseTimeout
+                )
                 return AIEnhancementOutputFilter.filter(result)
             } catch {
                 if let localError = error as? LocalAIError {
-                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown Ollama error occurred.")
+                    switch localError {
+                    case .timeout:
+                        throw EnhancementError.timeout
+                    default:
+                        throw EnhancementError.customError(localError.errorDescription ?? "An unknown Ollama error occurred.")
+                    }
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }

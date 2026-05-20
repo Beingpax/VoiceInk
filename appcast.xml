@@ -3,24 +3,20 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>1.76</title>
+            <title>1.77</title>
             <description><![CDATA[
-                <h3>What's New in v1.76</h3>
+                <h3>What's New in v1.77</h3>
                 <ul>
-                    <li>🦜 Updated Parakeet model (delete and re-download the model)</li>
-                    <li>☁️ Added AssemblyAI and Cartesia transcription models</li>
-                    <li>📝 Added transcription formatting controls</li>
-                    <li>📊 Stats are now stored separately from transcript history</li>
-                    <li>🎙️ Improved recording startup reliability</li>
-                    <li>🍎 Fixed Apple Speech issue</li>
-                    <li>🐛 Minor fixes and improvements</li>
+                    <li>⌨️ Added a better unified shortcut system</li>
+                    <li>🧹 Added punctuation cleanup mode</li>
+                    <li>🐛 Stability improvements and bug fixes</li>
                 </ul>
             ]]></description>
-            <pubDate>Thu, 07 May 2026 22:22:54 +0545</pubDate>
-            <sparkle:version>176</sparkle:version>
-            <sparkle:shortVersionString>1.76</sparkle:shortVersionString>
+            <pubDate>Mon, 18 May 2026 16:08:20 +0545</pubDate>
+            <sparkle:version>177</sparkle:version>
+            <sparkle:shortVersionString>1.77</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.76/VoiceInk.dmg" length="14248109" type="application/octet-stream" sparkle:edSignature="VIHBaVue5hfpx8nQsB0VS3tliha3Dx8B/MWZ5vRNWNNufmjh3P86VRKt/vH1sVfV37g7I84TVpuTaPc0YRAxCw=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.77/VoiceInk.dmg" length="14193702" type="application/octet-stream" sparkle:edSignature="jXgNaoPsqd5uawdGtFr/wQOq86V0KdYqj577Ex7JXfxFbPMR2q2GGCFhCnQ0vLbswUnGi52Yxq8Z1El57CgeDA=="/>
         </item>
     </channel>
 </rss>

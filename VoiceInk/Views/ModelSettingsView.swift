@@ -4,7 +4,7 @@ struct ModelSettingsView: View {
     @ObservedObject var whisperPrompt: WhisperPrompt
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @AppStorage("IsTextFormattingEnabled") private var isTextFormattingEnabled = true
-    @AppStorage("RemovePunctuation") private var removePunctuation = false
+    @AppStorage(PunctuationCleanupMode.userDefaultsKey) private var punctuationCleanupModeRaw = PunctuationCleanupMode.current().rawValue
     @AppStorage("LowercaseTranscription") private var lowercaseTranscription = false
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
@@ -12,6 +12,18 @@ struct ModelSettingsView: View {
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
+
+    private var punctuationCleanupMode: Binding<PunctuationCleanupMode> {
+        Binding(
+            get: {
+                PunctuationCleanupMode(rawValue: punctuationCleanupModeRaw) ?? PunctuationCleanupMode.current()
+            },
+            set: { newMode in
+                punctuationCleanupModeRaw = newMode.rawValue
+                PunctuationCleanupMode.setCurrent(newMode)
+            }
+        )
+    }
 
     var body: some View {
         Form {
@@ -59,13 +71,17 @@ struct ModelSettingsView: View {
                 }
                 .toggleStyle(.switch)
 
-                Toggle(isOn: $removePunctuation) {
+                Picker(selection: punctuationCleanupMode) {
+                    ForEach(PunctuationCleanupMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                } label: {
                     HStack(spacing: 4) {
-                        Text("Remove punctuation")
-                        InfoTip("Remove punctuation marks from transcription output.")
+                        Text("Punctuation")
+                        InfoTip("Keep preserves punctuation as transcribed. Remove all strips punctuation marks from the transcribed text. Remove trailing period only removes a final period from the transcribed text.")
                     }
                 }
-                .toggleStyle(.switch)
+                .pickerStyle(.menu)
 
                 Toggle(isOn: $lowercaseTranscription) {
                     HStack(spacing: 4) {
