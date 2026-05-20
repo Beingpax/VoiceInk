@@ -1,5 +1,4 @@
 import Foundation
-import AVFoundation
 import SwiftData
 import os
 
@@ -34,7 +33,7 @@ class TranscriptionPipeline {
     ///   - session: An active streaming session if one was prepared, otherwise nil.
     ///   - onStateChange: Called when the pipeline moves to a new recording state (e.g. `.enhancing`).
     ///   - shouldCancel: Returns true if the user requested cancellation.
-    ///   - onCleanup: Called when cancellation is detected to release model resources.
+    ///   - onCancel: Called when cancellation is detected to cancel active session state.
     ///   - onDismiss: Called as soon as paste is initiated to dismiss the recorder panel.
     func run(
         transcription: Transcription,
@@ -43,17 +42,55 @@ class TranscriptionPipeline {
         session: TranscriptionSession?,
         onStateChange: @escaping (RecordingState) -> Void,
         shouldCancel: () -> Bool,
-        onCleanup: @escaping () async -> Void,
+        onCancel: @escaping () async -> Void,
         onDismiss: @escaping () async -> Void
     ) async {
-        if shouldCancel() {
-            await onCleanup()
-            return
-        }
-
         var finalPastedText: String?
         var promptDetectionResult: PromptDetectionService.PromptDetectionResult?
         var didInsertSessionMetric = false
+
+        func restorePromptDetectionSettingsIfNeeded() async {
+            if let result = promptDetectionResult,
+               let enhancementService,
+               result.shouldEnableAI {
+                await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
+            }
+        }
+
+        func restorePromptDetectionSettingsAndDismiss(afterRestore: () -> Void = {}) async {
+            await restorePromptDetectionSettingsIfNeeded()
+            afterRestore()
+            await onDismiss()
+        }
+
+        func finishCanceledTranscription() async {
+            await onCancel()
+            await restorePromptDetectionSettingsIfNeeded()
+
+            let canceledDuration: TimeInterval?
+            if transcription.duration > 0 {
+                canceledDuration = nil
+            } else {
+                let duration = await AudioFileMetadata.duration(for: audioURL)
+                canceledDuration = duration > 0 ? duration : nil
+            }
+
+            transcription.markAsCanceledTranscription(
+                duration: canceledDuration,
+                modelName: transcription.transcriptionModelName ?? model.displayName
+            )
+
+            do {
+                try modelContext.save()
+            } catch {
+                logger.error("Failed to save canceled transcription: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+
+        if shouldCancel() {
+            await finishCanceledTranscription()
+            return
+        }
 
         do {
             let transcriptionStart = Date()
@@ -66,12 +103,7 @@ class TranscriptionPipeline {
             text = TranscriptionOutputFilter.filter(text)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
-            let powerModeManager = PowerModeManager.shared
-            let activePowerModeConfig = powerModeManager.currentActiveConfiguration
-            let powerModeName = (activePowerModeConfig?.isEnabled == true) ? activePowerModeConfig?.name : nil
-            let powerModeEmoji = (activePowerModeConfig?.isEnabled == true) ? activePowerModeConfig?.emoji : nil
-
-            if shouldCancel() { await onCleanup(); return }
+            if shouldCancel() { await finishCanceledTranscription(); return }
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -82,19 +114,16 @@ class TranscriptionPipeline {
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
 
-            let audioAsset = AVURLAsset(url: audioURL)
-            let actualDuration = (try? CMTimeGetSeconds(await audioAsset.load(.duration))) ?? 0.0
+            let actualDuration = await AudioFileMetadata.duration(for: audioURL)
 
             transcription.text = cleanedText
             transcription.duration = actualDuration
             transcription.transcriptionModelName = model.displayName
             transcription.transcriptionDuration = transcriptionDuration
-            transcription.powerModeName = powerModeName
-            transcription.powerModeEmoji = powerModeEmoji
             finalPastedText = cleanedText
 
             if let enhancementService, enhancementService.isConfigured {
-                let detectionResult = await promptDetectionService.analyzeText(text, with: enhancementService)
+                let detectionResult = promptDetectionService.analyzeText(text, with: enhancementService)
                 promptDetectionResult = detectionResult
                 await promptDetectionService.applyDetectionResult(detectionResult, to: enhancementService)
             }
@@ -108,7 +137,7 @@ class TranscriptionPipeline {
                enhancementService.isEnhancementEnabled,
                enhancementService.isConfigured,
                !shouldSkipEnhancement {
-                if shouldCancel() { await onCleanup(); return }
+                if shouldCancel() { await finishCanceledTranscription(); return }
 
                 onStateChange(.enhancing)
                 let textForAI = promptDetectionResult?.processedText ?? text
@@ -132,7 +161,7 @@ class TranscriptionPipeline {
                             type: .warning
                         )
                     }
-                    if shouldCancel() { await onCleanup(); return }
+                    if shouldCancel() { await finishCanceledTranscription(); return }
                 }
             }
 
@@ -179,17 +208,8 @@ class TranscriptionPipeline {
             }
         }
 
-        func restorePromptDetectionSettingsIfNeeded() async {
-            if let result = promptDetectionResult,
-               let enhancementService,
-               result.shouldEnableAI {
-                await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
-            }
-        }
-
         if shouldCancel() {
-            await onCleanup()
-            saveTranscriptionAndPostCompletion()
+            await finishCanceledTranscription()
             return
         }
 
@@ -207,19 +227,16 @@ class TranscriptionPipeline {
             CursorPaster.startPasteAtCursor(pastedText)
             let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
             SoundManager.shared.playStopSound()
-            await restorePromptDetectionSettingsIfNeeded()
-
-            if let autoSendKey, autoSendKey.isEnabled {
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                    CursorPaster.performAutoSend(autoSendKey)
+            await restorePromptDetectionSettingsAndDismiss {
+                if let autoSendKey, autoSendKey.isEnabled {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        CursorPaster.performAutoSend(autoSendKey)
+                    }
                 }
             }
-
-            await onDismiss()
         } else {
-            await restorePromptDetectionSettingsIfNeeded()
-            await onDismiss()
+            await restorePromptDetectionSettingsAndDismiss()
         }
 
         saveTranscriptionAndPostCompletion()

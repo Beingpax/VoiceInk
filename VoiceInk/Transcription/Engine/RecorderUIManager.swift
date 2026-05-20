@@ -86,90 +86,47 @@ class RecorderUIManager: ObservableObject {
         logger.notice("toggleMiniRecorder called – visible=\(self.isMiniRecorderVisible, privacy: .public), state=\(String(describing: engine.recordingState), privacy: .public)")
 
         if isMiniRecorderVisible {
-            if engine.recordingState == .recording {
+            switch engine.recordingState {
+            case .recording:
                 logger.notice("toggleMiniRecorder: stopping recording (was recording)")
                 await engine.toggleRecord(powerModeId: powerModeId)
-            } else {
-                logger.notice("toggleMiniRecorder: cancelling (was not recording)")
+            case .starting, .transcribing, .enhancing:
+                logger.notice("toggleMiniRecorder: cancelling active recorder work")
                 await cancelRecording()
+            case .idle, .busy:
+                logger.notice("toggleMiniRecorder: dismissing recorder UI")
+                await dismissMiniRecorder()
             }
         } else {
             SoundManager.shared.playStartSound()
-            await MainActor.run { isMiniRecorderVisible = true }
+            isMiniRecorderVisible = true
             await engine.toggleRecord(powerModeId: powerModeId)
         }
     }
 
     func dismissMiniRecorder() async {
-        guard let engine = engine, let recorder = recorder else { return }
+        guard let engine = engine else { return }
         logger.notice("dismissMiniRecorder called – state=\(String(describing: engine.recordingState), privacy: .public)")
 
-        if engine.recordingState == .busy {
-            logger.notice("dismissMiniRecorder: early return, state is busy")
-            return
-        }
-
-        let wasRecording = engine.recordingState == .recording || engine.recordingState == .starting
-
-        await MainActor.run {
-            engine.recordingState = .busy
-        }
-
-        // Cancel and release any active streaming session to prevent resource leaks.
-        engine.currentSession?.cancel()
-        engine.currentSession = nil
-
-        if wasRecording {
-            await recorder.stopRecording()
-        }
-
         hideRecorderPanel()
+        isMiniRecorderVisible = false
 
-        // Clear captured context when the recorder is dismissed
-        if let enhancementService = engine.enhancementService {
-            await MainActor.run {
-                enhancementService.clearCapturedContexts()
-            }
-        }
-
-        await MainActor.run {
-            isMiniRecorderVisible = false
-        }
-
-        await engine.cleanupResources()
-
-        if !UserDefaults.standard.bool(forKey: "powerModePersistConfig") {
-            await PowerModeSessionManager.shared.endSession()
-            await MainActor.run {
-                PowerModeManager.shared.setActiveConfiguration(nil)
-            }
-        }
-
-        await MainActor.run {
-            engine.recordingState = .idle
-        }
         logger.notice("dismissMiniRecorder completed")
     }
 
     func resetOnLaunch() async {
-        guard let engine = engine, let recorder = recorder else { return }
+        guard let engine = engine else { return }
         logger.notice("Resetting recording state on launch")
-        await recorder.stopRecording()
+        await engine.resetRecordingSession()
         hideRecorderPanel()
-        await MainActor.run {
-            isMiniRecorderVisible = false
-            engine.shouldCancelRecording = false
-            miniRecorderError = nil
-            engine.recordingState = .idle
-        }
-        await engine.cleanupResources()
+        isMiniRecorderVisible = false
+        miniRecorderError = nil
     }
 
     func cancelRecording() async {
         guard let engine = engine else { return }
         logger.notice("cancelRecording called")
-        SoundManager.shared.playEscSound()
-        engine.shouldCancelRecording = true
+        await engine.cancelRecording()
         await dismissMiniRecorder()
     }
 
@@ -200,7 +157,12 @@ class RecorderUIManager: ObservableObject {
     @objc public func handleDismissMiniRecorder() {
         logger.notice("handleDismissMiniRecorder: .dismissMiniRecorder notification received")
         Task {
-            await dismissMiniRecorder()
+            switch engine?.recordingState {
+            case .starting, .recording, .transcribing, .enhancing:
+                await cancelRecording()
+            case .idle, .busy, nil:
+                await dismissMiniRecorder()
+            }
         }
     }
 }
