@@ -165,10 +165,12 @@ class RecorderUIManager: ObservableObject {
         await engine.cleanupResources()
     }
 
-    func cancelRecording() async {
+    func cancelRecording(playFeedback: Bool = true) async {
         guard let engine = engine else { return }
         logger.notice("cancelRecording called")
-        SoundManager.shared.playEscSound()
+        if playFeedback {
+            SoundManager.shared.playEscSound()
+        }
         engine.shouldCancelRecording = true
         await dismissMiniRecorder()
     }

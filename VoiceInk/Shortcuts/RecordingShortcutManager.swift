@@ -62,6 +62,8 @@ class RecordingShortcutManager: ObservableObject {
     private var shortcutPressStartTime: TimeInterval?
     private var isHandsFreeRecording = false
     private var isShortcutPressed = false
+    private var activeRecordingShortcutAction: ShortcutAction?
+    private var interruptedRecordingActions = Set<ShortcutAction>()
     private var lastShortcutPressTime: Date?
     private let shortcutPressCooldown: TimeInterval = 0.5
 
@@ -181,32 +183,41 @@ class RecordingShortcutManager: ObservableObject {
         let primaryShortcut = primaryRecordingShortcut == .custom ? ShortcutStore.shortcut(for: .primaryRecording) : nil
         let secondaryShortcut = secondaryRecordingShortcut == .custom ? ShortcutStore.shortcut(for: .secondaryRecording) : nil
         var shortcuts = ShortcutStore.shortcuts(for: ShortcutAction.globalUtilityActions)
+        var interruptibleRecordingActions = Set<ShortcutAction>()
 
         if let primaryShortcut {
             shortcuts[.primaryRecording] = primaryShortcut
+            interruptibleRecordingActions.insert(.primaryRecording)
         }
 
         if let secondaryShortcut {
             shortcuts[.secondaryRecording] = secondaryShortcut
+            interruptibleRecordingActions.insert(.secondaryRecording)
         }
 
         shortcutMonitor.start(
             shortcuts: shortcuts,
+            interruptibleActions: interruptibleRecordingActions,
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
                     guard let mode = self.recordingMode(for: action) else { return }
-                    await self.handleShortcutKeyDown(eventTime: eventTime, mode: mode)
+                    await self.handleShortcutKeyDown(action: action, eventTime: eventTime, mode: mode)
                 }
             },
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
                     if let mode = self.recordingMode(for: action) {
-                        await self.handleShortcutKeyUp(eventTime: eventTime, mode: mode)
+                        await self.handleShortcutKeyUp(action: action, eventTime: eventTime, mode: mode)
                     } else {
                         await self.handleGlobalShortcut(action)
                     }
+                }
+            },
+            onShortcutInterrupted: { [weak self] action, eventTime in
+                Task { @MainActor in
+                    await self?.handleShortcutInterruption(action: action, eventTime: eventTime)
                 }
             }
         )
@@ -266,9 +277,15 @@ class RecordingShortcutManager: ObservableObject {
         isShortcutPressed = false
         shortcutPressStartTime = nil
         isHandsFreeRecording = false
+        activeRecordingShortcutAction = nil
+        interruptedRecordingActions.removeAll()
     }
     
-    private func handleShortcutKeyDown(eventTime: TimeInterval, mode: Mode) async {
+    private func handleShortcutKeyDown(action: ShortcutAction, eventTime: TimeInterval, mode: Mode) async {
+        if interruptedRecordingActions.remove(action) != nil {
+            return
+        }
+
         if let lastTrigger = lastShortcutPressTime,
            Date().timeIntervalSince(lastTrigger) < shortcutPressCooldown {
             return
@@ -276,6 +293,7 @@ class RecordingShortcutManager: ObservableObject {
 
         guard !isShortcutPressed else { return }
         isShortcutPressed = true
+        activeRecordingShortcutAction = action
         lastShortcutPressTime = Date()
         shortcutPressStartTime = eventTime
 
@@ -304,9 +322,10 @@ class RecordingShortcutManager: ObservableObject {
         }
     }
 
-    private func handleShortcutKeyUp(eventTime: TimeInterval, mode: Mode) async {
-        guard isShortcutPressed else { return }
+    private func handleShortcutKeyUp(action: ShortcutAction, eventTime: TimeInterval, mode: Mode) async {
+        guard isShortcutPressed, activeRecordingShortcutAction == action else { return }
         isShortcutPressed = false
+        activeRecordingShortcutAction = nil
 
         switch mode {
         case .toggle:
@@ -331,6 +350,19 @@ class RecordingShortcutManager: ObservableObject {
         }
 
         shortcutPressStartTime = nil
+    }
+
+    private func handleShortcutInterruption(action: ShortcutAction, eventTime _: TimeInterval) async {
+        guard recordingMode(for: action) != nil else { return }
+
+        guard isShortcutPressed, activeRecordingShortcutAction == action else {
+            interruptedRecordingActions.insert(action)
+            return
+        }
+
+        logger.notice("handleShortcutInterruption: cancelling recording shortcut that became part of a larger key chord")
+        resetKeyStates()
+        await recorderUIManager.cancelRecording(playFeedback: false)
     }
     
     var isShortcutConfigured: Bool {
