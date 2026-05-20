@@ -174,6 +174,11 @@ class CursorPaster {
         }
 
         let source = CGEventSource(stateID: .privateState)
+        // Give the recorder UI time to dismiss and hand focus back before the
+        // first character. Some apps/remote-desktop clients drop the first event
+        // if typing starts while focus is still settling.
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
         // 5 ms between key-pairs: enough for RD clients to queue and forward each
         // keystroke without dropping characters, fast enough for normal usage.
         let interKeyDelay: UInt64 = 5_000_000
