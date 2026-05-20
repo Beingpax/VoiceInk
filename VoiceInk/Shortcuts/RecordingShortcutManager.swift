@@ -370,7 +370,7 @@ class RecordingShortcutManager: ObservableObject {
 
         logger.notice("handleShortcutInterruption: cancelling recording shortcut that became part of a larger key chord")
         resetKeyStates()
-        await recorderUIManager.cancelRecording(playFeedback: false)
+        await recorderUIManager.cancelRecording()
     }
 
     private var canCurrentShortcutPressCancelAccidentalStart: Bool {
