@@ -12,15 +12,20 @@ final class ShortcutMonitor {
     private struct ShortcutState {
         var shortcut: Shortcut
         var isDown = false
+        var pressedAt: TimeInterval?
+        var isInterrupted = false
     }
 
     private var shortcuts: [ShortcutAction: ShortcutState] = [:]
+    private var interruptibleActions: Set<ShortcutAction> = []
     private var onKeyDown: ((ShortcutAction, TimeInterval) -> Void)?
     private var onKeyUp: ((ShortcutAction, TimeInterval) -> Void)?
+    private var onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)?
     private var eventTap: CFMachPort?
     private var eventTapRunLoopSource: CFRunLoopSource?
 
     private static var hasRequestedListenEventAccess = false
+    private static let shortcutInterruptionWindow: TimeInterval = 1.0
 
     deinit {
         stop()
@@ -29,8 +34,10 @@ final class ShortcutMonitor {
     @discardableResult
     func start(
         shortcuts: [ShortcutAction: Shortcut],
+        interruptibleActions: Set<ShortcutAction> = [],
         onKeyDown: @escaping (ShortcutAction, TimeInterval) -> Void,
-        onKeyUp: @escaping (ShortcutAction, TimeInterval) -> Void
+        onKeyUp: @escaping (ShortcutAction, TimeInterval) -> Void,
+        onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)? = nil
     ) -> Bool {
         stop()
 
@@ -42,8 +49,10 @@ final class ShortcutMonitor {
             return true
         }
 
+        self.interruptibleActions = interruptibleActions
         self.onKeyDown = onKeyDown
         self.onKeyUp = onKeyUp
+        self.onShortcutInterrupted = onShortcutInterrupted
 
         return installEventTap()
     }
@@ -60,8 +69,10 @@ final class ShortcutMonitor {
         }
 
         shortcuts = [:]
+        interruptibleActions = []
         onKeyDown = nil
         onKeyUp = nil
+        onShortcutInterrupted = nil
     }
 
     private func installEventTap() -> Bool {
@@ -152,6 +163,8 @@ final class ShortcutMonitor {
         for action in pressedActions {
             if var state = shortcuts[action] {
                 state.isDown = false
+                state.pressedAt = nil
+                state.isInterrupted = false
                 shortcuts[action] = state
             }
             dispatchKeyUp(for: action, eventTime: eventTime)
@@ -165,6 +178,10 @@ final class ShortcutMonitor {
         eventTime: TimeInterval
     ) -> Bool {
         var shouldSuppress = false
+
+        if kind == .keyDown {
+            handleShortcutInterruptions(keyCode: keyCode, eventTime: eventTime)
+        }
 
         for action in Array(shortcuts.keys) {
             guard var state = shortcuts[action] else {
@@ -198,11 +215,15 @@ final class ShortcutMonitor {
                 shouldSuppress = true
             case .keyDown:
                 state.isDown = true
+                state.pressedAt = eventTime
+                state.isInterrupted = false
                 shortcuts[action] = state
                 shouldSuppress = true
                 dispatchKeyDown(for: action, eventTime: eventTime)
             case .keyUp:
                 state.isDown = false
+                state.pressedAt = nil
+                state.isInterrupted = false
                 shortcuts[action] = state
                 shouldSuppress = true
                 dispatchKeyUp(for: action, eventTime: eventTime)
@@ -265,6 +286,8 @@ final class ShortcutMonitor {
         if state.isDown {
             if state.shortcut.shouldReleaseModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags) {
                 state.isDown = false
+                state.pressedAt = nil
+                state.isInterrupted = false
                 shortcuts[action] = state
                 dispatchKeyUp(for: action, eventTime: eventTime)
             }
@@ -274,8 +297,32 @@ final class ShortcutMonitor {
 
         if state.shortcut.matchesModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags) {
             state.isDown = true
+            state.pressedAt = eventTime
+            state.isInterrupted = false
             shortcuts[action] = state
             dispatchKeyDown(for: action, eventTime: eventTime)
+        }
+    }
+
+    private func handleShortcutInterruptions(keyCode: UInt16, eventTime: TimeInterval) {
+        guard !Shortcut.isModifierKeyCode(keyCode) else {
+            return
+        }
+
+        for action in interruptibleActions {
+            guard var state = shortcuts[action],
+                  state.isDown,
+                  !state.isInterrupted,
+                  let pressedAt = state.pressedAt,
+                  eventTime - pressedAt <= Self.shortcutInterruptionWindow,
+                  state.shortcut.isInterruptedByAdditionalKeyDown(keyCode: keyCode)
+            else {
+                continue
+            }
+
+            state.isInterrupted = true
+            shortcuts[action] = state
+            dispatchShortcutInterrupted(for: action, eventTime: eventTime)
         }
     }
 
@@ -288,6 +335,12 @@ final class ShortcutMonitor {
     private func dispatchKeyUp(for action: ShortcutAction, eventTime: TimeInterval) {
         DispatchQueue.main.async { [onKeyUp] in
             onKeyUp?(action, eventTime)
+        }
+    }
+
+    private func dispatchShortcutInterrupted(for action: ShortcutAction, eventTime: TimeInterval) {
+        DispatchQueue.main.async { [onShortcutInterrupted] in
+            onShortcutInterrupted?(action, eventTime)
         }
     }
 

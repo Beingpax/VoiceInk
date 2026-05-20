@@ -2,12 +2,17 @@ import Foundation
 
 @MainActor
 class PowerModeShortcutManager {
-    private weak var engine: VoiceInkEngine?
     private let shortcutMonitor = ShortcutMonitor()
+    private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
+    private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
 
-    init(engine: VoiceInkEngine) {
-        self.engine = engine
+    init(
+        modeProvider: @escaping @MainActor () -> RecordingShortcutManager.Mode,
+        shortcutModeHandler: RecordingShortcutModeHandler
+    ) {
+        self.modeProvider = modeProvider
+        self.shortcutModeHandler = shortcutModeHandler
 
         refreshPowerModeShortcuts()
 
@@ -67,32 +72,54 @@ class PowerModeShortcutManager {
 
         shortcutMonitor.start(
             shortcuts: shortcuts,
-            onKeyDown: { _, _ in },
-            onKeyUp: { [weak self] action, _ in
+            interruptibleActions: Set(shortcuts.keys),
+            onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
-                    guard case .powerMode(let powerModeId) = action else { return }
-                    await self?.handlePowerModeShortcut(powerModeId: powerModeId)
+                    guard let self,
+                          let powerModeId = self.powerModeId(for: action) else {
+                        return
+                    }
+
+                    await self.shortcutModeHandler.handleKeyDown(
+                        action: action,
+                        eventTime: eventTime,
+                        mode: self.modeProvider(),
+                        powerModeId: powerModeId
+                    )
+                }
+            },
+            onKeyUp: { [weak self] action, eventTime in
+                Task { @MainActor in
+                    guard let self,
+                          case .powerMode(let powerModeId) = action else {
+                        return
+                    }
+
+                    await self.shortcutModeHandler.handleKeyUp(
+                        action: action,
+                        eventTime: eventTime,
+                        mode: self.modeProvider(),
+                        powerModeId: powerModeId
+                    )
+                }
+            },
+            onShortcutInterrupted: { [weak self] action, _ in
+                Task { @MainActor in
+                    guard let self, case .powerMode = action else { return }
+                    await self.shortcutModeHandler.handleInterruption(action: action)
                 }
             }
         )
     }
 
-    private func handlePowerModeShortcut(powerModeId: UUID) async {
-        guard let engine = engine,
-              canHandleShortcutAction(engine: engine) else { return }
-
-        guard let config = PowerModeManager.shared.getConfiguration(with: powerModeId),
+    private func powerModeId(for action: ShortcutAction) -> UUID? {
+        guard case .powerMode(let powerModeId) = action,
+              let config = PowerModeManager.shared.getConfiguration(with: powerModeId),
               config.isEnabled,
               ShortcutStore.shortcut(for: .powerMode(config.id)) != nil else {
-            return
+            return nil
         }
 
-        await engine.recorderUIManager?.toggleMiniRecorder(powerModeId: powerModeId)
-    }
-
-    private func canHandleShortcutAction(engine: VoiceInkEngine) -> Bool {
-        engine.recordingState != .transcribing &&
-        engine.recordingState != .enhancing &&
-        engine.recordingState != .busy
+        return powerModeId
     }
 }

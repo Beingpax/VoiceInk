@@ -110,6 +110,15 @@ struct Shortcut: Codable, Equatable {
         return keyCode == eventKeyCode
     }
 
+    func isInterruptedByAdditionalKeyDown(keyCode eventKeyCode: UInt16) -> Bool {
+        switch kind {
+        case .modifierOnly:
+            return true
+        case .key:
+            return keyCode != eventKeyCode
+        }
+    }
+
     static func isModifierKeyCode(_ keyCode: UInt16) -> Bool {
         modifierKeyCodes.contains(keyCode)
     }
