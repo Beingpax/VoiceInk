@@ -1,5 +1,6 @@
 import SwiftUI
 import Cocoa
+import Carbon.HIToolbox
 import LaunchAtLogin
 import AVFoundation
 
@@ -21,10 +22,10 @@ struct SettingsView: View {
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
     @State private var showResetOnboardingAlert = false
-    @State private var isCustomCancelEnabled = ShortcutStore.shortcut(for: .cancelRecorder) != nil
+    @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
+    @State private var cancelRecordingShortcutRecorderResetID = 0
 
     // Expansion states - all collapsed by default
-    @State private var isCustomCancelExpanded = false
     @State private var isMiddleClickExpanded = false
     @State private var isSoundFeedbackExpanded = false
     @State private var isMuteSystemExpanded = false
@@ -99,25 +100,31 @@ struct SettingsView: View {
                         .controlSize(.small)
                 }
 
-                // Custom Cancel - hierarchical
-                ExpandableSettingsRow(
-                    isExpanded: $isCustomCancelExpanded,
-                    isEnabled: $isCustomCancelEnabled,
-                    label: "Custom Cancel Shortcut"
-                ) {
-                    LabeledContent("Shortcut") {
-                        ShortcutRecorder(action: .cancelRecorder) {
-                            isCustomCancelEnabled = true
-                            isCustomCancelExpanded = true
+                LabeledContent("Cancel Recording") {
+                    HStack(spacing: 8) {
+                        ShortcutRecorder(
+                            action: .cancelRecorder,
+                            defaultShortcut: Self.defaultCancelRecordingShortcut
+                        ) {
+                            hasCancelRecordingShortcut = true
                         }
+                            .id(cancelRecordingShortcutRecorderResetID)
                             .controlSize(.small)
+
+                        Button {
+                            ShortcutStore.setShortcut(nil, for: .cancelRecorder)
+                            hasCancelRecordingShortcut = false
+                            cancelRecordingShortcutRecorderResetID += 1
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Reset to default")
                     }
                 }
-                .onChange(of: isCustomCancelEnabled) { _, newValue in
-                    if !newValue {
-                        ShortcutStore.setShortcut(nil, for: .cancelRecorder)
-                        isCustomCancelExpanded = false
-                    }
+                .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
+                    guard let action = notification.object as? ShortcutAction, action == .cancelRecorder else { return }
+                    hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
                 }
 
                 // Middle-Click
@@ -309,6 +316,11 @@ struct SettingsView: View {
             Text("You'll see the introduction screens again the next time you launch the app.")
         }
     }
+
+    private static let defaultCancelRecordingShortcut = Shortcut.key(
+        keyCode: UInt16(kVK_Escape),
+        modifierFlags: []
+    )
 
     @ViewBuilder
     private func shortcutModePicker(binding: Binding<RecordingShortcutManager.Mode>) -> some View {

@@ -72,7 +72,7 @@ enum ShortcutAction: Hashable {
         case .retryLastTranscription:
             return "Retry Last Transcription"
         case .cancelRecorder:
-            return "Custom Cancel Shortcut"
+            return "Cancel Recording"
         case .openHistoryWindow:
             return "Open History Window"
         case .quickAddToDictionary:
