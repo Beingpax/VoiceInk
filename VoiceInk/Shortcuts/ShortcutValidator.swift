@@ -110,13 +110,8 @@ enum ShortcutValidator {
 
     private static var systemReservedShortcuts: [Shortcut] {
         commonEditAndAppShortcuts +
-            systemNavigationShortcuts +
-            screenshotShortcuts +
             sessionShortcuts +
-            finderShortcuts +
-            textEditingShortcuts +
-            accessibilityAndInputShortcuts +
-            functionKeyShortcuts
+            essentialTextEditingShortcuts
     }
 
     private static var commonEditAndAppShortcuts: [Shortcut] {
@@ -147,36 +142,6 @@ enum ShortcutValidator {
         ]
     }
 
-    private static var systemNavigationShortcuts: [Shortcut] {
-        [
-            shortcut(kVK_Space, [.command]),
-            shortcut(kVK_Space, [.option, .command]),
-            shortcut(kVK_Space, [.control, .command]),
-            shortcut(kVK_Tab, [.command]),
-            shortcut(kVK_Tab, [.shift, .command]),
-            shortcut(kVK_ANSI_Grave, [.command]),
-            shortcut(kVK_ANSI_Grave, [.shift, .command]),
-            shortcut(kVK_ANSI_Grave, [.option, .command]),
-            shortcut(kVK_UpArrow, [.control]),
-            shortcut(kVK_DownArrow, [.control]),
-            shortcut(kVK_Space, [.control]),
-            shortcut(kVK_Space, [.control, .option])
-        ]
-    }
-
-    private static var screenshotShortcuts: [Shortcut] {
-        [
-            shortcut(kVK_ANSI_3, [.shift, .command]),
-            shortcut(kVK_ANSI_4, [.shift, .command]),
-            shortcut(kVK_ANSI_5, [.shift, .command]),
-            shortcut(kVK_ANSI_6, [.shift, .command]),
-            shortcut(kVK_ANSI_3, [.control, .shift, .command]),
-            shortcut(kVK_ANSI_4, [.control, .shift, .command]),
-            shortcut(kVK_ANSI_5, [.control, .shift, .command]),
-            shortcut(kVK_ANSI_6, [.control, .shift, .command])
-        ]
-    }
-
     private static var sessionShortcuts: [Shortcut] {
         [
             shortcut(kVK_Escape, [.option, .command]),
@@ -186,131 +151,13 @@ enum ShortcutValidator {
         ]
     }
 
-    private static var finderShortcuts: [Shortcut] {
-        [
-            shortcut(kVK_ANSI_D, [.command]),
-            shortcut(kVK_ANSI_E, [.command]),
-            shortcut(kVK_ANSI_I, [.command]),
-            shortcut(kVK_ANSI_J, [.command]),
-            shortcut(kVK_ANSI_K, [.command]),
-            shortcut(kVK_ANSI_R, [.command]),
-            shortcut(kVK_ANSI_Y, [.command]),
-            shortcut(kVK_ANSI_C, [.shift, .command]),
-            shortcut(kVK_ANSI_D, [.shift, .command]),
-            shortcut(kVK_ANSI_F, [.shift, .command]),
-            shortcut(kVK_ANSI_G, [.shift, .command]),
-            shortcut(kVK_ANSI_H, [.shift, .command]),
-            shortcut(kVK_ANSI_I, [.shift, .command]),
-            shortcut(kVK_ANSI_K, [.shift, .command]),
-            shortcut(kVK_ANSI_N, [.shift, .command]),
-            shortcut(kVK_ANSI_O, [.shift, .command]),
-            shortcut(kVK_ANSI_P, [.shift, .command]),
-            shortcut(kVK_ANSI_R, [.shift, .command]),
-            shortcut(kVK_ANSI_T, [.shift, .command]),
-            shortcut(kVK_ANSI_U, [.shift, .command]),
-            shortcut(kVK_ANSI_D, [.option, .command]),
-            shortcut(kVK_ANSI_L, [.option, .command]),
-            shortcut(kVK_ANSI_N, [.option, .command]),
-            shortcut(kVK_ANSI_P, [.option, .command]),
-            shortcut(kVK_ANSI_S, [.option, .command]),
-            shortcut(kVK_ANSI_T, [.option, .command]),
-            shortcut(kVK_ANSI_V, [.option, .command]),
-            shortcut(kVK_ANSI_Y, [.option, .command]),
-            shortcut(kVK_Delete, [.command]),
-            shortcut(kVK_Delete, [.shift, .command]),
-            shortcut(kVK_Delete, [.option, .shift, .command]),
-            shortcut(kVK_ANSI_LeftBracket, [.command]),
-            shortcut(kVK_ANSI_RightBracket, [.command]),
-            shortcut(kVK_UpArrow, [.command]),
-            shortcut(kVK_DownArrow, [.command]),
-            shortcut(kVK_UpArrow, [.control, .command])
-        ]
-    }
-
-    private static var accessibilityAndInputShortcuts: [Shortcut] {
-        [
-            shortcut(kVK_ANSI_8, [.control, .option, .command]),
-            shortcut(kVK_ANSI_Comma, [.control, .option, .command]),
-            shortcut(kVK_ANSI_Period, [.control, .option, .command]),
-            shortcut(kVK_F5, [.option, .command]),
-            shortcut(kVK_Tab, [.control]),
-            shortcut(kVK_Tab, [.control, .shift])
-        ]
-    }
-
-    private static var textEditingShortcuts: [Shortcut] {
+    private static var essentialTextEditingShortcuts: [Shortcut] {
         [
             shortcut(kVK_ANSI_B, [.command]),
             shortcut(kVK_ANSI_I, [.command]),
             shortcut(kVK_ANSI_U, [.command]),
             shortcut(kVK_ANSI_D, [.control, .command]),
-            shortcut(kVK_ANSI_Semicolon, [.command]),
-            shortcut(kVK_ANSI_Semicolon, [.shift, .command]),
-            shortcut(kVK_ANSI_Minus, [.shift, .command]),
-            shortcut(kVK_ANSI_Equal, [.command]),
-            shortcut(kVK_ANSI_Equal, [.shift, .command]),
-            shortcut(kVK_ANSI_Slash, [.command]),
-            shortcut(kVK_ANSI_Slash, [.shift, .command]),
-            shortcut(kVK_ANSI_LeftBracket, [.shift, .command]),
-            shortcut(kVK_ANSI_RightBracket, [.shift, .command]),
-            shortcut(kVK_ANSI_Backslash, [.shift, .command]),
-            shortcut(kVK_Delete, [.option]),
-            shortcut(kVK_Delete, [.function]),
-            shortcut(kVK_UpArrow, [.function]),
-            shortcut(kVK_DownArrow, [.function]),
-            shortcut(kVK_LeftArrow, [.function]),
-            shortcut(kVK_RightArrow, [.function]),
-            shortcut(kVK_UpArrow, [.command]),
-            shortcut(kVK_DownArrow, [.command]),
-            shortcut(kVK_LeftArrow, [.command]),
-            shortcut(kVK_RightArrow, [.command]),
-            shortcut(kVK_LeftArrow, [.option]),
-            shortcut(kVK_RightArrow, [.option]),
-            shortcut(kVK_UpArrow, [.shift]),
-            shortcut(kVK_DownArrow, [.shift]),
-            shortcut(kVK_LeftArrow, [.shift]),
-            shortcut(kVK_RightArrow, [.shift]),
-            shortcut(kVK_UpArrow, [.shift, .command]),
-            shortcut(kVK_DownArrow, [.shift, .command]),
-            shortcut(kVK_LeftArrow, [.shift, .command]),
-            shortcut(kVK_RightArrow, [.shift, .command]),
-            shortcut(kVK_UpArrow, [.option, .shift]),
-            shortcut(kVK_DownArrow, [.option, .shift]),
-            shortcut(kVK_LeftArrow, [.option, .shift]),
-            shortcut(kVK_RightArrow, [.option, .shift]),
-            shortcut(kVK_ANSI_A, [.control]),
-            shortcut(kVK_ANSI_B, [.control]),
-            shortcut(kVK_ANSI_D, [.control]),
-            shortcut(kVK_ANSI_E, [.control]),
-            shortcut(kVK_ANSI_F, [.control]),
-            shortcut(kVK_ANSI_H, [.control]),
-            shortcut(kVK_ANSI_K, [.control]),
-            shortcut(kVK_ANSI_L, [.control]),
-            shortcut(kVK_ANSI_N, [.control]),
-            shortcut(kVK_ANSI_O, [.control]),
-            shortcut(kVK_ANSI_P, [.control]),
-            shortcut(kVK_ANSI_T, [.control]),
-            shortcut(kVK_ANSI_Y, [.control])
-        ]
-    }
-
-    private static var functionKeyShortcuts: [Shortcut] {
-        [
-            shortcut(kVK_ANSI_A, [.function]),
-            shortcut(kVK_ANSI_C, [.function]),
-            shortcut(kVK_ANSI_D, [.function]),
-            shortcut(kVK_ANSI_E, [.function]),
-            shortcut(kVK_ANSI_N, [.function]),
-            shortcut(kVK_ANSI_Q, [.function]),
-            shortcut(kVK_ANSI_A, [.function, .shift]),
-            shortcut(kVK_F2, [.control]),
-            shortcut(kVK_F3, [.control]),
-            shortcut(kVK_F4, [.control]),
-            shortcut(kVK_F5, [.control]),
-            shortcut(kVK_F6, [.control]),
-            shortcut(kVK_F6, [.control, .shift]),
-            shortcut(kVK_F7, [.control]),
-            shortcut(kVK_F8, [.control])
+            shortcut(kVK_Delete, [.option])
         ]
     }
 
