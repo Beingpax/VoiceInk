@@ -372,7 +372,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             for: recordedFile,
             text: Transcription.canceledTranscriptionText,
             duration: duration,
-            transcriptionStatus: .failed
+            transcriptionStatus: .canceled
         )
 
         modelContext.insert(transcription)

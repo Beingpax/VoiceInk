@@ -5,6 +5,7 @@ enum TranscriptionStatus: String, Codable {
     case pending
     case completed
     case failed
+    case canceled
 }
 
 @Model
@@ -66,7 +67,7 @@ final class Transcription {
     ) {
         text = Self.canceledTranscriptionText
         enhancedText = nil
-        transcriptionStatus = TranscriptionStatus.failed.rawValue
+        transcriptionStatus = TranscriptionStatus.canceled.rawValue
         if let duration {
             self.duration = duration
         }
