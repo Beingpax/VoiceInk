@@ -224,11 +224,11 @@ class TranscriptionPipeline {
 
             let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
             let pastedText = textToPaste + (appendSpace ? " " : "")
-            CursorPaster.startPasteAtCursor(pastedText)
+            let pasteResult = await CursorPaster.startPasteAtCursor(pastedText).value
             let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
             SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss {
-                if let autoSendKey, autoSendKey.isEnabled {
+                if let autoSendKey, autoSendKey.isEnabled, pasteResult.didPostPasteCommand {
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 500_000_000)
                         CursorPaster.performAutoSend(autoSendKey)

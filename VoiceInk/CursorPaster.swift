@@ -1,42 +1,78 @@
 import Foundation
 import AppKit
 import Carbon
-import os
-
-private let logger = Logger(subsystem: "com.VoiceInk", category: "CursorPaster")
 
 class CursorPaster {
     private typealias ClipboardItemSnapshot = [(NSPasteboard.PasteboardType, Data)]
     private typealias ClipboardSnapshot = [ClipboardItemSnapshot]
 
+    enum PasteResult: Equatable {
+        case commandPosted
+        case commandNotPosted
+
+        var didPostPasteCommand: Bool {
+            self == .commandPosted
+        }
+    }
+
+    private static let prePasteDelay: TimeInterval = 0.10
+    private static let pasteShortcutEventDelay: TimeInterval = 0.01
+    private static let minimumClipboardRestoreDelay: TimeInterval = 1.0
+
     static func pasteAtCursor(_ text: String) {
         Task {
-            await MainActor.run {
+            let pasteTask = await MainActor.run {
                 startPasteAtCursor(text)
-            }.value
+            }
+            _ = await pasteTask.value
         }
     }
 
     @MainActor
     @discardableResult
-    static func startPasteAtCursor(_ text: String) -> Task<Void, Never> {
-        let pasteboard = NSPasteboard.general
-        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
-        let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
-
-        _ = ClipboardManager.setClipboard(text, transient: shouldRestoreClipboard)
-        postPasteCommand()
-
-        if shouldRestoreClipboard {
-            scheduleClipboardRestore(savedContents, on: pasteboard)
+    static func startPasteAtCursor(_ text: String) -> Task<PasteResult, Never> {
+        Task { @MainActor in
+            await performPasteSession(text)
         }
-
-        return Task { @MainActor in }
     }
 
     @MainActor
-    static func pasteAtCursorAndWaitUntilPosted(_ text: String) async {
+    static func pasteAtCursorAndWaitUntilPosted(_ text: String) async -> PasteResult {
         await startPasteAtCursor(text).value
+    }
+
+    @MainActor
+    private static func performPasteSession(_ text: String) async -> PasteResult {
+        let pasteboard = NSPasteboard.general
+        let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
+        let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
+        let sessionID = UUID().uuidString
+
+        guard ClipboardManager.setClipboard(
+            text,
+            transient: shouldRestoreClipboard,
+            sessionID: shouldRestoreClipboard ? sessionID : nil
+        ) else {
+            return .commandNotPosted
+        }
+
+        await wait(prePasteDelay)
+
+        let pasteResult = await postPasteCommand()
+        guard pasteResult.didPostPasteCommand else {
+            return pasteResult
+        }
+
+        if shouldRestoreClipboard {
+            scheduleClipboardRestore(
+                savedContents,
+                expectedText: text,
+                sessionID: sessionID,
+                on: pasteboard
+            )
+        }
+
+        return .commandPosted
     }
 
     private static func snapshotClipboard(from pasteboard: NSPasteboard) -> ClipboardSnapshot {
@@ -50,24 +86,44 @@ class CursorPaster {
         }
     }
 
-    private static func postPasteCommand() {
+    private static func postPasteCommand() async -> PasteResult {
         if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
-            pasteUsingAppleScript()
+            return pasteUsingAppleScript() ? .commandPosted : .commandNotPosted
         } else {
-            pasteFromClipboard()
+            return await pasteFromClipboard()
         }
     }
 
-    private static func scheduleClipboardRestore(_ savedContents: ClipboardSnapshot, on pasteboard: NSPasteboard) {
-        let restoreDelay = UserDefaults.standard.double(forKey: "clipboardRestoreDelay")
-        let delay = max(restoreDelay, 0.25)
+    private static func scheduleClipboardRestore(
+        _ savedContents: ClipboardSnapshot,
+        expectedText: String,
+        sessionID: String,
+        on pasteboard: NSPasteboard
+    ) {
+        let delay = max(
+            UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
+            minimumClipboardRestoreDelay
+        )
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        Task { @MainActor in
+            await wait(delay)
+            guard pasteboardStillOwnedByPasteSession(pasteboard, expectedText: expectedText, sessionID: sessionID) else {
+                return
+            }
             pasteboard.clearContents()
             if !savedContents.isEmpty {
                 pasteboard.writeObjects(pasteboardItems(from: savedContents))
             }
         }
+    }
+
+    private static func pasteboardStillOwnedByPasteSession(
+        _ pasteboard: NSPasteboard,
+        expectedText: String,
+        sessionID: String
+    ) -> Bool {
+        pasteboard.string(forType: .string) == expectedText &&
+            pasteboard.string(forType: ClipboardManager.pasteSessionType) == sessionID
     }
 
     private static func pasteboardItems(from snapshot: ClipboardSnapshot) -> [NSPasteboardItem] {
@@ -100,41 +156,52 @@ class CursorPaster {
         return (Unmanaged<CFString>.fromOpaque(nameRef).takeUnretainedValue() as String).hasSuffix("⌘")
     }
 
-    private static func pasteUsingAppleScript() {
-        let script = layoutSwitchesToQWERTYOnCommand ? pasteScriptKeyCode : pasteScriptKeystroke
-        var error: NSDictionary?
-        script?.executeAndReturnError(&error)
-        if let error = error {
-            logger.error("AppleScript paste failed: \(error, privacy: .public)")
+    private static func pasteUsingAppleScript() -> Bool {
+        guard let script = layoutSwitchesToQWERTYOnCommand ? pasteScriptKeyCode : pasteScriptKeystroke else {
+            return false
         }
+
+        var error: NSDictionary?
+        script.executeAndReturnError(&error)
+        return error == nil
     }
 
     // MARK: - CGEvent paste
 
     // Posts Cmd+V via CGEvent without modifying the active input source.
-    private static func pasteFromClipboard() {
+    private static func pasteFromClipboard() async -> PasteResult {
         guard AXIsProcessTrusted() else {
-            logger.error("Accessibility not trusted — cannot paste")
-            return
+            return .commandNotPosted
         }
 
         let source = CGEventSource(stateID: .privateState)
 
-        let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true)
-        let vDown   = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true)
-        let vUp     = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false)
-        let cmdUp   = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false)
+        guard let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true),
+              let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
+              let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false),
+              let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false) else {
+            return .commandNotPosted
+        }
 
-        cmdDown?.flags = .maskCommand
-        vDown?.flags   = .maskCommand
-        vUp?.flags     = .maskCommand
+        cmdDown.flags = .maskCommand
+        vDown.flags   = .maskCommand
+        vUp.flags     = .maskCommand
 
-        cmdDown?.post(tap: .cghidEventTap)
-        vDown?.post(tap: .cghidEventTap)
-        vUp?.post(tap: .cghidEventTap)
-        cmdUp?.post(tap: .cghidEventTap)
+        cmdDown.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        vDown.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        vUp.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        cmdUp.post(tap: .cghidEventTap)
 
-        logger.notice("CGEvents posted for Cmd+V")
+        return .commandPosted
+    }
+
+    private static func wait(_ seconds: TimeInterval) async {
+        guard seconds > 0 else { return }
+        let nanoseconds = UInt64(seconds * 1_000_000_000)
+        try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
     // MARK: - Auto Send Keys
