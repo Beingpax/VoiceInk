@@ -69,7 +69,7 @@ private enum DashboardMetricsLoader {
 }
 
 struct MetricsContent: View {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.VoiceInk", category: "MetricsContent")
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MetricsContent")
     let modelContext: ModelContext
     let licenseState: LicenseViewModel.LicenseState
 

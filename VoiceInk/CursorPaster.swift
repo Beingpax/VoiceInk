@@ -1,10 +1,12 @@
 import Foundation
 import AppKit
 import Carbon
+import os
 
 class CursorPaster {
     private typealias ClipboardItemSnapshot = [(NSPasteboard.PasteboardType, Data)]
     private typealias ClipboardSnapshot = [ClipboardItemSnapshot]
+    private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CursorPaster")
 
     enum PasteResult: Equatable {
         case commandPosted
@@ -17,7 +19,7 @@ class CursorPaster {
 
     private static let prePasteDelay: TimeInterval = 0.10
     private static let pasteShortcutEventDelay: TimeInterval = 0.01
-    private static let minimumClipboardRestoreDelay: TimeInterval = 1.0
+    private static let minimumClipboardRestoreDelay: TimeInterval = 0.25
 
     static func pasteAtCursor(_ text: String) {
         Task {
@@ -53,6 +55,7 @@ class CursorPaster {
             transient: shouldRestoreClipboard,
             sessionID: shouldRestoreClipboard ? sessionID : nil
         ) else {
+            logger.error("Failed to prepare clipboard for paste")
             return .commandNotPosted
         }
 
@@ -158,11 +161,15 @@ class CursorPaster {
 
     private static func pasteUsingAppleScript() -> Bool {
         guard let script = layoutSwitchesToQWERTYOnCommand ? pasteScriptKeyCode : pasteScriptKeystroke else {
+            logger.error("AppleScript paste script is unavailable")
             return false
         }
 
         var error: NSDictionary?
         script.executeAndReturnError(&error)
+        if let error {
+            logger.error("AppleScript paste failed: \(String(describing: error), privacy: .public)")
+        }
         return error == nil
     }
 
@@ -171,6 +178,7 @@ class CursorPaster {
     // Posts Cmd+V via CGEvent without modifying the active input source.
     private static func pasteFromClipboard() async -> PasteResult {
         guard AXIsProcessTrusted() else {
+            logger.error("Accessibility permission is required to paste with simulated key events")
             return .commandNotPosted
         }
 
@@ -180,6 +188,7 @@ class CursorPaster {
               let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
               let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false),
               let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false) else {
+            logger.error("Failed to create Cmd+V keyboard events")
             return .commandNotPosted
         }
 
