@@ -6,12 +6,50 @@
 //
 
 import Testing
+import AppKit
 @testable import VoiceInk
 
+@MainActor
 struct VoiceInkTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func miniRecorderDigitShortcutsUseDefaultModifiersWithoutHeldRecordingModifiers() {
+        #expect(MiniRecorderShortcutManager.promptDigitModifierFlags(ambientModifierFlags: []) == [.command])
+        #expect(MiniRecorderShortcutManager.powerModeDigitModifierFlags(ambientModifierFlags: []) == [.option])
+        #expect(MiniRecorderShortcutManager.shouldRegisterPowerModeDigitShortcuts(ambientModifierFlags: []))
+    }
+
+    @Test func miniRecorderPromptShortcutsIncludeHeldRecordingModifiers() {
+        let modifierFlags = MiniRecorderShortcutManager.promptDigitModifierFlags(
+            ambientModifierFlags: [.option]
+        )
+
+        #expect(modifierFlags == [.command, .option])
+    }
+
+    @Test func miniRecorderPowerModeShortcutsDoNotCollideWithPromptShortcutsWhenOptionIsHeld() {
+        let promptModifierFlags = MiniRecorderShortcutManager.promptDigitModifierFlags(
+            ambientModifierFlags: [.option]
+        )
+        let powerModeModifierFlags = MiniRecorderShortcutManager.powerModeDigitModifierFlags(
+            ambientModifierFlags: [.option]
+        )
+
+        #expect(promptModifierFlags == [.command, .option])
+        #expect(powerModeModifierFlags == [.option])
+        #expect(promptModifierFlags != powerModeModifierFlags)
+        #expect(MiniRecorderShortcutManager.shouldRegisterPowerModeDigitShortcuts(ambientModifierFlags: [.option]))
+    }
+
+    @Test func miniRecorderPowerModeShortcutsAreSkippedWhenFoldedModifiersWouldCollide() {
+        let promptModifierFlags = MiniRecorderShortcutManager.promptDigitModifierFlags(
+            ambientModifierFlags: [.command, .option]
+        )
+        let powerModeModifierFlags = MiniRecorderShortcutManager.powerModeDigitModifierFlags(
+            ambientModifierFlags: [.command, .option]
+        )
+
+        #expect(promptModifierFlags == powerModeModifierFlags)
+        #expect(!MiniRecorderShortcutManager.shouldRegisterPowerModeDigitShortcuts(ambientModifierFlags: [.command, .option]))
     }
 
 }
