@@ -7,6 +7,11 @@ struct CustomSoundSettingsView: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
 
+    private enum SoundMenuSelection: Hashable {
+        case builtIn(CustomSoundManager.BuiltInSound)
+        case custom
+    }
+
     var body: some View {
         Group {
             LabeledContent("Start Sound") {
@@ -30,11 +35,20 @@ struct CustomSoundSettingsView: View {
         let fileName = customSoundManager.getSoundDisplayName(for: type)
 
         HStack(spacing: 8) {
-            Text(isCustom ? (fileName ?? "Custom") : "Default")
-                .foregroundColor(.secondary)
-                .frame(maxWidth: 100, alignment: .leading)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            Picker("Sound", selection: soundSelectionBinding(for: type)) {
+                ForEach(CustomSoundManager.BuiltInSound.allCases) { sound in
+                    Text(sound.displayName).tag(SoundMenuSelection.builtIn(sound))
+                }
+
+                if isCustom || fileName != nil {
+                    Text("Custom: \(fileName ?? "Custom")").tag(SoundMenuSelection.custom)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 116, alignment: .trailing)
+            .fixedSize()
+            .help("Select sound")
 
             Button {
                 if type == .start {
@@ -56,9 +70,13 @@ struct CustomSoundSettingsView: View {
             .buttonStyle(.borderless)
             .help("Choose")
 
-            if isCustom {
+            if !customSoundManager.isDefaultSelection(for: type) {
                 Button {
-                    customSoundManager.resetSoundToDefault(for: type)
+                    if isCustom {
+                        customSoundManager.resetSoundToDefault(for: type)
+                    } else {
+                        customSoundManager.selectBuiltInSound(type.defaultBuiltInSound, for: type)
+                    }
                 } label: {
                     Image(systemName: "arrow.uturn.backward")
                 }
@@ -66,6 +84,27 @@ struct CustomSoundSettingsView: View {
                 .help("Reset")
             }
         }
+    }
+
+    private func soundSelectionBinding(for type: CustomSoundManager.SoundType) -> Binding<SoundMenuSelection> {
+        Binding(
+            get: {
+                let isCustom = type == .start ? customSoundManager.isUsingCustomStartSound : customSoundManager.isUsingCustomStopSound
+                if isCustom {
+                    return .custom
+                }
+
+                return .builtIn(customSoundManager.selectedBuiltInSound(for: type))
+            },
+            set: { selection in
+                switch selection {
+                case .builtIn(let sound):
+                    customSoundManager.selectBuiltInSound(sound, for: type)
+                case .custom:
+                    customSoundManager.useCustomSound(for: type)
+                }
+            }
+        )
     }
 
     private func selectSound(for type: CustomSoundManager.SoundType) {

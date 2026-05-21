@@ -20,20 +20,18 @@ class SoundManager: ObservableObject {
     }
 
     private func setupSounds() {
+        let customSoundManager = CustomSoundManager.shared
         playbackEngine.setup(
-            defaultStartURL: Bundle.main.url(forResource: "recstart", withExtension: "mp3"),
-            defaultStopURL: Bundle.main.url(forResource: "recstop", withExtension: "mp3"),
-            defaultEscURL: Bundle.main.url(forResource: "esc", withExtension: "wav"),
-            customStartURL: CustomSoundManager.shared.getCustomSoundURL(for: .start),
-            customStopURL: CustomSoundManager.shared.getCustomSoundURL(for: .stop)
+            defaultStartURL: customSoundManager.builtInSoundURL(for: .start),
+            defaultStopURL: customSoundManager.builtInSoundURL(for: .stop),
+            defaultEscURL: CustomSoundManager.BuiltInSound.sound7.bundleURL,
+            customStartURL: customSoundManager.getCustomSoundURL(for: .start),
+            customStopURL: customSoundManager.getCustomSoundURL(for: .stop)
         )
     }
 
     @objc private func reloadCustomSounds() {
-        playbackEngine.reloadCustomSounds(
-            startURL: CustomSoundManager.shared.getCustomSoundURL(for: .start),
-            stopURL: CustomSoundManager.shared.getCustomSoundURL(for: .stop)
-        )
+        setupSounds()
     }
 
     func playStartSound() {
