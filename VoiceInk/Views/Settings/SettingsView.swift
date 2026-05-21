@@ -176,11 +176,12 @@ struct SettingsView: View {
                     }
                 }
 
-                // Restore Clipboard
+                // Keep Clipboard Content
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,
                     isEnabled: $restoreClipboardAfterPaste,
-                    label: "Restore Clipboard After Paste"
+                    label: "Keep Clipboard Content",
+                    infoMessage: "VoiceInk temporarily uses the clipboard to paste transcription. When enabled, it restores your previous clipboard content after the selected delay. When disabled, the pasted transcription stays on your clipboard."
                 ) {
                     Picker("Restore Delay", selection: $clipboardRestoreDelay) {
                         Text("250ms").tag(0.25)
