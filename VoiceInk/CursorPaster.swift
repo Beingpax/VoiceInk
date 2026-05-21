@@ -62,10 +62,6 @@ class CursorPaster {
         await wait(prePasteDelay)
 
         let pasteResult = await postPasteCommand()
-        guard pasteResult.didPostPasteCommand else {
-            return pasteResult
-        }
-
         if shouldRestoreClipboard {
             scheduleClipboardRestore(
                 savedContents,
@@ -75,7 +71,7 @@ class CursorPaster {
             )
         }
 
-        return .commandPosted
+        return pasteResult
     }
 
     private static func snapshotClipboard(from pasteboard: NSPasteboard) -> ClipboardSnapshot {
