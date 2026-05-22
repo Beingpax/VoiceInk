@@ -424,53 +424,19 @@ struct ExpandableSettingsRow<Content: View>: View {
 // MARK: - Power Mode Section
 
 struct PowerModeSection: View {
-    @ObservedObject private var powerModeManager = PowerModeManager.shared
-    @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @AppStorage("powerModePersistConfig") private var powerModePersistSettings = false
-    @State private var showDisableAlert = false
-    @State private var isExpanded = false
 
     var body: some View {
         Section {
-            ExpandableSettingsRow(
-                isExpanded: $isExpanded,
-                isEnabled: toggleBinding,
-                label: "Power Mode",
-                infoMessage: "Apply custom settings based on active app or website.",
-                infoURL: "https://tryvoiceink.com/docs/power-mode"
-            ) {
-                Toggle(isOn: $powerModePersistSettings) {
-                    HStack(spacing: 4) {
-                        Text("Persist Configured Preferences")
-                        InfoTip("When enabled, Power Mode preferences stay active after you stop recording instead of reverting to your original preferences. They will only change when a different Power Mode activates.")
-                    }
+            Toggle(isOn: $powerModePersistSettings) {
+                HStack(spacing: 4) {
+                    Text("Persist Configured Preferences")
+                    InfoTip("When enabled, Power Mode preferences stay active after you stop recording instead of reverting to your original preferences. They will only change when a different Power Mode activates.")
                 }
             }
         } header: {
             Text("Power Mode")
         }
-        .alert("Power Mode Still Active", isPresented: $showDisableAlert) {
-            Button("Got it", role: .cancel) { }
-        } message: {
-            Text("Disable or remove your Power Modes first.")
-        }
-    }
-
-    private var toggleBinding: Binding<Bool> {
-        Binding(
-            get: { powerModeUIFlag },
-            set: { newValue in
-                if newValue {
-                    powerModeUIFlag = true
-                    NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
-                } else if powerModeManager.configurations.allSatisfy({ !$0.isEnabled }) {
-                    powerModeUIFlag = false
-                    NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
-                } else {
-                    showDisableAlert = true
-                }
-            }
-        )
     }
 }
 

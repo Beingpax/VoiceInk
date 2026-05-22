@@ -5,11 +5,11 @@ import OSLog
 // ViewType enum with all cases
 enum ViewType: String, CaseIterable, Identifiable {
     case metrics = "Dashboard"
+    case mode = "Mode"
+    case enhancement = "Enhancement"
+    case models = "AI Models"
     case transcribeAudio = "Transcribe Audio"
     case history = "History"
-    case models = "AI Models"
-    case enhancement = "Enhancement"
-    case powerMode = "Power Mode"
     case permissions = "Permissions"
     case audioInput = "Audio Input"
     case dictionary = "Dictionary"
@@ -25,7 +25,7 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
-        case .powerMode: return "sparkles.square.fill.on.square"
+        case .mode: return "sparkles.square.fill.on.square"
         case .permissions: return "shield.fill"
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
@@ -61,19 +61,9 @@ struct ContentView: View {
     @EnvironmentObject private var whisperModelManager: WhisperModelManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
-    @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType? = .metrics
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
     @StateObject private var licenseViewModel = LicenseViewModel()
-
-    private var visibleViewTypes: [ViewType] {
-        ViewType.allCases.filter { viewType in
-            if viewType == .powerMode {
-                return powerModeUIFlag
-            }
-            return true
-        }
-    }
 
     var body: some View {
         NavigationSplitView {
@@ -107,7 +97,7 @@ struct ContentView: View {
                     .padding(.vertical, 4)
                 }
 
-                ForEach(visibleViewTypes) { viewType in
+                ForEach(ViewType.allCases) { viewType in
                     Section {
                         NavigationLink(value: viewType) {
                             SidebarItemView(viewType: viewType)
@@ -157,8 +147,8 @@ struct ContentView: View {
                     selectedView = .enhancement
                 case "Transcribe Audio":
                     selectedView = .transcribeAudio
-                case "Power Mode":
-                    selectedView = .powerMode
+                case "Power Mode", "Mode":
+                    selectedView = .mode
                 default:
                     break
                 }
@@ -183,7 +173,7 @@ struct ContentView: View {
             AudioInputSettingsView()
         case .dictionary:
             DictionarySettingsView(whisperPrompt: whisperModelManager.whisperPrompt)
-        case .powerMode:
+        case .mode:
             PowerModeView()
         case .settings:
             SettingsView()

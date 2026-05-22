@@ -60,7 +60,6 @@ class SystemInfoService {
         Paste Method: \(PasteMethod.current().displayName)
 
         POWER MODE:
-        Power Mode Enabled: \(UserDefaults.standard.bool(forKey: "powerModeUIFlag"))
         Persist Configured Preferences: \(UserDefaults.standard.bool(forKey: "powerModePersistConfig"))
 
         DATA CLEANUP SETTINGS:

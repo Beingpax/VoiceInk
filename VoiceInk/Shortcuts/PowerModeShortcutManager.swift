@@ -58,11 +58,6 @@ class PowerModeShortcutManager {
     }
 
     private func refreshPowerModeShortcuts() {
-        guard UserDefaults.standard.bool(forKey: "powerModeUIFlag") else {
-            shortcutMonitor.stop()
-            return
-        }
-
         let shortcuts = PowerModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) { result, config in
             let action = ShortcutAction.powerMode(config.id)
             if let shortcut = ShortcutStore.shortcut(for: action) {
