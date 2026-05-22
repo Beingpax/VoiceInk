@@ -59,9 +59,6 @@ class SystemInfoService {
         Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
         Paste Method: \(PasteMethod.current().displayName)
 
-        POWER MODE:
-        Persist Configured Preferences: \(UserDefaults.standard.bool(forKey: "powerModePersistConfig"))
-
         DATA CLEANUP SETTINGS:
         Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled"))
         Transcription Retention: \(UserDefaults.standard.integer(forKey: "TranscriptionRetentionMinutes")) minutes

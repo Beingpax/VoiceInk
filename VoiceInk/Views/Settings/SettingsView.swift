@@ -215,9 +215,6 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - Power Mode
-            PowerModeSection()
-
             // MARK: - Interface
             Section("Interface") {
                 Picker("Recorder Style", selection: $recorderUIManager.recorderType) {
@@ -344,25 +341,6 @@ struct SettingsView: View {
         }
         .labelsHidden()
         .fixedSize()
-    }
-}
-
-// MARK: - Power Mode Section
-
-struct PowerModeSection: View {
-    @AppStorage("powerModePersistConfig") private var powerModePersistSettings = false
-
-    var body: some View {
-        Section {
-            Toggle(isOn: $powerModePersistSettings) {
-                HStack(spacing: 4) {
-                    Text("Persist Configured Preferences")
-                    InfoTip("When enabled, Power Mode preferences stay active after you stop recording instead of reverting to your original preferences. They will only change when a different Power Mode activates.")
-                }
-            }
-        } header: {
-            Text("Power Mode")
-        }
     }
 }
 
