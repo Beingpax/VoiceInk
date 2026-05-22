@@ -85,8 +85,9 @@ class CursorPaster {
         }
     }
 
+    @MainActor
     private static func postPasteCommand() async -> PasteResult {
-        if UserDefaults.standard.bool(forKey: "useAppleScriptPaste") {
+        if PasteMethod.current() == .appleScript {
             return pasteUsingAppleScript() ? .commandPosted : .commandNotPosted
         } else {
             return await pasteFromClipboard()
@@ -149,12 +150,14 @@ class CursorPaster {
     private static let pasteScriptKeystroke = makeScript("tell application \"System Events\" to keystroke \"v\" using command down")
     private static let pasteScriptKeyCode   = makeScript("tell application \"System Events\" to key code 9 using command down")
 
+    @MainActor
     private static var layoutSwitchesToQWERTYOnCommand: Bool {
         let source = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
         guard let nameRef = TISGetInputSourceProperty(source, kTISPropertyLocalizedName) else { return false }
         return (Unmanaged<CFString>.fromOpaque(nameRef).takeUnretainedValue() as String).hasSuffix("⌘")
     }
 
+    @MainActor
     private static func pasteUsingAppleScript() -> Bool {
         guard let script = layoutSwitchesToQWERTYOnCommand ? pasteScriptKeyCode : pasteScriptKeystroke else {
             logger.error("AppleScript paste script is unavailable")
@@ -172,6 +175,7 @@ class CursorPaster {
     // MARK: - CGEvent paste
 
     // Posts Cmd+V via CGEvent without modifying the active input source.
+    @MainActor
     private static func pasteFromClipboard() async -> PasteResult {
         guard AXIsProcessTrusted() else {
             logger.error("Accessibility permission is required to paste with simulated key events")
