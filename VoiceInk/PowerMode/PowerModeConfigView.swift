@@ -30,13 +30,24 @@ struct ConfigurationView: View {
     @State private var selectedAppConfigs: [AppConfig] = []
     @State private var websiteConfigs: [URLConfig] = []
     @State private var newWebsiteURL: String = ""
+    @State private var useClipboardContext = false
+    @State private var useSelectedTextContext = true
     @State private var useScreenCapture = false
     @State private var autoSendKey: AutoSendKey = .none
     @State private var isDefault = false
     @State private var isShowingDeleteConfirmation = false
     @State private var powerModeConfigId: UUID = UUID()
     @State private var isTranscriptFormattingExpanded = false
+    @State private var promptEditorMode: PromptEditorView.Mode?
+    @State private var promptEditorID = UUID()
     @State private var didSaveConfiguration = false
+
+    private static var defaultSelectedTextContext: Bool {
+        if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: "useSelectedTextContext")
+    }
 
     private var effectiveModelName: String? {
         selectedTranscriptionModelName ?? transcriptionModelManager.currentTranscriptionModel?.name
@@ -51,6 +62,11 @@ struct ConfigurationView: View {
     }
 
     private var canSave: Bool { !configName.isEmpty }
+
+    private var selectedPrompt: CustomPrompt? {
+        guard let selectedPromptId else { return nil }
+        return enhancementService.allPrompts.first { $0.id == selectedPromptId }
+    }
 
     private func languageSelectionDisabled() -> Bool {
         guard let selectedModelName = effectiveModelName,
@@ -88,6 +104,8 @@ struct ConfigurationView: View {
             _lowercaseTranscription = State(initialValue: false)
             _configName = State(initialValue: "")
             _selectedEmoji = State(initialValue: "✏️")
+            _useClipboardContext = State(initialValue: UserDefaults.standard.bool(forKey: "useClipboardContext"))
+            _useSelectedTextContext = State(initialValue: Self.defaultSelectedTextContext)
             _useScreenCapture = State(initialValue: false)
             _autoSendKey = State(initialValue: .none)
             _isDefault = State(initialValue: false)
@@ -110,6 +128,8 @@ struct ConfigurationView: View {
             _selectedEmoji = State(initialValue: latestConfig.emoji)
             _selectedAppConfigs = State(initialValue: latestConfig.appConfigs ?? [])
             _websiteConfigs = State(initialValue: latestConfig.urlConfigs ?? [])
+            _useClipboardContext = State(initialValue: latestConfig.useClipboardContext)
+            _useSelectedTextContext = State(initialValue: latestConfig.useSelectedTextContext)
             _useScreenCapture = State(initialValue: latestConfig.useScreenCapture)
             _autoSendKey = State(initialValue: latestConfig.autoSendKey)
             _isDefault = State(initialValue: latestConfig.isDefault)
@@ -120,6 +140,26 @@ struct ConfigurationView: View {
     }
 
     var body: some View {
+        Group {
+            if let promptEditorMode {
+                PromptEditorView(
+                    mode: promptEditorMode,
+                    onDismiss: closePromptEditor,
+                    onSave: handlePromptSaved
+                )
+                .environmentObject(enhancementService)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(promptEditorID)
+            } else {
+                configurationForm
+            }
+        }
+        .onAppear(perform: prepareView)
+        .onDisappear(perform: cleanupUnsavedShortcutIfNeeded)
+        .onExitCommand(perform: handleExitCommand)
+    }
+
+    private var configurationForm: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Button {
@@ -465,20 +505,61 @@ struct ConfigurationView: View {
                             }
                         }
 
-                        if enhancementService.allPrompts.isEmpty {
-                            LabeledContent("Enhancement Prompt") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Enhancement Prompt")
+                                Spacer()
+                                AddIconButton(helpText: "Add prompt") {
+                                    openPromptEditor(mode: .add)
+                                }
+
+                                if let selectedPrompt {
+                                    Button {
+                                        openPromptEditor(mode: .edit(selectedPrompt))
+                                    } label: {
+                                        Image(systemName: "pencil.circle.fill")
+                                            .font(.system(size: 18))
+                                            .symbolRenderingMode(.hierarchical)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Edit prompt")
+                                }
+                            }
+
+                            if enhancementService.allPrompts.isEmpty {
                                 Text("No prompts available")
                                     .foregroundColor(.secondary)
-                            }
-                        } else {
-                            Picker("Enhancement Prompt", selection: $selectedPromptId) {
-                                ForEach(enhancementService.allPrompts) { prompt in
-                                    Text(prompt.title).tag(prompt.id as UUID?)
+                            } else {
+                                Picker("", selection: $selectedPromptId) {
+                                    ForEach(enhancementService.allPrompts) { prompt in
+                                        Text(prompt.title).tag(prompt.id as UUID?)
+                                    }
                                 }
+                                .labelsHidden()
                             }
                         }
 
-                        Toggle("Context Awareness", isOn: $useScreenCapture)
+                        Toggle(isOn: $useSelectedTextContext) {
+                            HStack(spacing: 4) {
+                                Text("Selected Text Context")
+                                InfoTip("Use selected text from the active app as context for this mode.")
+                            }
+                        }
+
+                        Toggle(isOn: $useClipboardContext) {
+                            HStack(spacing: 4) {
+                                Text("Clipboard Context")
+                                InfoTip("Use clipboard text as context for this mode.")
+                            }
+                        }
+
+                        Toggle(isOn: $useScreenCapture) {
+                            HStack(spacing: 4) {
+                                Text("Screen Context")
+                                InfoTip("Use captured on-screen text as context for this mode.")
+                            }
+                        }
                     }
                 }
 
@@ -533,34 +614,6 @@ struct ConfigurationView: View {
                 }
             }
             .powerModeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
-            .onAppear {
-                // Set AI provider/model after EnvironmentObjects are available
-                if case .add = mode {
-                    if selectedAIProvider == nil {
-                        selectedAIProvider = aiService.selectedProvider.rawValue
-                    }
-                    if selectedAIModel == nil || selectedAIModel?.isEmpty == true {
-                        selectedAIModel = aiService.currentModel
-                    }
-                }
-
-                if isAIEnhancementEnabled && selectedPromptId == nil {
-                    selectedPromptId = enhancementService.allPrompts.first?.id
-                }
-
-                if let selectedModelName = effectiveModelName,
-                   let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
-                   model.provider != .gemini {
-                    useCompatibleLanguage(for: model)
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isNameFieldFocused = true
-                }
-            }
-            .onDisappear {
-                cleanupUnsavedShortcutIfNeeded()
-            }
 
             // Footer
             VStack(spacing: 0) {
@@ -612,6 +665,54 @@ struct ConfigurationView: View {
         newWebsiteURL = ""
     }
 
+    private func openPromptEditor(mode: PromptEditorView.Mode) {
+        promptEditorID = UUID()
+        promptEditorMode = mode
+    }
+
+    private func closePromptEditor() {
+        promptEditorMode = nil
+    }
+
+    private func handlePromptSaved(_ prompt: CustomPrompt) {
+        selectedPromptId = prompt.id
+        closePromptEditor()
+    }
+
+    private func handleExitCommand() {
+        if promptEditorMode != nil {
+            closePromptEditor()
+        } else {
+            onDismiss()
+        }
+    }
+
+    private func prepareView() {
+        // Set AI provider/model after EnvironmentObjects are available.
+        if case .add = mode {
+            if selectedAIProvider == nil {
+                selectedAIProvider = aiService.selectedProvider.rawValue
+            }
+            if selectedAIModel == nil || selectedAIModel?.isEmpty == true {
+                selectedAIModel = aiService.currentModel
+            }
+        }
+
+        if isAIEnhancementEnabled && selectedPromptId == nil {
+            selectedPromptId = enhancementService.allPrompts.first?.id
+        }
+
+        if let selectedModelName = effectiveModelName,
+           let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
+           model.provider != .gemini {
+            useCompatibleLanguage(for: model)
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isNameFieldFocused = true
+        }
+    }
+
     private func getConfigForForm() -> PowerModeConfig {
         switch mode {
         case .add:
@@ -625,6 +726,8 @@ struct ConfigurationView: View {
                 selectedPrompt: selectedPromptId?.uuidString,
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
                 selectedLanguage: selectedLanguage,
+                useClipboardContext: useClipboardContext,
+                useSelectedTextContext: useSelectedTextContext,
                 useScreenCapture: useScreenCapture,
                 isTextFormattingEnabled: isTextFormattingEnabled,
                 punctuationCleanupMode: punctuationCleanupMode,
@@ -647,6 +750,8 @@ struct ConfigurationView: View {
             updatedConfig.lowercaseTranscription = lowercaseTranscription
             updatedConfig.appConfigs = selectedAppConfigs.isEmpty ? nil : selectedAppConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
+            updatedConfig.useClipboardContext = useClipboardContext
+            updatedConfig.useSelectedTextContext = useSelectedTextContext
             updatedConfig.useScreenCapture = useScreenCapture
             updatedConfig.autoSendKey = autoSendKey
             updatedConfig.selectedAIProvider = selectedAIProvider

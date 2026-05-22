@@ -27,6 +27,14 @@ class AIEnhancementService: ObservableObject {
     @Published var useClipboardContext: Bool {
         didSet {
             UserDefaults.standard.set(useClipboardContext, forKey: "useClipboardContext")
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+    }
+
+    @Published var useSelectedTextContext: Bool {
+        didSet {
+            UserDefaults.standard.set(useSelectedTextContext, forKey: "useSelectedTextContext")
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
         }
     }
 
@@ -85,6 +93,11 @@ class AIEnhancementService: ObservableObject {
 
         self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
         self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
+        if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
+            self.useSelectedTextContext = true
+        } else {
+            self.useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
+        }
         self.useScreenCaptureContext = UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
         if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
            let decodedPrompts = try? JSONDecoder().decode([CustomPrompt].self, from: savedPromptsData) {
@@ -144,7 +157,7 @@ class AIEnhancementService: ObservableObject {
 
     private func getSystemMessage(for mode: EnhancementPrompt) async -> String {
         let selectedTextContext: String
-        if AXIsProcessTrusted() {
+        if useSelectedTextContext && AXIsProcessTrusted() {
             if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
                 selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
             } else {
@@ -416,12 +429,14 @@ class AIEnhancementService: ObservableObject {
         screenCaptureService.lastCapturedText = nil
     }
 
-    func addPrompt(title: String, promptText: String, icon: PromptIcon = "doc.text.fill", description: String? = nil, triggerWords: [String] = [], useSystemInstructions: Bool = true) {
+    @discardableResult
+    func addPrompt(title: String, promptText: String, icon: PromptIcon = "doc.text.fill", description: String? = nil, triggerWords: [String] = [], useSystemInstructions: Bool = true) -> CustomPrompt {
         let newPrompt = CustomPrompt(title: title, promptText: promptText, icon: icon, description: description, isPredefined: false, triggerWords: triggerWords, useSystemInstructions: useSystemInstructions)
         customPrompts.append(newPrompt)
         if customPrompts.count == 1 {
             selectedPromptId = newPrompt.id
         }
+        return newPrompt
     }
 
     func updatePrompt(_ prompt: CustomPrompt) {

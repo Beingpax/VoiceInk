@@ -211,6 +211,8 @@ struct ConfigurationRow: View {
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
             
+            let usesAnyContext = config.useSelectedTextContext || config.useClipboardContext || config.useScreenCapture
+
             if selectedModel != nil || selectedLanguage != nil || config.isAIEnhancementEnabled || config.autoSendKey.isEnabled {
                 Divider()
                 
@@ -283,11 +285,11 @@ struct ConfigurationRow: View {
                         )
                     }
                     if config.isAIEnhancementEnabled {
-                        if config.useScreenCapture {
+                        if usesAnyContext {
                             HStack(spacing: 4) {
                                 Image(systemName: "camera.viewfinder")
                                     .font(.system(size: 10))
-                                Text("Context Awareness")
+                                Text("Context")
                                     .font(.caption)
                             }
                             .padding(.horizontal, 6)

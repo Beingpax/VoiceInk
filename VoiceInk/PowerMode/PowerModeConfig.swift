@@ -33,6 +33,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var isTextFormattingEnabled: Bool = false
     var punctuationCleanupMode: PunctuationCleanupMode = .keep
     var lowercaseTranscription: Bool = false
+    var useClipboardContext: Bool
+    var useSelectedTextContext: Bool
     var useScreenCapture: Bool
     var selectedAIProvider: String?
     var selectedAIModel: String?
@@ -41,14 +43,14 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var isDefault: Bool = false
         
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
+        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
     
     init(id: UUID = UUID(), name: String, emoji: String, appConfigs: [AppConfig]? = nil,
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
-         selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
+         selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true, useScreenCapture: Bool = false,
          isTextFormattingEnabled: Bool = false, punctuationCleanupMode: PunctuationCleanupMode = .keep, lowercaseTranscription: Bool = false,
          selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false) {
         self.id = id
@@ -58,6 +60,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.urlConfigs = urlConfigs
         self.isAIEnhancementEnabled = isAIEnhancementEnabled
         self.selectedPrompt = selectedPrompt
+        self.useClipboardContext = useClipboardContext
+        self.useSelectedTextContext = useSelectedTextContext
         self.useScreenCapture = useScreenCapture
         self.autoSendKey = autoSendKey
         self.selectedAIProvider = selectedAIProvider ?? UserDefaults.standard.string(forKey: "selectedAIProvider")
@@ -89,6 +93,14 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
             punctuationCleanupMode = removePunctuation ? .removeAll : .keep
         }
         lowercaseTranscription = try container.decodeIfPresent(Bool.self, forKey: .lowercaseTranscription) ?? false
+        useClipboardContext = try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext) ?? UserDefaults.standard.bool(forKey: "useClipboardContext")
+        if let decodedSelectedTextContext = try container.decodeIfPresent(Bool.self, forKey: .useSelectedTextContext) {
+            useSelectedTextContext = decodedSelectedTextContext
+        } else if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
+            useSelectedTextContext = true
+        } else {
+            useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
+        }
         useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
@@ -127,6 +139,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encode(punctuationCleanupMode, forKey: .punctuationCleanupMode)
         try container.encode(punctuationCleanupMode == .removeAll, forKey: .removePunctuation)
         try container.encode(lowercaseTranscription, forKey: .lowercaseTranscription)
+        try container.encode(useClipboardContext, forKey: .useClipboardContext)
+        try container.encode(useSelectedTextContext, forKey: .useSelectedTextContext)
         try container.encode(useScreenCapture, forKey: .useScreenCapture)
         try container.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
         try container.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)

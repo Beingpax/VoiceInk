@@ -3,6 +3,8 @@ import AppKit
 
 struct ApplicationState: Codable {
     var isEnhancementEnabled: Bool
+    var useClipboardContext: Bool?
+    var useSelectedTextContext: Bool?
     var useScreenCaptureContext: Bool
     var selectedPromptId: String?
     var selectedAIProvider: String?
@@ -51,6 +53,8 @@ class PowerModeSessionManager {
             let punctuationCleanupMode = PunctuationCleanupMode.current()
             let originalState = ApplicationState(
                 isEnhancementEnabled: enhancementService.isEnhancementEnabled,
+                useClipboardContext: enhancementService.useClipboardContext,
+                useSelectedTextContext: enhancementService.useSelectedTextContext,
                 useScreenCaptureContext: enhancementService.useScreenCaptureContext,
                 selectedPromptId: enhancementService.selectedPromptId?.uuidString,
                 selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
@@ -105,6 +109,8 @@ class PowerModeSessionManager {
         let punctuationCleanupMode = PunctuationCleanupMode.current()
         let updatedState = ApplicationState(
             isEnhancementEnabled: enhancementService.isEnhancementEnabled,
+            useClipboardContext: enhancementService.useClipboardContext,
+            useSelectedTextContext: enhancementService.useSelectedTextContext,
             useScreenCaptureContext: enhancementService.useScreenCaptureContext,
             selectedPromptId: enhancementService.selectedPromptId?.uuidString,
             selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
@@ -127,6 +133,8 @@ class PowerModeSessionManager {
 
         await MainActor.run {
             enhancementService.isEnhancementEnabled = config.isAIEnhancementEnabled
+            enhancementService.useClipboardContext = config.useClipboardContext
+            enhancementService.useSelectedTextContext = config.useSelectedTextContext
             enhancementService.useScreenCaptureContext = config.useScreenCapture
 
             if config.isAIEnhancementEnabled {
@@ -170,6 +178,12 @@ class PowerModeSessionManager {
 
         await MainActor.run {
             enhancementService.isEnhancementEnabled = state.isEnhancementEnabled
+            if let useClipboardContext = state.useClipboardContext {
+                enhancementService.useClipboardContext = useClipboardContext
+            }
+            if let useSelectedTextContext = state.useSelectedTextContext {
+                enhancementService.useSelectedTextContext = useSelectedTextContext
+            }
             enhancementService.useScreenCaptureContext = state.useScreenCaptureContext
             enhancementService.selectedPromptId = state.selectedPromptId.flatMap(UUID.init)
 

@@ -51,6 +51,14 @@ struct EnhancementSettingsPanel: View {
                     }
                     .toggleStyle(.switch)
 
+                    Toggle(isOn: $enhancementService.useSelectedTextContext) {
+                        HStack(spacing: 4) {
+                            Text("Selected Text Context")
+                            InfoTip("Use selected text from the active app as context for better enhancement.")
+                        }
+                    }
+                    .toggleStyle(.switch)
+
                     Toggle(isOn: $enhancementService.useScreenCaptureContext) {
                         HStack(spacing: 4) {
                             Text("Screen Context")

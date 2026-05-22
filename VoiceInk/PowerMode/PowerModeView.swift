@@ -195,7 +195,7 @@ struct PowerModeView: View {
             .sidePanel(isPresented: .init(
                 get: { isPanelOpen },
                 set: { if !$0 { closePanel() } }
-            )) {
+            ), dismissOnExitCommand: false) {
                 switch activePanel {
                 case .configuration(let mode)?:
                     ConfigurationView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
@@ -250,6 +250,7 @@ struct ReorderPanelView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .keyboardShortcut(.escape, modifiers: [])
                 .help("Close")
             }
             .padding(.horizontal, 20)
@@ -317,6 +318,7 @@ struct ReorderPanelView: View {
             .padding(.top, 8)
         }
         .background(Color(NSColor.windowBackgroundColor))
+        .onExitCommand(perform: onDismiss)
     }
 }
 

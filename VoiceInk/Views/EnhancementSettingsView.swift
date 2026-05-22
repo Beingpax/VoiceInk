@@ -117,9 +117,13 @@ struct EnhancementSettingsView: View {
                 case .settings?:
                     EnhancementSettingsPanel(onDismiss: closePanel)
                 case .promptEditor(let mode)?:
-                    PromptEditorView(mode: mode) {
-                        closePanel()
-                    }
+                    PromptEditorView(
+                        mode: mode,
+                        onDismiss: closePanel,
+                        onSave: { prompt in
+                            enhancementService.setActivePrompt(prompt)
+                        }
+                    )
                     .id(panelID)
                 case nil:
                     EmptyView()

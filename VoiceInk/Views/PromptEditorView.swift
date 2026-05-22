@@ -18,9 +18,9 @@ struct PromptEditorView: View {
     }
     
     let mode: Mode
-    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var enhancementService: AIEnhancementService
-    var onDismiss: (() -> Void)?
+    let onDismiss: () -> Void
+    let onSave: (CustomPrompt) -> Void
     @State private var title: String
     @State private var promptText: String
     @State private var selectedIcon: PromptIcon
@@ -35,10 +35,19 @@ struct PromptEditorView: View {
         }
         return false
     }
+
+    private var saveButtonTitle: String {
+        mode == .add ? "Create & Select" : "Save & Select"
+    }
     
-    init(mode: Mode, onDismiss: (() -> Void)? = nil) {
+    init(
+        mode: Mode,
+        onDismiss: @escaping () -> Void,
+        onSave: @escaping (CustomPrompt) -> Void
+    ) {
         self.mode = mode
         self.onDismiss = onDismiss
+        self.onSave = onSave
         switch mode {
         case .add:
             _title = State(initialValue: "")
@@ -58,42 +67,11 @@ struct PromptEditorView: View {
     }
     
     private func dismissPanel() {
-        if let onDismiss = onDismiss {
-            onDismiss()
-        } else {
-            dismiss()
-        }
+        onDismiss()
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack(spacing: 12) {
-                Text(isEditingPredefinedPrompt ? "Edit Trigger Words" : (mode == .add ? "New Prompt" : "Edit Prompt"))
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                Button(action: dismissPanel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Close")
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
-            .overlay(
-                Divider().opacity(0.5), alignment: .bottom
-            )
-
             // Content
             if isEditingPredefinedPrompt {
                 predefinedPromptForm
@@ -104,23 +82,33 @@ struct PromptEditorView: View {
             // Footer
             VStack(spacing: 0) {
                 HStack {
-                    Button("Cancel") { dismissPanel() }
+                    Button {
+                        dismissPanel()
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                            .labelStyle(.titleAndIcon)
+                    }
                         .keyboardShortcut(.escape, modifiers: [])
                         .buttonStyle(.plain)
                         .foregroundColor(.secondary)
+                        .help("Back")
+                        .accessibilityLabel("Back")
 
                     Spacer()
 
                     Button {
-                        save()
+                        if let savedPrompt = save() {
+                            onSave(savedPrompt)
+                        }
                         dismissPanel()
                     } label: {
-                        Text("Save Changes")
+                        Text(saveButtonTitle)
                             .frame(minWidth: 100)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(isEditingPredefinedPrompt ? false : (title.isEmpty || promptText.isEmpty))
                     .keyboardShortcut(.return, modifiers: .command)
+                    .help("Save this prompt and select it.")
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
@@ -176,9 +164,6 @@ struct PromptEditorView: View {
                     TextField("Prompt Name", text: $title)
                         .textFieldStyle(.roundedBorder)
                 }
-
-                TextField("Brief description", text: $description)
-                    .textFieldStyle(.roundedBorder)
             } header: {
                 Text("Details")
             }
@@ -199,13 +184,6 @@ struct PromptEditorView: View {
                     }
                 }
 
-                Toggle(isOn: $useSystemInstructions) {
-                    HStack(spacing: 4) {
-                        Text("Use System Template")
-                        InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
-                    }
-                }
-                .toggleStyle(.switch)
             } header: {
                 Text("Instructions")
             }
@@ -238,15 +216,27 @@ struct PromptEditorView: View {
                     .menuStyle(.borderlessButton)
                 }
             }
+
+            Section {
+                Toggle(isOn: $useSystemInstructions) {
+                    HStack(spacing: 4) {
+                        Text("Use System Template")
+                        InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
+                    }
+                }
+                .toggleStyle(.switch)
+            } header: {
+                Text("Advanced")
+            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
     }
 
-    private func save() {
+    private func save() -> CustomPrompt? {
         switch mode {
         case .add:
-            enhancementService.addPrompt(
+            return enhancementService.addPrompt(
                 title: title,
                 promptText: promptText,
                 icon: selectedIcon,
@@ -267,6 +257,7 @@ struct PromptEditorView: View {
                 useSystemInstructions: useSystemInstructions
             )
             enhancementService.updatePrompt(updatedPrompt)
+            return updatedPrompt
         }
     }
 }
