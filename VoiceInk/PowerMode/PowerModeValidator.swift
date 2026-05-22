@@ -4,8 +4,8 @@ import SwiftUI
 enum PowerModeValidationError: Error, Identifiable {
     case emptyName
     case duplicateName(String)
-    case duplicateAppTrigger(String, String) // (app name, existing power mode name)
-    case duplicateWebsiteTrigger(String, String) // (website, existing power mode name)
+    case duplicateAppTrigger(String, String) // (app name, existing mode name)
+    case duplicateWebsiteTrigger(String, String) // (website, existing mode name)
     
     var id: String {
         switch self {
@@ -19,13 +19,13 @@ enum PowerModeValidationError: Error, Identifiable {
     var localizedDescription: String {
         switch self {
         case .emptyName:
-            return "Power mode name cannot be empty."
+            return "Mode name cannot be empty."
         case .duplicateName(let name):
-            return "A power mode with the name '\(name)' already exists."
+            return "A mode with the name '\(name)' already exists."
         case .duplicateAppTrigger(let appName, let powerModeName):
-            return "The app '\(appName)' is already configured in the '\(powerModeName)' power mode."
+            return "The app '\(appName)' is already configured in the '\(powerModeName)' mode."
         case .duplicateWebsiteTrigger(let website, let powerModeName):
-            return "The website '\(website)' is already configured in the '\(powerModeName)' power mode."
+            return "The website '\(website)' is already configured in the '\(powerModeName)' mode."
         }
     }
 }
@@ -97,7 +97,7 @@ extension View {
         isPresented: Binding<Bool>
     ) -> some View {
         self.alert(
-            "Cannot Save Power Mode", 
+            "Cannot Save Mode",
             isPresented: isPresented,
             actions: {
                 Button("OK", role: .cancel) {}
@@ -111,4 +111,4 @@ extension View {
             }
         )
     }
-} 
+}

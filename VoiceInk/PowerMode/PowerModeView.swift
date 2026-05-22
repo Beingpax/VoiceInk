@@ -198,7 +198,7 @@ struct PowerModeView: View {
             ), dismissOnExitCommand: false) {
                 switch activePanel {
                 case .configuration(let mode)?:
-                    ConfigurationView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
+                    PowerModeConfigEditorView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
                         .id(panelID)
                 case .reorder?:
                     ReorderPanelView(powerModeManager: powerModeManager, onDismiss: closePanel)
