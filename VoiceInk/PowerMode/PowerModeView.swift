@@ -23,13 +23,6 @@ enum ConfigurationMode: Hashable {
         return false
     }
     
-    var title: String {
-        switch self {
-        case .add: return "Add Power Mode"
-        case .edit: return "Edit Power Mode"
-        }
-    }
-    
     func hash(into hasher: inout Hasher) {
         switch self {
         case .add:

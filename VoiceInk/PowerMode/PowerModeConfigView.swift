@@ -13,6 +13,7 @@ struct ConfigurationView: View {
     @State private var selectedEmoji: String = "💼"
     @State private var isShowingEmojiPicker = false
     @State private var isShowingAppPicker = false
+    @State private var isShowingWebsitePicker = false
     @State private var isAIEnhancementEnabled: Bool
     @State private var selectedPromptId: UUID?
     @State private var selectedTranscriptionModelName: String?
@@ -120,12 +121,30 @@ struct ConfigurationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack(spacing: 12) {
-                Text(mode.title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
+                Button {
+                    isShowingEmojiPicker.toggle()
+                } label: {
+                    Text(selectedEmoji)
+                        .font(.system(size: 22))
+                        .frame(width: 36, height: 36)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(NSColor.controlBackgroundColor))
+                        )
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $isShowingEmojiPicker, arrowEdge: .bottom) {
+                    EmojiPickerView(
+                        selectedEmoji: $selectedEmoji,
+                        isPresented: $isShowingEmojiPicker
+                    )
+                }
+
+                TextField("Mode name", text: $configName)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 16, weight: .semibold))
+                    .focused($isNameFieldFocused)
 
                 Spacer()
 
@@ -141,38 +160,11 @@ struct ConfigurationView: View {
                 .help("Close")
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.vertical, 12)
             .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider().opacity(0.5), alignment: .bottom)
 
             Form {
-                Section("General") {
-                    HStack(spacing: 12) {
-                        Button {
-                            isShowingEmojiPicker.toggle()
-                        } label: {
-                            Text(selectedEmoji)
-                                .font(.system(size: 22))
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color(NSColor.controlBackgroundColor))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .popover(isPresented: $isShowingEmojiPicker, arrowEdge: .bottom) {
-                            EmojiPickerView(
-                                selectedEmoji: $selectedEmoji,
-                                isPresented: $isShowingEmojiPicker
-                            )
-                        }
-
-                        TextField("Name", text: $configName)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($isNameFieldFocused)
-                    }
-                }
-
                 Section("Trigger Scenarios") {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
@@ -191,11 +183,7 @@ struct ConfigurationView: View {
                             }
                         }
 
-                        if selectedAppConfigs.isEmpty {
-                            Text("No applications added")
-                                .foregroundColor(.secondary)
-                                .font(.subheadline)
-                        } else {
+                        if !selectedAppConfigs.isEmpty {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 44, maximum: 50), spacing: 10)], spacing: 10) {
                                 ForEach(selectedAppConfigs) { appConfig in
                                     ZStack(alignment: .topTrailing) {
@@ -235,23 +223,21 @@ struct ConfigurationView: View {
                     .padding(.vertical, 2)
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Websites")
-
                         HStack {
-                            TextField("Enter website URL", text: $newWebsiteURL)
-                                .textFieldStyle(.roundedBorder)
-                                .onSubmit { addWebsite() }
-
-                            AddIconButton(helpText: "Add website", isDisabled: newWebsiteURL.isEmpty) {
-                                addWebsite()
+                            Text("Websites")
+                            Spacer()
+                            AddIconButton(helpText: "Add website") {
+                                isShowingWebsitePicker = true
+                            }
+                            .popover(isPresented: $isShowingWebsitePicker, arrowEdge: .bottom) {
+                                WebsitePickerPopover(
+                                    websiteURL: $newWebsiteURL,
+                                    onAdd: addWebsite
+                                )
                             }
                         }
 
-                        if websiteConfigs.isEmpty {
-                            Text("No websites added")
-                                .foregroundColor(.secondary)
-                                .font(.subheadline)
-                        } else {
+                        if !websiteConfigs.isEmpty {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 10)], spacing: 10) {
                                 ForEach(websiteConfigs) { urlConfig in
                                     HStack(spacing: 6) {
@@ -613,8 +599,15 @@ struct ConfigurationView: View {
     // MARK: - Actions
 
     private func addWebsite() {
-        guard !newWebsiteURL.isEmpty else { return }
-        let cleanedURL = powerModeManager.cleanURL(newWebsiteURL)
+        let trimmedURL = newWebsiteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedURL.isEmpty else { return }
+
+        let cleanedURL = powerModeManager.cleanURL(trimmedURL)
+        guard !websiteConfigs.contains(where: { $0.url == cleanedURL }) else {
+            newWebsiteURL = ""
+            return
+        }
+
         websiteConfigs.append(URLConfig(url: cleanedURL))
         newWebsiteURL = ""
     }
@@ -749,5 +742,45 @@ struct ConfigurationView: View {
         }
 
         ShortcutStore.removeShortcutStorage(for: .powerMode(powerModeConfigId))
+    }
+}
+
+private struct WebsitePickerPopover: View {
+    @Binding var websiteURL: String
+    let onAdd: () -> Void
+    @FocusState private var isURLFieldFocused: Bool
+
+    private var canAddWebsite: Bool {
+        !websiteURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TextField("Website URL", text: $websiteURL)
+                .textFieldStyle(.roundedBorder)
+                .focused($isURLFieldFocused)
+                .onSubmit(addWebsiteIfReady)
+
+            HStack {
+                Spacer()
+                Button("Add") {
+                    addWebsiteIfReady()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!canAddWebsite)
+            }
+        }
+        .padding(14)
+        .frame(width: 280)
+        .onAppear {
+            DispatchQueue.main.async {
+                isURLFieldFocused = true
+            }
+        }
+    }
+
+    private func addWebsiteIfReady() {
+        guard canAddWebsite else { return }
+        onAdd()
     }
 }
