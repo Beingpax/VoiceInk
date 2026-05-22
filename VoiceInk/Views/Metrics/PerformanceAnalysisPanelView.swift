@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Compact panel-optimized performance analysis view for sliding panels and sidebars.
+/// Compact panel-optimized performance analysis view for side panels and sidebars.
 struct PerformanceAnalysisPanelView: View {
     let transcriptions: [Transcription]
     let onClose: () -> Void

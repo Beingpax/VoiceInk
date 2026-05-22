@@ -63,10 +63,17 @@ struct PowerModeView: View {
     @StateObject private var powerModeManager = PowerModeManager.shared
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
-    @State private var configurationMode: ConfigurationMode?
-    @State private var isPanelOpen = false
+    @State private var activePanel: PanelType?
     @State private var panelID = UUID()
-    @State private var isReorderPanelOpen = false
+
+    private enum PanelType {
+        case configuration(ConfigurationMode)
+        case reorder
+    }
+
+    private var isPanelOpen: Bool {
+        activePanel != nil
+    }
     
     var body: some View {
             VStack(spacing: 0) {
@@ -192,47 +199,38 @@ struct PowerModeView: View {
                 .background(Color(NSColor.controlBackgroundColor))
             }
             .background(Color(NSColor.controlBackgroundColor))
-            .slidingPanel(isPresented: .init(
+            .sidePanel(isPresented: .init(
                 get: { isPanelOpen },
                 set: { if !$0 { closePanel() } }
-            ), width: 400) {
-                if let mode = configurationMode {
+            )) {
+                switch activePanel {
+                case .configuration(let mode)?:
                     ConfigurationView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
                         .id(panelID)
+                case .reorder?:
+                    ReorderPanelView(powerModeManager: powerModeManager, onDismiss: closePanel)
+                case nil:
+                    EmptyView()
                 }
-            }
-            .slidingPanel(isPresented: .init(
-                get: { isReorderPanelOpen },
-                set: { if !$0 { closeReorderPanel() } }
-            ), width: 400) {
-                ReorderPanelView(powerModeManager: powerModeManager, onDismiss: closeReorderPanel)
             }
     }
 
     private func openPanel(mode: ConfigurationMode) {
-        configurationMode = mode
         panelID = UUID()
         withAnimation(.smooth(duration: 0.3)) {
-            isPanelOpen = true
+            activePanel = .configuration(mode)
         }
     }
 
     private func closePanel() {
         withAnimation(.smooth(duration: 0.3)) {
-            isPanelOpen = false
-            configurationMode = nil
+            activePanel = nil
         }
     }
 
     private func openReorderPanel() {
         withAnimation(.smooth(duration: 0.3)) {
-            isReorderPanelOpen = true
-        }
-    }
-
-    private func closeReorderPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            isReorderPanelOpen = false
+            activePanel = .reorder
         }
     }
 }

@@ -26,8 +26,6 @@ struct ModelManagementView: View {
     @State private var selectedFilter: ModelFilter = .recommended
     @State private var isShowingSettings = false
 
-    private let settingsPanelWidth: CGFloat = 400
-
     // State for the unified alert
     @State private var isShowingDeleteAlert = false
     @State private var alertTitle = ""
@@ -55,7 +53,7 @@ struct ModelManagementView: View {
         }
         .frame(minWidth: 600, minHeight: 500)
         .background(Color(NSColor.controlBackgroundColor))
-        .slidingPanel(isPresented: $isShowingSettings, width: settingsPanelWidth) {
+        .sidePanel(isPresented: $isShowingSettings) {
             settingsPanelContent
         }
         .alert(isPresented: $isShowingDeleteAlert) {

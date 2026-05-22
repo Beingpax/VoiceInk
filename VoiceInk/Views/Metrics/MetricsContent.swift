@@ -92,6 +92,18 @@ struct MetricsContent: View {
         _hasLoadedMetricsSnapshot = State(initialValue: cachedSummary != nil)
     }
 
+    private func openModelStatsPanel() {
+        withAnimation(.smooth(duration: 0.3)) {
+            isModelStatsPanelPresented = true
+        }
+    }
+
+    private func closeModelStatsPanel() {
+        withAnimation(.smooth(duration: 0.3)) {
+            isModelStatsPanelPresented = false
+        }
+    }
+
     var body: some View {
         Group {
             if totalCount == 0 && hasLoadedMetricsSnapshot {
@@ -142,32 +154,14 @@ struct MetricsContent: View {
         .onDisappear {
             metricsTask?.cancel()
         }
-        .overlay {
-            Color.black.opacity(isModelStatsPanelPresented ? 0.1 : 0)
-                .ignoresSafeArea()
-                .allowsHitTesting(isModelStatsPanelPresented)
-                .onTapGesture {
-                    withAnimation(.smooth(duration: 0.3)) { isModelStatsPanelPresented = false }
-                }
-                .animation(.smooth(duration: 0.3), value: isModelStatsPanelPresented)
-        }
-        .overlay(alignment: .trailing) {
-            if isModelStatsPanelPresented {
-                ModelPerformancePanel {
-                    withAnimation(.smooth(duration: 0.3)) { isModelStatsPanelPresented = false }
-                }
-                .frame(width: 400)
-                .frame(maxHeight: .infinity)
-                .background(Color(NSColor.windowBackgroundColor))
-                .overlay(alignment: .leading) {
-                    Rectangle().fill(Color(NSColor.separatorColor)).frame(width: 1)
-                }
-                .shadow(color: .black.opacity(0.08), radius: 8, x: -2, y: 0)
-                .ignoresSafeArea()
-                .transition(.move(edge: .trailing))
+        .sidePanel(isPresented: .init(
+            get: { isModelStatsPanelPresented },
+            set: { newValue in
+                if !newValue { closeModelStatsPanel() }
             }
+        )) {
+            ModelPerformancePanel(onClose: closeModelStatsPanel)
         }
-        .animation(.smooth(duration: 0.3), value: isModelStatsPanelPresented)
     }
 
     private var accessibilityPermissionCallout: some View {
@@ -343,7 +337,7 @@ struct MetricsContent: View {
     private var footerActionsView: some View {
         HStack(spacing: 12) {
             Button(action: {
-                withAnimation(.smooth(duration: 0.3)) { isModelStatsPanelPresented = true }
+                openModelStatsPanel()
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "gauge")

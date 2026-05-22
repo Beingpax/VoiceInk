@@ -3,38 +3,39 @@ import UniformTypeIdentifiers
 
 struct EnhancementSettingsView: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
-    @State private var isEditingPrompt = false
-    @State private var isShowingSettings = false
-    @State private var selectedPromptForEdit: CustomPrompt?
+    @State private var activePanel: PanelType?
     @State private var panelID = UUID()
 
-    private let panelWidth: CGFloat = 400
-
     private enum PanelType {
-        case promptEditor
         case settings
+        case promptEditor(PromptEditorView.Mode)
     }
 
-    private var activePanel: PanelType? {
-        if isShowingSettings { return .settings }
-        if isEditingPrompt || selectedPromptForEdit != nil { return .promptEditor }
-        return nil
+    private var isSettingsPanelOpen: Bool {
+        if case .settings? = activePanel { return true }
+        return false
     }
 
     private var isPanelOpen: Bool {
         activePanel != nil
     }
 
-    private func openPromptPanel() {
-        isShowingSettings = false
+    private func openPromptPanel(mode: PromptEditorView.Mode) {
         panelID = UUID()
+        withAnimation(.smooth(duration: 0.3)) {
+            activePanel = .promptEditor(mode)
+        }
+    }
+
+    private func toggleSettingsPanel() {
+        withAnimation(.smooth(duration: 0.3)) {
+            activePanel = isSettingsPanelOpen ? nil : .settings
+        }
     }
 
     private func closePanel() {
         withAnimation(.smooth(duration: 0.3)) {
-            isEditingPrompt = false
-            selectedPromptForEdit = nil
-            isShowingSettings = false
+            activePanel = nil
         }
     }
 
@@ -56,15 +57,11 @@ struct EnhancementSettingsView: View {
                     Text("General")
                     Spacer()
                     Button {
-                        withAnimation(.smooth(duration: 0.3)) {
-                            isEditingPrompt = false
-                            selectedPromptForEdit = nil
-                            isShowingSettings.toggle()
-                        }
+                        toggleSettingsPanel()
                     } label: {
                         Image(systemName: "gear")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(isShowingSettings ? .accentColor : .secondary)
+                            .foregroundColor(isSettingsPanelOpen ? .accentColor : .secondary)
                     }
                     .buttonStyle(.plain)
                     .help("Enhancement settings")
@@ -81,10 +78,7 @@ struct EnhancementSettingsView: View {
                         enhancementService.setActivePrompt(prompt)
                     },
                     onEditPrompt: { prompt in
-                        openPromptPanel()
-                        withAnimation(.smooth(duration: 0.3)) {
-                            selectedPromptForEdit = prompt
-                        }
+                        openPromptPanel(mode: .edit(prompt))
                     },
                     onDeletePrompt: { prompt in
                         enhancementService.deletePrompt(prompt)
@@ -96,10 +90,7 @@ struct EnhancementSettingsView: View {
                     Text("Enhancement Prompts")
                     Spacer()
                     Button {
-                        openPromptPanel()
-                        withAnimation(.smooth(duration: 0.3)) {
-                            isEditingPrompt = true
-                        }
+                        openPromptPanel(mode: .add)
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 18))
@@ -115,27 +106,19 @@ struct EnhancementSettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .background(Color(NSColor.controlBackgroundColor))
-        .slidingPanel(isPresented: .init(
+        .sidePanel(isPresented: .init(
             get: { isPanelOpen },
             set: { newValue in
                 if !newValue { closePanel() }
             }
-        ), width: panelWidth) {
+        )) {
             Group {
                 switch activePanel {
-                case .settings:
+                case .settings?:
                     EnhancementSettingsPanel(onDismiss: closePanel)
-                case .promptEditor:
-                    Group {
-                        if let prompt = selectedPromptForEdit {
-                            PromptEditorView(mode: .edit(prompt)) {
-                                closePanel()
-                            }
-                        } else if isEditingPrompt {
-                            PromptEditorView(mode: .add) {
-                                closePanel()
-                            }
-                        }
+                case .promptEditor(let mode)?:
+                    PromptEditorView(mode: mode) {
+                        closePanel()
                     }
                     .id(panelID)
                 case nil:

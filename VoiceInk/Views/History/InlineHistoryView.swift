@@ -66,6 +66,22 @@ struct InlineHistoryView: View {
         return displayedTranscriptions.first { $0.id == id }
     }
 
+    private func openPanel(mode: PanelMode, transcriptionID: UUID? = nil) {
+        panelMode = mode
+        panelTranscriptionId = transcriptionID
+
+        withAnimation(.smooth(duration: 0.3)) {
+            isPanelPresented = true
+        }
+    }
+
+    private func closePanel() {
+        withAnimation(.smooth(duration: 0.3)) {
+            isPanelPresented = false
+            panelMode = .info
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             topBar
@@ -86,35 +102,14 @@ struct InlineHistoryView: View {
         .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.controlBackgroundColor))
-        .overlay {
-            Color.black.opacity(isPanelPresented ? 0.1 : 0)
-                .ignoresSafeArea()
-                .allowsHitTesting(isPanelPresented)
-                .onTapGesture {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        isPanelPresented = false
-                        panelMode = .info
-                    }
-                }
-                .animation(.smooth(duration: 0.3), value: isPanelPresented)
-        }
-        .overlay(alignment: .trailing) {
-            if isPanelPresented {
-                panelContent
-                    .frame(width: 400)
-                    .frame(maxHeight: .infinity)
-                    .background(Color(NSColor.windowBackgroundColor))
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .fill(Color(NSColor.separatorColor))
-                            .frame(width: 1)
-                    }
-                    .shadow(color: .black.opacity(0.08), radius: 8, x: -2, y: 0)
-                    .ignoresSafeArea()
-                    .transition(.move(edge: .trailing))
+        .sidePanel(isPresented: .init(
+            get: { isPanelPresented },
+            set: { newValue in
+                if !newValue { closePanel() }
             }
+        )) {
+            panelContent
         }
-        .animation(.smooth(duration: 0.3), value: isPanelPresented)
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 deleteSelectedTranscriptions()
@@ -180,8 +175,7 @@ struct InlineHistoryView: View {
             Spacer()
 
             Button(action: {
-                panelMode = .analysis
-                withAnimation(.smooth(duration: 0.3)) { isPanelPresented = true }
+                openPanel(mode: .analysis)
             }) {
                 Label("Analyze", systemImage: "chart.bar.xaxis")
                     .font(.system(size: 12, weight: .medium))
@@ -268,11 +262,7 @@ struct InlineHistoryView: View {
                         },
                         onToggleCheck: { toggleSelection(transcription) },
                         onShowInfo: {
-                            panelTranscriptionId = transcription.id
-                            panelMode = .info
-                            withAnimation(.smooth(duration: 0.3)) {
-                                isPanelPresented = true
-                            }
+                            openPanel(mode: .info, transcriptionID: transcription.id)
                         }
                     )
                 }
@@ -302,7 +292,7 @@ struct InlineHistoryView: View {
         .scrollContentBackground(.hidden)
     }
 
-    // MARK: - Sliding Panel
+    // MARK: - Side Panel
 
     @ViewBuilder
     private var panelContent: some View {
@@ -313,10 +303,7 @@ struct InlineHistoryView: View {
             PerformanceAnalysisPanelView(
                 transcriptions: Array(selectedTranscriptions),
                 onClose: {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        isPanelPresented = false
-                        panelMode = .info
-                    }
+                    closePanel()
                 }
             )
             .id(selectedTranscriptions.count)
@@ -331,10 +318,7 @@ struct InlineHistoryView: View {
                     .fontWeight(.semibold)
                 Spacer()
                 Button(action: {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        isPanelPresented = false
-                        panelMode = .info
-                    }
+                    closePanel()
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .medium))
@@ -429,7 +413,7 @@ struct InlineHistoryView: View {
         }
         if panelTranscriptionId == transcription.id {
             panelTranscriptionId = nil
-            isPanelPresented = false
+            closePanel()
         }
 
         selectedTranscriptions.remove(transcription)
@@ -617,4 +601,3 @@ private struct HistoryCardRow: View {
     }
 
 }
-
