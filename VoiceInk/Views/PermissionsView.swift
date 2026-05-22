@@ -5,6 +5,7 @@ import Cocoa
 class PermissionManager: ObservableObject {
     @Published var audioPermissionStatus = AVCaptureDevice.authorizationStatus(for: .audio)
     @Published var isAccessibilityEnabled = false
+    @Published var isInputMonitoringEnabled = false
     @Published var isScreenRecordingEnabled = false
     @Published var isKeyboardShortcutSet = false
     
@@ -37,6 +38,7 @@ class PermissionManager: ObservableObject {
     
     func checkAllPermissions() {
         checkAccessibilityPermissions()
+        checkInputMonitoringPermission()
         checkScreenRecordingPermission()
         checkAudioPermissionStatus()
         checkKeyboardShortcut()
@@ -47,6 +49,23 @@ class PermissionManager: ObservableObject {
         let accessibilityEnabled = AXIsProcessTrustedWithOptions(options)
         DispatchQueue.main.async {
             self.isAccessibilityEnabled = accessibilityEnabled
+        }
+    }
+
+    func checkInputMonitoringPermission() {
+        DispatchQueue.main.async {
+            self.isInputMonitoringEnabled = CGPreflightListenEventAccess()
+        }
+    }
+
+    func requestInputMonitoringPermission() {
+        let granted = CGRequestListenEventAccess()
+        DispatchQueue.main.async {
+            self.isInputMonitoringEnabled = granted || CGPreflightListenEventAccess()
+        }
+
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
         }
     }
     
@@ -223,6 +242,20 @@ struct PermissionsView: View {
                             )
                         },
                         checkPermission: { permissionManager.checkKeyboardShortcut() }
+                    )
+
+                    // Input Monitoring Permission
+                    PermissionCard(
+                        icon: "eye",
+                        title: "Input Monitoring",
+                        description: "Allow VoiceInk to listen for your global recording shortcut",
+                        isGranted: permissionManager.isInputMonitoringEnabled,
+                        buttonTitle: "Open System Settings",
+                        buttonAction: {
+                            permissionManager.requestInputMonitoringPermission()
+                        },
+                        checkPermission: { permissionManager.checkInputMonitoringPermission() },
+                        infoTipMessage: "VoiceInk uses Input Monitoring to detect your recording shortcut while you are using other apps. Local rebuilds can appear as a new app to macOS, so this permission may need to be granted again."
                     )
                     
                     // Audio Permission

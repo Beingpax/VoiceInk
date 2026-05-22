@@ -32,6 +32,7 @@ playground.xcworkspace
 .build/
 build/
 .local-build/
+.swiftpm-cache/
 
 # CocoaPods
 #

@@ -3,6 +3,9 @@ DEPS_DIR := $(HOME)/VoiceInk-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
+LOCAL_PACKAGE_CACHE := $(CURDIR)/.swiftpm-cache
+LOCAL_DOWNLOADS_DIR := $(HOME)/Downloads
+LOCAL_APP_DEST := $(LOCAL_DOWNLOADS_DIR)/VoiceInk.app
 
 .PHONY: all clean whisper setup build local check healthcheck help dev run
 
@@ -48,8 +51,11 @@ build: setup
 local: check setup
 	@echo "Building VoiceInk for local use (no Apple Developer certificate required)..."
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
+	@mkdir -p "$(LOCAL_PACKAGE_CACHE)"
+	GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.version GIT_CONFIG_VALUE_0=HTTP/1.1 \
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
+		-clonedSourcePackagesDirPath "$(LOCAL_PACKAGE_CACHE)" \
 		-xcconfig LocalBuild.xcconfig \
 		CODE_SIGN_IDENTITY="-" \
 		CODE_SIGNING_REQUIRED=NO \
@@ -60,13 +66,15 @@ local: check setup
 		build
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoiceInk.app" && \
 	if [ -d "$$APP_PATH" ]; then \
-		echo "Copying VoiceInk.app to ~/Downloads..."; \
-		rm -rf "$$HOME/Downloads/VoiceInk.app"; \
-		ditto "$$APP_PATH" "$$HOME/Downloads/VoiceInk.app"; \
-		xattr -cr "$$HOME/Downloads/VoiceInk.app"; \
+		echo "Moving VoiceInk.app to $(LOCAL_DOWNLOADS_DIR)..."; \
+		mkdir -p "$(LOCAL_DOWNLOADS_DIR)"; \
+		rm -rf "$(LOCAL_APP_DEST)"; \
+		ditto "$$APP_PATH" "$(LOCAL_APP_DEST)"; \
+		rm -rf "$$APP_PATH"; \
+		xattr -cr "$(LOCAL_APP_DEST)"; \
 		echo ""; \
-		echo "Build complete! App saved to: ~/Downloads/VoiceInk.app"; \
-		echo "Run with: open ~/Downloads/VoiceInk.app"; \
+		echo "Build complete! App moved to: $(LOCAL_APP_DEST)"; \
+		echo "Run with: open $(LOCAL_APP_DEST)"; \
 		echo ""; \
 		echo "Limitations of local builds:"; \
 		echo "  - No iCloud dictionary sync"; \
