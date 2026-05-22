@@ -20,7 +20,7 @@ struct SettingsView: View {
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
-    @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
+    @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
     @State private var showResetOnboardingAlert = false
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
     @State private var cancelRecordingShortcutRecorderResetID = 0
@@ -194,12 +194,24 @@ struct SettingsView: View {
                     }
                 }
 
-                // AppleScript Paste
-                Toggle(isOn: $useAppleScriptPaste) {
-                    HStack(spacing: 4) {
-                        Text("Use AppleScript Paste")
-                        InfoTip("Enable this if pasting doesn't work with your keyboard layout (e.g. Neo2). Uses AppleScript instead of simulated key events.")
+                // Paste Method
+                Picker(selection: $pasteMethodRawValue) {
+                    ForEach(PasteMethod.allCases) { method in
+                        Text(method.displayName).tag(method.rawValue)
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Paste Method")
+                        InfoTip("Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly.")
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: pasteMethodRawValue) { _, newValue in
+                    guard let method = PasteMethod(rawValue: newValue) else {
+                        pasteMethodRawValue = PasteMethod.standard.rawValue
+                        return
+                    }
+                    PasteMethod.setCurrent(method)
                 }
             }
 
