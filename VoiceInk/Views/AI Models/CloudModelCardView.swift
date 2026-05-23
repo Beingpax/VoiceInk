@@ -5,8 +5,6 @@ import LLMkit
 // MARK: - Cloud Model Card View
 struct CloudModelCardView: View {
     let model: CloudModel
-    let isCurrent: Bool
-    var setDefaultAction: () -> Void
 
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
@@ -14,10 +12,8 @@ struct CloudModelCardView: View {
     @State private var apiKey = ""
     @State private var streamingEnabled: Bool
 
-    init(model: CloudModel, isCurrent: Bool, setDefaultAction: @escaping () -> Void) {
+    init(model: CloudModel) {
         self.model = model
-        self.isCurrent = isCurrent
-        self.setDefaultAction = setDefaultAction
         let key = "streaming-enabled-\(model.name)"
         _streamingEnabled = State(initialValue: UserDefaults.standard.object(forKey: key) as? Bool ?? true)
     }
@@ -61,7 +57,7 @@ struct CloudModelCardView: View {
                     .padding(16)
             }
         }
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+        .background(GroupedCardBackground())
         .onAppear {
             loadSavedAPIKey()
         }
@@ -162,17 +158,8 @@ struct CloudModelCardView: View {
     
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            } else if isConfigured {
-                Button(action: setDefaultAction) {
-                    Text("Set as Default")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if isConfigured {
+                modelStatusPill("Connected", systemImage: "checkmark.circle")
             } else {
                 Button(action: {
                     withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
@@ -262,7 +249,7 @@ struct CloudModelCardView: View {
                         .foregroundColor(Color(.systemRed))
                 }
             } else if verificationStatus == .success {
-                Text("API key verified successfully!")
+                Text("Verified")
                     .font(.caption)
                     .foregroundColor(Color(.systemGreen))
             }
@@ -320,10 +307,6 @@ struct CloudModelCardView: View {
         apiKey = ""
         verificationStatus = .none
         verificationError = nil
-
-        if isCurrent {
-            transcriptionModelManager.clearCurrentTranscriptionModel()
-        }
 
         transcriptionModelManager.refreshAllAvailableModels()
 

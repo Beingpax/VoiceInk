@@ -93,6 +93,33 @@ final class APIKeyManager {
         return success
     }
 
+    // MARK: - Custom AI Provider API Keys
+
+    @discardableResult
+    func saveCustomAIProviderAPIKey(_ key: String, forProviderId providerId: UUID) -> Bool {
+        let keyIdentifier = customAIProviderKeyIdentifier(for: providerId)
+        let success = keychain.save(key, forKey: keyIdentifier)
+        if success {
+            logger.info("Saved API key for custom AI provider: \(providerId.uuidString, privacy: .public)")
+        }
+        return success
+    }
+
+    func getCustomAIProviderAPIKey(forProviderId providerId: UUID) -> String? {
+        let keyIdentifier = customAIProviderKeyIdentifier(for: providerId)
+        return keychain.getString(forKey: keyIdentifier)
+    }
+
+    @discardableResult
+    func deleteCustomAIProviderAPIKey(forProviderId providerId: UUID) -> Bool {
+        let keyIdentifier = customAIProviderKeyIdentifier(for: providerId)
+        let success = keychain.delete(forKey: keyIdentifier)
+        if success {
+            logger.info("Deleted API key for custom AI provider: \(providerId.uuidString, privacy: .public)")
+        }
+        return success
+    }
+
     // MARK: - Key Identifier Helpers
 
     /// Returns Keychain identifier for a provider (case-insensitive).
@@ -107,5 +134,9 @@ final class APIKeyManager {
     /// Generates Keychain identifier for custom model API key.
     private func customModelKeyIdentifier(for modelId: UUID) -> String {
         "customModel_\(modelId.uuidString)_APIKey"
+    }
+
+    private func customAIProviderKeyIdentifier(for providerId: UUID) -> String {
+        "customAIProvider_\(providerId.uuidString)_APIKey"
     }
 }

@@ -155,7 +155,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return []
         case .custom:
-            return []
+            return CustomAIProviderManager.shared.activeProvider?.trimmedModels ?? []
         case .openRouter:
             return []
         }
@@ -164,6 +164,15 @@ enum AIProvider: String, CaseIterable {
     var requiresAPIKey: Bool {
         switch self {
         case .ollama, .localCLI:
+            return false
+        default:
+            return true
+        }
+    }
+
+    var supportsEnhancement: Bool {
+        switch self {
+        case .elevenLabs, .deepgram, .soniox, .speechmatics, .assemblyAI:
             return false
         default:
             return true
@@ -213,11 +222,16 @@ class AIService: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
     private lazy var localCLIService = LocalCLIService()
+    private var apiKeyChangeObserver: NSObjectProtocol?
     
     @Published private var openRouterModels: [String] = []
     
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
+            guard provider.supportsEnhancement else {
+                return false
+            }
+
             if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider == .localCLI {
@@ -236,6 +250,13 @@ class AIService: ObservableObject {
             return selectedModel
         }
         return selectedProvider.defaultModel
+    }
+
+    func selectedModel(for provider: AIProvider) -> String {
+        if let selectedModel = selectedModels[provider], !selectedModel.isEmpty {
+            return selectedModel
+        }
+        return provider.defaultModel
     }
     
     var availableModels: [String] {
@@ -286,6 +307,47 @@ class AIService: ObservableObject {
 
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
+
+        apiKeyChangeObserver = NotificationCenter.default.addObserver(
+            forName: .aiProviderKeyChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.reloadSelectedProviderConfiguration()
+            }
+        }
+    }
+
+    deinit {
+        if let apiKeyChangeObserver {
+            NotificationCenter.default.removeObserver(apiKeyChangeObserver)
+        }
+    }
+
+    private func reloadSelectedProviderConfiguration() {
+        if selectedProvider == .custom {
+            customBaseURL = userDefaults.string(forKey: "customProviderBaseURL") ?? ""
+            customModel = userDefaults.string(forKey: "customProviderModel") ?? ""
+        }
+
+        let selectedModelKey = "\(selectedProvider.rawValue)SelectedModel"
+        if let savedModel = userDefaults.string(forKey: selectedModelKey), !savedModel.isEmpty {
+            selectedModels[selectedProvider] = savedModel
+        }
+
+        if selectedProvider.requiresAPIKey {
+            if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: selectedProvider.rawValue) {
+                apiKey = savedKey
+                isAPIKeyValid = true
+            } else {
+                apiKey = ""
+                isAPIKeyValid = false
+            }
+        } else {
+            apiKey = ""
+            isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+        }
     }
     
     private func loadSavedModelSelections() {
@@ -308,16 +370,20 @@ class AIService: ObservableObject {
     }
     
     func selectModel(_ model: String) {
+        selectModel(model, for: selectedProvider)
+    }
+
+    func selectModel(_ model: String, for provider: AIProvider) {
         guard !model.isEmpty else { return }
-        
-        selectedModels[selectedProvider] = model
-        let key = "\(selectedProvider.rawValue)SelectedModel"
+
+        selectedModels[provider] = model
+        let key = "\(provider.rawValue)SelectedModel"
         userDefaults.set(model, forKey: key)
-        
-        if selectedProvider == .ollama {
+
+        if provider == .ollama {
             updateSelectedOllamaModel(model)
         }
-        
+
         objectWillChange.send()
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
@@ -351,42 +417,52 @@ class AIService: ObservableObject {
         }
 
         Task {
-            let result: (isValid: Bool, errorMessage: String?)
-            switch selectedProvider {
-            case .anthropic:
-                result = await AnthropicLLMClient.verifyAPIKey(key)
-            case .elevenLabs:
-                result = await ElevenLabsClient.verifyAPIKey(key)
-            case .deepgram:
-                result = await DeepgramClient.verifyAPIKey(key)
-            case .mistral:
-                result = await MistralTranscriptionClient.verifyAPIKey(key)
-            case .soniox:
-                result = await SonioxClient.verifyAPIKey(key)
-            case .speechmatics:
-                result = await SpeechmaticsClient.verifyAPIKey(key)
-            case .assemblyAI:
-                result = await AssemblyAIClient.verifyAPIKey(key)
-            case .openRouter:
-                result = await OpenRouterClient.verifyAPIKey(key, model: currentModel)
-            case .gemini:
-                result = await GeminiTranscriptionClient.verifyAPIKey(key)
-            default:
-                guard let baseURL = URL(string: selectedProvider.baseURL) else {
-                    DispatchQueue.main.async {
-                        completion(false, "Invalid or missing base URL configuration")
-                    }
-                    return
-                }
-                result = await OpenAILLMClient.verifyAPIKey(
-                    baseURL: baseURL,
-                    apiKey: key,
-                    model: currentModel
-                )
-            }
+            let result = await verifyAPIKey(
+                key,
+                for: selectedProvider,
+                model: currentModel
+            )
             DispatchQueue.main.async {
                 completion(result.isValid, result.errorMessage)
             }
+        }
+    }
+
+    func verifyAPIKey(_ key: String, for provider: AIProvider, model: String? = nil) async -> (isValid: Bool, errorMessage: String?) {
+        guard provider.requiresAPIKey else {
+            return (true, nil)
+        }
+
+        let verificationModel = model ?? selectedModel(for: provider)
+
+        switch provider {
+        case .anthropic:
+            return await AnthropicLLMClient.verifyAPIKey(key)
+        case .elevenLabs:
+            return await ElevenLabsClient.verifyAPIKey(key)
+        case .deepgram:
+            return await DeepgramClient.verifyAPIKey(key)
+        case .mistral:
+            return await MistralTranscriptionClient.verifyAPIKey(key)
+        case .soniox:
+            return await SonioxClient.verifyAPIKey(key)
+        case .speechmatics:
+            return await SpeechmaticsClient.verifyAPIKey(key)
+        case .assemblyAI:
+            return await AssemblyAIClient.verifyAPIKey(key)
+        case .openRouter:
+            return await OpenRouterClient.verifyAPIKey(key, model: verificationModel)
+        case .gemini:
+            return await GeminiTranscriptionClient.verifyAPIKey(key)
+        default:
+            guard let baseURL = URL(string: provider.baseURL) else {
+                return (false, "Invalid or missing base URL configuration")
+            }
+            return await OpenAILLMClient.verifyAPIKey(
+                baseURL: baseURL,
+                apiKey: key,
+                model: verificationModel
+            )
         }
     }
     

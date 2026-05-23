@@ -11,7 +11,7 @@ struct AssemblyAIProvider: CloudProvider {
     var models: [CloudModel] {[
         CloudModel(
             name: "universal-3-pro",
-            displayName: "Universal-3 Pro (AssemblyAI)",
+            displayName: "Universal-3 Pro",
             description: "Highest-accuracy multilingual transcription with realtime support.",
             provider: .assemblyAI,
             speed: 0.94,
@@ -22,7 +22,7 @@ struct AssemblyAIProvider: CloudProvider {
         ),
         CloudModel(
             name: "universal-streaming",
-            displayName: "Universal-2 (AssemblyAI)",
+            displayName: "Universal-2",
             description: "Balanced multilingual transcription with auto-detect.",
             provider: .assemblyAI,
             speed: 0.96,

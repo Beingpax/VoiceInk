@@ -378,7 +378,7 @@ struct PowerModeConfigFormView: View {
                     }
                 } else {
                     Picker("AI Provider", selection: providerBinding) {
-                        ForEach(aiService.connectedProviders.filter { $0 != .elevenLabs && $0 != .deepgram }, id: \.self) { provider in
+                        ForEach(aiService.connectedProviders, id: \.self) { provider in
                             Text(provider.rawValue).tag(provider)
                         }
                     }
@@ -399,8 +399,7 @@ struct PowerModeConfigFormView: View {
     @ViewBuilder
     private var aiModelPicker: some View {
         let providerName = draft.selectedAIProvider ?? aiService.selectedProvider.rawValue
-        if let provider = AIProvider(rawValue: providerName),
-           provider != .custom {
+        if let provider = AIProvider(rawValue: providerName) {
             let models = aiService.availableModels(for: provider)
             if models.isEmpty {
                 LabeledContent("AI Model") {

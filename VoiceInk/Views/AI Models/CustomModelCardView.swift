@@ -4,8 +4,6 @@ import AppKit
 // MARK: - Custom Model Card View
 struct CustomModelCardView: View {
     let model: CustomCloudModel
-    let isCurrent: Bool
-    var setDefaultAction: () -> Void
     var deleteAction: () -> Void
     var editAction: (CustomCloudModel) -> Void
     
@@ -24,7 +22,7 @@ struct CustomModelCardView: View {
             }
             .padding(16)
         }
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+        .background(GroupedCardBackground())
     }
     
     private var headerSection: some View {
@@ -71,19 +69,8 @@ struct CustomModelCardView: View {
     
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            } else {
-                Button(action: setDefaultAction) {
-                    Text("Set as Default")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-            
+            modelStatusPill("Configured", systemImage: "checkmark.circle")
+
             Menu {
                 Button {
                     editAction(model)

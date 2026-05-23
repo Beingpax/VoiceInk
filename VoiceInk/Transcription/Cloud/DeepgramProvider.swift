@@ -17,7 +17,7 @@ struct DeepgramProvider: CloudProvider {
     var models: [CloudModel] {[
         CloudModel(
             name: "nova-3",
-            displayName: "Nova 3 (Deepgram)",
+            displayName: "Nova 3",
             description: "Deepgram's latest Nova 3 model for fast, accurate transcription",
             provider: .deepgram,
             speed: 0.99,
@@ -28,7 +28,7 @@ struct DeepgramProvider: CloudProvider {
         ),
         CloudModel(
             name: "nova-3-medical",
-            displayName: "Nova 3 Medical (Deepgram)",
+            displayName: "Nova 3 Medical",
             description: "Specialized medical transcription model optimized for clinical environments",
             provider: .deepgram,
             speed: 0.99,

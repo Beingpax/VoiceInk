@@ -21,7 +21,7 @@ struct ElevenLabsProvider: CloudProvider {
     var models: [CloudModel] {[
         CloudModel(
             name: "scribe_v1",
-            displayName: "Scribe v1 (ElevenLabs)",
+            displayName: "Scribe v1",
             description: "ElevenLabs' Scribe model for fast & accurate transcription",
             provider: .elevenLabs,
             speed: 0.7,
@@ -31,7 +31,7 @@ struct ElevenLabsProvider: CloudProvider {
         ),
         CloudModel(
             name: "scribe_v2",
-            displayName: "Scribe V2 (ElevenLabs)",
+            displayName: "Scribe V2",
             description: "ElevenLabs' Scribe V2 model for the most accurate transcription",
             provider: .elevenLabs,
             speed: 0.99,

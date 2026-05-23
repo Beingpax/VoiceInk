@@ -24,7 +24,7 @@ struct CartesiaProvider: CloudProvider {
     var models: [CloudModel] {[
         CloudModel(
             name: "ink-whisper",
-            displayName: "Ink Whisper (Cartesia)",
+            displayName: "Ink Whisper",
             description: "Cartesia's fastest streaming STT model — engineered for real-time voice agents with 90+ language support",
             provider: .cartesia,
             speed: 0.99,

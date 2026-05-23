@@ -84,4 +84,30 @@ struct CardBackground: View {
                 y: isSelected ? 8 : 5      // Slightly more y-offset for a lifted look
             )
     }
-} 
+}
+
+struct GroupedCardBackground: View {
+    var isSelected: Bool = false
+    var cornerRadius: CGFloat = 12
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(fillColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(
+                        isSelected ? Color.accentColor.opacity(0.75) : Color(NSColor.separatorColor).opacity(borderOpacity),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            )
+    }
+
+    private var fillColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.055) : Color.black.opacity(0.035)
+    }
+
+    private var borderOpacity: Double {
+        colorScheme == .dark ? 0.35 : 0.22
+    }
+}
