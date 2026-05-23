@@ -73,14 +73,12 @@ struct TranscriptionOutputFilter {
             }
         }
 
-        // Remove filler words (if enabled)
-        if FillerWordManager.shared.isEnabled {
-            for fillerWord in FillerWordManager.shared.fillerWords {
-                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: fillerWord))\\b[,.]?"
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                    let range = NSRange(filteredText.startIndex..., in: filteredText)
-                    filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
-                }
+        // Remove configured filler words. An empty list is naturally a no-op.
+        for fillerWord in FillerWordManager.shared.fillerWords {
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: fillerWord))\\b[,.]?"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                let range = NSRange(filteredText.startIndex..., in: filteredText)
+                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
             }
         }
 

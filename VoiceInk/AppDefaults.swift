@@ -23,7 +23,6 @@ enum AppDefaults {
             // Recording & Transcription
             "IsTextFormattingEnabled": true,
             "IsVADEnabled": true,
-            "RemoveFillerWords": true,
             "RemovePunctuation": false,
             "LowercaseTranscription": false,
             "SelectedLanguage": "en",

@@ -16,7 +16,6 @@ struct ModelManagementView: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @StateObject private var customModelManager = CustomCloudModelManager.shared
     @StateObject private var customAIProviderManager = CustomAIProviderManager.shared
-    @StateObject private var whisperPrompt = WhisperPrompt()
     @ObservedObject private var warmupCoordinator = WhisperModelWarmupCoordinator.shared
 
     @State private var selectedFilter: ModelFilter = .local
@@ -170,8 +169,7 @@ struct ModelManagementView: View {
                 Divider().opacity(0.5), alignment: .bottom
             )
 
-            // Content
-            ModelSettingsView(whisperPrompt: whisperPrompt)
+            ModelSettingsPanel()
         }
     }
 

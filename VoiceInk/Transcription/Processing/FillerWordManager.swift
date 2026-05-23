@@ -9,16 +9,11 @@ class FillerWordManager: ObservableObject {
     ]
 
     private let fillerWordsKey = "FillerWords"
-    private let removeFillerWordsKey = "RemoveFillerWords"
 
     @Published var fillerWords: [String] {
         didSet {
             UserDefaults.standard.set(fillerWords, forKey: fillerWordsKey)
         }
-    }
-
-    var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: removeFillerWordsKey)
     }
 
     private init() {

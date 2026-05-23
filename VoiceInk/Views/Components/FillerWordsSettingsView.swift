@@ -37,72 +37,106 @@ struct FillerWordChip: View {
     }
 }
 
-struct FillerWordsSettingsView: View {
-    @AppStorage("RemoveFillerWords") private var removeFillerWords = true
+struct FillerWordsSettingsSection: View {
     @StateObject private var fillerWordManager = FillerWordManager.shared
     @State private var newWord = ""
-    @State private var showDuplicateAlert = false
+    @State private var isShowingAddWord = false
+    @State private var errorMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Remove filler words")
-                InfoTip("Automatically remove filler words like 'uh', 'um', 'hmm' from transcriptions.")
-                Spacer()
-                Toggle("", isOn: $removeFillerWords)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-            }
-
-            if removeFillerWords {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        TextField("Add filler word", text: $newWord)
-                            .textFieldStyle(.roundedBorder)
-                            .accessibilityLabel("Add filler word")
-                            .onSubmit { addWord() }
-
-                        Button(action: addWord) {
-                            Image(systemName: "plus.circle.fill")
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(.blue)
-                                .font(.system(size: 16, weight: .semibold))
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Add filler word")
-                        .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                    .padding(.vertical, 4)
-
-                    if !fillerWordManager.fillerWords.isEmpty {
-                        FlowLayout(spacing: 6) {
-                            ForEach(fillerWordManager.fillerWords, id: \.self) { word in
-                                FillerWordChip(word: word) {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        fillerWordManager.removeWord(word)
-                                    }
-                                }
+        Section {
+            if !fillerWordManager.fillerWords.isEmpty {
+                FlowLayout(spacing: 6) {
+                    ForEach(fillerWordManager.fillerWords, id: \.self) { word in
+                        FillerWordChip(word: word) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                fillerWordManager.removeWord(word)
                             }
                         }
                     }
                 }
             }
+        } header: {
+            HStack {
+                HStack(spacing: 4) {
+                    Text("Remove Filler Words")
+                    InfoTip("Automatically remove configured filler words like 'uh', 'um', or 'hmm' from transcriptions. If no filler words are configured, this cleanup is skipped.")
+                }
+
+                Spacer()
+
+                Button {
+                    newWord = ""
+                    errorMessage = nil
+                    isShowingAddWord = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 18))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Add filler word")
+                .popover(isPresented: $isShowingAddWord, arrowEdge: .top) {
+                    addWordPopover
+                }
+            }
         }
-        .alert("Duplicate Word", isPresented: $showDuplicateAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("This filler word is already in the list.")
+    }
+
+    private var addWordPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Add Filler Word")
+                .font(.headline)
+
+            TextField("Filler word", text: $newWord)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { addWord() }
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            HStack {
+                Spacer()
+
+                Button("Cancel") {
+                    closeAddWordPopover()
+                }
+
+                Button("Add") {
+                    addWord()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
         }
+        .padding(16)
+        .frame(width: 260)
+    }
+
+    private func closeAddWordPopover() {
+        newWord = ""
+        errorMessage = nil
+        isShowingAddWord = false
     }
 
     private func addWord() {
         let trimmed = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            errorMessage = nil
+            return
+        }
 
-        if fillerWordManager.addWord(trimmed) {
-            newWord = ""
-        } else {
-            showDuplicateAlert = true
+        guard fillerWordManager.addWord(trimmed) else {
+            errorMessage = "This filler word already exists."
+            return
+        }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            closeAddWordPopover()
         }
     }
 }
