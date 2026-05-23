@@ -42,6 +42,21 @@ struct PowerModeConfigFormView: View {
         return enhancementService.allPrompts.first { $0.id == selectedPromptId }
     }
 
+    private var configuredSelectedAIProvider: AIProvider? {
+        let selectedProvider: AIProvider?
+        if let providerName = draft.selectedAIProvider {
+            selectedProvider = AIProvider(rawValue: providerName)
+        } else {
+            selectedProvider = aiService.selectedProvider
+        }
+
+        guard let selectedProvider,
+              aiService.connectedProviders.contains(selectedProvider) else {
+            return nil
+        }
+        return selectedProvider
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -389,47 +404,46 @@ struct PowerModeConfigFormView: View {
                     }
                 }
 
-                aiModelPicker
-                promptPicker
-                contextAwarenessRow
+                if let provider = configuredSelectedAIProvider {
+                    aiModelPicker(for: provider)
+                    promptPicker
+                    contextAwarenessRow
+                }
             }
         }
     }
 
     @ViewBuilder
-    private var aiModelPicker: some View {
-        let providerName = draft.selectedAIProvider ?? aiService.selectedProvider.rawValue
-        if let provider = AIProvider(rawValue: providerName) {
-            let models = aiService.availableModels(for: provider)
-            if models.isEmpty {
-                LabeledContent("AI Model") {
-                    Text(provider == .openRouter ? "No models loaded" : "No models available")
-                        .foregroundColor(.secondary)
-                        .italic()
+    private func aiModelPicker(for provider: AIProvider) -> some View {
+        let models = aiService.availableModels(for: provider)
+        if models.isEmpty {
+            LabeledContent("AI Model") {
+                Text(provider == .openRouter ? "No models loaded" : "No models available")
+                    .foregroundColor(.secondary)
+                    .italic()
+            }
+        } else {
+            let modelBinding = Binding<String>(
+                get: {
+                    if let model = draft.selectedAIModel, !model.isEmpty { return model }
+                    return aiService.selectedModel(for: provider)
+                },
+                set: { newModelValue in
+                    draft.selectedAIModel = newModelValue
                 }
-            } else {
-                let modelBinding = Binding<String>(
-                    get: {
-                        if let model = draft.selectedAIModel, !model.isEmpty { return model }
-                        return aiService.currentModel
-                    },
-                    set: { newModelValue in
-                        draft.selectedAIModel = newModelValue
-                    }
-                )
+            )
 
-                Picker("AI Model", selection: modelBinding) {
-                    ForEach(models, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
+            Picker("AI Model", selection: modelBinding) {
+                ForEach(models, id: \.self) { model in
+                    Text(model).tag(model)
                 }
+            }
 
-                if provider == .openRouter {
-                    Button("Refresh Models") {
-                        Task { await aiService.fetchOpenRouterModels() }
-                    }
-                    .help("Refresh models")
+            if provider == .openRouter {
+                Button("Refresh Models") {
+                    Task { await aiService.fetchOpenRouterModels() }
                 }
+                .help("Refresh models")
             }
         }
     }
