@@ -127,6 +127,13 @@ struct ConfigurationRow: View {
         }
         return "Default"
     }
+
+    private var hasVisibleMetadata: Bool {
+        (selectedModel.map { $0 != "Default" } ?? false) ||
+        (selectedLanguage.map { $0 != "Default" } ?? false) ||
+        config.isAIEnhancementEnabled ||
+        config.autoSendKey.isEnabled
+    }
     
     private var appCount: Int { return config.appConfigs?.count ?? 0 }
     private var websiteCount: Int { return config.urlConfigs?.count ?? 0 }
@@ -211,9 +218,7 @@ struct ConfigurationRow: View {
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
             
-            let usesAnyContext = config.useSelectedTextContext || config.useClipboardContext || config.useScreenCapture
-
-            if selectedModel != nil || selectedLanguage != nil || config.isAIEnhancementEnabled || config.autoSendKey.isEnabled {
+            if hasVisibleMetadata {
                 Divider()
                 
                 HStack(spacing: 8) {
@@ -285,23 +290,6 @@ struct ConfigurationRow: View {
                         )
                     }
                     if config.isAIEnhancementEnabled {
-                        if usesAnyContext {
-                            HStack(spacing: 4) {
-                                Image(systemName: "camera.viewfinder")
-                                    .font(.system(size: 10))
-                                Text("Context")
-                                    .font(.caption)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Capsule()
-                                .fill(Color(NSColor.controlBackgroundColor)))
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
-                            )
-                        }
-                        
                         HStack(spacing: 4) {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 10))
@@ -311,8 +299,11 @@ struct ConfigurationRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule()
-                            .fill(Color.accentColor.opacity(0.1)))
-                        .foregroundColor(.accentColor)
+                            .fill(Color(NSColor.controlBackgroundColor)))
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                        )
                     }
 
                     Spacer()
