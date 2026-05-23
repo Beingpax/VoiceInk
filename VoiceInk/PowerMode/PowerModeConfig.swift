@@ -250,8 +250,18 @@ class PowerModeManager: ObservableObject {
     }
 
     func moveConfigurations(fromOffsets: IndexSet, toOffset: Int) {
-        configurations.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        var updatedConfigurations = configurations
+        updatedConfigurations.move(fromOffsets: fromOffsets, toOffset: toOffset)
+        replaceConfigurations(updatedConfigurations)
+    }
+
+    func replaceConfigurations(_ updatedConfigurations: [PowerModeConfig]) {
+        guard configurations != updatedConfigurations else { return }
+
+        let previousEnabledConfigIds = enabledConfigurationIds
+        configurations = updatedConfigurations
         saveConfigurations()
+        postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
     }
 
     func getConfigurationForURL(_ url: String) -> PowerModeConfig? {
