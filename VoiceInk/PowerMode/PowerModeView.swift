@@ -61,7 +61,7 @@ struct PowerModeView: View {
 
     private enum PanelType {
         case configuration(ConfigurationMode)
-        case reorder
+        case settings
     }
 
     private var isPanelOpen: Bool {
@@ -110,11 +110,11 @@ struct PowerModeView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
 
-                            Button(action: { openReorderPanel() }) {
+                            Button(action: { openSettingsPanel() }) {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "arrow.up.arrow.down")
+                                    Image(systemName: "gearshape")
                                         .font(.system(size: 12, weight: .medium))
-                                    Text("Reorder")
+                                    Text("Settings")
                                         .font(.system(size: 13, weight: .medium))
                                 }
                                 .foregroundColor(.primary)
@@ -200,8 +200,8 @@ struct PowerModeView: View {
                 case .configuration(let mode)?:
                     PowerModeConfigEditorView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
                         .id(panelID)
-                case .reorder?:
-                    ReorderPanelView(powerModeManager: powerModeManager, onDismiss: closePanel)
+                case .settings?:
+                    PowerModeSettingsPanelView(powerModeManager: powerModeManager, onDismiss: closePanel)
                 case nil:
                     EmptyView()
                 }
@@ -221,22 +221,26 @@ struct PowerModeView: View {
         }
     }
 
-    private func openReorderPanel() {
+    private func openSettingsPanel() {
         withAnimation(.smooth(duration: 0.3)) {
-            activePanel = .reorder
+            activePanel = .settings
         }
     }
 }
 
-struct ReorderPanelView: View {
+struct PowerModeSettingsPanelView: View {
     @ObservedObject var powerModeManager: PowerModeManager
+    @AppStorage("powerModePersistConfig") private var persistModeConfig = false
     let onDismiss: () -> Void
+
+    private let contentInset: CGFloat = 20
+    private let rowCornerRadius: CGFloat = 10
 
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack(spacing: 12) {
-                Text("Reorder Power Modes")
+                Text("Modes Settings")
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
@@ -257,6 +261,44 @@ struct ReorderPanelView: View {
             .padding(.vertical, 16)
             .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider().opacity(0.5), alignment: .bottom)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Behavior")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 18)
+
+                Toggle(isOn: $persistModeConfig) {
+                    HStack(spacing: 6) {
+                        Text("Persist Mode Settings")
+                            .font(.system(size: 13, weight: .medium))
+
+                        InfoTip("When enabled, the Mode settings applied for recording stay active after the recording ends. When disabled, VoiceInk restores the transcription, enhancement, language, and model settings that were active before the Mode was applied.")
+
+                        Spacer(minLength: 8)
+                    }
+                }
+                .toggleStyle(.switch)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: rowCornerRadius)
+                        .fill(Color(NSColor.controlBackgroundColor))
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, contentInset)
+
+            HStack {
+                Text("Reorder Modes")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(.horizontal, contentInset)
+            .padding(.top, 18)
+            .padding(.bottom, 8)
 
             // Reorder list
             List {
@@ -304,10 +346,10 @@ struct ReorderPanelView: View {
                     .padding(.vertical, 8)
                     .padding(.horizontal, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: rowCornerRadius)
                             .fill(Color(NSColor.controlBackgroundColor))
                     )
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    .listRowInsets(EdgeInsets(top: 4, leading: contentInset, bottom: 4, trailing: contentInset))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                 }
@@ -315,7 +357,6 @@ struct ReorderPanelView: View {
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .padding(.top, 8)
         }
         .background(Color(NSColor.windowBackgroundColor))
         .onExitCommand(perform: onDismiss)
