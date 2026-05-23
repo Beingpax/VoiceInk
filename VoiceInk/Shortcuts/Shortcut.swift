@@ -93,7 +93,7 @@ struct Shortcut: Codable, Equatable {
             return normalizedFlags == modifierFlags
         }
 
-        return keyCode == eventKeyCode && normalizedFlags.isSuperset(of: modifierFlags)
+        return keyCode == eventKeyCode && normalizedFlags == modifierFlags
     }
 
     func shouldReleaseModifierEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags) -> Bool {
