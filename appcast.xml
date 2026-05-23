@@ -3,20 +3,19 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>1.78</title>
+            <title>1.79</title>
             <description><![CDATA[
-                <h3>What's New in v1.78</h3>
+                <h3>What's New in v1.79</h3>
                 <ul>
-                    <li>🛠️ Fixed reserved shortcuts issue & paste reliability</li>
-                    <li>🔊 Updated sound options</li>
-                    <li>✨ Added Gemini 3.5 Flash model</li>
+                    <li>🛠️ Fixed AppleScript paste crash</li>
+                    <li>⌨️ Fixed accidental Fn shortcut triggers</li>
                 </ul>
             ]]></description>
-            <pubDate>Thu, 21 May 2026 23:07:07 +0545</pubDate>
-            <sparkle:version>178</sparkle:version>
-            <sparkle:shortVersionString>1.78</sparkle:shortVersionString>
+            <pubDate>Sat, 23 May 2026 20:23:30 +0545</pubDate>
+            <sparkle:version>179</sparkle:version>
+            <sparkle:shortVersionString>1.79</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.78/VoiceInk.dmg" length="14407592" type="application/octet-stream" sparkle:edSignature="d2flnGSyH37YnoPhruoeGDqEdsVxUCYF9Q6XrAxs95lW39qcvSLWD8aLqmr1ZKD59CeiBvYIuZJ20So4a0D3Ag=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.79/VoiceInk.dmg" length="14406786" type="application/octet-stream" sparkle:edSignature="TI2RXCaX+lx8Dp7fERw9B4Ef+xHwJQxsshBnDClUAKsyafQjfM4DYOCm3Iz9dF7VaajUZccafIktBDsbtuRzCA=="/>
         </item>
     </channel>
 </rss>
