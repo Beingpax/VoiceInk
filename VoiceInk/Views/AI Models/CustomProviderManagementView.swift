@@ -1,101 +1,131 @@
 import SwiftUI
 import AppKit
+import LLMkit
 
 struct CustomProviderManagementView: View {
     @ObservedObject var customModelManager: CustomCloudModelManager
     @ObservedObject var customAIProviderManager: CustomAIProviderManager
-    @Binding var customModelToEdit: CustomCloudModel?
 
-    let onTranscriptionModelsChanged: () -> Void
+    let onAddTranscriptionModel: () -> Void
+    let onEditTranscriptionModel: (CustomCloudModel) -> Void
     let onDeleteTranscriptionModel: (CustomCloudModel) -> Void
-
-    @State private var customAIProviderToEdit: CustomAIProviderConfig?
+    let onAddEnhancementModel: () -> Void
+    let onEditEnhancementModel: (CustomAIProviderConfig) -> Void
+    let onDeleteEnhancementModel: (CustomAIProviderConfig) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 12) {
-                ProviderSectionHeader(
-                    title: "Custom Transcription",
-                    subtitle: "OpenAI-compatible audio transcription endpoints."
-                )
+            customTranscriptionSection
+            customEnhancementSection
+        }
+    }
 
-                if customModelManager.customModels.isEmpty {
-                    emptyState("No custom transcription models added")
-                } else {
-                    ForEach(customModelManager.customModels) { model in
-                        CustomModelCardView(
-                            model: model,
-                            deleteAction: {
-                                onDeleteTranscriptionModel(model)
-                            },
-                            editAction: { model in
-                                customModelToEdit = model
-                            }
-                        )
-                    }
+    private var customTranscriptionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "Custom Transcription Models",
+                subtitle: "Supports any provider that uses the same API format as OpenAI transcription.",
+                addHelp: "Add transcription model",
+                onAdd: onAddTranscriptionModel
+            )
+
+            if customModelManager.customModels.isEmpty {
+                CustomProviderEmptyState(
+                    systemImage: "waveform",
+                    title: "No Custom Transcription Models"
+                )
+            } else {
+                ForEach(customModelManager.customModels) { model in
+                    CustomModelCardView(
+                        model: model,
+                        deleteAction: {
+                            onDeleteTranscriptionModel(model)
+                        },
+                        editAction: onEditTranscriptionModel
+                    )
                 }
-
-                AddCustomModelCardView(
-                    customModelManager: customModelManager,
-                    onModelAdded: {
-                        onTranscriptionModelsChanged()
-                        customModelToEdit = nil
-                    },
-                    editingModel: customModelToEdit
-                )
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                ProviderSectionHeader(
-                    title: "Custom Enhancement",
-                    subtitle: "OpenAI-compatible chat completion providers for enhancement."
-                )
-
-                if customAIProviderManager.providers.isEmpty {
-                    emptyState("No custom enhancement providers added")
-                } else {
-                    ForEach(customAIProviderManager.providers) { provider in
-                        CustomAIProviderCard(
-                            provider: provider,
-                            isActive: customAIProviderManager.activeProviderID == provider.id,
-                            onActivate: {
-                                customAIProviderManager.activateProvider(provider.id)
-                            },
-                            onEdit: {
-                                customAIProviderToEdit = provider
-                            },
-                            onDelete: {
-                                customAIProviderManager.deleteProvider(provider)
-                            }
-                        )
-                    }
-                }
-
-                CustomAIProviderEditorView(
-                    manager: customAIProviderManager,
-                    editingProvider: customAIProviderToEdit,
-                    onFinishEditing: {
-                        customAIProviderToEdit = nil
-                    }
-                )
             }
         }
     }
 
-    private func emptyState(_ text: String) -> some View {
-        Text(text)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(ProviderSurface(cornerRadius: 10))
+    private var customEnhancementSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "Custom Enhancement Models",
+                subtitle: "Supports any provider that uses the same API format as OpenAI chat completion.",
+                addHelp: "Add enhancement model",
+                onAdd: onAddEnhancementModel
+            )
+
+            if customAIProviderManager.providers.isEmpty {
+                CustomProviderEmptyState(
+                    systemImage: "sparkles",
+                    title: "No Custom Enhancement Models"
+                )
+            } else {
+                ForEach(customAIProviderManager.providers) { provider in
+                    CustomEnhancementModelRow(
+                        provider: provider,
+                        onEdit: {
+                            onEditEnhancementModel(provider)
+                        },
+                        onDelete: {
+                            onDeleteEnhancementModel(provider)
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    private func sectionHeader(
+        title: String,
+        subtitle: String,
+        addHelp: String,
+        onAdd: @escaping () -> Void
+    ) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ProviderSectionHeader(title: title, subtitle: subtitle)
+
+            Spacer(minLength: 8)
+
+            Button(action: onAdd) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 18))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(addHelp)
+        }
+    }
+
+}
+
+private struct CustomProviderEmptyState: View {
+    let systemImage: String
+    let title: String
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.system(size: 32))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 22)
+        .padding(.horizontal, 20)
+        .background(ProviderSurface(cornerRadius: 10))
     }
 }
 
-private struct CustomAIProviderCard: View {
+private struct CustomEnhancementModelRow: View {
     let provider: CustomAIProviderConfig
-    let isActive: Bool
-    let onActivate: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
 
@@ -115,34 +145,16 @@ private struct CustomAIProviderCard: View {
                 )
 
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
-                    Text(provider.name)
-                        .font(.system(size: 13, weight: .semibold))
+                Text(provider.name)
+                    .font(.system(size: 13, weight: .semibold))
 
-                    if isActive {
-                        Text("Active")
-                            .font(.caption)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(Color.accentColor)
-                            .clipShape(Capsule())
-                    }
-                }
-
-                Text("\(provider.trimmedModels.count) models")
+                Text(provider.modelName.isEmpty ? "No model configured" : provider.modelName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer()
-
-            if !isActive {
-                Button("Use") {
-                    onActivate()
-                }
-                .controlSize(.small)
-            }
 
             Menu {
                 Button("Edit", action: onEdit)
@@ -156,227 +168,486 @@ private struct CustomAIProviderCard: View {
             .frame(width: 22, height: 22)
         }
         .padding(14)
-        .background(ProviderSurface(isActive: isActive, cornerRadius: 10))
+        .background(ProviderSurface(cornerRadius: 10))
     }
 }
 
-private struct CustomAIProviderEditorView: View {
-    @ObservedObject var manager: CustomAIProviderManager
-    let editingProvider: CustomAIProviderConfig?
-    let onFinishEditing: () -> Void
+struct CustomTranscriptionModelEditorPanel: View {
+    let editingModel: CustomCloudModel?
+    @ObservedObject var customModelManager: CustomCloudModelManager
+    let onClose: () -> Void
+    let onSave: () -> Void
 
-    @State private var isExpanded = false
-    @State private var providerName = ""
-    @State private var baseURL = ""
-    @State private var modelsText = ""
-    @State private var selectedModel = ""
+    @State private var displayName = ""
+    @State private var apiEndpoint = ""
     @State private var apiKey = ""
-    @State private var isVerifying = false
+    @State private var modelName = ""
+    @State private var isMultilingual = true
+    @State private var validationErrors: [String] = []
+    @State private var isSaving = false
+
+    private var isEditing: Bool {
+        editingModel != nil
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            editorHeader(title: isEditing ? "Edit Custom Transcription Model" : "Add Custom Transcription Model")
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    CustomModelEditorSection(title: "Details") {
+                        VStack(spacing: 10) {
+                            CustomModelTextField(label: "Display Name", placeholder: "My Custom Model", text: $displayName)
+                            CustomModelTextField(label: "API Endpoint", placeholder: "https://api.example.com/v1/audio/transcriptions", text: $apiEndpoint)
+                            if !isEditing {
+                                CustomModelTextField(label: "API Key", placeholder: "Paste API key", text: $apiKey, isSecure: true)
+                            }
+                            CustomModelTextField(label: "Model Name", placeholder: "whisper-1", text: $modelName)
+                            CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
+                        }
+                    }
+
+                    if !validationErrors.isEmpty {
+                        CustomModelErrorBox(messages: validationErrors)
+                    }
+                }
+                .padding(20)
+            }
+            .background(Color(NSColor.controlBackgroundColor))
+
+            editorFooter(
+                primaryTitle: isSaving ? "Saving" : isEditing ? "Save Changes" : "Add Model",
+                isPrimaryDisabled: !canSave || isSaving,
+                primaryAction: saveModel
+            )
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .onAppear(perform: loadModel)
+        .onChange(of: editingModel?.id) { _, _ in
+            loadModel()
+        }
+    }
+
+    private var canSave: Bool {
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (isEditing || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    private func loadModel() {
+        if let editingModel {
+            displayName = editingModel.displayName
+            apiEndpoint = editingModel.apiEndpoint
+            apiKey = ""
+            modelName = editingModel.modelName
+            isMultilingual = editingModel.isMultilingualModel
+        } else {
+            displayName = ""
+            apiEndpoint = "https://api.example.com/v1/audio/transcriptions"
+            apiKey = ""
+            modelName = "whisper-1"
+            isMultilingual = true
+        }
+
+        validationErrors = []
+        isSaving = false
+    }
+
+    private func saveModel() {
+        let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedEndpoint = apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedModelName = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let generatedName = trimmedDisplayName.lowercased().replacingOccurrences(of: " ", with: "-")
+
+        validationErrors = customModelManager.validateModelDetails(
+            name: generatedName,
+            displayName: trimmedDisplayName,
+            apiEndpoint: trimmedEndpoint,
+            modelName: trimmedModelName,
+            excludingId: editingModel?.id
+        )
+
+        if !isEditing && trimmedKey.isEmpty {
+            validationErrors.append("API key cannot be empty")
+        }
+
+        guard validationErrors.isEmpty else { return }
+        isSaving = true
+
+        if let editingModel {
+            let updatedModel = CustomCloudModel(
+                id: editingModel.id,
+                name: generatedName,
+                displayName: trimmedDisplayName,
+                description: "Custom transcription model",
+                apiEndpoint: trimmedEndpoint,
+                modelName: trimmedModelName,
+                isMultilingual: isMultilingual
+            )
+
+            customModelManager.updateCustomModel(updatedModel)
+        } else {
+            let customModel = CustomCloudModel(
+                name: generatedName,
+                displayName: trimmedDisplayName,
+                description: "Custom transcription model",
+                apiEndpoint: trimmedEndpoint,
+                modelName: trimmedModelName,
+                isMultilingual: isMultilingual
+            )
+
+            guard customModelManager.addCustomModel(customModel, apiKey: trimmedKey) else {
+                validationErrors = ["Failed to save API key securely"]
+                isSaving = false
+                return
+            }
+        }
+
+        isSaving = false
+        onSave()
+    }
+
+    private func editorHeader(title: String) -> some View {
+        CustomModelEditorHeader(title: title, onClose: onClose)
+    }
+
+    private func editorFooter(primaryTitle: String, isPrimaryDisabled: Bool, primaryAction: @escaping () -> Void) -> some View {
+        CustomModelEditorFooter(
+            primaryTitle: primaryTitle,
+            isPrimaryDisabled: isPrimaryDisabled,
+            onCancel: onClose,
+            onPrimary: primaryAction
+        )
+    }
+}
+
+struct CustomEnhancementModelEditorPanel: View {
+    let editingProvider: CustomAIProviderConfig?
+    @ObservedObject var manager: CustomAIProviderManager
+    let onClose: () -> Void
+    let onSave: () -> Void
+
+    @State private var displayName = ""
+    @State private var baseURL = ""
+    @State private var apiKey = ""
+    @State private var modelName = ""
     @State private var errorMessage: String?
+    @State private var isSaving = false
+    @State private var isVerifying = false
 
     private var isEditing: Bool {
         editingProvider != nil
     }
 
-    private var models: [String] {
-        modelsText
-            .components(separatedBy: .newlines)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            if !isExpanded {
-                Button {
-                    openEditor(with: editingProvider)
-                } label: {
-                    Label("Add Enhancement Provider", systemImage: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-            } else {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text(isEditing ? "Edit Enhancement Provider" : "Add Enhancement Provider")
-                            .font(.system(size: 14, weight: .semibold))
+            CustomModelEditorHeader(
+                title: isEditing ? "Edit Custom Enhancement Model" : "Add Custom Enhancement Model",
+                onClose: onClose
+            )
 
-                        Spacer()
-
-                        Button {
-                            closeEditor()
-                        } label: {
-                            Image(systemName: "xmark")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    CustomModelEditorSection(title: "Details") {
+                        VStack(spacing: 10) {
+                            CustomModelTextField(label: "Display Name", placeholder: "My Enhancement Model", text: $displayName)
+                            CustomModelTextField(label: "Base URL", placeholder: "https://api.example.com/v1/chat/completions", text: $baseURL)
+                            if !isEditing {
+                                CustomModelTextField(label: "API Key", placeholder: "Paste API key", text: $apiKey, isSecure: true)
+                            }
+                            CustomModelTextField(label: "Model Name", placeholder: "gpt-4.1", text: $modelName)
                         }
-                        .buttonStyle(.plain)
                     }
-
-                    FormField(title: "Provider Name", text: $providerName, placeholder: "My Provider")
-                    FormField(title: "Base URL", text: $baseURL, placeholder: "https://api.example.com/v1/chat/completions")
-
-                    ProviderConfigurationGroup(title: "Models") {
-                        TextEditor(text: $modelsText)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(minHeight: 72)
-                            .scrollContentBackground(.hidden)
-                            .padding(6)
-                            .background(Color(NSColor.textBackgroundColor))
-                            .clipShape(RoundedRectangle(cornerRadius: 7))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 7)
-                                    .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
-                            )
-                    }
-
-                    FormField(title: "Verification Model", text: $selectedModel, placeholder: "gpt-4.1")
-                    FormField(title: "API Key", text: $apiKey, placeholder: isEditing ? "Leave blank to keep saved key" : "your-api-key", isSecure: true)
 
                     if let errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-
-                    HStack {
-                        Button("Cancel") {
-                            closeEditor()
-                        }
-
-                        Spacer()
-
-                        Button {
-                            verifyAndSave()
-                        } label: {
-                            HStack(spacing: 6) {
-                                if isVerifying {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                }
-                                Text(isVerifying ? "Verifying" : isEditing ? "Save Changes" : "Verify & Add")
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isVerifying)
+                        CustomModelErrorBox(messages: [errorMessage])
                     }
                 }
-                .padding(16)
-                .background(ProviderSurface(cornerRadius: 10))
+                .padding(20)
             }
+            .background(Color(NSColor.controlBackgroundColor))
+
+            CustomModelEditorFooter(
+                primaryTitle: primaryButtonTitle,
+                isPrimaryDisabled: !canSave || isSaving || isVerifying,
+                onCancel: onClose,
+                onPrimary: saveProvider
+            )
         }
-        .onChange(of: editingProvider) { _, newValue in
-            guard let newValue else { return }
-            openEditor(with: newValue)
+        .background(Color(NSColor.controlBackgroundColor))
+        .onAppear(perform: loadProvider)
+        .onChange(of: editingProvider?.id) { _, _ in
+            loadProvider()
         }
     }
 
-    private func openEditor(with provider: CustomAIProviderConfig?) {
-        if let provider {
-            providerName = provider.name
-            baseURL = provider.baseURL
-            modelsText = provider.trimmedModels.joined(separator: "\n")
-            selectedModel = provider.selectedModel
+    private var canSave: Bool {
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (isEditing || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    private func loadProvider() {
+        if let editingProvider {
+            displayName = editingProvider.name
+            baseURL = editingProvider.baseURL
             apiKey = ""
+            modelName = editingProvider.modelName
         } else {
-            providerName = ""
-            baseURL = ""
-            modelsText = ""
-            selectedModel = ""
+            displayName = ""
+            baseURL = "https://api.example.com/v1/chat/completions"
             apiKey = ""
+            modelName = ""
         }
 
         errorMessage = nil
-        withAnimation(.smooth(duration: 0.22)) {
-            isExpanded = true
-        }
-    }
-
-    private func closeEditor() {
-        withAnimation(.smooth(duration: 0.22)) {
-            isExpanded = false
-        }
-        clearFields()
-        onFinishEditing()
-    }
-
-    private func clearFields() {
-        providerName = ""
-        baseURL = ""
-        modelsText = ""
-        selectedModel = ""
-        apiKey = ""
-        errorMessage = nil
+        isSaving = false
         isVerifying = false
     }
 
-    private func verifyAndSave() {
-        let trimmedName = providerName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedSelectedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        let finalModels = Array(Set(models + [trimmedSelectedModel])).filter { !$0.isEmpty }.sorted()
-        let finalSelectedModel = trimmedSelectedModel.isEmpty ? finalModels.first ?? "" : trimmedSelectedModel
+    private var primaryButtonTitle: String {
+        if isVerifying {
+            return "Verifying"
+        }
 
-        let validationErrors = manager.validateProvider(
+        if isSaving {
+            return "Saving"
+        }
+
+        return isEditing ? "Save Changes" : "Add Model"
+    }
+
+    private func saveProvider() {
+        let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedModelName = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var validationErrors = manager.validateProvider(
             name: trimmedName,
             baseURL: trimmedURL,
-            models: finalModels,
+            model: trimmedModelName,
             excluding: editingProvider?.id
         )
+
+        if !isEditing && trimmedKey.isEmpty {
+            validationErrors.append("API key cannot be empty")
+        }
 
         guard validationErrors.isEmpty else {
             errorMessage = validationErrors.joined(separator: "\n")
             return
         }
 
-        let keyToVerify = apiKey.isEmpty
-            ? editingProvider.map { manager.apiKey(for: $0) } ?? ""
-            : apiKey
+        errorMessage = nil
 
-        guard !keyToVerify.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errorMessage = "API key cannot be empty"
+        let provider = CustomAIProviderConfig(
+            id: editingProvider?.id ?? UUID(),
+            name: trimmedName,
+            baseURL: trimmedURL,
+            models: [trimmedModelName],
+            selectedModel: trimmedModelName
+        )
+
+        if isEditing {
+            isSaving = true
+            let didSave = manager.updateProvider(provider)
+            isSaving = false
+
+            if didSave {
+                onSave()
+            } else {
+                errorMessage = "Failed to save custom enhancement model"
+            }
+            return
+        }
+
+        guard let verificationURL = URL(string: trimmedURL) else {
+            errorMessage = "Base URL must be a valid URL"
             return
         }
 
         isVerifying = true
-        errorMessage = nil
 
         Task {
-            let result = await manager.verifyProvider(
-                baseURL: trimmedURL,
-                apiKey: keyToVerify,
-                model: finalSelectedModel
+            let result = await OpenAILLMClient.verifyAPIKey(
+                baseURL: verificationURL,
+                apiKey: trimmedKey,
+                model: trimmedModelName
             )
 
             await MainActor.run {
                 isVerifying = false
 
                 guard result.isValid else {
-                    errorMessage = result.errorMessage ?? "Verification failed"
+                    errorMessage = result.errorMessage ?? "Could not verify this API key"
                     return
                 }
 
-                let provider = CustomAIProviderConfig(
-                    id: editingProvider?.id ?? UUID(),
-                    name: trimmedName,
-                    baseURL: trimmedURL,
-                    models: finalModels,
-                    selectedModel: finalSelectedModel
-                )
-
-                let didSave: Bool
-                if isEditing {
-                    didSave = manager.updateProvider(provider, apiKey: apiKey.isEmpty ? nil : keyToVerify)
-                } else {
-                    didSave = manager.addProvider(provider, apiKey: keyToVerify)
-                }
+                isSaving = true
+                let didSave = manager.addProvider(provider, apiKey: trimmedKey)
+                isSaving = false
 
                 if didSave {
-                    closeEditor()
+                    onSave()
                 } else {
-                    errorMessage = "Failed to save the API key"
+                    errorMessage = "Failed to save API key securely"
                 }
             }
         }
+    }
+}
+
+private enum CustomModelEditorMetrics {
+    static let labelWidth: CGFloat = 112
+    static let fieldMaxWidth: CGFloat = 220
+}
+
+private struct CustomModelEditorSection<Content: View>: View {
+    let title: String
+    let content: () -> Content
+
+    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 0) {
+                content()
+            }
+            .padding(12)
+            .background(ProviderSurface(cornerRadius: 10))
+        }
+    }
+}
+
+private struct CustomModelTextField: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+    var isSecure = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
+
+            Group {
+                if isSecure {
+                    SecureField(placeholder, text: $text)
+                } else {
+                    TextField("", text: $text, prompt: Text(placeholder))
+                }
+            }
+            .textFieldStyle(.roundedBorder)
+            .font(.system(size: 12))
+            .frame(maxWidth: CustomModelEditorMetrics.fieldMaxWidth, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct CustomModelToggleRow: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct CustomModelErrorBox: View {
+    let messages: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(messages, id: \.self) { message in
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(ProviderSurface(cornerRadius: 10))
+    }
+}
+
+private struct CustomModelEditorHeader: View {
+    let title: String
+    let onClose: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .padding(6)
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Close")
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color(NSColor.windowBackgroundColor))
+        .overlay(Divider().opacity(0.5), alignment: .bottom)
+    }
+}
+
+private struct CustomModelEditorFooter: View {
+    let primaryTitle: String
+    let isPrimaryDisabled: Bool
+    let onCancel: () -> Void
+    let onPrimary: () -> Void
+
+    var body: some View {
+        HStack {
+            Button("Cancel", action: onCancel)
+                .keyboardShortcut(.cancelAction)
+
+            Spacer()
+
+            Button(primaryTitle, action: onPrimary)
+                .buttonStyle(.borderedProminent)
+                .disabled(isPrimaryDisabled)
+        }
+        .padding(20)
+        .background(Color(NSColor.windowBackgroundColor))
+        .overlay(Divider().opacity(0.5), alignment: .top)
     }
 }

@@ -5,7 +5,7 @@ import OSLog
 // ViewType enum with all cases
 enum ViewType: String, CaseIterable, Identifiable {
     case metrics = "Dashboard"
-    case mode = "Mode"
+    case modes = "Modes"
     case enhancement = "Enhancement"
     case models = "AI Models"
     case transcribeAudio = "Transcribe Audio"
@@ -25,7 +25,7 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
         case .enhancement: return "wand.and.stars"
-        case .mode: return "sparkles.square.fill.on.square"
+        case .modes: return "sparkles.square.fill.on.square"
         case .permissions: return "shield.fill"
         case .audioInput: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
@@ -130,28 +130,10 @@ struct ContentView: View {
             logger.notice("ContentView disappeared")
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
-            if let destination = notification.userInfo?["destination"] as? String {
+            if let destination = notification.userInfo?["destination"] as? String,
+               let viewType = ViewType.allCases.first(where: { $0.rawValue == destination }) {
                 logger.notice("navigateToDestination received: \(destination, privacy: .public)")
-                switch destination {
-                case "Settings":
-                    selectedView = .settings
-                case "AI Models":
-                    selectedView = .models
-                case "VoiceInk Pro":
-                    selectedView = .license
-                case "History":
-                    selectedView = .history
-                case "Permissions":
-                    selectedView = .permissions
-                case "Enhancement":
-                    selectedView = .enhancement
-                case "Transcribe Audio":
-                    selectedView = .transcribeAudio
-                case "Power Mode", "Mode":
-                    selectedView = .mode
-                default:
-                    break
-                }
+                selectedView = viewType
             }
         }
     }
@@ -173,7 +155,7 @@ struct ContentView: View {
             AudioInputSettingsView()
         case .dictionary:
             DictionarySettingsView(whisperPrompt: whisperModelManager.whisperPrompt)
-        case .mode:
+        case .modes:
             PowerModeView()
         case .settings:
             SettingsView()

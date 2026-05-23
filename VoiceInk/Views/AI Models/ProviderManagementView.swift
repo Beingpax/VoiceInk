@@ -241,7 +241,7 @@ struct CloudProviderManagementView: View {
         VStack(alignment: .leading, spacing: 12) {
             ProviderSectionHeader(
                 title: "Cloud Providers",
-                subtitle: "Connect providers here, then choose models inside Mode."
+                subtitle: "Connect providers here, then choose models inside Modes."
             )
 
             ForEach(providerDescriptors) { descriptor in

@@ -10,11 +10,10 @@ enum ModelFilter: String, CaseIterable, Identifiable {
 }
 
 struct ModelManagementView: View {
+    @EnvironmentObject private var aiService: AIService
     @EnvironmentObject private var whisperModelManager: WhisperModelManager
     @EnvironmentObject private var fluidAudioModelManager: FluidAudioModelManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject private var aiService: AIService
-    @State private var customModelToEdit: CustomCloudModel?
     @StateObject private var customModelManager = CustomCloudModelManager.shared
     @StateObject private var customAIProviderManager = CustomAIProviderManager.shared
     @StateObject private var whisperPrompt = WhisperPrompt()
@@ -32,6 +31,8 @@ struct ModelManagementView: View {
     private enum ModelManagementPanel {
         case settings
         case cloudProvider(ProviderDescriptor)
+        case customTranscriptionModel(CustomCloudModel?)
+        case customEnhancementModel(CustomAIProviderConfig?)
     }
 
     private var isSettingsPanelOpen: Bool {
@@ -65,6 +66,18 @@ struct ModelManagementView: View {
     private func openCloudProviderPanel(_ descriptor: ProviderDescriptor) {
         withAnimation(.smooth(duration: 0.3)) {
             activePanel = .cloudProvider(descriptor)
+        }
+    }
+
+    private func openCustomTranscriptionModelPanel(_ model: CustomCloudModel? = nil) {
+        withAnimation(.smooth(duration: 0.3)) {
+            activePanel = .customTranscriptionModel(model)
+        }
+    }
+
+    private func openCustomEnhancementModelPanel(_ provider: CustomAIProviderConfig? = nil) {
+        withAnimation(.smooth(duration: 0.3)) {
+            activePanel = .customEnhancementModel(provider)
         }
     }
 
@@ -106,6 +119,23 @@ struct ModelManagementView: View {
             ProviderDetailPanel(descriptor: descriptor, onClose: closePanel)
                 .environmentObject(aiService)
                 .environmentObject(transcriptionModelManager)
+        case .customTranscriptionModel(let model):
+            CustomTranscriptionModelEditorPanel(
+                editingModel: model,
+                customModelManager: customModelManager,
+                onClose: closePanel,
+                onSave: {
+                    transcriptionModelManager.refreshAllAvailableModels()
+                    closePanel()
+                }
+            )
+        case .customEnhancementModel(let provider):
+            CustomEnhancementModelEditorPanel(
+                editingProvider: provider,
+                manager: customAIProviderManager,
+                onClose: closePanel,
+                onSave: closePanel
+            )
         case nil:
             EmptyView()
         }
@@ -200,12 +230,23 @@ struct ModelManagementView: View {
                 CustomProviderManagementView(
                     customModelManager: customModelManager,
                     customAIProviderManager: customAIProviderManager,
-                    customModelToEdit: $customModelToEdit,
-                    onTranscriptionModelsChanged: {
-                        transcriptionModelManager.refreshAllAvailableModels()
+                    onAddTranscriptionModel: {
+                        openCustomTranscriptionModelPanel()
+                    },
+                    onEditTranscriptionModel: { model in
+                        openCustomTranscriptionModelPanel(model)
                     },
                     onDeleteTranscriptionModel: { model in
                         confirmDeleteCustomModel(model)
+                    },
+                    onAddEnhancementModel: {
+                        openCustomEnhancementModelPanel()
+                    },
+                    onEditEnhancementModel: { provider in
+                        openCustomEnhancementModelPanel(provider)
+                    },
+                    onDeleteEnhancementModel: { provider in
+                        confirmDeleteCustomEnhancementModel(provider)
                     }
                 )
             }
@@ -333,6 +374,15 @@ struct ModelManagementView: View {
         deleteActionClosure = {
             customModelManager.removeCustomModel(withId: model.id)
             transcriptionModelManager.refreshAllAvailableModels()
+        }
+        isShowingDeleteAlert = true
+    }
+
+    private func confirmDeleteCustomEnhancementModel(_ provider: CustomAIProviderConfig) {
+        alertTitle = "Delete Custom Enhancement Model"
+        alertMessage = "Are you sure you want to delete the custom enhancement model '\(provider.name)'?"
+        deleteActionClosure = {
+            customAIProviderManager.deleteProvider(provider)
         }
         isShowingDeleteAlert = true
     }

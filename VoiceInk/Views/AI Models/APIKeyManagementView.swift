@@ -3,6 +3,7 @@ import LLMkit
 
 struct APIKeyManagementView: View {
     @EnvironmentObject private var aiService: AIService
+    @ObservedObject private var customAIProviderManager = CustomAIProviderManager.shared
     @State private var apiKey: String = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -15,13 +16,23 @@ struct APIKeyManagementView: View {
     @State private var localCLICommandTemplate: String = ""
     @State private var localCLITimeoutSeconds: Double = LocalCLIService.defaultTimeoutSeconds
     @State private var isSyncingLocalCLIState = false
+
+    private var providerOptions: [AIProvider] {
+        AIProvider.allCases.filter { provider in
+            guard provider.supportsEnhancement else { return false }
+            if provider == .custom {
+                return customAIProviderManager.hasConfiguredModels
+            }
+            return true
+        }
+    }
     
     var body: some View {
         Section("AI Provider Integration") {
             HStack {
                 Picker("Provider", selection: $aiService.selectedProvider) {
-                    ForEach(AIProvider.allCases.filter { $0.supportsEnhancement }, id: \.self) { provider in
-                        Text(provider.rawValue).tag(provider)
+                    ForEach(providerOptions, id: \.self) { provider in
+                        Text(providerTitle(provider)).tag(provider)
                     }
                 }
                 .pickerStyle(.automatic)
@@ -57,6 +68,10 @@ struct APIKeyManagementView: View {
                     }
                 }
             }
+            .onAppear {
+                syncSelectedProviderAvailability()
+                syncSelectedCustomModelIfNeeded()
+            }
             .onChange(of: aiService.selectedProvider) { oldValue, newValue in
                 if aiService.selectedProvider == .ollama {
                     checkOllamaConnection()
@@ -64,6 +79,11 @@ struct APIKeyManagementView: View {
                 if aiService.selectedProvider == .localCLI {
                     syncLocalCLIStateFromService()
                 }
+                syncSelectedCustomModelIfNeeded()
+            }
+            .onChange(of: customAIProviderManager.providers) { _, _ in
+                syncSelectedProviderAvailability()
+                syncSelectedCustomModelIfNeeded()
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -106,8 +126,7 @@ struct APIKeyManagementView: View {
                     }
                     
                 } else if !aiService.availableModels.isEmpty &&
-                            aiService.selectedProvider != .ollama &&
-                            aiService.selectedProvider != .custom {
+                            aiService.selectedProvider != .ollama {
                     Picker("Model", selection: Binding(
                         get: { aiService.currentModel },
                         set: { aiService.selectModel($0) }
@@ -220,44 +239,10 @@ struct APIKeyManagementView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
-
                 } else if aiService.selectedProvider == .custom {
-                    TextField("API Endpoint URL", text: $aiService.customBaseURL, prompt: Text("e.g. https://api.openai.com/v1/chat/completions"))
-                        .textFieldStyle(.roundedBorder)
-
-                    Divider()
-
-                    TextField("Model Name", text: $aiService.customModel, prompt: Text("e.g. gemini-3.1-pro-preview, gpt-5.5"))
-                        .textFieldStyle(.roundedBorder)
-
-                    Divider()
-
-                    if aiService.isAPIKeyValid {
-                        HStack {
-                            Text("API Key Set")
-                            Spacer()
-                            Button("Remove Key", role: .destructive) {
-                                aiService.clearAPIKey()
-                            }
-                        }
-                    } else {
-                        SecureField("API Key", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-
-                        Button("Verify and Save") {
-                            isVerifying = true
-                            aiService.saveAPIKey(apiKey) { success, errorMessage in
-                                isVerifying = false
-                                if !success {
-                                    alertMessage = errorMessage ?? "Verification failed"
-                                    showAlert = true
-                                }
-                                apiKey = ""
-                            }
-                        }
-                        .disabled(aiService.customBaseURL.isEmpty || aiService.customModel.isEmpty || apiKey.isEmpty)
-                    }
-                    
+                    Text("Manage custom enhancement models in the Custom tab.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 } else {
                     if aiService.isAPIKeyValid {
                         HStack {
@@ -328,6 +313,30 @@ struct APIKeyManagementView: View {
             if aiService.selectedProvider == .localCLI {
                 syncLocalCLIStateFromService()
             }
+        }
+    }
+
+    private func providerTitle(_ provider: AIProvider) -> String {
+        provider == .custom ? "Custom Models" : provider.rawValue
+    }
+
+    private func syncSelectedProviderAvailability() {
+        guard !providerOptions.contains(aiService.selectedProvider),
+              let fallbackProvider = providerOptions.first else {
+            return
+        }
+
+        aiService.selectedProvider = fallbackProvider
+    }
+
+    private func syncSelectedCustomModelIfNeeded() {
+        guard aiService.selectedProvider == .custom else { return }
+
+        let models = aiService.availableModels
+        if models.contains(aiService.currentModel) {
+            aiService.selectModel(aiService.currentModel)
+        } else if let defaultModel = models.first {
+            aiService.selectModel(defaultModel)
         }
     }
 

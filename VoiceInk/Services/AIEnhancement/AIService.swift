@@ -83,7 +83,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return "local-cli"
         case .custom:
-            return UserDefaults.standard.string(forKey: "customProviderModel") ?? ""
+            return CustomAIProviderManager.shared.defaultModelName
         case .openRouter:
             return "openai/gpt-oss-120b"
         }
@@ -155,7 +155,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return []
         case .custom:
-            return CustomAIProviderManager.shared.activeProvider?.trimmedModels ?? []
+            return CustomAIProviderManager.shared.availableModelNames
         case .openRouter:
             return []
         }
@@ -232,7 +232,9 @@ class AIService: ObservableObject {
                 return false
             }
 
-            if provider == .ollama {
+            if provider == .custom {
+                return CustomAIProviderManager.shared.hasConfiguredModels
+            } else if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider == .localCLI {
                 return localCLIService.isConfigured
@@ -280,6 +282,8 @@ class AIService: ObservableObject {
             return ollamaService.availableModels.map { $0.name }
         } else if provider == .openRouter {
             return openRouterModels
+        } else if provider == .custom {
+            return CustomAIProviderManager.shared.availableModelNames
         }
         return provider.availableModels
     }
@@ -376,12 +380,18 @@ class AIService: ObservableObject {
     func selectModel(_ model: String, for provider: AIProvider) {
         guard !model.isEmpty else { return }
 
+        if provider == .custom {
+            guard CustomAIProviderManager.shared.applyConfiguration(forModel: model) else { return }
+        }
+
         selectedModels[provider] = model
         let key = "\(provider.rawValue)SelectedModel"
         userDefaults.set(model, forKey: key)
 
         if provider == .ollama {
             updateSelectedOllamaModel(model)
+        } else if provider == .custom {
+            reloadSelectedProviderConfiguration()
         }
 
         objectWillChange.send()

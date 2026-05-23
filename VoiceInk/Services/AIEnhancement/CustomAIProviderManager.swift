@@ -1,5 +1,4 @@
 import Foundation
-import LLMkit
 import os
 
 struct CustomAIProviderConfig: Identifiable, Codable, Hashable {
@@ -22,62 +21,95 @@ struct CustomAIProviderConfig: Identifiable, Codable, Hashable {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
     }
+
+    var modelName: String {
+        let trimmedSelectedModel = selectedModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedSelectedModel.isEmpty {
+            return trimmedSelectedModel
+        }
+        return trimmedModels.first ?? ""
+    }
+
+    var normalizedForStorage: CustomAIProviderConfig {
+        let resolvedModelName = self.modelName
+        return CustomAIProviderConfig(
+            id: id,
+            name: name,
+            baseURL: baseURL,
+            models: resolvedModelName.isEmpty ? [] : [resolvedModelName],
+            selectedModel: resolvedModelName
+        )
+    }
 }
 
 final class CustomAIProviderManager: ObservableObject {
     static let shared = CustomAIProviderManager()
 
     @Published private(set) var providers: [CustomAIProviderConfig] = []
-    @Published private(set) var activeProviderID: UUID?
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CustomAIProviderManager")
     private let providersKey = "customAIProviders"
-    private let activeProviderKey = "activeCustomAIProviderID"
     private let defaults = UserDefaults.standard
 
     private init() {
         loadProviders()
         migrateLegacyCustomProviderIfNeeded()
-        loadActiveProvider()
-        activateStoredProviderIfNeeded()
     }
 
-    var activeProvider: CustomAIProviderConfig? {
-        guard let activeProviderID else { return nil }
-        return providers.first { $0.id == activeProviderID }
+    var availableModelNames: [String] {
+        providers.reduce(into: [String]()) { result, provider in
+            let modelName = provider.modelName
+            guard !modelName.isEmpty,
+                  hasAPIKey(for: provider),
+                  !result.contains(modelName) else { return }
+            result.append(modelName)
+        }
     }
 
+    var defaultModelName: String {
+        let savedModel = defaults.string(forKey: "customProviderModel")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let configuredModelNames = availableModelNames
+        if !savedModel.isEmpty, configuredModelNames.contains(savedModel) {
+            return savedModel
+        }
+
+        return configuredModelNames.first ?? ""
+    }
+
+    var hasConfiguredModels: Bool {
+        providers.contains { provider in
+            !provider.modelName.isEmpty && hasAPIKey(for: provider)
+        }
+    }
+
+    @discardableResult
     func addProvider(_ provider: CustomAIProviderConfig, apiKey: String) -> Bool {
-        providers.append(provider)
-        guard APIKeyManager.shared.saveCustomAIProviderAPIKey(apiKey, forProviderId: provider.id) else {
-            providers.removeAll { $0.id == provider.id }
+        let normalizedProvider = provider.normalizedForStorage
+        let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKey.isEmpty,
+              APIKeyManager.shared.saveCustomAIProviderAPIKey(trimmedKey, forProviderId: normalizedProvider.id) else {
             return false
         }
-        saveProviders()
 
-        if activeProviderID == nil {
-            activateProvider(provider.id)
-        }
+        providers.append(normalizedProvider)
+        saveProviders()
 
         return true
     }
 
-    func updateProvider(_ provider: CustomAIProviderConfig, apiKey: String?) -> Bool {
-        guard let index = providers.firstIndex(where: { $0.id == provider.id }) else {
+    func updateProvider(_ provider: CustomAIProviderConfig) -> Bool {
+        let normalizedProvider = provider.normalizedForStorage
+        guard let index = providers.firstIndex(where: { $0.id == normalizedProvider.id }) else {
             return false
         }
 
-        if let apiKey, !apiKey.isEmpty {
-            guard APIKeyManager.shared.saveCustomAIProviderAPIKey(apiKey, forProviderId: provider.id) else {
-                return false
-            }
-        }
-
-        providers[index] = provider
+        let previousModelName = providers[index].modelName
+        providers[index] = normalizedProvider
         saveProviders()
 
-        if activeProviderID == provider.id {
-            applyLegacyCustomProvider(provider)
+        let selectedModelName = defaults.string(forKey: "customProviderModel")
+        if selectedModelName == previousModelName || selectedModelName == normalizedProvider.modelName {
+            applyRuntimeConfiguration(normalizedProvider)
         }
 
         return true
@@ -87,41 +119,38 @@ final class CustomAIProviderManager: ObservableObject {
         providers.removeAll { $0.id == provider.id }
         APIKeyManager.shared.deleteCustomAIProviderAPIKey(forProviderId: provider.id)
 
-        if activeProviderID == provider.id {
-            activeProviderID = providers.first?.id
-            saveActiveProviderID()
-            if let next = activeProvider {
-                applyLegacyCustomProvider(next)
-            } else {
-                clearLegacyCustomProvider()
-            }
+        if defaults.string(forKey: "customProviderModel") == provider.modelName {
+            clearRuntimeConfiguration()
         }
 
         saveProviders()
     }
 
-    func activateProvider(_ id: UUID) {
-        guard providers.contains(where: { $0.id == id }) else { return }
-        activeProviderID = id
-        saveActiveProviderID()
+    @discardableResult
+    func applyConfiguration(forModel modelName: String) -> Bool {
+        guard let provider = provider(forModel: modelName) else { return false }
+        guard hasAPIKey(for: provider) else { return false }
+        applyRuntimeConfiguration(provider)
+        return true
+    }
 
-        if let provider = activeProvider {
-            applyLegacyCustomProvider(provider)
+    func provider(forModel modelName: String) -> CustomAIProviderConfig? {
+        let trimmedModelName = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedModelName.isEmpty else { return nil }
+
+        return providers.first {
+            $0.modelName == trimmedModelName || $0.trimmedModels.contains(trimmedModelName)
         }
     }
 
-    func apiKey(for provider: CustomAIProviderConfig) -> String {
-        APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id) ?? ""
-    }
-
-    func validateProvider(name: String, baseURL: String, models: [String], excluding id: UUID? = nil) -> [String] {
+    func validateProvider(name: String, baseURL: String, model: String, excluding id: UUID? = nil) -> [String] {
         var errors: [String] = []
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedURL = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedModels = models.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if trimmedName.isEmpty {
-            errors.append("Provider name cannot be empty")
+            errors.append("Display name cannot be empty")
         }
 
         if trimmedURL.isEmpty {
@@ -130,27 +159,19 @@ final class CustomAIProviderManager: ObservableObject {
             errors.append("Base URL must be a valid URL")
         }
 
-        if trimmedModels.isEmpty {
-            errors.append("At least one model is required")
+        if trimmedModel.isEmpty {
+            errors.append("Model name cannot be empty")
         }
 
         if providers.contains(where: { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame && $0.id != id }) {
-            errors.append("A provider with this name already exists")
+            errors.append("A custom enhancement model with this display name already exists")
+        }
+
+        if providers.contains(where: { $0.modelName.caseInsensitiveCompare(trimmedModel) == .orderedSame && $0.id != id }) {
+            errors.append("A custom enhancement model with this model name already exists")
         }
 
         return errors
-    }
-
-    func verifyProvider(baseURL: String, apiKey: String, model: String) async -> (isValid: Bool, errorMessage: String?) {
-        guard let url = URL(string: baseURL) else {
-            return (false, "Invalid base URL")
-        }
-
-        return await OpenAILLMClient.verifyAPIKey(
-            baseURL: url,
-            apiKey: apiKey,
-            model: model
-        )
     }
 
     private func loadProviders() {
@@ -173,24 +194,12 @@ final class CustomAIProviderManager: ObservableObject {
         }
     }
 
-    private func loadActiveProvider() {
-        guard let rawID = defaults.string(forKey: activeProviderKey),
-              let id = UUID(uuidString: rawID),
-              providers.contains(where: { $0.id == id }) else {
-            activeProviderID = providers.first?.id
-            saveActiveProviderID()
-            return
+    private func hasAPIKey(for provider: CustomAIProviderConfig) -> Bool {
+        guard let key = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id) else {
+            return false
         }
-        activeProviderID = id
-    }
 
-    private func saveActiveProviderID() {
-        defaults.set(activeProviderID?.uuidString, forKey: activeProviderKey)
-    }
-
-    private func activateStoredProviderIfNeeded() {
-        guard let provider = activeProvider else { return }
-        applyLegacyCustomProvider(provider)
+        return !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func migrateLegacyCustomProviderIfNeeded() {
@@ -217,10 +226,12 @@ final class CustomAIProviderManager: ObservableObject {
         saveProviders()
     }
 
-    private func applyLegacyCustomProvider(_ provider: CustomAIProviderConfig) {
+    private func applyRuntimeConfiguration(_ provider: CustomAIProviderConfig) {
+        let modelName = provider.modelName
+
         defaults.set(provider.baseURL, forKey: "customProviderBaseURL")
-        defaults.set(provider.selectedModel, forKey: "customProviderModel")
-        defaults.set(provider.selectedModel, forKey: "\(AIProvider.custom.rawValue)SelectedModel")
+        defaults.set(modelName, forKey: "customProviderModel")
+        defaults.set(modelName, forKey: "\(AIProvider.custom.rawValue)SelectedModel")
 
         if let key = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id), !key.isEmpty {
             APIKeyManager.shared.saveAPIKey(key, forProvider: AIProvider.custom.rawValue)
@@ -230,7 +241,7 @@ final class CustomAIProviderManager: ObservableObject {
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
 
-    private func clearLegacyCustomProvider() {
+    private func clearRuntimeConfiguration() {
         defaults.removeObject(forKey: "customProviderBaseURL")
         defaults.removeObject(forKey: "customProviderModel")
         defaults.removeObject(forKey: "\(AIProvider.custom.rawValue)SelectedModel")
