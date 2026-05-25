@@ -344,7 +344,7 @@ class ImportExportService {
             alert.messageText = "Import Successful"
             var informativeText = message
             if needsAPIKeyReminder {
-                informativeText += "\n\nIMPORTANT: If you were using AI enhancement features, please make sure to reconfigure your API keys in the Enhancement section."
+                informativeText += "\n\nIMPORTANT: If you were using AI enhancement features, please make sure to reconfigure your API keys in the AI Models section."
             }
             informativeText += "\n\nIt is recommended to restart VoiceInk for all changes to take full effect."
             alert.informativeText = informativeText
@@ -359,7 +359,7 @@ class ImportExportService {
                 NotificationCenter.default.post(
                     name: .navigateToDestination,
                     object: nil,
-                    userInfo: ["destination": "Enhancement"]
+                    userInfo: ["destination": "AI Models"]
                 )
             }
         }

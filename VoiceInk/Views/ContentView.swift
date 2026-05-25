@@ -6,7 +6,6 @@ import OSLog
 enum ViewType: String, CaseIterable, Identifiable {
     case metrics = "Dashboard"
     case modes = "Modes"
-    case enhancement = "Enhancement"
     case models = "AI Models"
     case transcribeAudio = "Transcribe Audio"
     case history = "History"
@@ -24,7 +23,6 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .transcribeAudio: return "waveform.circle.fill"
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
-        case .enhancement: return "wand.and.stars"
         case .modes: return "sparkles.square.fill.on.square"
         case .permissions: return "shield.fill"
         case .audioInput: return "mic.fill"
@@ -145,8 +143,6 @@ struct ContentView: View {
             MetricsView()
         case .models:
             ModelManagementView()
-        case .enhancement:
-            EnhancementSettingsView()
         case .transcribeAudio:
             AudioTranscribeView()
         case .history:
