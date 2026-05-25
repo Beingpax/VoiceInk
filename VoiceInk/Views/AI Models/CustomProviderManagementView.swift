@@ -199,11 +199,11 @@ struct CustomTranscriptionModelEditorPanel: View {
                     CustomModelEditorSection(title: "Details") {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: "My Custom Model", text: $displayName)
-                            CustomModelTextField(label: "API Endpoint", placeholder: "https://api.example.com/v1/audio/transcriptions", text: $apiEndpoint)
+                            CustomModelTextField(label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions", text: $apiEndpoint)
                             if !isEditing {
                                 CustomModelTextField(label: "API Key", placeholder: "Paste API key", text: $apiKey, isSecure: true)
                             }
-                            CustomModelTextField(label: "Model Name", placeholder: "whisper-1", text: $modelName)
+                            CustomModelTextField(label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
                             CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
                         }
                     }
@@ -245,9 +245,9 @@ struct CustomTranscriptionModelEditorPanel: View {
             isMultilingual = editingModel.isMultilingualModel
         } else {
             displayName = ""
-            apiEndpoint = "https://api.example.com/v1/audio/transcriptions"
+            apiEndpoint = "https://api.openai.com/v1/audio/transcriptions"
             apiKey = ""
-            modelName = "whisper-1"
+            modelName = "gpt-4o-mini-transcribe"
             isMultilingual = true
         }
 
@@ -354,11 +354,11 @@ struct CustomEnhancementModelEditorPanel: View {
                     CustomModelEditorSection(title: "Details") {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: "My Enhancement Model", text: $displayName)
-                            CustomModelTextField(label: "Base URL", placeholder: "https://api.example.com/v1/chat/completions", text: $baseURL)
+                            CustomModelTextField(label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions", text: $baseURL)
                             if !isEditing {
                                 CustomModelTextField(label: "API Key", placeholder: "Paste API key", text: $apiKey, isSecure: true)
                             }
-                            CustomModelTextField(label: "Model Name", placeholder: "gpt-4.1", text: $modelName)
+                            CustomModelTextField(label: "Model Name", placeholder: "gpt-5.5", text: $modelName)
                         }
                     }
 
@@ -399,9 +399,9 @@ struct CustomEnhancementModelEditorPanel: View {
             modelName = editingProvider.modelName
         } else {
             displayName = ""
-            baseURL = "https://api.example.com/v1/chat/completions"
+            baseURL = "https://api.openai.com/v1/chat/completions"
             apiKey = ""
-            modelName = ""
+            modelName = "gpt-5.5"
         }
 
         errorMessage = nil

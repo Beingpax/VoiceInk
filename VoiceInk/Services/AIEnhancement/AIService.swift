@@ -65,7 +65,7 @@ enum AIProvider: String, CaseIterable {
         case .anthropic:
             return "claude-sonnet-4-6"
         case .openAI:
-            return "gpt-5.4"
+            return "gpt-5.5"
         case .mistral:
             return "mistral-large-latest"
         case .elevenLabs:
@@ -129,7 +129,7 @@ enum AIProvider: String, CaseIterable {
                 "gpt-5.4",
                 "gpt-5.4-mini",
                 "gpt-5.4-nano",
-                "gpt-5.2",
+                "gpt-5",
                 "gpt-4.1",
                 "gpt-4.1-mini",
                 "gpt-4.1-nano"

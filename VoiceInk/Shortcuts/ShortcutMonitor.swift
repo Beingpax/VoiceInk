@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import os
 
 final class ShortcutMonitor {
     fileprivate enum EventKind {
@@ -23,8 +24,8 @@ final class ShortcutMonitor {
     private var onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)?
     private var eventTap: CFMachPort?
     private var eventTapRunLoopSource: CFRunLoopSource?
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ShortcutMonitor")
 
-    private static var hasRequestedListenEventAccess = false
     private static let shortcutInterruptionWindow: TimeInterval = 1.0
 
     deinit {
@@ -76,10 +77,6 @@ final class ShortcutMonitor {
     }
 
     private func installEventTap() -> Bool {
-        guard Self.hasListenEventAccess() else {
-            return false
-        }
-
         let callback: CGEventTapCallBack = { _, type, event, userInfo in
             guard let userInfo else {
                 return Unmanaged.passUnretained(event)
@@ -107,11 +104,15 @@ final class ShortcutMonitor {
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
+            logger.error(
+                "Failed to install global shortcut event tap. accessibilityTrusted=\(AXIsProcessTrusted(), privacy: .public), listenEventAccess=\(CGPreflightListenEventAccess(), privacy: .public)"
+            )
             return false
         }
 
         guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0) else {
             CFMachPortInvalidate(eventTap)
+            logger.error("Failed to create global shortcut event tap run loop source")
             return false
         }
 
@@ -119,20 +120,8 @@ final class ShortcutMonitor {
         eventTapRunLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
+        logger.notice("Global shortcut event tap installed for \(self.shortcuts.count, privacy: .public) shortcut(s)")
         return true
-    }
-
-    private static func hasListenEventAccess() -> Bool {
-        if CGPreflightListenEventAccess() {
-            return true
-        }
-
-        guard !hasRequestedListenEventAccess else {
-            return false
-        }
-
-        hasRequestedListenEventAccess = true
-        return CGRequestListenEventAccess()
     }
 
     private func handleCGEvent(type: CGEventType, event: CGEvent) -> Bool {
@@ -327,12 +316,14 @@ final class ShortcutMonitor {
     }
 
     private func dispatchKeyDown(for action: ShortcutAction, eventTime: TimeInterval) {
+        logger.notice("Global shortcut matched keyDown for \(action.displayName, privacy: .public)")
         DispatchQueue.main.async { [onKeyDown] in
             onKeyDown?(action, eventTime)
         }
     }
 
     private func dispatchKeyUp(for action: ShortcutAction, eventTime: TimeInterval) {
+        logger.notice("Global shortcut matched keyUp for \(action.displayName, privacy: .public)")
         DispatchQueue.main.async { [onKeyUp] in
             onKeyUp?(action, eventTime)
         }
