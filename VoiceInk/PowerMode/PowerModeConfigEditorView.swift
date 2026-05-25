@@ -29,7 +29,8 @@ struct PowerModeConfigEditorView: View {
                 PromptEditorView(
                     mode: promptEditorMode,
                     onDismiss: closePromptEditor,
-                    onSave: handlePromptSaved
+                    onSave: handlePromptSaved,
+                    onDelete: handlePromptDeleted
                 )
                 .environmentObject(enhancementService)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -65,6 +66,13 @@ struct PowerModeConfigEditorView: View {
     private func handlePromptSaved(_ prompt: CustomPrompt) {
         draft.selectedPromptId = prompt.id
         closePromptEditor()
+    }
+
+    private func handlePromptDeleted(_ prompt: CustomPrompt) {
+        enhancementService.deletePrompt(prompt)
+        if draft.selectedPromptId == prompt.id {
+            draft.selectedPromptId = enhancementService.allPrompts.first?.id
+        }
     }
 
     private func handleExitCommand() {

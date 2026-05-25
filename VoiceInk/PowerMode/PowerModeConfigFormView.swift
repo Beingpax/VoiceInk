@@ -513,14 +513,16 @@ struct PowerModeConfigFormView: View {
 
     private var promptPicker: some View {
         HStack(spacing: 8) {
+            Text("Prompt")
+
+            Spacer(minLength: 12)
+
             if enhancementService.allPrompts.isEmpty {
-                LabeledContent("Prompt") {
-                    Text("No prompts available")
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
+                Text("No prompts available")
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             } else {
-                Picker("Prompt", selection: $draft.selectedPromptId) {
+                Picker("", selection: $draft.selectedPromptId) {
                     ForEach(enhancementService.allPrompts) { prompt in
                         Text(prompt.title)
                             .lineLimit(1)
@@ -529,10 +531,7 @@ struct PowerModeConfigFormView: View {
                     }
                 }
                 .pickerStyle(.menu)
-            }
-
-            AddIconButton(helpText: "Add prompt") {
-                openPromptEditor(.add)
+                .labelsHidden()
             }
 
             if let selectedPrompt {
@@ -546,6 +545,10 @@ struct PowerModeConfigFormView: View {
                 }
                 .buttonStyle(.plain)
                 .help("Edit prompt")
+            }
+
+            AddIconButton(helpText: "Add prompt") {
+                openPromptEditor(.add)
             }
         }
     }
