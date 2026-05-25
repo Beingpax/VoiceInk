@@ -180,6 +180,11 @@ enum AIProvider: String, CaseIterable {
     }
 }
 
+struct OllamaRefreshResult {
+    let models: [OllamaModel]
+    let errorMessage: String?
+}
+
 class AIService: ObservableObject {
     @Published var apiKey: String = ""
     @Published var isAPIKeyValid: Bool = false
@@ -209,8 +214,7 @@ class AIService: ObservableObject {
                 self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
                 if selectedProvider == .ollama {
                     Task {
-                        await ollamaService.checkConnection()
-                        await ollamaService.refreshModels()
+                        await refreshOllamaAvailability()
                     }
                 }
             }
@@ -225,6 +229,7 @@ class AIService: ObservableObject {
     private var apiKeyChangeObserver: NSObjectProtocol?
     
     @Published private var openRouterModels: [String] = []
+    @Published private(set) var isOllamaRefreshing = false
     
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
@@ -488,16 +493,95 @@ class AIService: ObservableObject {
     func checkOllamaConnection(completion: @escaping (Bool) -> Void) {
         Task { [weak self] in
             guard let self = self else { return }
-            await self.ollamaService.checkConnection()
-            DispatchQueue.main.async {
+            await self.refreshOllamaAvailability()
+            await MainActor.run {
                 completion(self.ollamaService.isConnected)
             }
         }
     }
     
     func fetchOllamaModels() async -> [OllamaModel] {
-        await ollamaService.refreshModels()
-        return ollamaService.availableModels
+        let result = await refreshOllamaAvailability()
+        return result.models
+    }
+
+    func refreshOllamaAvailabilityInBackground() {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.refreshOllamaAvailability()
+        }
+    }
+
+    @MainActor
+    @discardableResult
+    func refreshOllamaConnectionAndModels() async -> [OllamaModel] {
+        let result = await refreshOllamaAvailability()
+        return result.models
+    }
+
+    @MainActor
+    func refreshOllamaAvailability() async -> OllamaRefreshResult {
+        guard !isOllamaRefreshing else {
+            return OllamaRefreshResult(models: ollamaService.availableModels, errorMessage: nil)
+        }
+
+        isOllamaRefreshing = true
+        defer {
+            isOllamaRefreshing = false
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+
+        let result = await ollamaService.refreshConnectionAndModels()
+        switch result {
+        case .success(let models):
+            return OllamaRefreshResult(models: models, errorMessage: nil)
+        case .failure(let error):
+            return OllamaRefreshResult(models: [], errorMessage: ollamaErrorMessage(for: error))
+        }
+    }
+
+    private func ollamaErrorMessage(for error: Error) -> String {
+        if let llmKitError = error as? LLMKitError {
+            return ollamaErrorMessage(for: llmKitError)
+        }
+
+        if let localAIError = error as? LocalAIError,
+           let errorDescription = localAIError.errorDescription {
+            return errorDescription
+        }
+
+        let nsError = error as NSError
+        var details = [nsError.localizedDescription]
+
+        if let failingURL = nsError.userInfo["NSErrorFailingURLKey"] as? URL {
+            details.append("URL: \(failingURL.absoluteString)")
+        } else if let failingURLString = nsError.userInfo["NSErrorFailingURLStringKey"] as? String {
+            details.append("URL: \(failingURLString)")
+        }
+
+        details.append("Code: \(nsError.domain) \(nsError.code)")
+
+        if let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            details.append("Underlying: \(underlyingError.localizedDescription)")
+            details.append("Underlying code: \(underlyingError.domain) \(underlyingError.code)")
+        }
+
+        if let streamErrorCode = nsError.userInfo["_kCFStreamErrorCodeKey"] {
+            details.append("Network code: \(streamErrorCode)")
+        }
+
+        return details.joined(separator: "\n")
+    }
+
+    private func ollamaErrorMessage(for error: LLMKitError) -> String {
+        switch error {
+        case .httpError(let statusCode, let message):
+            let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedMessage.isEmpty else { return "HTTP \(statusCode)" }
+            return "HTTP \(statusCode): \(trimmedMessage)"
+        default:
+            return error.localizedDescription
+        }
     }
     
     func enhanceWithOllama(text: String, systemPrompt: String, timeout: TimeInterval = 30) async throws -> String {

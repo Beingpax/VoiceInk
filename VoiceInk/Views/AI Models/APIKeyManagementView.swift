@@ -74,7 +74,7 @@ struct APIKeyManagementView: View {
             }
             .onChange(of: aiService.selectedProvider) { oldValue, newValue in
                 if aiService.selectedProvider == .ollama {
-                    checkOllamaConnection()
+                    checkOllamaConnection(showError: false)
                 }
                 if aiService.selectedProvider == .localCLI {
                     syncLocalCLIStateFromService()
@@ -308,7 +308,7 @@ struct APIKeyManagementView: View {
         }
         .onAppear {
             if aiService.selectedProvider == .ollama {
-                checkOllamaConnection()
+                checkOllamaConnection(showError: false)
             }
             if aiService.selectedProvider == .localCLI {
                 syncLocalCLIStateFromService()
@@ -349,18 +349,16 @@ struct APIKeyManagementView: View {
         }
     }
     
-    private func checkOllamaConnection() {
+    private func checkOllamaConnection(showError: Bool = true) {
         isCheckingOllama = true
-        aiService.checkOllamaConnection { connected in
-            if connected {
-                Task {
-                    ollamaModels = await aiService.fetchOllamaModels()
-                    isCheckingOllama = false
-                }
-            } else {
-                ollamaModels = []
-                isCheckingOllama = false
-                alertMessage = "Could not connect to Ollama. Please check if Ollama is running and the base URL is correct."
+        Task { @MainActor in
+            let result = await aiService.refreshOllamaAvailability()
+
+            ollamaModels = result.models
+            isCheckingOllama = false
+
+            if let errorMessage = result.errorMessage, showError {
+                alertMessage = errorMessage
                 showAlert = true
             }
         }

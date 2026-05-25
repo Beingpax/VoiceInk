@@ -42,6 +42,10 @@ struct PowerModeConfigFormView: View {
         return enhancementService.allPrompts.first { $0.id == selectedPromptId }
     }
 
+    private var aiProviderOptions: [AIProvider] {
+        aiService.connectedProviders
+    }
+
     private var configuredSelectedAIProvider: AIProvider? {
         let selectedProvider: AIProvider?
         if let providerName = draft.selectedAIProvider {
@@ -51,9 +55,9 @@ struct PowerModeConfigFormView: View {
         }
 
         guard let selectedProvider,
-              aiService.connectedProviders.contains(selectedProvider) else {
-            return nil
-        }
+              selectedProvider.supportsEnhancement,
+              aiProviderOptions.contains(selectedProvider) else { return nil }
+
         return selectedProvider
     }
 
@@ -358,25 +362,27 @@ struct PowerModeConfigFormView: View {
             Toggle("AI Enhancement", isOn: $draft.isAIEnhancementEnabled)
                 .onChange(of: draft.isAIEnhancementEnabled) { _, newValue in
                     if newValue {
-                        if draft.selectedAIProvider == nil {
-                            draft.selectedAIProvider = aiService.selectedProvider.rawValue
+                        if configuredSelectedAIProvider == nil {
+                            draft.selectedAIProvider = aiProviderOptions.first?.rawValue
+                            draft.selectedAIModel = nil
                         }
-                        if draft.selectedAIModel == nil {
-                            draft.selectedAIModel = aiService.currentModel
+                        if draft.selectedAIModel == nil,
+                           let provider = configuredSelectedAIProvider,
+                           provider != .localCLI {
+                            draft.selectedAIModel = aiService.selectedModel(for: provider)
                         }
                         if draft.selectedPromptId == nil {
                             draft.selectedPromptId = enhancementService.allPrompts.first?.id
+                        }
+                        if configuredSelectedAIProvider == .ollama {
+                            aiService.refreshOllamaAvailabilityInBackground()
                         }
                     }
                 }
 
             let providerBinding = Binding<AIProvider>(
                 get: {
-                    if let providerName = draft.selectedAIProvider,
-                       let provider = AIProvider(rawValue: providerName) {
-                        return provider
-                    }
-                    return aiService.selectedProvider
+                    configuredSelectedAIProvider ?? aiProviderOptions.first ?? aiService.selectedProvider
                 },
                 set: { newValue in
                     draft.selectedAIProvider = newValue.rawValue
@@ -385,7 +391,9 @@ struct PowerModeConfigFormView: View {
             )
 
             if draft.isAIEnhancementEnabled {
-                if aiService.connectedProviders.isEmpty {
+                let providerOptions = aiProviderOptions
+
+                if providerOptions.isEmpty {
                     LabeledContent("AI Provider") {
                         Text("No providers connected")
                             .foregroundColor(.secondary)
@@ -393,13 +401,23 @@ struct PowerModeConfigFormView: View {
                     }
                 } else {
                     Picker("AI Provider", selection: providerBinding) {
-                        ForEach(aiService.connectedProviders, id: \.self) { provider in
+                        ForEach(providerOptions, id: \.self) { provider in
                             Text(provider.rawValue).tag(provider)
                         }
                     }
                     .onChange(of: draft.selectedAIProvider) { _, newValue in
                         if let provider = newValue.flatMap({ AIProvider(rawValue: $0) }) {
-                            draft.selectedAIModel = provider.defaultModel
+                            switch provider {
+                            case .localCLI:
+                                draft.selectedAIModel = nil
+                            case .ollama:
+                                if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
+                                    draft.selectedAIModel = aiService.selectedModel(for: provider)
+                                }
+                                aiService.refreshOllamaAvailabilityInBackground()
+                            default:
+                                draft.selectedAIModel = provider.defaultModel
+                            }
                         }
                     }
                 }
@@ -415,37 +433,59 @@ struct PowerModeConfigFormView: View {
 
     @ViewBuilder
     private func aiModelPicker(for provider: AIProvider) -> some View {
-        let models = aiService.availableModels(for: provider)
-        if models.isEmpty {
+        if provider == .localCLI {
             LabeledContent("AI Model") {
-                Text(provider == .openRouter ? "No models loaded" : "No models available")
+                Text("Default")
                     .foregroundColor(.secondary)
-                    .italic()
+            }
+            .onAppear {
+                draft.selectedAIModel = nil
             }
         } else {
-            let modelBinding = Binding<String>(
-                get: {
-                    if let model = draft.selectedAIModel, !model.isEmpty { return model }
-                    return aiService.selectedModel(for: provider)
-                },
-                set: { newModelValue in
-                    draft.selectedAIModel = newModelValue
+            let models = aiModelOptions(for: provider)
+            if models.isEmpty {
+                LabeledContent("AI Model") {
+                    Text(provider == .openRouter ? "No models loaded" : "No models available")
+                        .foregroundColor(.secondary)
+                        .italic()
                 }
-            )
+            } else {
+                let modelBinding = Binding<String>(
+                    get: {
+                        if let model = draft.selectedAIModel, !model.isEmpty { return model }
+                        return aiService.selectedModel(for: provider)
+                    },
+                    set: { newModelValue in
+                        draft.selectedAIModel = newModelValue
+                    }
+                )
 
-            Picker("AI Model", selection: modelBinding) {
-                ForEach(models, id: \.self) { model in
-                    Text(model).tag(model)
+                Picker("AI Model", selection: modelBinding) {
+                    ForEach(models, id: \.self) { model in
+                        Text(model).tag(model)
+                    }
                 }
-            }
 
-            if provider == .openRouter {
-                Button("Refresh Models") {
-                    Task { await aiService.fetchOpenRouterModels() }
+                if provider == .openRouter {
+                    Button("Refresh Models") {
+                        Task { await aiService.fetchOpenRouterModels() }
+                    }
+                    .help("Refresh models")
                 }
-                .help("Refresh models")
             }
         }
+    }
+
+    private func aiModelOptions(for provider: AIProvider) -> [String] {
+        var models = aiService.availableModels(for: provider)
+
+        if let selectedModel = draft.selectedAIModel,
+           !selectedModel.isEmpty,
+           !models.contains(selectedModel) {
+            models.insert(selectedModel, at: 0)
+        }
+
+        return models
     }
 
     private var promptPicker: some View {

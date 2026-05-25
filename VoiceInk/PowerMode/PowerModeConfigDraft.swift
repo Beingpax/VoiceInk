@@ -97,7 +97,11 @@ struct PowerModeConfigDraft {
             selectedAIProvider = aiService.selectedProvider.rawValue
         }
         if selectedAIModel == nil || selectedAIModel?.isEmpty == true {
-            selectedAIModel = aiService.currentModel
+            if selectedAIProvider == AIProvider.localCLI.rawValue {
+                selectedAIModel = nil
+            } else {
+                selectedAIModel = aiService.currentModel
+            }
         }
     }
 

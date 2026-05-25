@@ -44,25 +44,34 @@ class OllamaService: ObservableObject {
 
     @MainActor
     func refreshModels() async {
+        _ = await refreshConnectionAndModels()
+    }
+
+    @MainActor
+    func refreshConnectionAndModels() async -> Result<[OllamaModel], Error> {
         isLoadingModels = true
         defer { isLoadingModels = false }
 
         guard let url = baseURLValue else {
-            print("Invalid Ollama base URL")
+            isConnected = false
             availableModels = []
-            return
+            return .failure(LocalAIError.invalidURL)
         }
 
         do {
             let models = try await OllamaClient.fetchModels(baseURL: url)
+            isConnected = true
             availableModels = models
 
             if !models.contains(where: { $0.name == selectedModel }) && !models.isEmpty {
                 selectedModel = models[0].name
             }
+
+            return .success(models)
         } catch {
-            print("Error fetching models: \(error)")
+            isConnected = false
             availableModels = []
+            return .failure(error)
         }
     }
 

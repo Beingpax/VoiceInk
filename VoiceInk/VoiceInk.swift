@@ -91,6 +91,7 @@ struct VoiceInkApp: App {
         // Initialize services with proper sharing of instances
         let aiService = AIService()
         _aiService = StateObject(wrappedValue: aiService)
+        aiService.refreshOllamaAvailabilityInBackground()
 
         let updaterViewModel = UpdaterViewModel()
         _updaterViewModel = StateObject(wrappedValue: updaterViewModel)
