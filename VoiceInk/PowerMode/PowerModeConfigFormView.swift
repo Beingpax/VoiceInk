@@ -332,18 +332,41 @@ struct PowerModeConfigFormView: View {
                   let modelInfo = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModel }),
                   modelInfo.isMultilingualModel {
             let languageBinding = Binding<String?>(
-                get: { draft.selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto" },
+                get: { effectiveLanguage(for: modelInfo) },
                 set: { draft.selectedLanguage = $0 }
             )
 
-            Picker("Language", selection: languageBinding) {
-                ForEach(availableLanguages(for: modelInfo).sorted(by: {
-                    if $0.key == "auto" { return true }
-                    if $1.key == "auto" { return false }
-                    return $0.value < $1.value
-                }), id: \.key) { key, value in
-                    Text(value).tag(key as String?)
+            HStack(spacing: 8) {
+                HStack(spacing: 4) {
+                    Text("Language")
                 }
+
+                Spacer(minLength: 12)
+
+                if modelInfo.provider == .nativeApple {
+                    NativeAppleLanguageAssetControl(
+                        localeIdentifier: effectiveLanguage(for: modelInfo),
+                        isVisible: true,
+                        startsDownloadAutomatically: true,
+                        allowsReservationReplacement: true
+                    )
+                    .layoutPriority(1)
+                    .frame(width: 28, height: 24)
+                }
+
+                Picker("", selection: languageBinding) {
+                    ForEach(availableLanguages(for: modelInfo).sorted(by: {
+                        if $0.key == "auto" { return true }
+                        if $1.key == "auto" { return false }
+                        return $0.value < $1.value
+                    }), id: \.key) { key, value in
+                        Text(value).tag(key as String?)
+                    }
+                }
+                .labelsHidden()
+            }
+            .onAppear {
+                draft.selectedLanguage = effectiveLanguage(for: modelInfo)
             }
         } else if let selectedModel = effectiveModelName,
                   let modelInfo = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModel }),
@@ -637,6 +660,13 @@ struct PowerModeConfigFormView: View {
 
     private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {
         TranscriptionLanguageSupport.languages(for: model)
+    }
+
+    private func effectiveLanguage(for model: any TranscriptionModel) -> String {
+        TranscriptionLanguageSupport.validLanguageOrFallback(
+            draft.selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            for: model
+        )
     }
 
     private func addWebsite() {

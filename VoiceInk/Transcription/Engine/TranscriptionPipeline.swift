@@ -170,7 +170,7 @@ class TranscriptionPipeline {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
 
             if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError,
-               case .assetDownloadRequired = nativeAppleError {
+               nativeAppleError.shouldShowNotification {
                 await MainActor.run {
                     NotificationManager.shared.showNotification(
                         title: errorDescription,
