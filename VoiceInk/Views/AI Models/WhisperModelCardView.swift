@@ -107,7 +107,7 @@ struct WhisperModelCardView: View {
     private var actionSection: some View {
         HStack(spacing: 8) {
             if isDownloaded {
-                modelStatusPill("Installed", systemImage: "checkmark.circle")
+                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
                 Button(action: downloadAction) {
                     HStack(spacing: 4) {
