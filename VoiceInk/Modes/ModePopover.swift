@@ -2,8 +2,18 @@ import SwiftUI
 
 struct ModePopover: View {
     @ObservedObject var modeManager = ModeManager.shared
-    @State private var selectedConfig: ModeConfig?
-    
+    let selectedModeId: UUID?
+    let onSelect: ((ModeConfig) -> Void)?
+
+    init(selectedModeId: UUID? = nil, onSelect: ((ModeConfig) -> Void)? = nil) {
+        self.selectedModeId = selectedModeId
+        self.onSelect = onSelect
+    }
+
+    private var effectiveSelectedModeId: UUID? {
+        modeManager.resolvedEnabledConfigurationId(preferredId: selectedModeId)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Select Mode")
@@ -16,7 +26,7 @@ struct ModePopover: View {
                 .background(Color.white.opacity(0.1))
             
             ScrollView {
-                let enabledConfigs = modeManager.configurations.filter { $0.isEnabled }
+                let enabledConfigs = modeManager.enabledConfigurations
                 VStack(alignment: .leading, spacing: 4) {
                     if enabledConfigs.isEmpty {
                         VStack(alignment: .center, spacing: 8) {
@@ -35,10 +45,13 @@ struct ModePopover: View {
                         ForEach(enabledConfigs) { config in
                             ModeRow(
                                 config: config,
-                                isSelected: selectedConfig?.id == config.id,
+                                isSelected: effectiveSelectedModeId == config.id,
                                 action: {
-                                    modeManager.setActiveConfiguration(config)
-                                    selectedConfig = config
+                                    if let onSelect {
+                                        onSelect(config)
+                                    } else {
+                                        modeManager.setActiveConfiguration(config)
+                                    }
                                 }
                             )
                         }
@@ -52,12 +65,6 @@ struct ModePopover: View {
         .padding(.vertical, 8)
         .background(Color.black)
         .environment(\.colorScheme, .dark)
-        .onAppear {
-            selectedConfig = modeManager.activeConfiguration
-        }
-        .onChange(of: modeManager.activeConfiguration) { newValue in
-            selectedConfig = newValue
-        }
     }
 }
 

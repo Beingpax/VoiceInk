@@ -378,7 +378,9 @@ struct AudioPlayerView: View {
     @State private var isRetranscribing = false
     @State private var isReEnhancing = false
     @State private var bannerState: BannerState?
+    @State private var showModePopover = false
     @State private var showPromptPopover = false
+    @State private var selectedModeId: UUID?
     @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @ObservedObject private var modeManager = ModeManager.shared
@@ -391,19 +393,25 @@ struct AudioPlayerView: View {
     private var currentEnhancementConfiguration: EnhancementRuntimeConfiguration? {
         guard let aiService = enhancementService.getAIService() else { return nil }
         return ModeRuntimeResolver.currentEnhancementConfiguration(
+            mode: selectedMode,
             enhancementService: enhancementService,
             aiService: aiService
         )
     }
 
-    private var canEnhanceWithCurrentMode: Bool {
+    private var canReEnhanceWithSelectedMode: Bool {
         guard let configuration = currentEnhancementConfiguration,
-              configuration.isEnabled else { return false }
-        return enhancementService.isConfigured(for: configuration)
+              configuration.isEnabled,
+              let prompt = configuration.prompt ?? enhancementService.allPrompts.first else { return false }
+        return enhancementService.isConfigured(for: configuration.replacingPrompt(prompt))
     }
 
     private var transcriptionService: AudioTranscriptionService {
         AudioTranscriptionService(modelContext: modelContext, engine: engine)
+    }
+
+    private var selectedMode: ModeConfig? {
+        modeManager.resolvedEnabledConfiguration(preferredId: selectedModeId)
     }
 
     var body: some View {
@@ -442,16 +450,7 @@ struct AudioPlayerView: View {
                     .buttonStyle(.plain)
                     .help("Playback speed")
 
-                    CircleIconButton(
-                        icon: "text.bubble.fill",
-                        action: { showPromptPopover.toggle() }
-                    )
-                    .opacity(modeManager.currentEffectiveConfiguration?.isAIEnhancementEnabled == true ? 1.0 : 0.4)
-                    .help("Select enhancement prompt")
-                    .popover(isPresented: $showPromptPopover, arrowEdge: .bottom) {
-                        EnhancementPromptPopover()
-                            .environmentObject(enhancementService)
-                    }
+                    modeSelectorButton
 
                     CircleIconButton(
                         icon: playerManager.isPlaying ? "pause.fill" : "play.fill",
@@ -478,11 +477,14 @@ struct AudioPlayerView: View {
                             defaultIcon: "wand.and.stars",
                             isLoading: isReEnhancing,
                             showSuccess: bannerState == .reEnhanceSuccess,
-                            action: reEnhanceOnly
+                            action: { showPromptPopover.toggle() }
                         )
-                        .disabled(isOperationInProgress || !canEnhanceWithCurrentMode)
-                        .opacity(canEnhanceWithCurrentMode ? 1.0 : 0.4)
+                        .disabled(isOperationInProgress || !canReEnhanceWithSelectedMode)
+                        .opacity(canReEnhanceWithSelectedMode ? 1.0 : 0.4)
                         .help("Re-enhance with selected prompt")
+                        .popover(isPresented: $showPromptPopover, arrowEdge: .bottom) {
+                            promptSelectionPopover
+                        }
                     }
 
                     if let onInfoTap {
@@ -504,6 +506,13 @@ struct AudioPlayerView: View {
         .padding(.bottom, 6)
         .onAppear {
             playerManager.loadAudio(from: url)
+            syncSelectedMode()
+        }
+        .onChange(of: modeManager.currentEffectiveConfiguration?.id) { _, _ in
+            syncSelectedMode()
+        }
+        .onChange(of: modeManager.enabledConfigurations.map(\.id)) { _, _ in
+            syncSelectedMode()
         }
         .onDisappear {
             playerManager.cleanup()
@@ -533,6 +542,91 @@ struct AudioPlayerView: View {
         NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
     }
 
+    private var modeSelectorButton: some View {
+        Button {
+            showModePopover.toggle()
+        } label: {
+            Circle()
+                .fill(Color.primary.opacity(selectedMode == nil ? 0.04 : 0.08))
+                .frame(width: 32, height: 32)
+                .overlay {
+                    if let selectedMode {
+                        ModeIconView(icon: selectedMode.icon, size: selectedMode.icon.kind == .emoji ? 14 : 12)
+                    } else {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.primary.opacity(0.6))
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .opacity(selectedMode == nil ? 0.4 : 1.0)
+        .help(selectedMode.map { "Mode: \($0.name)" } ?? "Select mode")
+        .popover(isPresented: $showModePopover, arrowEdge: .bottom) {
+            ModePopover(selectedModeId: selectedMode?.id) { mode in
+                selectMode(mode)
+            }
+        }
+    }
+
+    private func selectMode(_ mode: ModeConfig) {
+        selectedModeId = mode.id
+        modeManager.setActiveConfiguration(mode)
+        showModePopover = false
+    }
+
+    private func syncSelectedMode() {
+        selectedModeId = modeManager.resolvedEnabledConfigurationId(preferredId: selectedModeId)
+    }
+
+    private var promptSelectionPopover: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Select Prompt")
+                .font(.headline)
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+            Divider()
+                .background(Color.white.opacity(0.1))
+
+            ScrollView {
+                let prompts = enhancementService.allPrompts
+                VStack(alignment: .leading, spacing: 4) {
+                    if prompts.isEmpty {
+                        Text("No Prompts Available")
+                            .foregroundColor(.white.opacity(0.8))
+                            .font(.system(size: 13))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                    } else {
+                        ForEach(prompts) { prompt in
+                            EnhancementPromptRow(
+                                prompt: prompt,
+                                isSelected: currentEnhancementConfiguration?.prompt?.id == prompt.id,
+                                isDisabled: false,
+                                action: {
+                                    selectPromptForReEnhancement(prompt)
+                                }
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .frame(width: 220)
+        .frame(maxHeight: 340)
+        .padding(.vertical, 8)
+        .background(Color.black)
+        .environment(\.colorScheme, .dark)
+    }
+
+    private func selectPromptForReEnhancement(_ prompt: CustomPrompt) {
+        showPromptPopover = false
+        reEnhanceOnly(prompt: prompt)
+    }
+
     private func showTemporaryBanner(_ state: BannerState) {
         bannerState = state
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
@@ -540,11 +634,20 @@ struct AudioPlayerView: View {
         }
     }
 
-    private func reEnhanceOnly() {
+    private func reEnhanceOnly(prompt selectedPrompt: CustomPrompt? = nil) {
         guard let transcription = transcription else { return }
 
-        guard let enhancementConfiguration = currentEnhancementConfiguration,
-              enhancementConfiguration.isEnabled,
+        guard let baseEnhancementConfiguration = currentEnhancementConfiguration,
+              baseEnhancementConfiguration.isEnabled else {
+            showTemporaryBanner(.reEnhanceError("AI Enhancement is not enabled or configured"))
+            return
+        }
+
+        let enhancementConfiguration = selectedPrompt.map {
+            baseEnhancementConfiguration.replacingPrompt($0)
+        } ?? baseEnhancementConfiguration
+
+        guard enhancementConfiguration.prompt != nil,
               enhancementService.isConfigured(for: enhancementConfiguration) else {
             showTemporaryBanner(.reEnhanceError("AI Enhancement is not enabled or configured"))
             return
@@ -581,7 +684,13 @@ struct AudioPlayerView: View {
     }
 
     private func retranscribeAudio() {
+        guard let selectedMode else {
+            showTemporaryBanner(.retranscribeError("No mode selected"))
+            return
+        }
+
         guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
+            mode: selectedMode,
             transcriptionModelManager: engine.transcriptionModelManager
         ) else {
             showTemporaryBanner(.retranscribeError("No transcription model selected"))
@@ -595,7 +704,8 @@ struct AudioPlayerView: View {
             do {
                 let _ = try await transcriptionService.retranscribeAudio(
                     from: url,
-                    using: transcriptionConfiguration.model
+                    using: transcriptionConfiguration.model,
+                    mode: selectedMode
                 )
                 await MainActor.run {
                     isRetranscribing = false

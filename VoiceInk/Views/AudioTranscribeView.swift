@@ -5,13 +5,16 @@ import UniformTypeIdentifiers
 struct AudioTranscribeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var engine: VoiceInkEngine
-    @EnvironmentObject private var enhancementService: AIEnhancementService
     @ObservedObject private var modeManager = ModeManager.shared
     @StateObject private var transcriptionManager = AudioTranscriptionManager.shared
     @State private var isDropTargeted = false
-    @State private var isEnhancementEnabled = false
-    @State private var selectedPromptId: UUID?
+    @State private var showModePopover = false
+    @State private var selectedModeId: UUID?
     @State private var expandedItemId: UUID?
+
+    private var selectedMode: ModeConfig? {
+        modeManager.resolvedEnabledConfiguration(preferredId: selectedModeId)
+    }
 
     var body: some View {
         Group {
@@ -120,9 +123,7 @@ struct AudioTranscribeView: View {
                             },
                             onRetry: {
                                 transcriptionManager.retryItem(id: item.id)
-                                if !transcriptionManager.isProcessingQueue {
-                                    transcriptionManager.startProcessing(modelContext: modelContext, engine: engine)
-                                }
+                                startProcessing()
                             }
                         )
                     }
@@ -170,7 +171,7 @@ struct AudioTranscribeView: View {
 
             Spacer()
 
-            enhancementControls
+            modePicker
 
             if transcriptionManager.isProcessingQueue {
                 Button {
@@ -194,7 +195,7 @@ struct AudioTranscribeView: View {
                 .help("Cancel transcription")
             } else if transcriptionManager.hasPendingItems {
                 Button {
-                    transcriptionManager.startProcessing(modelContext: modelContext, engine: engine)
+                    startProcessing()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "play.fill")
@@ -212,6 +213,9 @@ struct AudioTranscribeView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled(selectedMode == nil)
+                .opacity(selectedMode == nil ? 0.5 : 1.0)
+                .help(selectedMode == nil ? "Select an enabled mode to start" : "Start transcription")
             }
 
             Button {
@@ -241,59 +245,81 @@ struct AudioTranscribeView: View {
         .padding(.vertical, 10)
     }
 
-    private var enhancementControls: some View {
-        HStack(spacing: 8) {
-            Toggle("AI Enhancement", isOn: $isEnhancementEnabled)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .onChange(of: isEnhancementEnabled) { _, newValue in
-                    modeManager.updateCurrentEffectiveConfiguration { config in
-                        config.isAIEnhancementEnabled = newValue
-                        if newValue, config.selectedPrompt == nil {
-                            config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
-                        }
+    private var modePicker: some View {
+        HStack(spacing: 6) {
+            Text("Mode")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+            if modeManager.enabledConfigurations.isEmpty {
+                Text("None")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            } else if let selectedMode {
+                Button {
+                    showModePopover.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        ModeIconView(icon: selectedMode.icon, size: selectedMode.icon.kind == .emoji ? 13 : 11)
+                            .frame(width: 16)
+                        Text(selectedMode.name)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: 160, alignment: .leading)
+                    .background(
+                        Capsule()
+                            .fill(Color.primary.opacity(0.08))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showModePopover, arrowEdge: .bottom) {
+                    ModePopover(selectedModeId: selectedMode.id) { mode in
+                        selectMode(mode)
                     }
                 }
-
-            if isEnhancementEnabled && !enhancementService.allPrompts.isEmpty {
-                Divider().frame(height: 16)
-
-                let promptBinding = Binding<UUID>(
-                    get: {
-                        selectedPromptId ?? enhancementService.allPrompts.first?.id ?? UUID()
-                    },
-                    set: { newValue in
-                        selectedPromptId = newValue
-                        modeManager.updateCurrentEffectiveConfiguration { config in
-                            config.selectedPrompt = newValue.uuidString
-                        }
-                    }
-                )
-
-                Picker("Prompt", selection: promptBinding) {
-                    ForEach(enhancementService.allPrompts) { prompt in
-                        Text(prompt.title).tag(prompt.id)
-                    }
-                }
-                .labelsHidden()
-                .fixedSize()
             }
         }
+        .fixedSize(horizontal: true, vertical: false)
         .onAppear {
-            syncEnhancementControlsFromMode()
+            syncSelectedMode()
         }
         .onChange(of: modeManager.currentEffectiveConfiguration?.id) { _, _ in
-            syncEnhancementControlsFromMode()
+            syncSelectedMode()
         }
-        .onChange(of: modeManager.currentEffectiveConfiguration?.selectedPrompt) { _, _ in
-            syncEnhancementControlsFromMode()
+        .onChange(of: modeManager.enabledConfigurations.map(\.id)) { _, _ in
+            syncSelectedMode()
         }
     }
 
-    private func syncEnhancementControlsFromMode() {
-        let mode = modeManager.currentEffectiveConfiguration
-        isEnhancementEnabled = mode?.isAIEnhancementEnabled == true
-        selectedPromptId = mode?.selectedPrompt.flatMap(UUID.init)
+    private func syncSelectedMode() {
+        selectedModeId = modeManager.resolvedEnabledConfigurationId(preferredId: selectedModeId)
+    }
+
+    private func selectMode(_ mode: ModeConfig) {
+        selectedModeId = mode.id
+        modeManager.setActiveConfiguration(mode)
+        showModePopover = false
+    }
+
+    private func startProcessing() {
+        guard let selectedMode else { return }
+        transcriptionManager.startProcessing(modelContext: modelContext, engine: engine, mode: selectedMode)
     }
 
     // MARK: - Drop Overlay

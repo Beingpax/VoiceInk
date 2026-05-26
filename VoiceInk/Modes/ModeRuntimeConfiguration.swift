@@ -54,9 +54,10 @@ struct EnhancementRuntimeConfiguration {
 @MainActor
 enum ModeRuntimeResolver {
     static func transcriptionConfiguration(
+        mode: ModeConfig? = nil,
         transcriptionModelManager: TranscriptionModelManager
     ) -> TranscriptionRuntimeConfiguration? {
-        let mode = ModeManager.shared.currentEffectiveConfiguration
+        let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
         let model = resolvedModel(
             named: mode?.selectedTranscriptionModelName,
             transcriptionModelManager: transcriptionModelManager
@@ -76,8 +77,8 @@ enum ModeRuntimeResolver {
         )
     }
 
-    static func transcriptionFormattingConfiguration() -> TranscriptionFormattingConfiguration {
-        let mode = ModeManager.shared.currentEffectiveConfiguration
+    static func transcriptionFormattingConfiguration(mode: ModeConfig? = nil) -> TranscriptionFormattingConfiguration {
+        let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
 
         return TranscriptionFormattingConfiguration(
             mode: mode,
@@ -88,10 +89,11 @@ enum ModeRuntimeResolver {
     }
 
     static func currentEnhancementConfiguration(
+        mode: ModeConfig? = nil,
         enhancementService: AIEnhancementService,
         aiService: AIService
     ) -> EnhancementRuntimeConfiguration {
-        let mode = ModeManager.shared.currentEffectiveConfiguration
+        let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
         let prompt = resolvedPrompt(
             promptId: mode?.selectedPrompt,
             enhancementService: enhancementService

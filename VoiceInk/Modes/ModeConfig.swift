@@ -354,6 +354,19 @@ class ModeManager: ObservableObject {
         return configurations.filter { $0.isEnabled }
     }
 
+    func resolvedEnabledConfiguration(preferredId: UUID?) -> ModeConfig? {
+        if let preferredId,
+           let configuration = enabledConfigurations.first(where: { $0.id == preferredId }) {
+            return configuration
+        }
+
+        return currentEffectiveConfiguration ?? enabledConfigurations.first
+    }
+
+    func resolvedEnabledConfigurationId(preferredId: UUID?) -> UUID? {
+        resolvedEnabledConfiguration(preferredId: preferredId)?.id
+    }
+
     private var enabledConfigurationIds: Set<UUID> {
         Set(enabledConfigurations.map(\.id))
     }
