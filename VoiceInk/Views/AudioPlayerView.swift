@@ -399,13 +399,6 @@ struct AudioPlayerView: View {
         )
     }
 
-    private var canReEnhanceWithSelectedMode: Bool {
-        guard let configuration = currentEnhancementConfiguration,
-              configuration.isEnabled,
-              let prompt = configuration.prompt ?? enhancementService.allPrompts.first else { return false }
-        return enhancementService.isConfigured(for: configuration.replacingPrompt(prompt))
-    }
-
     private var transcriptionService: AudioTranscriptionService {
         AudioTranscriptionService(modelContext: modelContext, engine: engine)
     }
@@ -479,8 +472,7 @@ struct AudioPlayerView: View {
                             showSuccess: bannerState == .reEnhanceSuccess,
                             action: { showPromptPopover.toggle() }
                         )
-                        .disabled(isOperationInProgress || !canReEnhanceWithSelectedMode)
-                        .opacity(canReEnhanceWithSelectedMode ? 1.0 : 0.4)
+                        .disabled(isOperationInProgress)
                         .help("Re-enhance with selected prompt")
                         .popover(isPresented: $showPromptPopover, arrowEdge: .bottom) {
                             promptSelectionPopover
@@ -634,24 +626,15 @@ struct AudioPlayerView: View {
         }
     }
 
-    private func reEnhanceOnly(prompt selectedPrompt: CustomPrompt? = nil) {
+    private func reEnhanceOnly(prompt selectedPrompt: CustomPrompt) {
         guard let transcription = transcription else { return }
 
-        guard let baseEnhancementConfiguration = currentEnhancementConfiguration,
-              baseEnhancementConfiguration.isEnabled else {
+        guard let baseEnhancementConfiguration = currentEnhancementConfiguration else {
             showTemporaryBanner(.reEnhanceError("AI Enhancement is not enabled or configured"))
             return
         }
 
-        let enhancementConfiguration = selectedPrompt.map {
-            baseEnhancementConfiguration.replacingPrompt($0)
-        } ?? baseEnhancementConfiguration
-
-        guard enhancementConfiguration.prompt != nil,
-              enhancementService.isConfigured(for: enhancementConfiguration) else {
-            showTemporaryBanner(.reEnhanceError("AI Enhancement is not enabled or configured"))
-            return
-        }
+        let enhancementConfiguration = baseEnhancementConfiguration.replacingPrompt(selectedPrompt)
 
         isReEnhancing = true
         bannerState = nil
