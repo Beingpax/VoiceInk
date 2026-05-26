@@ -12,7 +12,7 @@ struct TranscriptionRuntimeConfiguration {
         guard let mode, mode.isEnabled else {
             return (nil, nil)
         }
-        return (mode.name, mode.emoji)
+        return (mode.name, mode.icon.legacyEmojiValue)
     }
 
     var requestContext: TranscriptionRequestContext {

@@ -37,7 +37,7 @@ struct PromptSelectionGrid: View {
                     .font(.caption)
             } else {
                 let columns = [
-                    GridItem(.adaptive(minimum: 80, maximum: 100), spacing: 36)
+                    GridItem(.adaptive(minimum: 120, maximum: 180), spacing: 8)
                 ]
                 
                 LazyVGrid(columns: columns, spacing: 16) {
@@ -61,8 +61,8 @@ struct PromptSelectionGrid: View {
                         .help("Add new prompt")
                     }
                 }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
                 
                 // Helpful tip for users
                 HStack {

@@ -24,10 +24,8 @@ struct PromptEditorView: View {
     let onDelete: ((CustomPrompt) -> Void)?
     @State private var title: String
     @State private var promptText: String
-    @State private var selectedIcon: PromptIcon
     @State private var description: String
     @State private var useSystemInstructions: Bool
-    @State private var showingIconPicker = false
     @State private var showDeleteConfirmation = false
     
     private var isEditingPredefinedPrompt: Bool {
@@ -84,13 +82,11 @@ struct PromptEditorView: View {
         case .add:
             _title = State(initialValue: "")
             _promptText = State(initialValue: "")
-            _selectedIcon = State(initialValue: "doc.text.fill")
             _description = State(initialValue: "")
             _useSystemInstructions = State(initialValue: true)
         case .edit(let prompt):
             _title = State(initialValue: prompt.title)
             _promptText = State(initialValue: prompt.promptText)
-            _selectedIcon = State(initialValue: prompt.icon)
             _description = State(initialValue: prompt.description ?? "")
             _useSystemInstructions = State(initialValue: prompt.useSystemInstructions)
         }
@@ -106,14 +102,15 @@ struct PromptEditorView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    if !isEditingPredefinedPrompt {
-                        topControls
-                    }
-
                     identitySection
+
+                    if case .add = mode {
+                        templateMenu
+                    }
 
                     if !isEditingPredefinedPrompt {
                         instructionsEditor
+                        systemTemplateToggle
                     }
                 }
                 .padding(20)
@@ -172,7 +169,7 @@ struct PromptEditorView: View {
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 
-    private var topControls: some View {
+    private var systemTemplateToggle: some View {
         HStack(spacing: 12) {
             Toggle(isOn: $useSystemInstructions) {
                 HStack(spacing: 4) {
@@ -183,10 +180,6 @@ struct PromptEditorView: View {
             .toggleStyle(.switch)
 
             Spacer(minLength: 12)
-
-            if case .add = mode {
-                templateMenu
-            }
         }
     }
 
@@ -196,10 +189,9 @@ struct PromptEditorView: View {
                 Button {
                     title = template.title
                     promptText = template.promptText
-                    selectedIcon = template.icon
                     description = template.description
                 } label: {
-                    Label(template.title, systemImage: template.icon)
+                    Text(template.title)
                 }
             }
         } label: {
@@ -213,20 +205,7 @@ struct PromptEditorView: View {
     }
 
     private var identitySection: some View {
-        HStack(alignment: .center, spacing: 14) {
-            if isEditingPredefinedPrompt {
-                promptIconPreview
-            } else {
-                Button(action: { showingIconPicker = true }) {
-                    promptIconPreview
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $showingIconPicker, arrowEdge: .bottom) {
-                    IconPickerPopover(selectedIcon: $selectedIcon, isPresented: $showingIconPicker)
-                }
-                .help("Choose icon")
-            }
-
+        Group {
             if isEditingPredefinedPrompt {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
@@ -241,15 +220,6 @@ struct PromptEditorView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 7))
             }
         }
-    }
-
-    private var promptIconPreview: some View {
-        Image(systemName: selectedIcon)
-            .font(.system(size: 22, weight: .medium))
-            .foregroundColor(.primary)
-            .frame(width: 52, height: 52)
-            .background(GroupedCardBackground(cornerRadius: 10))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private var instructionsEditor: some View {
@@ -327,7 +297,6 @@ struct PromptEditorView: View {
             return enhancementService.addPrompt(
                 title: title,
                 promptText: promptText,
-                icon: selectedIcon,
                 description: description.isEmpty ? nil : description,
                 useSystemInstructions: useSystemInstructions
             )
@@ -337,7 +306,7 @@ struct PromptEditorView: View {
                 title: prompt.isPredefined ? prompt.title : title,
                 promptText: prompt.isPredefined ? prompt.promptText : promptText,
                 isActive: prompt.isActive,
-                icon: prompt.isPredefined ? prompt.icon : selectedIcon,
+                icon: prompt.icon,
                 description: prompt.isPredefined ? prompt.description : (description.isEmpty ? nil : description),
                 isPredefined: prompt.isPredefined,
                 useSystemInstructions: useSystemInstructions
@@ -345,49 +314,5 @@ struct PromptEditorView: View {
             enhancementService.updatePrompt(updatedPrompt)
             return updatedPrompt
         }
-    }
-}
-
-// MARK: - Icon Picker
-struct IconPickerPopover: View {
-    @Binding var selectedIcon: PromptIcon
-    @Binding var isPresented: Bool
-    
-    var body: some View {
-        let columns = [
-            GridItem(.adaptive(minimum: 45, maximum: 52), spacing: 14)
-        ]
-        
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(PromptIcon.allCases, id: \.self) { icon in
-                    Button(action: {
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                            selectedIcon = icon
-                            isPresented = false
-                        }
-                    }) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(selectedIcon == icon ? Color(NSColor.windowBackgroundColor) : Color(NSColor.controlBackgroundColor))
-                                .frame(width: 52, height: 52)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(selectedIcon == icon ? Color(NSColor.separatorColor) : Color.secondary.opacity(0.2), lineWidth: selectedIcon == icon ? 2 : 1)
-                                )
-                            
-                            Image(systemName: icon)
-                                .font(.system(size: 24, weight: .medium))
-                                .foregroundColor(.primary)
-                        }
-                        .scaleEffect(selectedIcon == icon ? 1.1 : 1.0)
-                        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: selectedIcon == icon)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(20)
-        }
-        .frame(width: 400, height: 400)
     }
 }

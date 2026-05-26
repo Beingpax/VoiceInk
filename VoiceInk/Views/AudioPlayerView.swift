@@ -396,14 +396,6 @@ struct AudioPlayerView: View {
         )
     }
 
-    private var currentPromptIcon: String {
-        guard let promptId = modeManager.currentEffectiveConfiguration?.selectedPrompt.flatMap(UUID.init),
-              let prompt = enhancementService.allPrompts.first(where: { $0.id == promptId }) else {
-            return "sparkles"
-        }
-        return prompt.icon
-    }
-
     private var canEnhanceWithCurrentMode: Bool {
         guard let configuration = currentEnhancementConfiguration,
               configuration.isEnabled else { return false }
@@ -451,7 +443,7 @@ struct AudioPlayerView: View {
                     .help("Playback speed")
 
                     CircleIconButton(
-                        icon: currentPromptIcon,
+                        icon: "text.bubble.fill",
                         action: { showPromptPopover.toggle() }
                     )
                     .opacity(modeManager.currentEffectiveConfiguration?.isAIEnhancementEnabled == true ? 1.0 : 0.4)

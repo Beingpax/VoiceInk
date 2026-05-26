@@ -53,7 +53,7 @@ class AudioTranscriptionService: ObservableObject {
                 prompt: UserDefaults.standard.string(forKey: "TranscriptionPrompt")
             )
             let modeName = (mode?.isEnabled == true) ? mode?.name : nil
-            let modeEmoji = (mode?.isEnabled == true) ? mode?.emoji : nil
+            let modeEmoji = (mode?.isEnabled == true) ? mode?.icon.legacyEmojiValue : nil
 
             let transcriptionStart = Date()
             var text = try await serviceRegistry.transcribe(audioURL: url, model: model, context: requestContext)

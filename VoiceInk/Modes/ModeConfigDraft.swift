@@ -3,7 +3,7 @@ import Foundation
 struct ModeConfigDraft {
     var id: UUID
     var name: String
-    var emoji: String
+    var icon: ModeIcon
     var appConfigs: [AppConfig]
     var websiteConfigs: [URLConfig]
     var isAIEnhancementEnabled: Bool
@@ -36,7 +36,7 @@ struct ModeConfigDraft {
         case .add:
             id = UUID()
             name = ""
-            emoji = "✏️"
+            icon = .defaultIcon
             appConfigs = []
             websiteConfigs = []
             isAIEnhancementEnabled = false
@@ -60,7 +60,7 @@ struct ModeConfigDraft {
             let latestConfig = modeManager.getConfiguration(with: config.id) ?? config
             id = latestConfig.id
             name = latestConfig.name
-            emoji = latestConfig.emoji
+            icon = latestConfig.icon
             appConfigs = latestConfig.appConfigs ?? []
             websiteConfigs = latestConfig.urlConfigs ?? []
             isAIEnhancementEnabled = latestConfig.isAIEnhancementEnabled
@@ -131,7 +131,7 @@ struct ModeConfigDraft {
             return ModeConfig(
                 id: id,
                 name: name,
-                emoji: emoji,
+                icon: icon,
                 appConfigs: appConfigs.isEmpty ? nil : appConfigs,
                 urlConfigs: websiteConfigs.isEmpty ? nil : websiteConfigs,
                 isAIEnhancementEnabled: isAIEnhancementEnabled,
@@ -153,7 +153,7 @@ struct ModeConfigDraft {
         case .edit(let config):
             var updatedConfig = sourceConfig ?? config
             updatedConfig.name = name
-            updatedConfig.emoji = emoji
+            updatedConfig.icon = icon
             updatedConfig.appConfigs = appConfigs.isEmpty ? nil : appConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
             updatedConfig.isAIEnhancementEnabled = isAIEnhancementEnabled

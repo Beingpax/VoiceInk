@@ -167,7 +167,7 @@ struct RecorderPromptButton: View {
 
         RecorderToggleButton(
             isEnabled: currentMode?.isAIEnhancementEnabled == true,
-            icon: selectedPrompt?.icon ?? enhancementService.allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId })?.icon ?? "checkmark.seal.fill",
+            icon: selectedPrompt == nil ? "sparkles" : "text.bubble.fill",
             disabled: false
         ) {
             if currentMode?.isAIEnhancementEnabled == true {
@@ -236,7 +236,7 @@ struct RecorderModeButton: View {
     var body: some View {
         RecorderToggleButton(
             isEnabled: !modeManager.enabledConfigurations.isEmpty,
-            icon: modeManager.enabledConfigurations.isEmpty ? "✨" : (modeManager.currentEffectiveConfiguration?.emoji ?? "✨"),
+            icon: modeManager.enabledConfigurations.isEmpty ? "sparkles" : (modeManager.currentEffectiveConfiguration?.icon.value ?? "sparkles"),
             disabled: modeManager.enabledConfigurations.isEmpty
         ) {
             activePopover = activePopover == .mode ? .none : .mode

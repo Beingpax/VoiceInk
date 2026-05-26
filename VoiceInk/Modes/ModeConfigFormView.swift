@@ -16,7 +16,7 @@ struct ModeConfigFormView: View {
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @FocusState private var isNameFieldFocused: Bool
 
-    @State private var isShowingEmojiPicker = false
+    @State private var isShowingIconPicker = false
     @State private var isShowingAppPicker = false
     @State private var isShowingWebsitePicker = false
     @State private var installedApps: [InstalledAppInfo] = []
@@ -79,10 +79,9 @@ struct ModeConfigFormView: View {
     private var header: some View {
         HStack(spacing: 12) {
             Button {
-                isShowingEmojiPicker.toggle()
+                isShowingIconPicker.toggle()
             } label: {
-                Text(draft.emoji)
-                    .font(.system(size: 22))
+                ModeIconView(icon: draft.icon, size: draft.icon.kind == .emoji ? 22 : 18)
                     .frame(width: 36, height: 36)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
@@ -90,10 +89,10 @@ struct ModeConfigFormView: View {
                     )
             }
             .buttonStyle(.plain)
-            .popover(isPresented: $isShowingEmojiPicker, arrowEdge: .bottom) {
-                EmojiPickerView(
-                    selectedEmoji: $draft.emoji,
-                    isPresented: $isShowingEmojiPicker
+            .popover(isPresented: $isShowingIconPicker, arrowEdge: .bottom) {
+                ModeIconPickerView(
+                    selectedIcon: $draft.icon,
+                    isPresented: $isShowingIconPicker
                 )
             }
 

@@ -445,7 +445,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             return (nil, nil)
         }
 
-        return (mode.name, mode.emoji)
+        return (mode.name, mode.icon.legacyEmojiValue)
     }
 
     // MARK: - Resource Cleanup

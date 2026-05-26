@@ -23,7 +23,7 @@ enum AutoSendKey: String, Codable, CaseIterable {
 struct ModeConfig: Codable, Identifiable, Equatable {
     var id: UUID
     var name: String
-    var emoji: String
+    var icon: ModeIcon
     var appConfigs: [AppConfig]?
     var urlConfigs: [URLConfig]?
     var isAIEnhancementEnabled: Bool
@@ -43,19 +43,20 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var isDefault: Bool = false
         
     enum CodingKeys: String, CodingKey {
-        case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
+        case id, name, icon, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
+        case legacyEmoji = "emoji"
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
     
-    init(id: UUID = UUID(), name: String, emoji: String, appConfigs: [AppConfig]? = nil,
+    init(id: UUID = UUID(), name: String, icon: ModeIcon = .defaultIcon, appConfigs: [AppConfig]? = nil,
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true, useScreenCapture: Bool = false,
          isTextFormattingEnabled: Bool = false, punctuationCleanupMode: PunctuationCleanupMode = .keep, lowercaseTranscription: Bool = false,
          selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false) {
         self.id = id
         self.name = name
-        self.emoji = emoji
+        self.icon = icon
         self.appConfigs = appConfigs
         self.urlConfigs = urlConfigs
         self.isAIEnhancementEnabled = isAIEnhancementEnabled
@@ -79,7 +80,14 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
-        emoji = try container.decode(String.self, forKey: .emoji)
+        if let decodedIcon = try container.decodeIfPresent(ModeIcon.self, forKey: .icon) {
+            icon = decodedIcon
+        } else if let legacyEmoji = try container.decodeIfPresent(String.self, forKey: .legacyEmoji),
+                  !legacyEmoji.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            icon = .emoji(legacyEmoji)
+        } else {
+            icon = .defaultIcon
+        }
         appConfigs = try container.decodeIfPresent([AppConfig].self, forKey: .appConfigs)
         urlConfigs = try container.decodeIfPresent([URLConfig].self, forKey: .urlConfigs)
         isAIEnhancementEnabled = try container.decode(Bool.self, forKey: .isAIEnhancementEnabled)
@@ -129,7 +137,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(name, forKey: .name)
-        try container.encode(emoji, forKey: .emoji)
+        try container.encode(icon, forKey: .icon)
         try container.encodeIfPresent(appConfigs, forKey: .appConfigs)
         try container.encodeIfPresent(urlConfigs, forKey: .urlConfigs)
         try container.encode(isAIEnhancementEnabled, forKey: .isAIEnhancementEnabled)
@@ -428,6 +436,6 @@ class ModeManager: ObservableObject {
     }
 
     func isEmojiInUse(_ emoji: String) -> Bool {
-        return configurations.contains { $0.emoji == emoji }
+        return configurations.contains { $0.icon == .emoji(emoji) }
     }
 } 

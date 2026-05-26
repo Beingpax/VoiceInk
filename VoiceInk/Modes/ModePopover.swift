@@ -69,8 +69,8 @@ struct ModeRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Text(config.emoji)
-                    .font(.system(size: 14))
+                ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 14 : 12, color: .white.opacity(0.9))
+                    .frame(width: 16)
 
                 Text(config.name)
                     .foregroundColor(.white.opacity(0.9))

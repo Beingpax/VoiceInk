@@ -525,8 +525,8 @@ class AIEnhancementService: ObservableObject {
     }
 
     @discardableResult
-    func addPrompt(title: String, promptText: String, icon: PromptIcon = "doc.text.fill", description: String? = nil, useSystemInstructions: Bool = true) -> CustomPrompt {
-        let newPrompt = CustomPrompt(title: title, promptText: promptText, icon: icon, description: description, isPredefined: false, useSystemInstructions: useSystemInstructions)
+    func addPrompt(title: String, promptText: String, description: String? = nil, useSystemInstructions: Bool = true) -> CustomPrompt {
+        let newPrompt = CustomPrompt(title: title, promptText: promptText, description: description, isPredefined: false, useSystemInstructions: useSystemInstructions)
         customPrompts.append(newPrompt)
         if customPrompts.count == 1 {
             selectedPromptId = newPrompt.id

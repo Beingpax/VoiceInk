@@ -95,11 +95,6 @@ struct EnhancementPromptRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                // Use the icon from the prompt
-                Image(systemName: prompt.icon)
-                    .font(.system(size: 14))
-                    .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.7))
-
                 Text(prompt.title)
                     .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.9))
                     .font(.system(size: 13))

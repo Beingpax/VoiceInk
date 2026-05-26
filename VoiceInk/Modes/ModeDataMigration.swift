@@ -92,7 +92,7 @@ extension ModeManager {
 
         return ModeConfig(
             name: name,
-            emoji: "✏️",
+            icon: .defaultIcon,
             isAIEnhancementEnabled: defaults.bool(forKey: "isAIEnhancementEnabled"),
             selectedPrompt: defaults.string(forKey: "selectedPromptId"),
             selectedTranscriptionModelName: defaults.string(forKey: "CurrentTranscriptionModel"),

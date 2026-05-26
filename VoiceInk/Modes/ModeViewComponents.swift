@@ -164,8 +164,7 @@ struct ConfigurationRow: View {
                         .fill(Color(NSColor.controlBackgroundColor))
                         .frame(width: 40, height: 40)
                     
-                    Text(config.emoji)
-                        .font(.system(size: 20))
+                    ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 20 : 16)
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {

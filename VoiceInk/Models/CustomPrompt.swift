@@ -3,78 +3,6 @@ import SwiftUI
 
 typealias PromptIcon = String
 
-extension PromptIcon {
-    static let allCases: [PromptIcon] = [
-        // Document & Text
-        "doc.text.fill",
-        "textbox",
-        "checkmark.seal.fill",
-        
-        // Communication
-        "bubble.left.and.bubble.right.fill",
-        "message.fill",
-        "envelope.fill",
-        
-        // Professional
-        "person.2.fill",
-        "person.wave.2.fill",
-        "briefcase.fill",
-        
-        // Technical
-        "curlybraces",
-        "terminal.fill",
-        "gearshape.fill",
-        
-        // Content
-        "doc.text.image.fill",
-        "note",
-        "book.fill",
-        "bookmark.fill",
-        "pencil.circle.fill",
-        
-        // Media & Creative
-        "video.fill",
-        "mic.fill",
-        "music.note",
-        "photo.fill",
-        "paintbrush.fill",
-        
-        // Productivity & Time
-        "clock.fill",
-        "calendar",
-        "list.bullet",
-        "checkmark.circle.fill",
-        "timer",
-        "hourglass",
-        "star.fill",
-        "flag.fill",
-        "tag.fill",
-        "folder.fill",
-        "paperclip",
-        "tray.fill",
-        "chart.bar.fill",
-        "flame.fill",
-        "target",
-        "list.clipboard.fill",
-        "brain.head.profile",
-        "lightbulb.fill",
-        "megaphone.fill",
-        "heart.fill",
-        "map.fill",
-        "house.fill",
-        "camera.fill",
-        "figure.walk",
-        "dumbbell.fill",
-        "cart.fill",
-        "creditcard.fill",
-        "graduationcap.fill",
-        "airplane",
-        "leaf.fill",
-        "hand.raised.fill",
-        "hand.thumbsup.fill"
-    ]
-}
-
 struct CustomPrompt: Identifiable, Codable, Equatable {
     let id: UUID
     let title: String
@@ -133,114 +61,27 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
 // MARK: - UI Extensions
 extension CustomPrompt {
     func promptIcon(isSelected: Bool, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil, onDelete: ((CustomPrompt) -> Void)? = nil) -> some View {
-        VStack(spacing: 8) {
-            ZStack {
-                // Dynamic background with blur effect
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        LinearGradient(
-                            gradient: isSelected ?
-                                Gradient(colors: [
-                                    Color.accentColor.opacity(0.9),
-                                    Color.accentColor.opacity(0.7)
-                                ]) :
-                                Gradient(colors: [
-                                    Color(NSColor.controlBackgroundColor).opacity(0.95),
-                                    Color(NSColor.controlBackgroundColor).opacity(0.85)
-                                ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        isSelected ?
-                                            Color.white.opacity(0.3) : Color.white.opacity(0.15),
-                                        isSelected ?
-                                            Color.white.opacity(0.1) : Color.white.opacity(0.05)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: isSelected ?
-                            Color.accentColor.opacity(0.4) : Color.black.opacity(0.1),
-                        radius: isSelected ? 10 : 6,
-                        x: 0,
-                        y: 3
-                    )
-                
-                // Decorative background elements
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                isSelected ?
-                                    Color.white.opacity(0.15) : Color.white.opacity(0.08),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 1,
-                            endRadius: 25
-                        )
-                    )
-                    .frame(width: 50, height: 50)
-                    .offset(x: -15, y: -15)
-                    .blur(radius: 2)
-                
-                // Icon with enhanced effects
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: isSelected ?
-                                [Color.white, Color.white.opacity(0.9)] :
-                                [Color.primary.opacity(0.9), Color.primary.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(
-                        color: isSelected ?
-                            Color.white.opacity(0.5) : Color.clear,
-                        radius: 4
-                    )
-                    .shadow(
-                        color: isSelected ?
-                            Color.accentColor.opacity(0.5) : Color.clear,
-                        radius: 3
-                    )
-            }
-            .frame(width: 48, height: 48)
-            
-            // Enhanced title styling
-            VStack(spacing: 2) {
-                Text(title)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isSelected ?
-                        .primary : .secondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: 70)
-            }
-        }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 6)
+        Text(title)
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, minHeight: 30)
+            .padding(.horizontal, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(Color(NSColor.separatorColor), lineWidth: isSelected ? 0 : 0.5)
+            )
         .contentShape(Rectangle())
-        .scaleEffect(isSelected ? 1.05 : 1.0)
         .onTapGesture(count: 2) {
-            // Double tap to edit
             if let onEdit = onEdit {
                 onEdit(self)
             }
         }
         .onTapGesture(count: 1) {
-            // Single tap to select
             onTap()
         }
         .contextMenu {
@@ -274,84 +115,21 @@ extension CustomPrompt {
         }
     }
     
-    // Static method to create an "Add New" button with the same styling as the prompt icons
     static func addNewButton(action: @escaping () -> Void) -> some View {
-        VStack(spacing: 8) {
-            ZStack {
-                // Dynamic background with blur effect - same styling as promptIcon
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(NSColor.controlBackgroundColor).opacity(0.95),
-                                Color(NSColor.controlBackgroundColor).opacity(0.85)
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.15),
-                                        Color.white.opacity(0.05)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
-                    .shadow(
-                        color: Color.black.opacity(0.1),
-                        radius: 6,
-                        x: 0,
-                        y: 3
-                    )
-                
-                // Decorative background elements (same as in promptIcon)
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            gradient: Gradient(colors: [
-                                Color.white.opacity(0.08),
-                                Color.clear
-                            ]),
-                            center: .center,
-                            startRadius: 1,
-                            endRadius: 25
-                        )
-                    )
-                    .frame(width: 50, height: 50)
-                    .offset(x: -15, y: -15)
-                    .blur(radius: 2)
-                
-                // Plus icon with same styling as the normal icons
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [Color.accentColor.opacity(0.9), Color.accentColor.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-            .frame(width: 48, height: 48)
-            
-            // Text label with matching styling
-            VStack(spacing: 2) {
-                Text("Add New")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: 70)
-            }
-        }
-        .padding(.horizontal, 4)
-        .padding(.vertical, 6)
+        Label("Add New", systemImage: "plus.circle.fill")
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, minHeight: 30)
+            .padding(.horizontal, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color(NSColor.controlBackgroundColor))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+            )
         .contentShape(Rectangle())
         .onTapGesture(perform: action)
     }

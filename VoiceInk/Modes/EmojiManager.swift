@@ -3,7 +3,6 @@ import Foundation
 class EmojiManager: ObservableObject {
     static let shared = EmojiManager()
     
-    private let defaultEmojis = ["🏢", "🏠", "💼", "🎮", "📱", "📺", "🎵", "📚", "✏️", "🎨", "🧠", "⚙️", "💻", "🌐", "📝", "📊", "🔍", "💬", "📈", "🔧"]
     private let customEmojisKey = "userAddedEmojis"
     
     @Published var customEmojis: [String] = []
@@ -13,7 +12,7 @@ class EmojiManager: ObservableObject {
     }
     
     var allEmojis: [String] {
-        return defaultEmojis + customEmojis
+        return customEmojis
     }
     
     func addCustomEmoji(_ emoji: String) -> Bool {

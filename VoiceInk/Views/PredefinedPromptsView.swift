@@ -29,15 +29,6 @@ struct PredefinedTemplateButton: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .center, spacing: 12) {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(NSColor.unemphasizedSelectedTextBackgroundColor))
-                        .frame(width: 42, height: 42)
-                        .overlay(
-                            Image(systemName: prompt.icon)
-                                .font(.system(size: 19, weight: .medium))
-                                .foregroundColor(Color(NSColor.labelColor))
-                        )
-                    
                     Text(prompt.title)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.primary)

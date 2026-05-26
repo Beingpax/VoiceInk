@@ -109,8 +109,7 @@ private struct ModeReorderRow: View {
                     .fill(Color(NSColor.controlBackgroundColor))
                     .frame(width: 34, height: 34)
 
-                Text(config.emoji)
-                    .font(.system(size: 18))
+                ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 18 : 14)
             }
             .accessibilityHidden(true)
 
@@ -241,8 +240,7 @@ private struct ModeReorderDragPreview: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(config.emoji)
-                .font(.system(size: 18))
+            ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 18 : 14)
 
             Text(config.name)
                 .font(.system(size: 14, weight: .semibold))

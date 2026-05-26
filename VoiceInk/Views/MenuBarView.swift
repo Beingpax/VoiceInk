@@ -31,7 +31,9 @@ struct MenuBarView: View {
                         modeManager.setActiveConfiguration(config)
                     } label: {
                         HStack {
-                            Text("\(config.emoji) \(config.name)")
+                            ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 13 : 11)
+                                .frame(width: 16)
+                            Text(config.name)
                             if modeManager.currentEffectiveConfiguration?.id == config.id {
                                 Image(systemName: "checkmark")
                             }
@@ -56,7 +58,12 @@ struct MenuBarView: View {
             } label: {
                 HStack {
                     let activeMode = modeManager.currentEffectiveConfiguration
-                    Text("Mode: \(activeMode.map { "\($0.emoji) \($0.name)" } ?? "None")")
+                    if let activeMode {
+                        ModeIconView(icon: activeMode.icon, size: activeMode.icon.kind == .emoji ? 13 : 11)
+                        Text("Mode: \(activeMode.name)")
+                    } else {
+                        Text("Mode: None")
+                    }
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
                 }
