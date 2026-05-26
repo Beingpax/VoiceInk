@@ -3,13 +3,12 @@ import SwiftData
 import os
 
 /// Handles the full post-recording pipeline:
-/// transcribe → filter → format → word-replace → prompt-detect → AI enhance → start paste + dismiss → save
+/// transcribe → filter → format → word-replace → AI enhance → start paste + dismiss → save
 @MainActor
 class TranscriptionPipeline {
     private let modelContext: ModelContext
     private let serviceRegistry: TranscriptionServiceRegistry
     private let enhancementService: AIEnhancementService?
-    private let promptDetectionService = PromptDetectionService()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionPipeline")
 
     var licenseViewModel: LicenseViewModel
@@ -48,7 +47,6 @@ class TranscriptionPipeline {
     ) async {
         let model = transcriptionConfiguration.model
         var finalPastedText: String?
-        var promptDetectionResult: PromptDetectionService.PromptDetectionResult?
         var didInsertSessionMetric = false
 
         func dismiss(afterRestore: () -> Void = {}) async {
@@ -125,22 +123,12 @@ class TranscriptionPipeline {
             transcription.modeEmoji = modeMetadata.emoji
             finalPastedText = cleanedText
 
-            var resolvedEnhancementConfiguration = enhancementConfiguration()
-            if let enhancementService,
-               resolvedEnhancementConfiguration?.provider != nil {
-                let detectionResult = promptDetectionService.analyzeText(text, prompts: enhancementService.allPrompts)
-                promptDetectionResult = detectionResult
-                if detectionResult.shouldEnableAI,
-                   let prompt = detectionResult.selectedPrompt,
-                   let currentConfiguration = resolvedEnhancementConfiguration {
-                    resolvedEnhancementConfiguration = currentConfiguration.replacingPrompt(prompt)
-                }
-            }
+            let resolvedEnhancementConfiguration = enhancementConfiguration()
 
             let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
             let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
             let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
-            let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold && !(promptDetectionResult?.shouldEnableAI == true)
+            let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold
 
             if let enhancementService,
                let resolvedEnhancementConfiguration,
@@ -150,11 +138,10 @@ class TranscriptionPipeline {
                 if shouldCancel() { await finishCanceledTranscription(); return }
 
                 onStateChange(.enhancing)
-                let textForAI = promptDetectionResult?.processedText ?? text
 
                 do {
                     let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
-                        textForAI,
+                        text,
                         configuration: resolvedEnhancementConfiguration
                     )
                     transcription.enhancedText = enhancedText

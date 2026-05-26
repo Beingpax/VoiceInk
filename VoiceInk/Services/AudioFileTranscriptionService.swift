@@ -11,7 +11,6 @@ class AudioTranscriptionService: ObservableObject {
 
     private let modelContext: ModelContext
     private let enhancementService: AIEnhancementService?
-    private let promptDetectionService = PromptDetectionService()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioTranscriptionService")
     private let serviceRegistry: TranscriptionServiceRegistry
 
@@ -93,10 +92,8 @@ class AudioTranscriptionService: ObservableObject {
             
             let permanentURLString = permanentURL.absoluteString
 
-            // Apply prompt detection for trigger words
             let originalText = cleanedText
-            var promptDetectionResult: PromptDetectionService.PromptDetectionResult? = nil
-            var enhancementConfiguration = enhancementService
+            let enhancementConfiguration = enhancementService
                 .flatMap { service in
                     service.getAIService().map { aiService in
                         ModeRuntimeResolver.currentEnhancementConfiguration(
@@ -106,25 +103,14 @@ class AudioTranscriptionService: ObservableObject {
                     }
                 }
 
-            if let enhancementService = enhancementService, enhancementConfiguration?.provider != nil {
-                let detectionResult = promptDetectionService.analyzeText(text, prompts: enhancementService.allPrompts)
-                promptDetectionResult = detectionResult
-                if detectionResult.shouldEnableAI,
-                   let prompt = detectionResult.selectedPrompt,
-                   let currentConfiguration = enhancementConfiguration {
-                    enhancementConfiguration = currentConfiguration.replacingPrompt(prompt)
-                }
-            }
-
             // Apply AI enhancement if enabled
             if let enhancementService = enhancementService,
                let enhancementConfiguration,
                enhancementConfiguration.isEnabled,
                enhancementService.isConfigured(for: enhancementConfiguration) {
                 do {
-                    let textForAI = promptDetectionResult?.processedText ?? text
                     let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
-                        textForAI,
+                        text,
                         configuration: enhancementConfiguration
                     )
                     let newTranscription = Transcription(

@@ -26,7 +26,6 @@ struct PromptEditorView: View {
     @State private var promptText: String
     @State private var selectedIcon: PromptIcon
     @State private var description: String
-    @State private var triggerWords: [String]
     @State private var useSystemInstructions: Bool
     @State private var showingIconPicker = false
     @State private var showDeleteConfirmation = false
@@ -87,14 +86,12 @@ struct PromptEditorView: View {
             _promptText = State(initialValue: "")
             _selectedIcon = State(initialValue: "doc.text.fill")
             _description = State(initialValue: "")
-            _triggerWords = State(initialValue: [])
             _useSystemInstructions = State(initialValue: true)
         case .edit(let prompt):
             _title = State(initialValue: prompt.title)
             _promptText = State(initialValue: prompt.promptText)
             _selectedIcon = State(initialValue: prompt.icon)
             _description = State(initialValue: prompt.description ?? "")
-            _triggerWords = State(initialValue: prompt.triggerWords)
             _useSystemInstructions = State(initialValue: prompt.useSystemInstructions)
         }
     }
@@ -118,8 +115,6 @@ struct PromptEditorView: View {
                     if !isEditingPredefinedPrompt {
                         instructionsEditor
                     }
-
-                    triggerWordsEditor
                 }
                 .padding(20)
             }
@@ -278,10 +273,6 @@ struct PromptEditorView: View {
         }
     }
 
-    private var triggerWordsEditor: some View {
-        TriggerWordsEditor(triggerWords: $triggerWords)
-    }
-
     private var footer: some View {
         HStack {
             if canDeletePrompt {
@@ -338,7 +329,6 @@ struct PromptEditorView: View {
                 promptText: promptText,
                 icon: selectedIcon,
                 description: description.isEmpty ? nil : description,
-                triggerWords: triggerWords,
                 useSystemInstructions: useSystemInstructions
             )
         case .edit(let prompt):
@@ -350,144 +340,10 @@ struct PromptEditorView: View {
                 icon: prompt.isPredefined ? prompt.icon : selectedIcon,
                 description: prompt.isPredefined ? prompt.description : (description.isEmpty ? nil : description),
                 isPredefined: prompt.isPredefined,
-                triggerWords: triggerWords,
                 useSystemInstructions: useSystemInstructions
             )
             enhancementService.updatePrompt(updatedPrompt)
             return updatedPrompt
-        }
-    }
-}
-
-// MARK: - Trigger Words Editor
-struct TriggerWordsEditor: View {
-    @Binding var triggerWords: [String]
-    @State private var newTriggerWord: String = ""
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                TextField("Add trigger word", text: $newTriggerWord)
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(GroupedCardBackground(cornerRadius: 7))
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-                    .onSubmit { addTriggerWord() }
-
-                Button(action: { addTriggerWord() }) {
-                    Image(systemName: "plus.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
-                        .font(.system(size: 18))
-                }
-                .buttonStyle(.plain)
-                .disabled(newTriggerWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-
-            if !triggerWords.isEmpty {
-                TagLayout(alignment: .leading, spacing: 6) {
-                    ForEach(triggerWords, id: \.self) { word in
-                        TriggerWordItemView(word: word) {
-                            triggerWords.removeAll { $0 == word }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private func addTriggerWord() {
-        let trimmedWord = newTriggerWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedWord.isEmpty else { return }
-        
-        let lowerCaseWord = trimmedWord.lowercased()
-        guard !triggerWords.contains(where: { $0.lowercased() == lowerCaseWord }) else { return }
-        
-        triggerWords.append(trimmedWord)
-        newTriggerWord = ""
-    }
-}
-
-// MARK: - Trigger Word Item
-struct TriggerWordItemView: View {
-    let word: String
-    let onDelete: () -> Void
-    @State private var isHovered = false
-    
-    var body: some View {
-        HStack(spacing: 4) {
-                Text(word)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: 120, alignment: .leading)
-                    .foregroundColor(.primary)
-            
-            Button(action: onDelete) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.secondary)
-            }
-            .buttonStyle(.plain)
-            .padding(.leading, 2)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(GroupedCardBackground(cornerRadius: 4))
-        .cornerRadius(4)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
-        )
-    }
-}
-
-// MARK: - Tag Layout
-struct TagLayout: Layout {
-    var alignment: Alignment = .leading
-    var spacing: CGFloat = 8
-    
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxWidth = proposal.width ?? .infinity
-        var height: CGFloat = 0
-        var currentRowWidth: CGFloat = 0
-        
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            
-            if currentRowWidth + size.width > maxWidth {
-                // New row
-                height += size.height + spacing
-                currentRowWidth = size.width + spacing
-            } else {
-                // Same row
-                currentRowWidth += size.width + spacing
-            }
-            
-            if height == 0 {
-                height = size.height
-            }
-        }
-        
-        return CGSize(width: maxWidth, height: height)
-    }
-    
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX
-        var y = bounds.minY
-        let maxHeight = subviews.map { $0.sizeThatFits(.unspecified).height }.max() ?? 0
-        
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            
-            if x + size.width > bounds.maxX {
-                x = bounds.minX
-                y += maxHeight + spacing
-            }
-            
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-            x += size.width + spacing
         }
     }
 }

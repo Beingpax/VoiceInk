@@ -83,7 +83,6 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
     let icon: PromptIcon
     let description: String?
     let isPredefined: Bool
-    let triggerWords: [String]
     let useSystemInstructions: Bool
     
     init(
@@ -94,7 +93,6 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         icon: PromptIcon = "doc.text.fill",
         description: String? = nil,
         isPredefined: Bool = false,
-        triggerWords: [String] = [],
         useSystemInstructions: Bool = true
     ) {
         self.id = id
@@ -104,12 +102,11 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         self.icon = icon
         self.description = description
         self.isPredefined = isPredefined
-        self.triggerWords = triggerWords
         self.useSystemInstructions = useSystemInstructions
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, promptText, isActive, icon, description, isPredefined, triggerWords, useSystemInstructions
+        case id, title, promptText, isActive, icon, description, isPredefined, useSystemInstructions
     }
 
     init(from decoder: Decoder) throws {
@@ -121,7 +118,6 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         icon = try container.decode(PromptIcon.self, forKey: .icon)
         description = try container.decodeIfPresent(String.self, forKey: .description)
         isPredefined = try container.decode(Bool.self, forKey: .isPredefined)
-        triggerWords = try container.decode([String].self, forKey: .triggerWords)
         useSystemInstructions = try container.decodeIfPresent(Bool.self, forKey: .useSystemInstructions) ?? true
     }
     
@@ -231,31 +227,6 @@ extension CustomPrompt {
                         .primary : .secondary)
                     .lineLimit(1)
                     .frame(maxWidth: 70)
-                
-                // Trigger word section with consistent height
-                ZStack(alignment: .center) {
-                    if !triggerWords.isEmpty {
-                        HStack(spacing: 2) {
-                            Image(systemName: "mic.fill")
-                                .font(.system(size: 7))
-                                .foregroundColor(isSelected ? .accentColor.opacity(0.9) : .secondary.opacity(0.7))
-                            
-                            if triggerWords.count == 1 {
-                                Text("\"\(triggerWords[0])...\"")
-                                    .font(.system(size: 8, weight: .regular))
-                                    .foregroundColor(isSelected ? .primary.opacity(0.8) : .secondary.opacity(0.7))
-                                    .lineLimit(1)
-                            } else {
-                                Text("\"\(triggerWords[0])...\" +\(triggerWords.count - 1)")
-                                    .font(.system(size: 8, weight: .regular))
-                                    .foregroundColor(isSelected ? .primary.opacity(0.8) : .secondary.opacity(0.7))
-                                    .lineLimit(1)
-                            }
-                        }
-                        .frame(maxWidth: 70)
-                    }
-                }
-                .frame(height: 16)
             }
         }
         .padding(.horizontal, 4)
@@ -377,10 +348,6 @@ extension CustomPrompt {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .frame(maxWidth: 70)
-                
-                // Empty space matching the trigger word area height
-                Spacer()
-                    .frame(height: 16)
             }
         }
         .padding(.horizontal, 4)
