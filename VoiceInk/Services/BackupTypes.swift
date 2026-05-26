@@ -155,4 +155,17 @@ struct BackupFile: Codable {
         customEmojis = try container.decodeIfPresent([String].self, forKey: .customEmojis)
         customCloudModels = try container.decodeIfPresent([CustomModelBackup].self, forKey: .customCloudModels)
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(customPrompts, forKey: .customPrompts)
+        try container.encode(modeConfigs, forKey: .modeConfigs)
+        try container.encodeIfPresent(modeShortcuts, forKey: .modeShortcuts)
+        try container.encodeIfPresent(vocabularyWords, forKey: .vocabularyWords)
+        try container.encodeIfPresent(wordReplacements, forKey: .wordReplacements)
+        try container.encodeIfPresent(generalSettings, forKey: .generalSettings)
+        try container.encodeIfPresent(customEmojis, forKey: .customEmojis)
+        try container.encodeIfPresent(customCloudModels, forKey: .customCloudModels)
+    }
 }
