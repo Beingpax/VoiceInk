@@ -166,7 +166,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             await ActiveWindowService.shared.applyConfiguration(modeId: modeId)
 
                             guard self.recordingState == .recording,
-                                  let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+                                  let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
                                     transcriptionModelManager: self.transcriptionModelManager
                                   ) else {
                                 NotificationManager.shared.showNotification(title: "No AI Model Selected", type: .error)
@@ -216,7 +216,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             Task { @MainActor [weak self] in
                                 guard let self else { return }
 
-                                let currentModel = ModeRuntimeResolver.currentTranscriptionConfiguration(
+                                let currentModel = ModeRuntimeResolver.transcriptionConfiguration(
                                     transcriptionModelManager: self.transcriptionModelManager
                                 )?.model
 
@@ -267,7 +267,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
     private func runPipeline(on transcription: Transcription, audioURL: URL) async {
         guard let transcriptionConfiguration = currentSessionTranscriptionConfiguration ??
-            ModeRuntimeResolver.currentTranscriptionConfiguration(transcriptionModelManager: transcriptionModelManager) else {
+            ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: transcriptionModelManager) else {
             transcription.text = "Transcription Failed: No model selected"
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
             try? modelContext.save()
@@ -283,6 +283,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
             transcription: transcription,
             audioURL: audioURL,
             transcriptionConfiguration: transcriptionConfiguration,
+            formattingConfiguration: {
+                ModeRuntimeResolver.transcriptionFormattingConfiguration()
+            },
             session: session,
             enhancementConfiguration: { [weak self] in
                 guard let self,
@@ -430,7 +433,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             text: text,
             duration: duration,
             audioFileURL: audioURL.absoluteString,
-            transcriptionModelName: ModeRuntimeResolver.currentTranscriptionConfiguration(
+            transcriptionModelName: ModeRuntimeResolver.transcriptionConfiguration(
                 transcriptionModelManager: transcriptionModelManager
             )?.model.displayName,
             modeName: modeMetadata.name,

@@ -120,7 +120,7 @@ class AudioTranscriptionManager: ObservableObject {
         )
 
         do {
-            guard let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+            guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
                 transcriptionModelManager: engine.transcriptionModelManager
             ) else {
                 throw TranscriptionError.noModelSelected
@@ -167,16 +167,17 @@ class AudioTranscriptionManager: ObservableObject {
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
             let modeMetadata = transcriptionConfiguration.metadata
+            let formattingConfiguration = ModeRuntimeResolver.transcriptionFormattingConfiguration()
 
-            if transcriptionConfiguration.isTextFormattingEnabled {
-                text = WhisperTextFormatter.format(text)
+            if formattingConfiguration.isTextFormattingEnabled {
+                text = ParagraphFormatter.format(text)
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
                 text,
-                punctuationMode: transcriptionConfiguration.punctuationCleanupMode,
-                shouldLowercase: transcriptionConfiguration.lowercaseTranscription
+                punctuationMode: formattingConfiguration.punctuationCleanupMode,
+                shouldLowercase: formattingConfiguration.lowercaseTranscription
             )
             try Task.checkCancellation()
 

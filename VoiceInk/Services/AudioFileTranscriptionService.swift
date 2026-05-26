@@ -60,17 +60,18 @@ class AudioTranscriptionService: ObservableObject {
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let formattingConfiguration = ModeRuntimeResolver.transcriptionFormattingConfiguration()
 
-            if mode?.isTextFormattingEnabled ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
-                text = WhisperTextFormatter.format(text)
+            if formattingConfiguration.isTextFormattingEnabled {
+                text = ParagraphFormatter.format(text)
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             logger.notice("✅ Word replacements applied")
             let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
                 text,
-                punctuationMode: mode?.punctuationCleanupMode ?? PunctuationCleanupMode.current(),
-                shouldLowercase: mode?.lowercaseTranscription ?? UserDefaults.standard.bool(forKey: "LowercaseTranscription")
+                punctuationMode: formattingConfiguration.punctuationCleanupMode,
+                shouldLowercase: formattingConfiguration.lowercaseTranscription
             )
 
             let audioAsset = AVURLAsset(url: url)

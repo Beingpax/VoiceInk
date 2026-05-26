@@ -71,7 +71,7 @@ final class ModelPrewarmService: ObservableObject {
             return
         }
 
-        guard let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+        guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
             transcriptionModelManager: transcriptionModelManager
         ) else {
             logger.notice("No model selected, skipping prewarm")
@@ -108,7 +108,7 @@ final class ModelPrewarmService: ObservableObject {
         }
 
         // Only prewarm local models (Parakeet and Whisper need ANE compilation)
-        guard let model = ModeRuntimeResolver.currentTranscriptionConfiguration(
+        guard let model = ModeRuntimeResolver.transcriptionConfiguration(
             transcriptionModelManager: transcriptionModelManager
         )?.model else {
             return false

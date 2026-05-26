@@ -28,7 +28,7 @@ class TranscriptionPipeline {
     /// - Parameters:
     ///   - transcription: The pending Transcription SwiftData object to populate and save.
     ///   - audioURL: The recorded audio file.
-    ///   - transcriptionConfiguration: Mode-resolved transcription settings for this phase.
+    ///   - transcriptionConfiguration: Mode-resolved transcription engine settings for this phase.
     ///   - session: An active streaming session if one was prepared, otherwise nil.
     ///   - onStateChange: Called when the pipeline moves to a new recording state (e.g. `.enhancing`).
     ///   - shouldCancel: Returns true if the user requested cancellation.
@@ -38,6 +38,7 @@ class TranscriptionPipeline {
         transcription: Transcription,
         audioURL: URL,
         transcriptionConfiguration: TranscriptionRuntimeConfiguration,
+        formattingConfiguration resolveFormattingConfiguration: @escaping () -> TranscriptionFormattingConfiguration,
         session: TranscriptionSession?,
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
         onStateChange: @escaping (RecordingState) -> Void,
@@ -100,16 +101,17 @@ class TranscriptionPipeline {
             if shouldCancel() { await finishCanceledTranscription(); return }
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            let formattingConfiguration = resolveFormattingConfiguration()
 
-            if transcriptionConfiguration.isTextFormattingEnabled {
-                text = WhisperTextFormatter.format(text)
+            if formattingConfiguration.isTextFormattingEnabled {
+                text = ParagraphFormatter.format(text)
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
                 text,
-                punctuationMode: transcriptionConfiguration.punctuationCleanupMode,
-                shouldLowercase: transcriptionConfiguration.lowercaseTranscription
+                punctuationMode: formattingConfiguration.punctuationCleanupMode,
+                shouldLowercase: formattingConfiguration.lowercaseTranscription
             )
 
             let actualDuration = await AudioFileMetadata.duration(for: audioURL)

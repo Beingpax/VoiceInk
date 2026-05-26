@@ -581,7 +581,7 @@ struct AudioPlayerView: View {
     }
 
     private func retranscribeAudio() {
-        guard let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+        guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
             transcriptionModelManager: engine.transcriptionModelManager
         ) else {
             showTemporaryBanner(.retranscribeError("No transcription model selected"))

@@ -4,9 +4,6 @@ struct TranscriptionRuntimeConfiguration {
     let mode: ModeConfig?
     let model: any TranscriptionModel
     let language: String
-    let isTextFormattingEnabled: Bool
-    let punctuationCleanupMode: PunctuationCleanupMode
-    let lowercaseTranscription: Bool
 
     var metadata: (name: String?, emoji: String?) {
         guard let mode, mode.isEnabled else {
@@ -21,6 +18,13 @@ struct TranscriptionRuntimeConfiguration {
             prompt: UserDefaults.standard.string(forKey: "TranscriptionPrompt")
         )
     }
+}
+
+struct TranscriptionFormattingConfiguration {
+    let mode: ModeConfig?
+    let isTextFormattingEnabled: Bool
+    let punctuationCleanupMode: PunctuationCleanupMode
+    let lowercaseTranscription: Bool
 }
 
 struct EnhancementRuntimeConfiguration {
@@ -49,7 +53,7 @@ struct EnhancementRuntimeConfiguration {
 
 @MainActor
 enum ModeRuntimeResolver {
-    static func currentTranscriptionConfiguration(
+    static func transcriptionConfiguration(
         transcriptionModelManager: TranscriptionModelManager
     ) -> TranscriptionRuntimeConfiguration? {
         let mode = ModeManager.shared.currentEffectiveConfiguration
@@ -68,7 +72,15 @@ enum ModeRuntimeResolver {
         return TranscriptionRuntimeConfiguration(
             mode: mode,
             model: model,
-            language: language,
+            language: language
+        )
+    }
+
+    static func transcriptionFormattingConfiguration() -> TranscriptionFormattingConfiguration {
+        let mode = ModeManager.shared.currentEffectiveConfiguration
+
+        return TranscriptionFormattingConfiguration(
+            mode: mode,
             isTextFormattingEnabled: mode?.isTextFormattingEnabled ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
             punctuationCleanupMode: mode?.punctuationCleanupMode ?? PunctuationCleanupMode.current(),
             lowercaseTranscription: mode?.lowercaseTranscription ?? UserDefaults.standard.bool(forKey: "LowercaseTranscription")

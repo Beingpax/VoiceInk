@@ -283,8 +283,8 @@ struct ModeConfigFormView: View {
             languagePicker
 
             ExpandableSettingsRow(
-                title: "Transcript Formatting",
-                isExpanded: $draft.isTranscriptFormattingExpanded
+                title: "Transcription Formatting",
+                isExpanded: $draft.isTranscriptionFormattingExpanded
             ) {
                 VStack(alignment: .leading, spacing: 10) {
                     Toggle(isOn: $draft.isTextFormattingEnabled) {

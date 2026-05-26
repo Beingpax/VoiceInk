@@ -20,7 +20,7 @@ struct ModeConfigDraft {
     var selectedAIModel: String?
     var autoSendKey: AutoSendKey
     var isDefault: Bool
-    var isTranscriptFormattingExpanded: Bool
+    var isTranscriptionFormattingExpanded: Bool
 
     private var sourceConfig: ModeConfig?
 
@@ -53,7 +53,7 @@ struct ModeConfigDraft {
             selectedAIModel = nil
             autoSendKey = .none
             isDefault = false
-            isTranscriptFormattingExpanded = false
+            isTranscriptionFormattingExpanded = false
             sourceConfig = nil
 
         case .edit(let config):
@@ -77,7 +77,7 @@ struct ModeConfigDraft {
             selectedAIModel = latestConfig.selectedAIModel
             autoSendKey = latestConfig.autoSendKey
             isDefault = latestConfig.isDefault
-            isTranscriptFormattingExpanded = latestConfig.isTextFormattingEnabled ||
+            isTranscriptionFormattingExpanded = latestConfig.isTextFormattingEnabled ||
                 latestConfig.punctuationCleanupMode != .keep ||
                 latestConfig.lowercaseTranscription
             sourceConfig = latestConfig

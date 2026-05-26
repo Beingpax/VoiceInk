@@ -111,7 +111,7 @@ class LastTranscriptionService: ObservableObject {
                 return
             }
 
-            guard let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+            guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
                 transcriptionModelManager: transcriptionModelManager
             ) else {
                 NotificationManager.shared.showNotification(
