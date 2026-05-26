@@ -24,13 +24,6 @@ struct ModeConfigDraft {
 
     private var sourceConfig: ModeConfig?
 
-    private static var defaultSelectedTextContext: Bool {
-        if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
-            return true
-        }
-        return UserDefaults.standard.bool(forKey: "useSelectedTextContext")
-    }
-
     init(mode: ConfigurationMode, modeManager: ModeManager) {
         switch mode {
         case .add:
@@ -43,12 +36,12 @@ struct ModeConfigDraft {
             selectedPromptId = nil
             selectedTranscriptionModelName = nil
             selectedLanguage = nil
-            isTextFormattingEnabled = false
+            isTextFormattingEnabled = true
             punctuationCleanupMode = .keep
             lowercaseTranscription = false
-            useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
-            useSelectedTextContext = Self.defaultSelectedTextContext
-            useScreenCapture = false
+            useClipboardContext = false
+            useSelectedTextContext = false
+            useScreenCapture = true
             selectedAIProvider = nil
             selectedAIModel = nil
             autoSendKey = .none
