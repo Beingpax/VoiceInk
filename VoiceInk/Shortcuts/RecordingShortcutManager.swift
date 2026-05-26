@@ -141,7 +141,7 @@ class RecordingShortcutManager: ObservableObject {
 
         self.engine = engine
         self.recorderUIManager = recorderUIManager
-        self.miniRecorderShortcutManager = MiniRecorderShortcutManager(engine: engine, recorderUIManager: recorderUIManager)
+        self.miniRecorderShortcutManager = MiniRecorderShortcutManager(recorderUIManager: recorderUIManager)
         self.shortcutModeHandler = shortcutModeHandler
         self.primaryRecordingShortcutModeSource = primaryRecordingShortcutModeSource
         self.modeShortcutManager = ModeShortcutManager(

@@ -9,10 +9,8 @@ enum ShortcutAction: Hashable {
     case cancelRecorder
     case openHistoryWindow
     case quickAddToDictionary
-    case toggleEnhancement
     case mode(UUID)
     case miniRecorderEscape
-    case miniRecorderPrompt(Int)
     case miniRecorderMode(Int)
 
     var userDefaultsKey: String {
@@ -21,7 +19,7 @@ enum ShortcutAction: Hashable {
 
     var isStored: Bool {
         switch self {
-        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderMode:
+        case .miniRecorderEscape, .miniRecorderMode:
             return false
         default:
             return true
@@ -46,14 +44,10 @@ enum ShortcutAction: Hashable {
             return "openHistoryWindow"
         case .quickAddToDictionary:
             return "quickAddToDictionary"
-        case .toggleEnhancement:
-            return "toggleEnhancement"
         case .mode(let id):
             return "mode_\(id.uuidString)"
         case .miniRecorderEscape:
             return "miniRecorderEscape"
-        case .miniRecorderPrompt(let index):
-            return "miniRecorderPrompt_\(index)"
         case .miniRecorderMode(let index):
             return "miniRecorderMode_\(index)"
         }
@@ -77,8 +71,6 @@ enum ShortcutAction: Hashable {
             return "Open History Window"
         case .quickAddToDictionary:
             return "Quick Add to Dictionary"
-        case .toggleEnhancement:
-            return "Toggle Enhancement"
         case .mode(let id):
             if let config = ModeManager.shared.getConfiguration(with: id) {
                 return "\(config.name) Mode"
@@ -87,8 +79,6 @@ enum ShortcutAction: Hashable {
             return "Mode"
         case .miniRecorderEscape:
             return "Mini Recorder Cancel"
-        case .miniRecorderPrompt(let index):
-            return "Select Prompt \(Self.displayNumber(forMiniRecorderIndex: index))"
         case .miniRecorderMode(let index):
             return "Select Mode \(Self.displayNumber(forMiniRecorderIndex: index))"
         }
@@ -103,8 +93,7 @@ enum ShortcutAction: Hashable {
     ]
 
     static let miniRecorderStoredActions: [Self] = [
-        .cancelRecorder,
-        .toggleEnhancement
+        .cancelRecorder
     ]
 
     static let legacyKeyboardShortcutActions: [Self] = [
@@ -115,8 +104,7 @@ enum ShortcutAction: Hashable {
         .retryLastTranscription,
         .cancelRecorder,
         .openHistoryWindow,
-        .quickAddToDictionary,
-        .toggleEnhancement
+        .quickAddToDictionary
     ]
 
     private static func displayNumber(forMiniRecorderIndex index: Int) -> String {

@@ -3,11 +3,9 @@ import SwiftUI
 struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
+    let onRecordButtonTapped: () -> Void
     @EnvironmentObject var windowManager: MiniWindowManager
-    @EnvironmentObject private var enhancementService: AIEnhancementService
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
-
-    @State private var activePopover: ActivePopoverState = .none
 
     // MARK: - Layout Constants
 
@@ -26,12 +24,11 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     private var controlBar: some View {
         HStack(spacing: 0) {
-            RecorderPromptButton(
-                activePopover: $activePopover,
-                buttonSize: 22,
-                padding: EdgeInsets()
+            RecorderRecordButton(
+                recordingState: stateProvider.recordingState,
+                action: onRecordButtonTapped
             )
-            .padding(.leading, 12)
+            .padding(.leading, 10)
 
             Spacer(minLength: 0)
 
@@ -43,7 +40,6 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             Spacer(minLength: 0)
 
             RecorderModeButton(
-                activePopover: $activePopover,
                 buttonSize: 22,
                 padding: EdgeInsets()
             )

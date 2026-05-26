@@ -3,11 +3,9 @@ import SwiftUI
 struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
+    let onRecordButtonTapped: () -> Void
     @EnvironmentObject var windowManager: NotchWindowManager
-    @EnvironmentObject private var enhancementService: AIEnhancementService
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
-    @ObservedObject private var modeManager = ModeManager.shared
-    @State private var activePopover: ActivePopoverState = .none
 
     // MARK: - Display State
 
@@ -77,6 +75,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         displayState == .liveText ? transcriptSideExpansion : recordingSideExpansion
     }
 
+    private var sideEdgePadding: CGFloat {
+        displayState == .liveText ? 20 : 16
+    }
+
     // MARK: - Animation
 
     private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
@@ -120,12 +122,15 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         ZStack {
             Color.clear
 
-            HStack(spacing: 10) {
-                RecorderPromptButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
-                RecorderModeButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
+            HStack(spacing: 14) {
+                RecorderRecordButton(
+                    recordingState: stateProvider.recordingState,
+                    action: onRecordButtonTapped
+                )
+                RecorderModeButton(buttonSize: 20, padding: EdgeInsets())
                 Spacer(minLength: 0)
             }
-            .padding(.leading, displayState == .liveText ? 18 : 14)
+            .padding(.leading, sideEdgePadding)
             .frame(width: sideExpansion)
             .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(displayState != .collapsed ? 1 : 0)
@@ -142,7 +147,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     menuBarHeight: notchHeight
                 )
             }
-            .padding(.trailing, displayState == .liveText ? 18 : 14)
+            .padding(.trailing, sideEdgePadding)
             .frame(width: sideExpansion)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .opacity(displayState != .collapsed ? 1 : 0)

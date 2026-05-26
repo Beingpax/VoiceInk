@@ -283,11 +283,9 @@ enum ShortcutMigration {
             return ["openHistoryWindow"]
         case .quickAddToDictionary:
             return ["quickAddToDictionary"]
-        case .toggleEnhancement:
-            return ["toggleEnhancement"]
         case .mode(let id):
             return ["mode_\(id.uuidString)", "powerMode_\(id.uuidString)"]
-        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderMode:
+        case .miniRecorderEscape, .miniRecorderMode:
             return []
         }
     }

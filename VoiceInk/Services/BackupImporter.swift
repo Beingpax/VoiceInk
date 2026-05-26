@@ -130,9 +130,6 @@ enum BackupImporter {
         if let dictionaryShortcut = general.quickAddToDictionaryShortcut {
             ShortcutStore.setShortcut(dictionaryShortcut.shortcut, for: .quickAddToDictionary)
         }
-        if let enhancementShortcut = general.toggleEnhancementShortcut {
-            ShortcutStore.setShortcut(enhancementShortcut.shortcut, for: .toggleEnhancement)
-        }
 
         if let shortcutRawValue = general.primaryRecordingShortcutRawValue,
            let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue) {

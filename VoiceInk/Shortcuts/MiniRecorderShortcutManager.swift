@@ -4,7 +4,6 @@ import Carbon.HIToolbox
 
 @MainActor
 class MiniRecorderShortcutManager: ObservableObject {
-    private var engine: VoiceInkEngine
     private var recorderUIManager: RecorderUIManager
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
@@ -15,8 +14,7 @@ class MiniRecorderShortcutManager: ObservableObject {
     private let escapeDoublePressThreshold: TimeInterval = 1.5
     private var escapeTimeoutTask: Task<Void, Never>?
     
-    init(engine: VoiceInkEngine, recorderUIManager: RecorderUIManager) {
-        self.engine = engine
+    init(recorderUIManager: RecorderUIManager) {
         self.recorderUIManager = recorderUIManager
         setupShortcutChangeObserver()
         setupVisibilityObserver()
@@ -30,7 +28,7 @@ class MiniRecorderShortcutManager: ObservableObject {
         ) { [weak self] notification in
             guard
                 let action = notification.object as? ShortcutAction,
-                action == .cancelRecorder || action == .toggleEnhancement
+                action == .cancelRecorder
             else {
                 return
             }
@@ -77,13 +75,6 @@ class MiniRecorderShortcutManager: ObservableObject {
             shortcuts[.miniRecorderEscape] = .key(keyCode: UInt16(kVK_Escape), modifierFlags: [])
         }
 
-        for (index, keyCode) in Self.digitKeyCodes.enumerated() {
-            shortcuts[.miniRecorderPrompt(index)] = .key(
-                keyCode: keyCode,
-                modifierFlags: [.command]
-            )
-        }
-
         if canUseModeShortcuts {
             for (index, keyCode) in Self.digitKeyCodes.enumerated() {
                 shortcuts[.miniRecorderMode(index)] = .key(
@@ -111,18 +102,8 @@ class MiniRecorderShortcutManager: ObservableObject {
         case .cancelRecorder:
             guard ShortcutStore.shortcut(for: .cancelRecorder) != nil else { return }
             await recorderUIManager.cancelRecording()
-        case .toggleEnhancement:
-            let prompts = engine.getEnhancementService()?.allPrompts ?? []
-            ModeManager.shared.updateCurrentEffectiveConfiguration { config in
-                config.isAIEnhancementEnabled.toggle()
-                if config.isAIEnhancementEnabled, config.selectedPrompt == nil {
-                    config.selectedPrompt = prompts.first?.id.uuidString
-                }
-            }
         case .miniRecorderEscape:
             await handleEscapeShortcut()
-        case .miniRecorderPrompt(let index):
-            handlePromptShortcut(index: index)
         case .miniRecorderMode(let index):
             handleModeSelectionShortcut(index: index)
         default:
@@ -152,21 +133,6 @@ class MiniRecorderShortcutManager: ObservableObject {
             await MainActor.run {
                 self?.firstEscapePressTime = nil
             }
-        }
-    }
-
-    private func handlePromptShortcut(index: Int) {
-        guard
-            let enhancementService = engine.getEnhancementService(),
-            index < enhancementService.allPrompts.count
-        else {
-            return
-        }
-
-        let prompt = enhancementService.allPrompts[index]
-        ModeManager.shared.updateCurrentEffectiveConfiguration { config in
-            config.isAIEnhancementEnabled = true
-            config.selectedPrompt = prompt.id.uuidString
         }
     }
 

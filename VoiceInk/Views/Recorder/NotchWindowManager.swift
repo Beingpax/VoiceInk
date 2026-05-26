@@ -8,18 +8,20 @@ class NotchWindowManager: ObservableObject {
     private var panel: NotchRecorderPanel?
 
     private let makeView: (NotchWindowManager) -> AnyView
-    private let enhancementService: AIEnhancementService
 
     init(engine: VoiceInkEngine, recorder: Recorder) {
-        guard let enhancementService = engine.enhancementService else {
-            preconditionFailure("VoiceInkEngine.enhancementService must be non-nil when creating NotchWindowManager")
-        }
-        self.enhancementService = enhancementService
         self.makeView = { manager in
             AnyView(
-                NotchRecorderView(stateProvider: engine, recorder: recorder)
+                NotchRecorderView(
+                    stateProvider: engine,
+                    recorder: recorder,
+                    onRecordButtonTapped: {
+                        Task { @MainActor in
+                            await engine.recorderUIManager?.toggleMiniRecorder()
+                        }
+                    }
+                )
                     .environmentObject(manager)
-                    .environmentObject(enhancementService)
             )
         }
         NotificationCenter.default.addObserver(

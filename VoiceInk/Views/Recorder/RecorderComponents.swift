@@ -1,13 +1,5 @@
 import SwiftUI
 
-// MARK: - Shared Popover State
-
-enum ActivePopoverState {
-    case none
-    case enhancement
-    case mode
-}
-
 // MARK: - Icon Toggle Button
 
 struct RecorderToggleButton: View {
@@ -46,34 +38,118 @@ struct RecorderToggleButton: View {
 // MARK: - Record Button
 
 struct RecorderRecordButton: View {
-    let isRecording: Bool
-    let isProcessing: Bool
+    let recordingState: RecordingState
     let action: () -> Void
+
+    private var visualState: VisualState {
+        switch recordingState {
+        case .idle, .starting, .busy:
+            return .ready
+        case .recording:
+            return .recording
+        case .transcribing, .enhancing:
+            return .processing
+        }
+    }
+
+    private var isDisabled: Bool {
+        switch recordingState {
+        case .idle, .recording:
+            return false
+        case .starting, .transcribing, .enhancing, .busy:
+            return true
+        }
+    }
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle()
-                    .fill(buttonColor)
-                    .frame(width: 25, height: 25)
-
-                if isProcessing {
-                    ProcessingIndicator(color: .white).frame(width: 16, height: 16)
-                } else if isRecording {
-                    RoundedRectangle(cornerRadius: 3).fill(Color.white).frame(width: 9, height: 9)
-                } else {
-                    Circle().fill(Color.white).frame(width: 9, height: 9)
-                }
-            }
+            buttonFace
         }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(isProcessing)
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .help(accessibilityLabel)
+        .accessibilityLabel(Text(accessibilityLabel))
     }
 
-    private var buttonColor: Color {
-        if isProcessing { return Color(red: 0.4, green: 0.4, blue: 0.45) }
-        if isRecording  { return .red }
-        return Color(red: 0.3, green: 0.3, blue: 0.35)
+    private var buttonFace: some View {
+        ZStack {
+            Circle()
+                .fill(colors.surface)
+                .overlay(
+                    Circle()
+                        .strokeBorder(colors.border, lineWidth: 0.6)
+                )
+
+            stateMark
+        }
+        .frame(width: 21, height: 21)
+        .contentShape(Circle())
+        .animation(.easeOut(duration: 0.16), value: visualState)
+    }
+
+    private var colors: StateColors {
+        switch visualState {
+        case .ready:
+            return StateColors(
+                surface: Color(red: 0.30, green: 0.30, blue: 0.32),
+                border: Color(red: 0.42, green: 0.42, blue: 0.44),
+                mark: Color(red: 0.78, green: 0.78, blue: 0.80)
+            )
+        case .recording:
+            let red = Color(NSColor.systemRed)
+            return StateColors(
+                surface: red.opacity(0.92),
+                border: red.opacity(0.98),
+                mark: .white
+            )
+        case .processing:
+            return StateColors(
+                surface: Color.white.opacity(0.13),
+                border: Color.white.opacity(0.18),
+                mark: Color.white.opacity(0.86)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var stateMark: some View {
+        switch visualState {
+        case .ready, .recording:
+            RoundedRectangle(cornerRadius: 2.2, style: .continuous)
+                .fill(colors.mark)
+                .frame(width: 8, height: 8)
+        case .processing:
+            ProcessingIndicator(color: colors.mark)
+        }
+    }
+
+    private var accessibilityLabel: String {
+        switch recordingState {
+        case .idle:
+            return "Start recording"
+        case .starting:
+            return "Starting recording"
+        case .recording:
+            return "Stop recording"
+        case .transcribing:
+            return "Transcribing recording"
+        case .enhancing:
+            return "Enhancing recording"
+        case .busy:
+            return "Recorder unavailable"
+        }
+    }
+
+    private enum VisualState: Equatable {
+        case ready
+        case recording
+        case processing
+    }
+
+    private struct StateColors {
+        let surface: Color
+        let border: Color
+        let mark: Color
     }
 }
 
@@ -86,8 +162,8 @@ struct ProcessingIndicator: View {
     var body: some View {
         Circle()
             .trim(from: 0.1, to: 0.9)
-            .stroke(color, lineWidth: 1.7)
-            .frame(width: 14, height: 14)
+            .stroke(color, lineWidth: 1.5)
+            .frame(width: 12, height: 12)
             .rotationEffect(.degrees(rotation))
             .onAppear {
                 withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
@@ -140,95 +216,19 @@ struct ProgressAnimation: View {
     }
 }
 
-// MARK: - Enhancement Prompt Button
-
-struct RecorderPromptButton: View {
-    @EnvironmentObject private var enhancementService: AIEnhancementService
-    @ObservedObject private var modeManager = ModeManager.shared
-    @Binding var activePopover: ActivePopoverState
-    let buttonSize: CGFloat
-    let padding: EdgeInsets
-
-    @State private var isHoveringButton: Bool = false
-    @State private var isHoveringPopover: Bool = false
-    @State private var dismissWorkItem: DispatchWorkItem?
-
-    init(activePopover: Binding<ActivePopoverState>, buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 7, bottom: 0, trailing: 0)) {
-        self._activePopover = activePopover
-        self.buttonSize = buttonSize
-        self.padding = padding
-    }
-
-    var body: some View {
-        let currentMode = modeManager.currentEffectiveConfiguration
-        let selectedPrompt = currentMode?.selectedPrompt
-            .flatMap(UUID.init)
-            .flatMap { promptId in enhancementService.allPrompts.first { $0.id == promptId } }
-
-        RecorderToggleButton(
-            isEnabled: currentMode?.isAIEnhancementEnabled == true,
-            icon: selectedPrompt == nil ? "sparkles" : "text.bubble.fill",
-            disabled: false
-        ) {
-            if currentMode?.isAIEnhancementEnabled == true {
-                activePopover = activePopover == .enhancement ? .none : .enhancement
-            } else {
-                modeManager.updateCurrentEffectiveConfiguration { config in
-                    config.isAIEnhancementEnabled = true
-                    if config.selectedPrompt == nil {
-                        config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
-                    }
-                }
-            }
-        }
-        .frame(width: buttonSize)
-        .padding(padding)
-        .onHover {
-            isHoveringButton = $0
-            syncPopoverVisibility()
-        }
-        .popover(isPresented: .constant(activePopover == .enhancement), arrowEdge: .bottom) {
-            EnhancementPromptPopover()
-                .environmentObject(enhancementService)
-                .onHover {
-                    isHoveringPopover = $0
-                    syncPopoverVisibility()
-                }
-        }
-    }
-
-    private func syncPopoverVisibility() {
-        if isHoveringButton || isHoveringPopover {
-            dismissWorkItem?.cancel()
-            dismissWorkItem = nil
-            activePopover = .enhancement
-        } else {
-            dismissWorkItem?.cancel()
-            let work = DispatchWorkItem { [activePopoverBinding = $activePopover] in
-                if activePopoverBinding.wrappedValue == .enhancement {
-                    activePopoverBinding.wrappedValue = .none
-                }
-            }
-            dismissWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
-        }
-    }
-}
-
 // MARK: - Mode Button
 
 struct RecorderModeButton: View {
     @ObservedObject private var modeManager = ModeManager.shared
-    @Binding var activePopover: ActivePopoverState
     let buttonSize: CGFloat
     let padding: EdgeInsets
 
+    @State private var isPopoverPresented = false
     @State private var isHoveringButton: Bool = false
     @State private var isHoveringPopover: Bool = false
     @State private var dismissWorkItem: DispatchWorkItem?
 
-    init(activePopover: Binding<ActivePopoverState>, buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7)) {
-        self._activePopover = activePopover
+    init(buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7)) {
         self.buttonSize = buttonSize
         self.padding = padding
     }
@@ -236,10 +236,10 @@ struct RecorderModeButton: View {
     var body: some View {
         RecorderToggleButton(
             isEnabled: !modeManager.enabledConfigurations.isEmpty,
-            icon: modeManager.enabledConfigurations.isEmpty ? "sparkles" : (modeManager.currentEffectiveConfiguration?.icon.value ?? "sparkles"),
+            icon: modeManager.enabledConfigurations.isEmpty ? "square.grid.2x2" : (modeManager.currentEffectiveConfiguration?.icon.value ?? "square.grid.2x2"),
             disabled: modeManager.enabledConfigurations.isEmpty
         ) {
-            activePopover = activePopover == .mode ? .none : .mode
+            isPopoverPresented.toggle()
         }
         .frame(width: buttonSize)
         .padding(padding)
@@ -247,7 +247,7 @@ struct RecorderModeButton: View {
             isHoveringButton = $0
             syncPopoverVisibility()
         }
-        .popover(isPresented: .constant(activePopover == .mode), arrowEdge: .bottom) {
+        .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
             ModePopover()
                 .onHover {
                     isHoveringPopover = $0
@@ -260,13 +260,11 @@ struct RecorderModeButton: View {
         if isHoveringButton || isHoveringPopover {
             dismissWorkItem?.cancel()
             dismissWorkItem = nil
-            activePopover = .mode
+            isPopoverPresented = true
         } else {
             dismissWorkItem?.cancel()
-            let work = DispatchWorkItem { [activePopoverBinding = $activePopover] in
-                if activePopoverBinding.wrappedValue == .mode {
-                    activePopoverBinding.wrappedValue = .none
-                }
+            let work = DispatchWorkItem { [isPopoverPresentedBinding = $isPopoverPresented] in
+                isPopoverPresentedBinding.wrappedValue = false
             }
             dismissWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)

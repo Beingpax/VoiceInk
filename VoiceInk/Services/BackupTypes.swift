@@ -75,7 +75,6 @@ struct GeneralBackup: Codable {
     let cancelRecorderShortcut: ShortcutBackup?
     let openHistoryWindowShortcut: ShortcutBackup?
     let quickAddToDictionaryShortcut: ShortcutBackup?
-    let toggleEnhancementShortcut: ShortcutBackup?
     let primaryRecordingShortcutRawValue: String?
     let secondaryRecordingShortcutRawValue: String?
     let primaryRecordingShortcutModeRawValue: String?

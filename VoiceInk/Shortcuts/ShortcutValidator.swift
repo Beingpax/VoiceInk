@@ -94,17 +94,11 @@ enum ShortcutValidator {
     }
 
     private static var reservedMiniRecorderShortcuts: [(ShortcutAction, Shortcut)] {
-        digitKeyCodes.enumerated().flatMap { index, keyCode in
-            [
-                (
-                    ShortcutAction.miniRecorderPrompt(index),
-                    Shortcut.key(keyCode: keyCode, modifierFlags: [.command])
-                ),
-                (
-                    ShortcutAction.miniRecorderMode(index),
-                    Shortcut.key(keyCode: keyCode, modifierFlags: [.option])
-                )
-            ]
+        digitKeyCodes.enumerated().map { index, keyCode in
+            (
+                ShortcutAction.miniRecorderMode(index),
+                Shortcut.key(keyCode: keyCode, modifierFlags: [.option])
+            )
         }
     }
 
