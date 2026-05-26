@@ -9,71 +9,29 @@ class PromptDetectionService {
     
     struct PromptDetectionResult {
         let shouldEnableAI: Bool
-        let selectedPromptId: UUID?
+        let selectedPrompt: CustomPrompt?
         let processedText: String
         let detectedTriggerWord: String?
-        let originalEnhancementState: Bool
-        let originalPromptId: UUID?
     }
-    
-    @MainActor
-    func analyzeText(_ text: String, with enhancementService: AIEnhancementService) -> PromptDetectionResult {
-        let originalEnhancementState = enhancementService.isEnhancementEnabled
-        let originalPromptId = enhancementService.selectedPromptId
 
-		for prompt in enhancementService.allPrompts {
-            if !prompt.triggerWords.isEmpty {
-				if let (detectedWord, processedText) = detectAndStripTriggerWord(from: text, triggerWords: prompt.triggerWords) {
-                    return PromptDetectionResult(
-                        shouldEnableAI: true,
-                        selectedPromptId: prompt.id,
-                        processedText: processedText,
-                        detectedTriggerWord: detectedWord,
-                        originalEnhancementState: originalEnhancementState,
-                        originalPromptId: originalPromptId
-                    )
-                }
+    func analyzeText(_ text: String, prompts: [CustomPrompt]) -> PromptDetectionResult {
+        for prompt in prompts where !prompt.triggerWords.isEmpty {
+            if let (detectedWord, processedText) = detectAndStripTriggerWord(from: text, triggerWords: prompt.triggerWords) {
+                return PromptDetectionResult(
+                    shouldEnableAI: true,
+                    selectedPrompt: prompt,
+                    processedText: processedText,
+                    detectedTriggerWord: detectedWord
+                )
             }
         }
 
         return PromptDetectionResult(
             shouldEnableAI: false,
-            selectedPromptId: nil,
+            selectedPrompt: nil,
             processedText: text,
-            detectedTriggerWord: nil,
-            originalEnhancementState: originalEnhancementState,
-            originalPromptId: originalPromptId
+            detectedTriggerWord: nil
         )
-    }
-    
-    func applyDetectionResult(_ result: PromptDetectionResult, to enhancementService: AIEnhancementService) async {
-        await MainActor.run {
-            if result.shouldEnableAI {
-                if !enhancementService.isEnhancementEnabled {
-                    enhancementService.isEnhancementEnabled = true
-                }
-                if let promptId = result.selectedPromptId {
-                    enhancementService.selectedPromptId = promptId
-                }
-            }
-        }
-        
-        if result.shouldEnableAI {
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-    }
-    
-    func restoreOriginalSettings(_ result: PromptDetectionResult, to enhancementService: AIEnhancementService) async {
-        if result.shouldEnableAI {
-            await MainActor.run {
-                if enhancementService.isEnhancementEnabled != result.originalEnhancementState {
-                    enhancementService.isEnhancementEnabled = result.originalEnhancementState
-                }
-                if let originalId = result.originalPromptId, enhancementService.selectedPromptId != originalId {
-                    enhancementService.selectedPromptId = originalId
-                }
-            }
-        }
     }
     
 	private func stripLeadingTriggerWord(from text: String, triggerWord: String) -> String? {

@@ -46,29 +46,29 @@ enum BackupImporter {
             print("Successfully imported \(backup.customPrompts.count) custom prompts.")
         }
 
-        if categories.contains(.powerMode) {
-            let powerModeManager = PowerModeManager.shared
-            for config in powerModeManager.configurations {
-                ShortcutStore.removeShortcutStorage(for: .powerMode(config.id))
+        if categories.contains(.modes) {
+            let modeManager = ModeManager.shared
+            for config in modeManager.configurations {
+                ShortcutStore.removeShortcutStorage(for: .mode(config.id))
             }
 
-            powerModeManager.configurations = backup.powerModeConfigs
-            let importedPowerModeIds = Set(backup.powerModeConfigs.map(\.id))
+            modeManager.configurations = backup.modeConfigs
+            let importedModeIds = Set(backup.modeConfigs.map(\.id))
 
-            if let shortcuts = backup.powerModeShortcuts {
+            if let shortcuts = backup.modeShortcuts {
                 for (idString, shortcutBackup) in shortcuts {
                     guard
                         let id = UUID(uuidString: idString),
-                        importedPowerModeIds.contains(id)
+                        importedModeIds.contains(id)
                     else {
                         continue
                     }
 
-                    ShortcutStore.setShortcut(shortcutBackup.shortcut, for: .powerMode(id))
+                    ShortcutStore.setShortcut(shortcutBackup.shortcut, for: .mode(id))
                 }
             }
 
-            powerModeManager.saveConfigurations()
+            modeManager.saveConfigurations()
 
             if let customEmojis = backup.customEmojis {
                 let emojiManager = EmojiManager.shared
@@ -76,7 +76,7 @@ enum BackupImporter {
                     _ = emojiManager.addCustomEmoji(emoji)
                 }
             }
-            print("Successfully imported \(backup.powerModeConfigs.count) Power Mode configurations.")
+            print("Successfully imported \(backup.modeConfigs.count) Mode configurations.")
         }
 
         if categories.contains(.customModels) {

@@ -150,7 +150,6 @@ struct VoiceInkApp: App {
         menuBarManager.configure(modelContainer: resolvedContainer, engine: engine)
 
         let activeWindowService = ActiveWindowService.shared
-        activeWindowService.configure(with: enhancementService)
         _activeWindowService = StateObject(wrappedValue: activeWindowService)
 
         let prewarmService = ModelPrewarmService(

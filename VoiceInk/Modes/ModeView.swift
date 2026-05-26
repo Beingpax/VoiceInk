@@ -16,7 +16,7 @@ extension View {
 
 enum ConfigurationMode: Hashable {
     case add
-    case edit(PowerModeConfig)
+    case edit(ModeConfig)
     
     var isAdding: Bool {
         if case .add = self { return true }
@@ -52,8 +52,8 @@ enum ConfigurationType {
 
 let commonEmojis = ["🏢", "🏠", "💼", "🎮", "📱", "📺", "🎵", "📚", "✏️", "🎨", "🧠", "⚙️", "💻", "🌐", "📝", "📊", "🔍", "💬", "📈", "🔧"]
 
-struct PowerModeView: View {
-    @StateObject private var powerModeManager = PowerModeManager.shared
+struct ModeView: View {
+    @StateObject private var modeManager = ModeManager.shared
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
     @State private var activePanel: PanelType?
@@ -75,13 +75,13 @@ struct PowerModeView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(spacing: 8) {
-                                Text("Power Modes")
+                                Text("Modes")
                                     .font(.system(size: 28, weight: .bold, design: .default))
                                     .foregroundColor(.primary)
                                 
                                 InfoTip(
                                     "Automatically apply custom configurations based on the app/website you are using.",
-                                    learnMoreURL: "https://tryvoiceink.com/docs/power-mode"
+                                    learnMoreURL: "https://tryvoiceink.com/docs/modes"
                                 )
                             }
                             
@@ -99,7 +99,7 @@ struct PowerModeView: View {
                                 HStack(spacing: 6) {
                                     Image(systemName: "plus")
                                         .font(.system(size: 12, weight: .medium))
-                                    Text("Add Power Mode")
+                                    Text("Add Mode")
                                         .font(.system(size: 13, weight: .medium))
                                 }
                                 .foregroundColor(.white)
@@ -142,7 +142,7 @@ struct PowerModeView: View {
                         GeometryReader { geometry in
                             ScrollView {
                                 VStack(spacing: 0) {
-                                    if powerModeManager.configurations.isEmpty {
+                                    if modeManager.configurations.isEmpty {
                                         VStack(spacing: 24) {
                                             Spacer()
                                                 .frame(height: geometry.size.height * 0.2)
@@ -153,11 +153,11 @@ struct PowerModeView: View {
                                                     .foregroundColor(.secondary.opacity(0.6))
                                                 
                                                 VStack(spacing: 8) {
-                                                    Text("No Power Modes Yet")
+                                                    Text("No Modes Yet")
                                                         .font(.system(size: 20, weight: .medium))
                                                         .foregroundColor(.primary)
                                                     
-                                                    Text("Create first power mode to automate your VoiceInk workflow based on apps/website you are using")
+                                                    Text("Create first mode to automate your VoiceInk workflow based on apps/website you are using")
                                                         .font(.system(size: 14))
                                                         .foregroundColor(.secondary)
                                                         .multilineTextAlignment(.center)
@@ -171,8 +171,8 @@ struct PowerModeView: View {
                                         .frame(minHeight: geometry.size.height)
                                     } else {
                                         VStack(spacing: 0) {
-                                            PowerModeConfigurationsGrid(
-                                                powerModeManager: powerModeManager,
+                                            ModeConfigurationsGrid(
+                                                modeManager: modeManager,
                                                 onEditConfig: { config in
                                                     openPanel(mode: .edit(config))
                                                 }
@@ -198,10 +198,10 @@ struct PowerModeView: View {
             ), dismissOnExitCommand: false) {
                 switch activePanel {
                 case .configuration(let mode)?:
-                    PowerModeConfigEditorView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
+                    ModeConfigEditorView(mode: mode, modeManager: modeManager, onDismiss: closePanel)
                         .id(panelID)
                 case .settings?:
-                    PowerModeSettingsPanelView(powerModeManager: powerModeManager, onDismiss: closePanel)
+                    ModeSettingsPanelView(modeManager: modeManager, onDismiss: closePanel)
                 case nil:
                     EmptyView()
                 }

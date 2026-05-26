@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum PowerModeValidationError: Error, Identifiable {
+enum ModeValidationError: Error, Identifiable {
     case emptyName
     case duplicateName(String)
     case duplicateAppTrigger(String, String) // (app name, existing mode name)
@@ -22,29 +22,29 @@ enum PowerModeValidationError: Error, Identifiable {
             return "Mode name cannot be empty."
         case .duplicateName(let name):
             return "A mode with the name '\(name)' already exists."
-        case .duplicateAppTrigger(let appName, let powerModeName):
-            return "The app '\(appName)' is already configured in the '\(powerModeName)' mode."
-        case .duplicateWebsiteTrigger(let website, let powerModeName):
-            return "The website '\(website)' is already configured in the '\(powerModeName)' mode."
+        case .duplicateAppTrigger(let appName, let modeName):
+            return "The app '\(appName)' is already configured in the '\(modeName)' mode."
+        case .duplicateWebsiteTrigger(let website, let modeName):
+            return "The website '\(website)' is already configured in the '\(modeName)' mode."
         }
     }
 }
 
-struct PowerModeValidator {
-    private let powerModeManager: PowerModeManager
+struct ModeValidator {
+    private let modeManager: ModeManager
     
-    init(powerModeManager: PowerModeManager) {
-        self.powerModeManager = powerModeManager
+    init(modeManager: ModeManager) {
+        self.modeManager = modeManager
     }
     
-    func validateForSave(config: PowerModeConfig, mode: ConfigurationMode) -> [PowerModeValidationError] {
-        var errors: [PowerModeValidationError] = []
+    func validateForSave(config: ModeConfig, mode: ConfigurationMode) -> [ModeValidationError] {
+        var errors: [ModeValidationError] = []
         
         if config.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errors.append(.emptyName)
         }
         
-        let isDuplicateName = powerModeManager.configurations.contains { existingConfig in
+        let isDuplicateName = modeManager.configurations.contains { existingConfig in
             if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
                 return false
             }
@@ -59,7 +59,7 @@ struct PowerModeValidator {
         
         if let appConfigs = config.appConfigs {
             for appConfig in appConfigs {
-                for existingConfig in powerModeManager.configurations {
+                for existingConfig in modeManager.configurations {
                     if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
                         continue
                     }
@@ -74,7 +74,7 @@ struct PowerModeValidator {
         
         if let urlConfigs = config.urlConfigs {
             for urlConfig in urlConfigs {
-                for existingConfig in powerModeManager.configurations {
+                for existingConfig in modeManager.configurations {
                     if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
                         continue
                     }
@@ -92,8 +92,8 @@ struct PowerModeValidator {
 }
 
 extension View {
-    func powerModeValidationAlert(
-        errors: [PowerModeValidationError],
+    func modeValidationAlert(
+        errors: [ModeValidationError],
         isPresented: Binding<Bool>
     ) -> some View {
         self.alert(

@@ -3,13 +3,33 @@ import SwiftUI
 // Enhancement Prompt Popover for recorder views
 struct EnhancementPromptPopover: View {
     @EnvironmentObject var enhancementService: AIEnhancementService
+    @ObservedObject private var modeManager = ModeManager.shared
     @State private var selectedPrompt: CustomPrompt?
+
+    private var currentMode: ModeConfig? {
+        modeManager.currentEffectiveConfiguration
+    }
+
+    private var isEnhancementEnabled: Bool {
+        currentMode?.isAIEnhancementEnabled == true
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Enhancement Toggle at the top
             HStack(spacing: 8) {
-                Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
+                Toggle("AI Enhancement", isOn: Binding(
+                    get: { isEnhancementEnabled },
+                    set: { newValue in
+                        modeManager.updateCurrentEffectiveConfiguration { config in
+                            config.isAIEnhancementEnabled = newValue
+                            if newValue, config.selectedPrompt == nil {
+                                config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
+                            }
+                        }
+                        refreshSelectedPrompt()
+                    }
+                ))
                     .foregroundColor(.white.opacity(0.9))
                     .font(.headline)
                     .lineLimit(1)
@@ -29,13 +49,12 @@ struct EnhancementPromptPopover: View {
                         EnhancementPromptRow(
                             prompt: prompt,
                             isSelected: selectedPrompt?.id == prompt.id,
-                            isDisabled: !enhancementService.isEnhancementEnabled,
+                            isDisabled: !isEnhancementEnabled,
                             action: {
-                                // If enhancement is disabled, enable it first
-                                if !enhancementService.isEnhancementEnabled {
-                                    enhancementService.isEnhancementEnabled = true
+                                modeManager.updateCurrentEffectiveConfiguration { config in
+                                    config.isAIEnhancementEnabled = true
+                                    config.selectedPrompt = prompt.id.uuidString
                                 }
-                                enhancementService.setActivePrompt(prompt)
                                 selectedPrompt = prompt
                             }
                         )
@@ -50,12 +69,19 @@ struct EnhancementPromptPopover: View {
         .background(Color.black)
         .environment(\.colorScheme, .dark)
         .onAppear {
-            // Set the initially selected prompt
-            selectedPrompt = enhancementService.activePrompt
+            refreshSelectedPrompt()
         }
-        .onChange(of: enhancementService.selectedPromptId) { oldValue, newValue in
-            selectedPrompt = enhancementService.activePrompt
+        .onChange(of: modeManager.currentEffectiveConfiguration?.selectedPrompt) { _, _ in
+            refreshSelectedPrompt()
         }
+    }
+
+    private func refreshSelectedPrompt() {
+        guard let promptId = currentMode?.selectedPrompt.flatMap(UUID.init) else {
+            selectedPrompt = enhancementService.allPrompts.first
+            return
+        }
+        selectedPrompt = enhancementService.allPrompts.first { $0.id == promptId }
     }
 }
 
@@ -95,4 +121,4 @@ struct EnhancementPromptRow: View {
         .background(isSelected ? Color.white.opacity(0.1) : Color.clear)
         .cornerRadius(4)
     }
-} 
+}

@@ -5,7 +5,7 @@ import SwiftUI
 enum ActivePopoverState {
     case none
     case enhancement
-    case power
+    case mode
 }
 
 // MARK: - Icon Toggle Button
@@ -144,6 +144,7 @@ struct ProgressAnimation: View {
 
 struct RecorderPromptButton: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @ObservedObject private var modeManager = ModeManager.shared
     @Binding var activePopover: ActivePopoverState
     let buttonSize: CGFloat
     let padding: EdgeInsets
@@ -159,15 +160,25 @@ struct RecorderPromptButton: View {
     }
 
     var body: some View {
+        let currentMode = modeManager.currentEffectiveConfiguration
+        let selectedPrompt = currentMode?.selectedPrompt
+            .flatMap(UUID.init)
+            .flatMap { promptId in enhancementService.allPrompts.first { $0.id == promptId } }
+
         RecorderToggleButton(
-            isEnabled: enhancementService.isEnhancementEnabled,
-            icon: enhancementService.activePrompt?.icon ?? enhancementService.allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId })?.icon ?? "checkmark.seal.fill",
+            isEnabled: currentMode?.isAIEnhancementEnabled == true,
+            icon: selectedPrompt?.icon ?? enhancementService.allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId })?.icon ?? "checkmark.seal.fill",
             disabled: false
         ) {
-            if enhancementService.isEnhancementEnabled {
+            if currentMode?.isAIEnhancementEnabled == true {
                 activePopover = activePopover == .enhancement ? .none : .enhancement
             } else {
-                enhancementService.isEnhancementEnabled = true
+                modeManager.updateCurrentEffectiveConfiguration { config in
+                    config.isAIEnhancementEnabled = true
+                    if config.selectedPrompt == nil {
+                        config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
+                    }
+                }
             }
         }
         .frame(width: buttonSize)
@@ -204,10 +215,10 @@ struct RecorderPromptButton: View {
     }
 }
 
-// MARK: - Power Mode Button
+// MARK: - Mode Button
 
-struct RecorderPowerModeButton: View {
-    @ObservedObject private var powerModeManager = PowerModeManager.shared
+struct RecorderModeButton: View {
+    @ObservedObject private var modeManager = ModeManager.shared
     @Binding var activePopover: ActivePopoverState
     let buttonSize: CGFloat
     let padding: EdgeInsets
@@ -224,11 +235,11 @@ struct RecorderPowerModeButton: View {
 
     var body: some View {
         RecorderToggleButton(
-            isEnabled: !powerModeManager.enabledConfigurations.isEmpty,
-            icon: powerModeManager.enabledConfigurations.isEmpty ? "✨" : (powerModeManager.currentActiveConfiguration?.emoji ?? "✨"),
-            disabled: powerModeManager.enabledConfigurations.isEmpty
+            isEnabled: !modeManager.enabledConfigurations.isEmpty,
+            icon: modeManager.enabledConfigurations.isEmpty ? "✨" : (modeManager.currentEffectiveConfiguration?.emoji ?? "✨"),
+            disabled: modeManager.enabledConfigurations.isEmpty
         ) {
-            activePopover = activePopover == .power ? .none : .power
+            activePopover = activePopover == .mode ? .none : .mode
         }
         .frame(width: buttonSize)
         .padding(padding)
@@ -236,8 +247,8 @@ struct RecorderPowerModeButton: View {
             isHoveringButton = $0
             syncPopoverVisibility()
         }
-        .popover(isPresented: .constant(activePopover == .power), arrowEdge: .bottom) {
-            PowerModePopover()
+        .popover(isPresented: .constant(activePopover == .mode), arrowEdge: .bottom) {
+            ModePopover()
                 .onHover {
                     isHoveringPopover = $0
                     syncPopoverVisibility()
@@ -249,11 +260,11 @@ struct RecorderPowerModeButton: View {
         if isHoveringButton || isHoveringPopover {
             dismissWorkItem?.cancel()
             dismissWorkItem = nil
-            activePopover = .power
+            activePopover = .mode
         } else {
             dismissWorkItem?.cancel()
             let work = DispatchWorkItem { [activePopoverBinding = $activePopover] in
-                if activePopoverBinding.wrappedValue == .power {
+                if activePopoverBinding.wrappedValue == .mode {
                     activePopoverBinding.wrappedValue = .none
                 }
             }

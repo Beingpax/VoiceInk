@@ -114,7 +114,7 @@ class StreamingTranscriptionService {
     var isActive: Bool { state == .streaming || state == .committing }
 
     /// Start a streaming transcription session for the given model.
-    func startStreaming(model: any TranscriptionModel) async throws {
+    func startStreaming(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws {
         let start = Date()
         state = .connecting
         committedSegments = []
@@ -125,7 +125,7 @@ class StreamingTranscriptionService {
         let provider = createProvider(for: model)
         self.provider = provider
 
-        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
+        let selectedLanguage = context.language ?? "auto"
         logger.notice("Streaming start requested model=\(model.displayName, privacy: .public) language=\(selectedLanguage, privacy: .public)")
 
         try await provider.connect(model: model, language: selectedLanguage)

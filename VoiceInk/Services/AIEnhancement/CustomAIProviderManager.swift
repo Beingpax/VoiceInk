@@ -143,6 +143,16 @@ final class CustomAIProviderManager: ObservableObject {
         }
     }
 
+    func requestConfiguration(forModel modelName: String) -> (baseURL: String, apiKey: String, modelName: String)? {
+        guard let provider = provider(forModel: modelName),
+              let apiKey = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id),
+              !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        return (provider.baseURL, apiKey, provider.modelName)
+    }
+
     func validateProvider(name: String, baseURL: String, model: String, excluding id: UUID? = nil) -> [String] {
         var errors: [String] = []
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)

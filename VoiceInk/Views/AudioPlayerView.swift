@@ -381,10 +381,33 @@ struct AudioPlayerView: View {
     @State private var showPromptPopover = false
     @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @ObservedObject private var modeManager = ModeManager.shared
     @Environment(\.modelContext) private var modelContext
 
     private var isOperationInProgress: Bool {
         isRetranscribing || isReEnhancing
+    }
+
+    private var currentEnhancementConfiguration: EnhancementRuntimeConfiguration? {
+        guard let aiService = enhancementService.getAIService() else { return nil }
+        return ModeRuntimeResolver.currentEnhancementConfiguration(
+            enhancementService: enhancementService,
+            aiService: aiService
+        )
+    }
+
+    private var currentPromptIcon: String {
+        guard let promptId = modeManager.currentEffectiveConfiguration?.selectedPrompt.flatMap(UUID.init),
+              let prompt = enhancementService.allPrompts.first(where: { $0.id == promptId }) else {
+            return "sparkles"
+        }
+        return prompt.icon
+    }
+
+    private var canEnhanceWithCurrentMode: Bool {
+        guard let configuration = currentEnhancementConfiguration,
+              configuration.isEnabled else { return false }
+        return enhancementService.isConfigured(for: configuration)
     }
 
     private var transcriptionService: AudioTranscriptionService {
@@ -428,10 +451,10 @@ struct AudioPlayerView: View {
                     .help("Playback speed")
 
                     CircleIconButton(
-                        icon: enhancementService.activePrompt?.icon ?? "sparkles",
+                        icon: currentPromptIcon,
                         action: { showPromptPopover.toggle() }
                     )
-                    .opacity(enhancementService.isEnhancementEnabled ? 1.0 : 0.4)
+                    .opacity(modeManager.currentEffectiveConfiguration?.isAIEnhancementEnabled == true ? 1.0 : 0.4)
                     .help("Select enhancement prompt")
                     .popover(isPresented: $showPromptPopover, arrowEdge: .bottom) {
                         EnhancementPromptPopover()
@@ -465,8 +488,8 @@ struct AudioPlayerView: View {
                             showSuccess: bannerState == .reEnhanceSuccess,
                             action: reEnhanceOnly
                         )
-                        .disabled(isOperationInProgress || !enhancementService.isEnhancementEnabled || !enhancementService.isConfigured)
-                        .opacity(enhancementService.isEnhancementEnabled && enhancementService.isConfigured ? 1.0 : 0.4)
+                        .disabled(isOperationInProgress || !canEnhanceWithCurrentMode)
+                        .opacity(canEnhanceWithCurrentMode ? 1.0 : 0.4)
                         .help("Re-enhance with selected prompt")
                     }
 
@@ -528,7 +551,9 @@ struct AudioPlayerView: View {
     private func reEnhanceOnly() {
         guard let transcription = transcription else { return }
 
-        guard enhancementService.isEnhancementEnabled, enhancementService.isConfigured else {
+        guard let enhancementConfiguration = currentEnhancementConfiguration,
+              enhancementConfiguration.isEnabled,
+              enhancementService.isConfigured(for: enhancementConfiguration) else {
             showTemporaryBanner(.reEnhanceError("AI Enhancement is not enabled or configured"))
             return
         }
@@ -538,10 +563,13 @@ struct AudioPlayerView: View {
 
         Task {
             do {
-                let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(transcription.text)
+                let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
+                    transcription.text,
+                    configuration: enhancementConfiguration
+                )
                 await MainActor.run {
                     transcription.enhancedText = enhancedText
-                    transcription.aiEnhancementModelName = enhancementService.getAIService()?.currentModel
+                    transcription.aiEnhancementModelName = enhancementConfiguration.modelName ?? enhancementConfiguration.provider?.defaultModel
                     transcription.promptName = promptName
                     transcription.enhancementDuration = enhancementDuration
                     transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
@@ -561,7 +589,9 @@ struct AudioPlayerView: View {
     }
 
     private func retranscribeAudio() {
-        guard let currentTranscriptionModel = engine.transcriptionModelManager.currentTranscriptionModel else {
+        guard let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+            transcriptionModelManager: engine.transcriptionModelManager
+        ) else {
             showTemporaryBanner(.retranscribeError("No transcription model selected"))
             return
         }
@@ -571,7 +601,10 @@ struct AudioPlayerView: View {
 
         Task {
             do {
-                let _ = try await transcriptionService.retranscribeAudio(from: url, using: currentTranscriptionModel)
+                let _ = try await transcriptionService.retranscribeAudio(
+                    from: url,
+                    using: transcriptionConfiguration.model
+                )
                 await MainActor.run {
                     isRetranscribing = false
                     showTemporaryBanner(.retranscribeSuccess)
@@ -585,4 +618,3 @@ struct AudioPlayerView: View {
         }
     }
 }
-

@@ -1,6 +1,6 @@
 import Foundation
 
-struct PowerModeConfigDraft {
+struct ModeConfigDraft {
     var id: UUID
     var name: String
     var emoji: String
@@ -22,7 +22,7 @@ struct PowerModeConfigDraft {
     var isDefault: Bool
     var isTranscriptFormattingExpanded: Bool
 
-    private var sourceConfig: PowerModeConfig?
+    private var sourceConfig: ModeConfig?
 
     private static var defaultSelectedTextContext: Bool {
         if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
@@ -31,7 +31,7 @@ struct PowerModeConfigDraft {
         return UserDefaults.standard.bool(forKey: "useSelectedTextContext")
     }
 
-    init(mode: ConfigurationMode, powerModeManager: PowerModeManager) {
+    init(mode: ConfigurationMode, modeManager: ModeManager) {
         switch mode {
         case .add:
             id = UUID()
@@ -49,7 +49,7 @@ struct PowerModeConfigDraft {
             useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
             useSelectedTextContext = Self.defaultSelectedTextContext
             useScreenCapture = false
-            selectedAIProvider = UserDefaults.standard.string(forKey: "selectedAIProvider")
+            selectedAIProvider = nil
             selectedAIModel = nil
             autoSendKey = .none
             isDefault = false
@@ -57,7 +57,7 @@ struct PowerModeConfigDraft {
             sourceConfig = nil
 
         case .edit(let config):
-            let latestConfig = powerModeManager.getConfiguration(with: config.id) ?? config
+            let latestConfig = modeManager.getConfiguration(with: config.id) ?? config
             id = latestConfig.id
             name = latestConfig.name
             emoji = latestConfig.emoji
@@ -94,14 +94,21 @@ struct PowerModeConfigDraft {
 
     mutating func applyAddModeDefaults(aiService: AIService) {
         if selectedAIProvider == nil {
-            selectedAIProvider = aiService.selectedProvider.rawValue
+            selectedAIProvider = aiService.connectedProviders.first?.rawValue
         }
         if selectedAIModel == nil || selectedAIModel?.isEmpty == true {
             if selectedAIProvider == AIProvider.localCLI.rawValue {
                 selectedAIModel = nil
-            } else {
-                selectedAIModel = aiService.currentModel
+            } else if let selectedAIProvider,
+                      let provider = AIProvider(rawValue: selectedAIProvider) {
+                selectedAIModel = aiService.selectedModel(for: provider)
             }
+        }
+    }
+
+    mutating func ensureTranscriptionModelSelection(fallback: String?) {
+        if selectedTranscriptionModelName == nil {
+            selectedTranscriptionModelName = fallback
         }
     }
 
@@ -113,15 +120,15 @@ struct PowerModeConfigDraft {
 
     mutating func useCompatibleLanguage(for model: any TranscriptionModel) {
         selectedLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(
-            selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            selectedLanguage ?? "en",
             for: model
         )
     }
 
-    func makeConfig(mode: ConfigurationMode) -> PowerModeConfig {
+    func makeConfig(mode: ConfigurationMode) -> ModeConfig {
         switch mode {
         case .add:
-            return PowerModeConfig(
+            return ModeConfig(
                 id: id,
                 name: name,
                 emoji: emoji,

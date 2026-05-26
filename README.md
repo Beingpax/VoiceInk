@@ -32,7 +32,7 @@ My goal is to make it **the most efficient and privacy-focused voice-to-text sol
 
 - 🎙️ **Accurate Transcription**: Local AI models that transcribe your voice to text with 99% accuracy, almost instantly
 - 🔒 **Privacy First**: 100% offline processing ensures your data never leaves your device
-- ⚡ **Power Mode**: Intelligent app detection automatically applies your perfect pre-configured settings based on the app/ URL you're on
+- ⚡ **Modes**: Intelligent app detection automatically applies your perfect pre-configured settings based on the app/ URL you're on
 - 🧠 **Context Aware**: Smart AI that understands your screen content and adapts to the context
 - 🎯 **Global Shortcuts**: Configurable keyboard shortcuts for quick recording and push-to-talk functionality
 - 📝 **Personal Dictionary**: Train the AI to understand your unique terminology with custom words, industry terms, and smart text replacements

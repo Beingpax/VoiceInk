@@ -20,7 +20,7 @@ enum AutoSendKey: String, Codable, CaseIterable {
     }
 }
 
-struct PowerModeConfig: Codable, Identifiable, Equatable {
+struct ModeConfig: Codable, Identifiable, Equatable {
     var id: UUID
     var name: String
     var emoji: String
@@ -64,10 +64,10 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.useSelectedTextContext = useSelectedTextContext
         self.useScreenCapture = useScreenCapture
         self.autoSendKey = autoSendKey
-        self.selectedAIProvider = selectedAIProvider ?? UserDefaults.standard.string(forKey: "selectedAIProvider")
+        self.selectedAIProvider = selectedAIProvider
         self.selectedAIModel = selectedAIModel
-        self.selectedTranscriptionModelName = selectedTranscriptionModelName ?? UserDefaults.standard.string(forKey: "CurrentTranscriptionModel")
-        self.selectedLanguage = selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
+        self.selectedTranscriptionModelName = selectedTranscriptionModelName
+        self.selectedLanguage = selectedLanguage ?? "en"
         self.isTextFormattingEnabled = isTextFormattingEnabled
         self.punctuationCleanupMode = punctuationCleanupMode
         self.lowercaseTranscription = lowercaseTranscription
@@ -101,7 +101,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         } else {
             useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
         }
-        useScreenCapture = try container.decode(Bool.self, forKey: .useScreenCapture)
+        useScreenCapture = try container.decodeIfPresent(Bool.self, forKey: .useScreenCapture) ?? UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         // Migrate from old isAutoSendEnabled bool to new autoSendKey enum
@@ -151,7 +151,7 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     }
     
     
-    static func == (lhs: PowerModeConfig, rhs: PowerModeConfig) -> Bool {
+    static func == (lhs: ModeConfig, rhs: ModeConfig) -> Bool {
         lhs.id == rhs.id
     }
 }
@@ -186,16 +186,17 @@ struct URLConfig: Codable, Identifiable, Equatable {
     }
 }
 
-class PowerModeManager: ObservableObject {
-    static let shared = PowerModeManager()
-    @Published var configurations: [PowerModeConfig] = []
-    @Published var activeConfiguration: PowerModeConfig?
+class ModeManager: ObservableObject {
+    static let shared = ModeManager()
+    @Published var configurations: [ModeConfig] = []
+    @Published var activeConfiguration: ModeConfig?
 
-    private let configKey = "powerModeConfigurationsV2"
+    private let configKey = "modeConfigurationsV2"
     private let activeConfigIdKey = "activeConfigurationId"
 
     private init() {
         loadConfigurations()
+        migrateLegacyModeDefaultsIfNeeded()
 
         if let activeConfigIdString = UserDefaults.standard.string(forKey: activeConfigIdKey),
            let activeConfigId = UUID(uuidString: activeConfigIdString) {
@@ -206,9 +207,10 @@ class PowerModeManager: ObservableObject {
     }
 
     private func loadConfigurations() {
-        if let data = UserDefaults.standard.data(forKey: configKey),
-           let configs = try? JSONDecoder().decode([PowerModeConfig].self, from: data) {
+        if let data = migratedModeConfigurationData(for: configKey),
+           let configs = try? JSONDecoder().decode([ModeConfig].self, from: data) {
             configurations = configs
+            migrateLoadedModeConfigurationsIfNeeded()
         }
     }
 
@@ -216,10 +218,10 @@ class PowerModeManager: ObservableObject {
         if let data = try? JSONEncoder().encode(configurations) {
             UserDefaults.standard.set(data, forKey: configKey)
         }
-        NotificationCenter.default.post(name: .powerModeConfigurationsDidChange, object: nil)
+        NotificationCenter.default.post(name: .modeConfigurationsDidChange, object: nil)
     }
 
-    func addConfiguration(_ config: PowerModeConfig) {
+    func addConfiguration(_ config: ModeConfig) {
         if !configurations.contains(where: { $0.id == config.id }) {
             let previousEnabledConfigIds = enabledConfigurationIds
             configurations.append(config)
@@ -230,17 +232,17 @@ class PowerModeManager: ObservableObject {
 
     func removeConfiguration(with id: UUID) {
         let previousEnabledConfigIds = enabledConfigurationIds
-        ShortcutStore.removeShortcutStorage(for: .powerMode(id))
+        ShortcutStore.removeShortcutStorage(for: .mode(id))
         configurations.removeAll { $0.id == id }
         saveConfigurations()
         postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
     }
 
-    func getConfiguration(with id: UUID) -> PowerModeConfig? {
+    func getConfiguration(with id: UUID) -> ModeConfig? {
         return configurations.first { $0.id == id }
     }
 
-    func updateConfiguration(_ config: PowerModeConfig) {
+    func updateConfiguration(_ config: ModeConfig) {
         if let index = configurations.firstIndex(where: { $0.id == config.id }) {
             let previousEnabledConfigIds = enabledConfigurationIds
             configurations[index] = config
@@ -255,16 +257,14 @@ class PowerModeManager: ObservableObject {
         replaceConfigurations(updatedConfigurations)
     }
 
-    func replaceConfigurations(_ updatedConfigurations: [PowerModeConfig]) {
-        guard configurations != updatedConfigurations else { return }
-
+    func replaceConfigurations(_ updatedConfigurations: [ModeConfig]) {
         let previousEnabledConfigIds = enabledConfigurationIds
         configurations = updatedConfigurations
         saveConfigurations()
         postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
     }
 
-    func getConfigurationForURL(_ url: String) -> PowerModeConfig? {
+    func getConfigurationForURL(_ url: String) -> ModeConfig? {
         let cleanedURL = cleanURL(url)
         
         for config in configurations.filter({ $0.isEnabled }) {
@@ -281,7 +281,7 @@ class PowerModeManager: ObservableObject {
         return nil
     }
     
-    func getConfigurationForApp(_ bundleId: String) -> PowerModeConfig? {
+    func getConfigurationForApp(_ bundleId: String) -> ModeConfig? {
         for config in configurations.filter({ $0.isEnabled }) {
             if let appConfigs = config.appConfigs {
                 if appConfigs.contains(where: { $0.bundleIdentifier == bundleId }) {
@@ -292,8 +292,18 @@ class PowerModeManager: ObservableObject {
         return nil
     }
     
-    func getDefaultConfiguration() -> PowerModeConfig? {
+    func getDefaultConfiguration() -> ModeConfig? {
         return configurations.first { $0.isEnabled && $0.isDefault }
+    }
+
+    var currentEffectiveConfiguration: ModeConfig? {
+        if let activeConfiguration,
+           let latestActive = configurations.first(where: { $0.id == activeConfiguration.id }),
+           latestActive.isEnabled {
+            return latestActive
+        }
+
+        return getDefaultConfiguration()
     }
     
     func hasDefaultConfiguration() -> Bool {
@@ -332,7 +342,7 @@ class PowerModeManager: ObservableObject {
         }
     }
     
-    var enabledConfigurations: [PowerModeConfig] {
+    var enabledConfigurations: [ModeConfig] {
         return configurations.filter { $0.isEnabled }
     }
 
@@ -345,10 +355,10 @@ class PowerModeManager: ObservableObject {
             return
         }
 
-        NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
+        NotificationCenter.default.post(name: .modeShortcutAvailabilityDidChange, object: nil)
     }
 
-    func addAppConfig(_ appConfig: AppConfig, to config: PowerModeConfig) {
+    func addAppConfig(_ appConfig: AppConfig, to config: ModeConfig) {
         if var updatedConfig = configurations.first(where: { $0.id == config.id }) {
             var configs = updatedConfig.appConfigs ?? []
             configs.append(appConfig)
@@ -357,14 +367,14 @@ class PowerModeManager: ObservableObject {
         }
     }
 
-    func removeAppConfig(_ appConfig: AppConfig, from config: PowerModeConfig) {
+    func removeAppConfig(_ appConfig: AppConfig, from config: ModeConfig) {
         if var updatedConfig = configurations.first(where: { $0.id == config.id }) {
             updatedConfig.appConfigs?.removeAll(where: { $0.id == appConfig.id })
             updateConfiguration(updatedConfig)
         }
     }
 
-    func addURLConfig(_ urlConfig: URLConfig, to config: PowerModeConfig) {
+    func addURLConfig(_ urlConfig: URLConfig, to config: ModeConfig) {
         if var updatedConfig = configurations.first(where: { $0.id == config.id }) {
             var configs = updatedConfig.urlConfigs ?? []
             configs.append(urlConfig)
@@ -373,7 +383,7 @@ class PowerModeManager: ObservableObject {
         }
     }
 
-    func removeURLConfig(_ urlConfig: URLConfig, from config: PowerModeConfig) {
+    func removeURLConfig(_ urlConfig: URLConfig, from config: ModeConfig) {
         if var updatedConfig = configurations.first(where: { $0.id == config.id }) {
             updatedConfig.urlConfigs?.removeAll(where: { $0.id == urlConfig.id })
             updateConfiguration(updatedConfig)
@@ -388,17 +398,32 @@ class PowerModeManager: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func setActiveConfiguration(_ config: PowerModeConfig?) {
-        activeConfiguration = config
+    func setActiveConfiguration(_ config: ModeConfig?) {
+        if let config,
+           let latestConfig = configurations.first(where: { $0.id == config.id }) {
+            activeConfiguration = latestConfig
+        } else {
+            activeConfiguration = config
+        }
         UserDefaults.standard.set(config?.id.uuidString, forKey: activeConfigIdKey)
         self.objectWillChange.send()
     }
 
-    var currentActiveConfiguration: PowerModeConfig? {
+    func updateCurrentEffectiveConfiguration(_ update: (inout ModeConfig) -> Void) {
+        guard var config = currentEffectiveConfiguration else { return }
+        update(&config)
+        updateConfiguration(config)
+
+        if activeConfiguration?.id == config.id {
+            activeConfiguration = config
+        }
+    }
+
+    var currentActiveConfiguration: ModeConfig? {
         return activeConfiguration
     }
 
-    func getAllAvailableConfigurations() -> [PowerModeConfig] {
+    func getAllAvailableConfigurations() -> [ModeConfig] {
         return configurations
     }
 

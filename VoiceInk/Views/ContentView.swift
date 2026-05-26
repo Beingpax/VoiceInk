@@ -152,7 +152,7 @@ struct ContentView: View {
         case .dictionary:
             DictionarySettingsView(whisperPrompt: whisperModelManager.whisperPrompt)
         case .modes:
-            PowerModeView()
+            ModeView()
         case .settings:
             SettingsView()
         case .license:

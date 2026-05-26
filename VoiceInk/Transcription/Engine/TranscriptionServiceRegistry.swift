@@ -37,10 +37,10 @@ class TranscriptionServiceRegistry {
         }
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext = .currentDefaults) async throws -> String {
         let service = service(for: model.provider)
         logger.debug("Transcribing with \(model.displayName, privacy: .public) using \(String(describing: type(of: service)), privacy: .public)")
-        return try await service.transcribe(audioURL: audioURL, model: model)
+        return try await service.transcribe(audioURL: audioURL, model: model, context: context)
     }
 
     /// Creates a streaming or file-based session depending on the model's capabilities.
@@ -59,7 +59,7 @@ class TranscriptionServiceRegistry {
     }
 
     /// Whether the given model supports streaming transcription
-    private func supportsStreaming(model: any TranscriptionModel) -> Bool {
+    func supportsStreaming(model: any TranscriptionModel) -> Bool {
         guard model.supportsStreaming else { return false }
         // Streaming-only providers (e.g. Cartesia) have no batch endpoint — always stream.
         if let cloudProvider = CloudProviderRegistry.provider(for: model.provider), cloudProvider.isStreamingOnly {

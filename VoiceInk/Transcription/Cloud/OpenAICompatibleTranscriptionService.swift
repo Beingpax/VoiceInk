@@ -1,7 +1,7 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
-    func transcribe(audioURL: URL, model: CustomCloudModel) async throws -> String {
+    func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String {
         guard let url = URL(string: model.apiEndpoint) else {
             throw NSError(domain: "CustomWhisperTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API endpoint URL"])
         }
@@ -12,7 +12,7 @@ class OpenAICompatibleTranscriptionService {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
 
-        let body = try buildRequestBody(audioURL: audioURL, modelName: model.modelName, boundary: boundary)
+        let body = try buildRequestBody(audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
         let (data, response) = try await URLSession.shared.upload(for: request, from: body)
 
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -31,13 +31,13 @@ class OpenAICompatibleTranscriptionService {
         }
     }
 
-    private func buildRequestBody(audioURL: URL, modelName: String, boundary: String) throws -> Data {
+    private func buildRequestBody(audioURL: URL, modelName: String, boundary: String, context: TranscriptionRequestContext) throws -> Data {
         guard let audioData = try? Data(contentsOf: audioURL) else {
             throw CloudTranscriptionError.audioFileNotFound
         }
 
-        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
-        let prompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
+        let selectedLanguage = context.language ?? "auto"
+        let prompt = context.prompt ?? ""
         let crlf = "\r\n"
         var body = Data()
 

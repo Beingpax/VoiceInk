@@ -145,6 +145,21 @@ class AIEnhancementService: ObservableObject {
         aiService.isAPIKeyValid
     }
 
+    func isConfigured(for configuration: EnhancementRuntimeConfiguration) -> Bool {
+        guard let provider = configuration.provider else { return false }
+
+        if provider == .localCLI || provider == .ollama {
+            return true
+        }
+
+        if provider == .custom {
+            guard let modelName = configuration.modelName else { return false }
+            return CustomAIProviderManager.shared.requestConfiguration(forModel: modelName) != nil
+        }
+
+        return APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue)
+    }
+
     private func waitForRateLimit() async throws {
         if let lastRequest = lastRequestTime {
             let timeSinceLastRequest = Date().timeIntervalSince(lastRequest)
@@ -155,9 +170,26 @@ class AIEnhancementService: ObservableObject {
         lastRequestTime = Date()
     }
 
-    private func getSystemMessage(for mode: EnhancementPrompt) async -> String {
+    private func getSystemMessage(for mode: EnhancementPrompt, configuration: EnhancementRuntimeConfiguration? = nil) async -> String {
+        let useSelectedText = configuration?.useSelectedTextContext ?? useSelectedTextContext
+        let useClipboard = configuration?.useClipboardContext ?? useClipboardContext
+        let useScreenCapture = configuration?.useScreenCaptureContext ?? useScreenCaptureContext
+
+        if useClipboard {
+            captureClipboardContext()
+        } else {
+            lastCapturedClipboard = nil
+        }
+
+        if useScreenCapture {
+            screenCaptureService.lastCapturedText = nil
+            await captureScreenContext()
+        } else {
+            screenCaptureService.lastCapturedText = nil
+        }
+
         let selectedTextContext: String
-        if useSelectedTextContext && AXIsProcessTrusted() {
+        if useSelectedText && AXIsProcessTrusted() {
             if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
                 selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
             } else {
@@ -167,7 +199,7 @@ class AIEnhancementService: ObservableObject {
             selectedTextContext = ""
         }
 
-        let clipboardContext = if useClipboardContext,
+        let clipboardContext = if useClipboard,
                               let clipboardText = lastCapturedClipboard,
                               !clipboardText.isEmpty {
             "\n\n<CLIPBOARD_CONTEXT>\n\(clipboardText)\n</CLIPBOARD_CONTEXT>"
@@ -175,7 +207,7 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
-        let screenCaptureContext = if useScreenCaptureContext,
+        let screenCaptureContext = if useScreenCapture,
                                    let capturedText = screenCaptureService.lastCapturedText,
                                    !capturedText.isEmpty {
             "\n\n<CURRENT_WINDOW_CONTEXT>\n\(capturedText)\n</CURRENT_WINDOW_CONTEXT>"
@@ -202,7 +234,7 @@ class AIEnhancementService: ObservableObject {
 
         let finalContextSection = allContextSections + customVocabularySection
 
-        if let activePrompt = activePrompt {
+        if let activePrompt = configuration?.prompt ?? activePrompt {
             if activePrompt.id == PredefinedPrompts.assistantPromptId {
                 return activePrompt.promptText + finalContextSection
             } else {
@@ -214,9 +246,28 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
-    private func makeRequest(text: String, mode: EnhancementPrompt) async throws -> String {
-        guard isConfigured else {
-            throw EnhancementError.notConfigured
+    private func makeRequest(text: String, mode: EnhancementPrompt, configuration: EnhancementRuntimeConfiguration? = nil) async throws -> String {
+        if let configuration {
+            guard isConfigured(for: configuration) else {
+                throw EnhancementError.notConfigured
+            }
+        } else {
+            guard isConfigured else {
+                throw EnhancementError.notConfigured
+            }
+        }
+
+        let provider: AIProvider
+        let modelName: String
+        if let configuration {
+            guard let configuredProvider = configuration.provider else {
+                throw EnhancementError.notConfigured
+            }
+            provider = configuredProvider
+            modelName = configuration.modelName ?? configuredProvider.defaultModel
+        } else {
+            provider = aiService.selectedProvider
+            modelName = aiService.currentModel
         }
 
         guard !text.isEmpty else {
@@ -224,18 +275,19 @@ class AIEnhancementService: ObservableObject {
         }
 
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
-        let systemMessage = await getSystemMessage(for: mode)
+        let systemMessage = await getSystemMessage(for: mode, configuration: configuration)
 
         await MainActor.run {
             self.lastSystemMessageSent = systemMessage
             self.lastUserMessageSent = formattedText
         }
 
-        if aiService.selectedProvider == .ollama {
+        if provider == .ollama {
             do {
                 let result = try await aiService.enhanceWithOllama(
                     text: formattedText,
                     systemPrompt: systemMessage,
+                    model: modelName,
                     timeout: baseTimeout
                 )
                 return AIEnhancementOutputFilter.filter(result)
@@ -253,7 +305,7 @@ class AIEnhancementService: ObservableObject {
             }
         }
 
-        if aiService.selectedProvider == .localCLI {
+        if provider == .localCLI {
             do {
                 let result = try await aiService.enhanceWithLocalCLI(systemPrompt: systemMessage, userPrompt: formattedText)
                 return AIEnhancementOutputFilter.filter(result)
@@ -270,32 +322,46 @@ class AIEnhancementService: ObservableObject {
 
         do {
             let result: String
-            switch aiService.selectedProvider {
+            switch provider {
             case .anthropic:
                 result = try await AnthropicLLMClient.chatCompletion(
-                    apiKey: aiService.apiKey,
-                    model: aiService.currentModel,
+                    apiKey: try apiKey(for: provider, modelName: modelName),
+                    model: modelName,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     timeout: baseTimeout
                 )
-            default:
-                guard let baseURL = URL(string: aiService.selectedProvider.baseURL) else {
-                    throw EnhancementError.customError("\(aiService.selectedProvider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
+            case .custom:
+                guard let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: modelName),
+                      let baseURL = URL(string: customConfiguration.baseURL) else {
+                    throw EnhancementError.notConfigured
                 }
-                let temperature = aiService.currentModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
+                result = try await OpenAILLMClient.chatCompletion(
+                    baseURL: baseURL,
+                    apiKey: customConfiguration.apiKey,
+                    model: customConfiguration.modelName,
+                    messages: [.user(formattedText)],
+                    systemPrompt: systemMessage,
+                    temperature: 0.3,
+                    timeout: baseTimeout
+                )
+            default:
+                guard let baseURL = URL(string: provider.baseURL) else {
+                    throw EnhancementError.customError("\(provider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
+                }
+                let temperature = modelName.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
                 let reasoningEffort = ReasoningConfig.getReasoningParameter(
-                    for: aiService.selectedProvider,
-                    modelName: aiService.currentModel
+                    for: provider,
+                    modelName: modelName
                 )
                 let extraBody = ReasoningConfig.getExtraBodyParameters(
-                    for: aiService.selectedProvider,
-                    modelName: aiService.currentModel
+                    for: provider,
+                    modelName: modelName
                 )
                 result = try await OpenAILLMClient.chatCompletion(
                     baseURL: baseURL,
-                    apiKey: aiService.apiKey,
-                    model: aiService.currentModel,
+                    apiKey: try apiKey(for: provider, modelName: modelName),
+                    model: modelName,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     temperature: temperature,
@@ -312,6 +378,20 @@ class AIEnhancementService: ObservableObject {
         } catch {
             throw EnhancementError.customError(error.localizedDescription)
         }
+    }
+
+    private func apiKey(for provider: AIProvider, modelName: String) throws -> String {
+        if provider == .custom {
+            guard let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: modelName) else {
+                throw EnhancementError.notConfigured
+            }
+            return customConfiguration.apiKey
+        }
+
+        guard let key = APIKeyManager.shared.getAPIKey(forProvider: provider.rawValue), !key.isEmpty else {
+            throw EnhancementError.notConfigured
+        }
+        return key
     }
 
     private func mapLLMKitError(_ error: LLMKitError) -> EnhancementError {
@@ -337,13 +417,13 @@ class AIEnhancementService: ObservableObject {
         UserDefaults.standard.bool(forKey: "EnhancementRetryOnTimeout")
     }
 
-    private func makeRequestWithRetry(text: String, mode: EnhancementPrompt, maxRetries: Int = 3, initialDelay: TimeInterval = 1.0) async throws -> String {
+    private func makeRequestWithRetry(text: String, mode: EnhancementPrompt, configuration: EnhancementRuntimeConfiguration? = nil, maxRetries: Int = 3, initialDelay: TimeInterval = 1.0) async throws -> String {
         var retries = 0
         var currentDelay = initialDelay
 
         while retries < maxRetries {
             do {
-                return try await makeRequest(text: text, mode: mode)
+                return try await makeRequest(text: text, mode: mode, configuration: configuration)
             } catch let error as EnhancementError {
                 switch error {
                 case .networkError, .serverError, .rateLimitExceeded:
@@ -408,6 +488,21 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
+    func enhance(_ text: String, configuration: EnhancementRuntimeConfiguration) async throws -> (String, TimeInterval, String?) {
+        let startTime = Date()
+        let enhancementPrompt: EnhancementPrompt = .transcriptionEnhancement
+        let promptName = configuration.prompt?.title
+
+        do {
+            let result = try await makeRequestWithRetry(text: text, mode: enhancementPrompt, configuration: configuration)
+            let endTime = Date()
+            let duration = endTime.timeIntervalSince(startTime)
+            return (result, duration, promptName)
+        } catch {
+            throw error
+        }
+    }
+
     func captureScreenContext() async {
         guard CGPreflightScreenCaptureAccess() else {
             return
@@ -449,6 +544,21 @@ class AIEnhancementService: ObservableObject {
         customPrompts.removeAll { $0.id == prompt.id }
         if selectedPromptId == prompt.id {
             selectedPromptId = allPrompts.first?.id
+        }
+
+        let fallbackPromptId = allPrompts.first?.id.uuidString
+        let deletedPromptId = prompt.id.uuidString
+        let modeManager = ModeManager.shared
+        var updatedConfigurations = modeManager.configurations
+        var didUpdateModes = false
+
+        for index in updatedConfigurations.indices where updatedConfigurations[index].selectedPrompt == deletedPromptId {
+            updatedConfigurations[index].selectedPrompt = fallbackPromptId
+            didUpdateModes = true
+        }
+
+        if didUpdateModes {
+            modeManager.replaceConfigurations(updatedConfigurations)
         }
     }
 

@@ -71,16 +71,23 @@ final class ModelPrewarmService: ObservableObject {
             return
         }
 
-        guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
+        guard let transcriptionConfiguration = ModeRuntimeResolver.currentTranscriptionConfiguration(
+            transcriptionModelManager: transcriptionModelManager
+        ) else {
             logger.notice("No model selected, skipping prewarm")
             return
         }
+        let currentModel = transcriptionConfiguration.model
 
         logger.notice("Prewarming \(currentModel.displayName, privacy: .public)")
         let startTime = Date()
 
         do {
-            let _ = try await serviceRegistry.transcribe(audioURL: audioURL, model: currentModel)
+            let _ = try await serviceRegistry.transcribe(
+                audioURL: audioURL,
+                model: currentModel,
+                context: transcriptionConfiguration.requestContext
+            )
             let duration = Date().timeIntervalSince(startTime)
 
             logger.notice("Prewarm completed in \(String(format: "%.2f", duration), privacy: .public)s")
@@ -101,7 +108,9 @@ final class ModelPrewarmService: ObservableObject {
         }
 
         // Only prewarm local models (Parakeet and Whisper need ANE compilation)
-        guard let model = transcriptionModelManager.currentTranscriptionModel else {
+        guard let model = ModeRuntimeResolver.currentTranscriptionConfiguration(
+            transcriptionModelManager: transcriptionModelManager
+        )?.model else {
             return false
         }
 

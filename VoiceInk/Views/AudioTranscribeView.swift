@@ -6,6 +6,7 @@ struct AudioTranscribeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @ObservedObject private var modeManager = ModeManager.shared
     @StateObject private var transcriptionManager = AudioTranscriptionManager.shared
     @State private var isDropTargeted = false
     @State private var isEnhancementEnabled = false
@@ -246,7 +247,12 @@ struct AudioTranscribeView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .onChange(of: isEnhancementEnabled) { _, newValue in
-                    enhancementService.isEnhancementEnabled = newValue
+                    modeManager.updateCurrentEffectiveConfiguration { config in
+                        config.isAIEnhancementEnabled = newValue
+                        if newValue, config.selectedPrompt == nil {
+                            config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
+                        }
+                    }
                 }
 
             if isEnhancementEnabled && !enhancementService.allPrompts.isEmpty {
@@ -258,7 +264,9 @@ struct AudioTranscribeView: View {
                     },
                     set: { newValue in
                         selectedPromptId = newValue
-                        enhancementService.selectedPromptId = newValue
+                        modeManager.updateCurrentEffectiveConfiguration { config in
+                            config.selectedPrompt = newValue.uuidString
+                        }
                     }
                 )
 
@@ -272,9 +280,20 @@ struct AudioTranscribeView: View {
             }
         }
         .onAppear {
-            isEnhancementEnabled = enhancementService.isEnhancementEnabled
-            selectedPromptId = enhancementService.selectedPromptId
+            syncEnhancementControlsFromMode()
         }
+        .onChange(of: modeManager.currentEffectiveConfiguration?.id) { _, _ in
+            syncEnhancementControlsFromMode()
+        }
+        .onChange(of: modeManager.currentEffectiveConfiguration?.selectedPrompt) { _, _ in
+            syncEnhancementControlsFromMode()
+        }
+    }
+
+    private func syncEnhancementControlsFromMode() {
+        let mode = modeManager.currentEffectiveConfiguration
+        isEnhancementEnabled = mode?.isAIEnhancementEnabled == true
+        selectedPromptId = mode?.selectedPrompt.flatMap(UUID.init)
     }
 
     // MARK: - Drop Overlay

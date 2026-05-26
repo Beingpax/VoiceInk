@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-class PowerModeShortcutManager {
+class ModeShortcutManager {
     private let shortcutMonitor = ShortcutMonitor()
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
@@ -14,7 +14,7 @@ class PowerModeShortcutManager {
         self.modeProvider = modeProvider
         self.shortcutModeHandler = shortcutModeHandler
 
-        refreshPowerModeShortcuts()
+        refreshModeShortcuts()
 
         shortcutChangeObserver = NotificationCenter.default.addObserver(
             forName: ShortcutStore.shortcutDidChange,
@@ -23,20 +23,20 @@ class PowerModeShortcutManager {
         ) { [weak self] notification in
             guard
                 let action = notification.object as? ShortcutAction,
-                case .powerMode = action
+                case .mode = action
             else {
                 return
             }
 
             Task { @MainActor in
-                self?.refreshPowerModeShortcuts()
+                self?.refreshModeShortcuts()
             }
         }
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(powerModeShortcutAvailabilityDidChange),
-            name: .powerModeShortcutAvailabilityDidChange,
+            selector: #selector(modeShortcutAvailabilityDidChange),
+            name: .modeShortcutAvailabilityDidChange,
             object: nil
         )
     }
@@ -51,15 +51,15 @@ class PowerModeShortcutManager {
         }
     }
 
-    @objc private func powerModeShortcutAvailabilityDidChange() {
+    @objc private func modeShortcutAvailabilityDidChange() {
         Task { @MainActor in
-            refreshPowerModeShortcuts()
+            refreshModeShortcuts()
         }
     }
 
-    private func refreshPowerModeShortcuts() {
-        let shortcuts = PowerModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) { result, config in
-            let action = ShortcutAction.powerMode(config.id)
+    private func refreshModeShortcuts() {
+        let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) { result, config in
+            let action = ShortcutAction.mode(config.id)
             if let shortcut = ShortcutStore.shortcut(for: action) {
                 result[action] = shortcut
             }
@@ -71,7 +71,7 @@ class PowerModeShortcutManager {
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self,
-                          let powerModeId = self.powerModeId(for: action) else {
+                          let modeId = self.modeId(for: action) else {
                         return
                     }
 
@@ -79,14 +79,14 @@ class PowerModeShortcutManager {
                         action: action,
                         eventTime: eventTime,
                         mode: self.modeProvider(),
-                        powerModeId: powerModeId
+                        modeId: modeId
                     )
                 }
             },
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self,
-                          case .powerMode(let powerModeId) = action else {
+                          case .mode(let modeId) = action else {
                         return
                     }
 
@@ -94,27 +94,27 @@ class PowerModeShortcutManager {
                         action: action,
                         eventTime: eventTime,
                         mode: self.modeProvider(),
-                        powerModeId: powerModeId
+                        modeId: modeId
                     )
                 }
             },
             onShortcutInterrupted: { [weak self] action, _ in
                 Task { @MainActor in
-                    guard let self, case .powerMode = action else { return }
+                    guard let self, case .mode = action else { return }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
             }
         )
     }
 
-    private func powerModeId(for action: ShortcutAction) -> UUID? {
-        guard case .powerMode(let powerModeId) = action,
-              let config = PowerModeManager.shared.getConfiguration(with: powerModeId),
+    private func modeId(for action: ShortcutAction) -> UUID? {
+        guard case .mode(let modeId) = action,
+              let config = ModeManager.shared.getConfiguration(with: modeId),
               config.isEnabled,
-              ShortcutStore.shortcut(for: .powerMode(config.id)) != nil else {
+              ShortcutStore.shortcut(for: .mode(config.id)) != nil else {
             return nil
         }
 
-        return powerModeId
+        return modeId
     }
 }

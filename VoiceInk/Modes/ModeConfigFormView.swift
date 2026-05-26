@@ -1,10 +1,10 @@
 import SwiftUI
 
-struct PowerModeConfigFormView: View {
+struct ModeConfigFormView: View {
     let mode: ConfigurationMode
-    let powerModeManager: PowerModeManager
-    @Binding var draft: PowerModeConfigDraft
-    @Binding var validationErrors: [PowerModeValidationError]
+    let modeManager: ModeManager
+    @Binding var draft: ModeConfigDraft
+    @Binding var validationErrors: [ModeValidationError]
     @Binding var showValidationAlert: Bool
     let onDismiss: () -> Void
     let onSave: () -> Void
@@ -26,7 +26,7 @@ struct PowerModeConfigFormView: View {
     @State private var isContextAwarenessExpanded = false
 
     private var effectiveModelName: String? {
-        draft.effectiveModelName(fallback: transcriptionModelManager.currentTranscriptionModel?.name)
+        draft.selectedTranscriptionModelName
     }
 
     private var filteredApps: [InstalledAppInfo] {
@@ -51,7 +51,7 @@ struct PowerModeConfigFormView: View {
         if let providerName = draft.selectedAIProvider {
             selectedProvider = AIProvider(rawValue: providerName)
         } else {
-            selectedProvider = aiService.selectedProvider
+            selectedProvider = aiProviderOptions.first
         }
 
         guard let selectedProvider,
@@ -145,7 +145,7 @@ struct PowerModeConfigFormView: View {
         } message: {
             Text("Are you sure you want to delete '\(draft.name)'? This action cannot be undone.")
         }
-        .powerModeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
+        .modeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
     }
 
     private var triggerScenariosSection: some View {
@@ -260,7 +260,7 @@ struct PowerModeConfigFormView: View {
                     .foregroundColor(.secondary)
             } else {
                 let modelBinding = Binding<String?>(
-                    get: { draft.selectedTranscriptionModelName ?? transcriptionModelManager.currentTranscriptionModel?.name },
+                    get: { draft.selectedTranscriptionModelName },
                     set: { draft.selectedTranscriptionModelName = $0 }
                 )
 
@@ -270,7 +270,7 @@ struct PowerModeConfigFormView: View {
                     }
                 }
                 .onChange(of: draft.selectedTranscriptionModelName) { _, newModelName in
-                    if let modelName = newModelName ?? transcriptionModelManager.currentTranscriptionModel?.name,
+                    if let modelName = newModelName,
                        let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
                         if model.provider == .gemini {
                             draft.selectedLanguage = "auto"
@@ -405,7 +405,7 @@ struct PowerModeConfigFormView: View {
 
             let providerBinding = Binding<AIProvider>(
                 get: {
-                    configuredSelectedAIProvider ?? aiProviderOptions.first ?? aiService.selectedProvider
+                    configuredSelectedAIProvider ?? aiProviderOptions.first ?? .gemini
                 },
                 set: { newValue in
                     draft.selectedAIProvider = newValue.rawValue
@@ -615,7 +615,7 @@ struct PowerModeConfigFormView: View {
 
                 Spacer()
 
-                ShortcutRecorder(action: .powerMode(draft.id))
+                ShortcutRecorder(action: .mode(draft.id))
                     .frame(minHeight: 28)
             }
         }
@@ -676,7 +676,7 @@ struct PowerModeConfigFormView: View {
         let trimmedURL = newWebsiteURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedURL.isEmpty else { return }
 
-        let cleanedURL = powerModeManager.cleanURL(trimmedURL)
+        let cleanedURL = modeManager.cleanURL(trimmedURL)
         guard !draft.websiteConfigs.contains(where: { $0.url == cleanedURL }) else {
             newWebsiteURL = ""
             return

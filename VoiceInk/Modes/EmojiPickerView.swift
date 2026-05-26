@@ -103,7 +103,7 @@ struct EmojiPickerView: View {
         .alert("Emoji in Use", isPresented: $showingEmojiInUseAlert, presenting: emojiForAlert) { emojiStr in
             Button("OK", role: .cancel) { }
         } message: { emojiStr in
-            Text("The emoji \"\(emojiStr)\" is currently used by one or more Power Modes and cannot be removed.")
+            Text("The emoji \"\(emojiStr)\" is currently used by one or more Modes and cannot be removed.")
         }
     }
 
@@ -135,7 +135,7 @@ struct EmojiPickerView: View {
     private func attemptToRemoveCustomEmoji(_ emojiToRemove: String) {
         guard emojiManager.isCustomEmoji(emojiToRemove) else { return }
 
-        if PowerModeManager.shared.isEmojiInUse(emojiToRemove) {
+        if ModeManager.shared.isEmojiInUse(emojiToRemove) {
             emojiForAlert = emojiToRemove
             showingEmojiInUseAlert = true
         } else {

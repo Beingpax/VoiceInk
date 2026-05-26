@@ -5,7 +5,7 @@ import os
 @MainActor
 protocol TranscriptionSession: AnyObject {
     /// Prepares the session. Returns an audio chunk callback for streaming, or nil for file-based.
-    func prepare(model: any TranscriptionModel) async throws -> ((Data) -> Void)?
+    func prepare(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> ((Data) -> Void)?
 
     /// Called after recording stops. Returns the final transcribed text.
     func transcribe(audioURL: URL) async throws -> String
@@ -21,13 +21,15 @@ protocol TranscriptionSession: AnyObject {
 final class FileTranscriptionSession: TranscriptionSession {
     private let service: TranscriptionService
     private var model: (any TranscriptionModel)?
+    private var context: TranscriptionRequestContext = .currentDefaults
 
     init(service: TranscriptionService) {
         self.service = service
     }
 
-    func prepare(model: any TranscriptionModel) async throws -> ((Data) -> Void)? {
+    func prepare(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> ((Data) -> Void)? {
         self.model = model
+        self.context = context
         return nil
     }
 
@@ -35,7 +37,7 @@ final class FileTranscriptionSession: TranscriptionSession {
         guard let model = model else {
             throw VoiceInkEngineError.transcriptionFailed
         }
-        return try await service.transcribe(audioURL: audioURL, model: model)
+        return try await service.transcribe(audioURL: audioURL, model: model, context: context)
     }
 
     func cancel() {
@@ -51,6 +53,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
     private let streamingService: StreamingTranscriptionService
     private let fallbackService: TranscriptionService
     private var model: (any TranscriptionModel)?
+    private var context: TranscriptionRequestContext = .currentDefaults
     private var streamingFailed = false
     private var startupTask: Task<Void, Never>?
     private var startupTaskID: UUID?
@@ -61,8 +64,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
         self.fallbackService = fallbackService
     }
 
-    func prepare(model: any TranscriptionModel) async throws -> ((Data) -> Void)? {
+    func prepare(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> ((Data) -> Void)? {
         self.model = model
+        self.context = context
         logger.notice("Streaming session prepare model=\(model.displayName, privacy: .public)")
 
         // Return callback immediately; WebSocket connects in background
@@ -86,7 +90,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
             do {
                 let start = Date()
-                try await self.streamingService.startStreaming(model: model)
+                try await self.streamingService.startStreaming(model: model, context: context)
                 guard !Task.isCancelled else {
                     self.streamingService.cancel()
                     return
@@ -127,7 +131,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         let fallbackStart = Date()
         logger.notice("Using batch fallback for \(model.displayName, privacy: .public) file=\(audioURL.lastPathComponent, privacy: .public)")
-        let text = try await fallbackService.transcribe(audioURL: audioURL, model: model)
+        let text = try await fallbackService.transcribe(audioURL: audioURL, model: model, context: context)
         logger.notice("Batch fallback completed elapsed=\(Date().timeIntervalSince(fallbackStart), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)")
         return text
     }

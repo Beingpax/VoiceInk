@@ -5,7 +5,6 @@ import os
 class ActiveWindowService: ObservableObject {
     static let shared = ActiveWindowService()
     @Published var currentApplication: NSRunningApplication?
-    private var enhancementService: AIEnhancementService?
     private let browserURLService = BrowserURLService.shared
 
     private let logger = Logger(
@@ -14,18 +13,13 @@ class ActiveWindowService: ObservableObject {
     )
 
     private init() {}
-
-    func configure(with enhancementService: AIEnhancementService) {
-        self.enhancementService = enhancementService
-    }
     
-    func applyConfiguration(powerModeId: UUID? = nil) async {
-        if let powerModeId = powerModeId,
-           let config = PowerModeManager.shared.getConfiguration(with: powerModeId) {
+    func applyConfiguration(modeId: UUID? = nil) async {
+        if let modeId = modeId,
+           let config = ModeManager.shared.getConfiguration(with: modeId) {
             await MainActor.run {
-                PowerModeManager.shared.setActiveConfiguration(config)
+                ModeManager.shared.setActiveConfiguration(config)
             }
-            await PowerModeSessionManager.shared.beginSession(with: config)
             return
         }
 
@@ -38,12 +32,12 @@ class ActiveWindowService: ObservableObject {
             currentApplication = frontmostApp
         }
 
-        var configToApply: PowerModeConfig?
+        var configToApply: ModeConfig?
 
         if let browserType = BrowserType.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier }) {
             do {
                 let currentURL = try await browserURLService.getCurrentURL(from: browserType)
-                if let config = PowerModeManager.shared.getConfigurationForURL(currentURL) {
+                if let config = ModeManager.shared.getConfigurationForURL(currentURL) {
                     configToApply = config
                 }
             } catch {
@@ -52,18 +46,17 @@ class ActiveWindowService: ObservableObject {
         }
 
         if configToApply == nil {
-            configToApply = PowerModeManager.shared.getConfigurationForApp(bundleIdentifier)
+            configToApply = ModeManager.shared.getConfigurationForApp(bundleIdentifier)
         }
 
         if configToApply == nil {
-            configToApply = PowerModeManager.shared.getDefaultConfiguration()
+            configToApply = ModeManager.shared.getDefaultConfiguration()
         }
 
         if let config = configToApply {
             await MainActor.run {
-                PowerModeManager.shared.setActiveConfiguration(config)
+                ModeManager.shared.setActiveConfiguration(config)
             }
-            await PowerModeSessionManager.shared.beginSession(with: config)
         }
     }
 } 

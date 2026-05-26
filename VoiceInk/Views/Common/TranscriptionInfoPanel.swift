@@ -70,14 +70,14 @@ struct TranscriptionInfoPanel: View {
                 )
             }
 
-            if let powerModeValue = powerModeDisplay(
-                name: transcription.powerModeName,
-                emoji: transcription.powerModeEmoji
+            if let modeValue = modeDisplay(
+                name: transcription.modeName,
+                emoji: transcription.modeEmoji
             ) {
                 metadataRow(
                     icon: "bolt.fill",
-                    label: "Power Mode",
-                    value: powerModeValue
+                    label: "Mode",
+                    value: modeValue
                 )
             }
         } header: {
@@ -159,7 +159,7 @@ struct TranscriptionInfoPanel: View {
         }
     }
 
-    private func powerModeDisplay(name: String?, emoji: String?) -> String? {
+    private func modeDisplay(name: String?, emoji: String?) -> String? {
         guard name != nil || emoji != nil else { return nil }
 
         switch (emoji?.trimmingCharacters(in: .whitespacesAndNewlines), name?.trimmingCharacters(in: .whitespacesAndNewlines)) {

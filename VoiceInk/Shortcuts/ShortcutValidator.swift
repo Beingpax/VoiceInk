@@ -90,7 +90,7 @@ enum ShortcutValidator {
 
     private static var allStoredActions: [ShortcutAction] {
         ShortcutAction.legacyKeyboardShortcutActions +
-            PowerModeManager.shared.configurations.map { ShortcutAction.powerMode($0.id) }
+            ModeManager.shared.configurations.map { ShortcutAction.mode($0.id) }
     }
 
     private static var reservedMiniRecorderShortcuts: [(ShortcutAction, Shortcut)] {
@@ -101,7 +101,7 @@ enum ShortcutValidator {
                     Shortcut.key(keyCode: keyCode, modifierFlags: [.command])
                 ),
                 (
-                    ShortcutAction.miniRecorderPowerMode(index),
+                    ShortcutAction.miniRecorderMode(index),
                     Shortcut.key(keyCode: keyCode, modifierFlags: [.option])
                 )
             ]

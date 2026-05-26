@@ -82,7 +82,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         try await ensureModelsLoaded(for: version(for: model))
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String {
         let targetVersion = version(for: model)
         try await ensureModelsLoaded(for: targetVersion)
 
@@ -91,7 +91,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         let languageHint = Self.languageHint(
-            from: UserDefaults.standard.string(forKey: "SelectedLanguage"),
+            from: context.language,
             model: model
         )
         let audioSamples = try readAudioSamples(from: audioURL)

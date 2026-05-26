@@ -75,7 +75,7 @@ class OllamaService: ObservableObject {
         }
     }
 
-    func enhance(_ text: String, withSystemPrompt systemPrompt: String? = nil, timeout: TimeInterval = 30) async throws -> String {
+    func enhance(_ text: String, withSystemPrompt systemPrompt: String? = nil, model: String? = nil, timeout: TimeInterval = 30) async throws -> String {
         guard let systemPrompt = systemPrompt else {
             throw LocalAIError.invalidRequest
         }
@@ -84,10 +84,13 @@ class OllamaService: ObservableObject {
             throw LocalAIError.invalidURL
         }
 
+        let trimmedModel = model?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let requestModel = (trimmedModel?.isEmpty == false ? trimmedModel : nil) ?? selectedModel
+
         do {
             return try await OllamaClient.generate(
                 baseURL: url,
-                model: selectedModel,
+                model: requestModel,
                 prompt: text,
                 systemPrompt: systemPrompt,
                 temperature: defaultTemperature,

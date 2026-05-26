@@ -45,8 +45,8 @@ enum ShortcutMigration {
             migrateLegacyKeyboardShortcut(for: action)
         }
 
-        for config in PowerModeManager.shared.configurations {
-            migrateLegacyKeyboardShortcut(for: .powerMode(config.id))
+        for config in ModeManager.shared.configurations {
+            migrateLegacyKeyboardShortcut(for: .mode(config.id))
         }
 
         UserDefaults.standard.set(true, forKey: migrationKey)
@@ -156,11 +156,9 @@ enum ShortcutMigration {
     }
 
     static func removeLegacyKeyboardShortcut(for action: ShortcutAction) {
-        guard let legacyName = legacyKeyboardShortcutsName(for: action) else {
-            return
+        for legacyName in legacyKeyboardShortcutsNames(for: action) {
+            UserDefaults.standard.removeObject(forKey: "KeyboardShortcuts_\(legacyName)")
         }
-
-        UserDefaults.standard.removeObject(forKey: "KeyboardShortcuts_\(legacyName)")
     }
 
     static func migrateLegacyKeyboardShortcut(for action: ShortcutAction) {
@@ -255,7 +253,9 @@ enum ShortcutMigration {
 
     private static func legacyKeyboardShortcut(for action: ShortcutAction) -> Shortcut? {
         guard
-            let legacyName = legacyKeyboardShortcutsName(for: action),
+            let legacyName = legacyKeyboardShortcutsNames(for: action).first(where: {
+                UserDefaults.standard.string(forKey: "KeyboardShortcuts_\($0)") != nil
+            }),
             let data = UserDefaults.standard.string(forKey: "KeyboardShortcuts_\(legacyName)")?.data(using: .utf8),
             let legacyShortcut = try? JSONDecoder().decode(LegacyKeyboardShortcut.self, from: data)
         else {
@@ -265,30 +265,30 @@ enum ShortcutMigration {
         return Shortcut.fromLegacyShortcut(legacyShortcut)
     }
 
-    private static func legacyKeyboardShortcutsName(for action: ShortcutAction) -> String? {
+    private static func legacyKeyboardShortcutsNames(for action: ShortcutAction) -> [String] {
         switch action {
         case .primaryRecording:
-            return "toggleMiniRecorder"
+            return ["toggleMiniRecorder"]
         case .secondaryRecording:
-            return "toggleMiniRecorder2"
+            return ["toggleMiniRecorder2"]
         case .pasteLastTranscription:
-            return "pasteLastTranscription"
+            return ["pasteLastTranscription"]
         case .pasteLastEnhancement:
-            return "pasteLastEnhancement"
+            return ["pasteLastEnhancement"]
         case .retryLastTranscription:
-            return "retryLastTranscription"
+            return ["retryLastTranscription"]
         case .cancelRecorder:
-            return "cancelRecorder"
+            return ["cancelRecorder"]
         case .openHistoryWindow:
-            return "openHistoryWindow"
+            return ["openHistoryWindow"]
         case .quickAddToDictionary:
-            return "quickAddToDictionary"
+            return ["quickAddToDictionary"]
         case .toggleEnhancement:
-            return "toggleEnhancement"
-        case .powerMode(let id):
-            return "powerMode_\(id.uuidString)"
-        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderPowerMode:
-            return nil
+            return ["toggleEnhancement"]
+        case .mode(let id):
+            return ["mode_\(id.uuidString)", "powerMode_\(id.uuidString)"]
+        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderMode:
+            return []
         }
     }
 

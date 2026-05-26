@@ -1,26 +1,26 @@
 import SwiftUI
 
-struct PowerModeConfigEditorView: View {
+struct ModeConfigEditorView: View {
     let mode: ConfigurationMode
-    let powerModeManager: PowerModeManager
+    let modeManager: ModeManager
     let onDismiss: () -> Void
 
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
 
-    @State private var draft: PowerModeConfigDraft
-    @State private var validationErrors: [PowerModeValidationError] = []
+    @State private var draft: ModeConfigDraft
+    @State private var validationErrors: [ModeValidationError] = []
     @State private var showValidationAlert = false
     @State private var promptEditorMode: PromptEditorView.Mode?
     @State private var promptEditorID = UUID()
     @State private var didSaveConfiguration = false
 
-    init(mode: ConfigurationMode, powerModeManager: PowerModeManager, onDismiss: @escaping () -> Void) {
+    init(mode: ConfigurationMode, modeManager: ModeManager, onDismiss: @escaping () -> Void) {
         self.mode = mode
-        self.powerModeManager = powerModeManager
+        self.modeManager = modeManager
         self.onDismiss = onDismiss
-        _draft = State(initialValue: PowerModeConfigDraft(mode: mode, powerModeManager: powerModeManager))
+        _draft = State(initialValue: ModeConfigDraft(mode: mode, modeManager: modeManager))
     }
 
     var body: some View {
@@ -36,9 +36,9 @@ struct PowerModeConfigEditorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .id(promptEditorID)
             } else {
-                PowerModeConfigFormView(
+                ModeConfigFormView(
                     mode: mode,
-                    powerModeManager: powerModeManager,
+                    modeManager: modeManager,
                     draft: $draft,
                     validationErrors: $validationErrors,
                     showValidationAlert: $showValidationAlert,
@@ -89,10 +89,11 @@ struct PowerModeConfigEditorView: View {
         }
 
         draft.ensurePromptSelection(firstPromptId: enhancementService.allPrompts.first?.id)
+        draft.ensureTranscriptionModelSelection(
+            fallback: transcriptionModelManager.usableModels.first?.name
+        )
 
-        if let selectedModelName = draft.effectiveModelName(
-            fallback: transcriptionModelManager.currentTranscriptionModel?.name
-        ),
+        if let selectedModelName = draft.selectedTranscriptionModelName,
            let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
            model.provider != .gemini {
             draft.useCompatibleLanguage(for: model)
@@ -101,7 +102,7 @@ struct PowerModeConfigEditorView: View {
 
     private func saveConfiguration() {
         let config = draft.makeConfig(mode: mode)
-        let validator = PowerModeValidator(powerModeManager: powerModeManager)
+        let validator = ModeValidator(modeManager: modeManager)
         validationErrors = validator.validateForSave(config: config, mode: mode)
 
         if !validationErrors.isEmpty {
@@ -110,14 +111,14 @@ struct PowerModeConfigEditorView: View {
         }
 
         if draft.isDefault {
-            powerModeManager.setAsDefault(configId: config.id, skipSave: true)
+            modeManager.setAsDefault(configId: config.id, skipSave: true)
         }
 
         switch mode {
         case .add:
-            powerModeManager.addConfiguration(config)
+            modeManager.addConfiguration(config)
         case .edit:
-            powerModeManager.updateConfiguration(config)
+            modeManager.updateConfiguration(config)
         }
 
         didSaveConfiguration = true
@@ -125,7 +126,7 @@ struct PowerModeConfigEditorView: View {
     }
 
     private func deleteConfiguration() {
-        powerModeManager.removeConfiguration(with: draft.id)
+        modeManager.removeConfiguration(with: draft.id)
         onDismiss()
     }
 
@@ -134,6 +135,6 @@ struct PowerModeConfigEditorView: View {
             return
         }
 
-        ShortcutStore.removeShortcutStorage(for: .powerMode(draft.id))
+        ShortcutStore.removeShortcutStorage(for: .mode(draft.id))
     }
 }

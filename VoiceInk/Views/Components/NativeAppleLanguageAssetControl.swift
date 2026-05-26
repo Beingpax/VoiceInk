@@ -137,7 +137,7 @@ struct NativeAppleLanguageAssetControl: View {
             if allowsReservationReplacement {
                 return "Apple Speech can reserve up to 5 languages. Choose one to remove before downloading the selected language."
             }
-            return "Apple Speech can reserve up to 5 languages. Manage reserved languages in Power Mode settings."
+            return "Apple Speech can reserve up to 5 languages. Manage reserved languages in Mode settings."
         case .failed(let message):
             return "Apple Speech language download failed: \(message)"
         }

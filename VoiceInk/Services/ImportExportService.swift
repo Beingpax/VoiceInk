@@ -123,14 +123,14 @@ class ImportExportService {
 
     @MainActor
     func exportSettings(enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext) {
-        let powerModeManager = PowerModeManager.shared
+        let modeManager = ModeManager.shared
         let emojiManager = EmojiManager.shared
 
         let exportablePrompts = enhancementService.customPrompts.filter { !$0.isPredefined }
 
-        let powerConfigs = powerModeManager.configurations
-        let powerModeShortcuts = Dictionary(uniqueKeysWithValues: powerConfigs.compactMap { config -> (String, ShortcutBackup)? in
-            guard let shortcut = ShortcutStore.shortcut(for: .powerMode(config.id)) else { return nil }
+        let modeConfigs = modeManager.configurations
+        let modeShortcuts = Dictionary(uniqueKeysWithValues: modeConfigs.compactMap { config -> (String, ShortcutBackup)? in
+            guard let shortcut = ShortcutStore.shortcut(for: .mode(config.id)) else { return nil }
             return (config.id.uuidString, ShortcutBackup(shortcut))
         })
 
@@ -192,8 +192,8 @@ class ImportExportService {
         let exportedSettings = BackupFile(
             version: currentSettingsVersion,
             customPrompts: exportablePrompts,
-            powerModeConfigs: powerConfigs,
-            powerModeShortcuts: powerModeShortcuts.isEmpty ? nil : powerModeShortcuts,
+            modeConfigs: modeConfigs,
+            modeShortcuts: modeShortcuts.isEmpty ? nil : modeShortcuts,
             vocabularyWords: exportedDictionaryItems,
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
@@ -324,7 +324,7 @@ class ImportExportService {
     }
 
     private func needsAPIKeyReminder(for categories: Set<BackupCategory>) -> Bool {
-        !categories.isDisjoint(with: [.prompts, .powerMode, .customModels])
+        !categories.isDisjoint(with: [.prompts, .modes, .customModels])
     }
 
     private func showAlert(title: String, message: String) {

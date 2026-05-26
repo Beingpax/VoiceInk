@@ -1,5 +1,17 @@
 import Foundation
 
+struct TranscriptionRequestContext {
+    let language: String?
+    let prompt: String?
+
+    static var currentDefaults: TranscriptionRequestContext {
+        TranscriptionRequestContext(
+            language: UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto",
+            prompt: UserDefaults.standard.string(forKey: "TranscriptionPrompt")
+        )
+    }
+}
+
 /// A protocol defining the interface for a transcription service.
 /// This allows for a unified way to handle both local and cloud-based transcription models.
 protocol TranscriptionService {
@@ -10,5 +22,11 @@ protocol TranscriptionService {
     ///   - model: The `TranscriptionModel` to use for transcription. This provides context about the provider (local, OpenAI, etc.).
     /// - Returns: The transcribed text as a `String`.
     /// - Throws: An error if the transcription fails.
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String
-} 
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String
+}
+
+extension TranscriptionService {
+    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+        try await transcribe(audioURL: audioURL, model: model, context: .currentDefaults)
+    }
+}

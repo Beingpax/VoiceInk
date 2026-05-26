@@ -44,24 +44,35 @@ class AudioTranscriptionService: ObservableObject {
         }
         
         do {
+            let mode = ModeManager.shared.currentEffectiveConfiguration
+            let language = TranscriptionLanguageSupport.validLanguageOrFallback(
+                mode?.selectedLanguage,
+                for: model
+            )
+            let requestContext = TranscriptionRequestContext(
+                language: language,
+                prompt: UserDefaults.standard.string(forKey: "TranscriptionPrompt")
+            )
+            let modeName = (mode?.isEnabled == true) ? mode?.name : nil
+            let modeEmoji = (mode?.isEnabled == true) ? mode?.emoji : nil
+
             let transcriptionStart = Date()
-            var text = try await serviceRegistry.transcribe(audioURL: url, model: model)
+            var text = try await serviceRegistry.transcribe(audioURL: url, model: model, context: requestContext)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            let powerModeManager = PowerModeManager.shared
-            let activePowerModeConfig = powerModeManager.currentActiveConfiguration
-            let powerModeName = (activePowerModeConfig?.isEnabled == true) ? activePowerModeConfig?.name : nil
-            let powerModeEmoji = (activePowerModeConfig?.isEnabled == true) ? activePowerModeConfig?.emoji : nil
-
-            if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
+            if mode?.isTextFormattingEnabled ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
                 text = WhisperTextFormatter.format(text)
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             logger.notice("✅ Word replacements applied")
-            let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
+            let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
+                text,
+                punctuationMode: mode?.punctuationCleanupMode ?? PunctuationCleanupMode.current(),
+                shouldLowercase: mode?.lowercaseTranscription ?? UserDefaults.standard.bool(forKey: "LowercaseTranscription")
+            )
 
             let audioAsset = AVURLAsset(url: url)
             let duration = CMTimeGetSeconds(try await audioAsset.load(.duration))
@@ -85,34 +96,51 @@ class AudioTranscriptionService: ObservableObject {
             // Apply prompt detection for trigger words
             let originalText = cleanedText
             var promptDetectionResult: PromptDetectionService.PromptDetectionResult? = nil
+            var enhancementConfiguration = enhancementService
+                .flatMap { service in
+                    service.getAIService().map { aiService in
+                        ModeRuntimeResolver.currentEnhancementConfiguration(
+                            enhancementService: service,
+                            aiService: aiService
+                        )
+                    }
+                }
 
-            if let enhancementService = enhancementService, enhancementService.isConfigured {
-                let detectionResult = await promptDetectionService.analyzeText(text, with: enhancementService)
+            if let enhancementService = enhancementService, enhancementConfiguration?.provider != nil {
+                let detectionResult = promptDetectionService.analyzeText(text, prompts: enhancementService.allPrompts)
                 promptDetectionResult = detectionResult
-                await promptDetectionService.applyDetectionResult(detectionResult, to: enhancementService)
+                if detectionResult.shouldEnableAI,
+                   let prompt = detectionResult.selectedPrompt,
+                   let currentConfiguration = enhancementConfiguration {
+                    enhancementConfiguration = currentConfiguration.replacingPrompt(prompt)
+                }
             }
 
             // Apply AI enhancement if enabled
             if let enhancementService = enhancementService,
-               enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured {
+               let enhancementConfiguration,
+               enhancementConfiguration.isEnabled,
+               enhancementService.isConfigured(for: enhancementConfiguration) {
                 do {
                     let textForAI = promptDetectionResult?.processedText ?? text
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
+                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
+                        textForAI,
+                        configuration: enhancementConfiguration
+                    )
                     let newTranscription = Transcription(
                         text: originalText,
                         duration: duration,
                         enhancedText: enhancedText,
                         audioFileURL: permanentURLString,
                         transcriptionModelName: model.displayName,
-                        aiEnhancementModelName: enhancementService.getAIService()?.currentModel,
+                        aiEnhancementModelName: enhancementConfiguration.modelName ?? enhancementConfiguration.provider?.defaultModel,
                         promptName: promptName,
                         transcriptionDuration: transcriptionDuration,
                         enhancementDuration: enhancementDuration,
                         aiRequestSystemMessage: enhancementService.lastSystemMessageSent,
                         aiRequestUserMessage: enhancementService.lastUserMessageSent,
-                        powerModeName: powerModeName,
-                        powerModeEmoji: powerModeEmoji
+                        modeName: modeName,
+                        modeEmoji: modeEmoji
                     )
                     modelContext.insert(newTranscription)
                     do {
@@ -122,13 +150,6 @@ class AudioTranscriptionService: ObservableObject {
                     } catch {
                         logger.error("❌ Failed to save transcription: \(error.localizedDescription, privacy: .public)")
                     }
-
-                    // Restore original prompt settings if AI was temporarily enabled
-                    if let result = promptDetectionResult,
-                       result.shouldEnableAI {
-                        await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
-                    }
-
                     await MainActor.run {
                         isTranscribing = false
                     }
@@ -142,8 +163,8 @@ class AudioTranscriptionService: ObservableObject {
                         transcriptionModelName: model.displayName,
                         promptName: nil,
                         transcriptionDuration: transcriptionDuration,
-                        powerModeName: powerModeName,
-                        powerModeEmoji: powerModeEmoji
+                        modeName: modeName,
+                        modeEmoji: modeEmoji
                     )
                     modelContext.insert(newTranscription)
                     do {
@@ -168,8 +189,8 @@ class AudioTranscriptionService: ObservableObject {
                     transcriptionModelName: model.displayName,
                     promptName: nil,
                     transcriptionDuration: transcriptionDuration,
-                    powerModeName: powerModeName,
-                    powerModeEmoji: powerModeEmoji
+                    modeName: modeName,
+                    modeEmoji: modeEmoji
                 )
                 modelContext.insert(newTranscription)
                 do {

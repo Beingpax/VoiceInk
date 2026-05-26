@@ -10,6 +10,7 @@ import os
 // Meet Whisper C++ constraint: Don't access from more than one thread at a time.
 actor WhisperContext {
     private var context: OpaquePointer?
+    private var language: String?
     private var languageCString: [CChar]?
     private var prompt: String?
     private var promptCString: [CChar]?
@@ -34,8 +35,7 @@ actor WhisperContext {
         let maxThreads = max(1, min(8, cpuCount() - 2))
         var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
         
-        // Read language directly from UserDefaults
-        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
+        let selectedLanguage = language ?? "auto"
         if selectedLanguage != "auto" {
             languageCString = Array(selectedLanguage.utf8CString)
             params.language = languageCString?.withUnsafeBufferPointer { ptr in
@@ -157,6 +157,10 @@ actor WhisperContext {
 
     func setPrompt(_ prompt: String?) {
         self.prompt = prompt
+    }
+
+    func setLanguage(_ language: String?) {
+        self.language = language
     }
 }
 

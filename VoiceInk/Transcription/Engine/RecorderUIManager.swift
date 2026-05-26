@@ -81,7 +81,7 @@ class RecorderUIManager: ObservableObject {
 
     // MARK: - Mini Recorder Management
 
-    func toggleMiniRecorder(powerModeId: UUID? = nil) async {
+    func toggleMiniRecorder(modeId: UUID? = nil) async {
         guard let engine = engine else { return }
         logger.notice("toggleMiniRecorder called – visible=\(self.isMiniRecorderVisible, privacy: .public), state=\(String(describing: engine.recordingState), privacy: .public)")
 
@@ -89,7 +89,7 @@ class RecorderUIManager: ObservableObject {
             switch engine.recordingState {
             case .recording:
                 logger.notice("toggleMiniRecorder: stopping recording (was recording)")
-                await engine.toggleRecord(powerModeId: powerModeId)
+                await engine.toggleRecord(modeId: modeId)
             case .starting, .transcribing, .enhancing:
                 logger.notice("toggleMiniRecorder: cancelling active recorder work")
                 await cancelRecording()
@@ -100,7 +100,7 @@ class RecorderUIManager: ObservableObject {
         } else {
             SoundManager.shared.playStartSound()
             isMiniRecorderVisible = true
-            await engine.toggleRecord(powerModeId: powerModeId)
+            await engine.toggleRecord(modeId: modeId)
         }
     }
 

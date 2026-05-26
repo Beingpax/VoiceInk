@@ -22,7 +22,7 @@ struct VoiceInkButton: View {
     }
 }
 
-struct PowerModeEmptyStateView: View {
+struct ModeEmptyStateView: View {
     let action: () -> Void
     
     var body: some View {
@@ -31,16 +31,16 @@ struct PowerModeEmptyStateView: View {
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
             
-            Text("No Power Modes")
+            Text("No Modes")
                 .font(.title2)
                 .fontWeight(.semibold)
             
-            Text("Add customized power modes for different contexts")
+            Text("Add customized modes for different contexts")
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
             VoiceInkButton(
-                title: "Add New Power Mode",
+                title: "Add New Mode",
                 action: action
             )
             .frame(maxWidth: 250)
@@ -49,18 +49,18 @@ struct PowerModeEmptyStateView: View {
     }
 }
 
-struct PowerModeConfigurationsGrid: View {
-    @ObservedObject var powerModeManager: PowerModeManager
-    let onEditConfig: (PowerModeConfig) -> Void
+struct ModeConfigurationsGrid: View {
+    @ObservedObject var modeManager: ModeManager
+    let onEditConfig: (ModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
     
     var body: some View {
         LazyVStack(spacing: 12) {
-            ForEach($powerModeManager.configurations) { $config in
+            ForEach($modeManager.configurations) { $config in
                 ConfigurationRow(
                     config: $config,
                     isEditing: false,
-                    powerModeManager: powerModeManager,
+                    modeManager: modeManager,
                     onEditConfig: onEditConfig
                 )
             }
@@ -68,7 +68,7 @@ struct PowerModeConfigurationsGrid: View {
     }
 }
 
-/// Small, consistent icon-only add button used across Power Mode configuration rows.
+/// Small, consistent icon-only add button used across Mode configuration rows.
 struct AddIconButton: View {
     let helpText: String
     var isDisabled: Bool = false
@@ -89,10 +89,10 @@ struct AddIconButton: View {
 }
 
 struct ConfigurationRow: View {
-    @Binding var config: PowerModeConfig
+    @Binding var config: ModeConfig
     let isEditing: Bool
-    let powerModeManager: PowerModeManager
-    let onEditConfig: (PowerModeConfig) -> Void
+    let modeManager: ModeManager
+    let onEditConfig: (ModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @State private var isHovering = false
@@ -208,12 +208,18 @@ struct ConfigurationRow: View {
                 
                 Spacer()
                 
-                Toggle("", isOn: $config.isEnabled)
+                Toggle("", isOn: Binding(
+                    get: { config.isEnabled },
+                    set: { newValue in
+                        if newValue {
+                            modeManager.enableConfiguration(with: config.id)
+                        } else {
+                            modeManager.disableConfiguration(with: config.id)
+                        }
+                    }
+                ))
                     .toggleStyle(SwitchToggleStyle(tint: .accentColor))
                     .labelsHidden()
-                    .onChange(of: config.isEnabled) { _, _ in
-                        powerModeManager.updateConfiguration(config)
-                    }
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
@@ -337,15 +343,15 @@ struct ConfigurationRow: View {
         }
         Button(role: .destructive, action: {
             let alert = NSAlert()
-            alert.messageText = "Delete Power Mode?"
-            alert.informativeText = "Are you sure you want to delete the '\(config.name)' power mode? This action cannot be undone."
+            alert.messageText = "Delete Mode?"
+            alert.informativeText = "Are you sure you want to delete the '\(config.name)' mode? This action cannot be undone."
             alert.alertStyle = .warning
             alert.addButton(withTitle: "Delete")
             alert.addButton(withTitle: "Cancel")
             alert.buttons[0].hasDestructiveAction = true
             
             if alert.runModal() == .alertFirstButtonReturn {
-                powerModeManager.removeConfiguration(with: config.id)
+                modeManager.removeConfiguration(with: config.id)
             }
         }) {
             Label("Delete", systemImage: "trash")
@@ -358,7 +364,7 @@ struct ConfigurationRow: View {
     }
 }
 
-struct PowerModeAppIcon: View {
+struct ModeAppIcon: View {
     let bundleId: String
     
     var body: some View {

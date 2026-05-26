@@ -11,6 +11,7 @@ struct MenuBarView: View {
     @EnvironmentObject var updaterViewModel: UpdaterViewModel
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var aiService: AIService
+    @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var menuRefreshTrigger = false
@@ -25,115 +26,41 @@ struct MenuBarView: View {
             Divider()
 
             Menu {
-                ForEach(transcriptionModelManager.usableModels, id: \.id) { model in
+                ForEach(modeManager.enabledConfigurations) { config in
                     Button {
-                        Task {
-                            transcriptionModelManager.setDefaultTranscriptionModel(model)
-                        }
+                        modeManager.setActiveConfiguration(config)
                     } label: {
                         HStack {
-                            Text(model.displayName)
-                            if transcriptionModelManager.currentTranscriptionModel?.id == model.id {
+                            Text("\(config.emoji) \(config.name)")
+                            if modeManager.currentEffectiveConfiguration?.id == config.id {
                                 Image(systemName: "checkmark")
                             }
                         }
                     }
                 }
 
+                if modeManager.enabledConfigurations.isEmpty {
+                    Text("No modes available")
+                        .foregroundColor(.secondary)
+                }
+
                 Divider()
+
+                Button("Manage Modes") {
+                    menuBarManager.openMainWindowAndNavigate(to: "Modes")
+                }
 
                 Button("Manage Models") {
                     menuBarManager.openMainWindowAndNavigate(to: "AI Models")
                 }
             } label: {
                 HStack {
-                    Text("Transcription Model: \(transcriptionModelManager.currentTranscriptionModel?.displayName ?? "None")")
+                    let activeMode = modeManager.currentEffectiveConfiguration
+                    Text("Mode: \(activeMode.map { "\($0.emoji) \($0.name)" } ?? "None")")
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
                 }
             }
-            
-            Divider()
-            
-            Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
-            
-            Menu {
-                ForEach(enhancementService.allPrompts) { prompt in
-                    Button {
-                        enhancementService.setActivePrompt(prompt)
-                    } label: {
-                        HStack {
-                            Image(systemName: prompt.icon)
-                                .foregroundColor(.accentColor)
-                            Text(prompt.title)
-                            if enhancementService.selectedPromptId == prompt.id {
-                                Spacer()
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                HStack {
-                    Text("Prompt: \(enhancementService.activePrompt?.title ?? "None")")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                }
-            }
-            
-            Menu {
-                ForEach(aiService.connectedProviders, id: \.self) { provider in
-                    Button {
-                        aiService.selectedProvider = provider
-                    } label: {
-                        HStack {
-                            Text(provider.rawValue)
-                            if aiService.selectedProvider == provider {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-
-                if aiService.connectedProviders.isEmpty {
-                    Text("No providers connected")
-                        .foregroundColor(.secondary)
-                }
-            } label: {
-                HStack {
-                    Text("AI Provider: \(aiService.selectedProvider.rawValue)")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                }
-            }
-            
-            Menu {
-                ForEach(aiService.availableModels, id: \.self) { model in
-                    Button {
-                        aiService.selectModel(model)
-                    } label: {
-                        HStack {
-                            Text(model)
-                            if aiService.currentModel == model {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-
-                if aiService.availableModels.isEmpty {
-                    Text("No models available")
-                        .foregroundColor(.secondary)
-                }
-            } label: {
-                HStack {
-                    Text("AI Model: \(aiService.currentModel)")
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 10))
-                }
-            }
-            
-            LanguageSelectionView(transcriptionModelManager: transcriptionModelManager, displayMode: .menuItem, whisperPrompt: whisperModelManager.whisperPrompt)
 
             Menu {
                 ForEach(audioDeviceManager.availableDevices, id: \.id) { device in
@@ -163,26 +90,30 @@ struct MenuBarView: View {
 
             Menu("Additional") {
                 Button {
-                    enhancementService.useClipboardContext.toggle()
+                    modeManager.updateCurrentEffectiveConfiguration { config in
+                        config.useClipboardContext.toggle()
+                    }
                     menuRefreshTrigger.toggle()
                 } label: {
                     HStack {
                         Text("Clipboard Context")
                         Spacer()
-                        if enhancementService.useClipboardContext {
+                        if modeManager.currentEffectiveConfiguration?.useClipboardContext == true {
                             Image(systemName: "checkmark")
                         }
                     }
                 }
 
                 Button {
-                    enhancementService.useScreenCaptureContext.toggle()
+                    modeManager.updateCurrentEffectiveConfiguration { config in
+                        config.useScreenCapture.toggle()
+                    }
                     menuRefreshTrigger.toggle()
                 } label: {
                     HStack {
                         Text("Context Awareness")
                         Spacer()
-                        if enhancementService.useScreenCaptureContext {
+                        if modeManager.currentEffectiveConfiguration?.useScreenCapture == true {
                             Image(systemName: "checkmark")
                         }
                     }

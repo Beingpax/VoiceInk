@@ -62,7 +62,7 @@ final class SessionMetricMigrationService {
                         transcriptionModelName: transcription.transcriptionModelName,
                         transcriptionDuration: transcriptionDuration,
                         speedFactor: speedFactor,
-                        powerModeName: transcription.powerModeName,
+                        modeName: transcription.modeName,
                         aiEnhancementModelName: transcription.aiEnhancementModelName,
                         enhancementDuration: enhancementDuration
                     )

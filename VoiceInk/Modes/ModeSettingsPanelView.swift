@@ -1,13 +1,11 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct PowerModeSettingsPanelView: View {
-    @ObservedObject var powerModeManager: PowerModeManager
-    @AppStorage("powerModePersistConfig") private var persistModeConfig = false
+struct ModeSettingsPanelView: View {
+    @ObservedObject var modeManager: ModeManager
     let onDismiss: () -> Void
 
     private let contentInset: CGFloat = 20
-    private let rowCornerRadius: CGFloat = 10
 
     var body: some View {
         VStack(spacing: 0) {
@@ -34,34 +32,6 @@ struct PowerModeSettingsPanelView: View {
             .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider().opacity(0.5), alignment: .bottom)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Behavior")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 18)
-
-                Toggle(isOn: $persistModeConfig) {
-                    HStack(spacing: 6) {
-                        Text("Persist Mode Settings")
-                            .font(.system(size: 13, weight: .medium))
-
-                        InfoTip("When enabled, the Mode settings applied for recording stay active after the recording ends. When disabled, VoiceInk restores the transcription, enhancement, language, and model settings that were active before the Mode was applied.")
-
-                        Spacer(minLength: 8)
-                    }
-                }
-                .toggleStyle(.switch)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: rowCornerRadius)
-                        .fill(Color.secondary.opacity(0.1))
-                )
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, contentInset)
-
             HStack {
                 Text("Reorder Modes")
                     .font(.system(size: 12, weight: .semibold))
@@ -72,7 +42,7 @@ struct PowerModeSettingsPanelView: View {
             .padding(.top, 18)
             .padding(.bottom, 8)
 
-            PowerModeReorderList(powerModeManager: powerModeManager)
+            ModeReorderList(modeManager: modeManager)
                 .padding(.horizontal, contentInset)
         }
         .background(Color(NSColor.windowBackgroundColor))
@@ -81,8 +51,8 @@ struct PowerModeSettingsPanelView: View {
 
 }
 
-private struct PowerModeReorderList: View {
-    @ObservedObject var powerModeManager: PowerModeManager
+private struct ModeReorderList: View {
+    @ObservedObject var modeManager: ModeManager
 
     @State private var draggedConfigID: UUID?
     @State private var targetedConfigID: UUID?
@@ -90,8 +60,8 @@ private struct PowerModeReorderList: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
-                ForEach(powerModeManager.configurations) { config in
-                    PowerModeReorderRow(
+                ForEach(modeManager.configurations) { config in
+                    ModeReorderRow(
                         config: config,
                         isDragged: draggedConfigID == config.id,
                         isTargeted: targetedConfigID == config.id
@@ -100,13 +70,13 @@ private struct PowerModeReorderList: View {
                         draggedConfigID = config.id
                         return NSItemProvider(object: config.id.uuidString as NSString)
                     } preview: {
-                        PowerModeReorderDragPreview(config: config)
+                        ModeReorderDragPreview(config: config)
                     }
                     .onDrop(
                         of: [UTType.text],
-                        delegate: PowerModeReorderDropDelegate(
+                        delegate: ModeReorderDropDelegate(
                             item: config,
-                            powerModeManager: powerModeManager,
+                            modeManager: modeManager,
                             draggedConfigID: $draggedConfigID,
                             targetedConfigID: $targetedConfigID
                         )
@@ -117,7 +87,7 @@ private struct PowerModeReorderList: View {
         }
         .onDrop(
             of: [UTType.text],
-            delegate: PowerModeReorderResetDropDelegate(
+            delegate: ModeReorderResetDropDelegate(
                 draggedConfigID: $draggedConfigID,
                 targetedConfigID: $targetedConfigID
             )
@@ -125,8 +95,8 @@ private struct PowerModeReorderList: View {
     }
 }
 
-private struct PowerModeReorderRow: View {
-    let config: PowerModeConfig
+private struct ModeReorderRow: View {
+    let config: ModeConfig
     let isDragged: Bool
     let isTargeted: Bool
 
@@ -151,8 +121,8 @@ private struct PowerModeReorderRow: View {
                     .truncationMode(.tail)
 
                 HStack(spacing: 8) {
-                    PowerModeReorderMeta(icon: "app.fill", value: countText(config.appConfigs?.count ?? 0, singular: "App", plural: "Apps"))
-                    PowerModeReorderMeta(icon: "globe", value: countText(config.urlConfigs?.count ?? 0, singular: "Website", plural: "Websites"))
+                    ModeReorderMeta(icon: "app.fill", value: countText(config.appConfigs?.count ?? 0, singular: "App", plural: "Apps"))
+                    ModeReorderMeta(icon: "globe", value: countText(config.urlConfigs?.count ?? 0, singular: "Website", plural: "Websites"))
                 }
             }
 
@@ -160,11 +130,11 @@ private struct PowerModeReorderRow: View {
 
             HStack(spacing: 6) {
                 if config.isDefault {
-                    PowerModeReorderBadge(title: "Default", isProminent: true)
+                    ModeReorderBadge(title: "Default", isProminent: true)
                 }
 
                 if !config.isEnabled {
-                    PowerModeReorderBadge(title: "Disabled")
+                    ModeReorderBadge(title: "Disabled")
                 }
             }
         }
@@ -226,7 +196,7 @@ private struct PowerModeReorderRow: View {
     }
 }
 
-private struct PowerModeReorderMeta: View {
+private struct ModeReorderMeta: View {
     let icon: String
     let value: String
 
@@ -243,7 +213,7 @@ private struct PowerModeReorderMeta: View {
     }
 }
 
-private struct PowerModeReorderBadge: View {
+private struct ModeReorderBadge: View {
     let title: String
     var isProminent = false
 
@@ -266,8 +236,8 @@ private struct PowerModeReorderBadge: View {
     }
 }
 
-private struct PowerModeReorderDragPreview: View {
-    let config: PowerModeConfig
+private struct ModeReorderDragPreview: View {
+    let config: ModeConfig
 
     var body: some View {
         HStack(spacing: 10) {
@@ -288,29 +258,29 @@ private struct PowerModeReorderDragPreview: View {
     }
 }
 
-private struct PowerModeReorderDropDelegate: DropDelegate {
-    let item: PowerModeConfig
-    let powerModeManager: PowerModeManager
+private struct ModeReorderDropDelegate: DropDelegate {
+    let item: ModeConfig
+    let modeManager: ModeManager
     @Binding var draggedConfigID: UUID?
     @Binding var targetedConfigID: UUID?
 
     func dropEntered(info: DropInfo) {
         guard let draggedConfigID,
               draggedConfigID != item.id,
-              let fromIndex = powerModeManager.configurations.firstIndex(where: { $0.id == draggedConfigID }),
-              let toIndex = powerModeManager.configurations.firstIndex(where: { $0.id == item.id }) else {
+              let fromIndex = modeManager.configurations.firstIndex(where: { $0.id == draggedConfigID }),
+              let toIndex = modeManager.configurations.firstIndex(where: { $0.id == item.id }) else {
             return
         }
 
         targetedConfigID = item.id
 
         withAnimation(.smooth(duration: 0.18)) {
-            var updatedConfigurations = powerModeManager.configurations
+            var updatedConfigurations = modeManager.configurations
             updatedConfigurations.move(
                 fromOffsets: IndexSet(integer: fromIndex),
                 toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
             )
-            powerModeManager.replaceConfigurations(updatedConfigurations)
+            modeManager.replaceConfigurations(updatedConfigurations)
         }
     }
 
@@ -331,7 +301,7 @@ private struct PowerModeReorderDropDelegate: DropDelegate {
     }
 }
 
-private struct PowerModeReorderResetDropDelegate: DropDelegate {
+private struct ModeReorderResetDropDelegate: DropDelegate {
     @Binding var draggedConfigID: UUID?
     @Binding var targetedConfigID: UUID?
 

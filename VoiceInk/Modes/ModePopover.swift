@@ -1,12 +1,12 @@
 import SwiftUI
 
-struct PowerModePopover: View {
-    @ObservedObject var powerModeManager = PowerModeManager.shared
-    @State private var selectedConfig: PowerModeConfig?
+struct ModePopover: View {
+    @ObservedObject var modeManager = ModeManager.shared
+    @State private var selectedConfig: ModeConfig?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Select Power Mode")
+            Text("Select Mode")
                 .font(.headline)
                 .foregroundColor(.white.opacity(0.9))
                 .padding(.horizontal)
@@ -16,14 +16,14 @@ struct PowerModePopover: View {
                 .background(Color.white.opacity(0.1))
             
             ScrollView {
-                let enabledConfigs = powerModeManager.configurations.filter { $0.isEnabled }
+                let enabledConfigs = modeManager.configurations.filter { $0.isEnabled }
                 VStack(alignment: .leading, spacing: 4) {
                     if enabledConfigs.isEmpty {
                         VStack(alignment: .center, spacing: 8) {
                             Image(systemName: "sparkles")
                                 .foregroundColor(.white.opacity(0.6))
                                 .font(.system(size: 16))
-                            Text("No Power Modes Available")
+                            Text("No Modes Available")
                                 .foregroundColor(.white.opacity(0.8))
                                 .font(.system(size: 13))
                                 .lineLimit(1)
@@ -33,13 +33,12 @@ struct PowerModePopover: View {
                         .padding(.vertical, 16)
                     } else {
                         ForEach(enabledConfigs) { config in
-                            PowerModeRow(
+                            ModeRow(
                                 config: config,
                                 isSelected: selectedConfig?.id == config.id,
                                 action: {
-                                    powerModeManager.setActiveConfiguration(config)
+                                    modeManager.setActiveConfiguration(config)
                                     selectedConfig = config
-                                    applySelectedConfiguration()
                                 }
                             )
                         }
@@ -54,24 +53,16 @@ struct PowerModePopover: View {
         .background(Color.black)
         .environment(\.colorScheme, .dark)
         .onAppear {
-            selectedConfig = powerModeManager.activeConfiguration
+            selectedConfig = modeManager.activeConfiguration
         }
-        .onChange(of: powerModeManager.activeConfiguration) { newValue in
+        .onChange(of: modeManager.activeConfiguration) { newValue in
             selectedConfig = newValue
-        }
-    }
-    
-    private func applySelectedConfiguration() {
-        Task {
-            if let config = selectedConfig {
-                await PowerModeSessionManager.shared.beginSession(with: config)
-            }
         }
     }
 }
 
-struct PowerModeRow: View {
-    let config: PowerModeConfig
+struct ModeRow: View {
+    let config: ModeConfig
     let isSelected: Bool
     let action: () -> Void
     

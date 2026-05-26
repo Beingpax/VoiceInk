@@ -42,17 +42,17 @@ class CloudTranscriptionService: TranscriptionService {
         self.modelContext = modelContext
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String {
         let audioData = try loadAudioData(from: audioURL)
         let fileName = audioURL.lastPathComponent
-        let language = selectedLanguage()
+        let language = selectedLanguage(from: context)
 
         do {
             if model.provider == .custom {
                 guard let customModel = model as? CustomCloudModel else {
                     throw CloudTranscriptionError.unsupportedProvider
                 }
-                return try await openAICompatibleService.transcribe(audioURL: audioURL, model: customModel)
+                return try await openAICompatibleService.transcribe(audioURL: audioURL, model: customModel, context: context)
             }
 
             guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
@@ -65,7 +65,7 @@ class CloudTranscriptionService: TranscriptionService {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                prompt: transcriptionPrompt(),
+                prompt: transcriptionPrompt(from: context),
                 customVocabulary: getCustomDictionaryTerms()
             )
         } catch let error as CloudTranscriptionError {
@@ -93,13 +93,13 @@ class CloudTranscriptionService: TranscriptionService {
         return apiKey
     }
 
-    private func selectedLanguage() -> String? {
-        let lang = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
+    private func selectedLanguage(from context: TranscriptionRequestContext) -> String? {
+        let lang = context.language ?? "auto"
         return (lang == "auto" || lang.isEmpty) ? nil : lang
     }
 
-    private func transcriptionPrompt() -> String? {
-        let prompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
+    private func transcriptionPrompt(from context: TranscriptionRequestContext) -> String? {
+        let prompt = context.prompt ?? ""
         return prompt.isEmpty ? nil : prompt
     }
 

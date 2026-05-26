@@ -6,7 +6,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @EnvironmentObject var windowManager: NotchWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
-    @ObservedObject private var powerModeManager = PowerModeManager.shared
+    @ObservedObject private var modeManager = ModeManager.shared
     @State private var activePopover: ActivePopoverState = .none
 
     // MARK: - Display State
@@ -122,7 +122,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
             HStack(spacing: 10) {
                 RecorderPromptButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
-                RecorderPowerModeButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
+                RecorderModeButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
                 Spacer(minLength: 0)
             }
             .padding(.leading, displayState == .liveText ? 18 : 14)

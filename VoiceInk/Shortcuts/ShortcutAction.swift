@@ -10,10 +10,10 @@ enum ShortcutAction: Hashable {
     case openHistoryWindow
     case quickAddToDictionary
     case toggleEnhancement
-    case powerMode(UUID)
+    case mode(UUID)
     case miniRecorderEscape
     case miniRecorderPrompt(Int)
-    case miniRecorderPowerMode(Int)
+    case miniRecorderMode(Int)
 
     var userDefaultsKey: String {
         "Shortcut_\(storageName)"
@@ -21,7 +21,7 @@ enum ShortcutAction: Hashable {
 
     var isStored: Bool {
         switch self {
-        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderPowerMode:
+        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderMode:
             return false
         default:
             return true
@@ -48,14 +48,14 @@ enum ShortcutAction: Hashable {
             return "quickAddToDictionary"
         case .toggleEnhancement:
             return "toggleEnhancement"
-        case .powerMode(let id):
-            return "powerMode_\(id.uuidString)"
+        case .mode(let id):
+            return "mode_\(id.uuidString)"
         case .miniRecorderEscape:
             return "miniRecorderEscape"
         case .miniRecorderPrompt(let index):
             return "miniRecorderPrompt_\(index)"
-        case .miniRecorderPowerMode(let index):
-            return "miniRecorderPowerMode_\(index)"
+        case .miniRecorderMode(let index):
+            return "miniRecorderMode_\(index)"
         }
     }
 
@@ -79,18 +79,18 @@ enum ShortcutAction: Hashable {
             return "Quick Add to Dictionary"
         case .toggleEnhancement:
             return "Toggle Enhancement"
-        case .powerMode(let id):
-            if let config = PowerModeManager.shared.getConfiguration(with: id) {
-                return "\(config.name) Power Mode"
+        case .mode(let id):
+            if let config = ModeManager.shared.getConfiguration(with: id) {
+                return "\(config.name) Mode"
             }
 
-            return "Power Mode"
+            return "Mode"
         case .miniRecorderEscape:
             return "Mini Recorder Cancel"
         case .miniRecorderPrompt(let index):
             return "Select Prompt \(Self.displayNumber(forMiniRecorderIndex: index))"
-        case .miniRecorderPowerMode(let index):
-            return "Select Power Mode \(Self.displayNumber(forMiniRecorderIndex: index))"
+        case .miniRecorderMode(let index):
+            return "Select Mode \(Self.displayNumber(forMiniRecorderIndex: index))"
         }
     }
 

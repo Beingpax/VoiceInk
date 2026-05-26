@@ -29,7 +29,7 @@ class TranscriptionPipeline {
     /// - Parameters:
     ///   - transcription: The pending Transcription SwiftData object to populate and save.
     ///   - audioURL: The recorded audio file.
-    ///   - model: The transcription model to use.
+    ///   - transcriptionConfiguration: Mode-resolved transcription settings for this phase.
     ///   - session: An active streaming session if one was prepared, otherwise nil.
     ///   - onStateChange: Called when the pipeline moves to a new recording state (e.g. `.enhancing`).
     ///   - shouldCancel: Returns true if the user requested cancellation.
@@ -38,34 +38,26 @@ class TranscriptionPipeline {
     func run(
         transcription: Transcription,
         audioURL: URL,
-        model: any TranscriptionModel,
+        transcriptionConfiguration: TranscriptionRuntimeConfiguration,
         session: TranscriptionSession?,
+        enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
         onStateChange: @escaping (RecordingState) -> Void,
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
         onDismiss: @escaping () async -> Void
     ) async {
+        let model = transcriptionConfiguration.model
         var finalPastedText: String?
         var promptDetectionResult: PromptDetectionService.PromptDetectionResult?
         var didInsertSessionMetric = false
 
-        func restorePromptDetectionSettingsIfNeeded() async {
-            if let result = promptDetectionResult,
-               let enhancementService,
-               result.shouldEnableAI {
-                await promptDetectionService.restoreOriginalSettings(result, to: enhancementService)
-            }
-        }
-
-        func restorePromptDetectionSettingsAndDismiss(afterRestore: () -> Void = {}) async {
-            await restorePromptDetectionSettingsIfNeeded()
+        func dismiss(afterRestore: () -> Void = {}) async {
             afterRestore()
             await onDismiss()
         }
 
         func finishCanceledTranscription() async {
             await onCancel()
-            await restorePromptDetectionSettingsIfNeeded()
 
             let canceledDuration: TimeInterval?
             if transcription.duration > 0 {
@@ -98,7 +90,11 @@ class TranscriptionPipeline {
             if let session {
                 text = try await session.transcribe(audioURL: audioURL)
             } else {
-                text = try await serviceRegistry.transcribe(audioURL: audioURL, model: model)
+                text = try await serviceRegistry.transcribe(
+                    audioURL: audioURL,
+                    model: model,
+                    context: transcriptionConfiguration.requestContext
+                )
             }
             text = TranscriptionOutputFilter.filter(text)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
@@ -107,25 +103,38 @@ class TranscriptionPipeline {
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
+            if transcriptionConfiguration.isTextFormattingEnabled {
                 text = WhisperTextFormatter.format(text)
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
+            let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
+                text,
+                punctuationMode: transcriptionConfiguration.punctuationCleanupMode,
+                shouldLowercase: transcriptionConfiguration.lowercaseTranscription
+            )
 
             let actualDuration = await AudioFileMetadata.duration(for: audioURL)
+            let modeMetadata = transcriptionConfiguration.metadata
 
             transcription.text = cleanedText
             transcription.duration = actualDuration
             transcription.transcriptionModelName = model.displayName
             transcription.transcriptionDuration = transcriptionDuration
+            transcription.modeName = modeMetadata.name
+            transcription.modeEmoji = modeMetadata.emoji
             finalPastedText = cleanedText
 
-            if let enhancementService, enhancementService.isConfigured {
-                let detectionResult = promptDetectionService.analyzeText(text, with: enhancementService)
+            var resolvedEnhancementConfiguration = enhancementConfiguration()
+            if let enhancementService,
+               resolvedEnhancementConfiguration?.provider != nil {
+                let detectionResult = promptDetectionService.analyzeText(text, prompts: enhancementService.allPrompts)
                 promptDetectionResult = detectionResult
-                await promptDetectionService.applyDetectionResult(detectionResult, to: enhancementService)
+                if detectionResult.shouldEnableAI,
+                   let prompt = detectionResult.selectedPrompt,
+                   let currentConfiguration = resolvedEnhancementConfiguration {
+                    resolvedEnhancementConfiguration = currentConfiguration.replacingPrompt(prompt)
+                }
             }
 
             let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
@@ -134,8 +143,9 @@ class TranscriptionPipeline {
             let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold && !(promptDetectionResult?.shouldEnableAI == true)
 
             if let enhancementService,
-               enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured,
+               let resolvedEnhancementConfiguration,
+               resolvedEnhancementConfiguration.isEnabled,
+               enhancementService.isConfigured(for: resolvedEnhancementConfiguration),
                !shouldSkipEnhancement {
                 if shouldCancel() { await finishCanceledTranscription(); return }
 
@@ -143,9 +153,12 @@ class TranscriptionPipeline {
                 let textForAI = promptDetectionResult?.processedText ?? text
 
                 do {
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
+                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
+                        textForAI,
+                        configuration: resolvedEnhancementConfiguration
+                    )
                     transcription.enhancedText = enhancedText
-                    transcription.aiEnhancementModelName = enhancementService.getAIService()?.currentModel
+                    transcription.aiEnhancementModelName = resolvedEnhancementConfiguration.modelName ?? resolvedEnhancementConfiguration.provider?.defaultModel
                     transcription.promptName = promptName
                     transcription.enhancementDuration = enhancementDuration
                     transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
@@ -225,9 +238,9 @@ class TranscriptionPipeline {
             let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
             let pastedText = textToPaste + (appendSpace ? " " : "")
             _ = await CursorPaster.startPasteAtCursor(pastedText).value
-            let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
             SoundManager.shared.playStopSound()
-            await restorePromptDetectionSettingsAndDismiss {
+            await dismiss {
+                let autoSendKey = ModeManager.shared.currentEffectiveConfiguration?.autoSendKey
                 if let autoSendKey, autoSendKey.isEnabled {
                     Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 500_000_000)
@@ -236,7 +249,7 @@ class TranscriptionPipeline {
                 }
             }
         } else {
-            await restorePromptDetectionSettingsAndDismiss()
+            await dismiss()
         }
 
         saveTranscriptionAndPostCompletion()

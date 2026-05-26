@@ -54,8 +54,8 @@ class MiniRecorderShortcutManager: ObservableObject {
         }
     }
 
-    private var canUsePowerModeShortcuts: Bool {
-        !PowerModeManager.shared.enabledConfigurations.isEmpty
+    private var canUseModeShortcuts: Bool {
+        !ModeManager.shared.enabledConfigurations.isEmpty
     }
 
     private func resetEscapeState() {
@@ -84,9 +84,9 @@ class MiniRecorderShortcutManager: ObservableObject {
             )
         }
 
-        if canUsePowerModeShortcuts {
+        if canUseModeShortcuts {
             for (index, keyCode) in Self.digitKeyCodes.enumerated() {
-                shortcuts[.miniRecorderPowerMode(index)] = .key(
+                shortcuts[.miniRecorderMode(index)] = .key(
                     keyCode: keyCode,
                     modifierFlags: [.option]
                 )
@@ -112,14 +112,19 @@ class MiniRecorderShortcutManager: ObservableObject {
             guard ShortcutStore.shortcut(for: .cancelRecorder) != nil else { return }
             await recorderUIManager.cancelRecording()
         case .toggleEnhancement:
-            guard let enhancementService = engine.getEnhancementService() else { return }
-            enhancementService.isEnhancementEnabled.toggle()
+            let prompts = engine.getEnhancementService()?.allPrompts ?? []
+            ModeManager.shared.updateCurrentEffectiveConfiguration { config in
+                config.isAIEnhancementEnabled.toggle()
+                if config.isAIEnhancementEnabled, config.selectedPrompt == nil {
+                    config.selectedPrompt = prompts.first?.id.uuidString
+                }
+            }
         case .miniRecorderEscape:
             await handleEscapeShortcut()
         case .miniRecorderPrompt(let index):
             handlePromptShortcut(index: index)
-        case .miniRecorderPowerMode(let index):
-            await handlePowerModeSelectionShortcut(index: index)
+        case .miniRecorderMode(let index):
+            handleModeSelectionShortcut(index: index)
         default:
             break
         }
@@ -158,24 +163,23 @@ class MiniRecorderShortcutManager: ObservableObject {
             return
         }
 
-        if !enhancementService.isEnhancementEnabled {
-            enhancementService.isEnhancementEnabled = true
+        let prompt = enhancementService.allPrompts[index]
+        ModeManager.shared.updateCurrentEffectiveConfiguration { config in
+            config.isAIEnhancementEnabled = true
+            config.selectedPrompt = prompt.id.uuidString
         }
-
-        enhancementService.setActivePrompt(enhancementService.allPrompts[index])
     }
 
-    private func handlePowerModeSelectionShortcut(index: Int) async {
-        guard canUsePowerModeShortcuts else { return }
+    private func handleModeSelectionShortcut(index: Int) {
+        guard canUseModeShortcuts else { return }
 
-        let powerModeManager = PowerModeManager.shared
-        let availableConfigurations = powerModeManager.enabledConfigurations
+        let modeManager = ModeManager.shared
+        let availableConfigurations = modeManager.enabledConfigurations
 
         guard index < availableConfigurations.count else { return }
 
         let selectedConfig = availableConfigurations[index]
-        powerModeManager.setActiveConfiguration(selectedConfig)
-        await PowerModeSessionManager.shared.beginSession(with: selectedConfig)
+        modeManager.setActiveConfiguration(selectedConfig)
     }
 
     deinit {

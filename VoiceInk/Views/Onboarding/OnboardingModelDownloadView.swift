@@ -165,6 +165,7 @@ struct OnboardingModelDownloadView: View {
             if let modelToSet = transcriptionModelManager.allAvailableModels.first(where: { $0.name == turboModel.name }) {
                 Task {
                     transcriptionModelManager.setDefaultTranscriptionModel(modelToSet)
+                    updateDefaultModeModel(modelToSet)
                     withAnimation {
                         isModelSet = true
                     }
@@ -178,6 +179,7 @@ struct OnboardingModelDownloadView: View {
                 await whisperModelManager.downloadModel(turboModel)
                 if let modelToSet = transcriptionModelManager.allAvailableModels.first(where: { $0.name == turboModel.name }) {
                     transcriptionModelManager.setDefaultTranscriptionModel(modelToSet)
+                    updateDefaultModeModel(modelToSet)
                     withAnimation {
                         isModelSet = true
                         isDownloading = false
@@ -196,6 +198,13 @@ struct OnboardingModelDownloadView: View {
             return "Set as Default"
         } else {
             return "Download Model"
+        }
+    }
+
+    private func updateDefaultModeModel(_ model: any TranscriptionModel) {
+        ModeManager.shared.updateCurrentEffectiveConfiguration { config in
+            config.selectedTranscriptionModelName = model.name
+            config.selectedLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(config.selectedLanguage, for: model)
         }
     }
     
