@@ -36,7 +36,7 @@ class PlaybackController: ObservableObject {
     
     private func setupMediaControllerCallbacks() {
         mediaController.onTrackInfoReceived = { [weak self] trackInfo in
-            self?.isMediaPlaying = trackInfo.payload.isPlaying ?? false
+            self?.isMediaPlaying = trackInfo?.payload.isPlaying ?? false
             self?.lastKnownTrackInfo = trackInfo
         }
         

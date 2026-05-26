@@ -1,9 +1,6 @@
 import SwiftUI
-import KeyboardShortcuts
 
 struct EnhancementShortcutsView: View {
-    @ObservedObject private var shortcutSettings = EnhancementShortcutSettings.shared
-
     var body: some View {
         VStack(spacing: 8) {
             // Toggle AI Enhancement
@@ -20,16 +17,8 @@ struct EnhancementShortcutsView: View {
 
                 Spacer()
 
-                HStack(spacing: 10) {
-                    HStack(spacing: 4) {
-                        KeyChip(label: "⌘")
-                        KeyChip(label: "E")
-                    }
-
-                    Toggle("", isOn: $shortcutSettings.isToggleEnhancementShortcutEnabled)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                }
+                ShortcutRecorder(action: .toggleEnhancement)
+                    .controlSize(.small)
             }
 
             // Switch Enhancement Prompt

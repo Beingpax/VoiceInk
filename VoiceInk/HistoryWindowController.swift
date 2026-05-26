@@ -34,12 +34,12 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
             .modelContainer(modelContainer)
             .environmentObject(engine)
             .environmentObject(engine.enhancementService!)
-            .frame(minWidth: 1000, minHeight: 700)
+            .frame(minWidth: 1150, minHeight: 700)
 
         let hostingController = NSHostingController(rootView: historyView)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1100, height: 750),
+            contentRect: NSRect(x: 0, y: 0, width: 1250, height: 750),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -54,7 +54,7 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
         window.backgroundColor = NSColor.windowBackgroundColor
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.fullScreenPrimary]
-        window.minSize = NSSize(width: 1000, height: 700)
+        window.minSize = NSSize(width: 1150, height: 700)
 
         window.setFrameAutosaveName(windowAutosaveName)
         if !window.setFrameUsingName(windowAutosaveName) {

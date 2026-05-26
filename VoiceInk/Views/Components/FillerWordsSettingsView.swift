@@ -59,6 +59,7 @@ struct FillerWordsSettingsView: View {
                     HStack(spacing: 8) {
                         TextField("Add filler word", text: $newWord)
                             .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("Add filler word")
                             .onSubmit { addWord() }
 
                         Button(action: addWord) {
@@ -68,7 +69,7 @@ struct FillerWordsSettingsView: View {
                                 .font(.system(size: 16, weight: .semibold))
                         }
                         .buttonStyle(.borderless)
-                        .help("Add filler word")
+                        .accessibilityLabel("Add filler word")
                         .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     .padding(.vertical, 4)
@@ -84,9 +85,7 @@ struct FillerWordsSettingsView: View {
                             }
                         }
                     }
-
                 }
-                .padding(.leading, 4)
             }
         }
         .alert("Duplicate Word", isPresented: $showDuplicateAlert) {

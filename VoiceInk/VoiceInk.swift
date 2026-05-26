@@ -14,10 +14,10 @@ struct VoiceInkApp: App {
 
     @StateObject private var engine: VoiceInkEngine
     @StateObject private var whisperModelManager: WhisperModelManager
-    @StateObject private var parakeetModelManager: ParakeetModelManager
+    @StateObject private var fluidAudioModelManager: FluidAudioModelManager
     @StateObject private var transcriptionModelManager: TranscriptionModelManager
     @StateObject private var recorderUIManager: RecorderUIManager
-    @StateObject private var hotkeyManager: HotkeyManager
+    @StateObject private var recordingShortcutManager: RecordingShortcutManager
     @StateObject private var updaterViewModel: UpdaterViewModel
     @StateObject private var menuBarManager: MenuBarManager
     @StateObject private var aiService = AIService()
@@ -48,20 +48,23 @@ struct VoiceInkApp: App {
         }
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
+        // Keep existing model order stable; append new models after synced entities.
         let schema = Schema([
             Transcription.self,
             VocabularyWord.self,
-            WordReplacement.self
+            WordReplacement.self,
+            SessionMetric.self
         ])
         var initializationFailed = false
+        let resolvedContainer: ModelContainer
 
         // Attempt 1: Try persistent storage
         if let persistentContainer = Self.createPersistentContainer(schema: schema, logger: logger) {
-            container = persistentContainer
+            resolvedContainer = persistentContainer
         }
         // Attempt 2: Try in-memory storage
         else if let memoryContainer = Self.createInMemoryContainer(schema: schema, logger: logger) {
-            container = memoryContainer
+            resolvedContainer = memoryContainer
 
             logger.warning("Using in-memory storage as fallback. Data will not persist between sessions.")
 
@@ -82,11 +85,12 @@ struct VoiceInkApp: App {
 
             // Create minimal in-memory container to satisfy initialization
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            container = (try? ModelContainer(for: schema, configurations: [config])) ?? {
+            resolvedContainer = (try? ModelContainer(for: schema, configurations: [config])) ?? {
                 preconditionFailure("Unable to create ModelContainer. SwiftData is unavailable.")
             }()
         }
 
+        container = resolvedContainer
         containerInitializationFailed = initializationFailed
 
         // Initialize services with proper sharing of instances
@@ -96,7 +100,7 @@ struct VoiceInkApp: App {
         let updaterViewModel = UpdaterViewModel()
         _updaterViewModel = StateObject(wrappedValue: updaterViewModel)
 
-        let enhancementService = AIEnhancementService(aiService: aiService, modelContext: container.mainContext)
+        let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
 
         // 1. Create modelsDirectory URL
@@ -106,10 +110,10 @@ struct VoiceInkApp: App {
 
         // 2. Create model managers
         let whisperModelManager = WhisperModelManager(modelsDirectory: modelsDirectory)
-        let parakeetModelManager = ParakeetModelManager()
+        let fluidAudioModelManager = FluidAudioModelManager()
         let transcriptionModelManager = TranscriptionModelManager(
             whisperModelManager: whisperModelManager,
-            parakeetModelManager: parakeetModelManager
+            fluidAudioModelManager: fluidAudioModelManager
         )
 
         // 3. Create UI manager
@@ -117,7 +121,7 @@ struct VoiceInkApp: App {
 
         // 4. Create engine
         let engine = VoiceInkEngine(
-            modelContext: container.mainContext,
+            modelContext: resolvedContainer.mainContext,
             whisperModelManager: whisperModelManager,
             transcriptionModelManager: transcriptionModelManager,
             enhancementService: enhancementService
@@ -128,25 +132,26 @@ struct VoiceInkApp: App {
         engine.recorderUIManager = recorderUIManager
 
         // 6. Initialize model state
-        // refreshAllAvailableModels must run before loadCurrentTranscriptionModel so imported models are present when restoring the saved selection.
+        // Migration and refreshAllAvailableModels must run before loadCurrentTranscriptionModel so renamed keys are remapped and imported models are present when restoring the saved selection.
+        StreamingKeysMigration.run()
         whisperModelManager.createModelsDirectoryIfNeeded()
         whisperModelManager.loadAvailableModels()
         transcriptionModelManager.refreshAllAvailableModels()
         transcriptionModelManager.loadCurrentTranscriptionModel()
 
         _whisperModelManager = StateObject(wrappedValue: whisperModelManager)
-        _parakeetModelManager = StateObject(wrappedValue: parakeetModelManager)
+        _fluidAudioModelManager = StateObject(wrappedValue: fluidAudioModelManager)
         _transcriptionModelManager = StateObject(wrappedValue: transcriptionModelManager)
         _recorderUIManager = StateObject(wrappedValue: recorderUIManager)
         _engine = StateObject(wrappedValue: engine)
 
         // 7. Create other services that depend on engine
-        let hotkeyManager = HotkeyManager(engine: engine, recorderUIManager: recorderUIManager)
-        _hotkeyManager = StateObject(wrappedValue: hotkeyManager)
+        let recordingShortcutManager = RecordingShortcutManager(engine: engine, recorderUIManager: recorderUIManager)
+        _recordingShortcutManager = StateObject(wrappedValue: recordingShortcutManager)
 
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
-        menuBarManager.configure(modelContainer: container, engine: engine)
+        menuBarManager.configure(modelContainer: resolvedContainer, engine: engine)
 
         let activeWindowService = ActiveWindowService.shared
         activeWindowService.configure(with: enhancementService)
@@ -155,7 +160,7 @@ struct VoiceInkApp: App {
         let prewarmService = ModelPrewarmService(
             transcriptionModelManager: transcriptionModelManager,
             whisperModelManager: whisperModelManager,
-            modelContext: container.mainContext
+            modelContext: resolvedContainer.mainContext
         )
         _prewarmService = StateObject(wrappedValue: prewarmService)
 
@@ -168,8 +173,12 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
-        // Start cleanup service for the app's lifetime, not tied to window lifecycle
-        TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: container.mainContext)
+        let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: resolvedContainer)
+        let mainContext = resolvedContainer.mainContext
+        Task {
+            await migrationTask?.value
+            TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
+        }
     }
 
     // MARK: - Container Creation Helpers
@@ -186,6 +195,7 @@ struct VoiceInkApp: App {
             // Define storage locations
             let defaultStoreURL = appSupportURL.appendingPathComponent("default.store")
             let dictionaryStoreURL = appSupportURL.appendingPathComponent("dictionary.store")
+            let statsStoreURL = appSupportURL.appendingPathComponent("stats.store")
 
             // Transcript configuration
             let transcriptSchema = Schema([Transcription.self])
@@ -210,10 +220,19 @@ struct VoiceInkApp: App {
                 cloudKitDatabase: dictionaryCloudKit
             )
 
+            // Recorder session metrics configuration
+            let statsSchema = Schema([SessionMetric.self])
+            let statsConfig = ModelConfiguration(
+                "stats",
+                schema: statsSchema,
+                url: statsStoreURL,
+                cloudKitDatabase: .none
+            )
+
             // Initialize container
             return try ModelContainer(
                 for: schema,
-                configurations: transcriptConfig, dictionaryConfig
+                configurations: transcriptConfig, dictionaryConfig, statsConfig
             )
         } catch {
             logger.error("❌ Failed to create persistent ModelContainer: \(error.localizedDescription, privacy: .public)")
@@ -239,7 +258,14 @@ struct VoiceInkApp: App {
                 isStoredInMemoryOnly: true
             )
 
-            return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig)
+            let statsSchema = Schema([SessionMetric.self])
+            let statsConfig = ModelConfiguration(
+                "stats",
+                schema: statsSchema,
+                isStoredInMemoryOnly: true
+            )
+
+            return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
         } catch {
             logger.error("❌ Failed to create in-memory ModelContainer: \(error.localizedDescription, privacy: .public)")
             return nil
@@ -252,10 +278,10 @@ struct VoiceInkApp: App {
                 ContentView()
                     .environmentObject(engine)
                     .environmentObject(whisperModelManager)
-                    .environmentObject(parakeetModelManager)
+                    .environmentObject(fluidAudioModelManager)
                     .environmentObject(transcriptionModelManager)
                     .environmentObject(recorderUIManager)
-                    .environmentObject(hotkeyManager)
+                    .environmentObject(recordingShortcutManager)
                     .environmentObject(updaterViewModel)
                     .environmentObject(menuBarManager)
                     .environmentObject(aiService)
@@ -275,10 +301,6 @@ struct VoiceInkApp: App {
                             return
                         }
 
-                        // Migrate dictionary data from UserDefaults to SwiftData (one-time operation)
-                        DictionaryMigrationService.shared.migrateIfNeeded(context: container.mainContext)
-
-                        updaterViewModel.silentlyCheckForUpdates()
                         if enableAnnouncements {
                             AnnouncementsService.shared.start()
                         }
@@ -309,10 +331,10 @@ struct VoiceInkApp: App {
                     }
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .environmentObject(hotkeyManager)
+                    .environmentObject(recordingShortcutManager)
                     .environmentObject(engine)
                     .environmentObject(whisperModelManager)
-                    .environmentObject(parakeetModelManager)
+                    .environmentObject(fluidAudioModelManager)
                     .environmentObject(transcriptionModelManager)
                     .environmentObject(recorderUIManager)
                     .environmentObject(aiService)
@@ -340,10 +362,10 @@ struct VoiceInkApp: App {
             MenuBarView()
                 .environmentObject(engine)
                 .environmentObject(whisperModelManager)
-                .environmentObject(parakeetModelManager)
+                .environmentObject(fluidAudioModelManager)
                 .environmentObject(transcriptionModelManager)
                 .environmentObject(recorderUIManager)
-                .environmentObject(hotkeyManager)
+                .environmentObject(recordingShortcutManager)
                 .environmentObject(menuBarManager)
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
@@ -371,35 +393,30 @@ struct VoiceInkApp: App {
 }
 
 class UpdaterViewModel: ObservableObject {
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
-
     private let updaterController: SPUStandardUpdaterController
 
     @Published var canCheckForUpdates = false
+    @Published var automaticallyChecksForUpdates = false
 
     init() {
         updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
-        // Enable automatic update checking
-        updaterController.updater.automaticallyChecksForUpdates = autoUpdateCheck
-        updaterController.updater.updateCheckInterval = 24 * 60 * 60
+        automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
         updaterController.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+
+        updaterController.updater.publisher(for: \.automaticallyChecksForUpdates)
+            .assign(to: &$automaticallyChecksForUpdates)
     }
 
-    func toggleAutoUpdates(_ value: Bool) {
+    func setAutomaticallyChecksForUpdates(_ value: Bool) {
         updaterController.updater.automaticallyChecksForUpdates = value
     }
 
     func checkForUpdates() {
         // This is for manual checks - will show UI
         updaterController.checkForUpdates(nil)
-    }
-
-    func silentlyCheckForUpdates() {
-        // This checks for updates in the background without showing UI unless an update is found
-        updaterController.updater.checkForUpdatesInBackground()
     }
 }
 

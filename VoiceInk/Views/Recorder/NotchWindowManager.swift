@@ -5,9 +5,8 @@ import AppKit
 class NotchWindowManager: ObservableObject {
     @Published var isVisible = false
     private var windowController: NSWindowController?
-    var notchPanel: NotchRecorderPanel?
+    private var panel: NotchRecorderPanel?
 
-    // Type-erased references stored as closures to avoid generic class limitations
     private let makeView: (NotchWindowManager) -> AnyView
     private let enhancementService: AIEnhancementService
 
@@ -41,20 +40,15 @@ class NotchWindowManager: ObservableObject {
 
     func show() {
         if isVisible { return }
-
-        if notchPanel == nil {
-            let activeScreen = NSApp.keyWindow?.screen ?? NSScreen.main ?? NSScreen.screens[0]
-            initializeWindow(screen: activeScreen)
-        }
-
-        self.isVisible = true
-        notchPanel?.show()
+        if panel == nil { initializeWindow() }
+        isVisible = true
+        panel?.show()
     }
 
     func hide() {
         guard isVisible else { return }
-        self.isVisible = false
-        notchPanel?.orderOut(nil)
+        isVisible = false
+        panel?.orderOut(nil)
     }
 
     func destroyWindow() {
@@ -62,34 +56,26 @@ class NotchWindowManager: ObservableObject {
         deinitializeWindow()
     }
 
-    private func initializeWindow(screen: NSScreen) {
+    private func initializeWindow() {
         deinitializeWindow()
-
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
-        let panel = NotchRecorderPanel(contentRect: metrics.frame)
-
-        let notchRecorderView = makeView(self)
-        let hostingController = NotchRecorderHostingController(rootView: notchRecorderView)
-        panel.contentView = hostingController.view
-
-        self.notchPanel = panel
-        self.windowController = NSWindowController(window: panel)
-
-        panel.orderFrontRegardless()
+        let newPanel = NotchRecorderPanel(contentRect: metrics.frame)
+        let view = makeView(self)
+        let hostingController = NotchRecorderHostingController(rootView: view)
+        newPanel.contentView = hostingController.view
+        panel = newPanel
+        windowController = NSWindowController(window: newPanel)
+        newPanel.orderFrontRegardless()
     }
 
     private func deinitializeWindow() {
-        notchPanel?.orderOut(nil)
+        panel?.orderOut(nil)
         windowController?.close()
         windowController = nil
-        notchPanel = nil
+        panel = nil
     }
 
     func toggle() {
-        if isVisible {
-            hide()
-        } else {
-            show()
-        }
+        isVisible ? hide() : show()
     }
 }

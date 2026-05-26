@@ -3,25 +3,19 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>1.72</title>
+            <title>1.79</title>
             <description><![CDATA[
-                <h3>What's New in V 1.72</h3>
+                <h3>What's New in v1.79</h3>
                 <ul>
-                    <li>🎙️ Per-shortcut activation mode — choose Toggle, Push to Talk, or Hybrid for each shortcut</li>
-                    <li>⌨️ Power Mode auto-send key — pick Return, Shift+Return, or Cmd+Return to auto-send transcriptions</li>
-                    <li>🚫 Skip short transcriptions — automatically skip AI enhancement for brief responses like "yes" or "ok"</li>
-                    <li>🔄 Latest AI Enhancementmodels — GPT 5.4, Gemini 3.1 Pro, Gemini 3.1 Flash Lite and more</li>
-                    <li>⚡ Faster recording start and smoother performance overall</li>
-                    <li>📋 Brought back AppleScript paste method</li>
-                    <li>✨ Refreshed UI with new sliding panels</li>
-                    <li>🐛 Bug fixes and stability improvements</li>
+                    <li>🛠️ Fixed AppleScript paste crash</li>
+                    <li>⌨️ Fixed accidental Fn shortcut triggers</li>
                 </ul>
             ]]></description>
-            <pubDate>Thu, 19 Mar 2026 10:09:22 +0545</pubDate>
-            <sparkle:version>172</sparkle:version>
-            <sparkle:shortVersionString>1.72</sparkle:shortVersionString>
+            <pubDate>Sat, 23 May 2026 20:23:30 +0545</pubDate>
+            <sparkle:version>179</sparkle:version>
+            <sparkle:shortVersionString>1.79</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.72/VoiceInk.dmg" length="12694982" type="application/octet-stream" sparkle:edSignature="GjLE1gCyAEpfZ8zwehbeEniQB/5X/1R2QnlnX46EHkP0zeCs/3P8UJcLEHfD7mP+4+r+63Pi/TIPECdrhl1kAw=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.79/VoiceInk.dmg" length="14406786" type="application/octet-stream" sparkle:edSignature="TI2RXCaX+lx8Dp7fERw9B4Ef+xHwJQxsshBnDClUAKsyafQjfM4DYOCm3Iz9dF7VaajUZccafIktBDsbtuRzCA=="/>
         </item>
     </channel>
 </rss>

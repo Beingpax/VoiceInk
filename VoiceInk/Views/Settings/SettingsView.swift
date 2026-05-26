@@ -1,6 +1,6 @@
 import SwiftUI
 import Cocoa
-import KeyboardShortcuts
+import Carbon.HIToolbox
 import LaunchAtLogin
 import AVFoundation
 
@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @EnvironmentObject private var menuBarManager: MenuBarManager
-    @EnvironmentObject private var hotkeyManager: HotkeyManager
+    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
     @EnvironmentObject private var recorderUIManager: RecorderUIManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
@@ -17,17 +17,15 @@ struct SettingsView: View {
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
-    @AppStorage("autoUpdateCheck") private var autoUpdateCheck = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
-    @AppStorage("useAppleScriptPaste") private var useAppleScriptPaste = false
+    @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
     @State private var showResetOnboardingAlert = false
-    @State private var currentShortcut = KeyboardShortcuts.getShortcut(for: .toggleMiniRecorder)
-    @State private var isCustomCancelEnabled = KeyboardShortcuts.getShortcut(for: .cancelRecorder) != nil
+    @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
+    @State private var cancelRecordingShortcutRecorderResetID = 0
 
     // Expansion states - all collapsed by default
-    @State private var isCustomCancelExpanded = false
     @State private var isMiddleClickExpanded = false
     @State private var isSoundFeedbackExpanded = false
     @State private var isMuteSystemExpanded = false
@@ -37,32 +35,30 @@ struct SettingsView: View {
         Form {
             // MARK: - Shortcuts
             Section {
-                LabeledContent("Shortcut 1") {
+                LabeledContent("Primary Shortcut") {
                     HStack(spacing: 8) {
                         Spacer()
-                        if hotkeyManager.selectedHotkey1 != .none {
-                            hotkeyModePicker(binding: $hotkeyManager.hotkeyMode1)
+                        shortcutModePicker(binding: $recordingShortcutManager.primaryRecordingShortcutMode)
+                        ShortcutRecorder(action: .primaryRecording) {
+                            recordingShortcutManager.primaryRecordingShortcut = .custom
+                            recordingShortcutManager.updateShortcutStatus()
                         }
-                        hotkeyPicker(binding: $hotkeyManager.selectedHotkey1)
-                        if hotkeyManager.selectedHotkey1 == .custom {
-                            KeyboardShortcuts.Recorder(for: .toggleMiniRecorder)
-                                .controlSize(.small)
-                        }
+                        .controlSize(.small)
                     }
                 }
 
-                if hotkeyManager.selectedHotkey2 != .none {
-                    LabeledContent("Shortcut 2") {
+                if recordingShortcutManager.secondaryRecordingShortcut != .none {
+                    LabeledContent("Secondary Shortcut") {
                         HStack(spacing: 8) {
                             Spacer()
-                            hotkeyModePicker(binding: $hotkeyManager.hotkeyMode2)
-                            hotkeyPicker(binding: $hotkeyManager.selectedHotkey2)
-                            if hotkeyManager.selectedHotkey2 == .custom {
-                                KeyboardShortcuts.Recorder(for: .toggleMiniRecorder2)
-                                    .controlSize(.small)
+                            shortcutModePicker(binding: $recordingShortcutManager.secondaryRecordingShortcutMode)
+                            ShortcutRecorder(action: .secondaryRecording) {
+                                recordingShortcutManager.secondaryRecordingShortcut = .custom
+                                recordingShortcutManager.updateShortcutStatus()
                             }
+                            .controlSize(.small)
                             Button {
-                                withAnimation { hotkeyManager.selectedHotkey2 = .none }
+                                withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .none }
                             } label: {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundColor(.secondary)
@@ -72,9 +68,9 @@ struct SettingsView: View {
                     }
                 }
 
-                if hotkeyManager.selectedHotkey1 != .none && hotkeyManager.selectedHotkey2 == .none {
+                if recordingShortcutManager.secondaryRecordingShortcut == .none {
                     Button("Add Second Shortcut") {
-                        withAnimation { hotkeyManager.selectedHotkey2 = .rightOption }
+                        withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .custom }
                     }
                 }
             } header: {
@@ -84,47 +80,62 @@ struct SettingsView: View {
             // MARK: - Additional Shortcuts
             Section("Additional Shortcuts") {
                 LabeledContent("Paste Last Transcription (Original)") {
-                    KeyboardShortcuts.Recorder(for: .pasteLastTranscription)
+                    ShortcutRecorder(action: .pasteLastTranscription) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
                         .controlSize(.small)
                 }
 
                 LabeledContent("Paste Last Transcription (Enhanced)") {
-                    KeyboardShortcuts.Recorder(for: .pasteLastEnhancement)
+                    ShortcutRecorder(action: .pasteLastEnhancement) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
                         .controlSize(.small)
                 }
 
                 LabeledContent("Retry Last Transcription") {
-                    KeyboardShortcuts.Recorder(for: .retryLastTranscription)
+                    ShortcutRecorder(action: .retryLastTranscription) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
                         .controlSize(.small)
                 }
 
-                // Custom Cancel - hierarchical
-                ExpandableSettingsRow(
-                    isExpanded: $isCustomCancelExpanded,
-                    isEnabled: $isCustomCancelEnabled,
-                    label: "Custom Cancel Shortcut"
-                ) {
-                    LabeledContent("Shortcut") {
-                        KeyboardShortcuts.Recorder(for: .cancelRecorder)
+                LabeledContent("Cancel Recording") {
+                    HStack(spacing: 8) {
+                        ShortcutRecorder(
+                            action: .cancelRecorder,
+                            defaultShortcut: Self.defaultCancelRecordingShortcut
+                        ) {
+                            hasCancelRecordingShortcut = true
+                        }
+                            .id(cancelRecordingShortcutRecorderResetID)
                             .controlSize(.small)
+
+                        Button {
+                            ShortcutStore.setShortcut(nil, for: .cancelRecorder)
+                            hasCancelRecordingShortcut = false
+                            cancelRecordingShortcutRecorderResetID += 1
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Reset to default")
                     }
                 }
-                .onChange(of: isCustomCancelEnabled) { _, newValue in
-                    if !newValue {
-                        KeyboardShortcuts.setShortcut(nil, for: .cancelRecorder)
-                        isCustomCancelExpanded = false
-                    }
+                .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
+                    guard let action = notification.object as? ShortcutAction, action == .cancelRecorder else { return }
+                    hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
                 }
 
                 // Middle-Click
                 ExpandableSettingsRow(
                     isExpanded: $isMiddleClickExpanded,
-                    isEnabled: $hotkeyManager.isMiddleClickToggleEnabled,
+                    isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
                     label: "Middle-Click Recording"
                 ) {
                     LabeledContent("Activation Delay") {
                         HStack {
-                            TextField("", value: $hotkeyManager.middleClickActivationDelay, formatter: {
+                            TextField("", value: $recordingShortcutManager.middleClickActivationDelay, formatter: {
                                 let formatter = NumberFormatter()
                                 formatter.minimum = 0
                                 return formatter
@@ -165,11 +176,12 @@ struct SettingsView: View {
                     }
                 }
 
-                // Restore Clipboard
+                // Keep Clipboard Content
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,
                     isEnabled: $restoreClipboardAfterPaste,
-                    label: "Restore Clipboard After Paste"
+                    label: "Keep Clipboard Content",
+                    infoMessage: "VoiceInk temporarily uses the clipboard to paste transcription. When enabled, it restores your previous clipboard content after the selected delay. When disabled, the pasted transcription stays on your clipboard."
                 ) {
                     Picker("Restore Delay", selection: $clipboardRestoreDelay) {
                         Text("250ms").tag(0.25)
@@ -182,12 +194,24 @@ struct SettingsView: View {
                     }
                 }
 
-                // AppleScript Paste
-                Toggle(isOn: $useAppleScriptPaste) {
-                    HStack(spacing: 4) {
-                        Text("Use AppleScript Paste")
-                        InfoTip("Enable this if pasting doesn't work with your keyboard layout (e.g. Neo2). Uses AppleScript instead of simulated key events.")
+                // Paste Method
+                Picker(selection: $pasteMethodRawValue) {
+                    ForEach(PasteMethod.allCases) { method in
+                        Text(method.displayName).tag(method.rawValue)
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Paste Method")
+                        InfoTip("Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly.")
+                    }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: pasteMethodRawValue) { _, newValue in
+                    guard let method = PasteMethod(rawValue: newValue) else {
+                        pasteMethodRawValue = PasteMethod.standard.rawValue
+                        return
+                    }
+                    PasteMethod.setCurrent(method)
                 }
             }
 
@@ -213,10 +237,10 @@ struct SettingsView: View {
 
                 LaunchAtLogin.Toggle("Launch at Login")
 
-                Toggle("Auto-check Updates", isOn: $autoUpdateCheck)
-                    .onChange(of: autoUpdateCheck) { _, newValue in
-                        updaterViewModel.toggleAutoUpdates(newValue)
-                    }
+                Toggle("Auto-check Updates", isOn: Binding(
+                    get: { updaterViewModel.automaticallyChecksForUpdates },
+                    set: { updaterViewModel.setAutomaticallyChecksForUpdates($0) }
+                ))
 
                 Toggle("Show Announcements", isOn: $enableAnnouncements)
                     .onChange(of: enableAnnouncements) { _, newValue in
@@ -254,8 +278,7 @@ struct SettingsView: View {
                     Button("Export") {
                         ImportExportService.shared.exportSettings(
                             enhancementService: enhancementService,
-                            whisperPrompt: WhisperPrompt(),
-                            hotkeyManager: hotkeyManager,
+                            recordingShortcutManager: recordingShortcutManager,
                             menuBarManager: menuBarManager,
                             mediaController: mediaController,
                             playbackController: playbackController,
@@ -270,8 +293,7 @@ struct SettingsView: View {
                     Button("Import") {
                         ImportExportService.shared.importSettings(
                             enhancementService: enhancementService,
-                            whisperPrompt: WhisperPrompt(),
-                            hotkeyManager: hotkeyManager,
+                            recordingShortcutManager: recordingShortcutManager,
                             menuBarManager: menuBarManager,
                             mediaController: mediaController,
                             playbackController: playbackController,
@@ -285,7 +307,7 @@ struct SettingsView: View {
             } header: {
                 Text("Backup")
             } footer: {
-                Text("Export or import all your settings, prompts, power modes, dictionary, and custom models.")
+                Text("Export all settings, or choose specific categories when importing a backup.")
             }
 
             // MARK: - Diagnostics
@@ -308,21 +330,15 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private func hotkeyPicker(binding: Binding<HotkeyManager.HotkeyOption>) -> some View {
-        Picker("", selection: binding) {
-            ForEach(HotkeyManager.HotkeyOption.allCases, id: \.self) { option in
-                Text(option.displayName).tag(option)
-            }
-        }
-        .labelsHidden()
-        .fixedSize()
-    }
+    private static let defaultCancelRecordingShortcut = Shortcut.key(
+        keyCode: UInt16(kVK_Escape),
+        modifierFlags: []
+    )
 
     @ViewBuilder
-    private func hotkeyModePicker(binding: Binding<HotkeyManager.HotkeyMode>) -> some View {
+    private func shortcutModePicker(binding: Binding<RecordingShortcutManager.Mode>) -> some View {
         Picker("", selection: binding) {
-            ForEach(HotkeyManager.HotkeyMode.allCases, id: \.self) { mode in
+            ForEach(RecordingShortcutManager.Mode.allCases, id: \.self) { mode in
                 Text(mode.displayName).tag(mode)
             }
         }
@@ -410,7 +426,7 @@ struct ExpandableSettingsRow<Content: View>: View {
 struct PowerModeSection: View {
     @ObservedObject private var powerModeManager = PowerModeManager.shared
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
-    @AppStorage(PowerModeDefaults.autoRestoreKey) private var powerModeAutoRestoreEnabled = false
+    @AppStorage("powerModePersistConfig") private var powerModePersistSettings = false
     @State private var showDisableAlert = false
     @State private var isExpanded = false
 
@@ -423,10 +439,10 @@ struct PowerModeSection: View {
                 infoMessage: "Apply custom settings based on active app or website.",
                 infoURL: "https://tryvoiceink.com/docs/power-mode"
             ) {
-                Toggle(isOn: $powerModeAutoRestoreEnabled) {
+                Toggle(isOn: $powerModePersistSettings) {
                     HStack(spacing: 4) {
-                        Text("Auto-Restore Preferences")
-                        InfoTip("After each recording session, revert preferences to what was configured before Power Mode was activated.")
+                        Text("Persist Configured Preferences")
+                        InfoTip("When enabled, Power Mode preferences stay active after you stop recording instead of reverting to your original preferences. They will only change when a different Power Mode activates.")
                     }
                 }
             }
@@ -446,8 +462,10 @@ struct PowerModeSection: View {
             set: { newValue in
                 if newValue {
                     powerModeUIFlag = true
+                    NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
                 } else if powerModeManager.configurations.allSatisfy({ !$0.isEnabled }) {
                     powerModeUIFlag = false
+                    NotificationCenter.default.post(name: .powerModeShortcutAvailabilityDidChange, object: nil)
                 } else {
                     showDisableAlert = true
                 }
@@ -495,10 +513,4 @@ extension Text {
             .foregroundColor(.secondary)
             .fixedSize(horizontal: false, vertical: true)
     }
-}
-
-// MARK: - Power Mode Defaults
-
-enum PowerModeDefaults {
-    static let autoRestoreKey = "powerModeAutoRestoreEnabled"
 }

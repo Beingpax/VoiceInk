@@ -17,49 +17,39 @@ struct AudioVisualizer: View {
         self.audioMeter = audioMeter
         self.color = color
         self.isActive = isActive
-
-        // Create smooth wave phases
         self.phases = (0..<barCount).map { Double($0) * 0.4 }
     }
 
     var body: some View {
-        // TimelineView with 60Hz updates (native approach recommended by Apple WWDC 2021+)
         TimelineView(.animation(minimumInterval: 0.016)) { context in
             HStack(spacing: barSpacing) {
                 ForEach(0..<barCount, id: \.self) { index in
                     RoundedRectangle(cornerRadius: barWidth / 2)
                         .fill(color.opacity(0.85))
-                        .frame(width: barWidth, height: calculateHeight(for: index, at: context.date))
+                        .frame(width: barWidth, height: barHeight(for: index, at: context.date))
                 }
             }
         }
     }
 
-    private func calculateHeight(for index: Int, at date: Date) -> CGFloat {
+    private func barHeight(for index: Int, at date: Date) -> CGFloat {
         guard isActive else { return minHeight }
 
         let time = date.timeIntervalSince1970
-        let level = audioMeter.averagePower
-        let amplitude = max(0, min(1, level))
-
-        // Boost lower levels for better visibility
-        let boosted = pow(amplitude, 0.7)
-
-        // Wave calculation
+        let amplitude = max(0, min(1, pow(audioMeter.averagePower, 0.7))) // boosted for visibility
         let wave = sin(time * 8 + phases[index]) * 0.5 + 0.5
         let centerDistance = abs(Double(index) - Double(barCount) / 2) / Double(barCount / 2)
         let centerBoost = 1.0 - (centerDistance * 0.4)
 
-        let height = minHeight + CGFloat(boosted * wave * centerBoost) * (maxHeight - minHeight)
-        return max(minHeight, height)
+        return max(minHeight, minHeight + CGFloat(amplitude * wave * centerBoost) * (maxHeight - minHeight))
     }
 }
 
+// Flat bars shown when the recorder is idle (no audio input)
 struct StaticVisualizer: View {
-    // Match AudioVisualizer dimensions
     private let barCount = 15
     private let barWidth: CGFloat = 3
-    private let staticHeight: CGFloat = 4
+    private let barHeight: CGFloat = 4
     private let barSpacing: CGFloat = 2
     let color: Color
 
@@ -68,13 +58,14 @@ struct StaticVisualizer: View {
             ForEach(0..<barCount, id: \.self) { _ in
                 RoundedRectangle(cornerRadius: barWidth / 2)
                     .fill(color.opacity(0.5))
-                    .frame(width: barWidth, height: staticHeight)
+                    .frame(width: barWidth, height: barHeight)
             }
         }
     }
 }
 
-// MARK: - Processing Status Display (Transcribing/Enhancing states)
+// MARK: - Processing Status Display
+
 struct ProcessingStatusDisplay: View {
     enum Mode {
         case transcribing
@@ -86,19 +77,15 @@ struct ProcessingStatusDisplay: View {
 
     private var label: String {
         switch mode {
-        case .transcribing:
-            return "Transcribing"
-        case .enhancing:
-            return "Enhancing"
+        case .transcribing: return "Transcribing"
+        case .enhancing:    return "Enhancing"
         }
     }
 
     private var animationSpeed: Double {
         switch mode {
-        case .transcribing:
-            return 0.18
-        case .enhancing:
-            return 0.22
+        case .transcribing: return 0.18
+        case .enhancing:    return 0.22
         }
     }
 
@@ -112,6 +99,6 @@ struct ProcessingStatusDisplay: View {
 
             ProgressAnimation(color: color, animationSpeed: animationSpeed)
         }
-        .frame(height: 28) // Match AudioVisualizer maxHeight for no layout shift
+        .frame(height: 28) // matches AudioVisualizer maxHeight to prevent layout shift
     }
 }

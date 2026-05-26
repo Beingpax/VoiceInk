@@ -4,140 +4,167 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: NotchWindowManager
-    @State private var isHovering = false
-    @State private var activePopover: ActivePopoverState = .none
-    @ObservedObject private var powerModeManager = PowerModeManager.shared
-
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
+    @ObservedObject private var powerModeManager = PowerModeManager.shared
+    @State private var activePopover: ActivePopoverState = .none
 
-    private var menuBarHeight: CGFloat {
-        if let screen = NSScreen.main {
-            if screen.safeAreaInsets.top > 0 {
-                return screen.safeAreaInsets.top
-            }
-            return NSApplication.shared.mainMenu?.menuBarHeight ?? NSStatusBar.system.thickness
-        }
-        return NSStatusBar.system.thickness
+    // MARK: - Display State
+
+    private enum DisplayState: Equatable {
+        case collapsed
+        case active
+        case liveText
     }
 
-    private var exactNotchWidth: CGFloat {
-        if let screen = NSScreen.main {
-            if screen.safeAreaInsets.left > 0 {
-                return screen.safeAreaInsets.left * 2
-            }
-            return 200
-        }
-        return 200
-    }
-
-    private var leftSection: some View {
-        HStack(spacing: 16) {
-            RecorderPromptButton(
-                activePopover: $activePopover,
-                buttonSize: 22,
-                padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
-            )
-
-            RecorderPowerModeButton(
-                activePopover: $activePopover,
-                buttonSize: 22,
-                padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
-            )
-
-            Spacer()
-        }
-        .frame(width: 64)
-        .padding(.leading, 16)
-        .padding(.leading, 4)
-    }
-
-    private var centerSection: some View {
-        Rectangle()
-            .fill(Color.clear)
-            .frame(width: exactNotchWidth)
-            .contentShape(Rectangle())
-    }
-
-    private var rightSection: some View {
-        HStack(spacing: 8) {
-            Spacer()
-            statusDisplay
-        }
-        .frame(width: 64)
-        .padding(.trailing, 16)
-        .padding(.trailing, 4)
-    }
-
-    private var statusDisplay: some View {
-        RecorderStatusDisplay(
-            currentState: stateProvider.recordingState,
-            audioMeter: recorder.audioMeter,
-            menuBarHeight: menuBarHeight
-        )
-        .frame(width: 70)
-        .padding(.trailing, 8)
-    }
-
-    private var bottomSection: some View {
-        // TimelineView polls transcript at 10Hz and controls visibility
-        // Same pattern as AudioVisualizer - no forced re-renders
-        TimelineView(.animation(minimumInterval: 0.1)) { context in
-            let hasText = stateProvider.recordingState == .recording && !stateProvider.partialTranscript.isEmpty
-
-            VStack(spacing: 0) {
-                Divider()
-                    .background(Color.white.opacity(0.15))
-
-                Text(stateProvider.partialTranscript)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(.white.opacity(0.8))
-                    .lineLimit(1)
-                    .truncationMode(.head)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 5)
-            }
-            .opacity(hasText ? 1 : 0)
-            .frame(height: hasText ? nil : 0)
-            .clipped()
+    private var displayState: DisplayState {
+        switch stateProvider.recordingState {
+        case .recording:
+            let shouldShowLive = showLiveTextPreview && !stateProvider.partialTranscript.isEmpty
+            return shouldShowLive ? .liveText : .active
+        case .transcribing, .enhancing:
+            return .active
+        default:
+            return .collapsed
         }
     }
 
-    private var topCornerRadius: CGFloat {
-        6
+    // MARK: - Screen Geometry
+
+    private var notchWidth: CGFloat {
+        guard let screen = NSScreen.main else { return 180 }
+        if let left = screen.auxiliaryTopLeftArea?.width,
+           let right = screen.auxiliaryTopRightArea?.width {
+            return screen.frame.width - left - right
+        }
+        return 180
     }
 
-    private var bottomCornerRadius: CGFloat {
-        10
+    private var notchHeight: CGFloat {
+        guard let screen = NSScreen.main else { return 37 }
+        if screen.safeAreaInsets.top > 0 { return screen.safeAreaInsets.top }
+        return NSApplication.shared.mainMenu?.menuBarHeight ?? NSStatusBar.system.thickness
     }
+
+    // MARK: - Layout Constants
+
+    private let recordingSideExpansion: CGFloat = 90
+    private let transcriptSideExpansion: CGFloat = 110
+    private let activeHeightBonus: CGFloat = 6
+    private let transcriptPanelHeight: CGFloat = 57
+
+    private var mainRowHeight: CGFloat { notchHeight + activeHeightBonus }
+
+    // MARK: - Pill Dimensions
+
+    private var pillWidth: CGFloat {
+        switch displayState {
+        case .collapsed: return notchWidth
+        case .active:    return notchWidth + recordingSideExpansion * 2
+        case .liveText:  return notchWidth + transcriptSideExpansion * 2
+        }
+    }
+
+    private var pillHeight: CGFloat {
+        switch displayState {
+        case .collapsed: return 0
+        case .active:    return mainRowHeight
+        case .liveText:  return mainRowHeight + transcriptPanelHeight
+        }
+    }
+
+    private var sideExpansion: CGFloat {
+        displayState == .liveText ? transcriptSideExpansion : recordingSideExpansion
+    }
+
+    // MARK: - Animation
+
+    private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
+    private let collapseAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0)
+
+    private var pillAnimation: Animation {
+        displayState == .collapsed ? collapseAnimation : expandAnimation
+    }
+
+    // MARK: - Body
 
     var body: some View {
-        Group {
-            if windowManager.isVisible {
-                VStack(spacing: 0) {
-                    HStack(spacing: 0) {
-                        leftSection
-                        centerSection
-                        rightSection
-                    }
-                    .frame(height: menuBarHeight)
+        if windowManager.isVisible {
+            GeometryReader { geo in
+                pill.position(x: geo.size.width / 2, y: pillHeight / 2)
+            }
+            .animation(pillAnimation, value: displayState)
+        }
+    }
 
-                    bottomSection
-                }
-                .background(Color.black)
-                .mask {
-                    NotchShape(
-                        topCornerRadius: topCornerRadius,
-                        bottomCornerRadius: bottomCornerRadius
-                    )
-                }
-                .clipped()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .onHover { hovering in
-                    isHovering = hovering
-                }
-                .opacity(windowManager.isVisible ? 1 : 0)
+    // MARK: - Pill
+
+    private var pill: some View {
+        VStack(spacing: 0) {
+            mainRow
+            liveTextPanel
+        }
+        .frame(width: pillWidth, height: pillHeight)
+        .background(Color.black)
+        .clipShape(
+            NotchShape(
+                topCornerRadius: displayState == .liveText ? 12 : 8,
+                bottomCornerRadius: displayState == .liveText ? 22 : 16
+            )
+        )
+    }
+
+    // MARK: - Main Row
+
+    private var mainRow: some View {
+        ZStack {
+            Color.clear
+
+            HStack(spacing: 10) {
+                RecorderPromptButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
+                RecorderPowerModeButton(activePopover: $activePopover, buttonSize: 20, padding: EdgeInsets())
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, displayState == .liveText ? 18 : 14)
+            .frame(width: sideExpansion)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .opacity(displayState != .collapsed ? 1 : 0)
+            .animation(
+                displayState != .collapsed ? expandAnimation.delay(0.09) : collapseAnimation,
+                value: displayState
+            )
+
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                RecorderStatusDisplay(
+                    currentState: stateProvider.recordingState,
+                    audioMeter: recorder.audioMeter,
+                    menuBarHeight: notchHeight
+                )
+            }
+            .padding(.trailing, displayState == .liveText ? 18 : 14)
+            .frame(width: sideExpansion)
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .opacity(displayState != .collapsed ? 1 : 0)
+            .animation(
+                displayState != .collapsed ? expandAnimation.delay(0.09) : collapseAnimation,
+                value: displayState
+            )
+        }
+        .frame(height: mainRowHeight)
+    }
+
+    // MARK: - Live Text Panel
+
+    private var liveTextPanel: some View {
+        VStack(spacing: 0) {
+            if displayState == .liveText {
+                Divider().background(Color.white.opacity(0.15))
+                LiveTranscriptView(text: stateProvider.partialTranscript)
+                    .padding(.horizontal, 8)
             }
         }
+        .frame(height: displayState == .liveText ? transcriptPanelHeight : 0)
+        .clipped()
     }
 }

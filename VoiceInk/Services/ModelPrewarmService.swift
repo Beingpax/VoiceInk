@@ -14,7 +14,7 @@ final class ModelPrewarmService: ObservableObject {
         modelsDirectory: whisperModelManager.modelsDirectory,
         modelContext: modelContext
     )
-    private let prewarmAudioURL = Bundle.main.url(forResource: "esc", withExtension: "wav")
+    private let prewarmAudioURL = Bundle.main.url(forResource: "sound7", withExtension: "wav")
     private let prewarmEnabledKey = "PrewarmModelOnWake"
 
     init(transcriptionModelManager: TranscriptionModelManager, whisperModelManager: WhisperModelManager, modelContext: ModelContext) {
@@ -67,7 +67,7 @@ final class ModelPrewarmService: ObservableObject {
         guard shouldPrewarm() else { return }
 
         guard let audioURL = prewarmAudioURL else {
-            logger.error("❌ Prewarm audio file (esc.wav) not found")
+            logger.error("❌ Prewarm audio file (sound7.wav) not found")
             return
         }
 
@@ -106,7 +106,7 @@ final class ModelPrewarmService: ObservableObject {
         }
 
         switch model.provider {
-        case .local, .parakeet:
+        case .whisper, .fluidAudio:
             return true
         default:
             logger.notice("Skipping prewarm - cloud models don't need it")

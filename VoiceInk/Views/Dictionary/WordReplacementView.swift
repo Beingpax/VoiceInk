@@ -1,10 +1,6 @@
 import SwiftUI
 import SwiftData
 
-extension String: Identifiable {
-    public var id: String { self }
-}
-
 enum SortMode: String {
     case originalAsc = "originalAsc"
     case originalDesc = "originalDesc"
@@ -193,45 +189,13 @@ struct WordReplacementView: View {
     private func addReplacement() {
         let original = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
         let replacement = replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        let tokens = original
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard !tokens.isEmpty && !replacement.isEmpty else { return }
-
-        // Check for duplicates
-        let newTokensPairs = tokens.map { (original: $0, lowercased: $0.lowercased()) }
-
-        for existingReplacement in wordReplacements {
-            let existingTokens = existingReplacement.originalText
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-                .filter { !$0.isEmpty }
-
-            for tokenPair in newTokensPairs {
-                if existingTokens.contains(tokenPair.lowercased) {
-                    alertMessage = "'\(tokenPair.original)' already exists in word replacements"
-                    showAlert = true
-                    return
-                }
-            }
-        }
-
-        // Add new replacement
-        let newReplacement = WordReplacement(originalText: original, replacementText: replacement)
-        modelContext.insert(newReplacement)
-
-        do {
-            try modelContext.save()
-            originalWord = ""
-            replacementWord = ""
-        } catch {
-            // Rollback the insert to maintain UI consistency
-            modelContext.delete(newReplacement)
-            alertMessage = "Failed to add replacement: \(error.localizedDescription)"
+        if let error = DictionaryService.addWordReplacement(original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext) {
+            alertMessage = error
             showAlert = true
+            return
         }
+        originalWord = ""
+        replacementWord = ""
     }
 
     private func removeReplacement(_ replacement: WordReplacement) {

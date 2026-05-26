@@ -195,7 +195,7 @@ struct PowerModeView: View {
             .slidingPanel(isPresented: .init(
                 get: { isPanelOpen },
                 set: { if !$0 { closePanel() } }
-            ), width: 450) {
+            ), width: 400) {
                 if let mode = configurationMode {
                     ConfigurationView(mode: mode, powerModeManager: powerModeManager, onDismiss: closePanel)
                         .id(panelID)
@@ -204,7 +204,7 @@ struct PowerModeView: View {
             .slidingPanel(isPresented: .init(
                 get: { isReorderPanelOpen },
                 set: { if !$0 { closeReorderPanel() } }
-            ), width: 450) {
+            ), width: 400) {
                 ReorderPanelView(powerModeManager: powerModeManager, onDismiss: closeReorderPanel)
             }
     }

@@ -32,8 +32,10 @@ class SystemInfoService {
         Available Audio Devices: \(getAvailableAudioDevices())
 
         HOTKEY SETTINGS:
-        Primary Hotkey: \(getPrimaryHotkey())
-        Secondary Hotkey: \(getSecondaryHotkey())
+        Primary Shortcut: \(getPrimaryShortcut())
+        Secondary Shortcut: \(getSecondaryShortcut())
+        Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
+        Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
         TRANSCRIPTION SETTINGS:
         Selected Model: \(getCurrentTranscriptionModel())
@@ -43,16 +45,23 @@ class SystemInfoService {
         AI Model: \(getAIModel())
 
         UI SETTINGS:
-        Menu Bar Only: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
+        Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
+        Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "mini")
+
+        RECORDING FEEDBACK:
+        Sound Feedback: \(UserDefaults.standard.bool(forKey: "isSoundFeedbackEnabled"))
+        Pause Media While Recording: \(UserDefaults.standard.bool(forKey: "isPauseMediaEnabled"))
+        Mute Audio While Recording: \(UserDefaults.standard.bool(forKey: "isSystemMuteEnabled"))
+        Audio Resumption Delay: \(UserDefaults.standard.double(forKey: "audioResumptionDelay"))s
 
         CLIPBOARD & PASTE SETTINGS:
         Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
         Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
-        Use AppleScript Paste: \(UserDefaults.standard.bool(forKey: "useAppleScriptPaste"))
+        Paste Method: \(PasteMethod.current().displayName)
 
         POWER MODE:
         Power Mode Enabled: \(UserDefaults.standard.bool(forKey: "powerModeUIFlag"))
-        Auto-Restore Enabled: \(UserDefaults.standard.bool(forKey: "powerModeAutoRestoreEnabled"))
+        Persist Configured Preferences: \(UserDefaults.standard.bool(forKey: "powerModePersistConfig"))
 
         DATA CLEANUP SETTINGS:
         Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled"))
@@ -134,25 +143,21 @@ class SystemInfoService {
         return devices.map { $0.name }.joined(separator: ", ")
     }
 
-    private func getPrimaryHotkey() -> String {
-        if let hotkeyRaw = UserDefaults.standard.string(forKey: "selectedHotkey1"),
-           let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
-            return hotkey.displayName
-        }
-        return "Right Command"
+    private func getPrimaryShortcut() -> String {
+        shortcutDescription(for: .primaryRecording)
     }
 
-    private func getSecondaryHotkey() -> String {
-        if let hotkeyRaw = UserDefaults.standard.string(forKey: "selectedHotkey2"),
-           let hotkey = HotkeyManager.HotkeyOption(rawValue: hotkeyRaw) {
-            return hotkey.displayName
-        }
-        return "None"
+    private func getSecondaryShortcut() -> String {
+        shortcutDescription(for: .secondaryRecording)
+    }
+
+    private func shortcutDescription(for action: ShortcutAction) -> String {
+        ShortcutStore.shortcut(for: action)?.displayString ?? ""
     }
 
     private func getCurrentTranscriptionModel() -> String {
         if let modelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel") {
-            if let model = PredefinedModels.models.first(where: { $0.name == modelName }) {
+            if let model = TranscriptionModelRegistry.models.first(where: { $0.name == modelName }) {
                 return model.displayName
             }
             return modelName

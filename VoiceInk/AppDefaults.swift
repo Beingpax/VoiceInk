@@ -6,7 +6,6 @@ enum AppDefaults {
             // Onboarding & General
             "hasCompletedOnboarding": false,
             "enableAnnouncements": true,
-            "autoUpdateCheck": true,
 
             // Clipboard
             "restoreClipboardAfterPaste": true,
@@ -18,13 +17,18 @@ enum AppDefaults {
             "audioResumptionDelay": 0.0,
             "isPauseMediaEnabled": false,
             "isSoundFeedbackEnabled": true,
+            CustomSoundManager.SoundType.start.builtInSoundKey: CustomSoundManager.SoundType.start.defaultBuiltInSound.rawValue,
+            CustomSoundManager.SoundType.stop.builtInSoundKey: CustomSoundManager.SoundType.stop.defaultBuiltInSound.rawValue,
 
             // Recording & Transcription
             "IsTextFormattingEnabled": true,
             "IsVADEnabled": true,
             "RemoveFillerWords": true,
+            "RemovePunctuation": false,
+            "LowercaseTranscription": false,
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,
+            "showLiveTextPreview": false,
             "RecorderType": "mini",
 
             // Cleanup
@@ -35,18 +39,23 @@ enum AppDefaults {
 
             // UI & Behavior
             "IsMenuBarOnly": false,
-            "powerModeAutoRestoreEnabled": false,
-            // Hotkey
+            "powerModePersistConfig": false,
+            // Shortcuts
             "isMiddleClickToggleEnabled": false,
             "middleClickActivationDelay": 200,
 
             // Enhancement
-            "isToggleEnhancementShortcutEnabled": true,
             "SkipShortEnhancement": true,
             "ShortEnhancementWordThreshold": 3,
+            "EnhancementTimeoutSeconds": 7,
+            "EnhancementRetryOnTimeout": true,
 
             // Model
             "PrewarmModelOnWake": true,
+
         ])
+
+        PunctuationCleanupMode.migrateLegacyUserDefaultIfNeeded()
+        PasteMethod.migrateLegacyUserDefaultIfNeeded()
     }
 }

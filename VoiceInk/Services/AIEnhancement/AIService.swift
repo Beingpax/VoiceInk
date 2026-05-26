@@ -12,7 +12,10 @@ enum AIProvider: String, CaseIterable {
     case elevenLabs = "ElevenLabs"
     case deepgram = "Deepgram"
     case soniox = "Soniox"
+    case speechmatics = "Speechmatics"
+    case assemblyAI = "AssemblyAI"
     case ollama = "Ollama"
+    case localCLI = "Local CLI"
     case custom = "Custom"
     
     
@@ -38,8 +41,14 @@ enum AIProvider: String, CaseIterable {
             return "https://api.deepgram.com/v1/listen"
         case .soniox:
             return "https://api.soniox.com/v1"
+        case .speechmatics:
+            return "https://asr.api.speechmatics.com/v2"
+        case .assemblyAI:
+            return "https://api.assemblyai.com/v2/transcript"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+        case .localCLI:
+            return ""
         case .custom:
             return UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? ""
         }
@@ -65,8 +74,14 @@ enum AIProvider: String, CaseIterable {
             return "whisper-1"
         case .soniox:
             return "stt-async-v4"
+        case .speechmatics:
+            return "speechmatics-enhanced"
+        case .assemblyAI:
+            return "universal-3-pro"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+        case .localCLI:
+            return "local-cli"
         case .custom:
             return UserDefaults.standard.string(forKey: "customProviderModel") ?? ""
         case .openRouter:
@@ -79,30 +94,29 @@ enum AIProvider: String, CaseIterable {
         case .cerebras:
             return [
                 "gpt-oss-120b",
-                "llama3.1-8b",
-                "qwen-3-235b-a22b-instruct-2507",
                 "zai-glm-4.7"
             ]
         case .groq:
             return [
                 "llama-3.1-8b-instant",
                 "llama-3.3-70b-versatile",
-                "moonshotai/kimi-k2-instruct-0905",
                 "qwen/qwen3-32b",
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b"
             ]
         case .gemini:
             return [
+                "gemini-3.5-flash",
                 "gemini-3.1-pro-preview",
                 "gemini-3-flash-preview",
-                "gemini-3.1-flash-lite-preview",
+                "gemini-3.1-flash-lite",
                 "gemini-2.5-pro",
                 "gemini-2.5-flash",
                 "gemini-2.5-flash-lite"
             ]
         case .anthropic:
             return [
+                "claude-opus-4-7",
                 "claude-opus-4-6",
                 "claude-sonnet-4-6",
                 "claude-opus-4-5",
@@ -111,12 +125,11 @@ enum AIProvider: String, CaseIterable {
             ]
         case .openAI:
             return [
+                "gpt-5.5",
                 "gpt-5.4",
                 "gpt-5.4-mini",
                 "gpt-5.4-nano",
                 "gpt-5.2",
-                "gpt-5-mini",
-                "gpt-5-nano",
                 "gpt-4.1",
                 "gpt-4.1-mini",
                 "gpt-4.1-nano"
@@ -128,12 +141,18 @@ enum AIProvider: String, CaseIterable {
                 "mistral-small-latest"
             ]
         case .elevenLabs:
-            return ["scribe_v1", "scribe_v1_experimental"]
+            return ["scribe_v1", "scribe_v2"]
         case .deepgram:
             return ["whisper-1"]
         case .soniox:
             return ["stt-async-v4"]
+        case .speechmatics:
+            return ["speechmatics-enhanced"]
+        case .assemblyAI:
+            return ["universal-3-pro"]
         case .ollama:
+            return []
+        case .localCLI:
             return []
         case .custom:
             return []
@@ -144,7 +163,7 @@ enum AIProvider: String, CaseIterable {
     
     var requiresAPIKey: Bool {
         switch self {
-        case .ollama:
+        case .ollama, .localCLI:
             return false
         default:
             return true
@@ -178,7 +197,7 @@ class AIService: ObservableObject {
                 }
             } else {
                 self.apiKey = ""
-                self.isAPIKeyValid = true
+                self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
                 if selectedProvider == .ollama {
                     Task {
                         await ollamaService.checkConnection()
@@ -193,6 +212,7 @@ class AIService: ObservableObject {
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
+    private lazy var localCLIService = LocalCLIService()
     
     @Published private var openRouterModels: [String] = []
     
@@ -200,6 +220,8 @@ class AIService: ObservableObject {
         AIProvider.allCases.filter { provider in
             if provider == .ollama {
                 return ollamaService.isConnected
+            } else if provider == .localCLI {
+                return localCLIService.isConfigured
             } else if provider.requiresAPIKey {
                 return APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue)
             }
@@ -218,6 +240,18 @@ class AIService: ObservableObject {
     
     var availableModels: [String] {
         availableModels(for: selectedProvider)
+    }
+
+    var localCLICommandTemplate: String {
+        localCLIService.commandTemplate
+    }
+
+    var localCLITemplateSelection: LocalCLITemplate {
+        localCLIService.selectedTemplate
+    }
+
+    var localCLITimeoutSeconds: Double {
+        localCLIService.timeoutSeconds
     }
 
     func availableModels(for provider: AIProvider) -> [String] {
@@ -247,7 +281,7 @@ class AIService: ObservableObject {
                 self.isAPIKeyValid = true
             }
         } else {
-            self.isAPIKeyValid = true
+            self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
         }
 
         loadSavedModelSelections()
@@ -329,6 +363,10 @@ class AIService: ObservableObject {
                 result = await MistralTranscriptionClient.verifyAPIKey(key)
             case .soniox:
                 result = await SonioxClient.verifyAPIKey(key)
+            case .speechmatics:
+                result = await SpeechmaticsClient.verifyAPIKey(key)
+            case .assemblyAI:
+                result = await AssemblyAIClient.verifyAPIKey(key)
             case .openRouter:
                 result = await OpenRouterClient.verifyAPIKey(key, model: currentModel)
             case .gemini:
@@ -376,13 +414,8 @@ class AIService: ObservableObject {
         return ollamaService.availableModels
     }
     
-    func enhanceWithOllama(text: String, systemPrompt: String) async throws -> String {
-        do {
-            let result = try await ollamaService.enhance(text, withSystemPrompt: systemPrompt)
-            return result
-        } catch {
-            throw error
-        }
+    func enhanceWithOllama(text: String, systemPrompt: String, timeout: TimeInterval = 30) async throws -> String {
+        try await ollamaService.enhance(text, withSystemPrompt: systemPrompt, timeout: timeout)
     }
     
     func updateOllamaBaseURL(_ newURL: String) {
@@ -393,6 +426,33 @@ class AIService: ObservableObject {
     func updateSelectedOllamaModel(_ modelName: String) {
         ollamaService.selectedModel = modelName
         userDefaults.set(modelName, forKey: "ollamaSelectedModel")
+    }
+
+    func loadLocalCLITemplate(_ template: LocalCLITemplate) {
+        localCLIService.loadTemplate(template)
+        refreshLocalCLIConfigurationState()
+    }
+
+    func updateLocalCLICommandTemplate(_ command: String) {
+        localCLIService.commandTemplate = command
+        refreshLocalCLIConfigurationState()
+    }
+
+    func updateLocalCLITimeoutSeconds(_ timeout: Double) {
+        localCLIService.timeoutSeconds = timeout
+        refreshLocalCLIConfigurationState()
+    }
+
+    func enhanceWithLocalCLI(systemPrompt: String, userPrompt: String) async throws -> String {
+        try await localCLIService.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+    }
+
+    private func refreshLocalCLIConfigurationState() {
+        if selectedProvider == .localCLI {
+            isAPIKeyValid = localCLIService.isConfigured
+        }
+        objectWillChange.send()
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
     
     func fetchOpenRouterModels() async {
@@ -415,5 +475,3 @@ class AIService: ObservableObject {
         }
     }
 }
-
-

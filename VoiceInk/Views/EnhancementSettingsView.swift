@@ -8,7 +8,7 @@ struct EnhancementSettingsView: View {
     @State private var selectedPromptForEdit: CustomPrompt?
     @State private var panelID = UUID()
 
-    private let panelWidth: CGFloat = 450
+    private let panelWidth: CGFloat = 400
 
     private enum PanelType {
         case promptEditor

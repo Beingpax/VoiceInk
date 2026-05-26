@@ -5,9 +5,8 @@ import AppKit
 class MiniWindowManager: ObservableObject {
     @Published var isVisible = false
     private var windowController: NSWindowController?
-    private var miniPanel: MiniRecorderPanel?
+    private var panel: MiniRecorderPanel?
 
-    // Type-erased view factory stored as closure
     private let makeView: (MiniWindowManager) -> AnyView
 
     init(engine: VoiceInkEngine, recorder: Recorder) {
@@ -43,20 +42,15 @@ class MiniWindowManager: ObservableObject {
 
     func show() {
         if isVisible { return }
-
-        if miniPanel == nil {
-            let activeScreen = NSApp.keyWindow?.screen ?? NSScreen.main ?? NSScreen.screens[0]
-            initializeWindow(screen: activeScreen)
-        }
-
-        self.isVisible = true
-        miniPanel?.show()
+        if panel == nil { initializeWindow() }
+        isVisible = true
+        panel?.show()
     }
 
     func hide() {
         guard isVisible else { return }
-        self.isVisible = false
-        miniPanel?.orderOut(nil)
+        isVisible = false
+        panel?.orderOut(nil)
     }
 
     func destroyWindow() {
@@ -64,34 +58,26 @@ class MiniWindowManager: ObservableObject {
         deinitializeWindow()
     }
 
-    private func initializeWindow(screen: NSScreen) {
+    private func initializeWindow() {
         deinitializeWindow()
-
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
-        let panel = MiniRecorderPanel(contentRect: metrics)
-
-        let miniRecorderView = makeView(self)
-        let hostingController = NSHostingController(rootView: miniRecorderView)
-        panel.contentView = hostingController.view
-
-        self.miniPanel = panel
-        self.windowController = NSWindowController(window: panel)
-
-        panel.orderFrontRegardless()
+        let newPanel = MiniRecorderPanel(contentRect: metrics)
+        let view = makeView(self)
+        let hostingController = NSHostingController(rootView: view)
+        newPanel.contentView = hostingController.view
+        panel = newPanel
+        windowController = NSWindowController(window: newPanel)
+        newPanel.orderFrontRegardless()
     }
 
     private func deinitializeWindow() {
-        miniPanel?.orderOut(nil)
+        panel?.orderOut(nil)
         windowController?.close()
         windowController = nil
-        miniPanel = nil
+        panel = nil
     }
 
     func toggle() {
-        if isVisible {
-            hide()
-        } else {
-            show()
-        }
+        isVisible ? hide() : show()
     }
 }

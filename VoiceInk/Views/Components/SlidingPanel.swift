@@ -43,7 +43,7 @@ struct SlidingPanel<PanelContent: View>: ViewModifier {
 extension View {
     func slidingPanel<Content: View>(
         isPresented: Binding<Bool>,
-        width: CGFloat = 450,
+        width: CGFloat = 400,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         modifier(SlidingPanel(isPresented: isPresented, panelWidth: width, panelContent: content))

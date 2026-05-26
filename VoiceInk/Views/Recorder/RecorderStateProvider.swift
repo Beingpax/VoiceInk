@@ -1,7 +1,6 @@
 import Foundation
 
-/// Protocol for objects that can serve as the recorder's state source.
-/// VoiceInkEngine conforms to this protocol.
+// Protocol for objects that provide live recorder state to the UI.
 @MainActor
 protocol RecorderStateProvider: AnyObject {
     var recordingState: RecordingState { get }

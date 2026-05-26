@@ -9,6 +9,10 @@ struct ApplicationState: Codable {
     var selectedAIModel: String?
     var selectedLanguage: String?
     var transcriptionModelName: String?
+    var isTextFormattingEnabled: Bool?
+    var punctuationCleanupMode: PunctuationCleanupMode?
+    var removePunctuation: Bool?
+    var lowercaseTranscription: Bool?
 }
 
 struct PowerModeSession: Codable {
@@ -44,6 +48,7 @@ class PowerModeSessionManager {
 
         // Only capture baseline if NO session exists
         if loadSession() == nil {
+            let punctuationCleanupMode = PunctuationCleanupMode.current()
             let originalState = ApplicationState(
                 isEnhancementEnabled: enhancementService.isEnhancementEnabled,
                 useScreenCaptureContext: enhancementService.useScreenCaptureContext,
@@ -51,7 +56,11 @@ class PowerModeSessionManager {
                 selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
                 selectedAIModel: enhancementService.getAIService()?.currentModel,
                 selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
-                transcriptionModelName: stateProvider.currentTranscriptionModel?.name
+                transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
+                isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
+                punctuationCleanupMode: punctuationCleanupMode,
+                removePunctuation: punctuationCleanupMode == .removeAll,
+                lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
             )
 
             let newSession = PowerModeSession(
@@ -93,6 +102,7 @@ class PowerModeSessionManager {
               let stateProvider = stateProvider,
               let enhancementService = enhancementService else { return }
 
+        let punctuationCleanupMode = PunctuationCleanupMode.current()
         let updatedState = ApplicationState(
             isEnhancementEnabled: enhancementService.isEnhancementEnabled,
             useScreenCaptureContext: enhancementService.useScreenCaptureContext,
@@ -100,7 +110,11 @@ class PowerModeSessionManager {
             selectedAIProvider: enhancementService.getAIService()?.selectedProvider.rawValue,
             selectedAIModel: enhancementService.getAIService()?.currentModel,
             selectedLanguage: UserDefaults.standard.string(forKey: "SelectedLanguage"),
-            transcriptionModelName: stateProvider.currentTranscriptionModel?.name
+            transcriptionModelName: stateProvider.currentTranscriptionModel?.name,
+            isTextFormattingEnabled: UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
+            punctuationCleanupMode: punctuationCleanupMode,
+            removePunctuation: punctuationCleanupMode == .removeAll,
+            lowercaseTranscription: UserDefaults.standard.bool(forKey: "LowercaseTranscription")
         )
 
         session.originalState = updatedState
@@ -130,16 +144,19 @@ class PowerModeSessionManager {
                 }
             }
 
-            if let language = config.selectedLanguage {
-                UserDefaults.standard.set(language, forKey: "SelectedLanguage")
-                NotificationCenter.default.post(name: .languageDidChange, object: nil)
-            }
+            UserDefaults.standard.set(config.isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
+            PunctuationCleanupMode.setCurrent(config.punctuationCleanupMode)
+            UserDefaults.standard.set(config.lowercaseTranscription, forKey: "LowercaseTranscription")
         }
 
         if let modelName = config.selectedTranscriptionModelName,
            let selectedModel = await stateProvider.allAvailableModels.first(where: { $0.name == modelName }),
            stateProvider.currentTranscriptionModel?.name != modelName {
             await handleModelChange(to: selectedModel)
+        }
+
+        if let language = config.selectedLanguage {
+            applyCompatibleLanguage(language, preferredModelName: config.selectedTranscriptionModelName)
         }
 
         await MainActor.run {
@@ -165,9 +182,16 @@ class PowerModeSessionManager {
                 }
             }
 
-            if let language = state.selectedLanguage {
-                UserDefaults.standard.set(language, forKey: "SelectedLanguage")
-                NotificationCenter.default.post(name: .languageDidChange, object: nil)
+            if let isTextFormattingEnabled = state.isTextFormattingEnabled {
+                UserDefaults.standard.set(isTextFormattingEnabled, forKey: "IsTextFormattingEnabled")
+            }
+            if let punctuationCleanupMode = state.punctuationCleanupMode {
+                PunctuationCleanupMode.setCurrent(punctuationCleanupMode)
+            } else if let removePunctuation = state.removePunctuation {
+                PunctuationCleanupMode.setCurrent(removePunctuation ? .removeAll : .keep)
+            }
+            if let lowercaseTranscription = state.lowercaseTranscription {
+                UserDefaults.standard.set(lowercaseTranscription, forKey: "LowercaseTranscription")
             }
         }
 
@@ -176,6 +200,27 @@ class PowerModeSessionManager {
            stateProvider.currentTranscriptionModel?.name != modelName {
             await handleModelChange(to: selectedModel)
         }
+
+        if let language = state.selectedLanguage {
+            applyCompatibleLanguage(language, preferredModelName: state.transcriptionModelName)
+        }
+    }
+
+    private func applyCompatibleLanguage(_ language: String, preferredModelName: String?) {
+        guard let model = model(named: preferredModelName) ?? stateProvider?.currentTranscriptionModel else {
+            UserDefaults.standard.set(language, forKey: "SelectedLanguage")
+            NotificationCenter.default.post(name: .languageDidChange, object: nil)
+            return
+        }
+
+        let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(language, for: model)
+        UserDefaults.standard.set(compatibleLanguage, forKey: "SelectedLanguage")
+        NotificationCenter.default.post(name: .languageDidChange, object: nil)
+    }
+
+    private func model(named modelName: String?) -> (any TranscriptionModel)? {
+        guard let modelName else { return nil }
+        return stateProvider?.allAvailableModels.first { $0.name == modelName }
     }
 
     private func handleModelChange(to newModel: any TranscriptionModel) async {
@@ -184,16 +229,16 @@ class PowerModeSessionManager {
         await stateProvider.setDefaultTranscriptionModel(newModel)
 
         switch newModel.provider {
-        case .local:
+        case .whisper:
             await stateProvider.cleanupModelResources()
-            if let localModel = await stateProvider.availableModels.first(where: { $0.name == newModel.name }) {
+            if let whisperModel = await stateProvider.availableModels.first(where: { $0.name == newModel.name }) {
                 do {
-                    try await stateProvider.loadModel(localModel)
+                    try await stateProvider.loadModel(whisperModel)
                 } catch {
-                    print("Power Mode: Failed to load local model '\(localModel.name)': \(error)")
+                    print("Power Mode: Failed to load local model '\(whisperModel.name)': \(error)")
                 }
             }
-        case .parakeet:
+        case .fluidAudio:
             await stateProvider.cleanupModelResources()
         default:
             await stateProvider.cleanupModelResources()
