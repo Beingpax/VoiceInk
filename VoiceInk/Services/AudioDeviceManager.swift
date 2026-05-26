@@ -1,6 +1,8 @@
 import Foundation
 import CoreAudio
 import AVFoundation
+import CoreGraphics
+import AppKit
 import os
 
 struct PrioritizedDevice: Codable, Identifiable {
@@ -23,6 +25,7 @@ class AudioDeviceManager: ObservableObject {
     @Published var prioritizedDevices: [PrioritizedDevice] = []
 
     var isRecordingActive: Bool = false
+    private(set) var isClamshellMode: Bool = false
 
     static let shared = AudioDeviceManager()
 
@@ -41,6 +44,7 @@ class AudioDeviceManager: ObservableObject {
         }
 
         setupDeviceChangeNotifications()
+        setupClamshellMonitoring()
     }
 
     /// Returns the current system default input device from macOS
@@ -115,11 +119,18 @@ class AudioDeviceManager: ObservableObject {
     }
 
     func findBestAvailableDevice() -> AudioDeviceID? {
-        if let device = availableDevices.first(where: { isBuiltInDevice($0.id) }) {
+        // Prefer built-in only when the lid is open and the mic is physically accessible
+        if !isClamshellMode, let device = availableDevices.first(where: { isBuiltInDevice($0.id) }) {
             return device.id
         }
+        // Return first non-built-in device
+        if let device = availableDevices.first(where: { !isBuiltInDevice($0.id) }) {
+            logger.warning("🎙️ No built-in device available, using: \(device.name, privacy: .public)")
+            return device.id
+        }
+        // Last resort: accept the built-in even in clamshell (no other option)
         if let device = availableDevices.first {
-            logger.warning("🎙️ No built-in device found, using: \(device.name, privacy: .public)")
+            logger.warning("🎙️ No alternative device found, using built-in as last resort: \(device.name, privacy: .public)")
             return device.id
         }
         return nil
@@ -298,6 +309,10 @@ class AudioDeviceManager: ObservableObject {
             return getSystemDefaultDevice() ?? findBestAvailableDevice() ?? 0
         case .custom:
             if let id = selectedDeviceID, isDeviceAvailable(id) {
+                // In clamshell mode the built-in mic is physically inaccessible; fall back
+                if isClamshellMode && isBuiltInDevice(id) {
+                    return findBestAvailableDevice() ?? 0
+                }
                 return id
             }
             return findBestAvailableDevice() ?? 0
@@ -305,6 +320,8 @@ class AudioDeviceManager: ObservableObject {
             let sortedDevices = prioritizedDevices.sorted { $0.priority < $1.priority }
             for device in sortedDevices {
                 if let available = availableDevices.first(where: { $0.uid == device.id }) {
+                    // Skip built-in mic when lid is closed
+                    if isClamshellMode && isBuiltInDevice(available.id) { continue }
                     return available.id
                 }
             }
@@ -365,6 +382,11 @@ class AudioDeviceManager: ObservableObject {
 
         for device in sortedDevices {
             if let availableDevice = availableDevices.first(where: { $0.uid == device.id }) {
+                // Skip built-in mic when lid is closed; it is listed but physically inaccessible
+                if isClamshellMode && isBuiltInDevice(availableDevice.id) {
+                    logger.notice("🎙️ Skipping built-in mic in clamshell mode: \(device.name, privacy: .public)")
+                    continue
+                }
                 selectedDeviceID = availableDevice.id
                 logger.notice("🎙️ Selected prioritized device: \(device.name, privacy: .public)")
                 notifyDeviceChange()
@@ -375,6 +397,51 @@ class AudioDeviceManager: ObservableObject {
         fallbackToDefaultDevice()
     }
     
+    // MARK: - Clamshell Detection
+
+    private func setupClamshellMonitoring() {
+        // Seed initial state before any display-change notification arrives
+        updateClamshellState()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleScreenParametersChanged),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleScreenParametersChanged() {
+        updateClamshellState()
+    }
+
+    private func updateClamshellState() {
+        let builtInDisplayActive = NSScreen.screens.contains { screen in
+            let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
+            return CGDisplayIsBuiltin(screenNumber)
+        }
+        let newClamshellMode = !builtInDisplayActive
+
+        guard newClamshellMode != isClamshellMode else { return }
+        isClamshellMode = newClamshellMode
+        logger.notice("🎙️ Clamshell mode \(newClamshellMode ? "active (lid closed)" : "inactive (lid open)", privacy: .public) — re-evaluating audio input")
+
+        guard !isRecordingActive else { return }
+        switch inputMode {
+        case .systemDefault:
+            notifyDeviceChange()
+        case .prioritized:
+            selectHighestPriorityAvailableDevice()
+        case .custom:
+            // If the currently selected device is the built-in mic and the lid just closed, fall back
+            if newClamshellMode, let currentID = selectedDeviceID, isBuiltInDevice(currentID) {
+                fallbackToDefaultDevice()
+            } else {
+                notifyDeviceChange()
+            }
+        }
+    }
+
     private func setupDeviceChangeNotifications() {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
