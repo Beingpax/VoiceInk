@@ -39,35 +39,25 @@ struct ModeIcon: Codable, Equatable, Hashable {
         "briefcase.fill",
         "building.2.fill",
         "calendar",
-        "checkmark.circle.fill",
-        "list.clipboard.fill",
 
         // Writing
         "doc.text.fill",
-        "note",
         "book.fill",
         "quote.bubble.fill",
 
         // Technical
         "terminal.fill",
-        "curlybraces",
-        "cpu.fill",
         "wrench.and.screwdriver.fill",
 
         // Organization
-        "checkmark.seal.fill",
-        "star.fill",
-        "flag.fill",
         "folder.fill",
 
         // Business
         "chart.bar.fill",
         "cart.fill",
         "creditcard.fill",
-        "bag.fill",
 
         // Learning and health
-        "brain.head.profile",
         "lightbulb.fill",
         "graduationcap.fill",
         "heart.fill",
@@ -83,10 +73,6 @@ struct ModeIcon: Codable, Equatable, Hashable {
         "photo.fill",
         "paintpalette.fill",
         "mic.fill",
-
-        // Privacy
-        "lock.fill",
-        "shield.fill",
 
         // Personal
         "leaf.fill"
