@@ -78,7 +78,7 @@ struct EnhancementPromptPopover: View {
 
     private func refreshSelectedPrompt() {
         guard let promptId = currentMode?.selectedPrompt.flatMap(UUID.init) else {
-            selectedPrompt = enhancementService.allPrompts.first
+            selectedPrompt = nil
             return
         }
         selectedPrompt = enhancementService.allPrompts.first { $0.id == promptId }

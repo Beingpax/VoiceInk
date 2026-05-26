@@ -4,69 +4,18 @@ import AppKit
 import os
 import LLMkit
 
-enum EnhancementPrompt {
-    case transcriptionEnhancement
-    case aiAssistant
-}
-
 @MainActor
 class AIEnhancementService: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIEnhancementService")
 
-    @Published var isEnhancementEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(isEnhancementEnabled, forKey: "isAIEnhancementEnabled")
-            if isEnhancementEnabled && selectedPromptId == nil {
-                selectedPromptId = customPrompts.first?.id
-            }
-            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-            NotificationCenter.default.post(name: .enhancementToggleChanged, object: nil)
-        }
-    }
-
-    @Published var useClipboardContext: Bool {
-        didSet {
-            UserDefaults.standard.set(useClipboardContext, forKey: "useClipboardContext")
-            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-        }
-    }
-
-    @Published var useSelectedTextContext: Bool {
-        didSet {
-            UserDefaults.standard.set(useSelectedTextContext, forKey: "useSelectedTextContext")
-            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-        }
-    }
-
-    @Published var useScreenCaptureContext: Bool {
-        didSet {
-            UserDefaults.standard.set(useScreenCaptureContext, forKey: "useScreenCaptureContext")
-            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-        }
-    }
-
     @Published var customPrompts: [CustomPrompt] {
         didSet {
-            if let encoded = try? JSONEncoder().encode(customPrompts) {
-                UserDefaults.standard.set(encoded, forKey: "customPrompts")
-            }
-        }
-    }
-
-    @Published var selectedPromptId: UUID? {
-        didSet {
-            UserDefaults.standard.set(selectedPromptId?.uuidString, forKey: "selectedPromptId")
-            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-            NotificationCenter.default.post(name: .promptSelectionChanged, object: nil)
+            savePrompts()
         }
     }
 
     @Published var lastSystemMessageSent: String?
     @Published var lastUserMessageSent: String?
-
-    var activePrompt: CustomPrompt? {
-        allPrompts.first { $0.id == selectedPromptId }
-    }
 
     var allPrompts: [CustomPrompt] {
         return customPrompts
@@ -91,14 +40,6 @@ class AIEnhancementService: ObservableObject {
         self.screenCaptureService = ScreenCaptureService()
         self.customVocabularyService = CustomVocabularyService.shared
 
-        self.isEnhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
-        self.useClipboardContext = UserDefaults.standard.bool(forKey: "useClipboardContext")
-        if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
-            self.useSelectedTextContext = true
-        } else {
-            self.useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
-        }
-        self.useScreenCaptureContext = UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
         if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
            let decodedPrompts = try? JSONDecoder().decode([CustomPrompt].self, from: savedPromptsData) {
             self.customPrompts = decodedPrompts
@@ -106,13 +47,12 @@ class AIEnhancementService: ObservableObject {
             self.customPrompts = []
         }
 
-        if let savedPromptId = UserDefaults.standard.string(forKey: "selectedPromptId") {
-            self.selectedPromptId = UUID(uuidString: savedPromptId)
+        let migrationResult = PromptDataMigration.migrate(self.customPrompts)
+        self.customPrompts = migrationResult.prompts
+        if migrationResult.didChange {
+            savePrompts()
         }
-
-        if isEnhancementEnabled && (selectedPromptId == nil || !allPrompts.contains(where: { $0.id == selectedPromptId })) {
-            self.selectedPromptId = allPrompts.first?.id
-        }
+        repairModePromptSelections()
 
         NotificationCenter.default.addObserver(
             self,
@@ -120,8 +60,6 @@ class AIEnhancementService: ObservableObject {
             name: .aiProviderKeyChanged,
             object: nil
         )
-
-        initializePredefinedPrompts()
     }
 
     deinit {
@@ -131,9 +69,6 @@ class AIEnhancementService: ObservableObject {
     @objc private func handleAPIKeyChange() {
         DispatchQueue.main.async {
             self.objectWillChange.send()
-            if !self.aiService.isAPIKeyValid {
-                self.isEnhancementEnabled = false
-            }
         }
     }
 
@@ -141,11 +76,8 @@ class AIEnhancementService: ObservableObject {
         return aiService
     }
 
-    var isConfigured: Bool {
-        aiService.isAPIKeyValid
-    }
-
     func isConfigured(for configuration: EnhancementRuntimeConfiguration) -> Bool {
+        guard configuration.prompt != nil else { return false }
         guard let provider = configuration.provider else { return false }
 
         if provider == .localCLI || provider == .ollama {
@@ -170,10 +102,10 @@ class AIEnhancementService: ObservableObject {
         lastRequestTime = Date()
     }
 
-    private func getSystemMessage(for mode: EnhancementPrompt, configuration: EnhancementRuntimeConfiguration? = nil) async -> String {
-        let useSelectedText = configuration?.useSelectedTextContext ?? useSelectedTextContext
-        let useClipboard = configuration?.useClipboardContext ?? useClipboardContext
-        let useScreenCapture = configuration?.useScreenCaptureContext ?? useScreenCaptureContext
+    private func getSystemMessage(prompt: CustomPrompt, configuration: EnhancementRuntimeConfiguration) async -> String {
+        let useSelectedText = configuration.useSelectedTextContext
+        let useClipboard = configuration.useClipboardContext
+        let useScreenCapture = configuration.useScreenCaptureContext
 
         if useClipboard {
             captureClipboardContext()
@@ -234,48 +166,29 @@ class AIEnhancementService: ObservableObject {
 
         let finalContextSection = allContextSections + customVocabularySection
 
-        if let activePrompt = configuration?.prompt ?? activePrompt {
-            if activePrompt.id == PredefinedPrompts.assistantPromptId {
-                return activePrompt.promptText + finalContextSection
-            } else {
-                return activePrompt.finalPromptText + finalContextSection
-            }
-        } else {
-            let defaultPrompt = allPrompts.first(where: { $0.id == PredefinedPrompts.defaultPromptId }) ?? allPrompts.first!
-            return defaultPrompt.finalPromptText + finalContextSection
-        }
+        return prompt.finalPromptText + finalContextSection
     }
 
-    private func makeRequest(text: String, mode: EnhancementPrompt, configuration: EnhancementRuntimeConfiguration? = nil) async throws -> String {
-        if let configuration {
-            guard isConfigured(for: configuration) else {
-                throw EnhancementError.notConfigured
-            }
-        } else {
-            guard isConfigured else {
-                throw EnhancementError.notConfigured
-            }
+    private func makeRequest(text: String, configuration: EnhancementRuntimeConfiguration) async throws -> String {
+        guard isConfigured(for: configuration) else {
+            throw EnhancementError.notConfigured
         }
 
-        let provider: AIProvider
-        let modelName: String
-        if let configuration {
-            guard let configuredProvider = configuration.provider else {
-                throw EnhancementError.notConfigured
-            }
-            provider = configuredProvider
-            modelName = configuration.modelName ?? configuredProvider.defaultModel
-        } else {
-            provider = aiService.selectedProvider
-            modelName = aiService.currentModel
+        guard let prompt = configuration.prompt else {
+            throw EnhancementError.notConfigured
         }
+
+        guard let provider = configuration.provider else {
+            throw EnhancementError.notConfigured
+        }
+        let modelName = configuration.modelName ?? provider.defaultModel
 
         guard !text.isEmpty else {
             return ""
         }
 
         let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
-        let systemMessage = await getSystemMessage(for: mode, configuration: configuration)
+        let systemMessage = await getSystemMessage(prompt: prompt, configuration: configuration)
 
         await MainActor.run {
             self.lastSystemMessageSent = systemMessage
@@ -417,13 +330,13 @@ class AIEnhancementService: ObservableObject {
         UserDefaults.standard.bool(forKey: "EnhancementRetryOnTimeout")
     }
 
-    private func makeRequestWithRetry(text: String, mode: EnhancementPrompt, configuration: EnhancementRuntimeConfiguration? = nil, maxRetries: Int = 3, initialDelay: TimeInterval = 1.0) async throws -> String {
+    private func makeRequestWithRetry(text: String, configuration: EnhancementRuntimeConfiguration, maxRetries: Int = 3, initialDelay: TimeInterval = 1.0) async throws -> String {
         var retries = 0
         var currentDelay = initialDelay
 
         while retries < maxRetries {
             do {
-                return try await makeRequest(text: text, mode: mode, configuration: configuration)
+                return try await makeRequest(text: text, configuration: configuration)
             } catch let error as EnhancementError {
                 switch error {
                 case .networkError, .serverError, .rateLimitExceeded:
@@ -473,28 +386,12 @@ class AIEnhancementService: ObservableObject {
         throw EnhancementError.enhancementFailed
     }
 
-    func enhance(_ text: String) async throws -> (String, TimeInterval, String?) {
-        let startTime = Date()
-        let enhancementPrompt: EnhancementPrompt = .transcriptionEnhancement
-        let promptName = activePrompt?.title
-
-        do {
-            let result = try await makeRequestWithRetry(text: text, mode: enhancementPrompt)
-            let endTime = Date()
-            let duration = endTime.timeIntervalSince(startTime)
-            return (result, duration, promptName)
-        } catch {
-            throw error
-        }
-    }
-
     func enhance(_ text: String, configuration: EnhancementRuntimeConfiguration) async throws -> (String, TimeInterval, String?) {
         let startTime = Date()
-        let enhancementPrompt: EnhancementPrompt = .transcriptionEnhancement
         let promptName = configuration.prompt?.title
 
         do {
-            let result = try await makeRequestWithRetry(text: text, mode: enhancementPrompt, configuration: configuration)
+            let result = try await makeRequestWithRetry(text: text, configuration: configuration)
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             return (result, duration, promptName)
@@ -525,12 +422,9 @@ class AIEnhancementService: ObservableObject {
     }
 
     @discardableResult
-    func addPrompt(title: String, promptText: String, description: String? = nil, useSystemInstructions: Bool = true) -> CustomPrompt {
-        let newPrompt = CustomPrompt(title: title, promptText: promptText, description: description, isPredefined: false, useSystemInstructions: useSystemInstructions)
+    func addPrompt(title: String, promptText: String, useSystemInstructions: Bool = true) -> CustomPrompt {
+        let newPrompt = CustomPrompt(title: title, promptText: promptText, useSystemInstructions: useSystemInstructions)
         customPrompts.append(newPrompt)
-        if customPrompts.count == 1 {
-            selectedPromptId = newPrompt.id
-        }
         return newPrompt
     }
 
@@ -542,17 +436,33 @@ class AIEnhancementService: ObservableObject {
 
     func deletePrompt(_ prompt: CustomPrompt) {
         customPrompts.removeAll { $0.id == prompt.id }
-        if selectedPromptId == prompt.id {
-            selectedPromptId = allPrompts.first?.id
-        }
+        repairModePromptSelections()
+    }
 
+    func ensureDefaultPromptsExist() {
+        let seedResult = PromptDataMigration.ensureDefaultPromptsExist(in: customPrompts)
+        if seedResult.didChange {
+            customPrompts = seedResult.prompts
+        }
+    }
+
+    func repairModePromptSelections() {
+        let availablePromptIds = Set(allPrompts.map { $0.id.uuidString })
         let fallbackPromptId = allPrompts.first?.id.uuidString
-        let deletedPromptId = prompt.id.uuidString
         let modeManager = ModeManager.shared
         var updatedConfigurations = modeManager.configurations
         var didUpdateModes = false
 
-        for index in updatedConfigurations.indices where updatedConfigurations[index].selectedPrompt == deletedPromptId {
+        for index in updatedConfigurations.indices {
+            let selectedPrompt = updatedConfigurations[index].selectedPrompt
+            let hasInvalidPrompt = selectedPrompt.map { !availablePromptIds.contains($0) } ?? false
+            let hasMissingPrompt = selectedPrompt == nil
+            let shouldAssignPrompt = updatedConfigurations[index].isAIEnhancementEnabled && hasMissingPrompt
+
+            guard hasInvalidPrompt || shouldAssignPrompt else {
+                continue
+            }
+
             updatedConfigurations[index].selectedPrompt = fallbackPromptId
             didUpdateModes = true
         }
@@ -562,30 +472,9 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
-    func setActivePrompt(_ prompt: CustomPrompt) {
-        selectedPromptId = prompt.id
-    }
-
-    private func initializePredefinedPrompts() {
-        let predefinedTemplates = PredefinedPrompts.createDefaultPrompts()
-
-        for template in predefinedTemplates {
-            if let existingIndex = customPrompts.firstIndex(where: { $0.id == template.id }) {
-                var updatedPrompt = customPrompts[existingIndex]
-                updatedPrompt = CustomPrompt(
-                    id: updatedPrompt.id,
-                    title: template.title,
-                    promptText: template.promptText,
-                    isActive: updatedPrompt.isActive,
-                    icon: template.icon,
-                    description: template.description,
-                    isPredefined: true,
-                    useSystemInstructions: template.useSystemInstructions
-                )
-                customPrompts[existingIndex] = updatedPrompt
-            } else {
-                customPrompts.append(template)
-            }
+    private func savePrompts() {
+        if let encoded = try? JSONEncoder().encode(customPrompts) {
+            UserDefaults.standard.set(encoded, forKey: "customPrompts")
         }
     }
 }

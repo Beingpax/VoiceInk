@@ -1,40 +1,26 @@
 import Foundation
 import SwiftUI
 
-typealias PromptIcon = String
-
 struct CustomPrompt: Identifiable, Codable, Equatable {
     let id: UUID
     let title: String
     let promptText: String
-    var isActive: Bool
-    let icon: PromptIcon
-    let description: String?
-    let isPredefined: Bool
     let useSystemInstructions: Bool
     
     init(
         id: UUID = UUID(),
         title: String,
         promptText: String,
-        isActive: Bool = false,
-        icon: PromptIcon = "doc.text.fill",
-        description: String? = nil,
-        isPredefined: Bool = false,
         useSystemInstructions: Bool = true
     ) {
         self.id = id
         self.title = title
         self.promptText = promptText
-        self.isActive = isActive
-        self.icon = icon
-        self.description = description
-        self.isPredefined = isPredefined
         self.useSystemInstructions = useSystemInstructions
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, promptText, isActive, icon, description, isPredefined, useSystemInstructions
+        case id, title, promptText, useSystemInstructions
     }
 
     init(from decoder: Decoder) throws {
@@ -42,10 +28,6 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         id = try container.decode(UUID.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         promptText = try container.decode(String.self, forKey: .promptText)
-        isActive = try container.decode(Bool.self, forKey: .isActive)
-        icon = try container.decode(PromptIcon.self, forKey: .icon)
-        description = try container.decodeIfPresent(String.self, forKey: .description)
-        isPredefined = try container.decode(Bool.self, forKey: .isPredefined)
         useSystemInstructions = try container.decodeIfPresent(Bool.self, forKey: .useSystemInstructions) ?? true
     }
     
@@ -94,7 +76,7 @@ extension CustomPrompt {
                     }
                 }
                 
-                if let onDelete = onDelete, !isPredefined {
+                if let onDelete = onDelete {
                     Button(role: .destructive) {
                         let alert = NSAlert()
                         alert.messageText = "Delete Prompt?"

@@ -4,32 +4,38 @@ struct TemplatePrompt: Identifiable {
     let id: UUID
     let title: String
     let promptText: String
-    let icon: PromptIcon
-    let description: String
+    let useSystemInstructions: Bool
     
-    func toCustomPrompt() -> CustomPrompt {
+    func toCustomPrompt(id: UUID = UUID()) -> CustomPrompt {
         CustomPrompt(
-            id: UUID(),  // Generate new UUID for custom prompt
+            id: id,
             title: title,
             promptText: promptText,
-            icon: icon,
-            description: description,
-            isPredefined: false
+            useSystemInstructions: useSystemInstructions
         )
     }
 }
 
 enum PromptTemplates {
+    static let defaultPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    static let assistantPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+    static let chatPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+    static let emailPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
+    static let rewritePromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000005")!
+
     static var all: [TemplatePrompt] {
         createTemplatePrompts()
     }
-    
+
+    static var seedPrompts: [CustomPrompt] {
+        all.map { $0.toCustomPrompt(id: $0.id) }
+    }
     
     static func createTemplatePrompts() -> [TemplatePrompt] {
         [
             TemplatePrompt(
-                id: UUID(),
-                title: "System Default",
+                id: defaultPromptId,
+                title: "Default",
                 promptText: """
                     - Clean up the <TRANSCRIPT> text for clarity and natural flow while preserving meaning and the original tone.
                     - Use informal, plain language unless the <TRANSCRIPT> clearly uses a professional tone; in that case, match it.
@@ -44,11 +50,16 @@ enum PromptTemplates {
                     - Output only the cleaned text.
                     - Don't add any information not available in the <TRANSCRIPT> text ever.
                     """,
-                icon: "checkmark.seal.fill",
-                description: "Default system prompt"
+                useSystemInstructions: true
             ),
             TemplatePrompt(
-                id: UUID(),
+                id: assistantPromptId,
+                title: "Assistant",
+                promptText: AIPrompts.assistantMode,
+                useSystemInstructions: false
+            ),
+            TemplatePrompt(
+                id: chatPromptId,
                 title: "Chat",
                 promptText: """
                     - Rewrite the <TRANSCRIPT> text as a chat message: informal, concise, and conversational.
@@ -62,12 +73,11 @@ enum PromptTemplates {
                     - Output only the chat message.
                     - Don't add any information not available in the <TRANSCRIPT> text ever.
                     """,
-                icon: "bubble.left.and.bubble.right.fill",
-                description: "Casual chat-style formatting"
+                useSystemInstructions: true
             ),
             
             TemplatePrompt(
-                id: UUID(),
+                id: emailPromptId,
                 title: "Email",
                 promptText: """
                     - Rewrite the <TRANSCRIPT> text as a complete email with proper formatting: include a greeting (Hi), body paragraphs (2-4 sentences each), and closing (Thanks).
@@ -78,11 +88,10 @@ enum PromptTemplates {
                     - Do not invent new content, but structure it as a proper email format.
                     - Don't add any information not available in the <TRANSCRIPT> text ever.
                     """,
-                icon: "envelope.fill",
-                description: "Professional email formatting"
+                useSystemInstructions: true
             ),
             TemplatePrompt(
-                id: UUID(),
+                id: rewritePromptId,
                 title: "Rewrite",
                 promptText: """
                     - Rewrite the <TRANSCRIPT> text with enhanced clarity, improved sentence structure, and rhythmic flow while preserving the original meaning and tone.
@@ -97,8 +106,7 @@ enum PromptTemplates {
                     - Output only the rewritten text.
                     - Don't add any information not available in the <TRANSCRIPT> text ever.
                     """,
-                icon: "pencil.circle.fill",
-                description: "Rewrites with better clarity."
+                useSystemInstructions: true
             )
         ]
     }

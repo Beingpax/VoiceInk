@@ -24,6 +24,9 @@ enum BackupImporter {
 
     @MainActor
     static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
+        var shouldSeedImportedPrompts = false
+        var shouldRepairModePromptSelections = false
+
         if categories.contains(.dictionary) {
             try importDictionary(from: backup, modelContext: modelContext)
         }
@@ -41,9 +44,10 @@ enum BackupImporter {
         }
 
         if categories.contains(.prompts) {
-            let predefinedPrompts = enhancementService.customPrompts.filter { $0.isPredefined }
-            enhancementService.customPrompts = predefinedPrompts + backup.customPrompts
-            print("Successfully imported \(backup.customPrompts.count) custom prompts.")
+            enhancementService.customPrompts = backup.customPrompts
+            shouldSeedImportedPrompts = true
+            shouldRepairModePromptSelections = true
+            print("Successfully imported \(backup.customPrompts.count) prompts.")
         }
 
         if categories.contains(.modes) {
@@ -69,6 +73,7 @@ enum BackupImporter {
             }
 
             modeManager.saveConfigurations()
+            shouldRepairModePromptSelections = true
 
             if let customEmojis = backup.customEmojis {
                 let emojiManager = EmojiManager.shared
@@ -77,6 +82,14 @@ enum BackupImporter {
                 }
             }
             print("Successfully imported \(backup.modeConfigs.count) Mode configurations.")
+        }
+
+        if shouldSeedImportedPrompts {
+            enhancementService.ensureDefaultPromptsExist()
+        }
+
+        if shouldRepairModePromptSelections {
+            enhancementService.repairModePromptSelections()
         }
 
         if categories.contains(.customModels) {

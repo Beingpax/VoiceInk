@@ -122,13 +122,12 @@ enum ModeRuntimeResolver {
         promptId: String?,
         enhancementService: AIEnhancementService
     ) -> CustomPrompt? {
-        if let promptId,
-           let uuid = UUID(uuidString: promptId),
-           let prompt = enhancementService.allPrompts.first(where: { $0.id == uuid }) {
-            return prompt
+        guard let promptId,
+              let uuid = UUID(uuidString: promptId) else {
+            return nil
         }
 
-        return enhancementService.allPrompts.first
+        return enhancementService.allPrompts.first { $0.id == uuid }
     }
 
     private static func resolvedProvider(

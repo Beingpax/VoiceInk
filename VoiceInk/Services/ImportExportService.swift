@@ -126,8 +126,6 @@ class ImportExportService {
         let modeManager = ModeManager.shared
         let emojiManager = EmojiManager.shared
 
-        let exportablePrompts = enhancementService.customPrompts.filter { !$0.isPredefined }
-
         let modeConfigs = modeManager.configurations
         let modeShortcuts = Dictionary(uniqueKeysWithValues: modeConfigs.compactMap { config -> (String, ShortcutBackup)? in
             guard let shortcut = ShortcutStore.shortcut(for: .mode(config.id)) else { return nil }
@@ -191,7 +189,7 @@ class ImportExportService {
 
         let exportedSettings = BackupFile(
             version: currentSettingsVersion,
-            customPrompts: exportablePrompts,
+            customPrompts: enhancementService.customPrompts,
             modeConfigs: modeConfigs,
             modeShortcuts: modeShortcuts.isEmpty ? nil : modeShortcuts,
             vocabularyWords: exportedDictionaryItems,

@@ -24,16 +24,8 @@ struct PromptEditorView: View {
     let onDelete: ((CustomPrompt) -> Void)?
     @State private var title: String
     @State private var promptText: String
-    @State private var description: String
     @State private var useSystemInstructions: Bool
     @State private var showDeleteConfirmation = false
-    
-    private var isEditingPredefinedPrompt: Bool {
-        if case .edit(let prompt) = mode {
-            return prompt.isPredefined
-        }
-        return false
-    }
 
     private var saveButtonTitle: String {
         mode == .add ? "Create & Select" : "Save & Select"
@@ -44,10 +36,7 @@ struct PromptEditorView: View {
     }
 
     private var promptKindLabel: String {
-        if isEditingPredefinedPrompt {
-            return "System prompt"
-        }
-        return "Custom prompt"
+        "Prompt"
     }
 
     private var editingPrompt: CustomPrompt? {
@@ -58,12 +47,10 @@ struct PromptEditorView: View {
     }
 
     private var canDeletePrompt: Bool {
-        guard let prompt = editingPrompt else { return false }
-        return !prompt.isPredefined && onDelete != nil
+        editingPrompt != nil && onDelete != nil
     }
 
     private var isSaveDisabled: Bool {
-        if isEditingPredefinedPrompt { return false }
         return title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
             promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -82,12 +69,10 @@ struct PromptEditorView: View {
         case .add:
             _title = State(initialValue: "")
             _promptText = State(initialValue: "")
-            _description = State(initialValue: "")
             _useSystemInstructions = State(initialValue: true)
         case .edit(let prompt):
             _title = State(initialValue: prompt.title)
             _promptText = State(initialValue: prompt.promptText)
-            _description = State(initialValue: prompt.description ?? "")
             _useSystemInstructions = State(initialValue: prompt.useSystemInstructions)
         }
     }
@@ -108,10 +93,8 @@ struct PromptEditorView: View {
                         templateMenu
                     }
 
-                    if !isEditingPredefinedPrompt {
-                        instructionsEditor
-                        systemTemplateToggle
-                    }
+                    instructionsEditor
+                    systemTemplateToggle
                 }
                 .padding(20)
             }
@@ -185,11 +168,11 @@ struct PromptEditorView: View {
 
     private var templateMenu: some View {
         Menu {
-            ForEach(PromptTemplates.all, id: \.title) { template in
+            ForEach(PromptTemplates.all) { template in
                 Button {
                     title = template.title
                     promptText = template.promptText
-                    description = template.description
+                    useSystemInstructions = template.useSystemInstructions
                 } label: {
                     Text(template.title)
                 }
@@ -205,21 +188,13 @@ struct PromptEditorView: View {
     }
 
     private var identitySection: some View {
-        Group {
-            if isEditingPredefinedPrompt {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                TextField("Prompt name", text: $title)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 15, weight: .medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(GroupedCardBackground(cornerRadius: 7))
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-            }
-        }
+        TextField("Prompt name", text: $title)
+            .textFieldStyle(.plain)
+            .font(.system(size: 15, weight: .medium))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(GroupedCardBackground(cornerRadius: 7))
+            .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 
     private var instructionsEditor: some View {
@@ -297,18 +272,13 @@ struct PromptEditorView: View {
             return enhancementService.addPrompt(
                 title: title,
                 promptText: promptText,
-                description: description.isEmpty ? nil : description,
                 useSystemInstructions: useSystemInstructions
             )
         case .edit(let prompt):
             let updatedPrompt = CustomPrompt(
                 id: prompt.id,
-                title: prompt.isPredefined ? prompt.title : title,
-                promptText: prompt.isPredefined ? prompt.promptText : promptText,
-                isActive: prompt.isActive,
-                icon: prompt.icon,
-                description: prompt.isPredefined ? prompt.description : (description.isEmpty ? nil : description),
-                isPredefined: prompt.isPredefined,
+                title: title,
+                promptText: promptText,
                 useSystemInstructions: useSystemInstructions
             )
             enhancementService.updatePrompt(updatedPrompt)
