@@ -340,20 +340,22 @@ struct ConfigurationRow: View {
         }) {
             Label("Edit", systemImage: "pencil")
         }
-        Button(role: .destructive, action: {
-            let alert = NSAlert()
-            alert.messageText = "Delete Mode?"
-            alert.informativeText = "Are you sure you want to delete the '\(config.name)' mode? This action cannot be undone."
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Delete")
-            alert.addButton(withTitle: "Cancel")
-            alert.buttons[0].hasDestructiveAction = true
-            
-            if alert.runModal() == .alertFirstButtonReturn {
-                modeManager.removeConfiguration(with: config.id)
+        if modeManager.configurations.count > 1 {
+            Button(role: .destructive, action: {
+                let alert = NSAlert()
+                alert.messageText = "Delete Mode?"
+                alert.informativeText = "Are you sure you want to delete the '\(config.name)' mode? This action cannot be undone."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Delete")
+                alert.addButton(withTitle: "Cancel")
+                alert.buttons[0].hasDestructiveAction = true
+
+                if alert.runModal() == .alertFirstButtonReturn {
+                    modeManager.removeConfiguration(with: config.id)
+                }
+            }) {
+                Label("Delete", systemImage: "trash")
             }
-        }) {
-            Label("Delete", systemImage: "trash")
         }
     }
     }
