@@ -7,6 +7,11 @@ enum AppDefaults {
             "hasCompletedOnboarding": false,
             "enableAnnouncements": true,
 
+            // MCP Server
+            "enableMCPServer": true,
+            "mcpServerPort": 51089,
+            "speakAIQuestionsAloud": false,
+
             // Clipboard
             "restoreClipboardAfterPaste": true,
             "clipboardRestoreDelay": 2.0,
@@ -22,6 +27,7 @@ enum AppDefaults {
 
             // Recording & Transcription
             "IsTextFormattingEnabled": true,
+            "SmartSpacingAndCapitalization": true,
             "IsVADEnabled": true,
             "RemoveFillerWords": true,
             "RemovePunctuation": false,

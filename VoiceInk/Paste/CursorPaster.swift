@@ -59,6 +59,23 @@ class CursorPaster {
             return .commandNotPosted
         }
 
+        // Deep IDE/Cursor Output Routing Integration
+        if let rawRoute = UserDefaults.standard.string(forKey: "IDERoutingMode"),
+           let route = IDERoutingMode(rawValue: rawRoute),
+           route != .activeApp {
+            logger.notice("Routing output to IDE: \(route.displayName, privacy: .public)")
+            if let bundleID = route.bundleIdentifier,
+               let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
+                app.activate(options: [.activateIgnoringOtherApps])
+                await wait(0.20) // Wait for app activation transition
+            } else if let appName = route.appName {
+                if let app = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName?.localizedCaseInsensitiveContains(appName) == true }) {
+                    app.activate(options: [.activateIgnoringOtherApps])
+                    await wait(0.20)
+                }
+            }
+        }
+
         await wait(prePasteDelay)
 
         let pasteResult = await postPasteCommand()

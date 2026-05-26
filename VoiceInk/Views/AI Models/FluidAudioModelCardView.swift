@@ -186,4 +186,19 @@ struct FluidAudioModelCardView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func progressDotsWithNumber(value: Double) -> some View {
+        HStack(spacing: 2) {
+            let activeDots = Int(round(value / 2.0))
+            ForEach(0..<5) { idx in
+                Circle()
+                    .fill(idx < activeDots ? Color(red: 0.36, green: 0.28, blue: 0.88) : Color.primary.opacity(0.1))
+                    .frame(width: 5, height: 5)
+            }
+            Text(String(format: "%.1f", value))
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(Color(.secondaryLabelColor))
+        }
+    }
 }

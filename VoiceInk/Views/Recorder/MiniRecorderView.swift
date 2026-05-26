@@ -5,17 +5,22 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     @EnvironmentObject var windowManager: MiniWindowManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
+    @ObservedObject private var powerModeManager = PowerModeManager.shared
+    
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
+    @AppStorage("visualizerWaveformHeight") private var visualizerWaveformHeight = 75.0
+    @AppStorage("miniRecorderWidth") private var miniRecorderWidth = 420.0
+    @AppStorage("miniRecorderHeight") private var miniRecorderHeight = 180.0
+    
+    // New Aesthetics Storage
+    @AppStorage("miniRecorderPlacement") private var miniRecorderPlacement = "bottom"
+    @AppStorage("miniRecorderXOffset") private var miniRecorderXOffset = 0.0
+    @AppStorage("miniRecorderYOffset") private var miniRecorderYOffset = 0.0
+    @AppStorage("miniRecorderOpacity") private var miniRecorderOpacity = 0.95
+    @AppStorage("visualizerMovementType") private var visualizerMovementType = "alien"
+    @AppStorage("visualizerLineTheme") private var visualizerLineTheme = "cyber"
 
-    @State private var activePopover: ActivePopoverState = .none
-
-    // MARK: - Layout Constants
-
-    private let controlBarHeight: CGFloat = 40
-    private let compactWidth: CGFloat = 184
-    private let expandedWidth: CGFloat = 300
-    private let compactCornerRadius: CGFloat = 20
-    private let expandedCornerRadius: CGFloat = 14
+    @State private var showVoiceMenu = false
 
     // true when live transcript is streaming in during recording
     private var hasLiveTranscript: Bool {
@@ -24,54 +29,446 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             && !stateProvider.partialTranscript.isEmpty
     }
 
-    private var controlBar: some View {
-        HStack(spacing: 0) {
-            RecorderPromptButton(
-                activePopover: $activePopover,
-                buttonSize: 22,
-                padding: EdgeInsets()
-            )
-            .padding(.leading, 12)
-
-            Spacer(minLength: 0)
-
-            RecorderStatusDisplay(
-                currentState: stateProvider.recordingState,
-                audioMeter: recorder.audioMeter
-            )
-
-            Spacer(minLength: 0)
-
-            RecorderPowerModeButton(
-                activePopover: $activePopover,
-                buttonSize: 22,
-                padding: EdgeInsets()
-            )
-            .padding(.trailing, 12)
+    private var activeModelSupportsStreaming: Bool {
+        if let engine = stateProvider as? VoiceInkEngine,
+           let model = engine.transcriptionModelManager.currentTranscriptionModel {
+            return model.supportsStreaming
         }
-        .frame(height: controlBarHeight)
+        return false
     }
 
-    private var transcriptSection: some View {
-        VStack(spacing: 0) {
-            if hasLiveTranscript {
-                LiveTranscriptView(text: stateProvider.partialTranscript)
-                Divider().background(Color.white.opacity(0.15))
-            }
+    private var activeModelDisplayName: String {
+        if let engine = stateProvider as? VoiceInkEngine,
+           let model = engine.transcriptionModelManager.currentTranscriptionModel {
+            return model.displayName
+        }
+        return "Speechmatics"
+    }
+
+    private var activeEnhancementModelDisplayName: String? {
+        guard enhancementService.isEnhancementEnabled,
+              let aiService = enhancementService.getAIService() else {
+            return nil
+        }
+        
+        let provider = aiService.selectedProvider
+        let model = aiService.currentModel
+        
+        if provider == .groq {
+            return "Groq"
+        }
+        
+        let lowerModel = model.lowercased()
+        
+        // 1. For GPT-4o-120B (or any model containing "120b"), just use transcribe provider speech -> omit the enhancement part
+        if lowerModel.contains("120b") {
+            return nil
+        }
+        
+        // 2. Mattox — just the enhanced provider
+        if lowerModel.contains("mattox") {
+            return provider.rawValue
+        }
+        
+        // 3. For other models under OpenAI provider, or if the model starts with "gpt-", display the provider name "OpenAI" instead of "gpt-4o" etc.
+        if provider == .openAI || lowerModel.hasPrefix("gpt-") {
+            return "OpenAI"
+        }
+        
+        // Default: display the model name or provider name
+        return model
+    }
+
+    private var primaryShortcutString: String {
+        ShortcutStore.shortcut(for: .primaryRecording)?.displayString ?? "⌃⇧Z"
+    }
+
+    private func autoToggleLivePreviewIfNeeded() {
+        if activeModelSupportsStreaming {
+            showLiveTextPreview = true
         }
     }
 
     var body: some View {
         if windowManager.isVisible {
-            VStack(spacing: 0) {
-                transcriptSection
-                controlBar
+            ZStack(alignment: .bottomLeading) {
+                VStack(spacing: 0) {
+                    // 1. Decorative Backdrop & Waveform Area
+                    ZStack {
+                        // Left decorative vertical Japanese label
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("•")
+                                Text("音")
+                                Text("声")
+                                Text("解")
+                                Text("析")
+                                Text("•")
+                            }
+                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                            .padding(.leading, 12)
+                            Spacer()
+                        }
+                        
+                        // Top right decorative Japanese label
+                        VStack {
+                            HStack {
+                                Spacer()
+                                Text("ライブ •")
+                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                                    .padding(.top, 10)
+                                    .padding(.trailing, 16)
+                            }
+                            Spacer()
+                        }
+
+                        // Right decorative vertical Japanese label
+                        HStack {
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text("•")
+                                Text("解")
+                                Text("析")
+                                Text("中")
+                                Text("•")
+                            }
+                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                            .padding(.trailing, 12)
+                        }
+
+                        // The actual waveform visualizer
+                        RecorderStatusDisplay(
+                            currentState: stateProvider.recordingState,
+                            audioMeter: recorder.audioMeter
+                        )
+                        .frame(height: CGFloat(visualizerWaveformHeight))
+                        .padding(.horizontal, 24)
+                    }
+                    .frame(maxHeight: .infinity)
+                    .padding(.top, 10)
+
+                    // 2. Live Transcript Section (scrolls under the waveform)
+                    if hasLiveTranscript {
+                        LiveTranscriptView(
+                            text: stateProvider.partialTranscript,
+                            textColor: Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.8)
+                        )
+                        .frame(height: 48)
+                        .padding(.bottom, 6)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    } else {
+                        Spacer(minLength: 6)
+                    }
+
+                    // 3. Bottom Status Bar Divider & Content (Custom Mockup Structure)
+                    Divider()
+                        .background(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.08))
+                    
+                    HStack {
+                        // Left side: Clickable VOICE dropdown badge & Active model identifier
+                        HStack(spacing: 8) {
+                            Button(action: {
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                                    showVoiceMenu.toggle()
+                                }
+                            }) {
+                                voiceMenuLabel
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Divider()
+                                .frame(height: 12)
+                                .background(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                            
+                            // Active Model Identifier (displays both Transcription & AI Enhancement if active)
+                            HStack(spacing: 4) {
+                                Image(systemName: "circle.grid.2x1.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.8))
+                                Text(activeModelDisplayName)
+                                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.85))
+                                
+                                if let enhancementName = activeEnhancementModelDisplayName {
+                                    Text("+")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 8))
+                                        .foregroundColor(Color(red: 1.0, green: 0.416, blue: 0.0))
+                                    Text(enhancementName)
+                                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(Color(red: 1.0, green: 0.416, blue: 0.0))
+                                }
+                                
+                                Text("音声解析")
+                                    .font(.system(size: 8, weight: .regular))
+                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        // Right side: Live Transcription capsule pill button
+                        Button(action: {
+                            showLiveTextPreview.toggle()
+                        }) {
+                            HStack(spacing: 5) {
+                                Circle()
+                                    .fill(showLiveTextPreview ? Color(red: 0.54, green: 0.12, blue: 0.92) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.3))
+                                    .frame(width: 4, height: 4)
+                                    .shadow(color: showLiveTextPreview ? Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.8) : Color.clear, radius: 3)
+                                Text("Live")
+                                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                    .foregroundColor(showLiveTextPreview ? Color(red: 0.22, green: 0.24, blue: 0.35) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(showLiveTextPreview ? Color.white.opacity(0.6) : Color.white.opacity(0.3))
+                            .cornerRadius(6)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(showLiveTextPreview ? Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.3) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.25 * miniRecorderOpacity))
+                }
+                .frame(width: CGFloat(miniRecorderWidth), height: CGFloat(miniRecorderHeight))
+                .background(
+                    LinearGradient(
+                        colors: [Color(red: 0.89, green: 0.90, blue: 0.94).opacity(miniRecorderOpacity), Color(red: 0.92, green: 0.93, blue: 0.96).opacity(miniRecorderOpacity)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.85 * miniRecorderOpacity), lineWidth: 1.5)
+                )
+                .shadow(color: Color.black.opacity(0.14 * miniRecorderOpacity), radius: 24, x: 0, y: 12)
+                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: hasLiveTranscript)
+                
+                // 4. Custom Overlay Dropdown Popover (Flawless Mouse Clicks on Non-Activating Panels)
+                if showVoiceMenu {
+                    // Transparent backdrop overlay inside the ZStack to capture clicks off the menu
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                                showVoiceMenu = false
+                            }
+                        }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        // AI Enhancement Toggle Option
+                        Button(action: {
+                            enhancementService.isEnhancementEnabled.toggle()
+                        }) {
+                            HStack {
+                                Image(systemName: enhancementService.isEnhancementEnabled ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(enhancementService.isEnhancementEnabled ? Color(red: 0.54, green: 0.12, blue: 0.92) : .secondary)
+                                Text("AI Enhancement")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35))
+                                Spacer()
+                            }
+                            .padding(.vertical, 3)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        if enhancementService.isEnhancementEnabled {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Prompts")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                                    .padding(.leading, 2)
+                                
+                                ForEach(enhancementService.allPrompts) { prompt in
+                                    Button(action: {
+                                        enhancementService.selectedPromptId = prompt.id
+                                    }) {
+                                        HStack {
+                                            Image(systemName: prompt.icon)
+                                                .font(.system(size: 9))
+                                                .foregroundColor(enhancementService.selectedPromptId == prompt.id ? Color(red: 0.54, green: 0.12, blue: 0.92) : .secondary)
+                                                .frame(width: 12)
+                                            Text(prompt.title)
+                                                .font(.system(size: 9, weight: enhancementService.selectedPromptId == prompt.id ? .bold : .medium))
+                                                .foregroundColor(enhancementService.selectedPromptId == prompt.id ? Color(red: 0.22, green: 0.24, blue: 0.35) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.75))
+                                            Spacer()
+                                            if enhancementService.selectedPromptId == prompt.id {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 7, weight: .bold))
+                                                    .foregroundColor(Color(red: 0.54, green: 0.12, blue: 0.92))
+                                            }
+                                        }
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 3)
+                                        .background(enhancementService.selectedPromptId == prompt.id ? Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.08) : Color.clear)
+                                        .cornerRadius(4)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.leading, 12)
+                        }
+                        
+                        Divider()
+                            .background(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.1))
+                        
+                        // Power Modes Section
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Power Modes")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                                .padding(.leading, 2)
+                            
+                            ForEach(powerModeManager.configurations) { config in
+                                Button(action: {
+                                    Task {
+                                        powerModeManager.setActiveConfiguration(config)
+                                        await PowerModeSessionManager.shared.beginSession(with: config)
+                                    }
+                                }) {
+                                    HStack {
+                                        Text(config.emoji)
+                                            .font(.system(size: 9))
+                                        Text(config.name)
+                                            .font(.system(size: 9, weight: powerModeManager.activeConfiguration?.id == config.id ? .bold : .medium))
+                                            .foregroundColor(powerModeManager.activeConfiguration?.id == config.id ? Color(red: 0.22, green: 0.24, blue: 0.35) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.75))
+                                        Spacer()
+                                        if powerModeManager.activeConfiguration?.id == config.id {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 7, weight: .bold))
+                                                .foregroundColor(Color(red: 0.54, green: 0.12, blue: 0.92))
+                                        }
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(powerModeManager.activeConfiguration?.id == config.id ? Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.08) : Color.clear)
+                                    .cornerRadius(4)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            
+                            if powerModeManager.activeConfiguration != nil {
+                                Button(action: {
+                                    Task {
+                                        await PowerModeSessionManager.shared.endSession()
+                                        powerModeManager.setActiveConfiguration(nil)
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: "power")
+                                            .font(.system(size: 9))
+                                            .foregroundColor(.red)
+                                        Text("Turn Off Power Mode")
+                                            .font(.system(size: 9, weight: .semibold))
+                                            .foregroundColor(.red)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 4)
+                                    .background(Color.red.opacity(0.05))
+                                    .cornerRadius(4)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 2)
+                            }
+                        }
+                    }
+                    .padding(8)
+                    .frame(width: 190)
+                    .background(
+                        VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+                            .background(Color.white.opacity(0.95))
+                    )
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
+                    .padding(.leading, 12)
+                    .padding(.bottom, 40)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomLeading)))
+                }
             }
-            .frame(width: hasLiveTranscript ? expandedWidth : compactWidth)
-            .background(Color.black)
-            .clipShape(RoundedRectangle(cornerRadius: hasLiveTranscript ? expandedCornerRadius : compactCornerRadius, style: .continuous))
-            .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .onAppear {
+                autoToggleLivePreviewIfNeeded()
+            }
+            .onChange(of: stateProvider.recordingState) { newState in
+                if newState == .recording {
+                    autoToggleLivePreviewIfNeeded()
+                }
+            }
+            // Dynamic window frame observer triggers
+            .onChange(of: miniRecorderWidth) { _ in windowManager.updateWindowMetrics() }
+            .onChange(of: miniRecorderHeight) { _ in windowManager.updateWindowMetrics() }
+            .onChange(of: miniRecorderPlacement) { _ in windowManager.updateWindowMetrics() }
+            .onChange(of: miniRecorderXOffset) { _ in windowManager.updateWindowMetrics() }
+            .onChange(of: miniRecorderYOffset) { _ in windowManager.updateWindowMetrics() }
         }
+    }
+
+    @ViewBuilder
+    private var voiceMenuLabel: some View {
+        HStack(spacing: 5) {
+            BreathingBlueDot()
+            Text("VOICE")
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35))
+            
+            if let activeName = powerModeManager.activeConfiguration?.name {
+                Text("•")
+                    .font(.system(size: 8))
+                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                Text(activeName.uppercased())
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(red: 0.54, green: 0.12, blue: 0.92))
+            } else if enhancementService.isEnhancementEnabled, let promptName = enhancementService.activePrompt?.title {
+                Text("•")
+                    .font(.system(size: 8))
+                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                Text(promptName.uppercased())
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .foregroundColor(Color(red: 0.54, green: 0.12, blue: 0.92))
+            }
+            
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 7, weight: .bold))
+                .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.white.opacity(0.55))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12), lineWidth: 1)
+        )
+    }
+}
+
+// Glowing status dot helper view (Non-blinking/Static)
+struct BreathingBlueDot: View {
+    var body: some View {
+        Circle()
+            .fill(Color(red: 0.28, green: 0.58, blue: 0.95)) // Glowing white-blue
+            .frame(width: 5, height: 5)
+            .overlay(
+                Circle()
+                    .stroke(Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.6), lineWidth: 1) // Glowing electric purple aura
+            )
     }
 }

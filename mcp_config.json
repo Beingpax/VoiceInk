@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "redis-official": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-redis",
+        "redis://127.0.0.1:6379"
+      ]
+    }
+  }
+}

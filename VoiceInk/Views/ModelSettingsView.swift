@@ -4,6 +4,7 @@ struct ModelSettingsView: View {
     @ObservedObject var whisperPrompt: WhisperPrompt
     @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @AppStorage("IsTextFormattingEnabled") private var isTextFormattingEnabled = true
+    @AppStorage("SmartSpacingAndCapitalization") private var smartSpacingAndCapitalization = true
     @AppStorage(PunctuationCleanupMode.userDefaultsKey) private var punctuationCleanupModeRaw = PunctuationCleanupMode.current().rawValue
     @AppStorage("LowercaseTranscription") private var lowercaseTranscription = false
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
@@ -65,8 +66,16 @@ struct ModelSettingsView: View {
             Section {
                 Toggle(isOn: $isTextFormattingEnabled) {
                     HStack(spacing: 4) {
-                        Text("Paragraph breaks")
+                        Text("Smart Paragraphs")
                         InfoTip("Apply intelligent text formatting to break large block of text into paragraphs.")
+                    }
+                }
+                .toggleStyle(.switch)
+
+                Toggle(isOn: $smartSpacingAndCapitalization) {
+                    HStack(spacing: 4) {
+                        Text("Smart Spacing and Capitalization")
+                        InfoTip("Normalize spaces and ensure correct capitalization at the beginning of sentences.")
                     }
                 }
                 .toggleStyle(.switch)
@@ -107,7 +116,7 @@ struct ModelSettingsView: View {
 
                 Toggle(isOn: $isVADEnabled) {
                     HStack(spacing: 4) {
-                        Text("Voice Activity Detection (VAD)")
+                        Text("Trim Audio Silence")
                         InfoTip("Detect speech segments and filter out silence to improve accuracy of local models.")
                     }
                 }

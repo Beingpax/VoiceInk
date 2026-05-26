@@ -53,6 +53,12 @@ class MiniWindowManager: ObservableObject {
         panel?.orderOut(nil)
     }
 
+    func updateWindowMetrics() {
+        guard isVisible, let panel = panel else { return }
+        let metrics = MiniRecorderPanel.calculateWindowMetrics()
+        panel.setFrame(metrics, display: true, animate: false)
+    }
+
     func destroyWindow() {
         isVisible = false
         deinitializeWindow()

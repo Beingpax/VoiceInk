@@ -25,6 +25,7 @@ struct ModelManagementView: View {
 
     @State private var selectedFilter: ModelFilter = .recommended
     @State private var isShowingSettings = false
+    @State private var searchText = ""
 
     private let settingsPanelWidth: CGFloat = 400
 
@@ -47,7 +48,7 @@ struct ModelManagementView: View {
                     intelMacWarningBanner
                 }
 
-                defaultModelSection
+                AIModelsHeroView()
                 languageSelectionSection
                 availableModelsSection
             }
@@ -101,21 +102,6 @@ struct ModelManagementView: View {
             ModelSettingsView(whisperPrompt: whisperPrompt)
         }
     }
-    
-    private var defaultModelSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Default Model")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            Text(transcriptionModelManager.currentTranscriptionModel?.displayName ?? "No model selected")
-                .font(.title2)
-                .fontWeight(.bold)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CardBackground(isSelected: false))
-        .cornerRadius(10)
-    }
 
     private var languageSelectionSection: some View {
         LanguageSelectionView(transcriptionModelManager: transcriptionModelManager, displayMode: .full, whisperPrompt: whisperPrompt)
@@ -147,6 +133,26 @@ struct ModelManagementView: View {
                 }
                 
                 Spacer()
+                
+                // Beautiful Search Field
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                    
+                    TextField("Search models...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12, weight: .medium))
+                        .frame(width: 150)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white)
+                .cornerRadius(18)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.08), lineWidth: 1)
+                )
                 
                 Button(action: {
                     withAnimation(.smooth(duration: 0.3)) {
@@ -304,9 +310,10 @@ struct ModelManagementView: View {
     }
 
     private var filteredModels: [any TranscriptionModel] {
+        let baseModels: [any TranscriptionModel]
         switch selectedFilter {
         case .recommended:
-            return transcriptionModelManager.allAvailableModels.filter {
+            baseModels = transcriptionModelManager.allAvailableModels.filter {
                 let recommendedNames = ["ggml-base.en", "parakeet-tdt-0.6b-v2", "ggml-large-v3-turbo-q5_0", "whisper-large-v3-turbo"]
                 return recommendedNames.contains($0.name)
             }.sorted { model1, model2 in
@@ -316,14 +323,23 @@ struct ModelManagementView: View {
                 return index1 < index2
             }
         case .local:
-            return transcriptionModelManager.allAvailableModels.filter {
+            baseModels = transcriptionModelManager.allAvailableModels.filter {
                 ($0.provider == .whisper || $0.provider == .nativeApple || $0.provider == .fluidAudio)
                     && transcriptionModelManager.isAvailableOnCurrentOS($0)
             }
         case .cloud:
-            return transcriptionModelManager.allAvailableModels.filter { CloudProviderRegistry.provider(for: $0.provider) != nil }
+            baseModels = transcriptionModelManager.allAvailableModels.filter { CloudProviderRegistry.provider(for: $0.provider) != nil }
         case .custom:
-            return transcriptionModelManager.allAvailableModels.filter { $0.provider == .custom }
+            baseModels = transcriptionModelManager.allAvailableModels.filter { $0.provider == .custom }
+        }
+        
+        if searchText.isEmpty {
+            return baseModels
+        } else {
+            return baseModels.filter { model in
+                model.displayName.localizedCaseInsensitiveContains(searchText) ||
+                model.name.localizedCaseInsensitiveContains(searchText)
+            }
         }
     }
 
@@ -339,6 +355,166 @@ struct ModelManagementView: View {
             Task { @MainActor in
                 await whisperModelManager.importWhisperModel(from: url)
             }
+        }
+    }
+}
+
+// MARK: - Premium AI Models Hero Panel
+
+struct AIModelsHeroView: View {
+    @State private var time: Double = 0.0
+    private let timer = Timer.publish(every: 1.0/60.0, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header: Info and Live Indicator
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("AI Transcription Models")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("High-fidelity speech synthesis and inference")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.4))
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 12) {
+                    // Pulsing Active Badge
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color(red: 0.36, green: 0.28, blue: 0.88))
+                            .frame(width: 6, height: 6)
+                            .opacity(0.6 + 0.4 * sin(time * 6.0))
+                        
+                        Text("Ready")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.white.opacity(0.08))
+                    .cornerRadius(6)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            
+            // Dual-frequency organic wave Canvas
+            TimelineView(.animation) { timeline in
+                Canvas { context, size in
+                    let w = size.width
+                    let h = size.height
+                    let midY = h / 2
+                    
+                    let elapsed = timeline.date.timeIntervalSinceReferenceDate
+                    
+                    // Layer 1: Blue/Purple Wave
+                    var path1 = Path()
+                    path1.move(to: CGPoint(x: 0, y: midY))
+                    for x in stride(from: 0, to: w, by: 2) {
+                        let phase = x * 0.010 + elapsed * 1.3
+                        let noise = sin(x * 0.002 - elapsed * 0.7) * 12.0
+                        let y = midY + sin(phase) * 18.0 + sin(phase * 0.5) * 10.0 + noise
+                        if x == 0 { path1.move(to: CGPoint(x: x, y: y)) }
+                        else { path1.addLine(to: CGPoint(x: x, y: y)) }
+                    }
+                    context.stroke(path1, with: .linearGradient(
+                        Gradient(colors: [Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.85), Color(red: 0.28, green: 0.58, blue: 0.95).opacity(0.85)]),
+                        startPoint: CGPoint(x: 0, y: 0),
+                        endPoint: CGPoint(x: w, y: 0)
+                    ), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    
+                    // Layer 2: Neon Purple/Violet Wave
+                    var path2 = Path()
+                    path2.move(to: CGPoint(x: w, y: midY))
+                    for x in stride(from: 0, to: w, by: 2) {
+                        let phase = x * 0.015 - elapsed * 1.8
+                        let noise = cos(x * 0.004 + elapsed * 0.9) * 10.0
+                        let y = midY + sin(phase * 0.9) * 14.0 + cos(phase * 1.2) * 8.0 + noise
+                        if x == 0 { path2.move(to: CGPoint(x: x, y: y)) }
+                        else { path2.addLine(to: CGPoint(x: x, y: y)) }
+                    }
+                    context.stroke(path2, with: .linearGradient(
+                        Gradient(colors: [Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.65), Color(red: 0.0, green: 0.8, blue: 1.0).opacity(0.65)]),
+                        startPoint: CGPoint(x: 0, y: 0),
+                        endPoint: CGPoint(x: w, y: 0)
+                    ), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                    
+                    // Floating dynamic particles
+                    for i in 0..<8 {
+                        let seed = Double(i) * 45.2
+                        let px = (w * 0.1 + w * 0.8 * abs(sin(seed)))
+                        let py = midY + sin(elapsed * 1.5 + seed) * 20.0 + cos(elapsed * 0.7 + seed * 1.5) * 8.0
+                        
+                        let radius = 1.5 + 1.5 * abs(sin(elapsed * 3.0 + seed))
+                        let particleColor = Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.3 + 0.7 * abs(sin(elapsed * 2.5 + seed)))
+                        
+                        let rect = CGRect(x: px - radius, y: py - radius, width: radius * 2, height: radius * 2)
+                        context.fill(Path(ellipseIn: rect), with: .color(particleColor))
+                    }
+                }
+            }
+            .frame(height: 100)
+            
+            // Footer Info stats cards
+            HStack(spacing: 0) {
+                // Models Available
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Models Available")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.35))
+                        .textCase(.uppercase)
+                    
+                    Text("12 Available")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer()
+                
+                // Languages Supported
+                VStack(alignment: .center, spacing: 3) {
+                    Text("Languages Supported")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.35))
+                        .textCase(.uppercase)
+                    
+                    Text("16 Languages")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                
+                Spacer()
+                
+                // Avg. Accuracy
+                VStack(alignment: .trailing, spacing: 3) {
+                    Text("Avg. Accuracy")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.35))
+                        .textCase(.uppercase)
+                    
+                    Text("96.8%")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 0.28, green: 0.65, blue: 0.45))
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
+        }
+        .background(Color(red: 0.06, green: 0.05, blue: 0.12)) // Dark premium obsidian background
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
+        )
+        .shadow(color: Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.12), radius: 15, x: 0, y: 10)
+        .onReceive(timer) { _ in
+            time += 1.0/60.0
         }
     }
 }

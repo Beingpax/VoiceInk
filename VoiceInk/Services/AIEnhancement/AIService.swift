@@ -229,6 +229,28 @@ class AIService: ObservableObject {
         }
     }
     
+    var connectedLLMProviders: [AIProvider] {
+        AIProvider.allCases.filter { provider in
+            guard provider.isLLMProvider else { return false }
+            if provider == .ollama {
+                return ollamaService.isConnected
+            } else if provider == .localCLI {
+                return localCLIService.isConfigured
+            } else if provider.requiresAPIKey {
+                return APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue)
+            }
+            return false
+        }
+    }
+    
+    func getModel(for provider: AIProvider) -> String {
+        if let savedModel = userDefaults.string(forKey: "\(provider.rawValue)SelectedModel"), !savedModel.isEmpty {
+            return savedModel
+        }
+        return provider.defaultModel
+    }
+
+    
     var currentModel: String {
         if let selectedModel = selectedModels[selectedProvider],
            !selectedModel.isEmpty,
@@ -475,3 +497,24 @@ class AIService: ObservableObject {
         }
     }
 }
+
+extension AIProvider {
+    var isLLMProvider: Bool {
+        switch self {
+        case .cerebras, .groq, .gemini, .anthropic, .openAI, .openRouter, .mistral, .ollama, .localCLI, .custom:
+            return true
+        default:
+            return false
+        }
+    }
+    
+    var isCloudProvider: Bool {
+        switch self {
+        case .cerebras, .groq, .gemini, .anthropic, .openAI, .openRouter, .mistral, .custom:
+            return true
+        default:
+            return false
+        }
+    }
+}
+

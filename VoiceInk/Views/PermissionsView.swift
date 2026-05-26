@@ -94,24 +94,25 @@ struct PermissionCard: View {
     @State private var isRefreshing = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 16) {
-                // Icon with background
+                // Glowing circular icon container
                 ZStack {
-                    Circle()
-                        .fill(isGranted ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        .frame(width: 44, height: 44)
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(isGranted ? Color.green.opacity(0.08) : Color.orange.opacity(0.08))
+                        .frame(width: 42, height: 42)
 
                     Image(systemName: isGranted ? "\(icon).fill" : icon)
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(isGranted ? .green : .orange)
-                        .symbolRenderingMode(.hierarchical)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
                         Text(title)
-                            .font(.headline)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                        
                         if let message = infoTipMessage {
                             if let link = infoTipLink, !link.isEmpty {
                                 InfoTip(message, learnMoreURL: link)
@@ -120,14 +121,15 @@ struct PermissionCard: View {
                             }
                         }
                     }
+                    
                     Text(description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
                 }
                 
                 Spacer()
                 
-                // Status indicator with refresh
+                // Status badge with reload on hover/click
                 HStack(spacing: 12) {
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.5)) {
@@ -135,60 +137,59 @@ struct PermissionCard: View {
                         }
                         checkPermission()
                         
-                        // Reset the animation after a delay
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             isRefreshing = false
                         }
                     }) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.secondary)
                             .rotationEffect(.degrees(isRefreshing ? 360 : 0))
                     }
                     .buttonStyle(.plain)
-                    .contentShape(Rectangle())
                     
-                    if isGranted {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.green)
-                            .symbolRenderingMode(.hierarchical)
-                    } else {
-                        Image(systemName: "xmark.seal.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.orange)
-                            .symbolRenderingMode(.hierarchical)
+                    // Status Tag: ✓ Granted or ✗ Not Granted
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(isGranted ? Color.green : Color.orange)
+                            .frame(width: 5, height: 5)
+                        Text(isGranted ? "Granted" : "Not Granted")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(isGranted ? .green : .orange)
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(isGranted ? Color.green.opacity(0.08) : Color.orange.opacity(0.08))
+                    .cornerRadius(6)
                 }
             }
             
             if !isGranted {
                 Button(action: buttonAction) {
                     HStack {
-                        Text(buttonTitle)
                         Spacer()
+                        Text(buttonTitle)
                         Image(systemName: "arrow.right")
+                        Spacer()
                     }
-                    .font(.headline)
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(10)
+                    .padding(.vertical, 8)
+                    .background(Color(red: 0.36, green: 0.28, blue: 0.88))
+                    .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
+                .transition(.opacity)
             }
         }
-        .padding()
-        .background(CardBackground(isSelected: false))
-        .cornerRadius(16)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, y: 2)
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.04), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.01), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -198,21 +199,40 @@ struct PermissionsView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 32) {
-                // Header
-                CompactHeroSection(
-                    icon: "shield.lefthalf.filled",
-                    title: "App Permissions",
-                    description: "VoiceInk requires the following permissions to function properly"
-                )
+            VStack(spacing: 24) {
+                // Header with Shield Icon
+                VStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.1))
+                            .frame(width: 56, height: 56)
+                        Image(systemName: "shield.lefthalf.filled")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(Color(red: 0.36, green: 0.28, blue: 0.88))
+                    }
+                    .padding(.top, 24)
+
+                    Text("App Permissions")
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                    
+                    Text("VoiceInk requires the following system permissions to work flawlessly across your Mac")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 450)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 8)
+                .background(Color(red: 0.97, green: 0.97, blue: 0.98))
                 
-                // Permission Cards
-                VStack(spacing: 16) {
+                // Permission Cards List
+                VStack(spacing: 12) {
                     // Keyboard Shortcut Permission
                     PermissionCard(
                         icon: "keyboard",
                         title: "Keyboard Shortcut",
-                        description: "Set up a keyboard shortcut to use VoiceInk anywhere",
+                        description: "Configure a global system shortcut to trigger dictation instantly",
                         isGranted: recordingShortcutManager.isShortcutConfigured,
                         buttonTitle: "Configure Shortcut",
                         buttonAction: {
@@ -229,7 +249,7 @@ struct PermissionsView: View {
                     PermissionCard(
                         icon: "mic",
                         title: "Microphone Access",
-                        description: "Allow VoiceInk to record your voice for transcription",
+                        description: "Allow VoiceInk to capture your high-fidelity voice audio",
                         isGranted: permissionManager.audioPermissionStatus == .authorized,
                         buttonTitle: permissionManager.audioPermissionStatus == .notDetermined ? "Request Permission" : "Open System Settings",
                         buttonAction: {
@@ -248,7 +268,7 @@ struct PermissionsView: View {
                     PermissionCard(
                         icon: "hand.raised",
                         title: "Accessibility Access",
-                        description: "Allow VoiceInk to paste transcribed text directly at your cursor position",
+                        description: "Allow VoiceInk to paste transcribed text directly at your active cursor",
                         isGranted: permissionManager.isAccessibilityEnabled,
                         buttonTitle: "Open System Settings",
                         buttonAction: {
@@ -264,12 +284,11 @@ struct PermissionsView: View {
                     PermissionCard(
                         icon: "rectangle.on.rectangle",
                         title: "Screen Recording Access",
-                        description: "Allow VoiceInk to understand context from your screen for transcript Enhancement",
+                        description: "Capture active window context to maximize transcription accuracy",
                         isGranted: permissionManager.isScreenRecordingEnabled,
                         buttonTitle: "Request Permission",
                         buttonAction: {
                             permissionManager.requestScreenRecordingPermission()
-                            // After requesting, open system preferences as fallback
                             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
                                 NSWorkspace.shared.open(url)
                             }
@@ -279,10 +298,11 @@ struct PermissionsView: View {
                         infoTipLink: "https://tryvoiceink.com/docs/contextual-awareness"
                     )
                 }
+                .padding(.horizontal, 32)
             }
-            .padding(24)
+            .padding(.bottom, 32)
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
         .onAppear {
             permissionManager.checkAllPermissions()
         }

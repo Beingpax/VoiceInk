@@ -1,10 +1,30 @@
 import Foundation
 import SwiftData
+import AppKit
 
 class WordReplacementService {
     static let shared = WordReplacementService()
 
     private init() {}
+
+    private func resolvePlaceholders(in text: String) -> String {
+        var resolved = text
+        if resolved.contains("{date}") {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            resolved = resolved.replacingOccurrences(of: "{date}", with: formatter.string(from: Date()))
+        }
+        if resolved.contains("{time}") {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "h:mm a"
+            resolved = resolved.replacingOccurrences(of: "{time}", with: formatter.string(from: Date()))
+        }
+        if resolved.contains("{clipboard}") {
+            let clipboardText = NSPasteboard.general.string(forType: .string) ?? ""
+            resolved = resolved.replacingOccurrences(of: "{clipboard}", with: clipboardText)
+        }
+        return resolved
+    }
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
         let descriptor = FetchDescriptor<WordReplacement>(
@@ -25,7 +45,8 @@ class WordReplacementService {
         // Apply replacements (case-insensitive)
         for replacement in sortedReplacements {
             let originalGroup = replacement.originalText
-            let replacementText = replacement.replacementText
+            let replacementText = resolvePlaceholders(in: replacement.replacementText)
+
 
             let variants = originalGroup
                 .split(separator: ",")

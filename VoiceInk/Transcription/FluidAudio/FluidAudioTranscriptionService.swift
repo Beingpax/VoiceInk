@@ -98,10 +98,11 @@ class FluidAudioTranscriptionService: TranscriptionService {
 
         let durationSeconds = Double(audioSamples.count) / 16000.0
         let isVADEnabled = UserDefaults.standard.bool(forKey: "IsVADEnabled")
+        let isWhisperModeEnabled = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled")
 
         var speechAudio = audioSamples
         if durationSeconds >= 20.0, isVADEnabled {
-            let vadConfig = VadConfig(defaultThreshold: 0.7)
+            let vadConfig = VadConfig(defaultThreshold: isWhisperModeEnabled ? 0.45 : 0.7)
             if vadManager == nil {
                 do {
                     vadManager = try await VadManager(config: vadConfig)

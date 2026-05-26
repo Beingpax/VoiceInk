@@ -105,13 +105,28 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             liveTextPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        .background(Color.black)
+        .background(.ultraThinMaterial)
         .clipShape(
             NotchShape(
                 topCornerRadius: displayState == .liveText ? 12 : 8,
                 bottomCornerRadius: displayState == .liveText ? 22 : 16
             )
         )
+        .overlay(
+            NotchShape(
+                topCornerRadius: displayState == .liveText ? 12 : 8,
+                bottomCornerRadius: displayState == .liveText ? 22 : 16
+            )
+            .stroke(
+                LinearGradient(
+                    colors: [.white.opacity(0.18), .clear, .white.opacity(0.1)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1
+            )
+        )
+        .shadow(color: .black.opacity(0.45), radius: 12, x: 0, y: 6)
     }
 
     // MARK: - Main Row

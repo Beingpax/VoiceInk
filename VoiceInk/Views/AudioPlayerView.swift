@@ -182,19 +182,13 @@ struct WaveformView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    HStack(spacing: 0.5) {
-                        ForEach(0..<samples.count, id: \.self) { index in
-                            WaveformBar(
-                                sample: samples[index],
-                                isPlayed: CGFloat(index) / CGFloat(samples.count) <= CGFloat(currentTime / duration),
-                                totalBars: samples.count,
-                                geometryWidth: geometry.size.width,
-                                isHovering: isHovering,
-                                hoverProgress: hoverLocation / geometry.size.width
-                            )
-                        }
-                    }
-                    .opacity(0.6)
+                    PlaybackAlienWaveform(
+                        samples: samples,
+                        progress: duration > 0 ? CGFloat(currentTime / duration) : 0,
+                        isHovering: isHovering,
+                        hoverProgress: geometry.size.width > 0 ? hoverLocation / geometry.size.width : 0
+                    )
+                    .opacity(0.82)
                     .frame(maxHeight: .infinity)
                     .padding(.horizontal, 2)
 
@@ -243,6 +237,237 @@ struct WaveformView: View {
             }
         }
         .frame(height: 32)
+    }
+}
+
+private struct PlaybackAlienWaveform: View {
+    let samples: [Float]
+    let progress: CGFloat
+    let isHovering: Bool
+    let hoverProgress: CGFloat
+
+    private let gradientColors = [
+        Color(red: 0.58, green: 0.22, blue: 0.95), // Electric Purple
+        Color(red: 0.48, green: 0.58, blue: 0.68),  // Cement / Gray-Blue
+        Color(red: 0.52, green: 0.32, blue: 1.0)   // Violet/Purple
+    ]
+
+    var body: some View {
+        Canvas { context, size in
+            guard samples.count > 1, size.width > 0, size.height > 0 else { return }
+
+            let midY = size.height / 2
+            let visibleSamples = reducedSamples(for: size.width)
+            let step = size.width / CGFloat(max(1, visibleSamples.count - 1))
+            let hoverX = max(0, min(size.width, hoverProgress * size.width))
+            var topPoints: [CGPoint] = []
+            var bottomPoints: [CGPoint] = []
+            var centerPoints: [CGPoint] = []
+
+            for (index, sample) in visibleSamples.enumerated() {
+                let x = CGFloat(index) * step
+                let drift = sin(Double(index) * 0.62) * 3.6 + cos(Double(index) * 0.19) * 2.2
+                let hoverLift = isHovering ? max(0, 1 - abs(x - hoverX) / 42) * 4.0 : 0
+                let amplitude = max(0.08, CGFloat(sample))
+                let upper = 3.5 + amplitude * (size.height * 0.38 + hoverLift)
+                let lower = 3.5 + amplitude * (size.height * 0.30 + hoverLift * 0.7)
+                let center = CGPoint(x: x + CGFloat(drift) * 0.28, y: midY + CGFloat(drift) * 0.18)
+                topPoints.append(CGPoint(x: center.x + CGFloat(drift) * 0.35, y: center.y - upper))
+                bottomPoints.append(CGPoint(x: center.x - CGFloat(drift) * 0.25, y: center.y + lower))
+                centerPoints.append(center)
+            }
+
+            // Calculate longitudinal meridians for the volumetric grid/wireframe mesh in playback
+            let meridiansCount = 7
+            var meridianPoints: [[CGPoint]] = Array(repeating: [], count: meridiansCount)
+
+            for index in 0..<visibleSamples.count {
+                let top = topPoints[index]
+                let bottom = bottomPoints[index]
+                
+                for m in 0..<meridiansCount {
+                    let fraction = CGFloat(m) / CGFloat(meridiansCount - 1)
+                    
+                    // Subtle hover/playback undulating wave modulation
+                    let wavePhase = Double(m) * 0.45 + Double(index) * 0.22
+                    let wiggle = sin(wavePhase) * (isHovering ? 1.5 : 0.5)
+                    
+                    let x = top.x + (bottom.x - top.x) * fraction
+                    let y = top.y + (bottom.y - top.y) * fraction + wiggle
+                    meridianPoints[m].append(CGPoint(x: x, y: y))
+                }
+            }
+
+            let purpleGlow = Color(red: 0.58, green: 0.22, blue: 0.95)
+            let cementGlow = Color(red: 0.48, green: 0.58, blue: 0.68)
+
+            // Function to draw the mesh with specific opacity/glowing parameters
+            let drawMesh = { (ctx: GraphicsContext, isPlayed: Bool) in
+                let opacity: CGFloat = isPlayed ? 1.0 : 0.28
+                let fillOpacity: CGFloat = isPlayed ? 0.12 : 0.04
+                let lineMultiplier: CGFloat = isPlayed ? 1.0 : 0.6
+                
+                // 1. Fill
+                let fillGradient = GraphicsContext.Shading.linearGradient(
+                    Gradient(colors: [
+                        purpleGlow.opacity(Double(fillOpacity)),
+                        cementGlow.opacity(Double(fillOpacity * 0.7)),
+                        purpleGlow.opacity(Double(fillOpacity))
+                    ]),
+                    startPoint: CGPoint(x: 0, y: midY),
+                    endPoint: CGPoint(x: size.width, y: midY)
+                )
+                ctx.fill(closedWaveformPath(top: topPoints, bottom: bottomPoints), with: fillGradient)
+
+                // 2. Ribs
+                let ribStep = isPlayed ? 2 : 4
+                for idx in stride(from: 1, to: visibleSamples.count - 1, by: ribStep) {
+                    var ribPath = Path()
+                    ribPath.move(to: meridianPoints[0][idx])
+                    for m in 1..<meridiansCount {
+                        ribPath.addLine(to: meridianPoints[m][idx])
+                    }
+                    ctx.stroke(
+                        ribPath,
+                        with: .color(Color(white: 0.55).opacity(isPlayed ? 0.15 : 0.05)),
+                        style: StrokeStyle(lineWidth: 0.5 * lineMultiplier, lineCap: .round)
+                    )
+                }
+
+                // 3. Longitudinal grid lines
+                for m in 1..<(meridiansCount - 1) {
+                    ctx.stroke(
+                        smoothedPath(through: meridianPoints[m]),
+                        with: .color(Color(white: 0.52).opacity(isPlayed ? 0.18 : 0.06)),
+                        style: StrokeStyle(lineWidth: 0.6 * lineMultiplier, lineCap: .round, lineJoin: .round)
+                    )
+                }
+
+                // 4. Cement/Gray-Blue Glowing Ribbon (using 3rd meridian)
+                var cementContext = ctx
+                if isPlayed {
+                    cementContext.addFilter(.shadow(color: cementGlow.opacity(0.65), radius: 8, x: 0, y: 0))
+                }
+                cementContext.stroke(
+                    smoothedPath(through: meridianPoints[2]),
+                    with: .linearGradient(
+                        Gradient(colors: [cementGlow.opacity(Double(opacity)), Color(red: 0.52, green: 0.32, blue: 1.0).opacity(Double(opacity))]),
+                        startPoint: CGPoint(x: 0, y: midY),
+                        endPoint: CGPoint(x: size.width, y: midY)
+                    ),
+                    style: StrokeStyle(lineWidth: (isPlayed ? 2.2 : 1.1), lineCap: .round, lineJoin: .round)
+                )
+
+                // 5. Electric Purple Glowing Ribbon (using 5th meridian)
+                var purpleContext = ctx
+                if isPlayed {
+                    purpleContext.addFilter(.shadow(color: purpleGlow.opacity(0.65), radius: 8, x: 0, y: 0))
+                }
+                purpleContext.stroke(
+                    smoothedPath(through: meridianPoints[4]),
+                    with: .linearGradient(
+                        Gradient(colors: [purpleGlow.opacity(Double(opacity)), Color(red: 0.52, green: 0.32, blue: 1.0).opacity(Double(opacity))]),
+                        startPoint: CGPoint(x: 0, y: midY),
+                        endPoint: CGPoint(x: size.width, y: midY)
+                    ),
+                    style: StrokeStyle(lineWidth: (isPlayed ? 2.0 : 1.0), lineCap: .round, lineJoin: .round)
+                )
+
+                // 6. Contours
+                var topContext = ctx
+                if isPlayed {
+                    topContext.addFilter(.shadow(color: cementGlow.opacity(0.35), radius: 4, x: 0, y: 0))
+                }
+                topContext.stroke(
+                    smoothedPath(through: topPoints),
+                    with: .linearGradient(
+                        Gradient(colors: [cementGlow.opacity(Double(opacity)), purpleGlow.opacity(Double(opacity * 0.6))]),
+                        startPoint: CGPoint(x: 0, y: midY),
+                        endPoint: CGPoint(x: size.width, y: midY)
+                    ),
+                    style: StrokeStyle(lineWidth: (isPlayed ? 1.5 : 0.8), lineCap: .round, lineJoin: .round)
+                )
+
+                var bottomContext = ctx
+                if isPlayed {
+                    bottomContext.addFilter(.shadow(color: purpleGlow.opacity(0.35), radius: 4, x: 0, y: 0))
+                }
+                bottomContext.stroke(
+                    smoothedPath(through: bottomPoints),
+                    with: .linearGradient(
+                        Gradient(colors: [purpleGlow.opacity(Double(opacity)), cementGlow.opacity(Double(opacity * 0.6))]),
+                        startPoint: CGPoint(x: 0, y: midY),
+                        endPoint: CGPoint(x: size.width, y: midY)
+                    ),
+                    style: StrokeStyle(lineWidth: (isPlayed ? 1.35 : 0.7), lineCap: .round, lineJoin: .round)
+                )
+
+                // Center line
+                ctx.stroke(
+                    smoothedPath(through: centerPoints),
+                    with: .color(isPlayed ? .primary.opacity(0.24) : .primary.opacity(0.08)),
+                    style: StrokeStyle(lineWidth: 0.65, lineCap: .round, lineJoin: .round, dash: [3.5, 7.0])
+                )
+            }
+
+            // Draw unplayed background
+            drawMesh(context, false)
+
+            // Draw played/glowing layer clipped to progress
+            var playedContext = context
+            playedContext.clip(to: Path(CGRect(x: 0, y: 0, width: size.width * max(0, min(1, progress)), height: size.height)))
+            drawMesh(playedContext, true)
+        }
+    }
+
+    private func reducedSamples(for width: CGFloat) -> [Float] {
+        let targetCount = max(24, min(80, Int(width / 5)))
+        let strideCount = max(1, samples.count / targetCount)
+        let reduced = samples.enumerated().compactMap { index, sample in
+            index.isMultiple(of: strideCount) ? sample : nil
+        }
+        return reduced.count > 1 ? reduced : samples
+    }
+
+    private func color(at location: CGFloat, opacity: CGFloat) -> Color {
+        let safeOpacity = Double(max(0, min(1, opacity)))
+        if location < 0.34 {
+            return gradientColors[0].opacity(safeOpacity)
+        }
+        if location < 0.68 {
+            return gradientColors[1].opacity(safeOpacity)
+        }
+        return gradientColors[2].opacity(safeOpacity)
+    }
+
+    private func smoothedPath(through points: [CGPoint]) -> Path {
+        var path = Path()
+        guard let first = points.first else { return path }
+        path.move(to: first)
+
+        for index in 1..<points.count {
+            let previous = points[index - 1]
+            let current = points[index]
+            let midpoint = CGPoint(
+                x: (previous.x + current.x) / 2,
+                y: (previous.y + current.y) / 2
+            )
+            path.addQuadCurve(to: midpoint, control: previous)
+        }
+
+        if let last = points.last {
+            path.addLine(to: last)
+        }
+        return path
+    }
+
+    private func closedWaveformPath(top: [CGPoint], bottom: [CGPoint]) -> Path {
+        var path = smoothedPath(through: top)
+        for point in bottom.reversed() {
+            path.addLine(to: point)
+        }
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -585,4 +810,3 @@ struct AudioPlayerView: View {
         }
     }
 }
-

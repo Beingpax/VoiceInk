@@ -648,6 +648,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
               outputFrameCount <= conversionBufferSize else { return }
 
         // Convert Float32 multi-channel → Int16 mono (with sample rate conversion if needed)
+        let isWhisperModeEnabled = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled")
+        let gainMultiplier: Float32 = isWhisperModeEnabled ? 2.5 : 1.0
+
         if inputSampleRate == outputSampleRate {
             // Direct conversion, just format change and channel mixing
             for i in 0..<Int(frameCount) {
@@ -657,6 +660,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
                     sample += inputSamples[i * Int(inputChannels) + ch]
                 }
                 sample /= Float32(inputChannels)
+                sample *= gainMultiplier
 
                 // Convert to Int16 with clipping
                 let scaled = sample * 32767.0
@@ -681,6 +685,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
                     sample += s1 + frac * (s2 - s1)
                 }
                 sample /= Float32(inputChannels)
+                sample *= gainMultiplier
 
                 // Convert to Int16
                 let scaled = sample * 32767.0

@@ -111,6 +111,10 @@ class TranscriptionPipeline {
                 text = WhisperTextFormatter.format(text)
             }
 
+            if UserDefaults.standard.bool(forKey: "SmartSpacingAndCapitalization") {
+                text = TranscriptionPipeline.applySmartSpacingAndCapitalization(text)
+            }
+
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
             let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
 
@@ -203,6 +207,12 @@ class TranscriptionPipeline {
                     NotificationCenter.default.post(name: .sessionMetricsDidChange, object: nil)
                 }
                 NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
+
+                // Sync the completed transcription to local Nerv Cockpit memory or execute voice commands
+                if transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
+                    let textToSync = (transcription.enhancedText != nil && !transcription.enhancedText!.isEmpty && !transcription.enhancedText!.hasPrefix("Enhancement failed:")) ? transcription.enhancedText! : transcription.text
+                    NervSyncService.shared.processTranscription(textToSync)
+                }
             } catch {
                 logger.error("Failed to save transcription: \(error.localizedDescription, privacy: .public)")
             }
@@ -213,7 +223,33 @@ class TranscriptionPipeline {
             return
         }
 
-        if var textToPaste = finalPastedText,
+        var shouldPaste = true
+        var textToPaste = finalPastedText ?? ""
+        let activeConfig = PowerModeManager.shared.currentActiveConfiguration
+
+        if transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
+            let actionResult = AutomationActionService.shared.processActions(in: textToPaste)
+            shouldPaste = actionResult.shouldPaste
+            textToPaste = actionResult.cleanedText
+
+            // Run post-recording script hook if available
+            if let activeConfig,
+               let postRecordScript = activeConfig.postRecordScript,
+               !postRecordScript.isEmpty {
+                let rawTranscript = transcription.text
+                let pmName = activeConfig.name
+                Task {
+                    await ShellScriptService.shared.runScript(
+                        postRecordScript,
+                        transcript: textToPaste,
+                        rawTranscript: rawTranscript,
+                        powerModeName: pmName
+                    )
+                }
+            }
+        }
+
+        if shouldPaste && !textToPaste.isEmpty,
            transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
             if case .trialExpired = licenseViewModel.licenseState {
                 textToPaste = """
@@ -225,7 +261,7 @@ class TranscriptionPipeline {
             let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
             let pastedText = textToPaste + (appendSpace ? " " : "")
             _ = await CursorPaster.startPasteAtCursor(pastedText).value
-            let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey
+            let autoSendKey = activeConfig?.autoSendKey
             SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss {
                 if let autoSendKey, autoSendKey.isEnabled {
@@ -236,9 +272,58 @@ class TranscriptionPipeline {
                 }
             }
         } else {
+            SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss()
         }
 
         saveTranscriptionAndPostCompletion()
+    }
+
+    static func applySmartSpacingAndCapitalization(_ input: String) -> String {
+        guard !input.isEmpty else { return input }
+        
+        var text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // Remove spaces before punctuation: . , ? ! : ;
+        let punctuations = [".", ",", "?", "!", ":", ";"]
+        for p in punctuations {
+            let escapedP = NSRegularExpression.escapedPattern(for: p)
+            let regex = try? NSRegularExpression(pattern: "\\s+\(escapedP)", options: [])
+            text = regex?.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: p) ?? text
+        }
+        
+        // Ensure a single space after punctuation if followed by any character that is not a whitespace
+        for p in punctuations {
+            let escapedP = NSRegularExpression.escapedPattern(for: p)
+            let regex = try? NSRegularExpression(pattern: "\(escapedP)(?=[^\\s])", options: [])
+            text = regex?.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: "\(p) ") ?? text
+        }
+        
+        // Replace multiple consecutive spaces with a single space
+        let multiSpaceRegex = try? NSRegularExpression(pattern: "\\s+", options: [])
+        text = multiSpaceRegex?.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: " ") ?? text
+        
+        // Capitalize the first letter of each sentence
+        var chars = Array(text)
+        var capitalizeNext = true
+        for i in 0..<chars.count {
+            let c = chars[i]
+            if capitalizeNext {
+                if c.isWhitespace {
+                    continue
+                } else if c.isLetter {
+                    chars[i] = Character(c.uppercased())
+                    capitalizeNext = false
+                } else {
+                    capitalizeNext = false
+                }
+            }
+            if c == "." || c == "?" || c == "!" {
+                capitalizeNext = true
+            }
+        }
+        text = String(chars)
+        
+        return text
     }
 }

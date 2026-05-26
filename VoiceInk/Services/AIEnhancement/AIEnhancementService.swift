@@ -170,9 +170,30 @@ class AIEnhancementService: ObservableObject {
             ""
         }
 
+        let browserUrlContext: String
+        if let frontmostApp = NSWorkspace.shared.frontmostApplication,
+           let bundleIdentifier = frontmostApp.bundleIdentifier,
+           let browserType = BrowserType.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier }) {
+            if let url = try? await BrowserURLService.shared.getCurrentURL(from: browserType), !url.isEmpty {
+                browserUrlContext = "\n\n<ACTIVE_BROWSER_URL>\n\(url)\n</ACTIVE_BROWSER_URL>"
+            } else {
+                browserUrlContext = ""
+            }
+        } else {
+            browserUrlContext = ""
+        }
+
+        let activeAppContext: String
+        if let frontmostApp = NSWorkspace.shared.frontmostApplication {
+            let appName = frontmostApp.localizedName ?? "Unknown"
+            activeAppContext = "\n\n<ACTIVE_APPLICATION>\nName: \(appName)\nBundle ID: \(frontmostApp.bundleIdentifier ?? "")\n</ACTIVE_APPLICATION>"
+        } else {
+            activeAppContext = ""
+        }
+
         let customVocabulary = customVocabularyService.getCustomVocabulary(from: modelContext)
 
-        let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext
+        let allContextSections = selectedTextContext + clipboardContext + screenCaptureContext + browserUrlContext + activeAppContext
 
         let customVocabularySection = if !customVocabulary.isEmpty {
             """
@@ -201,24 +222,14 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
-    private func makeRequest(text: String, mode: EnhancementPrompt) async throws -> String {
-        guard isConfigured else {
-            throw EnhancementError.notConfigured
-        }
-
-        guard !text.isEmpty else {
-            return ""
-        }
-
-        let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
-        let systemMessage = await getSystemMessage(for: mode)
-
-        await MainActor.run {
-            self.lastSystemMessageSent = systemMessage
-            self.lastUserMessageSent = formattedText
-        }
-
-        if aiService.selectedProvider == .ollama {
+    private func executeRequest(
+        formattedText: String,
+        systemMessage: String,
+        provider: AIProvider,
+        model: String,
+        apiKey: String
+    ) async throws -> String {
+        if provider == .ollama {
             do {
                 let result = try await aiService.enhanceWithOllama(
                     text: formattedText,
@@ -240,7 +251,7 @@ class AIEnhancementService: ObservableObject {
             }
         }
 
-        if aiService.selectedProvider == .localCLI {
+        if provider == .localCLI {
             do {
                 let result = try await aiService.enhanceWithLocalCLI(systemPrompt: systemMessage, userPrompt: formattedText)
                 return AIEnhancementOutputFilter.filter(result)
@@ -257,32 +268,32 @@ class AIEnhancementService: ObservableObject {
 
         do {
             let result: String
-            switch aiService.selectedProvider {
+            switch provider {
             case .anthropic:
                 result = try await AnthropicLLMClient.chatCompletion(
-                    apiKey: aiService.apiKey,
-                    model: aiService.currentModel,
+                    apiKey: apiKey,
+                    model: model,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     timeout: baseTimeout
                 )
             default:
-                guard let baseURL = URL(string: aiService.selectedProvider.baseURL) else {
-                    throw EnhancementError.customError("\(aiService.selectedProvider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
+                guard let baseURL = URL(string: provider.baseURL) else {
+                    throw EnhancementError.customError("\(provider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
                 }
-                let temperature = aiService.currentModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
+                let temperature = model.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
                 let reasoningEffort = ReasoningConfig.getReasoningParameter(
-                    for: aiService.selectedProvider,
-                    modelName: aiService.currentModel
+                    for: provider,
+                    modelName: model
                 )
                 let extraBody = ReasoningConfig.getExtraBodyParameters(
-                    for: aiService.selectedProvider,
-                    modelName: aiService.currentModel
+                    for: provider,
+                    modelName: model
                 )
                 result = try await OpenAILLMClient.chatCompletion(
                     baseURL: baseURL,
-                    apiKey: aiService.apiKey,
-                    model: aiService.currentModel,
+                    apiKey: apiKey,
+                    model: model,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
                     temperature: temperature,
@@ -298,6 +309,83 @@ class AIEnhancementService: ObservableObject {
             throw error
         } catch {
             throw EnhancementError.customError(error.localizedDescription)
+        }
+    }
+
+    private func makeRequest(text: String, mode: EnhancementPrompt) async throws -> String {
+        guard isConfigured else {
+            throw EnhancementError.notConfigured
+        }
+
+        guard !text.isEmpty else {
+            return ""
+        }
+
+        let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
+        let systemMessage = await getSystemMessage(for: mode)
+
+        await MainActor.run {
+            self.lastSystemMessageSent = systemMessage
+            self.lastUserMessageSent = formattedText
+        }
+
+        let primaryProvider = aiService.selectedProvider
+        let primaryModel = aiService.currentModel
+        let primaryKey = aiService.apiKey
+
+        // 1. Try primary provider first
+        do {
+            logger.info("Attempting AI enhancement using primary provider \(primaryProvider.rawValue) with model \(primaryModel)...")
+            return try await executeRequest(
+                formattedText: formattedText,
+                systemMessage: systemMessage,
+                provider: primaryProvider,
+                model: primaryModel,
+                apiKey: primaryKey
+            )
+        } catch {
+            logger.warning("Primary provider \(primaryProvider.rawValue) failed: \(error.localizedDescription)")
+
+            // Check if fallback is enabled
+            let fallbackEnabled = UserDefaults.standard.object(forKey: "EnhancementAutoFallback") == nil ? true : UserDefaults.standard.bool(forKey: "EnhancementAutoFallback")
+            guard fallbackEnabled else {
+                logger.info("Auto-fallback is disabled. Failing immediately.")
+                throw error
+            }
+
+            // Get all fallback cloud providers (connected/configured LLM providers except the primary one)
+            let fallbacks = aiService.connectedLLMProviders.filter { $0 != primaryProvider && $0.isCloudProvider }
+
+            if fallbacks.isEmpty {
+                logger.warning("No fallback cloud providers available.")
+                throw error
+            }
+
+            logger.info("Attempting auto-fallback. Available providers: \(fallbacks.map { $0.rawValue }.joined(separator: ", "))")
+
+            for fallbackProvider in fallbacks {
+                let fallbackModel = aiService.getModel(for: fallbackProvider)
+                let fallbackKey = APIKeyManager.shared.getAPIKey(forProvider: fallbackProvider.rawValue) ?? ""
+
+                logger.info("Falling back to \(fallbackProvider.rawValue) using model \(fallbackModel)")
+                do {
+                    let result = try await executeRequest(
+                        formattedText: formattedText,
+                        systemMessage: systemMessage,
+                        provider: fallbackProvider,
+                        model: fallbackModel,
+                        apiKey: fallbackKey
+                    )
+
+                    logger.info("Successfully completed request using fallback provider \(fallbackProvider.rawValue)!")
+                    return result
+                } catch {
+                    logger.warning("Fallback provider \(fallbackProvider.rawValue) failed: \(error.localizedDescription)")
+                }
+            }
+
+            // If all fallbacks failed, throw the original error
+            throw error
         }
     }
 

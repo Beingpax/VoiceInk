@@ -76,7 +76,11 @@ final class ShortcutMonitor {
     }
 
     private func installEventTap() -> Bool {
-        guard Self.hasListenEventAccess() else {
+        logToFile("[ShortcutMonitor] installEventTap called")
+        let hasAccess = Self.hasListenEventAccess()
+        logToFile("[ShortcutMonitor] hasListenEventAccess returned: \(hasAccess)")
+        guard hasAccess else {
+            logToFile("[ShortcutMonitor] installEventTap failed: No listen event access")
             return false
         }
 
@@ -88,6 +92,7 @@ final class ShortcutMonitor {
             let monitor = Unmanaged<ShortcutMonitor>.fromOpaque(userInfo).takeUnretainedValue()
 
             if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                logToFile("[ShortcutMonitor] Event tap disabled by timeout or user input, re-enabling")
                 monitor.resetPressedShortcutsAfterTapInterruption()
                 if let eventTap = monitor.eventTap {
                     CGEvent.tapEnable(tap: eventTap, enable: true)
@@ -107,10 +112,13 @@ final class ShortcutMonitor {
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
+            logToFile("[ShortcutMonitor] installEventTap failed: CGEvent.tapCreate returned nil")
             return false
         }
+        logToFile("[ShortcutMonitor] installEventTap succeeded: CGEventTap created successfully")
 
         guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0) else {
+            logToFile("[ShortcutMonitor] installEventTap failed: CFMachPortCreateRunLoopSource returned nil")
             CFMachPortInvalidate(eventTap)
             return false
         }
@@ -119,20 +127,27 @@ final class ShortcutMonitor {
         eventTapRunLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
+        logToFile("[ShortcutMonitor] installEventTap completely initialized and added to run loop")
         return true
     }
 
     private static func hasListenEventAccess() -> Bool {
+        logToFile("[ShortcutMonitor] Checking preflight listen event access")
         if CGPreflightListenEventAccess() {
+            logToFile("[ShortcutMonitor] Preflight listen event access: GRANTED")
             return true
         }
 
+        logToFile("[ShortcutMonitor] Preflight listen event access: NOT GRANTED, requested previously: \(hasRequestedListenEventAccess)")
         guard !hasRequestedListenEventAccess else {
             return false
         }
 
         hasRequestedListenEventAccess = true
-        return CGRequestListenEventAccess()
+        logToFile("[ShortcutMonitor] Requesting listen event access...")
+        let requested = CGRequestListenEventAccess()
+        logToFile("[ShortcutMonitor] Request listen event access returned: \(requested)")
+        return requested
     }
 
     private func handleCGEvent(type: CGEventType, event: CGEvent) -> Bool {
@@ -364,6 +379,22 @@ private extension ShortcutMonitor.EventKind {
             self = .flagsChanged
         default:
             return nil
+        }
+    }
+}
+
+fileprivate func logToFile(_ message: String) {
+    let logMessage = "[\(Date())] \(message)\n"
+    if let data = logMessage.data(using: .utf8) {
+        let fileURL = URL(fileURLWithPath: "/tmp/voiceink_shortcuts.log")
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            if let fileHandle = try? FileHandle(forWritingTo: fileURL) {
+                try? fileHandle.seekToEndOfFile()
+                try? fileHandle.write(contentsOf: data)
+                try? fileHandle.close()
+            }
+        } else {
+            try? data.write(to: fileURL)
         }
     }
 }

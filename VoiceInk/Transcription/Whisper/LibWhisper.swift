@@ -71,12 +71,13 @@ actor WhisperContext {
         
         // Configure VAD if enabled by user and model is available
         let isVADEnabled = UserDefaults.standard.bool(forKey: "IsVADEnabled")
+        let isWhisperModeEnabled = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled")
         if isVADEnabled, let vadModelPath = self.vadModelPath {
             params.vad = true
             params.vad_model_path = (vadModelPath as NSString).utf8String
             
             var vadParams = whisper_vad_default_params()
-            vadParams.threshold = 0.50
+            vadParams.threshold = isWhisperModeEnabled ? 0.35 : 0.50
             vadParams.min_speech_duration_ms = 250
             vadParams.min_silence_duration_ms = 100
             vadParams.max_speech_duration_s = Float.greatestFiniteMagnitude

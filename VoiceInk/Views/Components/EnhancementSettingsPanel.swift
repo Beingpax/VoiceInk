@@ -6,6 +6,7 @@ struct EnhancementSettingsPanel: View {
     @AppStorage("ShortEnhancementWordThreshold") private var shortEnhancementWordThreshold = 3
     @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 7
     @AppStorage("EnhancementRetryOnTimeout") private var retryOnTimeout = true
+    @AppStorage("EnhancementAutoFallback") private var autoFallback = true
     @State private var isShortEnhancementExpanded = false
     @State private var isHandlingToggleChange = false
 
@@ -136,10 +137,18 @@ struct EnhancementSettingsPanel: View {
                         Text("Retry").tag(true)
                     }
                     .pickerStyle(.menu)
+
+                    Toggle(isOn: $autoFallback) {
+                        HStack(spacing: 4) {
+                            Text("Cloud Provider Auto-Fallback")
+                            InfoTip("If the selected AI provider fails (rate limit, timeout, or server error), automatically try other configured cloud providers (Cerebras, Groq, Gemini, Anthropic, OpenAI, OpenRouter, Mistral) in sequence.")
+                        }
+                    }
+                    .toggleStyle(.switch)
                 } header: {
                     HStack(spacing: 4) {
-                        Text("Request Timeout")
-                        InfoTip("Set how long to wait for the AI provider to respond. If no response is received within this duration, you can either fail immediately and paste the original transcription, or retry the request (up to 3 attempts).")
+                        Text("Request Timeout & Fallback")
+                        InfoTip("Configure timeout options and multi-provider failover. Since free tiers often rate limit or fail, enabling Auto-Fallback ensures continuous service.")
                     }
                 }
 

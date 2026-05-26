@@ -38,6 +38,8 @@ class RecorderUIManager: ObservableObject {
     var notchWindowManager: NotchWindowManager?
     var miniWindowManager: MiniWindowManager?
 
+    static var shared: RecorderUIManager?
+
     private weak var engine: VoiceInkEngine?
     private var recorder: Recorder?
 
@@ -49,6 +51,7 @@ class RecorderUIManager: ObservableObject {
     func configure(engine: VoiceInkEngine, recorder: Recorder) {
         self.engine = engine
         self.recorder = recorder
+        Self.shared = self
         setupNotifications()
     }
 

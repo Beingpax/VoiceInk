@@ -1,6 +1,6 @@
 import SwiftUI
 import AppKit
-// MARK: - Local Model Card View
+
 struct WhisperModelCardView: View {
     let model: WhisperModel
     let isDownloaded: Bool
@@ -13,159 +13,209 @@ struct WhisperModelCardView: View {
     var deleteAction: () -> Void
     var setDefaultAction: () -> Void
     var downloadAction: () -> Void
+    
     private var isDownloading: Bool {
         downloadProgress.keys.contains(model.name + "_main") || 
         downloadProgress.keys.contains(model.name + "_coreml")
     }
     
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Main Content
-            VStack(alignment: .leading, spacing: 6) {
-                headerSection
-                metadataSection
-                descriptionSection
-                progressSection
+        HStack(alignment: .center, spacing: 16) {
+            // Leading Premium Gradient Icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(LinearGradient(
+                        colors: [Color.white, Color(red: 0.95, green: 0.95, blue: 0.99)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.12), lineWidth: 1.5)
+                    )
+                
+                Image(systemName: "waveform")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(LinearGradient(
+                        colors: [Color(red: 0.54, green: 0.12, blue: 0.92), Color(red: 0.28, green: 0.58, blue: 0.95)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+            }
+            
+            // Main Text Content
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(model.displayName)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                    
+                    if model.displayName.contains("Base") {
+                        Text("Recommended")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(Color(red: 0.28, green: 0.65, blue: 0.45))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.28, green: 0.65, blue: 0.45).opacity(0.1))
+                            .cornerRadius(4)
+                    }
+                }
+                
+                // Metadata Row with Dot Ratings
+                HStack(spacing: 12) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 10))
+                        Text(model.language)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "internaldrive")
+                            .font(.system(size: 10))
+                        Text(model.size)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                    
+                    // Speed Dots (Green)
+                    HStack(spacing: 4) {
+                        Text("Speed")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                        
+                        HStack(spacing: 2) {
+                            let speedVal = Int(model.speed * 5)
+                            ForEach(0..<5) { idx in
+                                Circle()
+                                    .fill(idx < speedVal ? Color(red: 0.28, green: 0.65, blue: 0.45) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.1))
+                                    .frame(width: 5, height: 5)
+                            }
+                        }
+                        
+                        Text(String(format: "%.1f", model.speed * 10))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                    }
+                    
+                    // Accuracy Dots (Yellow/Orange)
+                    HStack(spacing: 4) {
+                        Text("Accuracy")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                        
+                        HStack(spacing: 2) {
+                            let accuracyVal = Int(model.accuracy * 5)
+                            ForEach(0..<5) { idx in
+                                Circle()
+                                    .fill(idx < accuracyVal ? Color(red: 0.95, green: 0.65, blue: 0.15) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.1))
+                                    .frame(width: 5, height: 5)
+                            }
+                        }
+                        
+                        Text(String(format: "%.1f", model.accuracy * 10))
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                    }
+                }
+                
+                Text(model.description)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                    .lineLimit(1)
+                    .padding(.top, 1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Action Controls
-            actionSection
-        }
-        .padding(16)
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
-    }
-    
-    private var headerSection: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(model.displayName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color(.labelColor))
-            
             Spacer()
-        }
-    }
-    
-    private var metadataSection: some View {
-        HStack(spacing: 12) {
-            // Language
-            Label(model.language, systemImage: "globe")
-                .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
             
-            // Size
-            Label(model.size, systemImage: "internaldrive")
-                .font(.system(size: 11))
-                .foregroundColor(Color(.secondaryLabelColor))
-                .lineLimit(1)
-            
-            // Speed
-            HStack(spacing: 3) {
-                Text("Speed")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                progressDotsWithNumber(value: model.speed * 10)
-            }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            
-            // Accuracy
-            HStack(spacing: 3) {
-                Text("Accuracy")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                progressDotsWithNumber(value: model.accuracy * 10)
-            }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-        }
-        .lineLimit(1)
-    }
-    
-    private var descriptionSection: some View {
-        Text(model.description)
-            .font(.system(size: 11))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 4)
-    }
-    
-    private var progressSection: some View {
-        Group {
-            if isDownloading || isWarming {
-                DownloadProgressView(
-                    modelName: model.name,
-                    downloadProgress: downloadProgress,
-                    isOptimizing: isWarming && !isDownloading
-                )
-                .padding(.top, 8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-    
-    private var actionSection: some View {
-        HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            } else if isDownloaded {
-                Button(action: setDefaultAction) {
-                    Text("Set as Default")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            } else {
-                Button(action: downloadAction) {
-                    HStack(spacing: 4) {
-                        Text(isDownloading ? "Downloading..." : "Download")
-                            .font(.system(size: 12, weight: .medium))
-                        Image(systemName: "arrow.down.circle")
-                            .font(.system(size: 12, weight: .medium))
+            // Action Controls
+            HStack(spacing: 12) {
+                if isCurrent {
+                    Text("Default Model")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color(red: 0.28, green: 0.65, blue: 0.45))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.28, green: 0.65, blue: 0.45).opacity(0.08))
+                        .cornerRadius(6)
+                } else if isDownloaded {
+                    Button(action: setDefaultAction) {
+                        Text("Set as Default")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(red: 0.36, green: 0.28, blue: 0.88))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.08))
+                            .cornerRadius(8)
                     }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(isDownloading)
-            }
-            
-            if isDownloaded {
-                Menu {
-                    Button(action: deleteAction) {
-                        Label("Delete Model", systemImage: "trash")
+                    .buttonStyle(.plain)
+                } else {
+                    Button(action: downloadAction) {
+                        HStack(spacing: 6) {
+                            Text(isDownloading ? "Downloading..." : "Download")
+                                .font(.system(size: 12, weight: .bold))
+                            
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                        .background(LinearGradient(
+                            colors: [Color(red: 0.36, green: 0.28, blue: 0.88), Color(red: 0.54, green: 0.12, blue: 0.92)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ))
+                        .cornerRadius(8)
+                        .shadow(color: Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.2), radius: 4, x: 0, y: 2)
                     }
-                    
-                    Button {
-                        if let modelURL = modelURL {
-                            NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
+                    .buttonStyle(.plain)
+                    .disabled(isDownloading)
+                }
+                
+                if isDownloaded {
+                    Menu {
+                        Button(action: deleteAction) {
+                            Label("Delete Model", systemImage: "trash")
+                        }
+                        
+                        Button {
+                            if let modelURL = modelURL {
+                                NSWorkspace.shared.selectFile(modelURL.path, inFileViewerRootedAtPath: "")
+                            }
+                        } label: {
+                            Label("Show in Finder", systemImage: "folder")
                         }
                     } label: {
-                        Label("Show in Finder", systemImage: "folder")
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                            .padding(8)
+                            .background(Color.white)
+                            .clipShape(Circle())
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 14))
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .frame(width: 28, height: 28)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .frame(width: 20, height: 20)
             }
         }
+        .padding(14)
+        .background(Color.white)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isCurrent ? Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.15) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.04), lineWidth: isCurrent ? 1.5 : 1)
+        )
+        .shadow(color: Color.black.opacity(0.012), radius: 6, x: 0, y: 2)
     }
 }
 
-// MARK: - Imported Local Model (minimal UI)
+// MARK: - Imported Whisper Model Card View
+
 struct ImportedWhisperModelCardView: View {
     let model: ImportedWhisperModel
     let isDownloaded: Bool
@@ -176,38 +226,59 @@ struct ImportedWhisperModelCardView: View {
     var setDefaultAction: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(model.displayName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color(.labelColor))
-                    Spacer()
-                }
-
-                Text("Imported local model")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
+        HStack(alignment: .center, spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(LinearGradient(
+                        colors: [Color.white, Color(red: 0.95, green: 0.95, blue: 0.99)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ))
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.12), lineWidth: 1.5)
+                    )
+                
+                Image(systemName: "folder.badge.gearshape")
+                    .font(.system(size: 18))
+                    .foregroundColor(Color(red: 0.36, green: 0.28, blue: 0.88))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: 8) {
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(model.displayName)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                
+                Text("Imported local model")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+            }
+            
+            Spacer()
+            
+            HStack(spacing: 12) {
                 if isCurrent {
                     Text("Default Model")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(.secondaryLabelColor))
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color(red: 0.28, green: 0.65, blue: 0.45))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(red: 0.28, green: 0.65, blue: 0.45).opacity(0.08))
+                        .cornerRadius(6)
                 } else if isDownloaded {
                     Button(action: setDefaultAction) {
                         Text("Set as Default")
-                            .font(.system(size: 12))
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(red: 0.36, green: 0.28, blue: 0.88))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.08))
+                            .cornerRadius(8)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(.plain)
                 }
-
+                
                 if isDownloaded {
                     Menu {
                         Button(action: deleteAction) {
@@ -221,47 +292,26 @@ struct ImportedWhisperModelCardView: View {
                             Label("Show in Finder", systemImage: "folder")
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .font(.system(size: 14))
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                            .padding(8)
+                            .background(Color.white)
+                            .clipShape(Circle())
                     }
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
-                    .frame(width: 20, height: 20)
+                    .frame(width: 28, height: 28)
                 }
             }
         }
-        .padding(16)
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
-    }
-}
-
-
-// MARK: - Helper Views and Functions
-
-func progressDotsWithNumber(value: Double) -> some View {
-    HStack(spacing: 4) {
-        progressDots(value: value)
-        Text(String(format: "%.1f", value))
-            .font(.system(size: 10, weight: .medium, design: .monospaced))
-            .foregroundColor(Color(.secondaryLabelColor))
-    }
-}
-
-func progressDots(value: Double) -> some View {
-    HStack(spacing: 2) {
-        ForEach(0..<5) { index in
-            Circle()
-                .fill(index < Int(value / 2) ? performanceColor(value: value / 10) : Color(.quaternaryLabelColor))
-                .frame(width: 6, height: 6)
-        }
-    }
-}
-
-func performanceColor(value: Double) -> Color {
-    switch value {
-    case 0.8...1.0: return Color(.systemGreen)
-    case 0.6..<0.8: return Color(.systemYellow)
-    case 0.4..<0.6: return Color(.systemOrange)
-    default: return Color(.systemRed)
+        .padding(14)
+        .background(Color.white)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isCurrent ? Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.15) : Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.04), lineWidth: isCurrent ? 1.5 : 1)
+        )
+        .shadow(color: Color.black.opacity(0.012), radius: 6, x: 0, y: 2)
     }
 }

@@ -178,6 +178,11 @@ struct VoiceInkApp: App {
         Task {
             await migrationTask?.value
             TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
+
+            if UserDefaults.standard.bool(forKey: "enableMCPServer") {
+                let port = UserDefaults.standard.integer(forKey: "mcpServerPort")
+                MCPServerService.shared.start(port: port > 0 ? port : 51089)
+            }
         }
     }
 
@@ -208,10 +213,11 @@ struct VoiceInkApp: App {
 
             // Dictionary configuration
             let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
-            #if LOCAL_BUILD
+            #if LOCAL_BUILD || DEBUG
             let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .none
             #else
-            let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .private("iCloud.com.prakashjoshipax.VoiceInk")
+            let isOfficialBundle = Bundle.main.bundleIdentifier == "com.prakashjoshipax.VoiceInk"
+            let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = isOfficialBundle ? .private("iCloud.com.prakashjoshipax.VoiceInk") : .none
             #endif
             let dictionaryConfig = ModelConfiguration(
                 "dictionary",

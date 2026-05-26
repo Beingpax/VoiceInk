@@ -36,6 +36,9 @@ struct ConfigurationView: View {
     @State private var powerModeConfigId: UUID = UUID()
     @State private var isTranscriptFormattingExpanded = false
     @State private var didSaveConfiguration = false
+    @State private var preRecordScript: String = ""
+    @State private var postRecordScript: String = ""
+    @State private var isAutomationAndScriptingExpanded = false
 
     private var effectiveModelName: String? {
         selectedTranscriptionModelName ?? transcriptionModelManager.currentTranscriptionModel?.name
@@ -94,6 +97,9 @@ struct ConfigurationView: View {
             _selectedAIProvider = State(initialValue: UserDefaults.standard.string(forKey: "selectedAIProvider"))
             _selectedAIModel = State(initialValue: nil)
             _isTranscriptFormattingExpanded = State(initialValue: false)
+            _preRecordScript = State(initialValue: "")
+            _postRecordScript = State(initialValue: "")
+            _isAutomationAndScriptingExpanded = State(initialValue: false)
         case .edit(let config):
             // Fetch latest version in case config was modified elsewhere
             let latestConfig = powerModeManager.getConfiguration(with: config.id) ?? config
@@ -115,6 +121,9 @@ struct ConfigurationView: View {
             _selectedAIProvider = State(initialValue: latestConfig.selectedAIProvider)
             _selectedAIModel = State(initialValue: latestConfig.selectedAIModel)
             _isTranscriptFormattingExpanded = State(initialValue: latestConfig.isTextFormattingEnabled || latestConfig.punctuationCleanupMode != .keep || latestConfig.lowercaseTranscription)
+            _preRecordScript = State(initialValue: latestConfig.preRecordScript ?? "")
+            _postRecordScript = State(initialValue: latestConfig.postRecordScript ?? "")
+            _isAutomationAndScriptingExpanded = State(initialValue: !(latestConfig.preRecordScript ?? "").isEmpty || !(latestConfig.postRecordScript ?? "").isEmpty)
         }
     }
 
@@ -496,6 +505,76 @@ struct ConfigurationView: View {
                     }
                 }
 
+                Section("Automation & Scripting") {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            isAutomationAndScriptingExpanded.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Text("Hooks & Action triggers")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                                .rotationEffect(.degrees(isAutomationAndScriptingExpanded ? 90 : 0))
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if isAutomationAndScriptingExpanded {
+                        VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Pre-recording Shell Hook")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    InfoTip("Shell script to run right before recording starts.")
+                                }
+                                TextEditor(text: $preRecordScript)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(height: 60)
+                                    .cornerRadius(6)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                    )
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Post-recording Shell Hook")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    InfoTip("Shell script to run after transcription completes. Use $VOICEINK_TRANSCRIPT and $VOICEINK_ORIG_TRANSCRIPT in your script.")
+                                }
+                                TextEditor(text: $postRecordScript)
+                                    .font(.system(.body, design: .monospaced))
+                                    .frame(height: 60)
+                                    .cornerRadius(6)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                                    )
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("💡 Action Triggers")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                                Text("You can direct your LLM prompt to output commands like `/search google [query]`, `/search perplexity [query]`, `/search youtube [query]`, `/open [url]`, or `/press [keys]` to execute automations automatically.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(nil)
+                            }
+                            .padding(.top, 4)
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+
                 Section("Advanced") {
                     Toggle(isOn: $isDefault) {
                         HStack(spacing: 6) {
@@ -639,7 +718,9 @@ struct ConfigurationView: View {
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 autoSendKey: autoSendKey,
-                isDefault: isDefault
+                isDefault: isDefault,
+                preRecordScript: preRecordScript.isEmpty ? nil : preRecordScript,
+                postRecordScript: postRecordScript.isEmpty ? nil : postRecordScript
             )
         case .edit(let config):
             var updatedConfig = config
@@ -659,6 +740,8 @@ struct ConfigurationView: View {
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.isDefault = isDefault
+            updatedConfig.preRecordScript = preRecordScript.isEmpty ? nil : preRecordScript
+            updatedConfig.postRecordScript = postRecordScript.isEmpty ? nil : postRecordScript
             return updatedConfig
         }
     }

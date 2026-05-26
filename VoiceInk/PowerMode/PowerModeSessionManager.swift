@@ -46,6 +46,13 @@ class PowerModeSessionManager {
             return
         }
 
+        // Run pre-recording script hook if available
+        if let preRecordScript = config.preRecordScript, !preRecordScript.isEmpty {
+            Task {
+                await ShellScriptService.shared.runScript(preRecordScript, powerModeName: config.name)
+            }
+        }
+
         // Only capture baseline if NO session exists
         if loadSession() == nil {
             let punctuationCleanupMode = PunctuationCleanupMode.current()

@@ -112,8 +112,9 @@ class Recorder: NSObject, ObservableObject {
         let currentDeviceID = deviceManager.getCurrentDevice()
         let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
         if String(currentDeviceID) != lastDeviceID {
+            // Log device switch but do not display on-screen toast
             if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
-                NotificationManager.shared.showNotification(title: "Using: \(deviceName)", type: .info)
+                logger.notice("Using microphone device: \(deviceName, privacy: .public)")
             }
         }
         UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")

@@ -39,18 +39,22 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
     var autoSendKey: AutoSendKey = .none
     var isEnabled: Bool = true
     var isDefault: Bool = false
+    var preRecordScript: String? = nil
+    var postRecordScript: String? = nil
         
     enum CodingKeys: String, CodingKey {
         case id, name, emoji, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
         case selectedWhisperModel
         case selectedTranscriptionModelName
+        case preRecordScript, postRecordScript
     }
     
     init(id: UUID = UUID(), name: String, emoji: String, appConfigs: [AppConfig]? = nil,
          urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useScreenCapture: Bool = false,
          isTextFormattingEnabled: Bool = false, punctuationCleanupMode: PunctuationCleanupMode = .keep, lowercaseTranscription: Bool = false,
-         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false) {
+         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false,
+         preRecordScript: String? = nil, postRecordScript: String? = nil) {
         self.id = id
         self.name = name
         self.emoji = emoji
@@ -69,6 +73,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         self.lowercaseTranscription = lowercaseTranscription
         self.isEnabled = isEnabled
         self.isDefault = isDefault
+        self.preRecordScript = preRecordScript
+        self.postRecordScript = postRecordScript
     }
 
     init(from decoder: Decoder) throws {
@@ -111,6 +117,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         } else {
             selectedTranscriptionModelName = nil
         }
+        preRecordScript = try container.decodeIfPresent(String.self, forKey: .preRecordScript)
+        postRecordScript = try container.decodeIfPresent(String.self, forKey: .postRecordScript)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -134,6 +142,8 @@ struct PowerModeConfig: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(selectedTranscriptionModelName, forKey: .selectedTranscriptionModelName)
         try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(isDefault, forKey: .isDefault)
+        try container.encodeIfPresent(preRecordScript, forKey: .preRecordScript)
+        try container.encodeIfPresent(postRecordScript, forKey: .postRecordScript)
     }
     
     
