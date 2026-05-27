@@ -80,14 +80,10 @@ struct ModeView: View {
                                     .foregroundColor(.primary)
                                 
                                 InfoTip(
-                                    "Automatically apply custom configurations based on the app/website you are using.",
+                                    "Modes help you set up VoiceInk for different writing tasks, workflows, and scenarios.",
                                     learnMoreURL: "https://tryvoiceink.com/docs/modes"
                                 )
                             }
-                            
-                            Text("Automate your workflows with context-aware configurations.")
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
                         }
                         
                         Spacer()
