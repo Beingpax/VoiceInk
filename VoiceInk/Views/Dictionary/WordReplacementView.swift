@@ -320,6 +320,7 @@ struct ReplacementRow: View {
                 Text(replacement)
                     .font(.system(size: 13))
                     .lineLimit(2)
+                    .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.trailing, 50)
 

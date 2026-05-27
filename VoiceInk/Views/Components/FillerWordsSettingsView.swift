@@ -9,6 +9,7 @@ struct FillerWordChip: View {
         HStack(spacing: 4) {
             Text(word)
                 .font(.system(size: 12))
+                .lineLimit(1)
                 .foregroundColor(.primary)
 
             Button(action: onDelete) {

@@ -1,9 +1,5 @@
 import SwiftUI
 
-enum SidePanelLayout {
-    static let defaultWidth: CGFloat = 400
-}
-
 struct SidePanel<PanelContent: View>: ViewModifier {
     @Binding var isPresented: Bool
     let panelWidth: CGFloat
@@ -66,7 +62,7 @@ struct SidePanel<PanelContent: View>: ViewModifier {
 extension View {
     func sidePanel<Content: View>(
         isPresented: Binding<Bool>,
-        width: CGFloat = SidePanelLayout.defaultWidth,
+        width: CGFloat = 400,
         dismissOnExitCommand: Bool = true,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
