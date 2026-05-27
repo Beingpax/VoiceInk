@@ -46,8 +46,7 @@ build: setup
 
 # Build for local use without Apple Developer certificate
 local: check setup
-	@echo "Building VoiceInk for local use (no Apple Developer certificate required)..."
-	@rm -rf "$(LOCAL_DERIVED_DATA)"
+	@echo "Building VoiceInk for local use (no Apple Developer certificate required, incremental fast-build)..."
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
@@ -94,8 +93,13 @@ run:
 	fi
 
 # Cleanup
-clean:
-	@echo "Cleaning build artifacts..."
+clean-local:
+	@echo "Cleaning local build derived data..."
+	@rm -rf "$(LOCAL_DERIVED_DATA)"
+	@echo "Local build clean complete"
+
+clean: clean-local
+	@echo "Cleaning dependencies and build artifacts..."
 	@rm -rf $(DEPS_DIR)
 	@echo "Clean complete"
 

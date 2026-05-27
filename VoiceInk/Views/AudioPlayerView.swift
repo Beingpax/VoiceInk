@@ -218,6 +218,12 @@ struct WaveformView: View {
                         if !isLoading {
                             hoverLocation = value.location.x
                             onSeek(Double(value.location.x / geometry.size.width) * duration)
+                            
+                            if UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                                #if canImport(AppKit)
+                                NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+                                #endif
+                            }
                         }
                     }
             )
@@ -231,7 +237,15 @@ struct WaveformView: View {
             .onContinuousHover { phase in
                 if !isLoading {
                     if case .active(let location) = phase {
+                        let oldLocation = hoverLocation
                         hoverLocation = location.x
+                        
+                        // Emit haptic ticks as you scrub past segments
+                        if abs(oldLocation - location.x) > 10 && UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                            #if canImport(AppKit)
+                            NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+                            #endif
+                        }
                     }
                 }
             }

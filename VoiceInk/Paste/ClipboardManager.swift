@@ -32,6 +32,24 @@ struct ClipboardManager {
             return false
         }
 
+        if UserDefaults.standard.bool(forKey: "superchargeMultiDestinationRouting") {
+            let logPath = (NSHomeDirectory() as NSString).appendingPathComponent("Desktop/voice_history.log")
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            let dateString = formatter.string(from: Date())
+            let logLine = "[\(dateString)] \(text)\n---\n"
+            
+            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                fileHandle.seekToEndOfFile()
+                if let data = logLine.data(using: .utf8) {
+                    fileHandle.write(data)
+                }
+                fileHandle.closeFile()
+            } else {
+                try? logLine.write(toFile: logPath, atomically: true, encoding: .utf8)
+            }
+        }
+
         return pasteboard.string(forType: .string) == text
     }
 

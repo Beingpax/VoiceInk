@@ -83,16 +83,108 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         ShortcutStore.shortcut(for: .primaryRecording)?.displayString ?? "⌃⇧Z"
     }
 
-    private func autoToggleLivePreviewIfNeeded() {
-        if activeModelSupportsStreaming {
-            showLiveTextPreview = true
+    // Drag-to-Target State
+    @State private var dragOffset = CGSize.zero
+    @State private var isDraggingToTarget = false
+    @State private var activeTargetZone: String? = nil // "clipboard", "app", "log"
+
+    private var dynamicWidth: CGFloat {
+        let baseWidth = CGFloat(miniRecorderWidth)
+        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseWidth }
+        
+        switch stateProvider.recordingState {
+        case .idle, .starting:
+            return baseWidth * 0.88 // compact
+        case .recording:
+            return baseWidth * 1.05 // wide cinematic island
+        case .transcribing, .enhancing, .busy:
+            return baseWidth * 0.96 // sleek processing bar
         }
+    }
+    
+    private var dynamicHeight: CGFloat {
+        let baseHeight = CGFloat(miniRecorderHeight)
+        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseHeight }
+        
+        switch stateProvider.recordingState {
+        case .idle, .starting:
+            return baseHeight * 0.82 // low-profile
+        case .recording:
+            return baseHeight * 1.05 // deep
+        case .transcribing, .enhancing, .busy:
+            return baseHeight * 0.9 // intermediate
+        }
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .onChanged { value in
+                isDraggingToTarget = true
+                dragOffset = value.translation
+                
+                let hudWidth = CGFloat(miniRecorderWidth)
+                let dragX = value.location.x
+                
+                let oldZone = activeTargetZone
+                if dragX < hudWidth * 0.33 {
+                    activeTargetZone = "clipboard"
+                } else if dragX > hudWidth * 0.66 {
+                    activeTargetZone = "log"
+                } else {
+                    activeTargetZone = "app"
+                }
+                
+                if oldZone != activeTargetZone && UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                    #if canImport(AppKit)
+                    NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+                    #endif
+                }
+            }
+            .onEnded { value in
+                let text = stateProvider.partialTranscript.isEmpty ? "No active transcription to drop" : stateProvider.partialTranscript
+                
+                switch activeTargetZone {
+                case "clipboard":
+                    let _ = ClipboardManager.copyToClipboard(text)
+                case "app":
+                    CursorPaster.pasteAtCursor(text)
+                case "log":
+                    let _ = ClipboardManager.setClipboard(text)
+                default:
+                    break
+                }
+                
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    isDraggingToTarget = false
+                    dragOffset = .zero
+                    activeTargetZone = nil
+                }
+            }
     }
 
     var body: some View {
         if windowManager.isVisible {
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: 0) {
+                    // Drag to Target Handle
+                    if UserDefaults.standard.bool(forKey: "superchargeDragToTarget") {
+                        HStack {
+                            Spacer()
+                            HStack(spacing: 4) {
+                                Image(systemName: "hand.and.arrow.all")
+                                    .font(.system(size: 8))
+                                Text("DRAG TO TARGET")
+                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.4))
+                            .padding(.vertical, 4)
+                            Spacer()
+                        }
+                        .background(Color.black.opacity(0.03))
+                        .contentShape(Rectangle())
+                        .gesture(dragGesture)
+                    }
+
                     // 1. Decorative Backdrop & Waveform Area
                     ZStack {
                         // Left decorative vertical Japanese label
@@ -240,7 +332,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     .padding(.vertical, 10)
                     .background(Color.white.opacity(0.25 * miniRecorderOpacity))
                 }
-                .frame(width: CGFloat(miniRecorderWidth), height: CGFloat(miniRecorderHeight))
+                .frame(width: dynamicWidth, height: dynamicHeight)
                 .background(
                     LinearGradient(
                         colors: [Color(red: 0.89, green: 0.90, blue: 0.94).opacity(miniRecorderOpacity), Color(red: 0.92, green: 0.93, blue: 0.96).opacity(miniRecorderOpacity)],
@@ -255,6 +347,36 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 )
                 .shadow(color: Color.black.opacity(0.14 * miniRecorderOpacity), radius: 24, x: 0, y: 12)
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: hasLiveTranscript)
+                .animation(.spring(response: 0.45, dampingFraction: 0.78), value: stateProvider.recordingState)
+                
+                // Drag-to-Target overlay
+                if isDraggingToTarget {
+                    HStack(spacing: 12) {
+                        DragTargetZone(
+                            title: "Clipboard",
+                            icon: "doc.on.clipboard",
+                            isActive: activeTargetZone == "clipboard",
+                            color: Color.blue
+                        )
+                        DragTargetZone(
+                            title: "Active App",
+                            icon: "arrow.up.forward.app",
+                            isActive: activeTargetZone == "app",
+                            color: Color.purple
+                        )
+                        DragTargetZone(
+                            title: "Save Log",
+                            icon: "doc.text",
+                            isActive: activeTargetZone == "log",
+                            color: Color.orange
+                        )
+                    }
+                    .padding(16)
+                    .background(Color.black.opacity(0.85))
+                    .cornerRadius(16)
+                    .frame(width: dynamicWidth, height: dynamicHeight)
+                    .transition(.opacity)
+                }
                 
                 // 4. Custom Overlay Dropdown Popover (Flawless Mouse Clicks on Non-Activating Panels)
                 if showVoiceMenu {
@@ -458,6 +580,11 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12), lineWidth: 1)
         )
     }
+    private func autoToggleLivePreviewIfNeeded() {
+        if activeModelSupportsStreaming {
+            showLiveTextPreview = true
+        }
+    }
 }
 
 // Glowing status dot helper view (Non-blinking/Static)
@@ -470,5 +597,36 @@ struct BreathingBlueDot: View {
                 Circle()
                     .stroke(Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.6), lineWidth: 1) // Glowing electric purple aura
             )
+    }
+}
+
+struct DragTargetZone: View {
+    let title: String
+    let icon: String
+    let isActive: Bool
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(isActive ? .white : color.opacity(0.8))
+                .scaleEffect(isActive ? 1.25 : 1.0)
+                .animation(.spring(response: 0.2, dampingFraction: 0.6), value: isActive)
+            
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(isActive ? .white : .white.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(isActive ? color : Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(isActive ? Color.white.opacity(0.5) : color.opacity(0.3), lineWidth: 1.5)
+                )
+        )
+        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isActive)
     }
 }

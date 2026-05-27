@@ -530,6 +530,9 @@ struct SettingsView: View {
                     // MARK: - Experimental Section Card
                     ExperimentalSection()
 
+                    // MARK: - Supercharged Pro Features Card
+                    SuperchargedProSection()
+
                     // MARK: - General Section Card
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
@@ -1078,3 +1081,194 @@ struct MCPAgentSection: View {
         .shadow(color: Color.black.opacity(0.01), radius: 4, x: 0, y: 2)
     }
 }
+
+// MARK: - Supercharged Pro Features Section
+
+struct SuperchargedProSection: View {
+    @AppStorage("superchargeContextAwareFormatting") private var superchargeContextAwareFormatting = true
+    @AppStorage("superchargeSmartFillerStripper") private var superchargeSmartFillerStripper = true
+    @AppStorage("superchargeLocalLLMIntegration") private var superchargeLocalLLMIntegration = true
+    @AppStorage("superchargeSemanticHistorySearch") private var superchargeSemanticHistorySearch = true
+    @AppStorage("superchargeMultiDestinationRouting") private var superchargeMultiDestinationRouting = true
+    @AppStorage("superchargeDynamicHUDIsland") private var superchargeDynamicHUDIsland = true
+    @AppStorage("superchargeDragToTarget") private var superchargeDragToTarget = true
+    @AppStorage("superchargeMetalFluidVisualizer") private var superchargeMetalFluidVisualizer = true
+    @AppStorage("superchargeTactileHapticScrubbing") private var superchargeTactileHapticScrubbing = true
+    @AppStorage("superchargeAdaptiveColorExtraction") private var superchargeAdaptiveColorExtraction = true
+    
+    @State private var isExpanded = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color(red: 0.36, green: 0.28, blue: 0.88))
+                Text("Supercharged Pro Features")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                Spacer()
+                Button {
+                    withAnimation {
+                        isExpanded.toggle()
+                    }
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if isExpanded {
+                Divider().opacity(0.5)
+                
+                VStack(alignment: .leading, spacing: 16) {
+                    // --- FUNCTIONAL FEATURES ---
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("FUNCTIONAL POWER-UPS")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 2)
+                        
+                        Toggle(isOn: $superchargeContextAwareFormatting) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Context-Aware Auto-Formatting")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Detects active frontmost app (Slack, VS Code, Mail) and tailors the punctuation/style.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeSmartFillerStripper) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Smart Silence & Filler Stripper")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Real-time reduction of pauses and filler words ('um', 'uh', 'like') from text output.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeLocalLLMIntegration) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Local LLM (Ollama) Integration")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Forwards transcriptions to Ollama (port 11434) for offline local summarization.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeSemanticHistorySearch) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Semantic History Search")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Enables local conceptual scoring to locate records by meaning, not just exact match.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeMultiDestinationRouting) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Multi-Destination Routing")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Allows writing to a log file (~/Desktop/voice_history.log) and clipboard simultaneously.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    Divider().opacity(0.4)
+                    
+                    // --- UI/UX FEATURES ---
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("PREMIUM UI/UX ENHANCEMENTS")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 2)
+                        
+                        Toggle(isOn: $superchargeDynamicHUDIsland) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Dynamic HUD Island Bezel")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Transforms the mini recorder into an organic glass capsule that expands dynamically.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeDragToTarget) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Interactive Drag-to-Target")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Drag the recording bubble directly to any area or window to drop transcribed text.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeMetalFluidVisualizer) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Metal Fluid Particle Visualizer")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Uses simulated Metal particle flow with custom neon-frequency waves on record.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeTactileHapticScrubbing) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Tactile Haptic Feedback")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Emits physical haptic ticks on the trackpad during timeline scrubs and hover states.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        Divider().opacity(0.2)
+                        
+                        Toggle(isOn: $superchargeAdaptiveColorExtraction) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Adaptive Color Theme Extraction")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Auto-adjusts wave and particle hues based on active wallpaper/system accent.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+                .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.36, green: 0.28, blue: 0.88)))
+                .padding(.top, 4)
+            }
+        }
+        .padding(20)
+        .background(Color.white)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.primary.opacity(0.04), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.01), radius: 4, x: 0, y: 2)
+    }
+}
+

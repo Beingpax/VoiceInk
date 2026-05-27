@@ -59,6 +59,17 @@ enum AppDefaults {
             // Model
             "PrewarmModelOnWake": true,
 
+            // Supercharged Pro Features (5 Functional, 5 UI/UX)
+            "superchargeContextAwareFormatting": true,
+            "superchargeSmartFillerStripper": true,
+            "superchargeLocalLLMIntegration": true,
+            "superchargeSemanticHistorySearch": true,
+            "superchargeMultiDestinationRouting": true,
+            "superchargeDynamicHUDIsland": true,
+            "superchargeDragToTarget": true,
+            "superchargeMetalFluidVisualizer": true,
+            "superchargeTactileHapticScrubbing": true,
+            "superchargeAdaptiveColorExtraction": true,
         ])
 
         PunctuationCleanupMode.migrateLegacyUserDefaultIfNeeded()

@@ -14,6 +14,13 @@ struct TranscriptionHistoryView: View {
     @State private var leftSidebarWidth: CGFloat = 300
     @State private var rightSidebarWidth: CGFloat = 350
     @State private var displayedTranscriptions: [Transcription] = []
+    private var filteredTranscriptions: [Transcription] {
+        if UserDefaults.standard.bool(forKey: "superchargeSemanticHistorySearch") && !searchText.isEmpty {
+            return displayedTranscriptions.filter { SemanticSearchScorer.matches(searchText: searchText, text: $0.text + " " + ($0.enhancedText ?? "")) }
+        } else {
+            return displayedTranscriptions
+        }
+    }
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
@@ -36,8 +43,10 @@ struct TranscriptionHistoryView: View {
             sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
         )
 
+        let isSemanticSearch = UserDefaults.standard.bool(forKey: "superchargeSemanticHistorySearch")
+
         if let timestamp = timestamp {
-            if !searchText.isEmpty {
+            if !searchText.isEmpty && !isSemanticSearch {
                 descriptor.predicate = #Predicate<Transcription> { transcription in
                     (transcription.text.localizedStandardContains(searchText) ||
                     (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)) &&
@@ -48,7 +57,7 @@ struct TranscriptionHistoryView: View {
                     transcription.timestamp < timestamp
                 }
             }
-        } else if !searchText.isEmpty {
+        } else if !searchText.isEmpty && !isSemanticSearch {
             descriptor.predicate = #Predicate<Transcription> { transcription in
                 transcription.text.localizedStandardContains(searchText) ||
                 (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
@@ -183,7 +192,7 @@ struct TranscriptionHistoryView: View {
             Divider()
 
             ZStack(alignment: .bottom) {
-                if displayedTranscriptions.isEmpty && !isLoading {
+                if filteredTranscriptions.isEmpty && !isLoading {
                     VStack(spacing: 12) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .font(.system(size: 40))
@@ -196,7 +205,7 @@ struct TranscriptionHistoryView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 8) {
-                            ForEach(displayedTranscriptions) { transcription in
+                            ForEach(filteredTranscriptions) { transcription in
                                 TranscriptionListItem(
                                     transcription: transcription,
                                     isSelected: selectedTranscription == transcription,

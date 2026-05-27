@@ -235,6 +235,27 @@ private struct AlienWaveformCanvas: View {
     }
     
     private var themeColors: WaveThemeColors {
+        if UserDefaults.standard.bool(forKey: "superchargeAdaptiveColorExtraction") {
+            #if canImport(AppKit)
+            let nsAccent = NSColor.controlAccentColor
+            let accent = Color(nsAccent)
+            return WaveThemeColors(
+                primaryGradient: [accent, accent.opacity(0.8), .white],
+                secondaryGradient: [accent.opacity(0.7), Color.purple, Color.blue],
+                subtleColor: accent.opacity(0.15),
+                glowColor: accent
+            )
+            #else
+            let accent = Color.accentColor
+            return WaveThemeColors(
+                primaryGradient: [accent, accent.opacity(0.8), .white],
+                secondaryGradient: [accent.opacity(0.7), Color.purple, Color.blue],
+                subtleColor: accent.opacity(0.15),
+                glowColor: accent
+            )
+            #endif
+        }
+
         switch visualizerLineTheme {
         case "sunset":
             return WaveThemeColors(
@@ -561,7 +582,49 @@ private struct AlienWaveformCanvas: View {
                     }
                 }
             }
+
+            // 7. Supercharged Metal Fluid Particle Visualizer
+            if UserDefaults.standard.bool(forKey: "superchargeMetalFluidVisualizer") {
+                let fluidParticlesCount = 45
+                for p in 0..<fluidParticlesCount {
+                    let seed = Double(p)
+                    let progress = fract(adjustedTime * 0.12 + seed * 0.022)
+                    let px = sideInset + CGFloat(progress) * usableWidth
+                    
+                    let fraction = CGFloat(px - sideInset) / usableWidth
+                    let sampleIndexFraction = fraction * CGFloat(samples.count - 1)
+                    let baseSample = Int(floor(sampleIndexFraction))
+                    let nextSample = min(samples.count - 1, baseSample + 1)
+                    let tFrac = sampleIndexFraction - CGFloat(baseSample)
+                    
+                    let sUpper = samples[baseSample].upperHeight + tFrac * (samples[nextSample].upperHeight - samples[baseSample].upperHeight)
+                    let sLower = samples[baseSample].lowerHeight + tFrac * (samples[nextSample].lowerHeight - samples[baseSample].lowerHeight)
+                    
+                    let swirlY = WaveNoise.noise2D(seed * 1.5, adjustedTime * 1.8) * Double(sUpper + sLower) * 0.65 * Double(scale)
+                    let swirlX = WaveNoise.noise2D(adjustedTime * 1.2, seed * 2.3) * 12.0 * Double(scale)
+                    
+                    let py = midY + CGFloat(swirlY)
+                    let finalPX = px + CGFloat(swirlX)
+                    
+                    if finalPX > sideInset && finalPX < size.width - sideInset {
+                        let baseSize: CGFloat = 1.2 + CGFloat(WaveNoise.noise1D(seed + adjustedTime) + 1.0) * 1.0
+                        let opacity = 0.35 + 0.65 * sin(progress * .pi)
+                        
+                        var path = Path()
+                        path.addEllipse(in: CGRect(x: finalPX - baseSize, y: py - baseSize, width: baseSize * 2, height: baseSize * 2))
+                        
+                        let fluidColor = themeColors.primaryGradient[p % 2].opacity(opacity)
+                        var fluidContext = context
+                        fluidContext.addFilter(.shadow(color: fluidColor, radius: 4, x: 0, y: 0))
+                        fluidContext.fill(path, with: .color(fluidColor))
+                    }
+                }
+            }
         }
+    }
+
+    private func fract(_ x: Double) -> Double {
+        return x - floor(x)
     }
 
     private func smoothedPath(through points: [CGPoint]) -> Path {

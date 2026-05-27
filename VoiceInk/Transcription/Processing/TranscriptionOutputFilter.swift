@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(AppKit)
+import AppKit
+#endif
 
 enum PunctuationCleanupMode: String, Codable, CaseIterable, Identifiable {
     case keep = "keep"
@@ -84,11 +87,142 @@ struct TranscriptionOutputFilter {
             }
         }
 
+        // Smart Silence & Filler Stripper (supercharged repeated and hesitation words)
+        if UserDefaults.standard.bool(forKey: "superchargeSmartFillerStripper") {
+            // Strip repeated adjacent words (e.g., "the the" -> "the", "I I" -> "I")
+            let repeatedWordPattern = "\\b([a-zA-Z]+)\\s+\\1\\b"
+            if let regex = try? NSRegularExpression(pattern: repeatedWordPattern, options: .caseInsensitive) {
+                let range = NSRange(filteredText.startIndex..., in: filteredText)
+                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "$1")
+            }
+            // Strip hesitation sound artifacts (e.g. "uh-", "um-", etc.)
+            let hesitationPattern = "\\b(uh+|um+|ah+|eh+)[-—\\s]+"
+            if let regex = try? NSRegularExpression(pattern: hesitationPattern, options: .caseInsensitive) {
+                let range = NSRange(filteredText.startIndex..., in: filteredText)
+                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
+            }
+        }
+
         // Clean whitespace
         filteredText = filteredText.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Context-Aware Auto-Formatting
+        if UserDefaults.standard.bool(forKey: "superchargeContextAwareFormatting") {
+            filteredText = applyContextAwareFormatting(filteredText)
+        }
+
         return filteredText
+    }
+
+    #if canImport(AppKit)
+    static var frontmostAppBundleIdentifier: String? {
+        return NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+    #else
+    static var frontmostAppBundleIdentifier: String? {
+        return nil
+    }
+    #endif
+
+    static func applyContextAwareFormatting(_ text: String) -> String {
+        guard let bundleId = frontmostAppBundleIdentifier?.lowercased() else { return text }
+        
+        // Developer apps
+        if bundleId.contains("vscode") || bundleId.contains("xcode") || bundleId.contains("terminal") || bundleId.contains("iterm") {
+            return formatForDeveloper(text)
+        }
+        
+        // Chat apps
+        if bundleId.contains("slack") || bundleId.contains("discord") || bundleId.contains("teams") {
+            return formatForChat(text)
+        }
+        
+        // Email/Writing apps
+        if bundleId.contains("mail") || bundleId.contains("outlook") || bundleId.contains("pages") {
+            return formatForEmail(text)
+        }
+        
+        return text
+    }
+
+    private static func formatForDeveloper(_ text: String) -> String {
+        var formatted = text
+        
+        let techTerms = [
+            "javascript": "JavaScript",
+            "typescript": "TypeScript",
+            "github": "GitHub",
+            "gitlab": "GitLab",
+            "vs code": "VS Code",
+            "xcode": "Xcode",
+            "swiftui": "SwiftUI",
+            "uikit": "UIKit",
+            "docker": "Docker",
+            "kubernetes": "Kubernetes",
+            "postgres": "PostgreSQL",
+            "postgresql": "PostgreSQL",
+            "mongodb": "MongoDB",
+            "sqlite": "SQLite"
+        ]
+        
+        for (lower, correct) in techTerms {
+            let pattern = "\\b\(lower)\\b"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                let range = NSRange(formatted.startIndex..., in: formatted)
+                formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: correct)
+            }
+        }
+        
+        let commands = ["npm", "yarn", "pnpm", "git", "docker", "cargo", "pip", "brew", "xcodebuild", "swift"]
+        for cmd in commands {
+            let pattern = "\\b\(cmd)\\s+([a-z0-9_-]+)"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                let range = NSRange(formatted.startIndex..., in: formatted)
+                formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: "`\(cmd) $1`")
+            }
+        }
+        
+        return formatted
+    }
+    
+    private static func formatForChat(_ text: String) -> String {
+        var formatted = text
+        
+        if formatted.count < 80 && formatted.hasSuffix(".") {
+            formatted.removeLast()
+        }
+        
+        let emojis = [
+            ":)": "🙂",
+            ":-)": "🙂",
+            ":D": "😀",
+            ":(": "🙁",
+            "<3": "❤️"
+        ]
+        for (emote, emoji) in emojis {
+            formatted = formatted.replacingOccurrences(of: emote, with: emoji)
+        }
+        
+        return formatted
+    }
+    
+    private static func formatForEmail(_ text: String) -> String {
+        var formatted = text
+        
+        let breaks = [
+            "dear ", "hi ", "hello ", "best regards", "sincerely", "thanks,", "thank you"
+        ]
+        for brk in breaks {
+            let pattern = "(?i)\\b(\(brk))"
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                let range = NSRange(formatted.startIndex..., in: formatted)
+                formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: "\n\n$1")
+            }
+        }
+        
+        formatted = formatted.trimmingCharacters(in: .whitespacesAndNewlines)
+        return formatted
     }
 
     static func applyUserCleanupPreferences(_ text: String) -> String {

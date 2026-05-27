@@ -129,7 +129,7 @@ class AIEnhancementService: ObservableObject {
     }
 
     var isConfigured: Bool {
-        aiService.isAPIKeyValid
+        aiService.isAPIKeyValid || UserDefaults.standard.bool(forKey: "superchargeLocalLLMIntegration")
     }
 
     private func waitForRateLimit() async throws {
@@ -329,9 +329,15 @@ class AIEnhancementService: ObservableObject {
             self.lastUserMessageSent = formattedText
         }
 
-        let primaryProvider = aiService.selectedProvider
-        let primaryModel = aiService.currentModel
-        let primaryKey = aiService.apiKey
+        var primaryProvider = aiService.selectedProvider
+        var primaryModel = aiService.currentModel
+        var primaryKey = aiService.apiKey
+
+        if !aiService.isAPIKeyValid && UserDefaults.standard.bool(forKey: "superchargeLocalLLMIntegration") {
+            primaryProvider = .ollama
+            primaryModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "llama3"
+            primaryKey = ""
+        }
 
         // 1. Try primary provider first
         do {

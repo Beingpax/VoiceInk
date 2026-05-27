@@ -42,8 +42,10 @@ struct InlineHistoryView: View {
             sortBy: [SortDescriptor(\Transcription.timestamp, order: .reverse)]
         )
 
+        let isSemanticSearch = UserDefaults.standard.bool(forKey: "superchargeSemanticHistorySearch")
+
         if let timestamp = timestamp {
-            if !searchText.isEmpty {
+            if !searchText.isEmpty && !isSemanticSearch {
                 descriptor.predicate = #Predicate<Transcription> { transcription in
                     (transcription.text.localizedStandardContains(searchText) ||
                     (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)) &&
@@ -54,7 +56,7 @@ struct InlineHistoryView: View {
                     transcription.timestamp < timestamp
                 }
             }
-        } else if !searchText.isEmpty {
+        } else if !searchText.isEmpty && !isSemanticSearch {
             descriptor.predicate = #Predicate<Transcription> { transcription in
                 transcription.text.localizedStandardContains(searchText) ||
                 (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
@@ -70,7 +72,7 @@ struct InlineHistoryView: View {
     }
 
     private var filteredTranscriptions: [Transcription] {
-        displayedTranscriptions.filter { transcription in
+        let items = displayedTranscriptions.filter { transcription in
             let status = transcription.transcriptionStatus ?? "completed"
             switch selectedFilter {
             case "Completed":
@@ -84,6 +86,12 @@ struct InlineHistoryView: View {
             default:
                 return true
             }
+        }
+        
+        if UserDefaults.standard.bool(forKey: "superchargeSemanticHistorySearch") && !searchText.isEmpty {
+            return items.filter { SemanticSearchScorer.matches(searchText: searchText, text: $0.text + " " + ($0.enhancedText ?? "")) }
+        } else {
+            return items
         }
     }
 
@@ -509,6 +517,13 @@ private struct HistorySidebarRowCard: View {
         .contentShape(Rectangle())
         .onTapGesture {
             onSelect()
+        }
+        .onHover { hovering in
+            if hovering && UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                #if canImport(AppKit)
+                NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+                #endif
+            }
         }
     }
 
