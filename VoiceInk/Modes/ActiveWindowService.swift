@@ -13,50 +13,63 @@ class ActiveWindowService: ObservableObject {
     )
 
     private init() {}
-    
-    func applyConfiguration(modeId: UUID? = nil) async {
+
+    @MainActor
+    @discardableResult
+    func beginApplyingConfiguration(
+        modeId: UUID? = nil,
+        shouldApply: @escaping @MainActor () -> Bool = { true }
+    ) -> Task<Void, Never> {
         if let modeId = modeId,
            let config = ModeManager.shared.getConfiguration(with: modeId) {
-            await MainActor.run {
-                ModeManager.shared.setActiveConfiguration(config)
-            }
-            return
+            guard shouldApply() else { return Task {} }
+            ModeManager.shared.setActiveConfiguration(config)
+            return Task {}
         }
 
         guard let frontmostApp = NSWorkspace.shared.frontmostApplication,
               let bundleIdentifier = frontmostApp.bundleIdentifier else {
-            return
+            return Task {}
         }
 
-        await MainActor.run {
-            currentApplication = frontmostApp
+        guard shouldApply() else { return Task {} }
+        currentApplication = frontmostApp
+
+        let quickConfig = ModeManager.shared.getConfigurationForApp(bundleIdentifier)
+            ?? ModeManager.shared.getDefaultConfiguration()
+
+        if let quickConfig {
+            ModeManager.shared.setActiveConfiguration(quickConfig)
         }
 
-        var configToApply: ModeConfig?
+        guard let browserType = BrowserType.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier }) else {
+            return Task {}
+        }
 
-        if let browserType = BrowserType.allCases.first(where: { $0.bundleIdentifier == bundleIdentifier }) {
+        return Task { [weak self] in
+            guard let self else { return }
+
             do {
-                let currentURL = try await browserURLService.getCurrentURL(from: browserType)
-                if let config = ModeManager.shared.getConfigurationForURL(currentURL) {
-                    configToApply = config
+                let currentURL = try await self.browserURLService.getCurrentURL(from: browserType)
+                await MainActor.run {
+                    guard shouldApply(),
+                          let config = ModeManager.shared.getConfigurationForURL(currentURL) else {
+                        return
+                    }
+                    ModeManager.shared.setActiveConfiguration(config)
                 }
+            } catch is CancellationError {
+                return
             } catch {
-                logger.error("❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                self.logger.error("❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
+    }
 
-        if configToApply == nil {
-            configToApply = ModeManager.shared.getConfigurationForApp(bundleIdentifier)
+    func applyConfiguration(modeId: UUID? = nil) async {
+        let task = await MainActor.run {
+            beginApplyingConfiguration(modeId: modeId)
         }
-
-        if configToApply == nil {
-            configToApply = ModeManager.shared.getDefaultConfiguration()
-        }
-
-        if let config = configToApply {
-            await MainActor.run {
-                ModeManager.shared.setActiveConfiguration(config)
-            }
-        }
+        await task.value
     }
 } 

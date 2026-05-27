@@ -7,12 +7,10 @@ enum BrowserType {
     case arc
     case chrome
     case edge
-    case firefox
     case brave
     case opera
     case vivaldi
     case orion
-    case zen
     case yandex
     
     var scriptName: String {
@@ -21,12 +19,10 @@ enum BrowserType {
         case .arc: return "arcURL"
         case .chrome: return "chromeURL"
         case .edge: return "edgeURL"
-        case .firefox: return "firefoxURL"
         case .brave: return "braveURL"
         case .opera: return "operaURL"
         case .vivaldi: return "vivaldiURL"
         case .orion: return "orionURL"
-        case .zen: return "zenURL"
         case .yandex: return "yandexURL"
         }
     }
@@ -37,12 +33,10 @@ enum BrowserType {
         case .arc: return "company.thebrowser.Browser"
         case .chrome: return "com.google.Chrome"
         case .edge: return "com.microsoft.edgemac"
-        case .firefox: return "org.mozilla.firefox"
         case .brave: return "com.brave.Browser"
         case .opera: return "com.operasoftware.Opera"
         case .vivaldi: return "com.vivaldi.Vivaldi"
         case .orion: return "com.kagi.kagimacOS"
-        case .zen: return "app.zen-browser.zen"
         case .yandex: return "ru.yandex.desktop.yandex-browser"
         }
     }
@@ -53,12 +47,10 @@ enum BrowserType {
         case .arc: return "Arc"
         case .chrome: return "Google Chrome"
         case .edge: return "Microsoft Edge"
-        case .firefox: return "Firefox"
         case .brave: return "Brave"
         case .opera: return "Opera"
         case .vivaldi: return "Vivaldi"
         case .orion: return "Orion"
-        case .zen: return "Zen Browser"
         case .yandex: return "Yandex Browser"
         }
     }
@@ -78,6 +70,7 @@ enum BrowserType {
 enum BrowserURLError: Error {
     case scriptNotFound
     case executionFailed
+    case executionTimedOut
     case browserNotRunning
     case noActiveWindow
     case noActiveTab
@@ -90,6 +83,7 @@ class BrowserURLService {
         subsystem: "com.prakashjoshipax.voiceink",
         category: "browser.applescript"
     )
+    private let scriptTimeout: TimeInterval = 1.5
     
     private init() {}
     
@@ -118,7 +112,7 @@ class BrowserURLService {
         do {
             logger.debug("▶️ Executing AppleScript for \(browser.displayName, privacy: .public)")
             try task.run()
-            task.waitUntilExit()
+            try await waitUntilExit(task, browser: browser)
             
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
@@ -139,9 +133,29 @@ class BrowserURLService {
                 logger.error("❌ Failed to decode output from AppleScript for \(browser.displayName, privacy: .public)")
                 throw BrowserURLError.executionFailed
             }
+        } catch let error as BrowserURLError {
+            throw error
+        } catch is CancellationError {
+            if task.isRunning {
+                task.terminate()
+            }
+            throw CancellationError()
         } catch {
             logger.error("❌ AppleScript execution failed for \(browser.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
             throw BrowserURLError.executionFailed
+        }
+    }
+
+    private func waitUntilExit(_ task: Process, browser: BrowserType) async throws {
+        let timeoutDate = Date().addingTimeInterval(scriptTimeout)
+        while task.isRunning {
+            if Date() >= timeoutDate {
+                task.terminate()
+                logger.error("❌ AppleScript timed out for \(browser.displayName, privacy: .public)")
+                throw BrowserURLError.executionTimedOut
+            }
+
+            try await Task.sleep(nanoseconds: 50_000_000)
         }
     }
     

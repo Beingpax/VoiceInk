@@ -128,6 +128,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     Task { @MainActor [self] in
                         let startID = UUID()
                         self.activeRecordingStartID = startID
+                        let activeModeTask = ActiveWindowService.shared.beginApplyingConfiguration(modeId: modeId) { [weak self] in
+                            guard let self else { return false }
+                            return self.activeRecordingStartID == startID && !self.shouldCancelRecording
+                        }
 
                         do {
                             let fileName = "\(UUID().uuidString).wav"
@@ -148,6 +152,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             guard self.activeRecordingStartID == startID,
                                   self.recorderUIManager?.isMiniRecorderVisible ?? false,
                                   !self.shouldCancelRecording else {
+                                activeModeTask.cancel()
                                 let shouldKeepRecordingFile = self.shouldCancelRecording
                                 if self.activeRecordingStartID == startID {
                                     await self.recorder.stopRecording()
@@ -163,12 +168,17 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             self.recordingState = .recording
                             self.logger.notice("toggleRecord: recording started successfully, state=recording")
 
-                            await ActiveWindowService.shared.applyConfiguration(modeId: modeId)
+                            await activeModeTask.value
 
                             guard self.recordingState == .recording,
-                                  let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
-                                    transcriptionModelManager: self.transcriptionModelManager
-                                  ) else {
+                                  self.activeRecordingStartID == startID,
+                                  !self.shouldCancelRecording else {
+                                return
+                            }
+
+                            guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
+                                transcriptionModelManager: self.transcriptionModelManager
+                            ) else {
                                 NotificationManager.shared.showNotification(title: "No AI Model Selected", type: .error)
                                 await self.recorder.stopRecording()
                                 try? FileManager.default.removeItem(at: permanentURL)
@@ -237,6 +247,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                         } catch {
+                            activeModeTask.cancel()
                             self.logger.error("❌ Failed to start recording: \(error.localizedDescription, privacy: .public)")
                             await self.recorder.stopRecording()
                             self.cancelCurrentSession()
