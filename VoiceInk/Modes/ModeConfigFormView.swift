@@ -17,24 +17,11 @@ struct ModeConfigFormView: View {
     @FocusState private var isNameFieldFocused: Bool
 
     @State private var isShowingIconPicker = false
-    @State private var isShowingAppPicker = false
-    @State private var isShowingWebsitePicker = false
-    @State private var installedApps: [InstalledAppInfo] = []
-    @State private var searchText = ""
-    @State private var newWebsiteURL = ""
     @State private var isShowingDeleteConfirmation = false
     @State private var isContextAwarenessExpanded = false
 
     private var effectiveModelName: String? {
         draft.selectedTranscriptionModelName
-    }
-
-    private var filteredApps: [InstalledAppInfo] {
-        if searchText.isEmpty { return installedApps }
-        return installedApps.filter { app in
-            app.name.localizedCaseInsensitiveContains(searchText) ||
-            app.bundleId.localizedCaseInsensitiveContains(searchText)
-        }
     }
 
     private var selectedPrompt: CustomPrompt? {
@@ -122,7 +109,11 @@ struct ModeConfigFormView: View {
 
     private var formContent: some View {
         Form {
-            triggerScenariosSection
+            ModeTriggerSection(
+                appConfigs: $draft.appConfigs,
+                websiteConfigs: $draft.websiteConfigs,
+                cleanURL: modeManager.cleanURL
+            )
             transcriptionSection
             aiEnhancementSection
             advancedSection
@@ -145,111 +136,6 @@ struct ModeConfigFormView: View {
             Text("Are you sure you want to delete '\(draft.name)'? This action cannot be undone.")
         }
         .modeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
-    }
-
-    private var triggerScenariosSection: some View {
-        Section("Trigger Scenarios") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Applications")
-                    Spacer()
-                    AddIconButton(helpText: "Add application") {
-                        installedApps = InstalledApps.load()
-                        isShowingAppPicker = true
-                    }
-                    .popover(isPresented: $isShowingAppPicker, arrowEdge: .bottom) {
-                        AppPickerPopover(
-                            installedApps: filteredApps,
-                            selectedAppConfigs: $draft.appConfigs,
-                            searchText: $searchText
-                        )
-                    }
-                }
-
-                if !draft.appConfigs.isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44, maximum: 50), spacing: 10)], spacing: 10) {
-                        ForEach(draft.appConfigs) { appConfig in
-                            ZStack(alignment: .topTrailing) {
-                                if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: appConfig.bundleIdentifier) {
-                                    Image(nsImage: NSWorkspace.shared.icon(forFile: appURL.path))
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 44, height: 44)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                } else {
-                                    Image(systemName: "app.fill")
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .frame(width: 26, height: 26)
-                                        .frame(width: 44, height: 44)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 10)
-                                                .fill(Color(NSColor.controlBackgroundColor))
-                                        )
-                                }
-
-                                Button {
-                                    draft.appConfigs.removeAll(where: { $0.id == appConfig.id })
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                                .offset(x: 6, y: -6)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-            }
-            .padding(.vertical, 2)
-
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Websites")
-                    Spacer()
-                    AddIconButton(helpText: "Add website") {
-                        isShowingWebsitePicker = true
-                    }
-                    .popover(isPresented: $isShowingWebsitePicker, arrowEdge: .bottom) {
-                        WebsitePickerPopover(
-                            websiteURL: $newWebsiteURL,
-                            onAdd: addWebsite
-                        )
-                    }
-                }
-
-                if !draft.websiteConfigs.isEmpty {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 10)], spacing: 10) {
-                        ForEach(draft.websiteConfigs) { urlConfig in
-                            HStack(spacing: 6) {
-                                Image(systemName: "globe")
-                                    .foregroundColor(.secondary)
-                                Text(urlConfig.url)
-                                    .lineLimit(1)
-                                Spacer(minLength: 0)
-                                Button {
-                                    draft.websiteConfigs.removeAll(where: { $0.id == urlConfig.id })
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(NSColor.controlBackgroundColor))
-                            )
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-            }
-            .padding(.vertical, 2)
-        }
     }
 
     private var transcriptionSection: some View {
@@ -669,20 +555,6 @@ struct ModeConfigFormView: View {
             draft.selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage"),
             for: model
         )
-    }
-
-    private func addWebsite() {
-        let trimmedURL = newWebsiteURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedURL.isEmpty else { return }
-
-        let cleanedURL = modeManager.cleanURL(trimmedURL)
-        guard !draft.websiteConfigs.contains(where: { $0.url == cleanedURL }) else {
-            newWebsiteURL = ""
-            return
-        }
-
-        draft.websiteConfigs.append(URLConfig(url: cleanedURL))
-        newWebsiteURL = ""
     }
 
 }
