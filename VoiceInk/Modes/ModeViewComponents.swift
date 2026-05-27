@@ -88,6 +88,35 @@ struct AddIconButton: View {
     }
 }
 
+struct DefaultModeIndicator: View {
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.primary)
+
+            Text("Default")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.leading, 7)
+        .padding(.trailing, 9)
+        .frame(height: 24)
+        .background {
+            Capsule()
+                .fill(Color.secondary.opacity(0.1))
+        }
+        .overlay {
+            Capsule()
+                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+        }
+        .contentShape(Capsule())
+        .help("Default mode is used when no app or website matches")
+    }
+}
+
 struct ConfigurationRow: View {
     @Binding var config: ModeConfig
     let isEditing: Bool
@@ -168,19 +197,8 @@ struct ConfigurationRow: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(config.name)
-                            .font(.system(size: 15, weight: .semibold))
-                        
-                        if config.isDefault {
-                            Text("Default")
-                                .font(.system(size: 11, weight: .medium))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Capsule().fill(Color.accentColor))
-                                .foregroundColor(.white)
-                        }
-                    }
+                    Text(config.name)
+                        .font(.system(size: 15, weight: .semibold))
                     
                     HStack(spacing: 12) {
                         if appCount > 0 {
@@ -206,19 +224,23 @@ struct ConfigurationRow: View {
                 }
                 
                 Spacer()
-                
-                Toggle("", isOn: Binding(
-                    get: { config.isEnabled },
-                    set: { newValue in
-                        if newValue {
-                            modeManager.enableConfiguration(with: config.id)
-                        } else {
-                            modeManager.disableConfiguration(with: config.id)
+
+                if config.isDefault {
+                    DefaultModeIndicator()
+                } else {
+                    Toggle("", isOn: Binding(
+                        get: { config.isEnabled },
+                        set: { newValue in
+                            if newValue {
+                                modeManager.enableConfiguration(with: config.id)
+                            } else {
+                                modeManager.disableConfiguration(with: config.id)
+                            }
                         }
-                    }
-                ))
-                    .toggleStyle(SwitchToggleStyle(tint: .accentColor))
-                    .labelsHidden()
+                    ))
+                        .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+                        .labelsHidden()
+                }
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
@@ -324,7 +346,7 @@ struct ConfigurationRow: View {
     }
     .clipShape(RoundedRectangle(cornerRadius: 16))
     .background(CardBackground(isSelected: isEditing))
-    .opacity(config.isEnabled ? 1.0 : 0.5)
+    .opacity(config.isEnabled ? 1.0 : 0.70)
 
     .onHover { hovering in
         withAnimation(.easeInOut(duration: 0.15)) {

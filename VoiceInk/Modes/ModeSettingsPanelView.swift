@@ -129,11 +129,11 @@ private struct ModeReorderRow: View {
 
             HStack(spacing: 6) {
                 if config.isDefault {
-                    ModeReorderBadge(title: "Default", isProminent: true)
+                    DefaultModeIndicator()
                 }
 
                 if !config.isEnabled {
-                    ModeReorderBadge(title: "Disabled")
+                    ModeReorderBadge(title: "Disabled", systemImage: "slash.circle.fill")
                 }
             }
         }
@@ -214,24 +214,32 @@ private struct ModeReorderMeta: View {
 
 private struct ModeReorderBadge: View {
     let title: String
-    var isProminent = false
+    var systemImage: String?
 
     var body: some View {
-        Text(title)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(isProminent ? Color.white : Color.secondary)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
-            .background {
-                Capsule()
-                    .fill(isProminent ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+        HStack(spacing: 5) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 10, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.primary)
             }
-            .overlay {
-                if !isProminent {
-                    Capsule()
-                        .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
-                }
-            }
+
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background {
+            Capsule()
+                .fill(Color.secondary.opacity(0.1))
+        }
+        .overlay {
+            Capsule()
+                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+        }
     }
 }
 
