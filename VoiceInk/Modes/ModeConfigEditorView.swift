@@ -86,12 +86,14 @@ struct ModeConfigEditorView: View {
     private func prepareView() {
         if case .add = mode {
             draft.applyAddModeDefaults(aiService: aiService)
+            draft.inheritUsableTranscriptionModelSelection(from: transcriptionModelManager.usableModels)
+        } else {
+            draft.ensureTranscriptionModelSelection(
+                fallback: transcriptionModelManager.usableModels.first?.name
+            )
         }
 
         draft.ensurePromptSelection(firstPromptId: enhancementService.allPrompts.first?.id)
-        draft.ensureTranscriptionModelSelection(
-            fallback: transcriptionModelManager.usableModels.first?.name
-        )
 
         if let selectedModelName = draft.selectedTranscriptionModelName,
            let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
