@@ -26,6 +26,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var icon: ModeIcon
     var appConfigs: [AppConfig]?
     var urlConfigs: [URLConfig]?
+    var triggerGroups: [ModeTriggerGroup]?
     var isAIEnhancementEnabled: Bool
     var selectedPrompt: String?
     var selectedTranscriptionModelName: String?
@@ -43,14 +44,14 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var isDefault: Bool = false
         
     enum CodingKeys: String, CodingKey {
-        case id, name, icon, appConfigs, urlConfigs, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
+        case id, name, icon, appConfigs, urlConfigs, triggerGroups, isAIEnhancementEnabled, selectedPrompt, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, isAutoSendEnabled, autoSendKey, isEnabled, isDefault
         case legacyEmoji = "emoji"
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
     
     init(id: UUID = UUID(), name: String, icon: ModeIcon = .defaultIcon, appConfigs: [AppConfig]? = nil,
-         urlConfigs: [URLConfig]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
+         urlConfigs: [URLConfig]? = nil, triggerGroups: [ModeTriggerGroup]? = nil, isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true, useScreenCapture: Bool = false,
          isTextFormattingEnabled: Bool = false, punctuationCleanupMode: PunctuationCleanupMode = .keep, lowercaseTranscription: Bool = false,
          selectedAIProvider: String? = nil, selectedAIModel: String? = nil, autoSendKey: AutoSendKey = .none, isEnabled: Bool = true, isDefault: Bool = false) {
@@ -59,6 +60,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         self.icon = icon
         self.appConfigs = appConfigs
         self.urlConfigs = urlConfigs
+        self.triggerGroups = triggerGroups
         self.isAIEnhancementEnabled = isAIEnhancementEnabled
         self.selectedPrompt = selectedPrompt
         self.useClipboardContext = useClipboardContext
@@ -90,6 +92,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         }
         appConfigs = try container.decodeIfPresent([AppConfig].self, forKey: .appConfigs)
         urlConfigs = try container.decodeIfPresent([URLConfig].self, forKey: .urlConfigs)
+        triggerGroups = try container.decodeIfPresent([ModeTriggerGroup].self, forKey: .triggerGroups)
         isAIEnhancementEnabled = try container.decode(Bool.self, forKey: .isAIEnhancementEnabled)
         selectedPrompt = try container.decodeIfPresent(String.self, forKey: .selectedPrompt)
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
@@ -140,6 +143,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         try container.encode(icon, forKey: .icon)
         try container.encodeIfPresent(appConfigs, forKey: .appConfigs)
         try container.encodeIfPresent(urlConfigs, forKey: .urlConfigs)
+        try container.encodeIfPresent(triggerGroups, forKey: .triggerGroups)
         try container.encode(isAIEnhancementEnabled, forKey: .isAIEnhancementEnabled)
         try container.encodeIfPresent(selectedPrompt, forKey: .selectedPrompt)
         try container.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
@@ -276,13 +280,11 @@ class ModeManager: ObservableObject {
         let cleanedURL = cleanURL(url)
         
         for config in configurations.filter({ $0.isEnabled }) {
-            if let urlConfigs = config.urlConfigs {
-                for urlConfig in urlConfigs {
-                    let configURL = cleanURL(urlConfig.url)
-                    
-                    if cleanedURL.contains(configURL) {
-                        return config
-                    }
+            for urlConfig in config.allURLConfigs {
+                let configURL = cleanURL(urlConfig.url)
+
+                if cleanedURL.contains(configURL) {
+                    return config
                 }
             }
         }
@@ -291,10 +293,8 @@ class ModeManager: ObservableObject {
     
     func getConfigurationForApp(_ bundleId: String) -> ModeConfig? {
         for config in configurations.filter({ $0.isEnabled }) {
-            if let appConfigs = config.appConfigs {
-                if appConfigs.contains(where: { $0.bundleIdentifier == bundleId }) {
-                    return config
-                }
+            if config.allAppConfigs.contains(where: { $0.bundleIdentifier == bundleId }) {
+                return config
             }
         }
         return nil

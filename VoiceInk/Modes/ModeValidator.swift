@@ -6,7 +6,7 @@ enum ModeValidationError: Error, Identifiable {
     case duplicateName(String)
     case duplicateAppTrigger(String, String) // (app name, existing mode name)
     case duplicateWebsiteTrigger(String, String) // (website, existing mode name)
-    
+
     var id: String {
         switch self {
         case .emptyName: return "emptyName"
@@ -15,7 +15,7 @@ enum ModeValidationError: Error, Identifiable {
         case .duplicateWebsiteTrigger: return "duplicateWebsiteTrigger"
         }
     }
-    
+
     var localizedDescription: String {
         switch self {
         case .emptyName:
@@ -32,61 +32,55 @@ enum ModeValidationError: Error, Identifiable {
 
 struct ModeValidator {
     private let modeManager: ModeManager
-    
+
     init(modeManager: ModeManager) {
         self.modeManager = modeManager
     }
-    
+
     func validateForSave(config: ModeConfig, mode: ConfigurationMode) -> [ModeValidationError] {
         var errors: [ModeValidationError] = []
-        
+
         if config.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errors.append(.emptyName)
         }
-        
+
         let isDuplicateName = modeManager.configurations.contains { existingConfig in
             if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
                 return false
             }
             return existingConfig.name == config.name
         }
-        
+
         if isDuplicateName {
             errors.append(.duplicateName(config.name))
         }
-        
 
-        
-        if let appConfigs = config.appConfigs {
-            for appConfig in appConfigs {
-                for existingConfig in modeManager.configurations {
-                    if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
-                        continue
-                    }
-                    
-                    if let existingAppConfigs = existingConfig.appConfigs,
-                       existingAppConfigs.contains(where: { $0.bundleIdentifier == appConfig.bundleIdentifier }) {
-                        errors.append(.duplicateAppTrigger(appConfig.appName, existingConfig.name))
-                    }
+        for appConfig in config.allAppConfigs {
+            for existingConfig in modeManager.configurations {
+                if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
+                    continue
+                }
+
+                if existingConfig.allAppConfigs.contains(where: { $0.bundleIdentifier == appConfig.bundleIdentifier }) {
+                    errors.append(.duplicateAppTrigger(appConfig.appName, existingConfig.name))
                 }
             }
         }
-        
-        if let urlConfigs = config.urlConfigs {
-            for urlConfig in urlConfigs {
-                for existingConfig in modeManager.configurations {
-                    if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
-                        continue
-                    }
-                    
-                    if let existingUrlConfigs = existingConfig.urlConfigs,
-                       existingUrlConfigs.contains(where: { $0.url == urlConfig.url }) {
-                        errors.append(.duplicateWebsiteTrigger(urlConfig.url, existingConfig.name))
-                    }
+
+        for urlConfig in config.allURLConfigs {
+            let cleanedURL = modeManager.cleanURL(urlConfig.url)
+
+            for existingConfig in modeManager.configurations {
+                if case .edit(let editConfig) = mode, existingConfig.id == editConfig.id {
+                    continue
+                }
+
+                if existingConfig.allURLConfigs.contains(where: { modeManager.cleanURL($0.url) == cleanedURL }) {
+                    errors.append(.duplicateWebsiteTrigger(cleanedURL, existingConfig.name))
                 }
             }
         }
-        
+
         return errors
     }
 }

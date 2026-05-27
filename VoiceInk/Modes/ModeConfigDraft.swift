@@ -6,6 +6,7 @@ struct ModeConfigDraft {
     var icon: ModeIcon
     var appConfigs: [AppConfig]
     var websiteConfigs: [URLConfig]
+    var triggerGroups: [ModeTriggerGroup]
     var isAIEnhancementEnabled: Bool
     var selectedPromptId: UUID?
     var selectedTranscriptionModelName: String?
@@ -34,6 +35,7 @@ struct ModeConfigDraft {
             icon = .defaultIcon
             appConfigs = []
             websiteConfigs = []
+            triggerGroups = []
             isAIEnhancementEnabled = false
             selectedPromptId = inheritedConfig?.selectedPrompt.flatMap { UUID(uuidString: $0) }
             selectedTranscriptionModelName = inheritedConfig?.selectedTranscriptionModelName
@@ -58,6 +60,7 @@ struct ModeConfigDraft {
             icon = latestConfig.icon
             appConfigs = latestConfig.appConfigs ?? []
             websiteConfigs = latestConfig.urlConfigs ?? []
+            triggerGroups = latestConfig.triggerGroups ?? []
             isAIEnhancementEnabled = latestConfig.isAIEnhancementEnabled
             selectedPromptId = latestConfig.selectedPrompt.flatMap { UUID(uuidString: $0) }
             selectedTranscriptionModelName = latestConfig.selectedTranscriptionModelName
@@ -143,6 +146,7 @@ struct ModeConfigDraft {
                 icon: icon,
                 appConfigs: appConfigs.isEmpty ? nil : appConfigs,
                 urlConfigs: websiteConfigs.isEmpty ? nil : websiteConfigs,
+                triggerGroups: triggerGroups.isEmpty ? nil : triggerGroups,
                 isAIEnhancementEnabled: isAIEnhancementEnabled,
                 selectedPrompt: selectedPromptId?.uuidString,
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
@@ -165,6 +169,7 @@ struct ModeConfigDraft {
             updatedConfig.icon = icon
             updatedConfig.appConfigs = appConfigs.isEmpty ? nil : appConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
+            updatedConfig.triggerGroups = triggerGroups.isEmpty ? nil : triggerGroups
             updatedConfig.isAIEnhancementEnabled = isAIEnhancementEnabled
             updatedConfig.selectedPrompt = selectedPromptId?.uuidString
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName

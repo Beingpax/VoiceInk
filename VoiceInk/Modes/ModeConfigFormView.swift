@@ -112,6 +112,7 @@ struct ModeConfigFormView: View {
             ModeTriggerSection(
                 appConfigs: $draft.appConfigs,
                 websiteConfigs: $draft.websiteConfigs,
+                triggerGroups: $draft.triggerGroups,
                 cleanURL: modeManager.cleanURL
             )
             transcriptionSection

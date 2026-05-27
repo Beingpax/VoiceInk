@@ -164,8 +164,8 @@ struct ConfigurationRow: View {
         config.autoSendKey.isEnabled
     }
     
-    private var appCount: Int { return config.appConfigs?.count ?? 0 }
-    private var websiteCount: Int { return config.urlConfigs?.count ?? 0 }
+    private var appCount: Int { return config.allAppConfigs.count }
+    private var websiteCount: Int { return config.allURLConfigs.count }
     
     private var websiteText: String {
         if websiteCount == 0 { return "" }
@@ -182,7 +182,7 @@ struct ConfigurationRow: View {
     }
     
     private var visibleAppConfigs: [AppConfig] {
-        return Array(config.appConfigs?.prefix(maxAppIconsToShow) ?? [])
+        return Array(config.allAppConfigs.prefix(maxAppIconsToShow))
     }
     
     var body: some View {
@@ -391,8 +391,8 @@ struct ModeAppIcon: View {
     let bundleId: String
     
     var body: some View {
-        if let appUrl = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleId) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: appUrl.path))
+        if let icon = TriggerAppIconCache.shared.icon(for: bundleId) {
+            Image(nsImage: icon)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 20, height: 20)

@@ -120,8 +120,8 @@ private struct ModeReorderRow: View {
                     .truncationMode(.tail)
 
                 HStack(spacing: 8) {
-                    ModeReorderMeta(icon: "app.fill", value: countText(config.appConfigs?.count ?? 0, singular: "App", plural: "Apps"))
-                    ModeReorderMeta(icon: "globe", value: countText(config.urlConfigs?.count ?? 0, singular: "Website", plural: "Websites"))
+                    ModeReorderMeta(icon: "app.fill", value: countText(config.allAppConfigs.count, singular: "App", plural: "Apps"))
+                    ModeReorderMeta(icon: "globe", value: countText(config.allURLConfigs.count, singular: "Website", plural: "Websites"))
                 }
             }
 
