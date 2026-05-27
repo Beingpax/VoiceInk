@@ -190,10 +190,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 return
                             }
 
-                            let model = transcriptionConfiguration.model
-                            if self.serviceRegistry.supportsStreaming(model: model) {
+                            if self.serviceRegistry.shouldUseRealtimeTranscription(for: transcriptionConfiguration) {
                                 let session = self.serviceRegistry.createSession(
-                                    for: model,
+                                    for: transcriptionConfiguration,
                                     onPartialTranscript: { [weak self] partial in
                                         Task { @MainActor in
                                             self?.partialTranscript = partial
@@ -203,8 +202,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.currentSession = session
                                 self.currentSessionTranscriptionConfiguration = transcriptionConfiguration
                                 let realCallback = try await session.prepare(
-                                    model: model,
-                                    context: transcriptionConfiguration.requestContext
+                                    configuration: transcriptionConfiguration
                                 )
 
                                 if let realCallback {

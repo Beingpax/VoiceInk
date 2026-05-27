@@ -5,7 +5,6 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     let onRecordButtonTapped: () -> Void
     @EnvironmentObject var windowManager: MiniWindowManager
-    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
 
     // MARK: - Layout Constants
 
@@ -17,8 +16,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // true when live transcript is streaming in during recording
     private var hasLiveTranscript: Bool {
-        showLiveTextPreview
-            && stateProvider.recordingState == .recording
+        stateProvider.recordingState == .recording
             && !stateProvider.partialTranscript.isEmpty
     }
 

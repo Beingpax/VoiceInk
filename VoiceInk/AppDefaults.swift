@@ -27,7 +27,6 @@ enum AppDefaults {
             "LowercaseTranscription": false,
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,
-            "showLiveTextPreview": false,
             "RecorderType": "mini",
 
             // Cleanup

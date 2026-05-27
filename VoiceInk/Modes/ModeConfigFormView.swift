@@ -24,6 +24,11 @@ struct ModeConfigFormView: View {
         draft.selectedTranscriptionModelName
     }
 
+    private var selectedTranscriptionModel: (any TranscriptionModel)? {
+        guard let modelName = effectiveModelName else { return nil }
+        return transcriptionModelManager.allAvailableModels.first { $0.name == modelName }
+    }
+
     private var selectedPrompt: CustomPrompt? {
         guard let selectedPromptId = draft.selectedPromptId else { return nil }
         return enhancementService.allPrompts.first { $0.id == selectedPromptId }
@@ -158,6 +163,7 @@ struct ModeConfigFormView: View {
                 .onChange(of: draft.selectedTranscriptionModelName) { _, newModelName in
                     if let modelName = newModelName,
                        let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
+                        draft.isRealtimeTranscriptionEnabled = TranscriptionRealtimeSupport.isAvailable(for: model)
                         if model.provider == .gemini {
                             draft.selectedLanguage = "auto"
                         } else {
@@ -165,6 +171,8 @@ struct ModeConfigFormView: View {
                         }
                     }
                 }
+
+                realtimeToggle
             }
 
             languagePicker
@@ -201,6 +209,23 @@ struct ModeConfigFormView: View {
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var realtimeToggle: some View {
+        if let model = selectedTranscriptionModel,
+           TranscriptionRealtimeSupport.isAvailable(for: model) {
+            Toggle("Real-time", isOn: $draft.isRealtimeTranscriptionEnabled)
+                .disabled(TranscriptionRealtimeSupport.isRequired(for: model))
+                .onAppear {
+                    if TranscriptionRealtimeSupport.isRequired(for: model) {
+                        draft.isRealtimeTranscriptionEnabled = true
+                    }
+                }
+                .onChange(of: draft.isRealtimeTranscriptionEnabled) { _, _ in
+                    draft.useCompatibleLanguage(for: model)
+                }
         }
     }
 
@@ -548,13 +573,14 @@ struct ModeConfigFormView: View {
     }
 
     private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {
-        TranscriptionLanguageSupport.languages(for: model)
+        TranscriptionLanguageSupport.languages(for: model, realtimeEnabled: draft.isRealtimeTranscriptionEnabled)
     }
 
     private func effectiveLanguage(for model: any TranscriptionModel) -> String {
         TranscriptionLanguageSupport.validLanguageOrFallback(
             draft.selectedLanguage ?? UserDefaults.standard.string(forKey: "SelectedLanguage"),
-            for: model
+            for: model,
+            realtimeEnabled: draft.isRealtimeTranscriptionEnabled
         )
     }
 

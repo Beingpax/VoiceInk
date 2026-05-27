@@ -46,7 +46,8 @@ class AudioTranscriptionService: ObservableObject {
             let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
             let language = TranscriptionLanguageSupport.validLanguageOrFallback(
                 mode?.selectedLanguage,
-                for: model
+                for: model,
+                realtimeEnabled: mode?.isRealtimeTranscriptionEnabled
             )
             let requestContext = TranscriptionRequestContext(
                 language: language,

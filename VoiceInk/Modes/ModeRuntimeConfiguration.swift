@@ -4,6 +4,7 @@ struct TranscriptionRuntimeConfiguration {
     let mode: ModeConfig?
     let model: any TranscriptionModel
     let language: String
+    let isRealtimeEnabled: Bool
 
     var metadata: (name: String?, emoji: String?) {
         guard let mode, mode.isEnabled else {
@@ -67,13 +68,15 @@ enum ModeRuntimeResolver {
 
         let language = TranscriptionLanguageSupport.validLanguageOrFallback(
             mode?.selectedLanguage,
-            for: model
+            for: model,
+            realtimeEnabled: mode?.isRealtimeTranscriptionEnabled
         )
 
         return TranscriptionRuntimeConfiguration(
             mode: mode,
             model: model,
-            language: language
+            language: language,
+            isRealtimeEnabled: TranscriptionRealtimeSupport.isEnabled(for: model, modeValue: mode?.isRealtimeTranscriptionEnabled)
         )
     }
 

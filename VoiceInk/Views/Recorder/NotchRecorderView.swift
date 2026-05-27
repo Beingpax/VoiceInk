@@ -5,7 +5,6 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     let onRecordButtonTapped: () -> Void
     @EnvironmentObject var windowManager: NotchWindowManager
-    @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
 
     // MARK: - Display State
 
@@ -18,7 +17,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var displayState: DisplayState {
         switch stateProvider.recordingState {
         case .recording:
-            let shouldShowLive = showLiveTextPreview && !stateProvider.partialTranscript.isEmpty
+            let shouldShowLive = !stateProvider.partialTranscript.isEmpty
             return shouldShowLive ? .liveText : .active
         case .transcribing, .enhancing:
             return .active

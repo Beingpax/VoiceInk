@@ -149,7 +149,7 @@ struct ConfigurationRow: View {
             
             if let modelName = config.selectedTranscriptionModelName,
                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),
-               let langName = TranscriptionLanguageSupport.languages(for: model)[langCode] {
+               let langName = TranscriptionLanguageSupport.languages(for: model, realtimeEnabled: config.isRealtimeTranscriptionEnabled)[langCode] {
                 return langName
             }
             return langCode.uppercased()

@@ -7,15 +7,11 @@ struct CloudModelCardView: View {
     let model: CloudModel
 
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @State private var isExpanded = false
     @State private var apiKey = ""
-    @State private var streamingEnabled: Bool
 
     init(model: CloudModel) {
         self.model = model
-        let key = "streaming-enabled-\(model.name)"
-        _streamingEnabled = State(initialValue: UserDefaults.standard.object(forKey: key) as? Bool ?? true)
     }
     @State private var isVerifying = false
     @State private var verificationStatus: VerificationStatus = .none
@@ -69,44 +65,7 @@ struct CloudModelCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
-            if model.supportsStreaming && isConfigured {
-                streamingModeBadge
-            }
-
             Spacer()
-        }
-    }
-    
-    private var isStreamingOnly: Bool {
-        CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly ?? false
-    }
-
-    private var streamingModeBadge: some View {
-        Toggle("Real-time", isOn: isStreamingOnly ? .constant(true) : $streamingEnabled)
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .disabled(isStreamingOnly)
-            .onChange(of: streamingEnabled) { _, newValue in
-                if !isStreamingOnly {
-                    UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
-                    ensureCurrentModelLanguageIsStillValid()
-                    NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-                }
-            }
-            .help(isStreamingOnly ? "This model only supports real-time streaming" : (streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming"))
-    }
-
-    private func ensureCurrentModelLanguageIsStillValid() {
-        guard transcriptionModelManager.currentTranscriptionModel?.name == model.name else {
-            return
-        }
-
-        let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(selectedLanguage, for: model)
-        if selectedLanguage != compatibleLanguage {
-            selectedLanguage = compatibleLanguage
-            NotificationCenter.default.post(name: .languageDidChange, object: nil)
         }
     }
 
@@ -256,10 +215,6 @@ struct CloudModelCardView: View {
         }
     }
     
-    private var streamingDefaultsKey: String {
-        "streaming-enabled-\(model.name)"
-    }
-
     private func loadSavedAPIKey() {
         if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: providerKey) {
             apiKey = savedKey

@@ -10,6 +10,7 @@ struct ModeConfigDraft {
     var isAIEnhancementEnabled: Bool
     var selectedPromptId: UUID?
     var selectedTranscriptionModelName: String?
+    var isRealtimeTranscriptionEnabled: Bool
     var selectedLanguage: String?
     var isTextFormattingEnabled: Bool
     var punctuationCleanupMode: PunctuationCleanupMode
@@ -39,6 +40,7 @@ struct ModeConfigDraft {
             isAIEnhancementEnabled = false
             selectedPromptId = inheritedConfig?.selectedPrompt.flatMap { UUID(uuidString: $0) }
             selectedTranscriptionModelName = inheritedConfig?.selectedTranscriptionModelName
+            isRealtimeTranscriptionEnabled = true
             selectedLanguage = inheritedConfig?.selectedLanguage
             isTextFormattingEnabled = true
             punctuationCleanupMode = .keep
@@ -64,6 +66,7 @@ struct ModeConfigDraft {
             isAIEnhancementEnabled = latestConfig.isAIEnhancementEnabled
             selectedPromptId = latestConfig.selectedPrompt.flatMap { UUID(uuidString: $0) }
             selectedTranscriptionModelName = latestConfig.selectedTranscriptionModelName
+            isRealtimeTranscriptionEnabled = latestConfig.isRealtimeTranscriptionEnabled
             selectedLanguage = latestConfig.selectedLanguage
             isTextFormattingEnabled = latestConfig.isTextFormattingEnabled
             punctuationCleanupMode = latestConfig.punctuationCleanupMode
@@ -133,7 +136,8 @@ struct ModeConfigDraft {
     mutating func useCompatibleLanguage(for model: any TranscriptionModel) {
         selectedLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(
             selectedLanguage ?? "en",
-            for: model
+            for: model,
+            realtimeEnabled: isRealtimeTranscriptionEnabled
         )
     }
 
@@ -150,6 +154,7 @@ struct ModeConfigDraft {
                 isAIEnhancementEnabled: isAIEnhancementEnabled,
                 selectedPrompt: selectedPromptId?.uuidString,
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
+                isRealtimeTranscriptionEnabled: isRealtimeTranscriptionEnabled,
                 selectedLanguage: selectedLanguage,
                 useClipboardContext: useClipboardContext,
                 useSelectedTextContext: useSelectedTextContext,
@@ -173,6 +178,7 @@ struct ModeConfigDraft {
             updatedConfig.isAIEnhancementEnabled = isAIEnhancementEnabled
             updatedConfig.selectedPrompt = selectedPromptId?.uuidString
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName
+            updatedConfig.isRealtimeTranscriptionEnabled = isRealtimeTranscriptionEnabled
             updatedConfig.selectedLanguage = selectedLanguage
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
             updatedConfig.punctuationCleanupMode = punctuationCleanupMode

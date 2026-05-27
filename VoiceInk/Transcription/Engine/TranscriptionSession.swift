@@ -5,7 +5,7 @@ import os
 @MainActor
 protocol TranscriptionSession: AnyObject {
     /// Prepares the session. Returns an audio chunk callback for streaming, or nil for file-based.
-    func prepare(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> ((Data) -> Void)?
+    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)?
 
     /// Called after recording stops. Returns the final transcribed text.
     func transcribe(audioURL: URL) async throws -> String
@@ -27,9 +27,9 @@ final class FileTranscriptionSession: TranscriptionSession {
         self.service = service
     }
 
-    func prepare(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> ((Data) -> Void)? {
-        self.model = model
-        self.context = context
+    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)? {
+        self.model = configuration.model
+        self.context = configuration.requestContext
         return nil
     }
 
@@ -64,7 +64,10 @@ final class StreamingTranscriptionSession: TranscriptionSession {
         self.fallbackService = fallbackService
     }
 
-    func prepare(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> ((Data) -> Void)? {
+    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)? {
+        let model = configuration.model
+        let context = configuration.requestContext
+
         self.model = model
         self.context = context
         logger.notice("Streaming session prepare model=\(model.displayName, privacy: .public)")
