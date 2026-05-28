@@ -83,7 +83,6 @@ struct ExpandableSettingsRow<Content: View>: View {
                 .transition(expandedContentTransition)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
         .onChange(of: rowIsEnabled) { _, newValue in
             guard isEnabled != nil else { return }
             isHandlingToggleChange = true
@@ -92,7 +91,9 @@ struct ExpandableSettingsRow<Content: View>: View {
                     isExpanded = true
                 }
             } else {
-                isExpanded = false
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isExpanded = false
+                }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isHandlingToggleChange = false

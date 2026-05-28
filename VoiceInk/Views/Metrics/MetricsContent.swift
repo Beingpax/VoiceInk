@@ -439,11 +439,9 @@ private struct CopySystemInfoButton: View {
         }) {
             HStack(spacing: 8) {
                 Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                    .rotationEffect(.degrees(isCopied ? 360 : 0))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCopied)
+                    .symbolRenderingMode(.hierarchical)
 
                 Text(isCopied ? "Copied!" : "Copy System Info")
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCopied)
             }
             .font(.system(size: 13, weight: .medium))
             .padding(.horizontal, 12)
@@ -451,19 +449,17 @@ private struct CopySystemInfoButton: View {
             .background(Capsule().fill(.thinMaterial))
         }
         .buttonStyle(.plain)
-        .scaleEffect(isCopied ? 1.1 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCopied)
     }
 
     private func copySystemInfo() {
         SystemInfoService.shared.copySystemInfoToClipboard()
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(.easeInOut(duration: 0.16)) {
             isCopied = true
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            withAnimation(.easeInOut(duration: 0.16)) {
                 isCopied = false
             }
         }
