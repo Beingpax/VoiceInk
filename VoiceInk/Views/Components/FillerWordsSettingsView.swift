@@ -66,18 +66,11 @@ struct FillerWordsSettingsSection: View {
 
                 Spacer()
 
-                Button {
+                AddIconButton(helpText: "Add filler word") {
                     newWord = ""
                     errorMessage = nil
                     isShowingAddWord = true
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 18))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .help("Add filler word")
                 .popover(isPresented: $isShowingAddWord, arrowEdge: .top) {
                     addWordPopover
                 }

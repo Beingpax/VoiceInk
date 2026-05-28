@@ -68,26 +68,6 @@ struct ModeConfigurationsGrid: View {
     }
 }
 
-/// Small, consistent icon-only add button used across Mode configuration rows.
-struct AddIconButton: View {
-    let helpText: String
-    var isDisabled: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "plus.circle.fill")
-                .font(.system(size: 18))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.secondary)
-        }
-        .buttonStyle(.plain)
-        .help(helpText)
-        .accessibilityLabel(helpText)
-        .disabled(isDisabled)
-    }
-}
-
 struct DefaultModeIndicator: View {
     var body: some View {
         HStack(spacing: 5) {

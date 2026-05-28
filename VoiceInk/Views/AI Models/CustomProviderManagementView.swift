@@ -89,14 +89,7 @@ struct CustomProviderManagementView: View {
 
             Spacer(minLength: 8)
 
-            Button(action: onAdd) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 18))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
-            .help(addHelp)
+            AddIconButton(helpText: addHelp, action: onAdd)
         }
     }
 

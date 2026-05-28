@@ -24,7 +24,7 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .models: return "brain.head.profile"
         case .modes: return "sparkles.square.fill.on.square"
         case .audio: return "mic.fill"
-        case .dictionary: return "character.book.closed.fill"
+        case .dictionary: return "text.book.closed.fill"
         case .settings: return "gearshape.fill"
         case .license: return "checkmark.seal.fill"
         }
@@ -54,7 +54,6 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var engine: VoiceInkEngine
-    @EnvironmentObject private var whisperModelManager: WhisperModelManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
     @State private var selectedView: ViewType? = .metrics
@@ -148,7 +147,7 @@ struct ContentView: View {
         case .audio:
             AudioSetupView()
         case .dictionary:
-            DictionarySettingsView(whisperPrompt: whisperModelManager.whisperPrompt)
+            DictionarySettingsView()
         case .modes:
             ModeView()
         case .settings:

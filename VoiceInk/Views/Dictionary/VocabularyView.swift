@@ -9,15 +9,12 @@ enum VocabularySortMode: String {
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
     @Environment(\.modelContext) private var modelContext
-    @ObservedObject var whisperPrompt: WhisperPrompt
     @State private var newWord = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
 
-    init(whisperPrompt: WhisperPrompt) {
-        self.whisperPrompt = whisperPrompt
-
+    init() {
         if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
            let mode = VocabularySortMode(rawValue: savedSort) {
             _sortMode = State(initialValue: mode)
@@ -43,35 +40,20 @@ struct VocabularyView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            GroupBox {
-                Label {
-                    Text("Add words to help VoiceInk recognize them properly. (Requires AI enhancement)")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: "info.circle.fill")
-                        .foregroundColor(.blue)
-                }
-            }
-
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                TextField("Add word to vocabulary", text: $newWord)
+                TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
                     .onSubmit { addWords() }
+                    .labelsHidden()
 
                 if shouldShowAddButton {
-                    Button(action: addWords) {
-                        Image(systemName: "plus.circle.fill")
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.blue)
-                            .font(.system(size: 16, weight: .semibold))
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(newWord.isEmpty)
-                    .help("Add word")
+                    AddIconButton(
+                        helpText: "Add word",
+                        isDisabled: newWord.isEmpty,
+                        action: addWords
+                    )
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
@@ -86,28 +68,25 @@ struct VocabularyView: View {
 
                             Image(systemName: sortMode == .wordAsc ? "chevron.up" : "chevron.down")
                                 .font(.caption)
-                                .foregroundColor(.accentColor)
+                                .foregroundColor(.secondary)
                         }
                     }
                     .buttonStyle(.plain)
                     .help("Sort alphabetically")
 
-                    ScrollView {
-                        FlowLayout(spacing: 8) {
-                            ForEach(sortedItems) { item in
-                                VocabularyWordView(item: item) {
-                                    removeWord(item)
-                                }
+                    FlowLayout(spacing: 8) {
+                        ForEach(sortedItems) { item in
+                            VocabularyWordView(item: item) {
+                                removeWord(item)
                             }
                         }
-                        .padding(.vertical, 4)
                     }
-                    .frame(maxHeight: 200)
+                    .padding(.vertical, 4)
                 }
                 .padding(.top, 4)
             }
         }
-        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .alert("Vocabulary", isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
         } message: {
