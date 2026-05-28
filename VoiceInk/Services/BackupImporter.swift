@@ -23,7 +23,7 @@ enum BackupImporter {
     private static let keyLowercaseTranscription = "LowercaseTranscription"
 
     @MainActor
-    static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
+    static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
         var shouldSeedImportedPrompts = false
         var shouldRepairModePromptSelections = false
 
@@ -38,7 +38,6 @@ enum BackupImporter {
                 menuBarManager: menuBarManager,
                 mediaController: mediaController,
                 playbackController: playbackController,
-                soundManager: soundManager,
                 recorderUIManager: recorderUIManager
             )
         }
@@ -98,7 +97,7 @@ enum BackupImporter {
     }
 
     @MainActor
-    private static func importGeneral(_ general: GeneralBackup?, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager) {
+    private static func importGeneral(_ general: GeneralBackup?, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager) {
         guard let general else {
             print("No general settings found in the imported file.")
             return
@@ -176,9 +175,6 @@ enum BackupImporter {
             UserDefaults.standard.set(audioRetention, forKey: keyAudioRetentionPeriod)
         }
 
-        if let soundFeedback = general.isSoundFeedbackEnabled {
-            soundManager.isEnabled = soundFeedback
-        }
         if let muteSystem = general.isSystemMuteEnabled {
             mediaController.isSystemMuteEnabled = muteSystem
         }

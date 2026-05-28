@@ -2,7 +2,6 @@ import SwiftUI
 import Cocoa
 import Carbon.HIToolbox
 import LaunchAtLogin
-import AVFoundation
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -12,8 +11,6 @@ struct SettingsView: View {
     @EnvironmentObject private var recorderUIManager: RecorderUIManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject private var enhancementService: AIEnhancementService
-    @StateObject private var deviceManager = AudioDeviceManager.shared
-    @ObservedObject private var soundManager = SoundManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
@@ -27,8 +24,6 @@ struct SettingsView: View {
 
     // Expansion states - all collapsed by default
     @State private var isMiddleClickExpanded = false
-    @State private var isSoundFeedbackExpanded = false
-    @State private var isMuteSystemExpanded = false
     @State private var isRestoreClipboardExpanded = false
 
     var body: some View {
@@ -149,33 +144,8 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - Recording Feedback
-            Section("Recording Feedback") {
-                // Sound Feedback
-                ExpandableSettingsRow(
-                    isExpanded: $isSoundFeedbackExpanded,
-                    isEnabled: $soundManager.isEnabled,
-                    label: "Sound Feedback"
-                ) {
-                    CustomSoundSettingsView()
-                }
-
-                // Mute System Audio
-                ExpandableSettingsRow(
-                    isExpanded: $isMuteSystemExpanded,
-                    isEnabled: $mediaController.isSystemMuteEnabled,
-                    label: "Mute Audio While Recording"
-                ) {
-                    Picker("Resume Delay", selection: $mediaController.audioResumptionDelay) {
-                        Text("0s").tag(0.0)
-                        Text("1s").tag(1.0)
-                        Text("2s").tag(2.0)
-                        Text("3s").tag(3.0)
-                        Text("4s").tag(4.0)
-                        Text("5s").tag(5.0)
-                    }
-                }
-
+            // MARK: - Pasting
+            Section("Pasting") {
                 // Keep Clipboard Content
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,
@@ -224,9 +194,6 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
 
             }
-
-            // MARK: - Experimental
-            ExperimentalSection()
 
             // MARK: - General
             Section("General") {
@@ -279,7 +246,6 @@ struct SettingsView: View {
                             menuBarManager: menuBarManager,
                             mediaController: mediaController,
                             playbackController: playbackController,
-                            soundManager: soundManager,
                             recorderUIManager: recorderUIManager,
                             modelContext: modelContext
                         )
@@ -294,7 +260,6 @@ struct SettingsView: View {
                             menuBarManager: menuBarManager,
                             mediaController: mediaController,
                             playbackController: playbackController,
-                            soundManager: soundManager,
                             recorderUIManager: recorderUIManager,
                             modelContext: modelContext,
                             transcriptionModelManager: transcriptionModelManager
@@ -341,36 +306,6 @@ struct SettingsView: View {
         }
         .labelsHidden()
         .fixedSize()
-    }
-}
-
-// MARK: - Experimental Section
-
-struct ExperimentalSection: View {
-    @ObservedObject private var playbackController = PlaybackController.shared
-    @ObservedObject private var mediaController = MediaController.shared
-    @State private var isPauseMediaExpanded = false
-
-    var body: some View {
-        Section {
-            ExpandableSettingsRow(
-                isExpanded: $isPauseMediaExpanded,
-                isEnabled: $playbackController.isPauseMediaEnabled,
-                label: "Pause Media While Recording",
-                infoMessage: "Pauses playing media when recording starts and resumes when done."
-            ) {
-                Picker("Resume Delay", selection: $mediaController.audioResumptionDelay) {
-                    Text("0s").tag(0.0)
-                    Text("1s").tag(1.0)
-                    Text("2s").tag(2.0)
-                    Text("3s").tag(3.0)
-                    Text("4s").tag(4.0)
-                    Text("5s").tag(5.0)
-                }
-            }
-        } header: {
-            Text("Experimental")
-        }
     }
 }
 

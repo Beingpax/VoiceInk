@@ -6,7 +6,6 @@ class SoundManager: ObservableObject {
     static let shared = SoundManager()
 
     private let playbackEngine = SoundPlaybackEngine()
-    @AppStorage("isSoundFeedbackEnabled") private var isSoundFeedbackEnabled = true
 
     private init() {
         setupSounds()
@@ -35,25 +34,17 @@ class SoundManager: ObservableObject {
     }
 
     func playStartSound() {
-        guard isSoundFeedbackEnabled else { return }
+        guard CustomSoundManager.shared.isSoundEnabled(for: .start) else { return }
         playbackEngine.playStartSound()
     }
 
     func playStopSound() {
-        guard isSoundFeedbackEnabled else { return }
+        guard CustomSoundManager.shared.isSoundEnabled(for: .stop) else { return }
         playbackEngine.playStopSound()
     }
-    
+
     func playEscSound() {
-        guard isSoundFeedbackEnabled else { return }
+        guard CustomSoundManager.shared.hasAnyRecordingSoundEnabled else { return }
         playbackEngine.playEscSound()
     }
-    
-    var isEnabled: Bool {
-        get { isSoundFeedbackEnabled }
-        set {
-            objectWillChange.send()
-            isSoundFeedbackEnabled = newValue
-        }
-    }
-} 
+}

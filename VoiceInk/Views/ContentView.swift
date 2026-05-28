@@ -9,7 +9,7 @@ enum ViewType: String, CaseIterable, Identifiable {
     case models = "AI Models"
     case transcribeAudio = "Transcribe Audio"
     case history = "History"
-    case audioInput = "Audio Input"
+    case audio = "Audio"
     case dictionary = "Dictionary"
     case settings = "Settings"
     case license = "VoiceInk Pro"
@@ -23,7 +23,7 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .history: return "doc.text.fill"
         case .models: return "brain.head.profile"
         case .modes: return "sparkles.square.fill.on.square"
-        case .audioInput: return "mic.fill"
+        case .audio: return "mic.fill"
         case .dictionary: return "character.book.closed.fill"
         case .settings: return "gearshape.fill"
         case .license: return "checkmark.seal.fill"
@@ -145,8 +145,8 @@ struct ContentView: View {
             AudioTranscribeView()
         case .history:
             InlineHistoryView()
-        case .audioInput:
-            AudioInputSettingsView()
+        case .audio:
+            AudioSetupView()
         case .dictionary:
             DictionarySettingsView(whisperPrompt: whisperModelManager.whisperPrompt)
         case .modes:
