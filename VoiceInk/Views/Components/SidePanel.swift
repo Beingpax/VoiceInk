@@ -16,14 +16,12 @@ struct SidePanel<PanelContent: View>: ViewModifier {
     }
 
     private func dismissPanel() {
-        withAnimation(animation) {
-            isPresented = false
-        }
+        isPresented = false
     }
 
     private var panelOverlay: some View {
         HStack(spacing: 0) {
-            Color.black.opacity(0.035)
+            Color.clear
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture(perform: dismissPanel)
@@ -33,7 +31,6 @@ struct SidePanel<PanelContent: View>: ViewModifier {
                 .frame(maxHeight: .infinity)
                 .background(Color(NSColor.windowBackgroundColor))
                 .overlay(Divider(), alignment: .leading)
-                .shadow(color: .black.opacity(0.06), radius: 10, x: -2, y: 0)
         }
         .ignoresSafeArea()
     }

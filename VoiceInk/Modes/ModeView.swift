@@ -206,21 +206,15 @@ struct ModeView: View {
 
     private func openPanel(mode: ConfigurationMode) {
         panelID = UUID()
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = .configuration(mode)
-        }
+        activePanel = .configuration(mode)
     }
 
     private func closePanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = nil
-        }
+        activePanel = nil
     }
 
     private func openSettingsPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = .settings
-        }
+        activePanel = .settings
     }
 }
 
