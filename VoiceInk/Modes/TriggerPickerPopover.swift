@@ -26,10 +26,29 @@ struct TriggerPickerPopover: View {
 
     private var filteredApps: [InstalledAppInfo] {
         guard !query.isEmpty else { return installedApps }
-        return installedApps.filter {
-            $0.name.localizedCaseInsensitiveContains(query) ||
-            $0.bundleId.localizedCaseInsensitiveContains(query)
+        return installedApps.compactMap { app -> (app: InstalledAppInfo, rank: Int)? in
+            guard let rank = appSearchRank(app, matching: query) else { return nil }
+            return (app, rank)
         }
+        .sorted { lhs, rhs in
+            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
+            return lhs.app.name.localizedStandardCompare(rhs.app.name) == .orderedAscending
+        }
+        .map { $0.app }
+    }
+
+    private func appSearchRank(_ app: InstalledAppInfo, matching query: String) -> Int? {
+        let term = query.lowercased()
+        let name = app.name.lowercased()
+        let bundleId = app.bundleId.lowercased()
+
+        if name == term { return 0 }
+        if name.hasPrefix(term) { return 1 }
+        if name.contains(term) { return 2 }
+        if bundleId.hasPrefix(term) { return 3 }
+        if bundleId.contains(term) { return 4 }
+
+        return nil
     }
 
     private var websiteCandidate: String {
@@ -106,23 +125,44 @@ struct TriggerPickerPopover: View {
                 .padding(.top, 2)
 
             ForEach(TriggerTemplateCatalog.templates) { template in
+                let isAdded = snapshot.templateIds.contains(template.id)
+                let group = templateGroup(for: template, isAdded: isAdded)
+
                 TriggerTemplateRow(
                     template: template,
-                    group: template.availableGroup(
-                        installedApps: installedApps,
-                        existingAppBundleIds: snapshot.appBundleIds,
-                        existingWebsites: snapshot.websites,
-                        cleanURL: cleanURL
-                    ),
-                    isAdded: snapshot.templateIds.contains(template.id),
+                    group: group,
+                    isAdded: isAdded,
                     isLoadingApps: isLoadingApps,
-                    onAdd: addTemplateGroup
+                    onToggle: { group in
+                        toggleTemplateGroup(group, templateId: template.id)
+                    }
                 )
             }
 
             Divider()
                 .padding(.vertical, 4)
         }
+    }
+
+    private func templateGroup(for template: TriggerTemplate, isAdded: Bool) -> ModeTriggerGroup {
+        if isAdded, let selectedGroup = selectedTemplateGroup(template.id) {
+            return selectedGroup
+        }
+
+        return availableTemplateGroup(for: template)
+    }
+
+    private func availableTemplateGroup(for template: TriggerTemplate) -> ModeTriggerGroup {
+        template.availableGroup(
+            installedApps: installedApps,
+            existingAppBundleIds: snapshot.appBundleIds,
+            existingWebsites: snapshot.websites,
+            cleanURL: cleanURL
+        )
+    }
+
+    private func selectedTemplateGroup(_ templateId: String) -> ModeTriggerGroup? {
+        triggerGroups.first { $0.templateId == templateId }
     }
 
     @ViewBuilder
@@ -139,12 +179,12 @@ struct TriggerPickerPopover: View {
     }
 
     private var websiteCandidateRow: some View {
-        Button(action: addWebsiteIfPossible) {
+        Button(action: toggleWebsiteCandidate) {
             HStack(spacing: 10) {
                 TriggerSymbol(systemName: isWebsiteAlreadyAdded ? "checkmark" : "globe")
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(isWebsiteAlreadyAdded ? "Website already added" : "Add website")
+                    Text(isWebsiteAlreadyAdded ? "Remove website" : "Add website")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.primary)
                     Text(websiteCandidate)
@@ -173,8 +213,7 @@ struct TriggerPickerPopover: View {
         let isSelected = snapshot.appBundleIds.contains(app.bundleId)
 
         return Button {
-            guard !isSelected else { return }
-            appConfigs.append(AppConfig(bundleIdentifier: app.bundleId, appName: app.name))
+            toggleApp(app)
         } label: {
             HStack(spacing: 10) {
                 Image(nsImage: app.icon)
@@ -184,7 +223,7 @@ struct TriggerPickerPopover: View {
 
                 Text(app.name)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(isSelected ? .secondary : .primary)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
 
                 Spacer()
@@ -202,7 +241,6 @@ struct TriggerPickerPopover: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? Color.secondary.opacity(0.08) : Color.clear))
         }
         .buttonStyle(.plain)
-        .disabled(isSelected)
     }
 
     private var emptyState: some View {
@@ -225,12 +263,15 @@ struct TriggerPickerPopover: View {
         .padding(.vertical, 32)
     }
 
-    private func addTemplateGroup(_ group: ModeTriggerGroup) {
-        if let templateId = group.templateId,
-           triggerGroups.contains(where: { $0.templateId == templateId }) {
-            return
+    private func toggleTemplateGroup(_ group: ModeTriggerGroup, templateId: String) {
+        if triggerGroups.contains(where: { $0.templateId == templateId }) {
+            triggerGroups.removeAll { $0.templateId == templateId }
+        } else {
+            addTemplateGroup(group)
         }
+    }
 
+    private func addTemplateGroup(_ group: ModeTriggerGroup) {
         let currentSnapshot = snapshot
         var availableGroup = group
         availableGroup.appConfigs = group.appConfigs.filter {
@@ -248,6 +289,40 @@ struct TriggerPickerPopover: View {
         guard canOfferWebsite, !isWebsiteAlreadyAdded else { return }
         websiteConfigs.append(URLConfig(url: websiteCandidate))
         searchText = ""
+    }
+
+    private func toggleWebsiteCandidate() {
+        guard canOfferWebsite else { return }
+        if isWebsiteAlreadyAdded {
+            removeWebsite(websiteCandidate)
+        } else {
+            addWebsiteIfPossible()
+        }
+    }
+
+    private func toggleApp(_ app: InstalledAppInfo) {
+        if snapshot.appBundleIds.contains(app.bundleId) {
+            removeApp(bundleId: app.bundleId)
+        } else {
+            appConfigs.append(AppConfig(bundleIdentifier: app.bundleId, appName: app.name))
+        }
+    }
+
+    private func removeApp(bundleId: String) {
+        appConfigs.removeAll { $0.bundleIdentifier == bundleId }
+        for index in triggerGroups.indices {
+            triggerGroups[index].appConfigs.removeAll { $0.bundleIdentifier == bundleId }
+        }
+        triggerGroups.removeAll { $0.isEmpty }
+    }
+
+    private func removeWebsite(_ website: String) {
+        let cleanedWebsite = cleanURL(website)
+        websiteConfigs.removeAll { cleanURL($0.url) == cleanedWebsite }
+        for index in triggerGroups.indices {
+            triggerGroups[index].urlConfigs.removeAll { cleanURL($0.url) == cleanedWebsite }
+        }
+        triggerGroups.removeAll { $0.isEmpty }
     }
 
     private func isWebsiteLike(_ value: String) -> Bool {

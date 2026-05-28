@@ -5,26 +5,39 @@ struct TriggerTemplateRow: View {
     let group: ModeTriggerGroup
     let isAdded: Bool
     let isLoadingApps: Bool
-    let onAdd: (ModeTriggerGroup) -> Void
+    let onToggle: (ModeTriggerGroup) -> Void
 
     private var isDisabled: Bool {
-        isAdded || isLoadingApps || group.isEmpty
+        isLoadingApps || (!isAdded && group.isEmpty)
+    }
+
+    private var cardBackground: Color {
+        isAdded ? Color.accentColor.opacity(0.10) : Color(NSColor.controlBackgroundColor)
+    }
+
+    private var cardBorder: Color {
+        isAdded ? Color.accentColor.opacity(0.28) : Color(NSColor.separatorColor)
     }
 
     var body: some View {
         Button {
             guard !isDisabled else { return }
-            onAdd(group)
+            onToggle(group)
         } label: {
             HStack(spacing: 10) {
                 TriggerSymbol(systemName: template.systemImage)
 
                 Text(template.name)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(isAdded ? .secondary : .primary)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
 
                 Spacer()
+
+                if !group.isEmpty {
+                    TriggerGroupPreviewStack(appConfigs: group.appConfigs, urlConfigs: group.urlConfigs, tileSize: 24)
+                        .padding(.trailing, 4)
+                }
 
                 if isAdded {
                     Image(systemName: "checkmark.circle.fill")
@@ -33,9 +46,6 @@ struct TriggerTemplateRow: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 22, height: 22)
                 } else if !isDisabled {
-                    TriggerGroupPreviewStack(appConfigs: group.appConfigs, urlConfigs: group.urlConfigs, tileSize: 24)
-                        .padding(.trailing, 4)
-
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 14, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
@@ -48,15 +58,15 @@ struct TriggerTemplateRow: View {
             .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color(NSColor.controlBackgroundColor))
+                    .fill(cardBackground)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                    .strokeBorder(cardBorder, lineWidth: 0.5)
             }
         }
         .buttonStyle(.plain)
-        .help(isAdded ? "\(template.name) already added" : group.summaryText)
+        .help(isAdded ? "Remove \(template.name) triggers" : group.summaryText)
     }
 }
 
