@@ -402,50 +402,42 @@ private struct DashboardAccessibilityReminder: View {
     let onOpenSettings: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "hand.raised")
-                .font(.system(size: 16, weight: .medium))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.secondary)
-                .frame(width: 22)
+        HStack(alignment: .center, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.secondary.opacity(0.12))
+
+                Image(systemName: "hand.raised")
+                    .font(.system(size: 15, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Accessibility permission is not provided")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
 
-                Text("VoiceInk uses Accessibility for pasting into other apps and global shortcuts.")
-                    .font(.system(size: 12, weight: .medium))
+                Text("Needed for pasting into other apps and global shortcuts.")
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
             }
 
             Spacer(minLength: 12)
 
-            Button(action: onOpenSettings) {
-                Label("Open Settings", systemImage: "gearshape")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            Button("Open Settings", action: onOpenSettings)
+                .controlSize(.small)
+                .help("Open Accessibility settings")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.thinMaterial)
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
-        )
-        .overlay(alignment: .leading) {
-            Rectangle()
-                .fill(Color.secondary.opacity(0.35))
-                .frame(width: 2)
-                .padding(.vertical, 10)
-        }
     }
 }
 

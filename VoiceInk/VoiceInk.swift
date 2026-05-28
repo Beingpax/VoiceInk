@@ -26,7 +26,7 @@ struct VoiceInkApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
-    @State private var didScheduleAccessibilityReminder = false
+    @State private var didShowAccessibilityReminder = false
 
     // Audio cleanup manager for automatic deletion of old audio files
     private let audioCleanupManager = AudioCleanupManager.shared
@@ -301,7 +301,7 @@ struct VoiceInkApp: App {
                             AnnouncementsService.shared.start()
                         }
 
-                        scheduleAccessibilityReminderIfNeeded()
+                        showAccessibilityReminderIfNeeded()
 
                         // Start the automatic audio cleanup process only if transcript cleanup is not enabled
                         if !UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled") {
@@ -389,21 +389,17 @@ struct VoiceInkApp: App {
         #endif
     }
 
-    private func scheduleAccessibilityReminderIfNeeded() {
-        guard !didScheduleAccessibilityReminder else { return }
-        didScheduleAccessibilityReminder = true
+    private func showAccessibilityReminderIfNeeded() {
+        guard !didShowAccessibilityReminder else { return }
+        didShowAccessibilityReminder = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-            guard !AXIsProcessTrusted() else { return }
+        guard !AXIsProcessTrusted() else { return }
 
-            Task { @MainActor in
-                NotificationManager.shared.showNotification(
-                    title: "Accessibility permission is not provided",
-                    type: .warning,
-                    duration: 7.0
-                )
-            }
-        }
+        NotificationManager.shared.showNotification(
+            title: "Accessibility permission is not provided",
+            type: .warning,
+            duration: 7.0
+        )
     }
 }
 
