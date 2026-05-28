@@ -104,9 +104,7 @@ final class ShortcutMonitor {
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
-            logger.error(
-                "Failed to install global shortcut event tap. accessibilityTrusted=\(AXIsProcessTrusted(), privacy: .public), listenEventAccess=\(CGPreflightListenEventAccess(), privacy: .public)"
-            )
+            logger.error("Failed to install global shortcut event tap")
             return false
         }
 

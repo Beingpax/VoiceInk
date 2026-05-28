@@ -26,6 +26,7 @@ struct VoiceInkApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
+    @State private var didScheduleAccessibilityReminder = false
 
     // Audio cleanup manager for automatic deletion of old audio files
     private let audioCleanupManager = AudioCleanupManager.shared
@@ -300,6 +301,8 @@ struct VoiceInkApp: App {
                             AnnouncementsService.shared.start()
                         }
 
+                        scheduleAccessibilityReminderIfNeeded()
+
                         // Start the automatic audio cleanup process only if transcript cleanup is not enabled
                         if !UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled") {
                             audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
@@ -384,6 +387,23 @@ struct VoiceInkApp: App {
             }
         }
         #endif
+    }
+
+    private func scheduleAccessibilityReminderIfNeeded() {
+        guard !didScheduleAccessibilityReminder else { return }
+        didScheduleAccessibilityReminder = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            guard !AXIsProcessTrusted() else { return }
+
+            Task { @MainActor in
+                NotificationManager.shared.showNotification(
+                    title: "Accessibility permission is not provided",
+                    type: .warning,
+                    duration: 7.0
+                )
+            }
+        }
     }
 }
 

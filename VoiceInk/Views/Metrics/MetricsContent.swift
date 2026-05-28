@@ -108,12 +108,14 @@ struct MetricsContent: View {
                 GeometryReader { geometry in
                     ScrollView {
                         VStack(spacing: 24) {
+                            heroSection
+
                             if !isAccessibilityEnabled {
-                                accessibilityPermissionCallout
+                                accessibilityReminder
                             }
 
-                            heroSection
                             metricsSection
+
                             HStack(alignment: .top, spacing: 18) {
                                 HelpAndResourcesSection()
                                 DashboardPromotionsSection(licenseState: licenseState)
@@ -160,17 +162,8 @@ struct MetricsContent: View {
         }
     }
 
-    private var accessibilityPermissionCallout: some View {
-        PermissionCard(
-            icon: "hand.raised",
-            title: "Accessibility Access",
-            description: "VoiceInk needs Accessibility permission to work reliably across your entire Mac",
-            isGranted: isAccessibilityEnabled,
-            buttonTitle: "Open System Settings",
-            buttonAction: openAccessibilitySettings,
-            checkPermission: refreshAccessibilityStatus,
-            infoTipMessage: "VoiceInk uses Accessibility to work reliably across apps."
-        )
+    private var accessibilityReminder: some View {
+        DashboardAccessibilityReminder(onOpenSettings: openAccessibilitySettings)
     }
 
     private func refreshAccessibilityStatus() {
@@ -214,10 +207,6 @@ struct MetricsContent: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 24) {
-                    if !isAccessibilityEnabled {
-                        accessibilityPermissionCallout
-                    }
-
                     VStack(spacing: 20) {
                         Image(systemName: "waveform")
                             .font(.system(size: 56, weight: .semibold))
@@ -229,6 +218,10 @@ struct MetricsContent: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: geometry.size.height - 56)
+
+                    if !isAccessibilityEnabled {
+                        accessibilityReminder
+                    }
                 }
                 .padding(.vertical, 28)
                 .padding(.horizontal, 32)
@@ -403,6 +396,57 @@ struct MetricsContent: View {
         Int(Double(totalWords) * 5.0)
     }
     
+}
+
+private struct DashboardAccessibilityReminder: View {
+    let onOpenSettings: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "hand.raised")
+                .font(.system(size: 16, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Accessibility permission is not provided")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.primary)
+
+                Text("VoiceInk uses Accessibility for pasting into other apps and global shortcuts.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            Button(action: onOpenSettings) {
+                Label("Open Settings", systemImage: "gearshape")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(Color(nsColor: .separatorColor), lineWidth: 0.5)
+        )
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(Color.secondary.opacity(0.35))
+                .frame(width: 2)
+                .padding(.vertical, 10)
+        }
+    }
 }
 
 private enum Formatters {
