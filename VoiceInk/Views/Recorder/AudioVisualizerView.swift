@@ -189,7 +189,7 @@ struct StaticVisualizer: View {
 
     var body: some View {
         let profile = AlienWaveformProfile(minHeight: 8, maxHeight: CGFloat(visualizerWaveformHeight))
-        TimelineView(.animation(minimumInterval: 0.033)) { context in
+        TimelineView(.animation(minimumInterval: 0.05)) { context in
             AlienWaveformCanvas(
                 samples: profile.samples(
                     audioPower: 0,

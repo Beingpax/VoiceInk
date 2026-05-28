@@ -24,6 +24,7 @@ struct TranscriptionHistoryView: View {
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
+    @State private var searchDebounceTask: Task<Void, Never>?
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -156,7 +157,10 @@ struct TranscriptionHistoryView: View {
             isViewCurrentlyVisible = false
         }
         .onChange(of: searchText) { _, _ in
-            Task {
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
                 await resetPagination()
                 await loadInitialContent()
             }

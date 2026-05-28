@@ -50,61 +50,52 @@ enum PunctuationCleanupMode: String, Codable, CaseIterable, Identifiable {
 
 struct TranscriptionOutputFilter {
     private static let lowercaseTranscriptionKey = "LowercaseTranscription"
-    private static let apostropheLikeCharacters = CharacterSet(charactersIn: "'’‘ʼ＇")
+    private static let apostropheLikeCharacters = CharacterSet(charactersIn: "'''ʼ＇")
     
-    private static let hallucinationPatterns = [
-        #"\[.*?\]"#,     // []
-        #"\(.*?\)"#,     // ()
-        #"\{.*?\}"#      // {}
+    // MARK: - Pre-compiled Regexes (avoids recompilation on every transcription)
+    
+    private static let tagBlockRegex = try! NSRegularExpression(pattern: #"<([A-Za-z][A-Za-z0-9:_-]*)[^>]*>[\s\S]*?</\1>"#)
+    private static let hallucinationRegexes: [NSRegularExpression] = [
+        try! NSRegularExpression(pattern: #"\[.*?\]"#),
+        try! NSRegularExpression(pattern: #"\(.*?\)"#),
+        try! NSRegularExpression(pattern: #"\{.*?\}"#)
     ]
+    private static let repeatedWordRegex = try! NSRegularExpression(pattern: "\\b([a-zA-Z]+)\\s+\\1\\b", options: .caseInsensitive)
+    private static let hesitationRegex = try! NSRegularExpression(pattern: "\\b(uh+|um+|ah+|eh+)[-—\\s]+", options: .caseInsensitive)
+    private static let multiSpaceRegex = try! NSRegularExpression(pattern: #"\s{2,}"#)
 
     static func filter(_ text: String) -> String {
         var filteredText = text
 
         // Remove <TAG>...</TAG> blocks
-        let tagBlockPattern = #"<([A-Za-z][A-Za-z0-9:_-]*)[^>]*>[\s\S]*?</\1>"#
-        if let regex = try? NSRegularExpression(pattern: tagBlockPattern) {
-            let range = NSRange(filteredText.startIndex..., in: filteredText)
+        var range = NSRange(filteredText.startIndex..., in: filteredText)
+        filteredText = tagBlockRegex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
+
+        // Remove bracketed hallucinations
+        for regex in hallucinationRegexes {
+            range = NSRange(filteredText.startIndex..., in: filteredText)
             filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
         }
 
-        // Remove bracketed hallucinations
-        for pattern in hallucinationPatterns {
-            if let regex = try? NSRegularExpression(pattern: pattern) {
-                let range = NSRange(filteredText.startIndex..., in: filteredText)
-                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
-            }
-        }
-
-        // Remove filler words (if enabled)
+        // Remove filler words (if enabled) — uses pre-compiled regexes from FillerWordManager
         if FillerWordManager.shared.isEnabled {
-            for fillerWord in FillerWordManager.shared.fillerWords {
-                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: fillerWord))\\b[,.]?"
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                    let range = NSRange(filteredText.startIndex..., in: filteredText)
-                    filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
-                }
+            for regex in FillerWordManager.shared.compiledFillerRegexes {
+                range = NSRange(filteredText.startIndex..., in: filteredText)
+                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
             }
         }
 
-        // Smart Silence & Filler Stripper (supercharged repeated and hesitation words)
+        // Smart Silence & Filler Stripper
         if UserDefaults.standard.bool(forKey: "superchargeSmartFillerStripper") {
-            // Strip repeated adjacent words (e.g., "the the" -> "the", "I I" -> "I")
-            let repeatedWordPattern = "\\b([a-zA-Z]+)\\s+\\1\\b"
-            if let regex = try? NSRegularExpression(pattern: repeatedWordPattern, options: .caseInsensitive) {
-                let range = NSRange(filteredText.startIndex..., in: filteredText)
-                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "$1")
-            }
-            // Strip hesitation sound artifacts (e.g. "uh-", "um-", etc.)
-            let hesitationPattern = "\\b(uh+|um+|ah+|eh+)[-—\\s]+"
-            if let regex = try? NSRegularExpression(pattern: hesitationPattern, options: .caseInsensitive) {
-                let range = NSRange(filteredText.startIndex..., in: filteredText)
-                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
-            }
+            range = NSRange(filteredText.startIndex..., in: filteredText)
+            filteredText = repeatedWordRegex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "$1")
+            range = NSRange(filteredText.startIndex..., in: filteredText)
+            filteredText = hesitationRegex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
         }
 
         // Clean whitespace
-        filteredText = filteredText.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        range = NSRange(filteredText.startIndex..., in: filteredText)
+        filteredText = multiSpaceRegex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: " ")
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // Context-Aware Auto-Formatting
@@ -146,43 +137,43 @@ struct TranscriptionOutputFilter {
         return text
     }
 
+    // Pre-compiled developer formatting regexes
+    private static let techTermRegexes: [(NSRegularExpression, String)] = {
+        let terms = [
+            "javascript": "JavaScript", "typescript": "TypeScript",
+            "github": "GitHub", "gitlab": "GitLab", "vs code": "VS Code",
+            "xcode": "Xcode", "swiftui": "SwiftUI", "uikit": "UIKit",
+            "docker": "Docker", "kubernetes": "Kubernetes",
+            "postgres": "PostgreSQL", "postgresql": "PostgreSQL",
+            "mongodb": "MongoDB", "sqlite": "SQLite"
+        ]
+        return terms.compactMap { (lower, correct) in
+            guard let regex = try? NSRegularExpression(pattern: "\\b\(lower)\\b", options: .caseInsensitive) else { return nil }
+            return (regex, correct)
+        }
+    }()
+
+    private static let commandRegexes: [(NSRegularExpression, String)] = {
+        let commands = ["npm", "yarn", "pnpm", "git", "docker", "cargo", "pip", "brew", "xcodebuild", "swift"]
+        return commands.compactMap { cmd in
+            guard let regex = try? NSRegularExpression(pattern: "\\b\(cmd)\\s+([a-z0-9_-]+)", options: []) else { return nil }
+            return (regex, "`\(cmd) $1`")
+        }
+    }()
+
     private static func formatForDeveloper(_ text: String) -> String {
         var formatted = text
-        
-        let techTerms = [
-            "javascript": "JavaScript",
-            "typescript": "TypeScript",
-            "github": "GitHub",
-            "gitlab": "GitLab",
-            "vs code": "VS Code",
-            "xcode": "Xcode",
-            "swiftui": "SwiftUI",
-            "uikit": "UIKit",
-            "docker": "Docker",
-            "kubernetes": "Kubernetes",
-            "postgres": "PostgreSQL",
-            "postgresql": "PostgreSQL",
-            "mongodb": "MongoDB",
-            "sqlite": "SQLite"
-        ]
-        
-        for (lower, correct) in techTerms {
-            let pattern = "\\b\(lower)\\b"
-            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                let range = NSRange(formatted.startIndex..., in: formatted)
-                formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: correct)
-            }
+
+        for (regex, replacement) in techTermRegexes {
+            let range = NSRange(formatted.startIndex..., in: formatted)
+            formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: replacement)
         }
-        
-        let commands = ["npm", "yarn", "pnpm", "git", "docker", "cargo", "pip", "brew", "xcodebuild", "swift"]
-        for cmd in commands {
-            let pattern = "\\b\(cmd)\\s+([a-z0-9_-]+)"
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-                let range = NSRange(formatted.startIndex..., in: formatted)
-                formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: "`\(cmd) $1`")
-            }
+
+        for (regex, replacement) in commandRegexes {
+            let range = NSRange(formatted.startIndex..., in: formatted)
+            formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: replacement)
         }
-        
+
         return formatted
     }
     
@@ -207,20 +198,22 @@ struct TranscriptionOutputFilter {
         return formatted
     }
     
+    // Pre-compiled email formatting regexes
+    private static let emailBreakRegexes: [NSRegularExpression] = {
+        let breaks = ["dear ", "hi ", "hello ", "best regards", "sincerely", "thanks,", "thank you"]
+        return breaks.compactMap { brk in
+            try? NSRegularExpression(pattern: "(?i)\\b(\(brk))", options: [])
+        }
+    }()
+
     private static func formatForEmail(_ text: String) -> String {
         var formatted = text
-        
-        let breaks = [
-            "dear ", "hi ", "hello ", "best regards", "sincerely", "thanks,", "thank you"
-        ]
-        for brk in breaks {
-            let pattern = "(?i)\\b(\(brk))"
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-                let range = NSRange(formatted.startIndex..., in: formatted)
-                formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: "\n\n$1")
-            }
+
+        for regex in emailBreakRegexes {
+            let range = NSRange(formatted.startIndex..., in: formatted)
+            formatted = regex.stringByReplacingMatches(in: formatted, options: [], range: range, withTemplate: "\n\n$1")
         }
-        
+
         formatted = formatted.trimmingCharacters(in: .whitespacesAndNewlines)
         return formatted
     }

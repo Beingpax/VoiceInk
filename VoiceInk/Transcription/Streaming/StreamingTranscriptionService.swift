@@ -8,7 +8,8 @@ private final class AudioChunkSource: @unchecked Sendable {
     private let continuation: AsyncStream<Data>.Continuation
 
     init() {
-        let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .unbounded)
+        // Bound buffer to ~10 seconds of 16kHz mono Int16 audio (~640KB) to prevent unbounded growth
+        let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .bufferingNewest(320))
         self.stream = stream
         self.continuation = continuation
     }

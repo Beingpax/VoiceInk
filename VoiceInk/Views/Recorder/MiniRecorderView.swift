@@ -88,31 +88,36 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @State private var isDraggingToTarget = false
     @State private var activeTargetZone: String? = nil // "clipboard", "app", "log"
 
+    // Hoist UserDefaults reads to @AppStorage to avoid repeated lookups inside body/computed props
+    @AppStorage("superchargeDynamicHUDIsland") private var dynamicHUDEnabled = true
+    @AppStorage("superchargeDragToTarget") private var dragToTargetEnabled = true
+    @AppStorage("superchargeTactileHapticScrubbing") private var hapticScrubbingEnabled = true
+
     private var dynamicWidth: CGFloat {
         let baseWidth = CGFloat(miniRecorderWidth)
-        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseWidth }
+        guard dynamicHUDEnabled else { return baseWidth }
         
         switch stateProvider.recordingState {
         case .idle, .starting:
-            return baseWidth * 0.88 // compact
+            return baseWidth * 0.88
         case .recording:
-            return baseWidth * 1.05 // wide cinematic island
+            return baseWidth * 1.05
         case .transcribing, .enhancing, .busy:
-            return baseWidth * 0.96 // sleek processing bar
+            return baseWidth * 0.96
         }
     }
     
     private var dynamicHeight: CGFloat {
         let baseHeight = CGFloat(miniRecorderHeight)
-        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseHeight }
+        guard dynamicHUDEnabled else { return baseHeight }
         
         switch stateProvider.recordingState {
         case .idle, .starting:
-            return baseHeight * 0.82 // low-profile
+            return baseHeight * 0.82
         case .recording:
-            return baseHeight * 1.05 // deep
+            return baseHeight * 1.05
         case .transcribing, .enhancing, .busy:
-            return baseHeight * 0.9 // intermediate
+            return baseHeight * 0.9
         }
     }
 
@@ -134,7 +139,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     activeTargetZone = "app"
                 }
                 
-                if oldZone != activeTargetZone && UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                if oldZone != activeTargetZone && hapticScrubbingEnabled {
                     #if canImport(AppKit)
                     NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
                     #endif
@@ -167,7 +172,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: 0) {
                     // Drag to Target Handle
-                    if UserDefaults.standard.bool(forKey: "superchargeDragToTarget") {
+                    if dragToTargetEnabled {
                         HStack {
                             Spacer()
                             HStack(spacing: 4) {

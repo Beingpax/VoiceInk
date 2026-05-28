@@ -32,6 +32,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private var _averagePower: Float = -160.0
     private var _peakPower: Float = -160.0
 
+    // Cached UserDefaults flag to avoid real-time thread reads
+    private var cachedWhisperModeGain: Float32 = 1.0
+
     var averagePower: Float {
         meterLock.lock()
         defer { meterLock.unlock() }
@@ -100,6 +103,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
         // Step 6: Initialize and start the AudioUnit
         try startAudioUnit()
+
+        // Cache gain setting before entering real-time path (avoid UserDefaults on audio thread)
+        cachedWhisperModeGain = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled") ? 2.5 : 1.0
 
         isRecording = true
     }
@@ -648,8 +654,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
               outputFrameCount <= conversionBufferSize else { return }
 
         // Convert Float32 multi-channel → Int16 mono (with sample rate conversion if needed)
-        let isWhisperModeEnabled = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled")
-        let gainMultiplier: Float32 = isWhisperModeEnabled ? 2.5 : 1.0
+        let gainMultiplier: Float32 = cachedWhisperModeGain
 
         if inputSampleRate == outputSampleRate {
             // Direct conversion, just format change and channel mixing
