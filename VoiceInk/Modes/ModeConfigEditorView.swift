@@ -8,6 +8,7 @@ struct ModeConfigEditorView: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
 
     @State private var draft: ModeConfigDraft
     @State private var validationErrors: [ModeValidationError] = []
@@ -84,19 +85,27 @@ struct ModeConfigEditorView: View {
     }
 
     private func prepareView() {
+        modeWarmupStore.configure(
+            aiService: aiService,
+            enhancementService: enhancementService,
+            transcriptionModelManager: transcriptionModelManager
+        )
+
+        let snapshot = modeWarmupStore.snapshot
+
         if case .add = mode {
-            draft.applyAddModeDefaults(aiService: aiService)
-            draft.inheritUsableTranscriptionModelSelection(from: transcriptionModelManager.usableModels)
+            draft.applyAddModeDefaults(snapshot: snapshot)
+            draft.inheritUsableTranscriptionModelSelection(from: snapshot)
         } else {
             draft.ensureTranscriptionModelSelection(
-                fallback: transcriptionModelManager.usableModels.first?.name
+                fallback: snapshot.usableTranscriptionModels.first?.name
             )
         }
 
-        draft.ensurePromptSelection(firstPromptId: enhancementService.allPrompts.first?.id)
+        draft.ensurePromptSelection(firstPromptId: snapshot.firstPromptId)
 
         if let selectedModelName = draft.selectedTranscriptionModelName,
-           let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName }),
+           let model = snapshot.transcriptionModel(named: selectedModelName),
            model.provider != .gemini {
             draft.useCompatibleLanguage(for: model)
         }

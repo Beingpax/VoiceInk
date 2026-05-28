@@ -93,15 +93,11 @@ struct MetricsContent: View {
     }
 
     private func openModelStatsPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            isModelStatsPanelPresented = true
-        }
+        isModelStatsPanelPresented = true
     }
 
     private func closeModelStatsPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            isModelStatsPanelPresented = false
-        }
+        isModelStatsPanelPresented = false
     }
 
     var body: some View {

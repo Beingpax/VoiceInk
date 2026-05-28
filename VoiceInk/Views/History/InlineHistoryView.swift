@@ -70,16 +70,12 @@ struct InlineHistoryView: View {
         panelMode = mode
         panelTranscriptionId = transcriptionID
 
-        withAnimation(.smooth(duration: 0.3)) {
-            isPanelPresented = true
-        }
+        isPanelPresented = true
     }
 
     private func closePanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            isPanelPresented = false
-            panelMode = .info
-        }
+        isPanelPresented = false
+        panelMode = .info
     }
 
     var body: some View {

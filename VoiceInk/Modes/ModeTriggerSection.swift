@@ -6,11 +6,10 @@ struct ModeTriggerSection: View {
     @Binding var triggerGroups: [ModeTriggerGroup]
     let cleanURL: (String) -> String
 
+    @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
+
     @State private var isShowingTriggerPicker = false
-    @State private var installedApps: [InstalledAppInfo] = []
     @State private var triggerSearchText = ""
-    @State private var isLoadingInstalledApps = false
-    @State private var hasLoadedInstalledApps = false
 
     private var hasSelectedTriggers: Bool {
         !triggerGroups.isEmpty || !appConfigs.isEmpty || !websiteConfigs.isEmpty
@@ -23,9 +22,9 @@ struct ModeTriggerSection: View {
                     appConfigs: $appConfigs,
                     websiteConfigs: $websiteConfigs,
                     triggerGroups: $triggerGroups,
-                    installedApps: installedApps,
+                    installedApps: modeWarmupStore.installedApps,
                     cleanURL: cleanURL,
-                    loadInstalledAppsIfNeeded: loadInstalledAppsIfNeeded
+                    loadInstalledAppsIfNeeded: modeWarmupStore.refreshInstalledApps
                 )
                 .padding(.vertical, 2)
             } else {
@@ -48,12 +47,12 @@ struct ModeTriggerSection: View {
             AddIconButton(helpText: "Add trigger") {
                 triggerSearchText = ""
                 isShowingTriggerPicker = true
-                loadInstalledAppsIfNeeded()
+                modeWarmupStore.refreshInstalledApps()
             }
             .popover(isPresented: $isShowingTriggerPicker, arrowEdge: .bottom) {
                 TriggerPickerPopover(
-                    installedApps: installedApps,
-                    isLoadingApps: isLoadingInstalledApps,
+                    installedApps: modeWarmupStore.installedApps,
+                    isLoadingApps: modeWarmupStore.isLoadingInstalledApps,
                     appConfigs: $appConfigs,
                     websiteConfigs: $websiteConfigs,
                     triggerGroups: $triggerGroups,
@@ -78,21 +77,5 @@ struct ModeTriggerSection: View {
             Spacer()
         }
         .padding(.vertical, 4)
-    }
-
-    private func loadInstalledAppsIfNeeded() {
-        guard !hasLoadedInstalledApps, !isLoadingInstalledApps else { return }
-
-        isLoadingInstalledApps = true
-
-        DispatchQueue.global(qos: .userInitiated).async {
-            let apps = InstalledApps.load()
-
-            DispatchQueue.main.async {
-                installedApps = apps
-                hasLoadedInstalledApps = true
-                isLoadingInstalledApps = false
-            }
-        }
     }
 }

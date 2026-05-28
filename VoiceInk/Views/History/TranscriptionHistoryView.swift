@@ -60,15 +60,11 @@ struct TranscriptionHistoryView: View {
     }
 
     private func openAnalysisPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            isAnalysisPanelPresented = true
-        }
+        isAnalysisPanelPresented = true
     }
 
     private func closeAnalysisPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            isAnalysisPanelPresented = false
-        }
+        isAnalysisPanelPresented = false
     }
     
     var body: some View {

@@ -51,33 +51,23 @@ struct ModelManagementView: View {
     }
 
     private func closePanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = nil
-        }
+        activePanel = nil
     }
 
     private func toggleSettingsPanel() {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = isSettingsPanelOpen ? nil : .settings
-        }
+        activePanel = isSettingsPanelOpen ? nil : .settings
     }
 
     private func openCloudProviderPanel(_ descriptor: ProviderDescriptor) {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = .cloudProvider(descriptor)
-        }
+        activePanel = .cloudProvider(descriptor)
     }
 
     private func openCustomTranscriptionModelPanel(_ model: CustomCloudModel? = nil) {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = .customTranscriptionModel(model)
-        }
+        activePanel = .customTranscriptionModel(model)
     }
 
     private func openCustomEnhancementModelPanel(_ provider: CustomAIProviderConfig? = nil) {
-        withAnimation(.smooth(duration: 0.3)) {
-            activePanel = .customEnhancementModel(provider)
-        }
+        activePanel = .customEnhancementModel(provider)
     }
 
     var body: some View {
@@ -181,8 +171,8 @@ struct ModelManagementView: View {
                         Button(action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 selectedFilter = filter
-                                activePanel = nil
                             }
+                            activePanel = nil
                         }) {
                             Text(filter.rawValue)
                                 .font(.system(size: 14, weight: selectedFilter == filter ? .semibold : .medium))

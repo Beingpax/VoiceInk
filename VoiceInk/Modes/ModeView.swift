@@ -50,12 +50,12 @@ enum ConfigurationType {
     case website
 }
 
-let commonEmojis = ["🏢", "🏠", "💼", "🎮", "📱", "📺", "🎵", "📚", "✏️", "🎨", "🧠", "⚙️", "💻", "🌐", "📝", "📊", "🔍", "💬", "📈", "🔧"]
-
 struct ModeView: View {
     @StateObject private var modeManager = ModeManager.shared
+    @StateObject private var modeWarmupStore = ModeFormWarmupStore.shared
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
+    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @State private var activePanel: PanelType?
     @State private var panelID = UUID()
 
@@ -92,38 +92,18 @@ struct ModeView: View {
                             Button(action: {
                                 openPanel(mode: .add)
                             }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 12, weight: .medium))
-                                    Text("Add Mode")
-                                        .font(.system(size: 13, weight: .medium))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color.accentColor)
-                                .cornerRadius(6)
+                                Label("Add Mode", systemImage: "plus")
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.regular)
+                            .help("Add Mode")
 
                             Button(action: { openSettingsPanel() }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "gearshape")
-                                        .font(.system(size: 12, weight: .medium))
-                                    Text("Settings")
-                                        .font(.system(size: 13, weight: .medium))
-                                }
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Color(NSColor.controlBackgroundColor))
-                                .cornerRadius(6)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color(NSColor.separatorColor), lineWidth: 1)
-                                )
+                                Label("Settings", systemImage: "gearshape")
                             }
-                            .buttonStyle(PlainButtonStyle())
+                            .buttonStyle(.bordered)
+                            .controlSize(.regular)
+                            .help("Modes Settings")
                         }
                     }
                 }
@@ -195,12 +175,20 @@ struct ModeView: View {
                 switch activePanel {
                 case .configuration(let mode)?:
                     ModeConfigEditorView(mode: mode, modeManager: modeManager, onDismiss: closePanel)
+                        .environmentObject(modeWarmupStore)
                         .id(panelID)
                 case .settings?:
                     ModeSettingsPanelView(modeManager: modeManager, onDismiss: closePanel)
                 case nil:
                     EmptyView()
                 }
+            }
+            .onAppear {
+                modeWarmupStore.configure(
+                    aiService: aiService,
+                    enhancementService: enhancementService,
+                    transcriptionModelManager: transcriptionModelManager
+                )
             }
     }
 

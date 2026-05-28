@@ -41,9 +41,7 @@ struct DictionarySettingsView: View {
         .background(Color(NSColor.controlBackgroundColor))
         .sidePanel(isPresented: $isShowingSettings) {
             DictionarySettingsPanel {
-                withAnimation(.smooth(duration: 0.3)) {
-                    isShowingSettings = false
-                }
+                isShowingSettings = false
             }
         }
     }
@@ -76,9 +74,7 @@ struct DictionarySettingsView: View {
                 Spacer()
 
                 Button {
-                    withAnimation(.smooth(duration: 0.3)) {
-                        isShowingSettings.toggle()
-                    }
+                    isShowingSettings.toggle()
                 } label: {
                     Image(systemName: "gear")
                         .font(.system(size: 18, weight: .medium))

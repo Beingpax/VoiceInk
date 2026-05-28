@@ -11,9 +11,8 @@ struct ModeConfigFormView: View {
     let onDelete: () -> Void
     let openPromptEditor: (PromptEditorView.Mode) -> Void
 
-    @EnvironmentObject private var enhancementService: AIEnhancementService
     @EnvironmentObject private var aiService: AIService
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
     @FocusState private var isNameFieldFocused: Bool
 
     @State private var isShowingIconPicker = false
@@ -24,18 +23,21 @@ struct ModeConfigFormView: View {
         draft.selectedTranscriptionModelName
     }
 
+    private var warmupSnapshot: ModeFormWarmupSnapshot {
+        modeWarmupStore.snapshot
+    }
+
     private var selectedTranscriptionModel: (any TranscriptionModel)? {
-        guard let modelName = effectiveModelName else { return nil }
-        return transcriptionModelManager.allAvailableModels.first { $0.name == modelName }
+        warmupSnapshot.transcriptionModel(named: effectiveModelName)
     }
 
     private var selectedPrompt: CustomPrompt? {
         guard let selectedPromptId = draft.selectedPromptId else { return nil }
-        return enhancementService.allPrompts.first { $0.id == selectedPromptId }
+        return warmupSnapshot.prompts.first { $0.id == selectedPromptId }
     }
 
     private var aiProviderOptions: [AIProvider] {
-        aiService.connectedProviders
+        warmupSnapshot.connectedAIProviders
     }
 
     private var configuredSelectedAIProvider: AIProvider? {
@@ -146,7 +148,7 @@ struct ModeConfigFormView: View {
 
     private var transcriptionSection: some View {
         Section("Transcription") {
-            if transcriptionModelManager.usableModels.isEmpty {
+            if warmupSnapshot.usableTranscriptionModels.isEmpty {
                 Text("No transcription models available. Please connect to a cloud service or download a local model in the AI Models tab.")
                     .foregroundColor(.secondary)
             } else {
@@ -156,13 +158,13 @@ struct ModeConfigFormView: View {
                 )
 
                 Picker("Model", selection: modelBinding) {
-                    ForEach(transcriptionModelManager.usableModels, id: \.name) { model in
+                    ForEach(warmupSnapshot.usableTranscriptionModels, id: \.name) { model in
                         Text(model.displayName).tag(model.name as String?)
                     }
                 }
                 .onChange(of: draft.selectedTranscriptionModelName) { _, newModelName in
                     if let modelName = newModelName,
-                       let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
+                       let model = warmupSnapshot.transcriptionModel(named: modelName) {
                         draft.isRealtimeTranscriptionEnabled = TranscriptionRealtimeSupport.isAvailable(for: model)
                         if model.provider == .gemini {
                             draft.selectedLanguage = "auto"
@@ -240,7 +242,7 @@ struct ModeConfigFormView: View {
                 draft.selectedLanguage = "auto"
             }
         } else if let selectedModel = effectiveModelName,
-                  let modelInfo = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModel }),
+                  let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
                   modelInfo.isMultilingualModel {
             let languageBinding = Binding<String?>(
                 get: { effectiveLanguage(for: modelInfo) },
@@ -280,7 +282,7 @@ struct ModeConfigFormView: View {
                 draft.selectedLanguage = effectiveLanguage(for: modelInfo)
             }
         } else if let selectedModel = effectiveModelName,
-                  let modelInfo = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModel }),
+                  let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
                   !modelInfo.isMultilingualModel {
             EmptyView()
                 .onAppear {
@@ -303,10 +305,10 @@ struct ModeConfigFormView: View {
                         if draft.selectedAIModel == nil,
                            let provider = configuredSelectedAIProvider,
                            provider != .localCLI {
-                            draft.selectedAIModel = aiService.selectedModel(for: provider)
+                            draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                         }
                         if draft.selectedPromptId == nil {
-                            draft.selectedPromptId = enhancementService.allPrompts.first?.id
+                            draft.selectedPromptId = warmupSnapshot.firstPromptId
                         }
                         if configuredSelectedAIProvider == .ollama {
                             aiService.refreshOllamaAvailabilityInBackground()
@@ -346,7 +348,7 @@ struct ModeConfigFormView: View {
                                 draft.selectedAIModel = nil
                             case .ollama:
                                 if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
-                                    draft.selectedAIModel = aiService.selectedModel(for: provider)
+                                    draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                                 }
                                 aiService.refreshOllamaAvailabilityInBackground()
                             default:
@@ -387,7 +389,7 @@ struct ModeConfigFormView: View {
                 let modelBinding = Binding<String>(
                     get: {
                         if let model = draft.selectedAIModel, !model.isEmpty { return model }
-                        return aiService.selectedModel(for: provider)
+                        return warmupSnapshot.selectedModel(for: provider)
                     },
                     set: { newModelValue in
                         draft.selectedAIModel = newModelValue
@@ -411,7 +413,7 @@ struct ModeConfigFormView: View {
     }
 
     private func aiModelOptions(for provider: AIProvider) -> [String] {
-        var models = aiService.availableModels(for: provider)
+        var models = warmupSnapshot.availableModels(for: provider)
 
         if let selectedModel = draft.selectedAIModel,
            !selectedModel.isEmpty,
@@ -428,13 +430,13 @@ struct ModeConfigFormView: View {
 
             Spacer(minLength: 12)
 
-            if enhancementService.allPrompts.isEmpty {
+            if warmupSnapshot.prompts.isEmpty {
                 Text("No prompts available")
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             } else {
                 Picker("", selection: $draft.selectedPromptId) {
-                    ForEach(enhancementService.allPrompts) { prompt in
+                    ForEach(warmupSnapshot.prompts) { prompt in
                         Text(prompt.title)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -567,7 +569,7 @@ struct ModeConfigFormView: View {
 
     private func languageSelectionDisabled() -> Bool {
         guard let selectedModelName = effectiveModelName,
-              let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == selectedModelName })
+              let model = warmupSnapshot.transcriptionModel(named: selectedModelName)
         else { return false }
         return model.provider == .gemini
     }

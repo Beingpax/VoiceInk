@@ -60,7 +60,8 @@ final class APIKeyManager {
 
     /// Checks if an API key exists for a provider.
     func hasAPIKey(forProvider provider: String) -> Bool {
-        return getAPIKey(forProvider: provider) != nil
+        let keyIdentifier = keychainIdentifier(forProvider: provider)
+        return keychain.exists(forKey: keyIdentifier)
     }
 
     // MARK: - Custom Model API Keys

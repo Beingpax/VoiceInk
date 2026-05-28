@@ -89,8 +89,8 @@ struct ModeConfigDraft {
         !name.isEmpty
     }
 
-    mutating func applyAddModeDefaults(aiService: AIService) {
-        let connectedProviders = aiService.connectedProviders
+    mutating func applyAddModeDefaults(snapshot: ModeFormWarmupSnapshot) {
+        let connectedProviders = snapshot.connectedAIProviders
         let inheritedProvider = selectedAIProvider.flatMap(AIProvider.init(rawValue:))
         let provider = inheritedProvider.flatMap { provider in
             connectedProviders.contains(provider) ? provider : nil
@@ -102,23 +102,23 @@ struct ModeConfigDraft {
             return
         }
 
-        let availableModels = aiService.availableModels(for: provider)
+        let availableModels = snapshot.availableModels(for: provider)
         if let selectedAIModel,
            !selectedAIModel.isEmpty,
            (availableModels.isEmpty || availableModels.contains(selectedAIModel)) {
             return
         }
 
-        selectedAIModel = aiService.selectedModel(for: provider)
+        selectedAIModel = snapshot.selectedModel(for: provider)
     }
 
-    mutating func inheritUsableTranscriptionModelSelection(from usableModels: [any TranscriptionModel]) {
+    mutating func inheritUsableTranscriptionModelSelection(from snapshot: ModeFormWarmupSnapshot) {
         if let selectedTranscriptionModelName,
-           usableModels.contains(where: { $0.name == selectedTranscriptionModelName }) {
+           snapshot.hasUsableTranscriptionModel(named: selectedTranscriptionModelName) {
             return
         }
 
-        selectedTranscriptionModelName = usableModels.first?.name
+        selectedTranscriptionModelName = snapshot.usableTranscriptionModels.first?.name
     }
 
     mutating func ensureTranscriptionModelSelection(fallback: String?) {

@@ -8,31 +8,31 @@ struct SidePanel<PanelContent: View>: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var animation: Animation {
-        reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.28)
+        reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.32)
     }
 
     private var transition: AnyTransition {
-        reduceMotion ? .opacity : .move(edge: .trailing)
+        reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity)
     }
 
     private func dismissPanel() {
         isPresented = false
     }
 
-    private var panelOverlay: some View {
-        HStack(spacing: 0) {
-            Color.clear
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture(perform: dismissPanel)
+    private var dismissLayer: some View {
+        Color.clear
+            .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .onTapGesture(perform: dismissPanel)
+    }
 
-            panelContent()
-                .frame(width: panelWidth)
-                .frame(maxHeight: .infinity)
-                .background(Color(NSColor.windowBackgroundColor))
-                .overlay(Divider(), alignment: .leading)
-        }
-        .ignoresSafeArea()
+    private var panelSurface: some View {
+        panelContent()
+            .frame(width: panelWidth)
+            .frame(maxHeight: .infinity)
+            .background(Color(NSColor.windowBackgroundColor))
+            .overlay(Divider(), alignment: .leading)
+            .ignoresSafeArea()
     }
 
     func body(content: Content) -> some View {
@@ -40,12 +40,14 @@ struct SidePanel<PanelContent: View>: ViewModifier {
             content
 
             if isPresented {
+                dismissLayer
+
                 Group {
                     if dismissOnExitCommand {
-                        panelOverlay
+                        panelSurface
                             .onExitCommand(perform: dismissPanel)
                     } else {
-                        panelOverlay
+                        panelSurface
                     }
                 }
                 .transition(transition)
