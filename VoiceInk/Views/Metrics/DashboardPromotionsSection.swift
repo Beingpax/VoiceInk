@@ -8,7 +8,7 @@ struct DashboardPromotionsSection: View {
     private var shouldShowUpgradePromotion: Bool {
         switch licenseState {
         case .trial(let daysRemaining):
-            return daysRemaining <= 3
+            return daysRemaining <= 6
         case .trialExpired:
             return true
         case .licensed:

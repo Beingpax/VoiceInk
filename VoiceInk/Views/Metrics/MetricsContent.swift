@@ -72,6 +72,7 @@ struct MetricsContent: View {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MetricsContent")
     let modelContext: ModelContext
     let licenseState: LicenseViewModel.LicenseState
+    let onAddLicenseKey: () -> Void
 
     @State private var totalCount: Int = 0
     @State private var totalWords: Int = 0
@@ -81,9 +82,14 @@ struct MetricsContent: View {
     @State private var isModelStatsPanelPresented = false
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
 
-    init(modelContext: ModelContext, licenseState: LicenseViewModel.LicenseState) {
+    init(
+        modelContext: ModelContext,
+        licenseState: LicenseViewModel.LicenseState,
+        onAddLicenseKey: @escaping () -> Void
+    ) {
         self.modelContext = modelContext
         self.licenseState = licenseState
+        self.onAddLicenseKey = onAddLicenseKey
 
         let cachedSummary = DashboardMetricsCache.shared.currentSummary()
         _totalCount = State(initialValue: cachedSummary?.totalCount ?? 0)
@@ -108,6 +114,8 @@ struct MetricsContent: View {
                 GeometryReader { geometry in
                     ScrollView {
                         VStack(spacing: 24) {
+                            licenseStatusMessage
+
                             heroSection
 
                             if !isAccessibilityEnabled {
@@ -207,6 +215,8 @@ struct MetricsContent: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 24) {
+                    licenseStatusMessage
+
                     VStack(spacing: 20) {
                         Image(systemName: "waveform")
                             .font(.system(size: 56, weight: .semibold))
@@ -231,6 +241,26 @@ struct MetricsContent: View {
     }
     
     // MARK: - Sections
+
+    @ViewBuilder
+    private var licenseStatusMessage: some View {
+        switch licenseState {
+        case .trial(let daysRemaining):
+            TrialMessageView(
+                message: "You have \(daysRemaining) days left in your trial",
+                type: daysRemaining <= 2 ? .warning : .info,
+                onAddLicenseKey: onAddLicenseKey
+            )
+        case .trialExpired:
+            TrialMessageView(
+                message: "Your trial has expired. Upgrade to continue using VoiceInk",
+                type: .expired,
+                onAddLicenseKey: onAddLicenseKey
+            )
+        case .licensed:
+            EmptyView()
+        }
+    }
     
     private var heroSection: some View {
         VStack(spacing: 10) {
