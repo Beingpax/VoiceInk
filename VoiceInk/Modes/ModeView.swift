@@ -67,52 +67,70 @@ struct ModeView: View {
     private var isPanelOpen: Bool {
         activePanel != nil
     }
+
+    private var headerControls: some View {
+        HStack(spacing: 8) {
+            addModeButton
+            settingsButton
+        }
+    }
+
+    private var addModeButton: some View {
+        Button(action: {
+            openPanel(mode: .add)
+        }) {
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.primary.opacity(0.7))
+                .frame(width: 40, height: 40)
+                .background(
+                    CardBackground(isSelected: false, cornerRadius: 22)
+                )
+        }
+        .buttonStyle(.plain)
+        .help("Add a new mode")
+    }
+
+    private var settingsButton: some View {
+        Button(action: { openSettingsPanel() }) {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.primary.opacity(0.7))
+                .frame(width: 40, height: 40)
+                .background(
+                    CardBackground(isSelected: false, cornerRadius: 22)
+                )
+        }
+        .buttonStyle(.plain)
+        .help("Modes Settings")
+    }
     
     var body: some View {
             VStack(spacing: 0) {
-                // Header Section
-                VStack(spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 8) {
-                                Text("Modes")
-                                    .font(.system(size: 28, weight: .bold, design: .default))
-                                    .foregroundColor(.primary)
-                                
-                                InfoTip(
-                                    "Modes help you set up VoiceInk for different writing tasks, workflows, and scenarios.",
-                                    learnMoreURL: "https://tryvoiceink.com/docs/modes"
-                                )
-                            }
-                        }
-                        
-                        Spacer()
-                        
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
-                            Button(action: {
-                                openPanel(mode: .add)
-                            }) {
-                                Label("Add Mode", systemImage: "plus")
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .controlSize(.regular)
-                            .help("Add Mode")
+                            Text("Modes")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.primary)
 
-                            Button(action: { openSettingsPanel() }) {
-                                Label("Settings", systemImage: "gearshape")
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.regular)
-                            .help("Modes Settings")
+                            InfoTip(
+                                "Modes help you set up VoiceInk for different writing tasks, workflows, and scenarios.",
+                                learnMoreURL: "https://tryvoiceink.com/docs/modes"
+                            )
                         }
                     }
+
+                    Spacer()
+
+                    headerControls
                 }
+                .frame(height: 40)
                 .padding(.horizontal, 24)
                 .padding(.top, 20)
-                .padding(.bottom, 16)
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity)
                 
-                // Content Section
                 Group {
                         GeometryReader { geometry in
                             ScrollView {

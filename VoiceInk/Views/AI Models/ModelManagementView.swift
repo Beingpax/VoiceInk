@@ -21,7 +21,6 @@ struct ModelManagementView: View {
     @State private var selectedFilter: ModelFilter = .local
     @State private var activePanel: ModelManagementPanel?
 
-    // State for the unified alert
     @State private var isShowingDeleteAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""
@@ -71,15 +70,23 @@ struct ModelManagementView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                if SystemArchitecture.isIntelMac {
-                    intelMacWarningBanner
-                }
+        VStack(spacing: 0) {
+            headerSection
 
-                availableModelsSection
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    if SystemArchitecture.isIntelMac {
+                        intelMacWarningBanner
+                    }
+
+                    availableModelsSection
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 28)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
             }
-            .padding(40)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 600, minHeight: 500)
         .sidePanel(isPresented: .init(
@@ -96,6 +103,23 @@ struct ModelManagementView: View {
                 secondaryButton: .cancel()
             )
         }
+    }
+
+    private var headerSection: some View {
+        HStack {
+            Text("Model Catalog")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundColor(.primary)
+
+            Spacer()
+
+            settingsButton
+        }
+        .frame(height: 40)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 12)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -131,7 +155,6 @@ struct ModelManagementView: View {
 
     private var settingsPanelContent: some View {
         VStack(spacing: 0) {
-            // Header
             HStack(spacing: 12) {
                 Text("Model Settings")
                     .font(.headline)
@@ -164,44 +187,7 @@ struct ModelManagementView: View {
 
     private var availableModelsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                HStack(spacing: 12) {
-                    ForEach(ModelFilter.allCases, id: \.self) { filter in
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedFilter = filter
-                            }
-                            activePanel = nil
-                        }) {
-                            Text(filter.rawValue)
-                                .font(.system(size: 14, weight: selectedFilter == filter ? .semibold : .medium))
-                                .foregroundColor(selectedFilter == filter ? .primary : .primary.opacity(0.7))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(
-                                    CardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    toggleSettingsPanel()
-                }) {
-                    Image(systemName: "gear")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(isSettingsPanelOpen ? .accentColor : .primary.opacity(0.7))
-                        .padding(12)
-                        .background(
-                            CardBackground(isSelected: isSettingsPanelOpen, cornerRadius: 22)
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.bottom, 12)
+            modelFilterPicker
 
             switch selectedFilter {
             case .local:
@@ -238,7 +224,47 @@ struct ModelManagementView: View {
                 )
             }
         }
-        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var modelFilterPicker: some View {
+        HStack(spacing: 12) {
+            ForEach(ModelFilter.allCases, id: \.self) { filter in
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedFilter = filter
+                    }
+                    activePanel = nil
+                }) {
+                    Text(filter.rawValue)
+                        .font(.system(size: 14, weight: selectedFilter == filter ? .semibold : .medium))
+                        .foregroundColor(selectedFilter == filter ? .primary : .primary.opacity(0.7))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            CardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    private var settingsButton: some View {
+        Button(action: {
+            toggleSettingsPanel()
+        }) {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.primary.opacity(0.7))
+                .frame(width: 40, height: 40)
+                .background(
+                    CardBackground(isSelected: false, cornerRadius: 22)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .help("Model Settings")
     }
 
     private var localModelsSection: some View {
@@ -271,6 +297,7 @@ struct ModelManagementView: View {
             LocalEnhancementProviderManagementView()
                 .environmentObject(aiService)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var importLocalModelButton: some View {
@@ -374,7 +401,6 @@ struct ModelManagementView: View {
         isShowingDeleteAlert = true
     }
 
-    // MARK: - Import Panel
     private func presentImportPanel() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.init(filenameExtension: "bin")!]

@@ -128,7 +128,7 @@ struct CloudModelCardView: View {
                     HStack(spacing: 4) {
                         Text("Configure")
                             .font(.system(size: 12, weight: .medium))
-                        Image(systemName: "gear")
+                        Image(systemName: "gear.circle.fill")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)

@@ -70,6 +70,7 @@ struct DictionarySettingsView: View {
 
             settingsButton
         }
+        .frame(height: 40)
         .padding(.horizontal, 24)
         .padding(.top, 20)
         .padding(.bottom, 12)
@@ -80,12 +81,12 @@ struct DictionarySettingsView: View {
         Button {
             isShowingSettings.toggle()
         } label: {
-            Image(systemName: "gear")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(isShowingSettings ? .accentColor : .primary.opacity(0.7))
-                .padding(12)
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundColor(.primary.opacity(0.7))
+                .frame(width: 40, height: 40)
                 .background(
-                    CardBackground(isSelected: isShowingSettings, cornerRadius: 22)
+                    CardBackground(isSelected: false, cornerRadius: 22)
                 )
         }
         .buttonStyle(.plain)
