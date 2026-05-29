@@ -469,7 +469,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
     }
 
     @objc func handleLicenseStatusChanged() {
-        pipeline.licenseViewModel = LicenseViewModel()
+        Task { @MainActor in
+            pipeline.licenseViewModel.reloadLicenseState()
+        }
     }
 
     @objc func handlePromptChange() {

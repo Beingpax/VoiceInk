@@ -31,6 +31,11 @@ class LicenseViewModel: ObservableObject {
         #endif
     }
 
+    /// Reload license state without creating a new instance (avoids recursive notification loop).
+    func reloadLicenseState() {
+        loadLicenseState()
+    }
+
     func startTrial() {
         // Only set trial start date if it hasn't been set before
         if licenseManager.trialStartDate == nil {
