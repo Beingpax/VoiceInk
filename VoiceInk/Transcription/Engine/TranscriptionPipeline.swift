@@ -173,6 +173,11 @@ class TranscriptionPipeline {
         } catch {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
 
+            // Cancel any active streaming session to clean up resources
+            if let session {
+                await session.cancel()
+            }
+
             if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError,
                case .assetDownloadRequired = nativeAppleError {
                 await MainActor.run {

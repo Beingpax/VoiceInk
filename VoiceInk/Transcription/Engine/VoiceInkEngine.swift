@@ -105,7 +105,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         transcriptionStatus: .pending
                     )
                     modelContext.insert(transcription)
-                    try? modelContext.save()
+                    do {
+                        try modelContext.save()
+                    } catch {
+                        logger.error("Failed to save transcription: \(error.localizedDescription)")
+                    }
                     NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
                     await runPipeline(on: transcription, audioURL: recordedFile)
@@ -249,7 +253,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
         guard let model = transcriptionModelManager.currentTranscriptionModel else {
             transcription.text = "Transcription Failed: No model selected"
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+            } catch {
+                logger.error("Failed to save transcription failure state: \(error.localizedDescription)")
+            }
             recordingState = .idle
             return
         }
@@ -466,6 +474,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
             name: .promptDidChange,
             object: nil
         )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @objc func handleLicenseStatusChanged() {

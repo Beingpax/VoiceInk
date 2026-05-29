@@ -155,6 +155,8 @@ struct TranscriptionHistoryView: View {
         }
         .onDisappear {
             isViewCurrentlyVisible = false
+            searchDebounceTask?.cancel()
+            searchDebounceTask = nil
         }
         .onChange(of: searchText) { _, _ in
             searchDebounceTask?.cancel()

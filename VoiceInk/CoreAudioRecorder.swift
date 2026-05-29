@@ -15,6 +15,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private var audioFile: ExtAudioFileRef?
 
     private var isRecording = false
+    /// Atomic flag checked by the audio callback to bail out immediately during teardown.
+    private var isStopping = false
     private var currentDeviceID: AudioDeviceID = 0
     private var recordingURL: URL?
 
@@ -107,6 +109,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         // Cache gain setting before entering real-time path (avoid UserDefaults on audio thread)
         cachedWhisperModeGain = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled") ? 2.5 : 1.0
 
+        isStopping = false
         isRecording = true
     }
 
@@ -117,6 +120,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
             return
         }
         logger.notice("stopRecording: stopping core audio recorder")
+
+        // Signal the callback to bail out immediately
+        isStopping = true
 
         // Stop and dispose AudioUnit
         if let unit = audioUnit {
@@ -555,7 +561,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         inNumberFrames: UInt32
     ) -> OSStatus {
 
-        guard let audioUnit = audioUnit, isRecording, let renderBuf = renderBuffer else {
+        guard let audioUnit = audioUnit, isRecording, !isStopping, let renderBuf = renderBuffer else {
             return noErr
         }
 

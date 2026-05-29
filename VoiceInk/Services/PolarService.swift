@@ -7,8 +7,10 @@ class PolarService {
     private let baseURL = "https://api.polar.sh"
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "PolarService")
 
-    private func createRequest(endpoint: String, method: String = "POST") -> URLRequest {
-        let url = URL(string: "\(baseURL)\(endpoint)")!
+    private func createRequest(endpoint: String, method: String = "POST") throws -> URLRequest {
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else {
+            throw URLError(.badURL)
+        }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -50,7 +52,7 @@ class PolarService {
     
     // Check if a license key requires activation
     func checkLicenseRequiresActivation(_ key: String) async throws -> (isValid: Bool, requiresActivation: Bool, activationsLimit: Int?) {
-        var request = createRequest(endpoint: "/v1/customer-portal/license-keys/validate")
+        var request = try createRequest(endpoint: "/v1/customer-portal/license-keys/validate")
 
         let body: [String: Any] = [
             "key": key,
@@ -88,7 +90,7 @@ class PolarService {
     
     // Activate a license key on this device
     func activateLicenseKey(_ key: String) async throws -> (activationId: String, activationsLimit: Int) {
-        var request = createRequest(endpoint: "/v1/customer-portal/license-keys/activate")
+        var request = try createRequest(endpoint: "/v1/customer-portal/license-keys/activate")
         
         let deviceId = getDeviceIdentifier()
         let hostname = Host.current().localizedName ?? "Unknown Mac"
@@ -128,7 +130,7 @@ class PolarService {
     
     // Validate a license key with an activation ID
     func validateLicenseKeyWithActivation(_ key: String, activationId: String) async throws -> Bool {
-        var request = createRequest(endpoint: "/v1/customer-portal/license-keys/validate")
+        var request = try createRequest(endpoint: "/v1/customer-portal/license-keys/validate")
         
         let body: [String: Any] = [
             "key": key,

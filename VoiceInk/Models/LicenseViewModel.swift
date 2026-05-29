@@ -118,15 +118,13 @@ class LicenseViewModel: ObservableObject {
                 return
             }
             
-            // Store the license key
-            licenseManager.licenseKey = licenseKey
-
             // Handle based on whether activation is required
             if licenseCheck.requiresActivation {
                 // If we already have an activation ID, try to validate with it first
                 if let existingActivationId = licenseManager.activationId {
                     let isValid = (try? await polarService.validateLicenseKeyWithActivation(licenseKey, activationId: existingActivationId)) ?? false
                     if isValid {
+                        licenseManager.licenseKey = licenseKey
                         licenseState = .licensed
                         validationSuccess = true
                         validationMessage = "License activated successfully!"
@@ -141,7 +139,8 @@ class LicenseViewModel: ObservableObject {
                 // Need to create a new activation
                 let (newActivationId, limit) = try await polarService.activateLicenseKey(licenseKey)
 
-                // Store activation details
+                // Activation succeeded — now persist the key
+                licenseManager.licenseKey = licenseKey
                 licenseManager.activationId = newActivationId
                 userDefaults.set(true, forKey: "VoiceInkLicenseRequiresActivation")
                 self.activationsLimit = limit
@@ -149,6 +148,7 @@ class LicenseViewModel: ObservableObject {
 
             } else {
                 // This license doesn't require activation (unlimited devices)
+                licenseManager.licenseKey = licenseKey
                 licenseManager.activationId = nil
                 userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
                 self.activationsLimit = licenseCheck.activationsLimit ?? 0

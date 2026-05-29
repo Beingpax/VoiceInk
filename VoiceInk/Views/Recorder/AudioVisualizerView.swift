@@ -219,6 +219,8 @@ private struct AlienWaveformCanvas: View {
     @AppStorage("visualizerParticleShape") private var visualizerParticleShape = "orbiting"
     @AppStorage("visualizerMovementType") private var visualizerMovementType = "alien"
     @AppStorage("visualizerLineTheme") private var visualizerLineTheme = "cyber"
+    @AppStorage("superchargeAdaptiveColorExtraction") private var adaptiveColorExtraction = false
+    @AppStorage("superchargeMetalFluidVisualizer") private var metalFluidVisualizerEnabled = false
 
     // Color definitions for light-cement high contrast compatibility
     private let electricPurple = Color(red: 0.54, green: 0.12, blue: 0.92)
@@ -235,7 +237,7 @@ private struct AlienWaveformCanvas: View {
     }
     
     private var themeColors: WaveThemeColors {
-        if UserDefaults.standard.bool(forKey: "superchargeAdaptiveColorExtraction") {
+        if adaptiveColorExtraction {
             #if canImport(AppKit)
             let nsAccent = NSColor.controlAccentColor
             let accent = Color(nsAccent)
@@ -584,7 +586,7 @@ private struct AlienWaveformCanvas: View {
             }
 
             // 7. Supercharged Metal Fluid Particle Visualizer
-            if UserDefaults.standard.bool(forKey: "superchargeMetalFluidVisualizer") {
+            if metalFluidVisualizerEnabled {
                 let fluidParticlesCount = 45
                 for p in 0..<fluidParticlesCount {
                     let seed = Double(p)
