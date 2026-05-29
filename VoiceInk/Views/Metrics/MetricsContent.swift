@@ -40,15 +40,29 @@ private enum DashboardMetricsLoader {
 
             try Task.checkCancellation()
 
-            var descriptor = FetchDescriptor<SessionMetric>()
-            descriptor.propertiesToFetch = [\.wordCount, \.audioDuration]
-
             var words = 0
             var duration: TimeInterval = 0
+            let batchSize = 500
+            var offset = 0
 
-            try backgroundContext.enumerate(descriptor) { metric in
-                words += metric.wordCount
-                duration += metric.audioDuration
+            while offset < count {
+                try Task.checkCancellation()
+
+                var descriptor = FetchDescriptor<SessionMetric>()
+                descriptor.fetchLimit = batchSize
+                descriptor.fetchOffset = offset
+
+                let metrics = try backgroundContext.fetch(descriptor)
+                if metrics.isEmpty {
+                    break
+                }
+
+                for metric in metrics {
+                    words += metric.wordCount
+                    duration += metric.audioDuration
+                }
+
+                offset += metrics.count
             }
 
             try Task.checkCancellation()
@@ -81,6 +95,7 @@ struct MetricsContent: View {
     @State private var metricsTask: Task<Void, Never>?
     @State private var isModelStatsPanelPresented = false
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
+    @State private var isSystemInfoCopied = false
 
     init(
         modelContext: ModelContext,
@@ -320,7 +335,7 @@ struct MetricsContent: View {
                 title: "Sessions Recorded",
                 value: hasLoadedMetricsSnapshot ? "\(totalCount)" : "–",
                 detail: "VoiceInk sessions completed",
-                color: .purple
+                color: Color(nsColor: .systemPurple)
             )
 
             MetricCard(
@@ -338,7 +353,7 @@ struct MetricsContent: View {
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
                 detail: "VoiceInk vs. typing by hand",
-                color: .yellow
+                color: Color(nsColor: .systemYellow)
             )
             
             MetricCard(
@@ -346,28 +361,66 @@ struct MetricsContent: View {
                 title: "Keystrokes Saved",
                 value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalKeystrokesSaved) : "–",
                 detail: "fewer keystrokes",
-                color: .orange
+                color: Color(nsColor: .systemOrange)
             )
         }
     }
 
     private var footerActionsView: some View {
-        HStack(spacing: 12) {
-            Button(action: {
-                openModelStatsPanel()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "gauge")
-                    Text("Model Performance")
-                }
-                .font(.system(size: 13, weight: .medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(.thinMaterial))
+        HStack(alignment: .center, spacing: 12) {
+            Button(action: openModelStatsPanel) {
+                footerActionLabel(icon: "gauge", title: "Model Performance")
             }
             .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: true)
             .help("View transcription and enhancement model performance")
-            CopySystemInfoButton()
+
+            Button(action: copySystemInfo) {
+                footerActionLabel(
+                    icon: isSystemInfoCopied ? "checkmark" : "doc.on.doc",
+                    title: isSystemInfoCopied ? "Copied!" : "Copy System Info"
+                )
+            }
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: true)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSystemInfoCopied)
+        }
+    }
+
+    @ViewBuilder
+    private func footerActionLabel(icon: String, title: String) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            footerActionIcon(icon)
+
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(.horizontal, 14)
+        .frame(width: nil, height: 36, alignment: .center)
+        .background(CardBackground(cornerRadius: 18))
+    }
+
+    private func footerActionIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .resizable()
+            .scaledToFit()
+            .frame(width: 14, height: 14)
+            .frame(width: 16, height: 16, alignment: .center)
+    }
+
+    private func copySystemInfo() {
+        SystemInfoService.shared.copySystemInfoToClipboard()
+
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isSystemInfoCopied = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isSystemInfoCopied = false
+            }
         }
     }
     
@@ -491,41 +544,5 @@ private enum Formatters {
         durationFormatter.unitsStyle = style
         durationFormatter.allowedUnits = interval >= 3600 ? [.hour, .minute] : [.minute, .second]
         return durationFormatter.string(from: interval) ?? fallback
-    }
-}
-
-private struct CopySystemInfoButton: View {
-    @State private var isCopied: Bool = false
-
-    var body: some View {
-        Button(action: {
-            copySystemInfo()
-        }) {
-            HStack(spacing: 8) {
-                Image(systemName: isCopied ? "checkmark" : "doc.on.doc")
-                    .symbolRenderingMode(.hierarchical)
-
-                Text(isCopied ? "Copied!" : "Copy System Info")
-            }
-            .font(.system(size: 13, weight: .medium))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Capsule().fill(.thinMaterial))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func copySystemInfo() {
-        SystemInfoService.shared.copySystemInfoToClipboard()
-
-        withAnimation(.easeInOut(duration: 0.16)) {
-            isCopied = true
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.16)) {
-                isCopied = false
-            }
-        }
     }
 }
