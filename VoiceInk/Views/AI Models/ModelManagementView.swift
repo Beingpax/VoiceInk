@@ -241,7 +241,7 @@ struct ModelManagementView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
-                            CardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
+                            PrimaryCardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -262,7 +262,7 @@ struct ModelManagementView: View {
                     CardBackground(isSelected: false, cornerRadius: 22)
                 )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .help("Model Settings")
     }
 
@@ -309,8 +309,7 @@ struct ModelManagementView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(16)
-                .background(GroupedCardBackground())
-                .cornerRadius(10)
+                .background(PrimaryCardBackground(cornerRadius: 10))
             }
             .buttonStyle(.plain)
 

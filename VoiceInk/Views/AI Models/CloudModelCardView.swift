@@ -53,7 +53,7 @@ struct CloudModelCardView: View {
                     .padding(16)
             }
         }
-        .background(GroupedCardBackground())
+        .background(PrimaryCardBackground())
         .onAppear {
             loadSavedAPIKey()
         }

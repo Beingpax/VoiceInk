@@ -58,7 +58,7 @@ private struct ModelSettingsTabBar: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
                     .background(
-                        CardBackground(isSelected: selection == tab, cornerRadius: 22)
+                        PrimaryCardBackground(isSelected: selection == tab, cornerRadius: 22)
                     )
                     .contentShape(Rectangle())
                 }

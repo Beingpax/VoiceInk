@@ -224,6 +224,8 @@ struct ConfigurationRow: View {
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(PrimaryCardBackground.fillColor)
             
             if hasVisibleMetadata {
                 Divider()
@@ -325,7 +327,20 @@ struct ConfigurationRow: View {
             }
     }
     .clipShape(RoundedRectangle(cornerRadius: 16))
-    .background(CardBackground(isSelected: isEditing))
+    .background {
+        if !hasVisibleMetadata {
+            PrimaryCardBackground(isSelected: isEditing, cornerRadius: 16)
+        }
+    }
+    .overlay {
+        if hasVisibleMetadata {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    PrimaryCardBackground.borderColor(isSelected: isEditing),
+                    lineWidth: PrimaryCardBackground.borderWidth(isSelected: isEditing)
+                )
+        }
+    }
     .opacity(config.isEnabled ? 1.0 : 0.70)
 
     .onHover { hovering in

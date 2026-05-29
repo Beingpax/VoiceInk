@@ -57,7 +57,7 @@ struct EditReplacementSheet: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
-        .background(CardBackground(isSelected: false))
+        .background(CardBackground(isSelected: false, cornerRadius: 16))
     }
 
     private var formContent: some View {

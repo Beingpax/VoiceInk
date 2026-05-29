@@ -118,7 +118,7 @@ struct ProviderSurface: View {
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        GroupedCardBackground(isSelected: isActive, cornerRadius: cornerRadius)
+        PrimaryCardBackground(isSelected: isActive, cornerRadius: cornerRadius)
     }
 }
 

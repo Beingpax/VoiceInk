@@ -190,7 +190,7 @@ struct PromptEditorView: View {
             .font(.system(size: 15, weight: .medium))
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(GroupedCardBackground(cornerRadius: 7))
+            .background(CardBackground(cornerRadius: 7))
             .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 
@@ -201,7 +201,7 @@ struct PromptEditorView: View {
                 .frame(minHeight: 220)
                 .scrollContentBackground(.hidden)
                 .padding(8)
-                .background(GroupedCardBackground(cornerRadius: 8))
+                .background(CardBackground(cornerRadius: 8))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             if promptText.isEmpty {

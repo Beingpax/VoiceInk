@@ -22,7 +22,7 @@ struct CustomModelCardView: View {
             }
             .padding(16)
         }
-        .background(GroupedCardBackground())
+        .background(PrimaryCardBackground())
     }
     
     private var headerSection: some View {

@@ -12,7 +12,7 @@ struct MetricCard: View {
             HStack(alignment: .center, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(color.opacity(0.15))
+                        .fill(color.opacity(0.14))
                     Image(systemName: icon)
                         .resizable()
                         .scaledToFit()
@@ -43,9 +43,6 @@ struct MetricCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.thinMaterial)
-        )
+        .background(CardBackground(cornerRadius: 16))
     }
 }

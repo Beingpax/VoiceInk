@@ -146,7 +146,7 @@ struct LicenseManagementView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding(32)
-            .background(CardBackground(isSelected: false))
+            .background(CardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
 
             // License Activation
@@ -183,7 +183,7 @@ struct LicenseManagementView: View {
                 }
             }
             .padding(32)
-            .background(CardBackground(isSelected: false))
+            .background(CardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
             
             // Already Purchased Section
@@ -209,7 +209,7 @@ struct LicenseManagementView: View {
                 }
             }
             .padding(32)
-            .background(CardBackground(isSelected: false))
+            .background(CardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
         }
     }
@@ -246,7 +246,7 @@ struct LicenseManagementView: View {
                 }
             }
             .padding(32)
-            .background(CardBackground(isSelected: false))
+            .background(CardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
             
             // Deactivation Card
@@ -264,7 +264,7 @@ struct LicenseManagementView: View {
                 .buttonStyle(.bordered)
             }
             .padding(32)
-            .background(CardBackground(isSelected: false))
+            .background(CardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
         }
     }

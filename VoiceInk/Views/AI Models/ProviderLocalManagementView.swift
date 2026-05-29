@@ -49,7 +49,7 @@ struct LocalEnhancementProviderManagementView: View {
                     localCLIConfiguration
                 }
             }
-            .background(GroupedCardBackground(cornerRadius: 11))
+            .background(PrimaryCardBackground(cornerRadius: 11))
         }
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
