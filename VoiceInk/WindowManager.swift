@@ -30,12 +30,12 @@ class WindowManager: NSObject {
         window.styleMask.formUnion(requiredStyleMask)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.backgroundColor = .windowBackgroundColor
+        window.backgroundColor = .clear
         window.isReleasedWhenClosed = false
         window.title = "VoiceInk"
         window.collectionBehavior = [.fullScreenPrimary]
         window.level = .normal
-        window.isOpaque = true
+        window.isOpaque = false
         window.isMovableByWindowBackground = false
         window.minSize = NSSize(width: 0, height: 0)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)

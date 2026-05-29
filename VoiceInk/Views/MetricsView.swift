@@ -13,7 +13,6 @@ struct MetricsView: View {
             licenseState: licenseViewModel.licenseState,
             onAddLicenseKey: navigateToLicenseManagement
         )
-        .background(Color(.controlBackgroundColor))
     }
 
     private func navigateToLicenseManagement() {

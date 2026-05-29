@@ -1,8 +1,6 @@
 import SwiftUI
-import SwiftData
 import OSLog
 
-// ViewType enum with all cases
 enum ViewType: String, CaseIterable, Identifiable {
     case metrics = "Dashboard"
     case modes = "Modes"
@@ -15,107 +13,19 @@ enum ViewType: String, CaseIterable, Identifiable {
     case license = "VoiceInk Pro"
 
     var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .metrics: return "gauge.medium"
-        case .transcribeAudio: return "waveform.circle.fill"
-        case .history: return "doc.text.fill"
-        case .models: return "brain.head.profile"
-        case .modes: return "sparkles.square.fill.on.square"
-        case .audio: return "mic.fill"
-        case .dictionary: return "text.book.closed.fill"
-        case .settings: return "gearshape.fill"
-        case .license: return "checkmark.seal.fill"
-        }
-    }
-}
-
-struct VisualEffectView: NSViewRepresentable {
-    let material: NSVisualEffectView.Material
-    let blendingMode: NSVisualEffectView.BlendingMode
-
-    func makeNSView(context: Context) -> NSVisualEffectView {
-        let visualEffectView = NSVisualEffectView()
-        visualEffectView.material = material
-        visualEffectView.blendingMode = blendingMode
-        visualEffectView.state = .active
-        return visualEffectView
-    }
-
-    func updateNSView(_ visualEffectView: NSVisualEffectView, context: Context) {
-        visualEffectView.material = material
-        visualEffectView.blendingMode = blendingMode
-    }
 }
 
 struct ContentView: View {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ContentView")
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorScheme
-    @EnvironmentObject private var engine: VoiceInkEngine
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
-    @State private var selectedView: ViewType? = .metrics
-    let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    @StateObject private var licenseViewModel = LicenseViewModel()
+    private static let detailBackgroundTintOpacity = 0.50
+    @State private var selectedView: ViewType = .metrics
 
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selectedView) {
-                Section {
-                    // App Header
-                    HStack(spacing: 6) {
-                        if let appIcon = NSImage(named: "AppIcon") {
-                            Image(nsImage: appIcon)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 28, height: 28)
-                                .cornerRadius(8)
-                        }
+        HStack(spacing: 0) {
+            AppSidebar(selectedView: $selectedView)
 
-                        Text("VoiceInk")
-                            .font(.system(size: 14, weight: .semibold))
-
-                        if case .licensed = licenseViewModel.licenseState {
-                            Text("PRO")
-                                .font(.system(size: 9, weight: .heavy))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
-                                .background(Color.blue)
-                                .cornerRadius(4)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                ForEach(ViewType.allCases) { viewType in
-                    Section {
-                        NavigationLink(value: viewType) {
-                            SidebarItemView(viewType: viewType)
-                        }
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                        .listRowSeparator(.hidden)
-                    }
-                }
-            }
-            .listStyle(.sidebar)
-            .navigationTitle("VoiceInk")
-            .navigationSplitViewColumnWidth(210)
-        } detail: {
-            if let selectedView = selectedView {
-                detailView(for: selectedView)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .navigationTitle(selectedView.rawValue)
-            } else {
-                Text("Select a view")
-                    .foregroundColor(.secondary)
-            }
+            detailContent
         }
-        .navigationSplitViewStyle(.balanced)
         .frame(width: 950)
         .frame(minHeight: 730)
         .onAppear {
@@ -131,6 +41,26 @@ struct ContentView: View {
                 selectedView = viewType
             }
         }
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        detailView(for: selectedView)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(detailBackground)
+    }
+
+    private var detailBackground: some View {
+        ZStack {
+            VisualEffectView(
+                material: .sidebar,
+                blendingMode: .behindWindow
+            )
+
+            Color(NSColor.windowBackgroundColor)
+                .opacity(Self.detailBackgroundTintOpacity)
+        }
+        .ignoresSafeArea(.container, edges: .top)
     }
     
     @ViewBuilder
@@ -155,26 +85,5 @@ struct ContentView: View {
         case .license:
             LicenseManagementView()
         }
-    }
-}
-
-private struct SidebarItemView: View {
-    let viewType: ViewType
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: viewType.icon)
-                .font(.system(size: 18, weight: .medium))
-                .frame(width: 24, height: 24)
-
-            Text(viewType.rawValue)
-                .font(.system(size: 14, weight: .medium))
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .padding(.vertical, 8)
-        .padding(.horizontal, 2)
     }
 }

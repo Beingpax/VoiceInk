@@ -22,7 +22,6 @@ struct LicenseManagementView: View {
                 .padding(32)
             }
         }
-        .background(Color(NSColor.controlBackgroundColor))
     }
     
     private var heroSection: some View {
@@ -305,5 +304,4 @@ struct LicenseManagementView: View {
         }
     }
 }
-
 

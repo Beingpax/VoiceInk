@@ -45,7 +45,6 @@ struct DictionarySettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 600, minHeight: 500)
-        .background(Color(NSColor.controlBackgroundColor))
         .sidePanel(isPresented: $isShowingSettings) {
             DictionarySettingsPanel {
                 isShowingSettings = false
@@ -75,7 +74,6 @@ struct DictionarySettingsView: View {
         .padding(.top, 20)
         .padding(.bottom, 12)
         .frame(maxWidth: .infinity)
-        .background(Color(NSColor.windowBackgroundColor))
     }
 
     private var settingsButton: some View {

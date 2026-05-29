@@ -82,7 +82,6 @@ struct ModelManagementView: View {
             .padding(40)
         }
         .frame(minWidth: 600, minHeight: 500)
-        .background(Color(NSColor.controlBackgroundColor))
         .sidePanel(isPresented: .init(
             get: { isPanelOpen },
             set: { if !$0 { closePanel() } }

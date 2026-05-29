@@ -22,13 +22,11 @@ struct SettingsView: View {
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
     @State private var cancelRecordingShortcutRecorderResetID = 0
 
-    // Expansion states - all collapsed by default
     @State private var isMiddleClickExpanded = false
     @State private var isRestoreClipboardExpanded = false
 
     var body: some View {
         Form {
-            // MARK: - Shortcuts
             Section {
                 LabeledContent("Primary Shortcut") {
                     HStack(spacing: 8) {
@@ -72,7 +70,6 @@ struct SettingsView: View {
                 Text("Shortcuts")
             }
 
-            // MARK: - Additional Shortcuts
             Section("Additional Shortcuts") {
                 LabeledContent("Paste Last Transcription (Original)") {
                     ShortcutRecorder(action: .pasteLastTranscription) {
@@ -122,7 +119,6 @@ struct SettingsView: View {
                     hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
                 }
 
-                // Middle-Click
                 ExpandableSettingsRow(
                     isExpanded: $isMiddleClickExpanded,
                     isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
@@ -144,9 +140,7 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - Pasting
             Section("Pasting") {
-                // Keep Clipboard Content
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,
                     isEnabled: $restoreClipboardAfterPaste,
@@ -164,7 +158,6 @@ struct SettingsView: View {
                     }
                 }
 
-                // Paste Method
                 Picker(selection: $pasteMethodRawValue) {
                     ForEach(PasteMethod.allCases) { method in
                         Text(method.displayName).tag(method.rawValue)
@@ -185,7 +178,6 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - Interface
             Section("Interface") {
                 Picker("Recorder Style", selection: $recorderUIManager.recorderType) {
                     Text("Notch").tag("notch")
@@ -195,7 +187,6 @@ struct SettingsView: View {
 
             }
 
-            // MARK: - General
             Section("General") {
                 Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
 
@@ -227,7 +218,6 @@ struct SettingsView: View {
                 }
             }
 
-            // MARK: - Privacy
             Section {
                 AudioCleanupSettingsView()
             } header: {
@@ -236,7 +226,6 @@ struct SettingsView: View {
                 Text("Control how VoiceInk handles your transcription data and audio recordings.")
             }
 
-            // MARK: - Backup
             Section {
                 LabeledContent("Export Settings") {
                     Button("Export") {
@@ -272,14 +261,12 @@ struct SettingsView: View {
                 Text("Export all settings, or choose specific categories when importing a backup.")
             }
 
-            // MARK: - Diagnostics
             Section("Diagnostics") {
                 DiagnosticsSettingsView()
             }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .background(Color(NSColor.controlBackgroundColor))
         .alert("Reset Onboarding", isPresented: $showResetOnboardingAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Reset", role: .destructive) {
@@ -308,8 +295,6 @@ struct SettingsView: View {
         .fixedSize()
     }
 }
-
-// MARK: - Text Extension
 
 extension Text {
     func settingsDescription() -> some View {

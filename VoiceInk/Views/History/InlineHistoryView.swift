@@ -97,7 +97,6 @@ struct InlineHistoryView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor))
         .sidePanel(isPresented: .init(
             get: { isPanelPresented },
             set: { newValue in

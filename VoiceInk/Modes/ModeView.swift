@@ -111,7 +111,6 @@ struct ModeView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity)
-                .background(Color(NSColor.windowBackgroundColor))
                 
                 // Content Section
                 Group {
@@ -165,9 +164,7 @@ struct ModeView: View {
                         }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
             }
-            .background(Color(NSColor.controlBackgroundColor))
             .sidePanel(isPresented: .init(
                 get: { isPanelOpen },
                 set: { if !$0 { closePanel() } }

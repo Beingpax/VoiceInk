@@ -140,7 +140,6 @@ struct MetricsContent: View {
                         .padding(.vertical, 28)
                         .padding(.horizontal, 32)
                     }
-                    .background(Color(.windowBackgroundColor))
                 }
             }
         }
@@ -236,7 +235,6 @@ struct MetricsContent: View {
                 .padding(.vertical, 28)
                 .padding(.horizontal, 32)
             }
-            .background(Color(.windowBackgroundColor))
         }
     }
     
