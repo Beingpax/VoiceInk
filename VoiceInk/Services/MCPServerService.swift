@@ -399,14 +399,8 @@ class MCPServerService {
             
             let transcribedResult = await DictationSessionManager.shared.waitForDictation()
             
-            let result: [String: Any] = [
-                "content": [
-                    [
-                        "type": "text",
-                        "text": transcribedResult
-                    ]
-                ]
-            ]
+            let contentItem: [String: Any] = ["type": "text", "text": transcribedResult]
+            let result: [String: Any] = ["content": [contentItem]]
             
             self.queue.async { [weak self] in
                 self?.sendJSONRPCResponse(sessionId: sessionId, id: requestId, result: result, error: nil)
