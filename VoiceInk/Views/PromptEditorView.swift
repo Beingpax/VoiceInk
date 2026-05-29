@@ -98,11 +98,9 @@ struct PromptEditorView: View {
                 }
                 .padding(20)
             }
-            .background(Color(NSColor.controlBackgroundColor))
 
             footer
         }
-        .background(Color(NSColor.windowBackgroundColor))
         .confirmationDialog(
             "Delete Prompt?",
             isPresented: $showDeleteConfirmation,
@@ -148,7 +146,6 @@ struct PromptEditorView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 
@@ -256,7 +253,6 @@ struct PromptEditorView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .top)
     }
 

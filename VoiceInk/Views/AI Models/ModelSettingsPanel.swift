@@ -14,6 +14,7 @@ struct ModelSettingsPanel: View {
                 EnhancementModelSettingsView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -78,6 +79,7 @@ private struct TranscriptionModelSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -130,6 +132,7 @@ private struct EnhancementModelSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

@@ -19,8 +19,9 @@ struct DictionarySettingsPanel: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var panelHeader: some View {
@@ -45,7 +46,6 @@ struct DictionarySettingsPanel: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 }

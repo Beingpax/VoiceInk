@@ -110,7 +110,6 @@ struct ModeConfigFormView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 
@@ -128,7 +127,7 @@ struct ModeConfigFormView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .background(Color(NSColor.controlBackgroundColor))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .confirmationDialog(
             "Delete Mode?",
             isPresented: $isShowingDeleteConfirmation,
@@ -563,7 +562,6 @@ struct ModeConfigFormView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
         }
     }
 

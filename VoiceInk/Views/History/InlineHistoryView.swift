@@ -326,7 +326,6 @@ struct InlineHistoryView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider().opacity(0.5), alignment: .bottom)
             .zIndex(1)
 

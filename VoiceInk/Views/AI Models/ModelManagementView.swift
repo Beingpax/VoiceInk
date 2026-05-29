@@ -176,7 +176,6 @@ struct ModelManagementView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
             .overlay(
                 Divider().opacity(0.5), alignment: .bottom
             )

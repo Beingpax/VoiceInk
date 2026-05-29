@@ -207,7 +207,6 @@ struct CustomTranscriptionModelEditorPanel: View {
                 }
                 .padding(20)
             }
-            .background(Color(NSColor.controlBackgroundColor))
 
             editorFooter(
                 primaryTitle: isSaving ? "Saving" : isEditing ? "Save Changes" : "Add Model",
@@ -215,7 +214,6 @@ struct CustomTranscriptionModelEditorPanel: View {
                 primaryAction: saveModel
             )
         }
-        .background(Color(NSColor.controlBackgroundColor))
         .onAppear(perform: loadModel)
         .onChange(of: editingModel?.id) { _, _ in
             loadModel()
@@ -361,7 +359,6 @@ struct CustomEnhancementModelEditorPanel: View {
                 }
                 .padding(20)
             }
-            .background(Color(NSColor.controlBackgroundColor))
 
             CustomModelEditorFooter(
                 primaryTitle: primaryButtonTitle,
@@ -370,7 +367,6 @@ struct CustomEnhancementModelEditorPanel: View {
                 onPrimary: saveProvider
             )
         }
-        .background(Color(NSColor.controlBackgroundColor))
         .onAppear(perform: loadProvider)
         .onChange(of: editingProvider?.id) { _, _ in
             loadProvider()
@@ -617,7 +613,6 @@ private struct CustomModelEditorHeader: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 }
@@ -640,7 +635,6 @@ private struct CustomModelEditorFooter: View {
                 .disabled(isPrimaryDisabled)
         }
         .padding(20)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .top)
     }
 }

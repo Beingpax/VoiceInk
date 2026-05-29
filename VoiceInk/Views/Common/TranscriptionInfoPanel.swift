@@ -12,6 +12,7 @@ struct TranscriptionInfoPanel: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Details Section

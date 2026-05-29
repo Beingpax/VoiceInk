@@ -29,7 +29,6 @@ struct ModeSettingsPanelView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
-            .background(Color(NSColor.windowBackgroundColor))
             .overlay(Divider().opacity(0.5), alignment: .bottom)
 
             HStack {
@@ -45,7 +44,7 @@ struct ModeSettingsPanelView: View {
             ModeReorderList(modeManager: modeManager)
                 .padding(.horizontal, contentInset)
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onExitCommand(perform: onDismiss)
     }
 
@@ -85,6 +84,7 @@ private struct ModeReorderList: View {
             }
             .padding(.vertical, 2)
         }
+        .frame(maxHeight: .infinity)
         .onDrop(
             of: [UTType.text],
             delegate: ModeReorderResetDropDelegate(

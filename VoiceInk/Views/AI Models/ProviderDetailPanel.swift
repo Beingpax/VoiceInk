@@ -44,7 +44,6 @@ struct ProviderDetailPanel: View {
                 .padding(20)
             }
         }
-        .background(Color(NSColor.windowBackgroundColor))
         .onAppear(perform: loadSavedAPIKey)
     }
 
@@ -77,7 +76,6 @@ struct ProviderDetailPanel: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-        .background(Color(NSColor.windowBackgroundColor))
         .overlay(Divider().opacity(0.5), alignment: .bottom)
     }
 

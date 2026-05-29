@@ -29,9 +29,10 @@ struct SidePanel<PanelContent: View>: ViewModifier {
     private var panelSurface: some View {
         panelContent()
             .frame(width: panelWidth)
-            .frame(maxHeight: .infinity)
-            .background(Color(NSColor.windowBackgroundColor))
-            .overlay(Divider(), alignment: .leading)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(SidePanelBackground())
+            .overlay(SidePanelEdgeSeparator(), alignment: .leading)
+            .overlay(SidePanelOuterSeparator(), alignment: .trailing)
             .ignoresSafeArea()
     }
 
@@ -55,6 +56,32 @@ struct SidePanel<PanelContent: View>: ViewModifier {
             }
         }
         .animation(animation, value: isPresented)
+    }
+}
+
+struct SidePanelBackground: View {
+    var body: some View {
+        ZStack {
+            VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+            Color.accentColor.opacity(0.035)
+            Color(NSColor.windowBackgroundColor).opacity(0.50)
+        }
+    }
+}
+
+private struct SidePanelEdgeSeparator: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.12))
+            .frame(width: 1)
+    }
+}
+
+private struct SidePanelOuterSeparator: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.12))
+            .frame(width: 1)
     }
 }
 
