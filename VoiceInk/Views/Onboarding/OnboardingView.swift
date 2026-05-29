@@ -236,10 +236,13 @@ struct SkipButton: View {
     let action: () -> Void
     
     var body: some View {
-        Text(text)
-            .font(.system(size: 13, weight: .regular))
-            .foregroundColor(.white.opacity(0.2))
-            .onTapGesture(perform: action)
+        Button(action: action) {
+            Text(text)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundColor(.white.opacity(0.2))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Skip onboarding tour")
     }
 }
 

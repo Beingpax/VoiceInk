@@ -105,23 +105,29 @@ struct AlienWaveformProfile {
         self.maxHeight = max(minHeight * 2, maxHeight)
     }
 
-    func samples(
+    /// Fills a pre-sized buffer in-place, avoiding per-frame array allocation.
+    func fillSamples(
+        into buffer: inout [AlienWaveformSample],
         audioPower: Double,
         time: TimeInterval,
         count: Int = 37,
         isActive: Bool
-    ) -> [AlienWaveformSample] {
+    ) {
         let sampleCount = max(2, count)
         let normalizedPower = max(0, min(1, audioPower))
         let activePower = min(1, pow(normalizedPower, 0.42) * 1.16)
         let span = maxHeight - minHeight * 2
 
-        return (0..<sampleCount).map { index in
+        // Resize buffer only if count changed (rare)
+        if buffer.count != sampleCount {
+            buffer = [AlienWaveformSample](repeating: AlienWaveformSample(upperHeight: 0, lowerHeight: 0, xDrift: 0, glow: 0), count: sampleCount)
+        }
+
+        for index in 0..<sampleCount {
             let fraction = Double(index) / Double(sampleCount - 1)
             let centered = fraction * 2 - 1
             let envelope = 0.22 + 0.78 * exp(-pow(centered * 1.42, 2))
-            
-            // Continuous slowly drifting flows for resting states
+
             let slowFlow = sin(time * 1.5 - Double(index) * 0.23)
             let counterFlow = cos(time * 0.72 + Double(index) * 0.41)
             let filament = sin(time * 2.8 + Double(index) * 1.07)
@@ -145,7 +151,7 @@ struct AlienWaveformProfile {
             let xDrift = CGFloat(slowFlow * 12 + counterFlow * 8 + filament * 4)
             let glow = CGFloat(max(0.24, min(1, energy)))
 
-            return AlienWaveformSample(
+            buffer[index] = AlienWaveformSample(
                 upperHeight: upperHeight,
                 lowerHeight: lowerHeight,
                 xDrift: xDrift,
@@ -162,16 +168,15 @@ struct AudioVisualizer: View {
     let isActive: Bool
 
     @AppStorage("visualizerWaveformHeight") private var visualizerWaveformHeight = 75.0
+    @State private var sampleBuffer = SampleBuffer()
 
     var body: some View {
         let profile = AlienWaveformProfile(minHeight: 8, maxHeight: CGFloat(visualizerWaveformHeight))
         TimelineView(.animation(minimumInterval: 0.016)) { context in
             AlienWaveformCanvas(
-                samples: profile.samples(
-                    audioPower: audioMeter.averagePower,
-                    time: context.date.timeIntervalSinceReferenceDate,
-                    isActive: isActive
-                ),
+                sampleBuffer: sampleBuffer,
+                profile: profile,
+                audioPower: audioMeter.averagePower,
                 baseColor: color,
                 isActive: isActive,
                 maxHeight: profile.maxHeight,
@@ -186,16 +191,15 @@ struct StaticVisualizer: View {
     let color: Color
     
     @AppStorage("visualizerWaveformHeight") private var visualizerWaveformHeight = 75.0
+    @State private var sampleBuffer = SampleBuffer()
 
     var body: some View {
         let profile = AlienWaveformProfile(minHeight: 8, maxHeight: CGFloat(visualizerWaveformHeight))
         TimelineView(.animation(minimumInterval: 0.05)) { context in
             AlienWaveformCanvas(
-                samples: profile.samples(
-                    audioPower: 0,
-                    time: context.date.timeIntervalSinceReferenceDate,
-                    isActive: false
-                ),
+                sampleBuffer: sampleBuffer,
+                profile: profile,
+                audioPower: 0,
                 baseColor: color,
                 isActive: false,
                 maxHeight: profile.maxHeight,
@@ -206,9 +210,31 @@ struct StaticVisualizer: View {
     }
 }
 
+// MARK: - Preallocated Render Buffers (avoids per-frame heap allocations)
+private final class SampleBuffer {
+    var samples: [AlienWaveformSample] = []
+    var strandPoints: [[CGPoint]] = []
+    var boundaryTop: [CGPoint] = []
+    var boundaryBottom: [CGPoint] = []
+
+    func ensureStrandCapacity(strandsCount: Int, stepsCount: Int) {
+        if strandPoints.count != strandsCount || strandPoints.first?.count != stepsCount {
+            strandPoints = (0..<strandsCount).map { _ in
+                [CGPoint](repeating: .zero, count: stepsCount)
+            }
+        }
+        if boundaryTop.count != stepsCount {
+            boundaryTop = [CGPoint](repeating: .zero, count: stepsCount)
+            boundaryBottom = [CGPoint](repeating: .zero, count: stepsCount)
+        }
+    }
+}
+
 // MARK: - Alien Waveform Canvas Redesign (Organic Multi-Strand 3D Mesh)
 private struct AlienWaveformCanvas: View {
-    let samples: [AlienWaveformSample]
+    let sampleBuffer: SampleBuffer
+    let profile: AlienWaveformProfile
+    let audioPower: Double
     let baseColor: Color
     let isActive: Bool
     let maxHeight: CGFloat
@@ -378,6 +404,14 @@ private struct AlienWaveformCanvas: View {
 
     var body: some View {
         Canvas { context, size in
+            // Fill sample buffer in-place (zero allocation after first frame)
+            profile.fillSamples(
+                into: &sampleBuffer.samples,
+                audioPower: audioPower,
+                time: time,
+                isActive: isActive
+            )
+            let samples = sampleBuffer.samples
             guard samples.count > 1, size.width > 0, size.height > 0 else { return }
 
             let scale = min(1, size.height / maxHeight)
@@ -417,8 +451,8 @@ private struct AlienWaveformCanvas: View {
 
             // 2. Generate multi-strand points (18 parallel organic threads of high resolution)
             let strandsCount = 18
-            let stepsCount = 100 // high resolution points for organic curves
-            var strandPoints: [[CGPoint]] = Array(repeating: [], count: strandsCount)
+            let stepsCount = 100
+            sampleBuffer.ensureStrandCapacity(strandsCount: strandsCount, stepsCount: stepsCount)
             let stepX = usableWidth / CGFloat(stepsCount - 1)
             
             let adjustedTime = time * visualizerSpeed
@@ -438,7 +472,6 @@ private struct AlienWaveformCanvas: View {
                     let nextSample = min(samples.count - 1, baseSample + 1)
                     let tFrac = sampleIndexFraction - CGFloat(baseSample)
 
-                    let sGlow = samples[baseSample].glow + tFrac * (samples[nextSample].glow - samples[baseSample].glow)
                     let sUpper = samples[baseSample].upperHeight + tFrac * (samples[nextSample].upperHeight - samples[baseSample].upperHeight)
                     let sLower = samples[baseSample].lowerHeight + tFrac * (samples[nextSample].lowerHeight - samples[baseSample].lowerHeight)
                     let sDrift = samples[baseSample].xDrift + tFrac * (samples[nextSample].xDrift - samples[baseSample].xDrift)
@@ -456,12 +489,10 @@ private struct AlienWaveformCanvas: View {
                     let yOffset: CGFloat
                     let finalX: CGFloat
                     if visualizerMovementType == "classic" {
-                        // Structured, smooth sine-ribbon wave calculations
                         yOffset = CGFloat(sin(phase)) * amplitude
                                     + CGFloat(sin(phase * 0.43 + adjustedTime * 0.65)) * secondaryAmplitude
                         finalX = x
                     } else {
-                        // Turbulent organic "alien" drift wave calculations
                         yOffset = CGFloat(sin(phase)) * amplitude
                                     + CGFloat(sin(phase * 0.43 + adjustedTime * 0.65)) * secondaryAmplitude
                                     + CGFloat(noiseVal) * organicAmount
@@ -469,13 +500,12 @@ private struct AlienWaveformCanvas: View {
                         finalX = x + sDrift * 0.12 * (1.0 - abs(fraction * 2.0 - 1.0)) * scale
                     }
                     let finalY = midY + yOffset
-                    strandPoints[s].append(CGPoint(x: finalX, y: finalY))
+                    sampleBuffer.strandPoints[s][index] = CGPoint(x: finalX, y: finalY)
                 }
             }
+            let strandPoints = sampleBuffer.strandPoints
 
             // 3. Render 3D Liquid Volume Shading (Translucent filled background layer)
-            var boundaryTop: [CGPoint] = []
-            var boundaryBottom: [CGPoint] = []
             for idx in 0..<stepsCount {
                 var minY = midY
                 var maxY = midY
@@ -485,11 +515,11 @@ private struct AlienWaveformCanvas: View {
                     if ptY > maxY { maxY = ptY }
                 }
                 let ptX = strandPoints[0][idx].x
-                boundaryTop.append(CGPoint(x: ptX, y: minY))
-                boundaryBottom.append(CGPoint(x: ptX, y: maxY))
+                sampleBuffer.boundaryTop[idx] = CGPoint(x: ptX, y: minY)
+                sampleBuffer.boundaryBottom[idx] = CGPoint(x: ptX, y: maxY)
             }
 
-            let fillPath = closedContourPath(top: boundaryTop, bottom: boundaryBottom)
+            let fillPath = closedContourPath(top: sampleBuffer.boundaryTop, bottom: sampleBuffer.boundaryBottom)
             let fillGradient = GraphicsContext.Shading.linearGradient(
                 Gradient(colors: [
                     themeColors.glowColor.opacity(isActive ? 0.15 : 0.06),
