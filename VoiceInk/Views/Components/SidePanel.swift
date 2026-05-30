@@ -63,7 +63,6 @@ struct SidePanelBackground: View {
     var body: some View {
         ZStack {
             VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
-            Color.accentColor.opacity(0.035)
             Color(NSColor.windowBackgroundColor).opacity(0.50)
         }
     }

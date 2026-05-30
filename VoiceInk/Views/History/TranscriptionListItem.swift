@@ -44,11 +44,19 @@ struct TranscriptionListItem: View {
         .padding(10)
         .background {
             if isSelected {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(NSColor.selectedContentBackgroundColor).opacity(0.3))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.10))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.14), lineWidth: 1)
+                    }
             } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.thinMaterial)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.045))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
             }
         }
         .contentShape(Rectangle())
@@ -63,7 +71,7 @@ struct CircularCheckboxStyle: ToggleStyle {
         }) {
             Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                 .symbolRenderingMode(.hierarchical)
-                .foregroundColor(configuration.isOn ? Color(NSColor.controlAccentColor) : .secondary)
+                .foregroundColor(configuration.isOn ? .primary.opacity(0.78) : .secondary)
                 .font(.system(size: 18))
         }
         .buttonStyle(.plain)

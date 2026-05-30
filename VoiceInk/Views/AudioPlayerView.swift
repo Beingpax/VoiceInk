@@ -202,15 +202,15 @@ struct WaveformView: View {
                         Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
                             .font(.system(size: 10, weight: .medium))
                             .monospacedDigit()
-                            .foregroundColor(.white)
+                            .foregroundColor(Color(NSColor.windowBackgroundColor))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.accentColor))
+                            .background(Capsule().fill(Color.primary.opacity(0.74)))
                             .offset(x: max(0, min(hoverLocation - 25, geometry.size.width - 50)))
                             .offset(y: -26)
 
                         Rectangle()
-                            .fill(Color.accentColor)
+                            .fill(Color.primary.opacity(0.68))
                             .frame(width: 2)
                             .frame(maxHeight: .infinity)
                             .offset(x: hoverLocation)
@@ -323,7 +323,7 @@ private struct AsyncCircleButton: View {
                         } else if showSuccess {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.green)
+                                .foregroundStyle(Color.primary.opacity(0.82))
                         } else {
                             Image(systemName: defaultIcon)
                                 .font(.system(size: 14, weight: .semibold))
@@ -336,35 +336,11 @@ private struct AsyncCircleButton: View {
     }
 }
 
-private struct StatusBanner: View {
-    let message: String
-    let isError: Bool
+// MARK: - Operation Feedback
 
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundColor(isError ? .red : .green)
-            Text(message)
-                .font(.system(size: 14, weight: .medium))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isError ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
-                .stroke(isError ? Color.red.opacity(0.2) : Color.green.opacity(0.2), lineWidth: 1)
-        )
-        .transition(.move(edge: .top).combined(with: .opacity))
-    }
-}
-
-// MARK: - Banner State
-
-private enum BannerState: Equatable {
+private enum OperationFeedback: Equatable {
     case retranscribeSuccess
     case reEnhanceSuccess
-    case retranscribeError(String)
-    case reEnhanceError(String)
 }
 
 // MARK: - AudioPlayerView
@@ -377,7 +353,7 @@ struct AudioPlayerView: View {
     @State private var isHovering = false
     @State private var isRetranscribing = false
     @State private var isReEnhancing = false
-    @State private var bannerState: BannerState?
+    @State private var operationFeedback: OperationFeedback?
     @State private var showModePopover = false
     @State private var showPromptPopover = false
     @State private var selectedModeId: UUID?
@@ -459,7 +435,7 @@ struct AudioPlayerView: View {
                     AsyncCircleButton(
                         defaultIcon: "arrow.clockwise",
                         isLoading: isRetranscribing,
-                        showSuccess: bannerState == .retranscribeSuccess,
+                        showSuccess: operationFeedback == .retranscribeSuccess,
                         action: retranscribeAudio
                     )
                     .disabled(isOperationInProgress)
@@ -469,7 +445,7 @@ struct AudioPlayerView: View {
                         AsyncCircleButton(
                             defaultIcon: "wand.and.stars",
                             isLoading: isReEnhancing,
-                            showSuccess: bannerState == .reEnhanceSuccess,
+                            showSuccess: operationFeedback == .reEnhanceSuccess,
                             action: { showPromptPopover.toggle() }
                         )
                         .disabled(isOperationInProgress)
@@ -509,25 +485,6 @@ struct AudioPlayerView: View {
         .onDisappear {
             playerManager.cleanup()
         }
-        .overlay(
-            VStack {
-                if let state = bannerState {
-                    switch state {
-                    case .retranscribeSuccess:
-                        StatusBanner(message: "Retranscription successful", isError: false)
-                    case .reEnhanceSuccess:
-                        StatusBanner(message: "Re-enhancement successful", isError: false)
-                    case .retranscribeError(let message):
-                        StatusBanner(message: message.isEmpty ? "Retranscription failed" : message, isError: true)
-                    case .reEnhanceError(let message):
-                        StatusBanner(message: message.isEmpty ? "Re-enhancement failed" : message, isError: true)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.top, 16)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: bannerState)
-        )
     }
 
     private func showInFinder() {
@@ -619,25 +576,32 @@ struct AudioPlayerView: View {
         reEnhanceOnly(prompt: prompt)
     }
 
-    private func showTemporaryBanner(_ state: BannerState) {
-        bannerState = state
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { bannerState = nil }
+    private func showSuccessFeedback(_ feedback: OperationFeedback, title: String) {
+        operationFeedback = feedback
+        NotificationManager.shared.showNotification(title: title, type: .success, duration: 1.0)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if operationFeedback == feedback {
+                withAnimation { operationFeedback = nil }
+            }
         }
+    }
+
+    private func showErrorNotification(_ title: String) {
+        NotificationManager.shared.showNotification(title: title, type: .error, duration: 3.0)
     }
 
     private func reEnhanceOnly(prompt selectedPrompt: CustomPrompt) {
         guard let transcription = transcription else { return }
 
         guard let baseEnhancementConfiguration = currentEnhancementConfiguration else {
-            showTemporaryBanner(.reEnhanceError("AI Enhancement is not enabled or configured"))
+            showErrorNotification("AI Enhancement is not enabled or configured")
             return
         }
 
         let enhancementConfiguration = baseEnhancementConfiguration.replacingPrompt(selectedPrompt)
 
         isReEnhancing = true
-        bannerState = nil
+        operationFeedback = nil
 
         Task {
             do {
@@ -655,12 +619,12 @@ struct AudioPlayerView: View {
                     try? modelContext.save()
 
                     isReEnhancing = false
-                    showTemporaryBanner(.reEnhanceSuccess)
+                    showSuccessFeedback(.reEnhanceSuccess, title: "Re-enhancement successful")
                 }
             } catch {
                 await MainActor.run {
                     isReEnhancing = false
-                    showTemporaryBanner(.reEnhanceError(error.localizedDescription))
+                    showErrorNotification(error.localizedDescription.isEmpty ? "Re-enhancement failed" : error.localizedDescription)
                 }
             }
         }
@@ -668,7 +632,7 @@ struct AudioPlayerView: View {
 
     private func retranscribeAudio() {
         guard let selectedMode else {
-            showTemporaryBanner(.retranscribeError("No mode selected"))
+            showErrorNotification("No mode selected")
             return
         }
 
@@ -676,12 +640,12 @@ struct AudioPlayerView: View {
             mode: selectedMode,
             transcriptionModelManager: engine.transcriptionModelManager
         ) else {
-            showTemporaryBanner(.retranscribeError("No transcription model selected"))
+            showErrorNotification("No transcription model selected")
             return
         }
 
         isRetranscribing = true
-        bannerState = nil
+        operationFeedback = nil
 
         Task {
             do {
@@ -692,12 +656,12 @@ struct AudioPlayerView: View {
                 )
                 await MainActor.run {
                     isRetranscribing = false
-                    showTemporaryBanner(.retranscribeSuccess)
+                    showSuccessFeedback(.retranscribeSuccess, title: "Retranscription successful")
                 }
             } catch {
                 await MainActor.run {
                     isRetranscribing = false
-                    showTemporaryBanner(.retranscribeError(error.localizedDescription))
+                    showErrorNotification(error.localizedDescription.isEmpty ? "Retranscription failed" : error.localizedDescription)
                 }
             }
         }

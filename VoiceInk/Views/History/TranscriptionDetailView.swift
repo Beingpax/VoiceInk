@@ -43,8 +43,12 @@ struct TranscriptionDetailView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color(NSColor.windowBackgroundColor).opacity(0.28))
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(Color(NSColor.separatorColor).opacity(0.35), lineWidth: 1)
+                                }
                         )
                         .padding(.horizontal, 12)
                         .padding(.top, 6)
@@ -52,7 +56,6 @@ struct TranscriptionDetailView: View {
             }
         }
         .padding(.vertical, 12)
-        .background(Color(NSColor.controlBackgroundColor))
     }
 }
 
@@ -82,14 +85,18 @@ private struct MessageBubble: View {
                 .frame(maxHeight: 350)
                 .background {
                     if isEnhanced {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.accentColor.opacity(0.2))
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.primary.opacity(0.08))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                            }
                     } else {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(.thinMaterial)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color(NSColor.windowBackgroundColor).opacity(0.30))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .strokeBorder(Color(NSColor.separatorColor).opacity(0.30), lineWidth: 1)
                             )
                     }
                 }

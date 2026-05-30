@@ -46,12 +46,13 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
         )
 
         window.contentViewController = hostingController
-        window.title = "VoiceInk — Transcription History"
+        window.title = "History"
         window.identifier = windowIdentifier
         window.delegate = self
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .visible
-        window.backgroundColor = NSColor.windowBackgroundColor
+        window.backgroundColor = .clear
+        window.isOpaque = false
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.fullScreenPrimary]
         window.minSize = NSSize(width: 1150, height: 700)

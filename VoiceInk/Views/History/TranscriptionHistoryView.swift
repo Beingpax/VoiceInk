@@ -10,9 +10,8 @@ struct TranscriptionHistoryView: View {
     @State private var isViewCurrentlyVisible = false
     @State private var isAnalysisPanelPresented = false
     @State private var isLeftSidebarVisible = true
-    @State private var isRightSidebarVisible = true
+    @State private var isRightSidebarVisible = false
     @State private var leftSidebarWidth: CGFloat = 300
-    @State private var rightSidebarWidth: CGFloat = 350
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
     @State private var hasMoreContent = true
@@ -60,11 +59,21 @@ struct TranscriptionHistoryView: View {
     }
 
     private func openAnalysisPanel() {
+        isRightSidebarVisible = false
         isAnalysisPanelPresented = true
     }
 
     private func closeAnalysisPanel() {
         isAnalysisPanelPresented = false
+    }
+
+    private func openInfoPanel() {
+        isAnalysisPanelPresented = false
+        isRightSidebarVisible = true
+    }
+
+    private func closeInfoPanel() {
+        isRightSidebarVisible = false
     }
     
     var body: some View {
@@ -79,15 +88,8 @@ struct TranscriptionHistoryView: View {
 
             centerPaneView
                 .frame(maxWidth: .infinity)
-
-            if isRightSidebarVisible {
-                Divider()
-
-                rightSidebarView
-                    .frame(width: rightSidebarWidth)
-                    .transition(.move(edge: .trailing))
-            }
         }
+        .background(historyBackground)
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button(action: { withAnimation { isLeftSidebarVisible.toggle() } }) {
@@ -96,7 +98,11 @@ struct TranscriptionHistoryView: View {
             }
 
             ToolbarItemGroup(placement: .automatic) {
-                Button(action: { withAnimation { isRightSidebarVisible.toggle() } }) {
+                Button(action: {
+                    withAnimation {
+                        isRightSidebarVisible ? closeInfoPanel() : openInfoPanel()
+                    }
+                }) {
                     Label("Toggle Inspector", systemImage: "sidebar.right")
                 }
             }
@@ -108,6 +114,14 @@ struct TranscriptionHistoryView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) item\(selectedTranscriptions.count == 1 ? "" : "s")?")
+        }
+        .sidePanel(isPresented: .init(
+            get: { isRightSidebarVisible },
+            set: { newValue in
+                if !newValue { closeInfoPanel() }
+            }
+        )) {
+            infoSidePanelView
         }
         .sidePanel(isPresented: .init(
             get: { isAnalysisPanelPresented },
@@ -147,6 +161,24 @@ struct TranscriptionHistoryView: View {
         }
     }
 
+    private var historyBackground: some View {
+        SidePanelBackground()
+        .ignoresSafeArea(.container, edges: .top)
+    }
+
+    private var sidebarMaterialBackground: some View {
+        VisualEffectView(
+            material: .sidebar,
+            blendingMode: .behindWindow
+        )
+        .ignoresSafeArea(.container, edges: .top)
+    }
+
+    private var detailMaterialBackground: some View {
+        SidePanelBackground()
+        .ignoresSafeArea(.container, edges: .top)
+    }
+
     private var leftSidebarView: some View {
         VStack(spacing: 0) {
             HStack {
@@ -159,8 +191,12 @@ struct TranscriptionHistoryView: View {
             }
             .padding(10)
             .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.thinMaterial)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.primary.opacity(0.045))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    }
             )
             .padding(12)
 
@@ -219,15 +255,13 @@ struct TranscriptionHistoryView: View {
                 }
             }
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(sidebarMaterialBackground)
     }
 
     private var centerPaneView: some View {
         Group {
             if let transcription = selectedTranscription {
-                TranscriptionDetailView(transcription: transcription, onInfoTap: {
-                    withAnimation { isRightSidebarVisible.toggle() }
-                })
+                TranscriptionDetailView(transcription: transcription, onInfoTap: openInfoPanel)
                     .id(transcription.id)
             } else {
                 ScrollView {
@@ -257,13 +291,32 @@ struct TranscriptionHistoryView: View {
                     .frame(minHeight: 600)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
             }
         }
+        .background(detailMaterialBackground)
     }
 
-    private var rightSidebarView: some View {
-        Group {
+    private var infoSidePanelView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text("Info")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button(action: closeInfoPanel) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(CardBackground(isSelected: false, cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .overlay(Divider().opacity(0.5), alignment: .bottom)
+            .zIndex(1)
+
             if let transcription = selectedTranscription {
                 TranscriptionInfoPanel(transcription: transcription)
                     .id(transcription.id)
@@ -277,7 +330,6 @@ struct TranscriptionHistoryView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(NSColor.controlBackgroundColor))
             }
         }
     }
@@ -348,8 +400,11 @@ struct TranscriptionHistoryView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            Color(NSColor.windowBackgroundColor)
-                .shadow(color: Color.black.opacity(0.15), radius: 3, y: -2)
+            VisualEffectView(
+                material: .hudWindow,
+                blendingMode: .withinWindow
+            )
+            .shadow(color: Color.black.opacity(0.15), radius: 3, y: -2)
         )
     }
     

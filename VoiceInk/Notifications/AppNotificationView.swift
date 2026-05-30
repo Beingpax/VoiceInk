@@ -30,8 +30,8 @@ struct AppNotificationView: View {
             switch self {
             case .error: return .red
             case .warning: return .white.opacity(0.85)
-            case .info: return .blue
-            case .success: return .green
+            case .info: return .white.opacity(0.75)
+            case .success: return .white.opacity(0.85)
             }
         }
     }
