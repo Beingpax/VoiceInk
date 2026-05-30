@@ -136,10 +136,6 @@ struct MenuBarView: View {
             }
             .disabled(!updaterViewModel.canCheckForUpdates)
             
-            Button("Help and Support") {
-                EmailSupport.openSupportEmail()
-            }
-            
             Divider()
 
             Button("Quit VoiceInk") {
