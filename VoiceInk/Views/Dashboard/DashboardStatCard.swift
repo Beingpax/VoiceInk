@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct MetricCard: View {
+struct DashboardStatCard: View {
     let icon: String
     let title: String
     let value: String

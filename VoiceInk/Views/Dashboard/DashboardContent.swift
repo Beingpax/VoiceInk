@@ -3,35 +3,35 @@ import SwiftData
 import Foundation
 import os
 
-private struct DashboardMetricsSummary: Equatable, Sendable {
+private struct DashboardStatsSummary: Equatable, Sendable {
     var totalCount: Int = 0
     var totalWords: Int = 0
     var totalDuration: TimeInterval = 0
 }
 
-private final class DashboardMetricsCache: @unchecked Sendable {
-    static let shared = DashboardMetricsCache()
+private final class DashboardStatsCache: @unchecked Sendable {
+    static let shared = DashboardStatsCache()
 
     private let lock = NSLock()
-    private var summary: DashboardMetricsSummary?
+    private var summary: DashboardStatsSummary?
 
     private init() {}
 
-    func currentSummary() -> DashboardMetricsSummary? {
+    func currentSummary() -> DashboardStatsSummary? {
         lock.lock()
         defer { lock.unlock() }
         return summary
     }
 
-    func update(_ summary: DashboardMetricsSummary) {
+    func update(_ summary: DashboardStatsSummary) {
         lock.lock()
         self.summary = summary
         lock.unlock()
     }
 }
 
-private enum DashboardMetricsLoader {
-    static func load(from modelContainer: ModelContainer) async throws -> DashboardMetricsSummary {
+private enum DashboardStatsLoader {
+    static func load(from modelContainer: ModelContainer) async throws -> DashboardStatsSummary {
         let task = Task.detached(priority: .utility) {
             try Task.checkCancellation()
 
@@ -52,22 +52,22 @@ private enum DashboardMetricsLoader {
                 descriptor.fetchLimit = batchSize
                 descriptor.fetchOffset = offset
 
-                let metrics = try backgroundContext.fetch(descriptor)
-                if metrics.isEmpty {
+                let records = try backgroundContext.fetch(descriptor)
+                if records.isEmpty {
                     break
                 }
 
-                for metric in metrics {
+                for metric in records {
                     words += metric.wordCount
                     duration += metric.audioDuration
                 }
 
-                offset += metrics.count
+                offset += records.count
             }
 
             try Task.checkCancellation()
 
-            return DashboardMetricsSummary(
+            return DashboardStatsSummary(
                 totalCount: count,
                 totalWords: words,
                 totalDuration: duration
@@ -82,8 +82,8 @@ private enum DashboardMetricsLoader {
     }
 }
 
-struct MetricsContent: View {
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MetricsContent")
+struct DashboardContent: View {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "DashboardContent")
     let modelContext: ModelContext
     let licenseState: LicenseViewModel.LicenseState
     let onAddLicenseKey: () -> Void
@@ -91,8 +91,8 @@ struct MetricsContent: View {
     @State private var totalCount: Int = 0
     @State private var totalWords: Int = 0
     @State private var totalDuration: TimeInterval = 0
-    @State private var hasLoadedMetricsSnapshot: Bool = false
-    @State private var metricsTask: Task<Void, Never>?
+    @State private var hasLoadedStatsSnapshot: Bool = false
+    @State private var dashboardStatsTask: Task<Void, Never>?
     @State private var isModelStatsPanelPresented = false
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     @State private var isSystemInfoCopied = false
@@ -106,11 +106,11 @@ struct MetricsContent: View {
         self.licenseState = licenseState
         self.onAddLicenseKey = onAddLicenseKey
 
-        let cachedSummary = DashboardMetricsCache.shared.currentSummary()
+        let cachedSummary = DashboardStatsCache.shared.currentSummary()
         _totalCount = State(initialValue: cachedSummary?.totalCount ?? 0)
         _totalWords = State(initialValue: cachedSummary?.totalWords ?? 0)
         _totalDuration = State(initialValue: cachedSummary?.totalDuration ?? 0)
-        _hasLoadedMetricsSnapshot = State(initialValue: cachedSummary != nil)
+        _hasLoadedStatsSnapshot = State(initialValue: cachedSummary != nil)
     }
 
     private func openModelStatsPanel() {
@@ -123,7 +123,7 @@ struct MetricsContent: View {
 
     var body: some View {
         Group {
-            if totalCount == 0 && hasLoadedMetricsSnapshot {
+            if totalCount == 0 && hasLoadedStatsSnapshot {
                 emptyStateView
             } else {
                 GeometryReader { geometry in
@@ -137,7 +137,7 @@ struct MetricsContent: View {
                                 accessibilityReminder
                             }
 
-                            metricsSection
+                            voiceInkStatsSection
 
                             HStack(alignment: .top, spacing: 18) {
                                 HelpAndResourcesSection()
@@ -159,20 +159,20 @@ struct MetricsContent: View {
             }
         }
         .task {
-            await loadMetricsEfficiently()
+            await loadDashboardStatsEfficiently()
         }
         .onAppear(perform: refreshAccessibilityStatus)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshAccessibilityStatus()
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionMetricsDidChange)) { _ in
-            metricsTask?.cancel()
-            metricsTask = Task {
-                await loadMetricsEfficiently()
+            dashboardStatsTask?.cancel()
+            dashboardStatsTask = Task {
+                await loadDashboardStatsEfficiently()
             }
         }
         .onDisappear {
-            metricsTask?.cancel()
+            dashboardStatsTask?.cancel()
         }
         .sidePanel(isPresented: .init(
             get: { isModelStatsPanelPresented },
@@ -198,9 +198,9 @@ struct MetricsContent: View {
         }
     }
     
-    private func loadMetricsEfficiently() async {
+    private func loadDashboardStatsEfficiently() async {
         do {
-            let summary = try await DashboardMetricsLoader.load(from: modelContext.container)
+            let summary = try await DashboardStatsLoader.load(from: modelContext.container)
 
             guard !Task.isCancelled else {
                 return
@@ -216,12 +216,12 @@ struct MetricsContent: View {
                 self.totalCount = summary.totalCount
                 self.totalWords = summary.totalWords
                 self.totalDuration = summary.totalDuration
-                DashboardMetricsCache.shared.update(summary)
-                self.hasLoadedMetricsSnapshot = true
+                DashboardStatsCache.shared.update(summary)
+                self.hasLoadedStatsSnapshot = true
             }
         } catch is CancellationError {
         } catch {
-            logger.error("Error loading metrics: \(error.localizedDescription, privacy: .public)")
+            logger.error("Error loading dashboard stats: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -280,7 +280,7 @@ struct MetricsContent: View {
             HStack {
                 Spacer(minLength: 0)
 
-                if hasLoadedMetricsSnapshot {
+                if hasLoadedStatsSnapshot {
                     (Text("You have saved ")
                         .fontWeight(.bold)
                         .foregroundColor(.white.opacity(0.85))
@@ -328,38 +328,38 @@ struct MetricsContent: View {
         .shadow(color: Color.black.opacity(0.08), radius: 30, x: 0, y: 16)
     }
     
-    private var metricsSection: some View {
+    private var voiceInkStatsSection: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 16)], spacing: 16) {
-            MetricCard(
+            DashboardStatCard(
                 icon: "mic.fill",
                 title: "Sessions Recorded",
-                value: hasLoadedMetricsSnapshot ? "\(totalCount)" : "–",
+                value: hasLoadedStatsSnapshot ? "\(totalCount)" : "–",
                 detail: "VoiceInk sessions completed",
                 color: AppTheme.Data.purple
             )
 
-            MetricCard(
+            DashboardStatCard(
                 icon: "text.alignleft",
                 title: "Words Dictated",
-                value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalWords) : "–",
+                value: hasLoadedStatsSnapshot ? Formatters.formattedNumber(totalWords) : "–",
                 detail: "words generated",
                 color: AppTheme.Accent.primary
             )
             
-            MetricCard(
+            DashboardStatCard(
                 icon: "speedometer",
                 title: "Words Per Minute",
-                value: hasLoadedMetricsSnapshot && averageWordsPerMinute > 0
+                value: hasLoadedStatsSnapshot && averageWordsPerMinute > 0
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
                 detail: "VoiceInk vs. typing by hand",
                 color: AppTheme.Data.yellow
             )
             
-            MetricCard(
+            DashboardStatCard(
                 icon: "keyboard.fill",
                 title: "Keystrokes Saved",
-                value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalKeystrokesSaved) : "–",
+                value: hasLoadedStatsSnapshot ? Formatters.formattedNumber(totalKeystrokesSaved) : "–",
                 detail: "fewer keystrokes",
                 color: AppTheme.Data.orange
             )
@@ -430,7 +430,7 @@ struct MetricsContent: View {
     }
     
     private var heroSubtitle: String {
-        guard hasLoadedMetricsSnapshot else {
+        guard hasLoadedStatsSnapshot else {
             return "Your usage summary will appear here."
         }
 

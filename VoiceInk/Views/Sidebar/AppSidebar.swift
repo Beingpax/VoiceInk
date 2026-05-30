@@ -67,7 +67,7 @@ private extension ViewType {
     }
 
     static let primaryItems: [ViewType] = [
-        .metrics,
+        .dashboard,
         .modes,
         .models,
         .audio,
@@ -90,7 +90,7 @@ private extension ViewType {
 
     var icon: String {
         switch self {
-        case .metrics: return "gauge.medium"
+        case .dashboard: return "gauge.medium"
         case .transcribeAudio: return "waveform.circle.fill"
         case .history: return "doc.text.fill"
         case .models: return "cpu"
@@ -104,8 +104,8 @@ private extension ViewType {
 
     var sidebarIconStyle: SidebarIconStyle {
         switch self {
-        case .metrics:
-            return .init(background: AppTheme.Sidebar.metrics)
+        case .dashboard:
+            return .init(background: AppTheme.Sidebar.dashboard)
         case .modes:
             return .init(background: AppTheme.Sidebar.modes)
         case .models:

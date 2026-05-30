@@ -2,7 +2,7 @@ import SwiftUI
 import OSLog
 
 enum ViewType: String, CaseIterable, Identifiable {
-    case metrics = "Dashboard"
+    case dashboard = "Dashboard"
     case modes = "Modes"
     case models = "AI Models"
     case transcribeAudio = "Transcribe Audio"
@@ -18,7 +18,7 @@ enum ViewType: String, CaseIterable, Identifiable {
 struct ContentView: View {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
-    @State private var selectedView: ViewType = .metrics
+    @State private var selectedView: ViewType = .dashboard
 
     var body: some View {
         HStack(spacing: 0) {
@@ -66,8 +66,8 @@ struct ContentView: View {
     @ViewBuilder
     private func detailView(for viewType: ViewType) -> some View {
         switch viewType {
-        case .metrics:
-            MetricsView()
+        case .dashboard:
+            DashboardView()
         case .models:
             ModelManagementView()
         case .transcribeAudio:
