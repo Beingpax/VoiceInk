@@ -398,8 +398,15 @@ struct VoiceInkApp: App {
         NotificationManager.shared.showNotification(
             title: "Accessibility permission is not provided",
             type: .warning,
-            duration: 7.0
+            duration: 7.0,
+            actionButton: ("Open Settings", Self.openAccessibilitySettings)
         )
+    }
+
+    private static func openAccessibilitySettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
 

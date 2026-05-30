@@ -48,8 +48,7 @@ struct TrialMessageView: View {
             }
         }
         .padding()
-        .background(backgroundColor)
-        .cornerRadius(12)
+        .background(CardBackground(cornerRadius: 16))
     }
     
     private var icon: String {
@@ -64,7 +63,7 @@ struct TrialMessageView: View {
         switch type {
         case .warning: return .orange
         case .expired: return .red
-        case .info: return .blue
+        case .info: return Color(nsColor: .controlAccentColor)
         }
     }
     
@@ -76,11 +75,4 @@ struct TrialMessageView: View {
         }
     }
     
-    private var backgroundColor: Color {
-        switch type {
-        case .warning: return Color.orange.opacity(0.1)
-        case .expired: return Color.red.opacity(0.1)
-        case .info: return Color.blue.opacity(0.1)
-        }
-    }
-} 
+}

@@ -29,7 +29,7 @@ struct AppNotificationView: View {
         var iconColor: Color {
             switch self {
             case .error: return .red
-            case .warning: return .yellow
+            case .warning: return .white.opacity(0.85)
             case .info: return .blue
             case .success: return .green
             }
@@ -62,10 +62,10 @@ struct AppNotificationView: View {
                     }) {
                         Text(actionButton.label)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(type.iconColor)
+                            .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(type.iconColor.opacity(0.15))
+                            .background(Color.white.opacity(0.14))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -155,4 +155,3 @@ struct AppNotificationView: View {
         }
     }
 }
-

@@ -481,27 +481,28 @@ struct MetricsContent: View {
 
 private struct DashboardAccessibilityReminder: View {
     let onOpenSettings: () -> Void
+    private let accentColor = Color(nsColor: .controlAccentColor)
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.secondary.opacity(0.12))
+                    .fill(accentColor.opacity(0.14))
 
                 Image(systemName: "hand.raised")
                     .font(.system(size: 15, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(accentColor)
             }
             .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Accessibility permission is not provided")
+                Text("Enable Accessibility Access")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text("Needed for pasting into other apps and global shortcuts.")
+                Text("Required for VoiceInk shortcuts and app-wide controls to work properly.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -515,10 +516,7 @@ private struct DashboardAccessibilityReminder: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.thinMaterial)
-        )
+        .background(CardBackground(cornerRadius: 16))
     }
 }
 
