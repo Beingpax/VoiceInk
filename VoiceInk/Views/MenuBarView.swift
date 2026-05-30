@@ -14,8 +14,6 @@ struct MenuBarView: View {
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
-    @State private var menuRefreshTrigger = false
-    @State private var isHovered = false
     
     var body: some View {
         VStack {
@@ -95,39 +93,6 @@ struct MenuBarView: View {
                 }
             }
 
-            Menu("Additional") {
-                Button {
-                    modeManager.updateCurrentEffectiveConfiguration { config in
-                        config.useClipboardContext.toggle()
-                    }
-                    menuRefreshTrigger.toggle()
-                } label: {
-                    HStack {
-                        Text("Clipboard Context")
-                        Spacer()
-                        if modeManager.currentEffectiveConfiguration?.useClipboardContext == true {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-
-                Button {
-                    modeManager.updateCurrentEffectiveConfiguration { config in
-                        config.useScreenCapture.toggle()
-                    }
-                    menuRefreshTrigger.toggle()
-                } label: {
-                    HStack {
-                        Text("Context Awareness")
-                        Spacer()
-                        if modeManager.currentEffectiveConfiguration?.useScreenCapture == true {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-            .id("additional-menu-\(menuRefreshTrigger)")
-            
             Divider()
 
             Button("Retry Last Transcription") {
