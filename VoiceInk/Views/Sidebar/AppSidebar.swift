@@ -69,11 +69,11 @@ private extension ViewType {
     static let primaryItems: [ViewType] = [
         .dashboard,
         .modes,
-        .models,
-        .audio,
-        .dictionary,
+        .transcribeAudio,
         .history,
-        .transcribeAudio
+        .dictionary,
+        .models,
+        .audio
     ]
 
     static let secondaryItems: [ViewType] = [
@@ -91,7 +91,7 @@ private extension ViewType {
     var icon: String {
         switch self {
         case .dashboard: return "gauge.medium"
-        case .transcribeAudio: return "waveform.circle.fill"
+        case .transcribeAudio: return "waveform.mid"
         case .history: return "doc.text.fill"
         case .models: return "cpu"
         case .modes: return "sparkles.square.fill.on.square"
