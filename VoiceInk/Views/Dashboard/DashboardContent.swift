@@ -153,7 +153,7 @@ struct DashboardContent: View {
                         }
                         .frame(minHeight: geometry.size.height - 56)
                         .padding(.vertical, 28)
-                        .padding(.horizontal, 32)
+                        .padding(.horizontal, 24)
                     }
                 }
             }
@@ -248,7 +248,7 @@ struct DashboardContent: View {
                     }
                 }
                 .padding(.vertical, 28)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 24)
             }
         }
     }

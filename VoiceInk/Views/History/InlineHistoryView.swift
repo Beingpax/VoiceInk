@@ -157,7 +157,7 @@ struct InlineHistoryView: View {
             )
             .frame(maxWidth: .infinity)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.vertical, 10)
     }
 
@@ -213,7 +213,7 @@ struct InlineHistoryView: View {
                 .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.vertical, 10)
         .background(
             AppTheme.Surface.window

@@ -240,7 +240,7 @@ struct AudioTranscribeView: View {
             .buttonStyle(.plain)
             .help("Clear all items")
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.vertical, 10)
     }
 
