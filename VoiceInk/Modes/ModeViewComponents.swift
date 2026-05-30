@@ -169,12 +169,12 @@ struct ConfigurationRow: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 ZStack {
-                    Circle()
-                        .fill(AppTheme.Surface.control)
-                        .frame(width: 40, height: 40)
-                    
                     ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 20 : 16)
                 }
+                .frame(width: 40, height: 40)
+                .background(
+                    AppCardBackground(isSelected: false, cornerRadius: AppTheme.Radius.pill)
+                )
                 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(config.name)

@@ -105,12 +105,12 @@ private struct ModeReorderRow: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                Circle()
-                    .fill(AppTheme.Surface.control)
-                    .frame(width: 34, height: 34)
-
                 ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 18 : 14)
             }
+            .frame(width: 34, height: 34)
+            .background(
+                AppCardBackground(isSelected: false, cornerRadius: 17)
+            )
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {

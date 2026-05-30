@@ -12,11 +12,11 @@ struct TriggerTemplateRow: View {
     }
 
     private var cardBackground: Color {
-        isAdded ? AppTheme.Accent.fillSubtle : AppTheme.Surface.control
+        isAdded ? AppTheme.Surface.card : AppTheme.Surface.control
     }
 
     private var cardBorder: Color {
-        isAdded ? AppTheme.Accent.fillStrong : AppTheme.Border.control
+        AppTheme.Border.control
     }
 
     var body: some View {

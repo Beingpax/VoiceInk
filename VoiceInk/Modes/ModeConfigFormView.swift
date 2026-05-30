@@ -78,8 +78,7 @@ struct ModeConfigFormView: View {
                 ModeIconView(icon: draft.icon, size: draft.icon.kind == .emoji ? 22 : 18)
                     .frame(width: 36, height: 36)
                     .background(
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(AppTheme.Surface.control)
+                        AppCardBackground(isSelected: false, cornerRadius: 18)
                     )
             }
             .buttonStyle(.plain)
