@@ -335,7 +335,7 @@ struct MetricsContent: View {
                 title: "Sessions Recorded",
                 value: hasLoadedMetricsSnapshot ? "\(totalCount)" : "–",
                 detail: "VoiceInk sessions completed",
-                color: Color(nsColor: .systemPurple)
+                color: AppTheme.Data.purple
             )
 
             MetricCard(
@@ -343,7 +343,7 @@ struct MetricsContent: View {
                 title: "Words Dictated",
                 value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalWords) : "–",
                 detail: "words generated",
-                color: Color(nsColor: .controlAccentColor)
+                color: AppTheme.Accent.primary
             )
             
             MetricCard(
@@ -353,7 +353,7 @@ struct MetricsContent: View {
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
                 detail: "VoiceInk vs. typing by hand",
-                color: Color(nsColor: .systemYellow)
+                color: AppTheme.Data.yellow
             )
             
             MetricCard(
@@ -361,7 +361,7 @@ struct MetricsContent: View {
                 title: "Keystrokes Saved",
                 value: hasLoadedMetricsSnapshot ? Formatters.formattedNumber(totalKeystrokesSaved) : "–",
                 detail: "fewer keystrokes",
-                color: Color(nsColor: .systemOrange)
+                color: AppTheme.Data.orange
             )
         }
     }
@@ -399,7 +399,7 @@ struct MetricsContent: View {
         }
         .padding(.horizontal, 14)
         .frame(width: nil, height: 36, alignment: .center)
-        .background(CardBackground(cornerRadius: 18))
+        .background(AppCardBackground(cornerRadius: 18))
     }
 
     private func footerActionIcon(_ symbol: String) -> some View {
@@ -447,9 +447,9 @@ struct MetricsContent: View {
     private var heroGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                Color(nsColor: .controlAccentColor),
-                Color(nsColor: .controlAccentColor).opacity(0.85),
-                Color(nsColor: .controlAccentColor).opacity(0.7)
+                AppTheme.Accent.primary,
+                AppTheme.Accent.strong,
+                AppTheme.Accent.foreground
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -481,18 +481,17 @@ struct MetricsContent: View {
 
 private struct DashboardAccessibilityReminder: View {
     let onOpenSettings: () -> Void
-    private let accentColor = Color(nsColor: .controlAccentColor)
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(accentColor.opacity(0.14))
+                    .fill(AppTheme.Accent.fill)
 
                 Image(systemName: "hand.raised")
                     .font(.system(size: 15, weight: .medium))
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(accentColor)
+                    .foregroundStyle(AppTheme.Accent.primary)
             }
             .frame(width: 34, height: 34)
 
@@ -516,7 +515,7 @@ private struct DashboardAccessibilityReminder: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(CardBackground(cornerRadius: 16))
+        .background(AppCardBackground(cornerRadius: 16))
     }
 }
 

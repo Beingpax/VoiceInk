@@ -63,7 +63,7 @@ struct SidePanelBackground: View {
     var body: some View {
         ZStack {
             VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
-            Color(NSColor.windowBackgroundColor).opacity(0.50)
+            AppTheme.Surface.sidePanelOverlay
         }
     }
 }
@@ -71,7 +71,7 @@ struct SidePanelBackground: View {
 private struct SidePanelEdgeSeparator: View {
     var body: some View {
         Rectangle()
-            .fill(Color.primary.opacity(0.12))
+            .fill(AppTheme.Border.tint)
             .frame(width: 1)
     }
 }
@@ -79,7 +79,7 @@ private struct SidePanelEdgeSeparator: View {
 private struct SidePanelOuterSeparator: View {
     var body: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.12))
+            .fill(AppTheme.Border.sidePanelOuter)
             .frame(width: 1)
     }
 }

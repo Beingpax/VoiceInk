@@ -87,7 +87,7 @@ struct ModeRow: View {
                 if isSelected {
                     Spacer()
                     Image(systemName: "checkmark")
-                        .foregroundColor(.green)
+                        .foregroundColor(AppTheme.Status.positive)
                         .font(.system(size: 10))
                 }
             }

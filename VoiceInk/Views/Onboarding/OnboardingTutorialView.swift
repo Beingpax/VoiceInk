@@ -62,7 +62,7 @@ struct OnboardingTutorialView: View {
                                 .font(.system(size: 18, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                                 .frame(width: 200, height: 50)
-                                .background(Color.accentColor)
+                                .background(AppTheme.Accent.primary)
                                 .cornerRadius(25)
                         }
                         .buttonStyle(ScaleButtonStyle())
@@ -91,14 +91,14 @@ struct OnboardingTutorialView: View {
                                     // Subtle gradient overlay
                                     LinearGradient(
                                         colors: [
-                                            Color.accentColor.opacity(0.05),
+                                            AppTheme.Accent.fillSubtle,
                                             Color.black.opacity(0.1)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .shadow(color: Color.accentColor.opacity(0.1), radius: 15, x: 0, y: 0)
+                                .shadow(color: AppTheme.Accent.fillSubtle, radius: 15, x: 0, y: 0)
                             
                             // Text editor with custom styling
                             TextEditor(text: $transcribedText)
@@ -130,8 +130,8 @@ struct OnboardingTutorialView: View {
                                 .strokeBorder(
                                     LinearGradient(
                                         colors: [
-                                            Color.accentColor.opacity(isFocused ? 0.4 : 0.1),
-                                            Color.accentColor.opacity(isFocused ? 0.2 : 0.05)
+                                            AppTheme.Accent.primary.opacity(isFocused ? 0.4 : 0.1),
+                                            AppTheme.Accent.primary.opacity(isFocused ? 0.2 : 0.05)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -169,10 +169,10 @@ struct OnboardingTutorialView: View {
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(Color.accentColor.opacity(0.2)))
+                .background(Circle().fill(AppTheme.Accent.shadow))
                 .overlay(
                     Circle()
-                        .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                        .stroke(AppTheme.Accent.border, lineWidth: 1)
                 )
             
             Text(text)

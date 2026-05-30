@@ -49,7 +49,7 @@ struct LocalEnhancementProviderManagementView: View {
                     localCLIConfiguration
                 }
             }
-            .background(PrimaryCardBackground(cornerRadius: 11))
+            .background(AppMaterialCardBackground(cornerRadius: 11))
         }
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
@@ -114,7 +114,7 @@ struct LocalEnhancementProviderManagementView: View {
             if let ollamaUserRefreshError {
                 Text(ollamaUserRefreshError)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AppTheme.Status.error)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.leading, LocalProviderMetrics.labelWidth + 12)
             }
@@ -176,7 +176,7 @@ struct LocalEnhancementProviderManagementView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(NSColor.separatorColor).opacity(0.4), lineWidth: 1)
+                            .stroke(AppTheme.Border.control.opacity(0.4), lineWidth: 1)
                     )
                     .onChange(of: localCLICommandTemplate) { _, newValue in
                         guard !isSyncingLocalCLIState else { return }
@@ -281,10 +281,10 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
                         .frame(width: 30, height: 30)
                         .background(
                             RoundedRectangle(cornerRadius: 7)
-                                .fill(Color(NSColor.controlBackgroundColor))
+                                .fill(AppTheme.Surface.control)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 7)
-                                        .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 1)
+                                        .stroke(AppTheme.Border.control.opacity(0.3), lineWidth: 1)
                                 )
                         )
 

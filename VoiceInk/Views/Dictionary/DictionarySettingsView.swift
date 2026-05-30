@@ -53,44 +53,18 @@ struct DictionarySettingsView: View {
     }
 
     private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text("Dictionary")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundColor(.primary)
-
-                    InfoTip(
-                        dictionaryInfoMessage
-                    )
-                }
-            }
-
-            Spacer()
-
+        AppScreenHeader(title: "Dictionary", infoMessage: dictionaryInfoMessage) {
             settingsButton
         }
-        .frame(height: 40)
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .frame(maxWidth: .infinity)
     }
 
     private var settingsButton: some View {
-        Button {
+        AppIconButton(
+            systemName: "gearshape.fill",
+            help: "Dictionary Settings"
+        ) {
             isShowingSettings.toggle()
-        } label: {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.primary.opacity(0.7))
-                .frame(width: 40, height: 40)
-                .background(
-                    CardBackground(isSelected: false, cornerRadius: 22)
-                )
         }
-        .buttonStyle(.plain)
-        .help("Dictionary Settings")
     }
 
     private var sectionSelector: some View {
@@ -131,12 +105,12 @@ private struct DictionaryGroupedSection<Content: View>: View {
 
     private var sectionBackground: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.secondary.opacity(0.08))
+            .fill(AppTheme.Surface.card)
     }
 
     private var sectionBorder: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .stroke(Color(NSColor.separatorColor).opacity(0.16), lineWidth: 1)
+            .stroke(AppTheme.Border.control.opacity(0.16), lineWidth: 1)
     }
 }
 
@@ -197,7 +171,7 @@ private struct DictionarySectionButtonLabel: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
         .background(
-            CardBackground(isSelected: isSelected, cornerRadius: 22)
+            AppCardBackground(isSelected: isSelected, cornerRadius: 22)
         )
         .contentShape(Rectangle())
     }

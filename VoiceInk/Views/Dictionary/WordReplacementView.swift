@@ -316,7 +316,7 @@ struct ReplacementRow: View {
                     Button(action: onEdit) {
                         Image(systemName: "pencil.circle.fill")
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundColor(isEditHovered ? .accentColor : .secondary)
+                            .foregroundColor(isEditHovered ? AppTheme.Accent.primary : .secondary)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.borderless)
@@ -330,7 +330,7 @@ struct ReplacementRow: View {
                     Button(action: onDelete) {
                         Image(systemName: "xmark.circle.fill")
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(isDeleteHovered ? .red : .secondary)
+                            .foregroundStyle(isDeleteHovered ? AppTheme.Status.error : .secondary)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.borderless)

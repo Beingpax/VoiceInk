@@ -57,7 +57,7 @@ struct ContentView: View {
                 blendingMode: .behindWindow
             )
 
-            Color(NSColor.windowBackgroundColor)
+            AppTheme.Surface.window
                 .opacity(Self.detailBackgroundTintOpacity)
         }
         .ignoresSafeArea(.container, edges: .top)

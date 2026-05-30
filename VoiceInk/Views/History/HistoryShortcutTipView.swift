@@ -35,12 +35,12 @@ struct HistoryShortcutTipView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.windowBackgroundColor).opacity(0.28))
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                .fill(AppTheme.Surface.materialCard)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color(NSColor.separatorColor).opacity(0.35), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                .strokeBorder(AppTheme.Border.card, lineWidth: 1)
         )
     }
 }

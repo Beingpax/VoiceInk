@@ -202,15 +202,15 @@ struct WaveformView: View {
                         Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
                             .font(.system(size: 10, weight: .medium))
                             .monospacedDigit()
-                            .foregroundColor(Color(NSColor.windowBackgroundColor))
+                            .foregroundColor(AppTheme.Surface.window)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
-                            .background(Capsule().fill(Color.primary.opacity(0.74)))
+                            .background(Capsule().fill(AppTheme.Waveform.hoverBubble))
                             .offset(x: max(0, min(hoverLocation - 25, geometry.size.width - 50)))
                             .offset(y: -26)
 
                         Rectangle()
-                            .fill(Color.primary.opacity(0.68))
+                            .fill(AppTheme.Waveform.hoverMarker)
                             .frame(width: 2)
                             .frame(maxHeight: .infinity)
                             .offset(x: hoverLocation)
@@ -265,8 +265,8 @@ struct WaveformBar: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        isPlayed ? Color.primary : Color.primary.opacity(0.3),
-                        isPlayed ? Color.primary.opacity(0.8) : Color.primary.opacity(0.2)
+                        isPlayed ? AppTheme.Waveform.playedLower : AppTheme.Waveform.unplayedLower,
+                        isPlayed ? AppTheme.Waveform.playedUpper : AppTheme.Waveform.unplayedUpper
                     ],
                     startPoint: .bottom,
                     endPoint: .top
@@ -286,13 +286,13 @@ struct WaveformBar: View {
 private struct CircleIconButton: View {
     let icon: String
     let action: () -> Void
-    var fillOpacity: Double = 0.06
+    var fill: Color = AppTheme.Surface.subtle
     var iconFont: Font = .system(size: 14, weight: .semibold)
 
     var body: some View {
         Button(action: action) {
             Circle()
-                .fill(Color.primary.opacity(fillOpacity))
+                .fill(fill)
                 .frame(width: 32, height: 32)
                 .overlay(
                     Image(systemName: icon)
@@ -313,7 +313,7 @@ private struct AsyncCircleButton: View {
     var body: some View {
         Button(action: action) {
             Circle()
-                .fill(Color.primary.opacity(0.06))
+                .fill(AppTheme.Surface.subtle)
                 .frame(width: 32, height: 32)
                 .overlay(
                     Group {
@@ -323,7 +323,7 @@ private struct AsyncCircleButton: View {
                         } else if showSuccess {
                             Image(systemName: "checkmark")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.primary.opacity(0.82))
+                                .foregroundStyle(AppTheme.Status.success)
                         } else {
                             Image(systemName: defaultIcon)
                                 .font(.system(size: 14, weight: .semibold))
@@ -408,7 +408,7 @@ struct AudioPlayerView: View {
 
                     Button(action: { playerManager.cyclePlaybackRate() }) {
                         Circle()
-                            .fill(Color.primary.opacity(playerManager.playbackRate == 1.0 ? 0.06 : 0.14))
+                            .fill(playerManager.playbackRate == 1.0 ? AppTheme.Surface.subtle : AppTheme.Surface.controlActive)
                             .frame(width: 32, height: 32)
                             .overlay(
                                 Text(playerManager.playbackRate == 1.0 ? "1×" : playerManager.playbackRate == 1.5 ? "1.5×" : "2×")
@@ -496,7 +496,7 @@ struct AudioPlayerView: View {
             showModePopover.toggle()
         } label: {
             Circle()
-                .fill(Color.primary.opacity(selectedMode == nil ? 0.04 : 0.08))
+                .fill(selectedMode == nil ? AppTheme.Surface.subtle : AppTheme.Surface.controlActive)
                 .frame(width: 32, height: 32)
                 .overlay {
                     if let selectedMode {

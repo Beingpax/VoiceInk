@@ -137,8 +137,8 @@ struct TypewriterRoles: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
-                                Color.accentColor,
-                                Color.accentColor.opacity(0.8),
+                                AppTheme.Accent.primary,
+                                AppTheme.Accent.strong,
                                 Color.white.opacity(0.9)
                             ],
                             startPoint: .topLeading,
@@ -152,8 +152,8 @@ struct TypewriterRoles: View {
                     .foregroundStyle(
                         LinearGradient(
                             colors: [
-                                Color.accentColor,
-                                Color.accentColor.opacity(0.8)
+                                AppTheme.Accent.primary,
+                                AppTheme.Accent.strong
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -163,7 +163,7 @@ struct TypewriterRoles: View {
                     .animation(.easeInOut(duration: cursorBlinkSpeed).repeatForever(), value: showCursor)
             }
             .multilineTextAlignment(.center)
-            .shadow(color: Color.accentColor.opacity(0.5), radius: 15, x: 0, y: 0)
+            .shadow(color: AppTheme.Accent.disabled, radius: 15, x: 0, y: 0)
             .padding(.horizontal)
         }
         .frame(maxWidth: .infinity)
@@ -267,7 +267,7 @@ struct OnboardingBackgroundView: View {
                 
                 // Animated glow effect
                 Circle()
-                    .fill(Color.accentColor)
+                    .fill(AppTheme.Accent.primary)
                     .frame(width: min(geometry.size.width, geometry.size.height) * 0.4)
                     .blur(radius: 100)
                     .opacity(glowOpacity)

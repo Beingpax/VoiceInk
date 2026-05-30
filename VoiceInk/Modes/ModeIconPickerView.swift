@@ -154,7 +154,7 @@ struct ModeIconPickerView: View {
             if !inputFeedbackMessage.isEmpty {
                 Text(inputFeedbackMessage)
                     .font(.caption)
-                    .foregroundColor(inputFeedbackMessage.contains("Invalid") || inputFeedbackMessage.contains("exists") ? .red : .secondary)
+                    .foregroundColor(inputFeedbackMessage.contains("Invalid") || inputFeedbackMessage.contains("exists") ? AppTheme.Status.error : .secondary)
             }
         }
         .padding(.horizontal)
@@ -215,11 +215,11 @@ private struct ModeIconButton: View {
                     .frame(width: 44, height: 44)
                     .background(
                         Circle()
-                            .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(NSColor.controlBackgroundColor))
+                            .fill(isSelected ? AppTheme.Accent.fill : AppTheme.Surface.control)
                     )
                     .overlay(
                         Circle()
-                            .strokeBorder(isSelected ? Color.accentColor : Color.gray.opacity(0.25), lineWidth: isSelected ? 2 : 1)
+                            .strokeBorder(isSelected ? AppTheme.Accent.primary : Color.gray.opacity(0.25), lineWidth: isSelected ? 2 : 1)
                     )
             }
             .buttonStyle(.plain)
@@ -228,7 +228,7 @@ private struct ModeIconButton: View {
                 Button(action: removeAction) {
                     Image(systemName: "xmark.circle.fill")
                         .symbolRenderingMode(.palette)
-                        .foregroundStyle(Color.white, Color.red)
+                        .foregroundStyle(Color.white, AppTheme.Status.error)
                         .font(.caption2)
                         .background(Circle().fill(Color.white.opacity(0.8)))
                 }

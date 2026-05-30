@@ -79,7 +79,7 @@ struct ModeConfigFormView: View {
                     .frame(width: 36, height: 36)
                     .background(
                         RoundedRectangle(cornerRadius: 8)
-                            .fill(Color(NSColor.controlBackgroundColor))
+                            .fill(AppTheme.Surface.control)
                     )
             }
             .buttonStyle(.plain)
@@ -102,7 +102,7 @@ struct ModeConfigFormView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(AppTheme.Surface.card)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)

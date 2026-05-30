@@ -14,7 +14,7 @@ struct VoiceInkButton: View {
                 .padding(.vertical, 12)
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(isDisabled ? Color.accentColor.opacity(0.5) : Color.accentColor)
+                        .fill(isDisabled ? AppTheme.Accent.disabled : AppTheme.Accent.primary)
                 )
         }
         .buttonStyle(.plain)
@@ -86,11 +86,11 @@ struct DefaultModeIndicator: View {
         .frame(height: 24)
         .background {
             Capsule()
-                .fill(Color.secondary.opacity(0.1))
+                .fill(AppTheme.Surface.card)
         }
         .overlay {
             Capsule()
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
         }
         .contentShape(Capsule())
         .help("Default mode is used when no app or website matches")
@@ -170,7 +170,7 @@ struct ConfigurationRow: View {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(Color(NSColor.controlBackgroundColor))
+                        .fill(AppTheme.Surface.control)
                         .frame(width: 40, height: 40)
                     
                     ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 20 : 16)
@@ -218,14 +218,14 @@ struct ConfigurationRow: View {
                             }
                         }
                     ))
-                        .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+                        .toggleStyle(SwitchToggleStyle(tint: AppTheme.Accent.primary))
                         .labelsHidden()
                 }
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(PrimaryCardBackground.fillColor)
+            .background(AppMaterialCardBackground.fill)
             
             if hasVisibleMetadata {
                 Divider()
@@ -241,10 +241,10 @@ struct ConfigurationRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule()
-                            .fill(Color(NSColor.controlBackgroundColor)))
+                            .fill(AppTheme.Surface.control))
                         .overlay(
                             Capsule()
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                                .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
                     
@@ -258,10 +258,10 @@ struct ConfigurationRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule()
-                            .fill(Color(NSColor.controlBackgroundColor)))
+                            .fill(AppTheme.Surface.control))
                         .overlay(
                             Capsule()
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                                .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
                     
@@ -278,10 +278,10 @@ struct ConfigurationRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule()
-                            .fill(Color(NSColor.controlBackgroundColor)))
+                            .fill(AppTheme.Surface.control))
                         .overlay(
                             Capsule()
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                                .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
                     
@@ -295,10 +295,10 @@ struct ConfigurationRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule()
-                            .fill(Color(NSColor.controlBackgroundColor)))
+                            .fill(AppTheme.Surface.control))
                         .overlay(
                             Capsule()
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                                .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
                     if config.isAIEnhancementEnabled {
@@ -311,10 +311,10 @@ struct ConfigurationRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule()
-                            .fill(Color(NSColor.controlBackgroundColor)))
+                            .fill(AppTheme.Surface.control))
                         .overlay(
                             Capsule()
-                                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                                .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
 
@@ -323,21 +323,21 @@ struct ConfigurationRow: View {
                 
                 .padding(.vertical, 6)
                 .padding(.horizontal, 16)
-                .background(Color.secondary.opacity(0.1))
+                .background(AppTheme.Surface.card)
             }
     }
     .clipShape(RoundedRectangle(cornerRadius: 16))
     .background {
         if !hasVisibleMetadata {
-            PrimaryCardBackground(isSelected: isEditing, cornerRadius: 16)
+            AppMaterialCardBackground(isSelected: isEditing, cornerRadius: 16)
         }
     }
     .overlay {
         if hasVisibleMetadata {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(
-                    PrimaryCardBackground.borderColor(isSelected: isEditing),
-                    lineWidth: PrimaryCardBackground.borderWidth(isSelected: isEditing)
+                    AppMaterialCardBackground.border(for: isEditing),
+                    lineWidth: AppMaterialCardBackground.lineWidth(for: isEditing)
                 )
         }
     }
@@ -423,11 +423,11 @@ struct AppGridItem: View {
             .padding(6)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+                    .fill(isSelected ? AppTheme.Accent.fillSubtle : Color.clear)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
+                    .stroke(isSelected ? AppTheme.Accent.primary : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)

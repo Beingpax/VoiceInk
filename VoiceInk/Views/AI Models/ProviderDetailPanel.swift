@@ -68,7 +68,7 @@ struct ProviderDetailPanel: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                     .padding(6)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(AppTheme.Surface.card)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -91,7 +91,7 @@ struct ProviderDetailPanel: View {
                 if let verificationMessage {
                     Text(verificationMessage)
                         .font(.caption)
-                        .foregroundStyle(verificationSucceeded ? .green : .red)
+                        .foregroundStyle(verificationSucceeded ? AppTheme.Status.positive : AppTheme.Status.error)
                 }
             }
         }
@@ -212,20 +212,20 @@ struct ProviderDetailPanel: View {
             .frame(width: 30, height: 30)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(NSColor.controlBackgroundColor))
+                    .fill(AppTheme.Surface.control)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
+                            .stroke(AppTheme.Border.control.opacity(0.45), lineWidth: 1)
                     )
             )
     }
 
     private var neutralLinkButtonBackground: some View {
         RoundedRectangle(cornerRadius: 7)
-            .fill(Color(NSColor.controlBackgroundColor))
+            .fill(AppTheme.Surface.control)
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
+                    .stroke(AppTheme.Border.control.opacity(0.45), lineWidth: 1)
             )
     }
 
@@ -365,10 +365,10 @@ struct ProviderDetailPanel: View {
             .frame(width: 24, height: 24)
             .background(
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(Color(NSColor.controlBackgroundColor))
+                    .fill(AppTheme.Surface.control)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
+                            .stroke(AppTheme.Border.control.opacity(0.45), lineWidth: 1)
                     )
             )
     }

@@ -103,7 +103,7 @@ struct EnhancementPromptRow: View {
                 if isSelected {
                     Spacer()
                     Image(systemName: "checkmark")
-                        .foregroundColor(isDisabled ? .green.opacity(0.7) : .green)
+                        .foregroundColor(isDisabled ? AppTheme.Status.positive.opacity(0.70) : AppTheme.Status.positive)
                         .font(.system(size: 10))
                 }
             }

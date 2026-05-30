@@ -30,7 +30,7 @@ struct ProviderBrandIcon: View {
             } else {
                 Image(systemName: fallbackSystemImage)
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(isSelected ? AppTheme.Accent.primary : Color.secondary)
             }
         }
         .frame(width: size, height: size)
@@ -40,14 +40,14 @@ struct ProviderBrandIcon: View {
         if hasBrandAsset {
             return Color.white.opacity(isSelected ? 0.96 : 0.9)
         }
-        return Color(NSColor.controlBackgroundColor)
+        return AppTheme.Surface.control
     }
 
     private var borderColor: Color {
         if isSelected {
-            return Color.accentColor.opacity(0.35)
+            return AppTheme.Accent.border
         }
-        return Color(NSColor.separatorColor).opacity(hasBrandAsset ? 0.45 : 0.2)
+        return AppTheme.Border.control.opacity(hasBrandAsset ? 0.45 : 0.2)
     }
 }
 
@@ -118,7 +118,7 @@ struct ProviderSurface: View {
     var cornerRadius: CGFloat = 10
 
     var body: some View {
-        PrimaryCardBackground(isSelected: isActive, cornerRadius: cornerRadius)
+        AppMaterialCardBackground(isSelected: isActive, cornerRadius: cornerRadius)
     }
 }
 

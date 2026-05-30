@@ -34,7 +34,7 @@ struct LicenseManagementView: View {
                 HStack(spacing: 16) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 32))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(AppTheme.Status.infoStrong)
                     
                     HStack(alignment: .lastTextBaseline, spacing: 8) { 
                         Text(licenseViewModel.licenseState == .licensed ? "VoiceInk Pro" : "Upgrade to Pro")
@@ -61,7 +61,7 @@ struct LicenseManagementView: View {
                                 NSWorkspace.shared.open(url)
                             }
                         } label: {
-                            featureItem(icon: "list.bullet.clipboard.fill", title: "Changelog", color: .blue)
+                            featureItem(icon: "list.bullet.clipboard.fill", title: "Changelog", color: AppTheme.Status.infoStrong)
                         }
                         .buttonStyle(.plain)
                         
@@ -77,7 +77,7 @@ struct LicenseManagementView: View {
                         Button {
                             EmailSupport.openSupportEmail()
                         } label: {
-                            featureItem(icon: "envelope.fill", title: "Email Support", color: .orange)
+                            featureItem(icon: "envelope.fill", title: "Email Support", color: AppTheme.Status.warningStrong)
                         }
                         .buttonStyle(.plain)
                         
@@ -86,7 +86,7 @@ struct LicenseManagementView: View {
                                 NSWorkspace.shared.open(url)
                             }
                         } label: {
-                            featureItem(icon: "book.fill", title: "Docs", color: .indigo)
+                            featureItem(icon: "book.fill", title: "Docs", color: AppTheme.Data.transcript)
                         }
                         .buttonStyle(.plain)
                         
@@ -114,13 +114,13 @@ struct LicenseManagementView: View {
                 HStack {
                     Image(systemName: "infinity.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(AppTheme.Status.infoStrong)
                     Text("Buy Once, Own Forever")
                         .font(.headline)
                 }
                 .padding(.vertical, 8)
                 .padding(.horizontal, 16)
-                .background(Color.blue.opacity(0.1))
+                .background(AppTheme.Status.infoStrong.opacity(0.10))
                 .cornerRadius(12)
                 
                 // Purchase Button 
@@ -139,14 +139,14 @@ struct LicenseManagementView: View {
                 // Features Grid
                 HStack(spacing: 40) {
                     featureItem(icon: "bubble.left.and.bubble.right.fill", title: "Priority Support", color: .purple)
-                    featureItem(icon: "infinity.circle.fill", title: "Lifetime Access", color: .blue)
-                    featureItem(icon: "arrow.up.circle.fill", title: "Free Updates", color: .green)
-                    featureItem(icon: "macbook.and.iphone", title: "Multiple Devices", color: .orange)
+                    featureItem(icon: "infinity.circle.fill", title: "Lifetime Access", color: AppTheme.Status.infoStrong)
+                    featureItem(icon: "arrow.up.circle.fill", title: "Free Updates", color: AppTheme.Status.positive)
+                    featureItem(icon: "macbook.and.iphone", title: "Multiple Devices", color: AppTheme.Status.warningStrong)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding(32)
-            .background(CardBackground(isSelected: false, cornerRadius: 16))
+            .background(AppCardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
 
             // License Activation
@@ -177,13 +177,13 @@ struct LicenseManagementView: View {
                 
                 if let message = licenseViewModel.validationMessage {
                     Text(message)
-                        .foregroundColor(licenseViewModel.validationSuccess ? .green : .red)
+                        .foregroundColor(licenseViewModel.validationSuccess ? AppTheme.Status.positive : AppTheme.Status.error)
                         .font(.callout)
                         .multilineTextAlignment(.center)
                 }
             }
             .padding(32)
-            .background(CardBackground(isSelected: false, cornerRadius: 16))
+            .background(AppCardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
             
             // Already Purchased Section
@@ -209,7 +209,7 @@ struct LicenseManagementView: View {
                 }
             }
             .padding(32)
-            .background(CardBackground(isSelected: false, cornerRadius: 16))
+            .background(AppCardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
         }
     }
@@ -221,7 +221,7 @@ struct LicenseManagementView: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 24))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(AppTheme.Status.positive)
                     Text("License Active")
                         .font(.headline)
                     Spacer()
@@ -229,7 +229,7 @@ struct LicenseManagementView: View {
                         .font(.caption)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(.green))
+                        .background(Capsule().fill(AppTheme.Status.positive))
                         .foregroundStyle(.white)
                 }
                 
@@ -246,7 +246,7 @@ struct LicenseManagementView: View {
                 }
             }
             .padding(32)
-            .background(CardBackground(isSelected: false, cornerRadius: 16))
+            .background(AppCardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
             
             // Deactivation Card
@@ -264,7 +264,7 @@ struct LicenseManagementView: View {
                 .buttonStyle(.bordered)
             }
             .padding(32)
-            .background(CardBackground(isSelected: false, cornerRadius: 16))
+            .background(AppCardBackground(isSelected: false, cornerRadius: 16))
             .shadow(color: .black.opacity(0.05), radius: 10)
         }
     }
@@ -304,4 +304,3 @@ struct LicenseManagementView: View {
         }
     }
 }
-

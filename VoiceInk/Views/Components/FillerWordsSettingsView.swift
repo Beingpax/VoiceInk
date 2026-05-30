@@ -15,7 +15,7 @@ struct FillerWordChip: View {
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isHovered ? .red : .secondary)
+                    .foregroundStyle(isHovered ? AppTheme.Status.error : .secondary)
                     .font(.system(size: 10))
             }
             .buttonStyle(.borderless)
@@ -29,11 +29,11 @@ struct FillerWordChip: View {
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color(.windowBackgroundColor).opacity(0.4))
+                .fill(AppTheme.Surface.window.opacity(0.4))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                .stroke(AppTheme.Border.subtle, lineWidth: 1)
         )
     }
 }
@@ -90,7 +90,7 @@ struct FillerWordsSettingsSection: View {
             if let errorMessage {
                 Text(errorMessage)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AppTheme.Status.error)
             }
 
             HStack {

@@ -51,7 +51,7 @@ struct PerformanceAnalysisPanelView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(AppTheme.Surface.card)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -65,9 +65,9 @@ struct PerformanceAnalysisPanelView: View {
             sectionHeader("Summary")
 
             HStack(spacing: 10) {
-                summaryPill(icon: "doc.text.fill", value: "\(analysis.totalTranscripts)", label: "Total", color: .indigo)
-                summaryPill(icon: "waveform.path.ecg", value: "\(analysis.totalWithTranscriptionData)", label: "Analyzable", color: .teal)
-                summaryPill(icon: "sparkles", value: "\(analysis.totalEnhancedFiles)", label: "Enhanced", color: .mint)
+                summaryPill(icon: "doc.text.fill", value: "\(analysis.totalTranscripts)", label: "Total", color: AppTheme.Data.transcript)
+                summaryPill(icon: "waveform.path.ecg", value: "\(analysis.totalWithTranscriptionData)", label: "Analyzable", color: AppTheme.Data.audio)
+                summaryPill(icon: "sparkles", value: "\(analysis.totalEnhancedFiles)", label: "Enhanced", color: AppTheme.Data.enhancement)
             }
         }
     }
@@ -86,7 +86,7 @@ struct PerformanceAnalysisPanelView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
-        .background(MetricCardBackground(color: color))
+        .background(MetricTintBackground(color: color))
         .cornerRadius(10)
     }
 
@@ -105,7 +105,7 @@ struct PerformanceAnalysisPanelView: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(NSColor.controlBackgroundColor))
+                    .fill(AppTheme.Surface.control)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(Color(NSColor.quaternaryLabelColor).opacity(0.3), lineWidth: 1)
@@ -167,7 +167,7 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.1fx", modelStat.speedFactor))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.mint)
+                    .foregroundColor(AppTheme.Data.enhancement)
                 Text("Faster than Real-time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -181,7 +181,7 @@ struct PerformanceAnalysisPanelView: View {
                 VStack(spacing: 2) {
                     Text(formatDuration(modelStat.avgAudioDuration))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.indigo)
+                        .foregroundColor(AppTheme.Data.transcript)
                     Text("Avg. Audio")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -189,13 +189,13 @@ struct PerformanceAnalysisPanelView: View {
                 .frame(maxWidth: .infinity)
 
                 Rectangle()
-                    .fill(Color(NSColor.separatorColor))
+                    .fill(AppTheme.Border.control)
                     .frame(width: 1, height: 24)
 
                 VStack(spacing: 2) {
                     Text(String(format: "%.2fs", modelStat.avgProcessingTime))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.teal)
+                        .foregroundColor(AppTheme.Data.audio)
                     Text("Avg. Processing")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -204,7 +204,7 @@ struct PerformanceAnalysisPanelView: View {
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: .mint))
+        .background(MetricTintBackground(color: AppTheme.Data.enhancement))
         .cornerRadius(12)
     }
 
@@ -240,14 +240,14 @@ struct PerformanceAnalysisPanelView: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.2f s", modelStat.avgProcessingTime))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
+                    .foregroundColor(AppTheme.Data.transcript)
                 Text("Avg. Enhancement Time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: .indigo))
+        .background(MetricTintBackground(color: AppTheme.Data.transcript))
         .cornerRadius(12)
     }
 

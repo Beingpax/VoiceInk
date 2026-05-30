@@ -57,7 +57,7 @@ struct EditReplacementSheet: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
-        .background(CardBackground(isSelected: false, cornerRadius: 16))
+        .background(AppCardBackground(isSelected: false, cornerRadius: 16))
     }
 
     private var formContent: some View {
@@ -113,7 +113,7 @@ struct EditReplacementSheet: View {
                     .cornerRadius(6)
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color(.separatorColor), lineWidth: 1)
+                            .stroke(AppTheme.Border.control, lineWidth: 1)
                     )
             }
             .padding(.horizontal)

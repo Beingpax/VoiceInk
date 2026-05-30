@@ -130,10 +130,10 @@ private struct CustomEnhancementModelRow: View {
                 .frame(width: 28, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: 7)
-                        .fill(Color(NSColor.controlBackgroundColor))
+                        .fill(AppTheme.Surface.control)
                         .overlay(
                             RoundedRectangle(cornerRadius: 7)
-                                .stroke(Color(NSColor.separatorColor).opacity(0.45), lineWidth: 1)
+                                .stroke(AppTheme.Border.control.opacity(0.45), lineWidth: 1)
                         )
                 )
 
@@ -577,7 +577,7 @@ private struct CustomModelErrorBox: View {
             ForEach(messages, id: \.self) { message in
                 Text(message)
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(AppTheme.Status.error)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -605,7 +605,7 @@ private struct CustomModelEditorHeader: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(AppTheme.Surface.card)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -638,3 +638,118 @@ private struct CustomModelEditorFooter: View {
         .overlay(Divider().opacity(0.5), alignment: .top)
     }
 }
+
+#if DEBUG
+private enum CustomModelsPreviewPanel {
+    case transcription
+    case enhancement
+}
+
+private struct CustomModelsSidePanelPreview: View {
+    @State private var activePanel: CustomModelsPreviewPanel? = .transcription
+
+    private var isPanelOpen: Binding<Bool> {
+        Binding(
+            get: { activePanel != nil },
+            set: { if !$0 { activePanel = nil } }
+        )
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            AppScreenHeader(title: "Model Catalog") {
+                AppIconButton(systemName: "plus.circle.fill", help: "Add custom model") {
+                    activePanel = .transcription
+                }
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    customSectionHeader(
+                        title: "Custom Transcription Models",
+                        subtitle: "Supports any provider that uses the same API format as OpenAI transcription.",
+                        action: { activePanel = .transcription }
+                    )
+
+                    CustomModelCardView(
+                        model: Self.sampleTranscriptionModel,
+                        deleteAction: {},
+                        editAction: { _ in activePanel = .transcription }
+                    )
+
+                    customSectionHeader(
+                        title: "Custom Enhancement Models",
+                        subtitle: "Supports any provider that uses the same API format as OpenAI chat completion.",
+                        action: { activePanel = .enhancement }
+                    )
+
+                    CustomEnhancementModelRow(
+                        provider: Self.sampleEnhancementProvider,
+                        onEdit: { activePanel = .enhancement },
+                        onDelete: {}
+                    )
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
+        .frame(width: 920, height: 640)
+        .background(AppTheme.Surface.window)
+        .sidePanel(isPresented: isPanelOpen) {
+            panelContent
+        }
+    }
+
+    @ViewBuilder
+    private var panelContent: some View {
+        switch activePanel {
+        case .transcription:
+            CustomTranscriptionModelEditorPanel(
+                editingModel: Self.sampleTranscriptionModel,
+                customModelManager: .shared,
+                onClose: { activePanel = nil },
+                onSave: { activePanel = nil }
+            )
+        case .enhancement:
+            CustomEnhancementModelEditorPanel(
+                editingProvider: Self.sampleEnhancementProvider,
+                manager: .shared,
+                onClose: { activePanel = nil },
+                onSave: { activePanel = nil }
+            )
+        case nil:
+            EmptyView()
+        }
+    }
+
+    private func customSectionHeader(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ProviderSectionHeader(title: title, subtitle: subtitle)
+
+            Spacer()
+
+            AddIconButton(helpText: "Add \(title)", action: action)
+        }
+    }
+
+    private static let sampleTranscriptionModel = CustomCloudModel(
+        name: "acme-transcribe",
+        displayName: "Acme Transcribe",
+        description: "OpenAI-compatible transcription endpoint for previewing custom model cards.",
+        apiEndpoint: "https://api.example.com/v1/audio/transcriptions",
+        modelName: "acme-transcribe-large",
+        isMultilingual: true
+    )
+
+    private static let sampleEnhancementProvider = CustomAIProviderConfig(
+        name: "Acme Enhance",
+        baseURL: "https://api.example.com/v1/chat/completions",
+        models: ["acme-enhance-pro"],
+        selectedModel: "acme-enhance-pro"
+    )
+}
+
+#Preview("Custom AI Models - Side Panel") {
+    CustomModelsSidePanelPreview()
+}
+#endif

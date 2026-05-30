@@ -48,7 +48,7 @@ struct TrialMessageView: View {
             }
         }
         .padding()
-        .background(CardBackground(cornerRadius: 16))
+        .background(AppCardBackground(cornerRadius: 16))
     }
     
     private var icon: String {
@@ -61,9 +61,9 @@ struct TrialMessageView: View {
     
     private var iconColor: Color {
         switch type {
-        case .warning: return .orange
-        case .expired: return .red
-        case .info: return Color(nsColor: .controlAccentColor)
+        case .warning: return AppTheme.Status.warningStrong
+        case .expired: return AppTheme.Status.error
+        case .info: return AppTheme.Accent.primary
         }
     }
     

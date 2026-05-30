@@ -56,20 +56,20 @@ struct AudioTranscribeView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.windowBackgroundColor).opacity(0.4))
+                    .fill(AppTheme.Surface.window.opacity(0.4))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .strokeBorder(
                                 style: StrokeStyle(lineWidth: 2, dash: [8])
                             )
-                            .foregroundColor(isDropTargeted ? .accentColor : .gray.opacity(0.5))
+                            .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray.opacity(0.5))
                     )
                     .animation(.easeInOut(duration: 0.15), value: isDropTargeted)
 
                 VStack(spacing: 14) {
                     Image(systemName: "arrow.down.doc")
                         .font(.system(size: 32))
-                        .foregroundColor(isDropTargeted ? .accentColor : .gray)
+                        .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray)
 
                     Text("Drop audio or video files here")
                         .font(.headline)
@@ -162,7 +162,7 @@ struct AudioTranscribeView: View {
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(Color.secondary.opacity(0.12))
+                        .fill(AppTheme.Surface.controlActive)
                 )
             }
             .buttonStyle(.plain)
@@ -182,12 +182,12 @@ struct AudioTranscribeView: View {
                         Text("Cancel")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(Color.red.opacity(0.12))
+                            .fill(AppTheme.Status.error.opacity(0.12))
                     )
                 }
                 .buttonStyle(.plain)
@@ -207,8 +207,8 @@ struct AudioTranscribeView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(AppTheme.Accent.primary)
+                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -234,7 +234,7 @@ struct AudioTranscribeView: View {
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(Color.secondary.opacity(0.12))
+                        .fill(AppTheme.Surface.controlActive)
                 )
             }
             .buttonStyle(.plain)
@@ -279,11 +279,11 @@ struct AudioTranscribeView: View {
                     .frame(maxWidth: 160, alignment: .leading)
                     .background(
                         Capsule()
-                            .fill(Color.primary.opacity(0.08))
+                            .fill(AppTheme.Surface.subtle)
                     )
                     .overlay(
                         Capsule()
-                            .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+                            .stroke(AppTheme.Accent.fillSubtle, lineWidth: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -325,15 +325,15 @@ struct AudioTranscribeView: View {
 
     private var dropOverlay: some View {
         RoundedRectangle(cornerRadius: 12)
-            .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8]))
+            .strokeBorder(AppTheme.Accent.primary, style: StrokeStyle(lineWidth: 2, dash: [8]))
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.accentColor.opacity(0.06))
+                    .fill(AppTheme.Accent.fillSubtle)
             )
             .overlay {
                 Text("Drop to add files")
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(AppTheme.Accent.primary)
             }
             .padding(16)
             .transition(.opacity)

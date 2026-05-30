@@ -12,11 +12,11 @@ struct TriggerTemplateRow: View {
     }
 
     private var cardBackground: Color {
-        isAdded ? Color.accentColor.opacity(0.10) : Color(NSColor.controlBackgroundColor)
+        isAdded ? AppTheme.Accent.fillSubtle : AppTheme.Surface.control
     }
 
     private var cardBorder: Color {
-        isAdded ? Color.accentColor.opacity(0.28) : Color(NSColor.separatorColor)
+        isAdded ? AppTheme.Accent.fillStrong : AppTheme.Border.control
     }
 
     var body: some View {
@@ -76,7 +76,7 @@ struct TriggerSymbol: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color(NSColor.controlBackgroundColor))
+                .fill(AppTheme.Surface.control)
                 .frame(width: 28, height: 28)
 
             Image(systemName: systemName)

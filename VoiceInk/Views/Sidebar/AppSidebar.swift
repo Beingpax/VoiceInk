@@ -36,7 +36,7 @@ struct AppSidebar: View {
 
     private var sidebarDivider: some View {
         Rectangle()
-            .fill(Color(NSColor.separatorColor).opacity(0.55))
+            .fill(AppTheme.Border.control.opacity(0.55))
             .frame(width: 1)
             .ignoresSafeArea(.container, edges: .top)
     }
@@ -105,23 +105,23 @@ private extension ViewType {
     var sidebarIconStyle: SidebarIconStyle {
         switch self {
         case .metrics:
-            return .init(background: Color(nsColor: .systemOrange))
+            return .init(background: AppTheme.Sidebar.metrics)
         case .modes:
-            return .init(background: Color(nsColor: .systemIndigo))
+            return .init(background: AppTheme.Sidebar.modes)
         case .models:
-            return .init(background: Color(nsColor: .systemBrown))
+            return .init(background: AppTheme.Sidebar.models)
         case .audio:
-            return .init(background: Color(nsColor: .systemPink))
+            return .init(background: AppTheme.Sidebar.audio)
         case .dictionary:
-            return .init(background: Color(nsColor: .systemBlue))
+            return .init(background: AppTheme.Sidebar.dictionary)
         case .history:
-            return .init(background: Color(nsColor: .systemGray))
+            return .init(background: AppTheme.Sidebar.fallback)
         case .transcribeAudio:
-            return .init(background: Color(nsColor: .systemTeal))
+            return .init(background: AppTheme.Sidebar.transcribeAudio)
         case .settings:
-            return .init(background: Color(nsColor: .systemGray))
+            return .init(background: AppTheme.Sidebar.fallback)
         case .license:
-            return .init(background: Color(nsColor: .systemGreen))
+            return .init(background: AppTheme.Sidebar.license)
         }
     }
 }

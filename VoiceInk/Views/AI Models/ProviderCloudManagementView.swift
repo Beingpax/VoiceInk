@@ -187,7 +187,7 @@ private struct ProviderListRow: View {
     }
 
     private var statusColor: Color {
-        isConfigured ? .green : .secondary
+        isConfigured ? AppTheme.Status.positive : .secondary
     }
 
     private var iconName: String {

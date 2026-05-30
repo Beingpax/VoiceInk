@@ -29,7 +29,7 @@ struct TranscriptionListItem: View {
                             .padding(.vertical, 3)
                             .background(
                                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(Color.secondary.opacity(0.1))
+                                    .fill(AppTheme.Surface.card)
                             )
                             .foregroundColor(.secondary)
                     }
@@ -44,18 +44,18 @@ struct TranscriptionListItem: View {
         .padding(10)
         .background {
             if isSelected {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.10))
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .fill(AppTheme.Selection.fill)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.14), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .strokeBorder(AppTheme.Selection.border, lineWidth: 1)
                     }
             } else {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.045))
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .fill(AppTheme.Surface.subtle)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .strokeBorder(AppTheme.Border.tint, lineWidth: 1)
                     }
             }
         }
@@ -71,7 +71,7 @@ struct CircularCheckboxStyle: ToggleStyle {
         }) {
             Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                 .symbolRenderingMode(.hierarchical)
-                .foregroundColor(configuration.isOn ? .primary.opacity(0.78) : .secondary)
+                .foregroundColor(configuration.isOn ? AppTheme.Selection.foreground : .secondary)
                 .font(.system(size: 18))
         }
         .buttonStyle(.plain)

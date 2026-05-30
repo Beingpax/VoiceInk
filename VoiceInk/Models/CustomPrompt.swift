@@ -51,11 +51,11 @@ extension CustomPrompt {
             .padding(.horizontal, 10)
             .background(
                 RoundedRectangle(cornerRadius: 7)
-                    .fill(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+                    .fill(isSelected ? AppTheme.Accent.primary : AppTheme.Surface.control)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(Color(NSColor.separatorColor), lineWidth: isSelected ? 0 : 0.5)
+                    .stroke(AppTheme.Border.control, lineWidth: isSelected ? 0 : 0.5)
             )
         .contentShape(Rectangle())
         .onTapGesture(count: 2) {
@@ -106,11 +106,11 @@ extension CustomPrompt {
             .padding(.horizontal, 10)
             .background(
                 RoundedRectangle(cornerRadius: 7)
-                    .fill(Color(NSColor.controlBackgroundColor))
+                    .fill(AppTheme.Surface.control)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                    .stroke(AppTheme.Border.control, lineWidth: 0.5)
             )
         .contentShape(Rectangle())
         .onTapGesture(perform: action)

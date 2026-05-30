@@ -43,6 +43,6 @@ struct MetricCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(16)
-        .background(CardBackground(cornerRadius: 16))
+        .background(AppCardBackground(cornerRadius: 16))
     }
 }

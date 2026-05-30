@@ -36,12 +36,12 @@ struct APIKeyManagementView: View {
                     }
                 }
                 .pickerStyle(.automatic)
-                .tint(.blue)
+                .tint(AppTheme.Status.infoStrong)
                 
                 if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
                     Spacer()
                     Circle()
-                        .fill(Color.green)
+                        .fill(AppTheme.Status.positive)
                         .frame(width: 8, height: 8)
                     Text("Connected")
                         .font(.subheadline)
@@ -53,14 +53,14 @@ struct APIKeyManagementView: View {
                             .controlSize(.small)
                     } else if !ollamaModels.isEmpty {
                         Circle()
-                            .fill(Color.green)
+                            .fill(AppTheme.Status.positive)
                             .frame(width: 8, height: 8)
                         Text("Connected")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     } else {
                         Circle()
-                            .fill(Color.red)
+                            .fill(AppTheme.Status.error)
                             .frame(width: 8, height: 8)
                         Text("Disconnected")
                             .font(.subheadline)
@@ -206,7 +206,7 @@ struct APIKeyManagementView: View {
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                                    .stroke(AppTheme.Border.subtle, lineWidth: 1)
                             )
                             .onChange(of: localCLICommandTemplate) { _, newValue in
                                 guard !isSyncingLocalCLIState else { return }
@@ -237,7 +237,7 @@ struct APIKeyManagementView: View {
                     if !aiService.isAPIKeyValid {
                         Text("Load a template or enter a command to enable Local CLI enhancement.")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundColor(AppTheme.Status.warningStrong)
                     }
                 } else if aiService.selectedProvider == .custom {
                     Text("Manage custom enhancement models in the Custom tab.")
@@ -266,10 +266,10 @@ struct APIKeyManagementView: View {
                                         Text("Get API Key")
                                     }
                                     .font(.caption)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppTheme.Status.infoStrong)
                                     .padding(.vertical, 4)
                                     .padding(.horizontal, 8)
-                                    .background(Color.blue.opacity(0.1))
+                                    .background(AppTheme.Status.infoStrong.opacity(0.10))
                                     .cornerRadius(6)
                                 }
                                 .buttonStyle(.plain)

@@ -28,18 +28,18 @@ struct OnboardingModelDownloadView: View {
                             // Model icon
                             ZStack {
                                 Circle()
-                                    .fill(Color.accentColor.opacity(0.1))
+                                    .fill(AppTheme.Accent.fillSubtle)
                                     .frame(width: 100, height: 100)
                                 
                                 if isModelSet {
                                     Image(systemName: "checkmark.seal.fill")
                                         .font(.system(size: 50))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(AppTheme.Accent.primary)
                                         .transition(.scale.combined(with: .opacity))
                                 } else {
                                     Image(systemName: "brain")
                                         .font(.system(size: 40))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(AppTheme.Accent.primary)
                                 }
                             }
                             .scaleEffect(scale)
@@ -113,7 +113,7 @@ struct OnboardingModelDownloadView: View {
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .frame(width: 200, height: 50)
-                                    .background(Color.accentColor)
+                                    .background(AppTheme.Accent.primary)
                                     .cornerRadius(25)
                             }
                             .buttonStyle(ScaleButtonStyle())
@@ -217,7 +217,7 @@ struct OnboardingModelDownloadView: View {
             HStack(spacing: 4) {
                 ForEach(0..<5) { index in
                     Circle()
-                        .fill(Double(index) / 5.0 <= value ? Color.accentColor : Color.white.opacity(0.2))
+                        .fill(Double(index) / 5.0 <= value ? AppTheme.Accent.primary : Color.white.opacity(0.2))
                         .frame(width: 6, height: 6)
                 }
             }

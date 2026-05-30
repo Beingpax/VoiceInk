@@ -36,7 +36,7 @@ struct HelpAndResourcesSection: View {
             }
         }
         .padding(18)
-        .background(CardBackground(cornerRadius: 28))
+        .background(AppCardBackground(cornerRadius: 28))
     }
     
     private func resourceLink(icon: String, title: String, url: String? = nil, action: (() -> Void)? = nil) -> some View {
@@ -50,7 +50,7 @@ struct HelpAndResourcesSection: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(AppTheme.Accent.primary)
                     .frame(width: 20)
                 
                 Text(title)
@@ -63,7 +63,7 @@ struct HelpAndResourcesSection: View {
                     .foregroundColor(.secondary)
             }
             .padding(12)
-            .background(Color.primary.opacity(0.05))
+            .background(AppTheme.Surface.subtle)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
         }

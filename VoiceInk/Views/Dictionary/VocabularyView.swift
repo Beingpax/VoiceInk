@@ -134,7 +134,7 @@ struct VocabularyWordView: View {
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isDeleteHovered ? .red : .secondary)
+                    .foregroundStyle(isDeleteHovered ? AppTheme.Status.error : .secondary)
                     .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.borderless)
@@ -149,11 +149,11 @@ struct VocabularyWordView: View {
         .padding(.vertical, 6)
         .background {
             RoundedRectangle(cornerRadius: 6)
-                .fill(Color(.windowBackgroundColor).opacity(0.4))
+                .fill(AppTheme.Surface.window.opacity(0.4))
         }
         .overlay {
             RoundedRectangle(cornerRadius: 6)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+                .stroke(AppTheme.Border.subtle, lineWidth: 1)
         }
         .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
     }

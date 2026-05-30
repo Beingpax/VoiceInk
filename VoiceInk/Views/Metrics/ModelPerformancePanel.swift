@@ -67,7 +67,7 @@ struct ModelPerformancePanel: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.secondary)
                     .padding(6)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(AppTheme.Surface.card)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -179,7 +179,7 @@ private struct ModelPerformancePanelContent: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.1fx", stat.speedFactor))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.mint)
+                    .foregroundColor(AppTheme.Data.enhancement)
                 Text(stat.speedFactor >= 1.0 ? "Faster than Real-time" : "Slower than Real-time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
@@ -191,7 +191,7 @@ private struct ModelPerformancePanelContent: View {
                 VStack(spacing: 2) {
                     Text(formatDuration(stat.avgAudioDuration))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.indigo)
+                        .foregroundColor(AppTheme.Data.transcript)
                     Text("Avg. Audio")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -199,13 +199,13 @@ private struct ModelPerformancePanelContent: View {
                 .frame(maxWidth: .infinity)
 
                 Rectangle()
-                    .fill(Color(NSColor.separatorColor))
+                    .fill(AppTheme.Border.control)
                     .frame(width: 1, height: 24)
 
                 VStack(spacing: 2) {
                     Text(String(format: "%.2fs", stat.avgProcessingTime))
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.teal)
+                        .foregroundColor(AppTheme.Data.audio)
                     Text("Avg. Processing")
                         .font(.system(size: 9))
                         .foregroundColor(.secondary)
@@ -214,7 +214,7 @@ private struct ModelPerformancePanelContent: View {
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: .mint))
+        .background(MetricTintBackground(color: AppTheme.Data.enhancement))
         .cornerRadius(12)
     }
 
@@ -247,14 +247,14 @@ private struct ModelPerformancePanelContent: View {
             VStack(spacing: 3) {
                 Text(String(format: "%.2fs", stat.avgDuration))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
+                    .foregroundColor(AppTheme.Data.transcript)
                 Text("Avg. Enhancement Time")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
         }
         .padding(14)
-        .background(MetricCardBackground(color: .indigo))
+        .background(MetricTintBackground(color: AppTheme.Data.transcript))
         .cornerRadius(12)
     }
 

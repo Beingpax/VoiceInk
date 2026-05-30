@@ -25,27 +25,6 @@ struct DictionarySettingsPanel: View {
     }
 
     private var panelHeader: some View {
-        HStack(spacing: 12) {
-            Text("Dictionary Settings")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-
-            Spacer()
-
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(Color.secondary.opacity(0.1))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Close")
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .overlay(Divider().opacity(0.5), alignment: .bottom)
+        AppPanelHeader(title: "Dictionary Settings", onClose: onDismiss)
     }
 }

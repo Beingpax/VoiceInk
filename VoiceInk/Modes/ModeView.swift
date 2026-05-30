@@ -76,60 +76,32 @@ struct ModeView: View {
     }
 
     private var addModeButton: some View {
-        Button(action: {
+        AppIconButton(
+            systemName: "plus.circle.fill",
+            help: "Add a new mode"
+        ) {
             openPanel(mode: .add)
-        }) {
-            Image(systemName: "plus.circle.fill")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.primary.opacity(0.7))
-                .frame(width: 40, height: 40)
-                .background(
-                    CardBackground(isSelected: false, cornerRadius: 22)
-                )
         }
-        .buttonStyle(.plain)
-        .help("Add a new mode")
     }
 
     private var settingsButton: some View {
-        Button(action: { openSettingsPanel() }) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.primary.opacity(0.7))
-                .frame(width: 40, height: 40)
-                .background(
-                    CardBackground(isSelected: false, cornerRadius: 22)
-                )
+        AppIconButton(
+            systemName: "gearshape.fill",
+            help: "Modes Settings"
+        ) {
+            openSettingsPanel()
         }
-        .buttonStyle(.plain)
-        .help("Modes Settings")
     }
     
     var body: some View {
             VStack(spacing: 0) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
-                            Text("Modes")
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundColor(.primary)
-
-                            InfoTip(
-                                "Modes help you set up VoiceInk for different writing tasks, workflows, and scenarios.",
-                                learnMoreURL: "https://tryvoiceink.com/docs/modes"
-                            )
-                        }
-                    }
-
-                    Spacer()
-
+                AppScreenHeader(
+                    title: "Modes",
+                    infoMessage: "Modes help you set up VoiceInk for different writing tasks, workflows, and scenarios.",
+                    infoURL: "https://tryvoiceink.com/docs/modes"
+                ) {
                     headerControls
                 }
-                .frame(height: 40)
-                .padding(.horizontal, 24)
-                .padding(.top, 20)
-                .padding(.bottom, 12)
-                .frame(maxWidth: .infinity)
                 
                 Group {
                         GeometryReader { geometry in

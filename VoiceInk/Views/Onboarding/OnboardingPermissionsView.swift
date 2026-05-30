@@ -84,7 +84,7 @@ struct OnboardingPermissionsView: View {
                         HStack(spacing: 8) {
                             ForEach(0..<permissions.count, id: \.self) { index in
                                 Circle()
-                                    .fill(index <= currentPermissionIndex ? Color.accentColor : Color.white.opacity(0.1))
+                                    .fill(index <= currentPermissionIndex ? AppTheme.Accent.primary : Color.white.opacity(0.1))
                                     .frame(width: 8, height: 8)
                                     .scaleEffect(index == currentPermissionIndex ? 1.2 : 1.0)
                                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: currentPermissionIndex)
@@ -97,18 +97,18 @@ struct OnboardingPermissionsView: View {
                             // Permission icon
                             ZStack {
                                 Circle()
-                                    .fill(Color.accentColor.opacity(0.1))
+                                    .fill(AppTheme.Accent.fillSubtle)
                                     .frame(width: 100, height: 100)
                                 
                                 if permissionStates[currentPermissionIndex] {
                                     Image(systemName: "checkmark.seal.fill")
                                         .font(.system(size: 50))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(AppTheme.Accent.primary)
                                         .transition(.scale.combined(with: .opacity))
                                 } else {
                                     Image(systemName: permissions[currentPermissionIndex].icon)
                                         .font(.system(size: 40))
-                                        .foregroundColor(.accentColor)
+                                        .foregroundColor(AppTheme.Accent.primary)
                                 }
                             }
                             .scaleEffect(scale)
@@ -218,7 +218,7 @@ struct OnboardingPermissionsView: View {
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .frame(width: 200, height: 50)
-                                    .background(Color.accentColor)
+                                    .background(AppTheme.Accent.primary)
                                     .cornerRadius(25)
                             }
                             .buttonStyle(ScaleButtonStyle())

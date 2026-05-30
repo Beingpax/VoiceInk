@@ -31,7 +31,7 @@ struct FluidAudioModelCardView: View {
             actionSection
         }
         .padding(16)
-        .background(PrimaryCardBackground())
+        .background(AppMaterialCardBackground())
     }
 
     private var headerSection: some View {
@@ -117,7 +117,7 @@ struct FluidAudioModelCardView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.accentColor))
+                    .background(Capsule().fill(AppTheme.Accent.primary))
                 }
                 .buttonStyle(.plain)
                 .disabled(isDownloading)

@@ -156,7 +156,7 @@ struct PerformanceAnalysisView: View {
             }
         }
         .frame(minWidth: 550, idealWidth: 600, maxWidth: 700, minHeight: 600, idealHeight: 750, maxHeight: 900)
-        .background(Color(.windowBackgroundColor))
+        .background(AppTheme.Surface.window)
     }
 
     private var header: some View {
@@ -180,19 +180,19 @@ struct PerformanceAnalysisView: View {
                 icon: "doc.text.fill", 
                 value: "\(analysis.totalTranscripts)", 
                 label: "Total Transcripts",
-                color: .indigo
+                color: AppTheme.Data.transcript
             )
             SummaryCard(
                 icon: "waveform.path.ecg", 
                 value: "\(analysis.totalWithTranscriptionData)", 
                 label: "Analyzable",
-                color: .teal
+                color: AppTheme.Data.audio
             )
             SummaryCard(
                 icon: "sparkles", 
                 value: "\(analysis.totalEnhancedFiles)", 
                 label: "Enhanced",
-                color: .mint
+                color: AppTheme.Data.enhancement
             )
         }
     }
@@ -271,7 +271,7 @@ struct SummaryCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, minHeight: 100)
-        .background(MetricCardBackground(color: color))
+        .background(MetricTintBackground(color: color))
         .cornerRadius(12)
     }
 }
@@ -312,7 +312,7 @@ struct SystemInfoCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
-        .background(MetricCardBackground(color: .secondary))
+        .background(MetricTintBackground(color: .secondary))
         .cornerRadius(12)
     }
 }
@@ -344,7 +344,7 @@ struct TranscriptionModelCard: View {
                 VStack {
                     Text(String(format: "%.1fx", modelStat.speedFactor))
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.mint)
+                        .foregroundColor(AppTheme.Data.enhancement)
                     Text("Faster than Real-time")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -358,19 +358,19 @@ struct TranscriptionModelCard: View {
                     MetricDisplay(
                         title: "Avg. Audio",
                         value: formatDuration(modelStat.avgAudioDuration),
-                        color: .indigo
+                        color: AppTheme.Data.transcript
                     )
                     Spacer()
                     MetricDisplay(
                         title: "Avg. Process Time",
                         value: String(format: "%.2f s", modelStat.avgProcessingTime),
-                        color: .teal
+                        color: AppTheme.Data.audio
                     )
                 }
             }
         }
         .padding(16)
-        .background(MetricCardBackground(color: .mint))
+        .background(MetricTintBackground(color: AppTheme.Data.enhancement))
         .cornerRadius(12)
     }
     
@@ -407,7 +407,7 @@ struct EnhancementModelCard: View {
             VStack(alignment: .center) {
                 Text(String(format: "%.2f s", modelStat.avgProcessingTime))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(.indigo)
+                    .foregroundColor(AppTheme.Data.transcript)
                 Text("Avg. Enhancement Time")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -415,41 +415,8 @@ struct EnhancementModelCard: View {
             .frame(maxWidth: .infinity)
         }
         .padding(16)
-        .background(MetricCardBackground(color: .indigo))
+        .background(MetricTintBackground(color: AppTheme.Data.transcript))
         .cornerRadius(12)
-    }
-}
-
-struct MetricCardBackground: View {
-    let color: Color
-    
-    var body: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(
-                LinearGradient(
-                    gradient: Gradient(stops: [
-                        .init(color: color.opacity(0.15), location: 0),
-                        .init(color: Color(NSColor.windowBackgroundColor).opacity(0.1), location: 0.6)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(NSColor.quaternaryLabelColor).opacity(0.3),
-                                Color(NSColor.quaternaryLabelColor).opacity(0.1)
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.05), radius: 5, y: 3)
     }
 }
 

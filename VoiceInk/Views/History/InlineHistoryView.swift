@@ -153,7 +153,7 @@ struct InlineHistoryView: View {
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill(Color.secondary.opacity(0.08))
+                    .fill(AppTheme.Surface.card)
             )
             .frame(maxWidth: .infinity)
         }
@@ -192,7 +192,7 @@ struct InlineHistoryView: View {
                     .font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.plain)
-            .foregroundColor(.red.opacity(0.8))
+            .foregroundColor(AppTheme.Status.error.opacity(0.80))
 
             Divider()
                 .frame(height: 16)
@@ -216,7 +216,7 @@ struct InlineHistoryView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 10)
         .background(
-            Color(NSColor.windowBackgroundColor)
+            AppTheme.Surface.window
                 .shadow(color: Color.black.opacity(0.1), radius: 3, y: -2)
         )
     }
@@ -307,27 +307,7 @@ struct InlineHistoryView: View {
 
     private var infoPanelContent: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text("Info")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-                Button(action: {
-                    closePanel()
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .overlay(Divider().opacity(0.5), alignment: .bottom)
-            .zIndex(1)
+            AppPanelHeader(title: "Info", onClose: closePanel)
 
             if let transcription = panelTranscription {
                 TranscriptionInfoPanel(transcription: transcription)
@@ -553,7 +533,7 @@ private struct HistoryCardRow: View {
                                 .padding(.vertical, 4)
                                 .background(
                                     Capsule()
-                                        .fill(selectedTab == tab ? Color.secondary.opacity(0.15) : Color.clear)
+                                        .fill(selectedTab == tab ? AppTheme.Surface.controlActive : Color.clear)
                                 )
                         }
                         .buttonStyle(.plain)

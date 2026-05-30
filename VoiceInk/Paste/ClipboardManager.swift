@@ -54,10 +54,10 @@ struct ClipboardMessageModifier: ViewModifier {
                     if !message.isEmpty {
                         Text(message)
                             .font(.caption)
-                            .foregroundColor(.green)
+                            .foregroundColor(AppTheme.Status.positive)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.green.opacity(0.1))
+                            .background(AppTheme.Status.positive.opacity(0.10))
                             .cornerRadius(4)
                             .transition(.opacity)
                             .animation(.easeInOut, value: message)

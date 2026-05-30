@@ -191,11 +191,11 @@ struct TranscriptionHistoryView: View {
             }
             .padding(10)
             .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.045))
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .fill(AppTheme.Surface.subtle)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .strokeBorder(AppTheme.Border.tint, lineWidth: 1)
                     }
             )
             .padding(12)
@@ -298,24 +298,7 @@ struct TranscriptionHistoryView: View {
 
     private var infoSidePanelView: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text("Info")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-                Button(action: closeInfoPanel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .frame(width: 28, height: 28)
-                        .background(CardBackground(isSelected: false, cornerRadius: 14))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .overlay(Divider().opacity(0.5), alignment: .bottom)
-            .zIndex(1)
+            AppPanelHeader(title: "Info", onClose: closeInfoPanel)
 
             if let transcription = selectedTranscription {
                 TranscriptionInfoPanel(transcription: transcription)

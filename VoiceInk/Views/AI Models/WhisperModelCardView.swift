@@ -31,7 +31,7 @@ struct WhisperModelCardView: View {
             actionSection
         }
         .padding(16)
-        .background(PrimaryCardBackground())
+        .background(AppMaterialCardBackground())
     }
     
     private var headerSection: some View {
@@ -121,8 +121,8 @@ struct WhisperModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(AppTheme.Accent.primary)
+                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -209,7 +209,7 @@ struct ImportedWhisperModelCardView: View {
             }
         }
         .padding(16)
-        .background(PrimaryCardBackground())
+        .background(AppMaterialCardBackground())
     }
 }
 
@@ -237,10 +237,10 @@ func progressDots(value: Double) -> some View {
 
 func performanceColor(value: Double) -> Color {
     switch value {
-    case 0.8...1.0: return Color(.systemGreen)
-    case 0.6..<0.8: return Color(.systemYellow)
-    case 0.4..<0.6: return Color(.systemOrange)
-    default: return Color(.systemRed)
+    case 0.8...1.0: return AppTheme.Status.positive
+    case 0.6..<0.8: return AppTheme.Data.yellow
+    case 0.4..<0.6: return AppTheme.Status.warningStrong
+    default: return AppTheme.Status.error
     }
 }
 
@@ -250,6 +250,6 @@ func modelStatusPill(_ text: String, systemImage: String) -> some View {
         .foregroundColor(Color(.secondaryLabelColor))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color.secondary.opacity(0.10))
+        .background(AppTheme.Surface.card)
         .clipShape(Capsule())
 }

@@ -51,11 +51,11 @@ struct TriggerGroupRow: View {
         .frame(height: 48)
         .background {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor))
+                .fill(AppTheme.Surface.control)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
         }
         .help(group.summaryText)
     }
@@ -80,11 +80,11 @@ struct TriggerAppChip: View {
                 .padding(3)
                 .background {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(NSColor.controlBackgroundColor))
+                        .fill(AppTheme.Surface.control)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                        .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
                 }
 
             TriggerRemoveButton(action: onRemove)
@@ -105,7 +105,7 @@ struct TriggerWebsiteChip: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.primary)
                 .frame(width: 20, height: 20)
-                .background(Circle().fill(Color.secondary.opacity(0.10)))
+                .background(Circle().fill(AppTheme.Surface.card))
 
             Text(urlConfig.url)
                 .font(.system(size: 12, weight: .medium))
@@ -121,11 +121,11 @@ struct TriggerWebsiteChip: View {
         .frame(height: 32)
         .background {
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(NSColor.controlBackgroundColor))
+                .fill(AppTheme.Surface.control)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
         }
     }
 }
@@ -173,11 +173,11 @@ struct TriggerGroupPreviewStack: View {
                     .frame(height: tileSize - 2)
                     .background {
                         RoundedRectangle(cornerRadius: tileSize * 0.32)
-                            .fill(Color(NSColor.controlBackgroundColor))
+                            .fill(AppTheme.Surface.control)
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: tileSize * 0.32)
-                            .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                            .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
                     }
             }
         }
@@ -196,7 +196,7 @@ struct TriggerGroupPreviewStack: View {
             case .website:
                 ZStack {
                     Circle()
-                        .fill(Color.secondary.opacity(0.11))
+                        .fill(AppTheme.Surface.card)
                         .frame(width: tileSize - 8, height: tileSize - 8)
                     Image(systemName: "globe")
                         .font(.system(size: tileSize * 0.38, weight: .semibold))
@@ -211,7 +211,7 @@ struct TriggerGroupPreviewStack: View {
         .frame(width: tileSize, height: tileSize)
         .overlay {
             RoundedRectangle(cornerRadius: tileSize * 0.24)
-                .strokeBorder(Color(NSColor.separatorColor), lineWidth: 0.5)
+                .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
         }
         .shadow(color: Color.black.opacity(0.12), radius: 2.5, x: 0, y: 1)
     }
@@ -219,9 +219,9 @@ struct TriggerGroupPreviewStack: View {
     private func tileBackground(for item: TriggerGroupPreviewItem) -> Color {
         switch item {
         case .empty:
-            return Color(NSColor.controlBackgroundColor)
+            return AppTheme.Surface.control
         case .app, .website:
-            return Color(NSColor.windowBackgroundColor)
+            return AppTheme.Surface.window
         }
     }
 
@@ -266,7 +266,7 @@ struct TriggerAppIcon: View {
                 .frame(width: size, height: size)
                 .background {
                     RoundedRectangle(cornerRadius: size * 0.22)
-                        .fill(Color(NSColor.controlBackgroundColor))
+                        .fill(AppTheme.Surface.control)
                 }
         }
     }

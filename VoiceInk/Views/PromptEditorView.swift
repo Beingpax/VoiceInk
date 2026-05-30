@@ -124,7 +124,7 @@ struct PromptEditorView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.secondary)
                     .frame(width: 28, height: 28)
-                    .background(Color.secondary.opacity(0.1))
+                    .background(AppTheme.Surface.card)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -190,7 +190,7 @@ struct PromptEditorView: View {
             .font(.system(size: 15, weight: .medium))
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(CardBackground(cornerRadius: 7))
+            .background(AppCardBackground(cornerRadius: 7))
             .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 
@@ -201,7 +201,7 @@ struct PromptEditorView: View {
                 .frame(minHeight: 220)
                 .scrollContentBackground(.hidden)
                 .padding(8)
-                .background(CardBackground(cornerRadius: 8))
+                .background(AppCardBackground(cornerRadius: 8))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             if promptText.isEmpty {
@@ -225,7 +225,7 @@ struct PromptEditorView: View {
                         .frame(minWidth: 90)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color(NSColor.systemRed))
+                .tint(AppTheme.Status.error)
             } else {
                 Button("Cancel") {
                     dismissPanel()

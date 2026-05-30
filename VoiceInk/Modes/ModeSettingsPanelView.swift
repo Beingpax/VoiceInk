@@ -20,7 +20,7 @@ struct ModeSettingsPanelView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                         .padding(6)
-                        .background(Color.secondary.opacity(0.1))
+                        .background(AppTheme.Surface.card)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
@@ -106,7 +106,7 @@ private struct ModeReorderRow: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color(NSColor.controlBackgroundColor))
+                    .fill(AppTheme.Surface.control)
                     .frame(width: 34, height: 34)
 
                 ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 18 : 14)
@@ -164,22 +164,22 @@ private struct ModeReorderRow: View {
 
     private var rowBackground: Color {
         if isTargeted {
-            return Color(NSColor.controlAccentColor).opacity(0.10)
+            return AppTheme.Selection.fill
         }
 
         if isHovering {
-            return Color.secondary.opacity(0.14)
+            return AppTheme.Surface.controlActive
         }
 
-        return Color.secondary.opacity(0.1)
+        return AppTheme.Surface.card
     }
 
     private var rowBorder: Color {
         if isTargeted {
-            return Color.accentColor.opacity(0.65)
+            return AppTheme.Selection.border
         }
 
-        return Color(NSColor.separatorColor).opacity(0.55)
+        return AppTheme.Border.control.opacity(0.55)
     }
 
     private func countText(_ count: Int, singular: String, plural: String) -> String {
@@ -234,11 +234,11 @@ private struct ModeReorderBadge: View {
         .padding(.vertical, 3)
         .background {
             Capsule()
-                .fill(Color.secondary.opacity(0.1))
+                .fill(AppTheme.Surface.card)
         }
         .overlay {
             Capsule()
-                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                .stroke(AppTheme.Border.control, lineWidth: 0.5)
         }
     }
 }
@@ -259,7 +259,7 @@ private struct ModeReorderDragPreview: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
         .overlay {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color(NSColor.separatorColor), lineWidth: 0.5)
+                .stroke(AppTheme.Border.control, lineWidth: 0.5)
         }
     }
 }

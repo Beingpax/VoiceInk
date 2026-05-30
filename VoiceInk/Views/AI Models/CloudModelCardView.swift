@@ -53,7 +53,7 @@ struct CloudModelCardView: View {
                     .padding(16)
             }
         }
-        .background(PrimaryCardBackground())
+        .background(AppMaterialCardBackground())
         .onAppear {
             loadSavedAPIKey()
         }
@@ -136,8 +136,8 @@ struct CloudModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(AppTheme.Accent.primary)
+                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -190,7 +190,7 @@ struct CloudModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
+                            .fill(verificationStatus == .success ? AppTheme.Status.positive : AppTheme.Accent.primary)
                     )
                 }
                 .buttonStyle(.plain)
@@ -201,16 +201,16 @@ struct CloudModelCardView: View {
                 if let error = verificationError {
                     Text(error)
                         .font(.caption)
-                        .foregroundColor(Color(.systemRed))
+                        .foregroundColor(AppTheme.Status.error)
                 } else {
                     Text("Verification failed")
                         .font(.caption)
-                        .foregroundColor(Color(.systemRed))
+                        .foregroundColor(AppTheme.Status.error)
                 }
             } else if verificationStatus == .success {
                 Text("Verified")
                     .font(.caption)
-                    .foregroundColor(Color(.systemGreen))
+                    .foregroundColor(AppTheme.Status.positive)
             }
         }
     }

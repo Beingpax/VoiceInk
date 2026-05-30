@@ -204,7 +204,7 @@ struct TriggerPickerPopover: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 7)
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.08)))
+            .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.Surface.card))
         }
         .buttonStyle(.plain)
     }
@@ -238,7 +238,7 @@ struct TriggerPickerPopover: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? Color.secondary.opacity(0.08) : Color.clear))
+            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? AppTheme.Surface.card : Color.clear))
         }
         .buttonStyle(.plain)
     }

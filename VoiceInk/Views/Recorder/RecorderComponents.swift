@@ -96,7 +96,7 @@ struct RecorderRecordButton: View {
                 mark: Color(red: 0.78, green: 0.78, blue: 0.80)
             )
         case .recording:
-            let red = Color(NSColor.systemRed)
+            let red = AppTheme.Status.error
             return StateColors(
                 surface: red.opacity(0.92),
                 border: red.opacity(0.98),

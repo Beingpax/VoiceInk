@@ -106,20 +106,9 @@ struct ModelManagementView: View {
     }
 
     private var headerSection: some View {
-        HStack {
-            Text("Model Catalog")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(.primary)
-
-            Spacer()
-
+        AppScreenHeader(title: "Model Catalog") {
             settingsButton
         }
-        .frame(height: 40)
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 12)
-        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -155,30 +144,7 @@ struct ModelManagementView: View {
 
     private var settingsPanelContent: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text("Model Settings")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-
-                Spacer()
-
-                Button(action: { closePanel() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Color.secondary.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .help("Close")
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .overlay(
-                Divider().opacity(0.5), alignment: .bottom
-            )
+            AppPanelHeader(title: "Model Settings", onClose: closePanel)
 
             ModelSettingsPanel()
         }
@@ -241,7 +207,7 @@ struct ModelManagementView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
-                            PrimaryCardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
+                            AppMaterialCardBackground(isSelected: selectedFilter == filter, cornerRadius: 22)
                         )
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -251,19 +217,12 @@ struct ModelManagementView: View {
     }
 
     private var settingsButton: some View {
-        Button(action: {
+        AppIconButton(
+            systemName: "gearshape.fill",
+            help: "Model Settings"
+        ) {
             toggleSettingsPanel()
-        }) {
-            Image(systemName: "gearshape.fill")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundColor(.primary.opacity(0.7))
-                .frame(width: 40, height: 40)
-                .background(
-                    CardBackground(isSelected: false, cornerRadius: 22)
-                )
         }
-        .buttonStyle(.plain)
-        .help("Model Settings")
     }
 
     private var localModelsSection: some View {
@@ -309,7 +268,7 @@ struct ModelManagementView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(16)
-                .background(PrimaryCardBackground(cornerRadius: 10))
+                .background(AppMaterialCardBackground(cornerRadius: 10))
             }
             .buttonStyle(.plain)
 
@@ -325,7 +284,7 @@ struct ModelManagementView: View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.orange)
+                .foregroundColor(AppTheme.Status.warningStrong)
 
             Text("Local models don't work reliably on Intel Macs")
                 .font(.system(size: 13, weight: .medium))
@@ -344,17 +303,17 @@ struct ModelManagementView: View {
                     Image(systemName: "arrow.right")
                         .font(.system(size: 10, weight: .bold))
                 }
-                .foregroundColor(.orange)
+                .foregroundColor(AppTheme.Status.warningStrong)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.orange.opacity(0.12))
+                .background(AppTheme.Status.warningStrong.opacity(0.12))
                 .cornerRadius(6)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Color.orange.opacity(0.08))
+        .background(AppTheme.Status.warningStrong.opacity(0.08))
         .cornerRadius(8)
     }
 

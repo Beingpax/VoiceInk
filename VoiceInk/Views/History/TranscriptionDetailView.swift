@@ -43,11 +43,11 @@ struct TranscriptionDetailView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color(NSColor.windowBackgroundColor).opacity(0.28))
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                .fill(AppTheme.Surface.materialCard)
                                 .overlay {
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(Color(NSColor.separatorColor).opacity(0.35), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                        .strokeBorder(AppTheme.Border.card, lineWidth: 1)
                                 }
                         )
                         .padding(.horizontal, 12)
@@ -71,7 +71,7 @@ private struct MessageBubble: View {
             VStack(alignment: isEnhanced ? .leading : .trailing, spacing: 4) {
                 Text(label)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.secondary.opacity(0.7))
+                    .foregroundColor(AppTheme.Text.muted)
                     .padding(.horizontal, 12)
 
                 ScrollView {
@@ -85,18 +85,18 @@ private struct MessageBubble: View {
                 .frame(maxHeight: 350)
                 .background {
                     if isEnhanced {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.primary.opacity(0.08))
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .fill(AppTheme.Surface.subtle)
                             .overlay {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                    .strokeBorder(AppTheme.Border.tint, lineWidth: 1)
                             }
                     } else {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color(NSColor.windowBackgroundColor).opacity(0.30))
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .fill(AppTheme.Surface.materialCard)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(Color(NSColor.separatorColor).opacity(0.30), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                    .strokeBorder(AppTheme.Border.subtle, lineWidth: 1)
                             )
                     }
                 }
