@@ -15,6 +15,7 @@ enum StreamingTranscriptionError: LocalizedError {
     case timeout
     case serverError(String)
     case notConnected
+    case unsupportedProvider(String)
 
     var errorDescription: String? {
         switch self {
@@ -28,6 +29,8 @@ enum StreamingTranscriptionError: LocalizedError {
             return "Streaming server error: \(message)"
         case .notConnected:
             return "Not connected to streaming transcription service"
+        case .unsupportedProvider(let provider):
+            return "Unsupported streaming provider: \(provider)"
         }
     }
 }

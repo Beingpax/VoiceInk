@@ -8,7 +8,8 @@ private final class AudioChunkSource: @unchecked Sendable {
     private let continuation: AsyncStream<Data>.Continuation
 
     init() {
-        let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .unbounded)
+        // Bound buffer to ~10 seconds of 16kHz mono Int16 audio (~640KB) to prevent unbounded growth
+        let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .bufferingNewest(320))
         self.stream = stream
         self.continuation = continuation
     }
@@ -122,7 +123,7 @@ class StreamingTranscriptionService {
         firstPartialLogged = false
         firstCommitLogged = false
 
-        let provider = createProvider(for: model)
+        let provider = try createProvider(for: model)
         self.provider = provider
 
         let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
@@ -219,16 +220,16 @@ class StreamingTranscriptionService {
 
     // MARK: - Private
 
-    private func createProvider(for model: any TranscriptionModel) -> StreamingTranscriptionProvider {
+    private func createProvider(for model: any TranscriptionModel) throws -> StreamingTranscriptionProvider {
         if model.provider == .fluidAudio {
             guard let fluidAudioService else {
-                fatalError("FluidAudioTranscriptionService required for FluidAudio streaming. Ensure it is passed to StreamingTranscriptionService.")
+                throw StreamingTranscriptionError.unsupportedProvider("FluidAudio (service not initialized)")
             }
             return FluidAudioStreamingProvider(fluidAudioService: fluidAudioService)
         }
         guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider),
               let streamingProvider = cloudProvider.makeStreamingProvider(modelContext: modelContext) else {
-            fatalError("Unsupported streaming provider: \(model.provider). Check supportsStreaming() before calling startStreaming().")
+            throw StreamingTranscriptionError.unsupportedProvider("\(model.provider)")
         }
         return streamingProvider
     }

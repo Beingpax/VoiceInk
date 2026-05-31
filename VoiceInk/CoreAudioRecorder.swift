@@ -15,6 +15,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private var audioFile: ExtAudioFileRef?
 
     private var isRecording = false
+    /// Atomic flag checked by the audio callback to bail out immediately during teardown.
+    private var isStopping = false
     private var currentDeviceID: AudioDeviceID = 0
     private var recordingURL: URL?
 
@@ -31,6 +33,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private let meterLock = NSLock()
     private var _averagePower: Float = -160.0
     private var _peakPower: Float = -160.0
+
+    // Cached UserDefaults flag to avoid real-time thread reads
+    private var cachedWhisperModeGain: Float32 = 1.0
 
     var averagePower: Float {
         meterLock.lock()
@@ -101,6 +106,10 @@ final class CoreAudioRecorder: @unchecked Sendable {
         // Step 6: Initialize and start the AudioUnit
         try startAudioUnit()
 
+        // Cache gain setting before entering real-time path (avoid UserDefaults on audio thread)
+        cachedWhisperModeGain = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled") ? 2.5 : 1.0
+
+        isStopping = false
         isRecording = true
     }
 
@@ -111,6 +120,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
             return
         }
         logger.notice("stopRecording: stopping core audio recorder")
+
+        // Signal the callback to bail out immediately
+        isStopping = true
 
         // Stop and dispose AudioUnit
         if let unit = audioUnit {
@@ -549,7 +561,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         inNumberFrames: UInt32
     ) -> OSStatus {
 
-        guard let audioUnit = audioUnit, isRecording, let renderBuf = renderBuffer else {
+        guard let audioUnit = audioUnit, isRecording, !isStopping, let renderBuf = renderBuffer else {
             return noErr
         }
 
@@ -648,8 +660,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
               outputFrameCount <= conversionBufferSize else { return }
 
         // Convert Float32 multi-channel → Int16 mono (with sample rate conversion if needed)
-        let isWhisperModeEnabled = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled")
-        let gainMultiplier: Float32 = isWhisperModeEnabled ? 2.5 : 1.0
+        let gainMultiplier: Float32 = cachedWhisperModeGain
 
         if inputSampleRate == outputSampleRate {
             // Direct conversion, just format change and channel mixing

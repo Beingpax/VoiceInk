@@ -173,6 +173,11 @@ class TranscriptionPipeline {
         } catch {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
 
+            // Cancel any active streaming session to clean up resources
+            if let session {
+                await session.cancel()
+            }
+
             if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError,
                case .assetDownloadRequired = nativeAppleError {
                 await MainActor.run {
@@ -279,30 +284,45 @@ class TranscriptionPipeline {
         saveTranscriptionAndPostCompletion()
     }
 
+    // Pre-compiled regexes for smart spacing (avoids recompilation per transcription)
+    private static let spacingBeforeRegexes: [(NSRegularExpression, String)] = {
+        let punctuations = [".", ",", "?", "!", ":", ";"]
+        return punctuations.compactMap { p in
+            let escaped = NSRegularExpression.escapedPattern(for: p)
+            guard let regex = try? NSRegularExpression(pattern: "\\s+\(escaped)", options: []) else { return nil }
+            return (regex, p)
+        }
+    }()
+
+    private static let spacingAfterRegexes: [(NSRegularExpression, String)] = {
+        let punctuations = [".", ",", "?", "!", ":", ";"]
+        return punctuations.compactMap { p in
+            let escaped = NSRegularExpression.escapedPattern(for: p)
+            guard let regex = try? NSRegularExpression(pattern: "\(escaped)(?=[^\\s])", options: []) else { return nil }
+            return (regex, "\(p) ")
+        }
+    }()
+
+    private static let spacingMultiSpaceRegex = try! NSRegularExpression(pattern: "\\s+", options: [])
+
     static func applySmartSpacingAndCapitalization(_ input: String) -> String {
         guard !input.isEmpty else { return input }
-        
+
         var text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // Remove spaces before punctuation: . , ? ! : ;
-        let punctuations = [".", ",", "?", "!", ":", ";"]
-        for p in punctuations {
-            let escapedP = NSRegularExpression.escapedPattern(for: p)
-            let regex = try? NSRegularExpression(pattern: "\\s+\(escapedP)", options: [])
-            text = regex?.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: p) ?? text
+
+        // Remove spaces before punctuation
+        for (regex, replacement) in spacingBeforeRegexes {
+            text = regex.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: replacement)
         }
-        
-        // Ensure a single space after punctuation if followed by any character that is not a whitespace
-        for p in punctuations {
-            let escapedP = NSRegularExpression.escapedPattern(for: p)
-            let regex = try? NSRegularExpression(pattern: "\(escapedP)(?=[^\\s])", options: [])
-            text = regex?.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: "\(p) ") ?? text
+
+        // Ensure single space after punctuation
+        for (regex, replacement) in spacingAfterRegexes {
+            text = regex.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: replacement)
         }
-        
-        // Replace multiple consecutive spaces with a single space
-        let multiSpaceRegex = try? NSRegularExpression(pattern: "\\s+", options: [])
-        text = multiSpaceRegex?.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: " ") ?? text
-        
+
+        // Collapse multiple spaces
+        text = spacingMultiSpaceRegex.stringByReplacingMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count), withTemplate: " ")
+
         // Capitalize the first letter of each sentence
         var chars = Array(text)
         var capitalizeNext = true
@@ -323,7 +343,7 @@ class TranscriptionPipeline {
             }
         }
         text = String(chars)
-        
+
         return text
     }
 }

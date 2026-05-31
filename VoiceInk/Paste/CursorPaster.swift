@@ -19,7 +19,7 @@ class CursorPaster {
 
     private static let prePasteDelay: TimeInterval = 0.10
     private static let pasteShortcutEventDelay: TimeInterval = 0.01
-    private static let minimumClipboardRestoreDelay: TimeInterval = 0.25
+    private static let minimumClipboardRestoreDelay: TimeInterval = 0.15
 
     static func pasteAtCursor(_ text: String) {
         Task {
@@ -67,11 +67,11 @@ class CursorPaster {
             if let bundleID = route.bundleIdentifier,
                let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first {
                 app.activate(options: [.activateIgnoringOtherApps])
-                await wait(0.20) // Wait for app activation transition
+                await wait(0.12)
             } else if let appName = route.appName {
                 if let app = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName?.localizedCaseInsensitiveContains(appName) == true }) {
                     app.activate(options: [.activateIgnoringOtherApps])
-                    await wait(0.20)
+                    await wait(0.12)
                 }
             }
         }

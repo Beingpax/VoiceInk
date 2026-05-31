@@ -24,6 +24,8 @@ struct TranscriptionHistoryView: View {
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
+    @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var loadError: String?
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -146,6 +148,35 @@ struct TranscriptionHistoryView: View {
             }
         }
         .animation(.smooth(duration: 0.3), value: isAnalysisPanelPresented)
+        .overlay(alignment: .top) {
+            if let loadError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.yellow)
+                    Text(loadError)
+                        .font(.callout)
+                    Spacer()
+                    Button("Retry") {
+                        self.loadError = nil
+                        Task { await loadInitialContent() }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    Button {
+                        self.loadError = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(10)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal)
+                .padding(.top, 4)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: loadError != nil)
         .onAppear {
             isViewCurrentlyVisible = true
             Task {
@@ -154,9 +185,14 @@ struct TranscriptionHistoryView: View {
         }
         .onDisappear {
             isViewCurrentlyVisible = false
+            searchDebounceTask?.cancel()
+            searchDebounceTask = nil
         }
         .onChange(of: searchText) { _, _ in
-            Task {
+            searchDebounceTask?.cancel()
+            searchDebounceTask = Task {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
                 await resetPagination()
                 await loadInitialContent()
             }
@@ -381,6 +417,7 @@ struct TranscriptionHistoryView: View {
     @MainActor
     private func loadInitialContent() async {
         isLoading = true
+        loadError = nil
         defer { isLoading = false }
 
         do {
@@ -390,7 +427,7 @@ struct TranscriptionHistoryView: View {
             lastTimestamp = items.last?.timestamp
             hasMoreContent = items.count == pageSize
         } catch {
-            print("Error loading transcriptions: \(error)")
+            loadError = "Failed to load transcriptions: \(error.localizedDescription)"
         }
     }
 
@@ -407,7 +444,7 @@ struct TranscriptionHistoryView: View {
             self.lastTimestamp = newItems.last?.timestamp
             hasMoreContent = newItems.count == pageSize
         } catch {
-            print("Error loading more transcriptions: \(error)")
+            loadError = "Failed to load more: \(error.localizedDescription)"
         }
     }
     
@@ -444,7 +481,7 @@ struct TranscriptionHistoryView: View {
             NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
             await loadInitialContent()
         } catch {
-            print("Error saving deletion: \(error.localizedDescription)")
+            loadError = "Failed to save changes: \(error.localizedDescription)"
             await loadInitialContent()
         }
     }
@@ -493,7 +530,7 @@ struct TranscriptionHistoryView: View {
                 }
             }
         } catch {
-            print("Error selecting all transcriptions: \(error)")
+            loadError = "Failed to select all: \(error.localizedDescription)"
         }
     }
 }

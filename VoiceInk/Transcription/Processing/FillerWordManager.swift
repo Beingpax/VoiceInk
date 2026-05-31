@@ -14,8 +14,12 @@ class FillerWordManager: ObservableObject {
     @Published var fillerWords: [String] {
         didSet {
             UserDefaults.standard.set(fillerWords, forKey: fillerWordsKey)
+            recompileRegexes()
         }
     }
+
+    /// Pre-compiled regexes for filler word removal (avoids recompilation per transcription)
+    private(set) var compiledFillerRegexes: [NSRegularExpression] = []
 
     var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: removeFillerWordsKey)
@@ -26,6 +30,14 @@ class FillerWordManager: ObservableObject {
             self.fillerWords = saved
         } else {
             self.fillerWords = Self.defaultFillerWords
+        }
+        recompileRegexes()
+    }
+
+    private func recompileRegexes() {
+        compiledFillerRegexes = fillerWords.compactMap { word in
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: word))\\b[,.]?"
+            return try? NSRegularExpression(pattern: pattern, options: .caseInsensitive)
         }
     }
 

@@ -5,6 +5,10 @@ import AppKit
 class WordReplacementService {
     static let shared = WordReplacementService()
 
+    /// Cache of compiled regexes keyed by original text to avoid recompilation per transcription
+    private var regexCache: [String: NSRegularExpression] = [:]
+    private let cacheLock = NSLock()
+
     private init() {}
 
     private func resolvePlaceholders(in text: String) -> String {
@@ -26,13 +30,33 @@ class WordReplacementService {
         return resolved
     }
 
+    private func cachedRegex(for pattern: String) -> NSRegularExpression? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        if let cached = regexCache[pattern] {
+            return cached
+        }
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+            return nil
+        }
+        regexCache[pattern] = regex
+        return regex
+    }
+
+    /// Clear the regex cache (call when word replacements are modified)
+    func invalidateCache() {
+        cacheLock.lock()
+        regexCache.removeAll()
+        cacheLock.unlock()
+    }
+
     func applyReplacements(to text: String, using context: ModelContext) -> String {
         let descriptor = FetchDescriptor<WordReplacement>(
             predicate: #Predicate { $0.isEnabled }
         )
 
         guard let replacements = try? context.fetch(descriptor), !replacements.isEmpty else {
-            return text // No replacements to apply
+            return text
         }
 
         var modifiedText = text
@@ -42,11 +66,9 @@ class WordReplacementService {
             $0.originalText.count > $1.originalText.count
         }
 
-        // Apply replacements (case-insensitive)
         for replacement in sortedReplacements {
             let originalGroup = replacement.originalText
             let replacementText = resolvePlaceholders(in: replacement.replacementText)
-
 
             let variants = originalGroup
                 .split(separator: ",")
@@ -58,10 +80,9 @@ class WordReplacementService {
                 let usesBoundaries = usesWordBoundaries(for: original)
 
                 if usesBoundaries {
-                    // Lookarounds instead of \b so punctuation acts as a word boundary
                     let escaped = NSRegularExpression.escapedPattern(for: original)
-                    let pattern = "(?<![a-zA-Z0-9])\(escaped)(?![a-zA-Z0-9])"
-                    if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                    let pattern = "(?<![\\p{L}\\p{N}])\(escaped)(?![\\p{L}\\p{N}])"
+                    if let regex = cachedRegex(for: pattern) {
                         let range = NSRange(modifiedText.startIndex..., in: modifiedText)
                         modifiedText = regex.stringByReplacingMatches(
                             in: modifiedText,
@@ -71,7 +92,6 @@ class WordReplacementService {
                         )
                     }
                 } else {
-                    // Fallback substring replace for non-spaced scripts
                     modifiedText = modifiedText.replacingOccurrences(of: original, with: replacementText, options: .caseInsensitive)
                 }
             }
@@ -81,7 +101,6 @@ class WordReplacementService {
     }
 
     private func usesWordBoundaries(for text: String) -> Bool {
-        // Returns false for languages without spaces (CJK, Thai), true for spaced languages
         let nonSpacedScripts: [ClosedRange<UInt32>] = [
             0x3040...0x309F, // Hiragana
             0x30A0...0x30FF, // Katakana
