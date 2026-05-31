@@ -59,7 +59,4 @@ class MiniRecorderPanel: NSPanel {
         orderFrontRegardless()
     }
     
-    func hide(completion: @escaping () -> Void) {
-        completion()
-    }
 } 

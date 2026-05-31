@@ -79,7 +79,7 @@ enum ShortcutValidator {
     }
 
     private static func reservedActionConflicting(with shortcut: Shortcut) -> ShortcutAction? {
-        for (action, reservedShortcut) in reservedMiniRecorderShortcuts {
+        for (action, reservedShortcut) in reservedRecorderPanelShortcuts {
             if reservedShortcut.conflicts(with: shortcut) {
                 return action
             }
@@ -93,10 +93,10 @@ enum ShortcutValidator {
             ModeManager.shared.configurations.map { ShortcutAction.mode($0.id) }
     }
 
-    private static var reservedMiniRecorderShortcuts: [(ShortcutAction, Shortcut)] {
+    private static var reservedRecorderPanelShortcuts: [(ShortcutAction, Shortcut)] {
         digitKeyCodes.enumerated().map { index, keyCode in
             (
-                ShortcutAction.miniRecorderMode(index),
+                ShortcutAction.recorderPanelMode(index),
                 Shortcut.key(keyCode: keyCode, modifierFlags: [.option])
             )
         }

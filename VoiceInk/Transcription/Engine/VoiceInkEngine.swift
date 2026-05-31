@@ -23,7 +23,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     // Injected managers
     let whisperModelManager: WhisperModelManager
     let transcriptionModelManager: TranscriptionModelManager
-    weak var recorderUIManager: RecorderUIManager?
+    weak var recorderUIManager: RecorderPanelPresenting?
 
     let modelContext: ModelContext
     internal let serviceRegistry: TranscriptionServiceRegistry
@@ -150,7 +150,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
                             guard self.activeRecordingStartID == startID,
-                                  self.recorderUIManager?.isMiniRecorderVisible ?? false,
+                                  self.recorderUIManager?.isRecorderPanelVisible ?? false,
                                   !self.shouldCancelRecording else {
                                 activeModeTask.cancel()
                                 let shouldKeepRecordingFile = self.shouldCancelRecording
@@ -186,7 +186,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.recordingState = .idle
                                 self.activeRecordingStartID = nil
                                 await self.cleanupResources()
-                                await self.recorderUIManager?.dismissMiniRecorder()
+                                await self.recorderUIManager?.dismissRecorderPanel()
                                 return
                             }
 
@@ -257,8 +257,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             self.activeRecordingStartID = nil
                             await self.cleanupResources()
                             NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
-                            self.logger.notice("toggleRecord: calling dismissMiniRecorder from error handler")
-                            await self.recorderUIManager?.dismissMiniRecorder()
+                            self.logger.notice("toggleRecord: calling dismissRecorderPanel from error handler")
+                            await self.recorderUIManager?.dismissRecorderPanel()
                         }
                     }
                 } else {
@@ -322,7 +322,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             },
             onDismiss: { [weak self] in
                 guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
-                await self.recorderUIManager?.dismissMiniRecorder()
+                await self.recorderUIManager?.dismissRecorderPanel()
             }
         )
 

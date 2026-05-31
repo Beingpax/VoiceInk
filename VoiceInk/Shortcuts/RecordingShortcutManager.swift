@@ -44,7 +44,7 @@ class RecordingShortcutManager: ObservableObject {
     
     private var engine: VoiceInkEngine
     private var recorderUIManager: RecorderUIManager
-    private var miniRecorderShortcutManager: MiniRecorderShortcutManager
+    private var recorderPanelShortcutManager: RecorderPanelShortcutManager
     private let modeShortcutManager: ModeShortcutManager
     private let shortcutMonitor = ShortcutMonitor()
     private var shortcutChangeObserver: NSObjectProtocol?
@@ -122,13 +122,13 @@ class RecordingShortcutManager: ObservableObject {
                 Self.canHandleShortcutAction(for: engine.recordingState)
             },
             isRecorderVisible: {
-                recorderUIManager.isMiniRecorderVisible
+                recorderUIManager.isRecorderPanelVisible
             },
             recordingState: {
                 engine.recordingState
             },
-            toggleMiniRecorder: { modeId in
-                await recorderUIManager.toggleMiniRecorder(modeId: modeId)
+            toggleRecorderPanel: { modeId in
+                await recorderUIManager.toggleRecorderPanel(modeId: modeId)
             },
             cancelRecording: {
                 await recorderUIManager.cancelRecording()
@@ -141,7 +141,7 @@ class RecordingShortcutManager: ObservableObject {
 
         self.engine = engine
         self.recorderUIManager = recorderUIManager
-        self.miniRecorderShortcutManager = MiniRecorderShortcutManager(recorderUIManager: recorderUIManager)
+        self.recorderPanelShortcutManager = RecorderPanelShortcutManager(recorderUIManager: recorderUIManager)
         self.shortcutModeHandler = shortcutModeHandler
         self.primaryRecordingShortcutModeSource = primaryRecordingShortcutModeSource
         self.modeShortcutManager = ModeShortcutManager(
@@ -191,7 +191,7 @@ class RecordingShortcutManager: ObservableObject {
                     
                     Task { @MainActor in
                         guard self.canHandleShortcutAction else { return }
-                        await self.recorderUIManager.toggleMiniRecorder()
+                        await self.recorderUIManager.toggleRecorderPanel()
                     }
                 } catch {
                     // Cancelled
@@ -348,7 +348,7 @@ final class RecordingShortcutModeHandler {
     private let canHandleShortcutAction: @MainActor () -> Bool
     private let isRecorderVisible: @MainActor () -> Bool
     private let recordingState: @MainActor () -> RecordingState
-    private let toggleMiniRecorder: @MainActor (UUID?) async -> Void
+    private let toggleRecorderPanel: @MainActor (UUID?) async -> Void
     private let cancelRecording: @MainActor () async -> Void
 
     private var shortcutPressStartTime: TimeInterval?
@@ -367,14 +367,14 @@ final class RecordingShortcutModeHandler {
         canHandleShortcutAction: @escaping @MainActor () -> Bool,
         isRecorderVisible: @escaping @MainActor () -> Bool,
         recordingState: @escaping @MainActor () -> RecordingState,
-        toggleMiniRecorder: @escaping @MainActor (UUID?) async -> Void,
+        toggleRecorderPanel: @escaping @MainActor (UUID?) async -> Void,
         cancelRecording: @escaping @MainActor () async -> Void
     ) {
         self.logger = logger
         self.canHandleShortcutAction = canHandleShortcutAction
         self.isRecorderVisible = isRecorderVisible
         self.recordingState = recordingState
-        self.toggleMiniRecorder = toggleMiniRecorder
+        self.toggleRecorderPanel = toggleRecorderPanel
         self.cancelRecording = cancelRecording
     }
 
@@ -414,22 +414,22 @@ final class RecordingShortcutModeHandler {
             if isHandsFreeRecording {
                 isHandsFreeRecording = false
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyDown: toggling mini recorder (hands-free toggle)")
-                await toggleMiniRecorder(modeId)
+                logger.notice("handleShortcutKeyDown: toggling recorder panel (hands-free toggle)")
+                await toggleRecorderPanel(modeId)
                 return
             }
 
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyDown: toggling mini recorder (key down while not visible)")
-                await toggleMiniRecorder(modeId)
+                logger.notice("handleShortcutKeyDown: toggling recorder panel (key down while not visible)")
+                await toggleRecorderPanel(modeId)
             }
 
         case .pushToTalk:
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
                 logger.notice("handleShortcutKeyDown: starting recording (push-to-talk key down)")
-                await toggleMiniRecorder(modeId)
+                await toggleRecorderPanel(modeId)
             }
         }
     }
@@ -453,7 +453,7 @@ final class RecordingShortcutModeHandler {
             if isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
                 logger.notice("handleShortcutKeyUp: stopping recording (push-to-talk key up)")
-                await toggleMiniRecorder(modeId)
+                await toggleRecorderPanel(modeId)
             }
 
         case .hybrid:
@@ -461,7 +461,7 @@ final class RecordingShortcutModeHandler {
             if pressDuration >= hybridPressThreshold && recordingState() == .recording {
                 guard canHandleShortcutAction() else { return }
                 logger.notice("handleShortcutKeyUp: stopping recording (hybrid push-to-talk, duration=\(pressDuration, privacy: .public)s)")
-                await toggleMiniRecorder(modeId)
+                await toggleRecorderPanel(modeId)
             } else {
                 isHandsFreeRecording = true
             }

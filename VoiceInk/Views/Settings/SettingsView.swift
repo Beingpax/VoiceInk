@@ -179,9 +179,10 @@ struct SettingsView: View {
             }
 
             Section("Interface") {
-                Picker("Recorder Style", selection: $recorderUIManager.recorderType) {
-                    Text("Notch").tag("notch")
-                    Text("Mini").tag("mini")
+                Picker("Recorder Style", selection: $recorderUIManager.recorderPanelStyle) {
+                    ForEach(RecorderPanelStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
                 }
                 .pickerStyle(.segmented)
 

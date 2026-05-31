@@ -4,7 +4,6 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
     let onRecordButtonTapped: () -> Void
-    @EnvironmentObject var windowManager: NotchWindowManager
 
     // MARK: - Display State
 
@@ -90,12 +89,10 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     // MARK: - Body
 
     var body: some View {
-        if windowManager.isVisible {
-            GeometryReader { geo in
-                pill.position(x: geo.size.width / 2, y: pillHeight / 2)
-            }
-            .animation(pillAnimation, value: displayState)
+        GeometryReader { geo in
+            pill.position(x: geo.size.width / 2, y: pillHeight / 2)
         }
+        .animation(pillAnimation, value: displayState)
     }
 
     // MARK: - Pill

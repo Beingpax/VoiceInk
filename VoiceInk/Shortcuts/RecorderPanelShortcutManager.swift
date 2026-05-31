@@ -3,7 +3,7 @@ import AppKit
 import Carbon.HIToolbox
 
 @MainActor
-class MiniRecorderShortcutManager: ObservableObject {
+final class RecorderPanelShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
@@ -41,7 +41,7 @@ class MiniRecorderShortcutManager: ObservableObject {
 
     private func setupVisibilityObserver() {
         visibilityTask = Task { @MainActor in
-            for await isVisible in recorderUIManager.$isMiniRecorderVisible.values {
+            for await isVisible in recorderUIManager.$isRecorderPanelVisible.values {
                 if isVisible {
                     refreshVisibleShortcuts()
                 } else {
@@ -63,21 +63,21 @@ class MiniRecorderShortcutManager: ObservableObject {
     }
     
     private func refreshVisibleShortcuts() {
-        guard recorderUIManager.isMiniRecorderVisible else {
+        guard recorderUIManager.isRecorderPanelVisible else {
             visibleRecorderMonitor.stop()
             resetEscapeState()
             return
         }
 
-        var shortcuts = ShortcutStore.shortcuts(for: ShortcutAction.miniRecorderStoredActions)
+        var shortcuts = ShortcutStore.shortcuts(for: ShortcutAction.recorderPanelStoredActions)
 
         if ShortcutStore.shortcut(for: .cancelRecorder) == nil {
-            shortcuts[.miniRecorderEscape] = .key(keyCode: UInt16(kVK_Escape), modifierFlags: [])
+            shortcuts[.recorderPanelEscape] = .key(keyCode: UInt16(kVK_Escape), modifierFlags: [])
         }
 
         if canUseModeShortcuts {
             for (index, keyCode) in Self.digitKeyCodes.enumerated() {
-                shortcuts[.miniRecorderMode(index)] = .key(
+                shortcuts[.recorderPanelMode(index)] = .key(
                     keyCode: keyCode,
                     modifierFlags: [.option]
                 )
@@ -88,23 +88,23 @@ class MiniRecorderShortcutManager: ObservableObject {
             shortcuts: shortcuts,
             onKeyDown: { [weak self] action, _ in
                 Task { @MainActor in
-                    await self?.handleMiniRecorderShortcut(action)
+                    await self?.handleRecorderPanelShortcut(action)
                 }
             },
             onKeyUp: { _, _ in }
         )
     }
 
-    private func handleMiniRecorderShortcut(_ action: ShortcutAction) async {
-        guard recorderUIManager.isMiniRecorderVisible else { return }
+    private func handleRecorderPanelShortcut(_ action: ShortcutAction) async {
+        guard recorderUIManager.isRecorderPanelVisible else { return }
 
         switch action {
         case .cancelRecorder:
             guard ShortcutStore.shortcut(for: .cancelRecorder) != nil else { return }
             await recorderUIManager.cancelRecording()
-        case .miniRecorderEscape:
+        case .recorderPanelEscape:
             await handleEscapeShortcut()
-        case .miniRecorderMode(let index):
+        case .recorderPanelMode(let index):
             handleModeSelectionShortcut(index: index)
         default:
             break

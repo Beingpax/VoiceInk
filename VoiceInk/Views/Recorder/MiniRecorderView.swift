@@ -4,7 +4,6 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
     let onRecordButtonTapped: () -> Void
-    @EnvironmentObject var windowManager: MiniWindowManager
 
     // MARK: - Layout Constants
 
@@ -56,16 +55,14 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     var body: some View {
-        if windowManager.isVisible {
-            VStack(spacing: 0) {
-                transcriptSection
-                controlBar
-            }
-            .frame(width: hasLiveTranscript ? expandedWidth : compactWidth)
-            .background(Color.black)
-            .clipShape(RoundedRectangle(cornerRadius: hasLiveTranscript ? expandedCornerRadius : compactCornerRadius, style: .continuous))
-            .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        VStack(spacing: 0) {
+            transcriptSection
+            controlBar
         }
+        .frame(width: hasLiveTranscript ? expandedWidth : compactWidth)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: hasLiveTranscript ? expandedCornerRadius : compactCornerRadius, style: .continuous))
+        .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }

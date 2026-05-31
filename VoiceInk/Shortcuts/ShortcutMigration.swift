@@ -285,7 +285,7 @@ enum ShortcutMigration {
             return ["quickAddToDictionary"]
         case .mode(let id):
             return ["mode_\(id.uuidString)", "powerMode_\(id.uuidString)"]
-        case .miniRecorderEscape, .miniRecorderMode:
+        case .recorderPanelEscape, .recorderPanelMode:
             return []
         }
     }

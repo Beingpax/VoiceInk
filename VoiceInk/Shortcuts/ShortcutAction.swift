@@ -10,8 +10,8 @@ enum ShortcutAction: Hashable {
     case openHistoryWindow
     case quickAddToDictionary
     case mode(UUID)
-    case miniRecorderEscape
-    case miniRecorderMode(Int)
+    case recorderPanelEscape
+    case recorderPanelMode(Int)
 
     var userDefaultsKey: String {
         "Shortcut_\(storageName)"
@@ -19,7 +19,7 @@ enum ShortcutAction: Hashable {
 
     var isStored: Bool {
         switch self {
-        case .miniRecorderEscape, .miniRecorderMode:
+        case .recorderPanelEscape, .recorderPanelMode:
             return false
         default:
             return true
@@ -46,10 +46,10 @@ enum ShortcutAction: Hashable {
             return "quickAddToDictionary"
         case .mode(let id):
             return "mode_\(id.uuidString)"
-        case .miniRecorderEscape:
-            return "miniRecorderEscape"
-        case .miniRecorderMode(let index):
-            return "miniRecorderMode_\(index)"
+        case .recorderPanelEscape:
+            return "recorderPanelEscape"
+        case .recorderPanelMode(let index):
+            return "recorderPanelMode_\(index)"
         }
     }
 
@@ -77,10 +77,10 @@ enum ShortcutAction: Hashable {
             }
 
             return "Mode"
-        case .miniRecorderEscape:
-            return "Mini Recorder Cancel"
-        case .miniRecorderMode(let index):
-            return "Select Mode \(Self.displayNumber(forMiniRecorderIndex: index))"
+        case .recorderPanelEscape:
+            return "Recorder Cancel"
+        case .recorderPanelMode(let index):
+            return "Select Mode \(Self.displayNumber(forRecorderPanelIndex: index))"
         }
     }
 
@@ -92,7 +92,7 @@ enum ShortcutAction: Hashable {
         .quickAddToDictionary
     ]
 
-    static let miniRecorderStoredActions: [Self] = [
+    static let recorderPanelStoredActions: [Self] = [
         .cancelRecorder
     ]
 
@@ -107,7 +107,7 @@ enum ShortcutAction: Hashable {
         .quickAddToDictionary
     ]
 
-    private static func displayNumber(forMiniRecorderIndex index: Int) -> String {
+    private static func displayNumber(forRecorderPanelIndex index: Int) -> String {
         index == 9 ? "10" : "\(index + 1)"
     }
 }

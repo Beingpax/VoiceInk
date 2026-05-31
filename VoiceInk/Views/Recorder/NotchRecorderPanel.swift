@@ -78,10 +78,6 @@ class NotchRecorderPanel: KeyablePanel {
         orderFrontRegardless()
     }
 
-    func hide(completion: @escaping () -> Void) {
-        completion()
-    }
-
     @objc private func handleScreenParametersChange() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self else { return }
