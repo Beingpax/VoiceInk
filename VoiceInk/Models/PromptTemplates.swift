@@ -18,10 +18,9 @@ struct TemplatePrompt: Identifiable {
 
 enum PromptTemplates {
     static let defaultPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
-    static let assistantPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
-    static let chatPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
-    static let emailPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
-    static let rewritePromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000005")!
+    static let chatPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+    static let emailPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+    static let rewritePromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
 
     static var all: [TemplatePrompt] {
         createTemplatePrompts()
@@ -51,12 +50,6 @@ enum PromptTemplates {
                     - Don't add any information not available in the <TRANSCRIPT> text ever.
                     """,
                 useSystemInstructions: true
-            ),
-            TemplatePrompt(
-                id: assistantPromptId,
-                title: "Assistant",
-                promptText: AIPrompts.assistantMode,
-                useSystemInstructions: false
             ),
             TemplatePrompt(
                 id: chatPromptId,

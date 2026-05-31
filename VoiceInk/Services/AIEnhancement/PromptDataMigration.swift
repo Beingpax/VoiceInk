@@ -36,8 +36,7 @@ enum PromptDataMigration {
             return false
         }
 
-        let requiresStableID = seedPrompt.id == PromptTemplates.defaultPromptId ||
-            seedPrompt.id == PromptTemplates.assistantPromptId
+        let requiresStableID = seedPrompt.id == PromptTemplates.defaultPromptId
 
         if requiresStableID {
             return true
