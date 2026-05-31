@@ -63,6 +63,6 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
     }
 
     private func shouldWarmup(modelName: String) -> Bool {
-        !modelName.contains("q5") && !modelName.contains("q8")
+        true // CoreML encoder available for all models (#550)
     }
 }

@@ -23,14 +23,21 @@ struct WhisperModelFile: Identifiable {
 
     // Core ML related properties
     var coreMLZipDownloadURL: String? {
-        // Only non-quantized models have Core ML versions
-        guard !name.contains("q5") && !name.contains("q8") else { return nil }
-        return "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(name)-encoder.mlmodelc.zip"
+        // CoreML encoder works for both quantized and non-quantized models.
+        // whisper.cpp strips quantization suffixes (e.g. -q5_0) when resolving
+        // the encoder path, so ggml-large-v3-turbo-q5_0.bin will auto-load
+        // ggml-large-v3-turbo-encoder.mlmodelc if present. (#550)
+        let baseName = name
+            .replacingOccurrences(of: "-q5_0", with: "")
+            .replacingOccurrences(of: "-q8_0", with: "")
+        return "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(baseName)-encoder.mlmodelc.zip"
     }
 
     var coreMLEncoderDirectoryName: String? {
-        guard coreMLZipDownloadURL != nil else { return nil }
-        return "\(name)-encoder.mlmodelc"
+        let baseName = name
+            .replacingOccurrences(of: "-q5_0", with: "")
+            .replacingOccurrences(of: "-q8_0", with: "")
+        return "\(baseName)-encoder.mlmodelc"
     }
 }
 
@@ -284,7 +291,7 @@ class WhisperModelManager: ObservableObject {
     }
 
     private func shouldWarmup(_ model: WhisperModel) -> Bool {
-        !model.name.contains("q5") && !model.name.contains("q8")
+        true // CoreML encoder available for all models including quantized (#550)
     }
 
     private func handleModelDownloadError(_ model: WhisperModel, _ error: Error) {
@@ -415,7 +422,7 @@ struct DownloadProgressView: View {
     }
 
     private var supportsCoreML: Bool {
-        !modelName.contains("q5") && !modelName.contains("q8")
+        true // CoreML encoder shared across quantized/non-quantized variants (#550)
     }
 
     private var totalProgress: Double {
