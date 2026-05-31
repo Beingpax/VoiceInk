@@ -48,6 +48,7 @@ class RecordingShortcutManager: ObservableObject {
     private let powerModeShortcutManager: PowerModeShortcutManager
     private let shortcutMonitor = ShortcutMonitor()
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var appDidBecomeActiveObserver: NSObjectProtocol?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
 
@@ -153,6 +154,16 @@ class RecordingShortcutManager: ObservableObject {
 
         shortcutChangeObserver = NotificationCenter.default.addObserver(
             forName: ShortcutStore.shortcutDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshShortcutMonitoring()
+            }
+        }
+
+        appDidBecomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -325,6 +336,9 @@ class RecordingShortcutManager: ObservableObject {
     deinit {
         if let shortcutChangeObserver {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
+        }
+        if let appDidBecomeActiveObserver {
+            NotificationCenter.default.removeObserver(appDidBecomeActiveObserver)
         }
 
         MainActor.assumeIsolated {

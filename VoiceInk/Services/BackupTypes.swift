@@ -84,6 +84,7 @@ struct GeneralBackup: Codable {
     let middleClickActivationDelay: Int?
     let launchAtLoginEnabled: Bool?
     let isMenuBarOnly: Bool?
+    let showMenuBarIcon: Bool?
     let recorderType: String?
     let isTranscriptionCleanupEnabled: Bool?
     let transcriptionRetentionMinutes: Int?

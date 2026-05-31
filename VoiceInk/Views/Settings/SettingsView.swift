@@ -21,6 +21,7 @@ struct SettingsView: View {
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
+    @AppStorage("ShowMenuBarIcon") private var showMenuBarIcon = true
     @State private var showResetOnboardingAlert = false
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
     @State private var cancelRecordingShortcutRecorderResetID = 0
@@ -233,7 +234,15 @@ struct SettingsView: View {
 
             // MARK: - General
             Section("General") {
+                Toggle("Show Menu Bar Icon", isOn: $showMenuBarIcon)
+                    .onChange(of: showMenuBarIcon) { _, newValue in
+                        if !newValue {
+                            menuBarManager.isMenuBarOnly = false
+                        }
+                    }
+
                 Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
+                    .disabled(!showMenuBarIcon)
 
                 LaunchAtLogin.Toggle("Launch at Login")
 

@@ -7,11 +7,53 @@
 
 import Testing
 @testable import VoiceInk
+import AppKit
+import Carbon.HIToolbox
+import Foundation
 
 struct VoiceInkTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func generalBackupDecodesWithoutMenuBarIconPreference() throws {
+        let data = Data("""
+        {
+          "launchAtLoginEnabled": true,
+          "isMenuBarOnly": true
+        }
+        """.utf8)
+
+        let backup = try JSONDecoder().decode(GeneralBackup.self, from: data)
+
+        #expect(backup.launchAtLoginEnabled == true)
+        #expect(backup.isMenuBarOnly == true)
+        #expect(backup.showMenuBarIcon == nil)
+    }
+
+    @Test func generalBackupDecodesMenuBarIconPreference() throws {
+        let data = Data("""
+        {
+          "showMenuBarIcon": false
+        }
+        """.utf8)
+
+        let backup = try JSONDecoder().decode(GeneralBackup.self, from: data)
+
+        #expect(backup.showMenuBarIcon == false)
+    }
+
+    @Test func functionModifierShortcutMatchesFnFlagsChangedEvent() throws {
+        let shortcut = Shortcut.modifierOnly(
+            keyCode: UInt16(kVK_Function),
+            modifierFlags: [.function]
+        )
+
+        #expect(shortcut.matchesModifierEvent(
+            keyCode: UInt16(kVK_Function),
+            modifierFlags: [.function]
+        ))
+        #expect(shortcut.shouldReleaseModifierEvent(
+            keyCode: UInt16(kVK_Function),
+            modifierFlags: []
+        ))
     }
 
 }
