@@ -80,6 +80,7 @@ struct MetricsContent: View {
     @State private var metricsTask: Task<Void, Never>?
     @State private var isModelStatsPanelPresented = false
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
+    @State private var isInputMonitoringEnabled = ShortcutMonitor.hasListenEventAccess()
 
     init(modelContext: ModelContext, licenseState: LicenseViewModel.LicenseState) {
         self.modelContext = modelContext
@@ -100,6 +101,10 @@ struct MetricsContent: View {
                 GeometryReader { geometry in
                     ScrollView {
                         VStack(spacing: 24) {
+                            if !isInputMonitoringEnabled {
+                                inputMonitoringPermissionCallout
+                            }
+
                             if !isAccessibilityEnabled {
                                 accessibilityPermissionCallout
                             }
@@ -170,6 +175,19 @@ struct MetricsContent: View {
         .animation(.smooth(duration: 0.3), value: isModelStatsPanelPresented)
     }
 
+    private var inputMonitoringPermissionCallout: some View {
+        PermissionCard(
+            icon: "keyboard",
+            title: "Input Monitoring Access",
+            description: "VoiceInk needs Input Monitoring permission for global shortcuts like Fn",
+            isGranted: isInputMonitoringEnabled,
+            buttonTitle: "Open System Settings",
+            buttonAction: openInputMonitoringSettings,
+            checkPermission: refreshAccessibilityStatus,
+            infoTipMessage: "macOS separates global keyboard shortcut access from Accessibility."
+        )
+    }
+
     private var accessibilityPermissionCallout: some View {
         PermissionCard(
             icon: "hand.raised",
@@ -185,6 +203,14 @@ struct MetricsContent: View {
 
     private func refreshAccessibilityStatus() {
         isAccessibilityEnabled = AXIsProcessTrusted()
+        isInputMonitoringEnabled = ShortcutMonitor.hasListenEventAccess()
+    }
+
+    private func openInputMonitoringSettings() {
+        _ = CGRequestListenEventAccess()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func openAccessibilitySettings() {
@@ -224,6 +250,10 @@ struct MetricsContent: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 24) {
+                    if !isInputMonitoringEnabled {
+                        inputMonitoringPermissionCallout
+                    }
+
                     if !isAccessibilityEnabled {
                         accessibilityPermissionCallout
                     }

@@ -76,7 +76,7 @@ final class ShortcutMonitor {
     }
 
     private func installEventTap() -> Bool {
-        guard Self.hasListenEventAccess() else {
+        guard Self.requestListenEventAccessIfNeeded() else {
             return false
         }
 
@@ -122,7 +122,11 @@ final class ShortcutMonitor {
         return true
     }
 
-    private static func hasListenEventAccess() -> Bool {
+    static func hasListenEventAccess() -> Bool {
+        CGPreflightListenEventAccess()
+    }
+
+    private static func requestListenEventAccessIfNeeded() -> Bool {
         if CGPreflightListenEventAccess() {
             return true
         }

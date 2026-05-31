@@ -146,10 +146,11 @@ enum BackupImporter {
         if let launch = general.launchAtLoginEnabled {
             LaunchAtLogin.isEnabled = launch
         }
-        let showMenuBarIcon = general.showMenuBarIcon
-            ?? (UserDefaults.standard.object(forKey: "ShowMenuBarIcon") as? Bool ?? true)
+        let showMenuBarIcon = general.showMenuBarIcon ?? true
         if let showMenuBarIcon = general.showMenuBarIcon {
             UserDefaults.standard.set(showMenuBarIcon, forKey: "ShowMenuBarIcon")
+        } else if general.isMenuBarOnly == true {
+            UserDefaults.standard.set(true, forKey: "ShowMenuBarIcon")
         }
         if let menuOnly = general.isMenuBarOnly {
             menuBarManager.isMenuBarOnly = menuOnly && showMenuBarIcon

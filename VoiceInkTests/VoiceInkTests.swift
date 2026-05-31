@@ -7,6 +7,8 @@
 
 import Testing
 @testable import VoiceInk
+import AppKit
+import Carbon.HIToolbox
 import Foundation
 
 struct VoiceInkTests {
@@ -36,6 +38,22 @@ struct VoiceInkTests {
         let backup = try JSONDecoder().decode(GeneralBackup.self, from: data)
 
         #expect(backup.showMenuBarIcon == false)
+    }
+
+    @Test func functionModifierShortcutMatchesFnFlagsChangedEvent() throws {
+        let shortcut = Shortcut.modifierOnly(
+            keyCode: UInt16(kVK_Function),
+            modifierFlags: [.function]
+        )
+
+        #expect(shortcut.matchesModifierEvent(
+            keyCode: UInt16(kVK_Function),
+            modifierFlags: [.function]
+        ))
+        #expect(shortcut.shouldReleaseModifierEvent(
+            keyCode: UInt16(kVK_Function),
+            modifierFlags: []
+        ))
     }
 
 }
