@@ -146,8 +146,15 @@ enum BackupImporter {
         if let launch = general.launchAtLoginEnabled {
             LaunchAtLogin.isEnabled = launch
         }
+        let showMenuBarIcon = general.showMenuBarIcon
+            ?? (UserDefaults.standard.object(forKey: "ShowMenuBarIcon") as? Bool ?? true)
+        if let showMenuBarIcon = general.showMenuBarIcon {
+            UserDefaults.standard.set(showMenuBarIcon, forKey: "ShowMenuBarIcon")
+        }
         if let menuOnly = general.isMenuBarOnly {
-            menuBarManager.isMenuBarOnly = menuOnly
+            menuBarManager.isMenuBarOnly = menuOnly && showMenuBarIcon
+        } else if !showMenuBarIcon {
+            menuBarManager.isMenuBarOnly = false
         }
         if let recType = general.recorderType {
             recorderUIManager.recorderType = recType

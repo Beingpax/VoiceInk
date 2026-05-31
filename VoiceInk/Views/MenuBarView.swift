@@ -15,6 +15,7 @@ struct MenuBarView: View {
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     @State private var menuRefreshTrigger = false
     @State private var isHovered = false
+    @AppStorage("ShowMenuBarIcon") private var showMenuBarIcon = true
     
     var body: some View {
         VStack {
@@ -220,6 +221,11 @@ struct MenuBarView: View {
                 menuBarManager.toggleMenuBarOnly()
             }
             .keyboardShortcut("d", modifiers: [.command, .shift])
+
+            Button("Hide Menu Bar Icon") {
+                menuBarManager.isMenuBarOnly = false
+                showMenuBarIcon = false
+            }
             
             Toggle("Launch at Login", isOn: $launchAtLoginEnabled)
                 .onChange(of: launchAtLoginEnabled) { oldValue, newValue in
