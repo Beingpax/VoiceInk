@@ -1,5 +1,6 @@
 import Foundation
 import CoreAudio
+import AudioToolbox
 
 final class MediaController: ObservableObject {
 
@@ -18,6 +19,13 @@ final class MediaController: ObservableObject {
         didSet { UserDefaults.standard.set(audioResumptionDelay, forKey: "audioResumptionDelay") }
     }
 
+    /// 0 = full mute, 1–100 = reduce to this % during recording
+    @Published var volumeReductionLevel: Int = UserDefaults.standard.integer(forKey: "volumeReductionLevel") {
+        didSet { UserDefaults.standard.set(volumeReductionLevel, forKey: "volumeReductionLevel") }
+    }
+
+    private var savedVolume: Float?
+
     private init() {}
 
     func muteSystemAudio() async -> Bool {
@@ -26,6 +34,17 @@ final class MediaController: ObservableObject {
         unmuteTask?.cancel()
         unmuteTask = nil
         muteGeneration += 1
+
+        // Volume reduction mode
+        if volumeReductionLevel > 0 {
+            if savedVolume == nil {
+                savedVolume = getSystemVolume()
+            }
+            let targetVolume = Float(volumeReductionLevel) / 100.0
+            setSystemVolume(targetVolume)
+            didMuteAudio = true
+            return true
+        }
 
         let currentlyMuted = isSystemAudioMuted()
 
@@ -53,6 +72,7 @@ final class MediaController: ObservableObject {
         let delay = audioResumptionDelay
         let shouldUnmute = didMuteAudio && !wasAudioMutedBeforeRecording
         let myGeneration = muteGeneration
+        let volumeToRestore = savedVolume
 
         let task = Task { [weak self] in
             if delay > 0 {
@@ -64,10 +84,15 @@ final class MediaController: ObservableObject {
             guard self.muteGeneration == myGeneration else { return }
 
             if shouldUnmute {
-                _ = self.setSystemMuted(false)
+                if let vol = volumeToRestore {
+                    self.setSystemVolume(vol)
+                } else {
+                    _ = self.setSystemMuted(false)
+                }
             }
 
             self.didMuteAudio = false
+            self.savedVolume = nil
         }
 
         unmuteTask = task
@@ -139,6 +164,39 @@ final class MediaController: ObservableObject {
         if status != noErr || !isSettable.boolValue { return false }
 
         status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, propertySize, &muteValue)
+        return status == noErr
+    }
+
+    private func getSystemVolume() -> Float? {
+        guard let deviceID = getDefaultOutputDevice() else { return nil }
+
+        var volume: Float32 = 0
+        var propertySize = UInt32(MemoryLayout<Float32>.size)
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, &volume)
+        return status == noErr ? volume : nil
+    }
+
+    @discardableResult
+    private func setSystemVolume(_ volume: Float) -> Bool {
+        guard let deviceID = getDefaultOutputDevice() else { return false }
+
+        var vol = volume
+        let propertySize = UInt32(MemoryLayout<Float32>.size)
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+            mScope: kAudioDevicePropertyScopeOutput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+
+        let status = AudioObjectSetPropertyData(deviceID, &address, 0, nil, propertySize, &vol)
         return status == noErr
     }
 }
