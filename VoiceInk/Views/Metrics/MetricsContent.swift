@@ -101,13 +101,7 @@ struct MetricsContent: View {
                 GeometryReader { geometry in
                     ScrollView {
                         VStack(spacing: 24) {
-                            if !isInputMonitoringEnabled {
-                                inputMonitoringPermissionCallout
-                            }
-
-                            if !isAccessibilityEnabled {
-                                accessibilityPermissionCallout
-                            }
+                            permissionCallouts
 
                             heroSection
                             metricsSection
@@ -173,6 +167,17 @@ struct MetricsContent: View {
             }
         }
         .animation(.smooth(duration: 0.3), value: isModelStatsPanelPresented)
+    }
+
+    @ViewBuilder
+    private var permissionCallouts: some View {
+        if !isInputMonitoringEnabled {
+            inputMonitoringPermissionCallout
+        }
+
+        if !isAccessibilityEnabled {
+            accessibilityPermissionCallout
+        }
     }
 
     private var inputMonitoringPermissionCallout: some View {
@@ -250,13 +255,7 @@ struct MetricsContent: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 24) {
-                    if !isInputMonitoringEnabled {
-                        inputMonitoringPermissionCallout
-                    }
-
-                    if !isAccessibilityEnabled {
-                        accessibilityPermissionCallout
-                    }
+                    permissionCallouts
 
                     VStack(spacing: 20) {
                         Image(systemName: "waveform")
