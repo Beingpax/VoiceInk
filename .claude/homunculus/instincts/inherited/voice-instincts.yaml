@@ -1,0 +1,389 @@
+# Instincts generated from https://github.com/arbitraged-life/voice
+# Generated: 2026-05-30T00:17:50.830Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: voice-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: fix, perf
+
+## Evidence
+
+- 6 commits analyzed
+- Detected conventional commit pattern
+- Examples: perf: 10 performance & UX optimizations from audit, fix: break up MiniRecorderView body to fix type-checker timeout
+
+---
+id: voice-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Commit Length
+
+## Action
+
+Write moderate-length commit messages (~60 characters)
+
+## Evidence
+
+- Average commit message length: 60 chars
+- Based on 6 commits
+
+---
+id: voice-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: voice-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: voice-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: voice-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: voice-workflow-multi-module-bugfix-and-refactor
+trigger: "when doing multi module bugfix and refactor"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Workflow Multi Module Bugfix And Refactor
+
+## Action
+
+Follow the multi-module-bugfix-and-refactor workflow:
+1. Identify and list bugs or code smells across modules.
+2. Apply targeted fixes to each affected file (e.g., add error handling, refactor logic, improve resource management).
+3. Refactor code for maintainability and performance where necessary.
+4. Update related files to ensure consistency (e.g., models, services, views).
+5. Commit all changes in a single, descriptive commit.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: VoiceInk/CoreAudioRecorder.swift, VoiceInk/Models/LicenseViewModel.swift, VoiceInk/Services/PolarService.swift
+
+---
+id: voice-workflow-performance-optimization-pass
+trigger: "when doing performance optimization pass"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/arbitraged-life/voice
+---
+
+# Voice Workflow Performance Optimization Pass
+
+## Action
+
+Follow the performance-optimization-pass workflow:
+1. Profile or audit the application to identify performance bottlenecks.
+2. Apply optimizations such as caching, reducing allocations, debouncing, and simplifying logic in relevant files.
+3. Make minor UX improvements (e.g., error banners, accessibility enhancements) as needed.
+4. Commit all related changes together with detailed descriptions.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: VoiceInk/Views/Recorder/AudioVisualizerView.swift, VoiceInk/Transcription/Processing/TranscriptionOutputFilter.swift, VoiceInk/Transcription/Processing/WordReplacementService.swift
+
+---
+id: voice-instinct-file-naming-pascalcase
+trigger: "When creating or renaming a Swift source file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct File Naming Pascalcase
+
+## Action
+
+Name the file using PascalCase (e.g., AudioVisualizerView.swift)
+
+## Evidence
+
+- Pattern in files: VoiceInk/CoreAudioRecorder.swift, VoiceInk/Views/Recorder/AudioVisualizerView.swift
+
+---
+id: voice-instinct-function-naming-camelcase
+trigger: "When defining a function in Swift"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Function Naming Camelcase
+
+## Action
+
+Name the function using camelCase (e.g., startRecording())
+
+## Evidence
+
+- Pattern in Swift codebase, naming conventions
+
+---
+id: voice-instinct-class-naming-pascalcase
+trigger: "When defining a class in Swift"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Class Naming Pascalcase
+
+## Action
+
+Name the class using PascalCase (e.g., LicenseViewModel)
+
+## Evidence
+
+- Pattern in files: VoiceInk/Models/LicenseViewModel.swift
+
+---
+id: voice-instinct-constant-naming-screaming-snake-case
+trigger: "When declaring a constant in Swift"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Constant Naming Screaming Snake Case
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Naming conventions in code-style analysis
+
+---
+id: voice-instinct-import-style-relative
+trigger: "When importing modules or files in Swift"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Import Style Relative
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- ImportStyle: relative in code-style analysis
+
+---
+id: voice-instinct-export-style-named
+trigger: "When exporting symbols in Swift"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Export Style Named
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- ExportStyle: named in code-style analysis
+
+---
+id: voice-instinct-test-location-separate
+trigger: "When adding or organizing test files"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Test Location Separate
+
+## Action
+
+Place test files in a separate directory from source files
+
+## Evidence
+
+- testLocation: separate in architecture analysis
+
+---
+id: voice-instinct-git-commit-conventional-prefix
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Git Commit Conventional Prefix
+
+## Action
+
+Start the commit message with a conventional prefix (e.g., fix: or perf:)
+
+## Evidence
+
+- Seen in commits: 'fix: break up MiniRecorderView body to fix type-checker timeout', 'perf: 10 performance & UX optimizations from audit'
+
+---
+id: voice-instinct-git-commit-length-60
+trigger: "When composing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Git Commit Length 60
+
+## Action
+
+Keep the commit message around 60 characters on average
+
+## Evidence
+
+- averageLength: 60 in commit analysis
+
+---
+id: voice-instinct-multi-module-bugfix-and-refactor
+trigger: "When someone wants to resolve multiple bugs and code issues found during a comprehensive audit or review"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Multi Module Bugfix And Refactor
+
+## Action
+
+Batch fix bugs and refactor across several modules, then commit all changes in a single, descriptive commit
+
+## Evidence
+
+- Workflow: multi-module-bugfix-and-refactor
+- Seen in commits: 'fix: resolve 10 bugs found in comprehensive audit'
+
+---
+id: voice-instinct-performance-optimization-pass
+trigger: "When someone wants to improve performance and user experience based on profiling, audits, or user feedback"
+confidence: 0.92
+domain: workflow
+source: repo-analysis
+source_repo: arbitraged-life/voice
+---
+
+# Voice Instinct Performance Optimization Pass
+
+## Action
+
+Apply performance optimizations and UX improvements across components, then commit all related changes together
+
+## Evidence
+
+- Workflow: performance-optimization-pass
+- Seen in commits: 'perf: eliminate per-frame allocations in 60fps visualizer + UX fixes'
+
