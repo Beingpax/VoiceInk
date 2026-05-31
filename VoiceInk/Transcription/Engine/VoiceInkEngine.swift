@@ -182,6 +182,22 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                             self.recordingState = .starting
                             self.logger.notice("toggleRecord: state=starting, starting audio hardware")
+
+                            // Ensure model is loaded before recording starts (#614)
+                            if let model = self.transcriptionModelManager.currentTranscriptionModel,
+                               model.provider == .whisper {
+                                if let localWhisperModel = self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
+                                   self.whisperModelManager.whisperContext == nil {
+                                    do {
+                                        try await self.whisperModelManager.loadModel(localWhisperModel)
+                                    } catch {
+                                        self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
+                                    }
+                                }
+                            } else if let fluidAudioModel = self.transcriptionModelManager.currentTranscriptionModel as? FluidAudioModel {
+                                try? await self.serviceRegistry.fluidAudioTranscriptionService.loadModel(for: fluidAudioModel)
+                            }
+
                             self.recorder.scheduleSystemMute()
 
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
@@ -235,20 +251,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                             Task { @MainActor [weak self] in
                                 guard let self else { return }
-
-                                if let model = self.transcriptionModelManager.currentTranscriptionModel,
-                                   model.provider == .whisper {
-                                    if let localWhisperModel = self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
-                                       self.whisperModelManager.whisperContext == nil {
-                                        do {
-                                            try await self.whisperModelManager.loadModel(localWhisperModel)
-                                        } catch {
-                                            self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
-                                        }
-                                    }
-                                } else if let fluidAudioModel = self.transcriptionModelManager.currentTranscriptionModel as? FluidAudioModel {
-                                    try? await self.serviceRegistry.fluidAudioTranscriptionService.loadModel(for: fluidAudioModel)
-                                }
 
                                 if let enhancementService = self.enhancementService {
                                     enhancementService.captureClipboardContext()
