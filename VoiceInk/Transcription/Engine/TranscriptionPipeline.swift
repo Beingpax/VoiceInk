@@ -263,13 +263,19 @@ class TranscriptionPipeline {
                     """
             }
 
-            let autoSendKey = activeConfig?.autoSendKey
-            if let autoSendKey, autoSendKey.isEnabled {
-                CursorPaster.pasteAndAutoSend(textToPaste, autoSendKey: autoSendKey)
+            // Clipboard-only mode: copy text without pasting into active field (#670)
+            let clipboardOnly = UserDefaults.standard.bool(forKey: "CopyToClipboardOnly")
+            if clipboardOnly {
+                _ = ClipboardManager.copyToClipboard(textToPaste)
             } else {
-                let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-                let pastedText = textToPaste + (appendSpace ? " " : "")
-                _ = await CursorPaster.startPasteAtCursor(pastedText).value
+                let autoSendKey = activeConfig?.autoSendKey
+                if let autoSendKey, autoSendKey.isEnabled {
+                    CursorPaster.pasteAndAutoSend(textToPaste, autoSendKey: autoSendKey)
+                } else {
+                    let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+                    let pastedText = textToPaste + (appendSpace ? " " : "")
+                    _ = await CursorPaster.startPasteAtCursor(pastedText).value
+                }
             }
             SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss()

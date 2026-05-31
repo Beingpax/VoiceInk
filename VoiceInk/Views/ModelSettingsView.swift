@@ -9,6 +9,7 @@ struct ModelSettingsView: View {
     @AppStorage("LowercaseTranscription") private var lowercaseTranscription = false
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
+    @AppStorage("CopyToClipboardOnly") private var copyToClipboardOnly = false
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
     @State private var customPrompt: String = ""
@@ -106,6 +107,14 @@ struct ModelSettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $copyToClipboardOnly) {
+                    HStack(spacing: 4) {
+                        Text("Copy to Clipboard Only")
+                        InfoTip("Copy transcription to clipboard without pasting into the active text field. Useful when you want to dictate and paste manually.")
+                    }
+                }
+                .toggleStyle(.switch)
+
                 Toggle(isOn: $appendTrailingSpace) {
                     HStack(spacing: 4) {
                         Text("Add Space After Paste")
@@ -113,6 +122,7 @@ struct ModelSettingsView: View {
                     }
                 }
                 .toggleStyle(.switch)
+                .disabled(copyToClipboardOnly)
 
                 Toggle(isOn: $isVADEnabled) {
                     HStack(spacing: 4) {
