@@ -153,6 +153,33 @@ struct RecorderRecordButton: View {
     }
 }
 
+// MARK: - Close Button
+
+struct RecorderCloseButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.13))
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
+                    )
+
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.86))
+            }
+            .frame(width: 21, height: 21)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help("Close")
+    }
+}
+
 // MARK: - Processing Indicator
 
 struct ProcessingIndicator: View {

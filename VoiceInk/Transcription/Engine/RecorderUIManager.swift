@@ -91,6 +91,11 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                             await self?.toggleRecorderPanel()
                         }
                     },
+                    onCloseTapped: { [weak self] in
+                        Task { @MainActor in
+                            await self?.dismissRecorderPanel()
+                        }
+                    },
                     onAssistantFollowUp: { [weak engine] text in
                         Task { @MainActor in
                             await engine?.sendAssistantFollowUp(text)
@@ -108,6 +113,11 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                     onRecordButtonTapped: { [weak self] in
                         Task { @MainActor in
                             await self?.toggleRecorderPanel()
+                        }
+                    },
+                    onCloseTapped: { [weak self] in
+                        Task { @MainActor in
+                            await self?.dismissRecorderPanel()
                         }
                     },
                     onAssistantFollowUp: { [weak engine] text in

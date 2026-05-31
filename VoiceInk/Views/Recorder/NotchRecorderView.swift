@@ -5,6 +5,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     @ObservedObject var assistantSession: AssistantSession
     let onRecordButtonTapped: () -> Void
+    let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
 
     // MARK: - Display State
@@ -95,6 +96,12 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         displayState == .liveText || displayState == .assistant ? 20 : 16
     }
 
+    private var shouldShowCloseButton: Bool {
+        displayState == .assistant &&
+            stateProvider.recordingState == .idle &&
+            !assistantSession.isBusy
+    }
+
     // MARK: - Animation
 
     private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
@@ -138,10 +145,14 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             Color.clear
 
             HStack(spacing: 14) {
-                RecorderRecordButton(
-                    recordingState: stateProvider.recordingState,
-                    action: onRecordButtonTapped
-                )
+                if shouldShowCloseButton {
+                    RecorderCloseButton(action: onCloseTapped)
+                } else {
+                    RecorderRecordButton(
+                        recordingState: stateProvider.recordingState,
+                        action: onRecordButtonTapped
+                    )
+                }
                 RecorderModeButton(buttonSize: 20, padding: EdgeInsets())
                 Spacer(minLength: 0)
             }

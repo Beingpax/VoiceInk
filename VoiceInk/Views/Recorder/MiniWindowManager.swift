@@ -13,6 +13,7 @@ class MiniWindowManager {
         recorder: Recorder,
         assistantSession: AssistantSession,
         onRecordButtonTapped: @escaping () -> Void,
+        onCloseTapped: @escaping () -> Void,
         onAssistantFollowUp: @escaping (String) -> Void
     ) {
         self.makeView = {
@@ -22,6 +23,7 @@ class MiniWindowManager {
                     recorder: recorder,
                     assistantSession: assistantSession,
                     onRecordButtonTapped: onRecordButtonTapped,
+                    onCloseTapped: onCloseTapped,
                     onAssistantFollowUp: onAssistantFollowUp
                 )
             )

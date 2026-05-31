@@ -5,6 +5,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var recorder: Recorder
     @ObservedObject var assistantSession: AssistantSession
     let onRecordButtonTapped: () -> Void
+    let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
 
     // MARK: - Layout Constants
@@ -26,12 +27,24 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         assistantSession.isVisible
     }
 
+    private var shouldShowCloseButton: Bool {
+        hasAssistantResponse &&
+            stateProvider.recordingState == .idle &&
+            !assistantSession.isBusy
+    }
+
     private var controlBar: some View {
         HStack(spacing: 0) {
-            RecorderRecordButton(
-                recordingState: stateProvider.recordingState,
-                action: onRecordButtonTapped
-            )
+            Group {
+                if shouldShowCloseButton {
+                    RecorderCloseButton(action: onCloseTapped)
+                } else {
+                    RecorderRecordButton(
+                        recordingState: stateProvider.recordingState,
+                        action: onRecordButtonTapped
+                    )
+                }
+            }
             .padding(.leading, 10)
 
             Spacer(minLength: 0)
