@@ -464,6 +464,10 @@ struct SettingsView: View {
                     )
                     .shadow(color: Color.black.opacity(0.01), radius: 4, x: 0, y: 2)
 
+                    // MARK: - Language Modes Card
+                    LanguageModesSettingsView()
+                        .environmentObject(transcriptionModelManager)
+
                     // MARK: - Power Mode Card
                     PowerModeSection()
 

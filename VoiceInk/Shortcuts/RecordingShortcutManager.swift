@@ -165,6 +165,8 @@ class RecordingShortcutManager: ObservableObject {
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.refreshShortcutMonitoring()
         }
+
+        LanguageModeManager.shared.configure(engine: engine, recorderUIManager: recorderUIManager)
     }
     
     private func refreshShortcutMonitoring() {
@@ -292,6 +294,8 @@ class RecordingShortcutManager: ObservableObject {
             )
         case .quickAddToDictionary:
             DictionaryQuickAddManager.shared.toggle(modelContainer: engine.modelContext.container)
+        case .cycleLanguageMode:
+            await LanguageModeManager.shared.cycleToNext()
         default:
             break
         }

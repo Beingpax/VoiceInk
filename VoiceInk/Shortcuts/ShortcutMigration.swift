@@ -287,7 +287,7 @@ enum ShortcutMigration {
             return "toggleEnhancement"
         case .powerMode(let id):
             return "powerMode_\(id.uuidString)"
-        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderPowerMode:
+        case .miniRecorderEscape, .miniRecorderPrompt, .miniRecorderPowerMode, .cycleLanguageMode:
             return nil
         }
     }
