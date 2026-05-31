@@ -13,6 +13,15 @@ class VoiceInkEngine: NSObject, ObservableObject {
     var currentSession: TranscriptionSession?
     private var activeRecordingStartID: UUID?
     private var activePipelineTranscriptionID: UUID?
+
+    /// Validates and applies a recording state transition. Logs and skips invalid ones.
+    private func transitionState(to newState: RecordingState) {
+        guard recordingState.canTransition(to: newState) else {
+            logger.warning("Invalid state transition: \(String(describing: self.recordingState)) → \(String(describing: newState)) — skipped")
+            return
+        }
+        recordingState = newState
+    }
     private var canceledPipelineTranscriptionIDs = Set<UUID>()
 
     let recorder = Recorder()
@@ -325,7 +334,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
         if didFinishActivePipeline &&
             (recordingState == .transcribing || recordingState == .enhancing || recordingState == .busy) {
-            recordingState = .idle
+            transitionState(to: .idle)
         }
     }
 
