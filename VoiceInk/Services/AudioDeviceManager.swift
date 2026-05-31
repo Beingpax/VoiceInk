@@ -16,6 +16,7 @@ enum AudioInputMode: String, CaseIterable {
     case prioritized = "Prioritized"
 }
 
+@MainActor
 class AudioDeviceManager: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioDeviceManager")
     @Published var availableDevices: [(id: AudioDeviceID, uid: String, name: String)] = []

@@ -6,7 +6,7 @@ struct EmailSupport {
     private static let supportEmailAddress = "support@tryvoiceink.com"
     private static let supportEmailSubject = "VoiceInk Support Request"
 
-    static func generateSupportEmailBody() -> String {
+    @MainActor static func generateSupportEmailBody() -> String {
         let systemInfo = SystemInfoService.shared.getSystemInfoString()
 
         return """
@@ -38,7 +38,7 @@ struct EmailSupport {
         return URL(string: "mailto:\(supportEmailAddress)?subject=\(encodedSubject)")
     }
 
-    static func openSupportEmail() {
+    @MainActor static func openSupportEmail() {
         let body = generateSupportEmailBody()
 
         if let sharingService = NSSharingService(named: .composeEmail) {
