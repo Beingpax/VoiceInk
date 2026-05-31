@@ -10,16 +10,7 @@ struct DashboardStatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(color.opacity(0.14))
-                    Image(systemName: icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 18, height: 18)
-                        .foregroundColor(color)
-                }
-                .frame(width: 34, height: 34)
+                DashboardIconGlyph(systemName: icon, color: color, size: 18, frameSize: 34)
                 
                 Text(title)
                     .font(.system(size: 13, weight: .semibold))
@@ -44,5 +35,20 @@ struct DashboardStatCard: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .padding(16)
         .background(AppCardBackground(cornerRadius: 16))
+    }
+}
+
+struct DashboardIconGlyph: View {
+    let systemName: String
+    let color: Color
+    var size: CGFloat = 15
+    var frameSize: CGFloat = 20
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: size, weight: .semibold))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(color)
+            .frame(width: frameSize, height: frameSize)
     }
 }

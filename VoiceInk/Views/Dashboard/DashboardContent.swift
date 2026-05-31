@@ -335,7 +335,7 @@ struct DashboardContent: View {
                 title: "Sessions Recorded",
                 value: hasLoadedStatsSnapshot ? "\(totalCount)" : "–",
                 detail: "VoiceInk sessions completed",
-                color: AppTheme.Data.purple
+                color: AppTheme.Sidebar.audio
             )
 
             DashboardStatCard(
@@ -343,7 +343,7 @@ struct DashboardContent: View {
                 title: "Words Dictated",
                 value: hasLoadedStatsSnapshot ? Formatters.formattedNumber(totalWords) : "–",
                 detail: "words generated",
-                color: AppTheme.Accent.primary
+                color: AppTheme.Sidebar.dictionary
             )
             
             DashboardStatCard(
@@ -353,7 +353,7 @@ struct DashboardContent: View {
                     ? String(format: "%.1f", averageWordsPerMinute)
                     : "–",
                 detail: "VoiceInk vs. typing by hand",
-                color: AppTheme.Data.yellow
+                color: AppTheme.Sidebar.dashboard
             )
             
             DashboardStatCard(
@@ -361,7 +361,7 @@ struct DashboardContent: View {
                 title: "Keystrokes Saved",
                 value: hasLoadedStatsSnapshot ? Formatters.formattedNumber(totalKeystrokesSaved) : "–",
                 detail: "fewer keystrokes",
-                color: AppTheme.Data.orange
+                color: AppTheme.Sidebar.modes
             )
         }
     }
@@ -369,7 +369,7 @@ struct DashboardContent: View {
     private var footerActionsView: some View {
         HStack(alignment: .center, spacing: 12) {
             Button(action: openModelStatsPanel) {
-                footerActionLabel(icon: "gauge", title: "Model Performance")
+                footerActionLabel(icon: "gauge", title: "Model Performance", color: AppTheme.Sidebar.models)
             }
             .buttonStyle(.plain)
             .fixedSize(horizontal: true, vertical: true)
@@ -378,7 +378,8 @@ struct DashboardContent: View {
             Button(action: copySystemInfo) {
                 footerActionLabel(
                     icon: isSystemInfoCopied ? "checkmark" : "doc.on.doc",
-                    title: isSystemInfoCopied ? "Copied!" : "Copy System Info"
+                    title: isSystemInfoCopied ? "Copied!" : "Copy System Info",
+                    color: isSystemInfoCopied ? AppTheme.Sidebar.license : AppTheme.Sidebar.fallback
                 )
             }
             .buttonStyle(.plain)
@@ -388,9 +389,9 @@ struct DashboardContent: View {
     }
 
     @ViewBuilder
-    private func footerActionLabel(icon: String, title: String) -> some View {
+    private func footerActionLabel(icon: String, title: String, color: Color) -> some View {
         HStack(alignment: .center, spacing: 8) {
-            footerActionIcon(icon)
+            DashboardIconGlyph(systemName: icon, color: color, size: 13, frameSize: 16)
 
             Text(title)
                 .font(.system(size: 13, weight: .medium))
@@ -400,14 +401,6 @@ struct DashboardContent: View {
         .padding(.horizontal, 14)
         .frame(width: nil, height: 36, alignment: .center)
         .background(AppCardBackground(cornerRadius: 18))
-    }
-
-    private func footerActionIcon(_ symbol: String) -> some View {
-        Image(systemName: symbol)
-            .resizable()
-            .scaledToFit()
-            .frame(width: 14, height: 14)
-            .frame(width: 16, height: 16, alignment: .center)
     }
 
     private func copySystemInfo() {

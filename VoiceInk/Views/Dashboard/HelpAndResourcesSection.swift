@@ -11,24 +11,28 @@ struct HelpAndResourcesSection: View {
                 resourceLink(
                     icon: "sparkles",
                     title: "Recommended Models",
+                    color: AppTheme.Sidebar.models,
                     url: "https://tryvoiceink.com/recommended-models"
                 )
 
                 resourceLink(
                     icon: "video.fill",
                     title: "YouTube Videos & Guides",
+                    color: AppTheme.Sidebar.dashboard,
                     url: "https://www.youtube.com/@tryvoiceink/videos"
                 )
 
                 resourceLink(
                     icon: "book.fill",
                     title: "Documentation",
+                    color: AppTheme.Sidebar.dictionary,
                     url: "https://tryvoiceink.com/docs"
                 )
                 
                 resourceLink(
                     icon: "exclamationmark.bubble.fill",
                     title: "Feedback or Issues?",
+                    color: AppTheme.Sidebar.audio,
                     action: {
                         EmailSupport.openSupportEmail()
                     }
@@ -39,7 +43,7 @@ struct HelpAndResourcesSection: View {
         .background(AppCardBackground(cornerRadius: 28))
     }
     
-    private func resourceLink(icon: String, title: String, url: String? = nil, action: (() -> Void)? = nil) -> some View {
+    private func resourceLink(icon: String, title: String, color: Color, url: String? = nil, action: (() -> Void)? = nil) -> some View {
         Button(action: {
             if let action = action {
                 action()
@@ -47,11 +51,8 @@ struct HelpAndResourcesSection: View {
                 NSWorkspace.shared.open(url)
             }
         }) {
-            HStack {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(AppTheme.Accent.primary)
-                    .frame(width: 20)
+            HStack(spacing: 10) {
+                DashboardIconGlyph(systemName: icon, color: color, size: 15, frameSize: 20)
                 
                 Text(title)
                     .font(.system(size: 13))
