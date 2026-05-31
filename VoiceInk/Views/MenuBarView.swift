@@ -8,6 +8,7 @@ struct MenuBarView: View {
     @EnvironmentObject var whisperModelManager: WhisperModelManager
     @EnvironmentObject var recordingShortcutManager: RecordingShortcutManager
     @EnvironmentObject var menuBarManager: MenuBarManager
+    @EnvironmentObject var shortcutProfileManager: ShortcutProfileManager
     @EnvironmentObject var updaterViewModel: UpdaterViewModel
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var aiService: AIService
@@ -237,6 +238,24 @@ struct MenuBarView: View {
                 EmailSupport.openSupportEmail()
             }
             
+            if shortcutProfileManager.isEnabled && !shortcutProfileManager.profiles.isEmpty {
+                Divider()
+
+                Menu("Shortcut Profile: \(shortcutProfileManager.activeProfileName)") {
+                    ForEach(shortcutProfileManager.profiles) { profile in
+                        Button {
+                            shortcutProfileManager.switchToProfile(id: profile.id)
+                        } label: {
+                            if profile.id == shortcutProfileManager.activeProfileID {
+                                Text("✓ \(profile.name)")
+                            } else {
+                                Text("  \(profile.name)")
+                            }
+                        }
+                    }
+                }
+            }
+
             Divider()
 
             Button("Quit VoiceInk") {

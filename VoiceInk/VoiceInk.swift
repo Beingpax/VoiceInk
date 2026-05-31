@@ -20,6 +20,7 @@ struct VoiceInkApp: App {
     @StateObject private var recordingShortcutManager: RecordingShortcutManager
     @StateObject private var updaterViewModel: UpdaterViewModel
     @StateObject private var menuBarManager: MenuBarManager
+    @StateObject private var shortcutProfileManager: ShortcutProfileManager
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
@@ -152,6 +153,10 @@ struct VoiceInkApp: App {
         let menuBarManager = MenuBarManager()
         _menuBarManager = StateObject(wrappedValue: menuBarManager)
         menuBarManager.configure(modelContainer: resolvedContainer, engine: engine)
+
+        let shortcutProfileManager = ShortcutProfileManager()
+        shortcutProfileManager.setRecordingShortcutManager(recordingShortcutManager)
+        _shortcutProfileManager = StateObject(wrappedValue: shortcutProfileManager)
 
         let activeWindowService = ActiveWindowService.shared
         activeWindowService.configure(with: enhancementService)
@@ -294,6 +299,7 @@ struct VoiceInkApp: App {
                     .environmentObject(recordingShortcutManager)
                     .environmentObject(updaterViewModel)
                     .environmentObject(menuBarManager)
+                    .environmentObject(shortcutProfileManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
                     .modelContainer(container)
@@ -377,6 +383,7 @@ struct VoiceInkApp: App {
                 .environmentObject(recorderUIManager)
                 .environmentObject(recordingShortcutManager)
                 .environmentObject(menuBarManager)
+                .environmentObject(shortcutProfileManager)
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
