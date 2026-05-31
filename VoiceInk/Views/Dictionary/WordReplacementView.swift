@@ -23,6 +23,7 @@ struct WordReplacementView: View {
     @State private var originalWord = ""
     @State private var replacementWord = ""
     @State private var showInfoPopover = false
+    @State private var searchText = ""
 
     init() {
         if let savedSort = UserDefaults.standard.string(forKey: "wordReplacementSortMode"),
@@ -32,15 +33,19 @@ struct WordReplacementView: View {
     }
 
     private var sortedReplacements: [WordReplacement] {
+        let filtered = searchText.isEmpty ? wordReplacements : wordReplacements.filter {
+            $0.originalText.localizedCaseInsensitiveContains(searchText) ||
+            $0.replacementText.localizedCaseInsensitiveContains(searchText)
+        }
         switch sortMode {
         case .originalAsc:
-            return wordReplacements.sorted { $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedAscending }
+            return filtered.sorted { $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedAscending }
         case .originalDesc:
-            return wordReplacements.sorted { $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedDescending }
+            return filtered.sorted { $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedDescending }
         case .replacementAsc:
-            return wordReplacements.sorted { $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedAscending }
+            return filtered.sorted { $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedAscending }
         case .replacementDesc:
-            return wordReplacements.sorted { $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedDescending }
+            return filtered.sorted { $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedDescending }
         }
     }
     
@@ -77,6 +82,24 @@ struct WordReplacementView: View {
                     }
                 }
             }
+
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Filter replacements…", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(6)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(6)
 
             HStack(spacing: 8) {
                 TextField("Original text (use commas for multiple)", text: $originalWord)
