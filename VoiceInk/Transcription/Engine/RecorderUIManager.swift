@@ -168,4 +168,8 @@ class RecorderUIManager: ObservableObject {
             }
         }
     }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }
