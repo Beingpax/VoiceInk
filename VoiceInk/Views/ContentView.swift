@@ -4,17 +4,19 @@ import OSLog
 
 // ViewType enum with all cases mapped to high-fidelity mockup icons
 enum ViewType: String, CaseIterable, Identifiable {
+    // Primary (top section)
     case metrics = "Dashboard"
-    case transcribeAudio = "Transcribe Audio"
-    case history = "History"
     case models = "AI Models"
     case enhancement = "Enhancement"
     case powerMode = "Power Mode"
+    case visualSettings = "Visual Settings"
+    case settings = "Settings"
+    // Secondary
+    case transcribeAudio = "Transcribe Audio"
+    case history = "History"
     case permissions = "Permissions"
     case audioInput = "Audio Input"
     case dictionary = "Dictionary"
-    case visualSettings = "Visual Settings"
-    case settings = "Settings"
 
     var id: String { rawValue }
 

@@ -279,6 +279,11 @@ class TranscriptionPipeline {
             }
             SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss()
+
+            // Start auto-learn monitoring after successful paste
+            if !clipboardOnly {
+                AutoLearnService.shared.startMonitoring(pastedText: textToPaste, modelContext: modelContext)
+            }
         } else {
             SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss()
