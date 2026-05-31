@@ -124,6 +124,15 @@ class WhisperModelManager: ObservableObject {
 
             isModelLoaded = true
             loadedWhisperModel = model
+
+            // Notify user that model is ready (#76)
+            await MainActor.run {
+                NotificationManager.shared.showNotification(
+                    title: "Model Ready: \(model.name)",
+                    type: .success
+                )
+                NSSound(named: .init("Glass"))?.play()
+            }
         } catch {
             throw VoiceInkEngineError.modelLoadFailed
         }
