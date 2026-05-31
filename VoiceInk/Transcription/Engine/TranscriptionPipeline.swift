@@ -3,15 +3,30 @@ import SwiftData
 import os
 
 /// Handles the full post-recording pipeline:
-/// transcribe → filter → format → word-replace → AI enhance → start paste + dismiss → save
+/// transcribe → filter → format → word-replace → AI enhance → deliver → save
 @MainActor
 class TranscriptionPipeline {
+    struct AssistantHooks {
+        let isFollowUp: Bool
+        let sendFollowUp: (String, Transcription) async -> Void
+        let startResponse: (String, EnhancementRuntimeConfiguration) async -> Void
+        let showResponse: (String) async -> Void
+        let failResponse: (String) async -> Void
+
+        static let inactive = AssistantHooks(
+            isFollowUp: false,
+            sendFollowUp: { _, _ in },
+            startResponse: { _, _ in },
+            showResponse: { _ in },
+            failResponse: { _ in }
+        )
+    }
+
     private let modelContext: ModelContext
     private let serviceRegistry: TranscriptionServiceRegistry
     private let enhancementService: AIEnhancementService?
+    private let delivery = TranscriptionDelivery()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionPipeline")
-
-    var licenseViewModel: LicenseViewModel
 
     init(
         modelContext: ModelContext,
@@ -21,7 +36,6 @@ class TranscriptionPipeline {
         self.modelContext = modelContext
         self.serviceRegistry = serviceRegistry
         self.enhancementService = enhancementService
-        self.licenseViewModel = LicenseViewModel()
     }
 
     /// Run the full pipeline for a given transcription record.
@@ -33,7 +47,7 @@ class TranscriptionPipeline {
     ///   - onStateChange: Called when the pipeline moves to a new recording state (e.g. `.enhancing`).
     ///   - shouldCancel: Returns true if the user requested cancellation.
     ///   - onCancel: Called when cancellation is detected to cancel active session state.
-    ///   - onDismiss: Called as soon as paste is initiated to dismiss the recorder panel.
+    ///   - onDismiss: Called when delivery should close the recorder panel.
     func run(
         transcription: Transcription,
         audioURL: URL,
@@ -41,19 +55,19 @@ class TranscriptionPipeline {
         formattingConfiguration resolveFormattingConfiguration: @escaping () -> TranscriptionFormattingConfiguration,
         session: TranscriptionSession?,
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
+        outputConfiguration: @escaping () -> OutputRuntimeConfiguration,
         onStateChange: @escaping (RecordingState) -> Void,
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
-        onDismiss: @escaping () async -> Void
+        onDismiss: @escaping () async -> Void,
+        assistant: AssistantHooks = .inactive
     ) async {
         let model = transcriptionConfiguration.model
-        var finalPastedText: String?
+        var finalText: String?
         var didInsertSessionMetric = false
-
-        func dismiss(afterRestore: () -> Void = {}) async {
-            afterRestore()
-            await onDismiss()
-        }
+        var responseError: String?
+        var outputForDelivery: OutputRuntimeConfiguration?
+        var responseConfig: EnhancementRuntimeConfiguration?
 
         func finishCanceledTranscription() async {
             await onCancel()
@@ -123,47 +137,63 @@ class TranscriptionPipeline {
             transcription.transcriptionDuration = transcriptionDuration
             transcription.modeName = modeMetadata.name
             transcription.modeEmoji = modeMetadata.emoji
-            finalPastedText = cleanedText
+            finalText = cleanedText
 
-            let resolvedEnhancementConfiguration = enhancementConfiguration()
+            if !assistant.isFollowUp {
+                let resolvedEnhancementConfiguration = enhancementConfiguration()
+                let resolvedOutputConfiguration = outputConfiguration()
+                let shouldRespondInRecorder = resolvedOutputConfiguration.outputMode == .respond &&
+                    resolvedEnhancementConfiguration?.isEnabled == true &&
+                    resolvedEnhancementConfiguration.map { configuration in
+                        enhancementService?.isConfigured(for: configuration) == true
+                    } == true
+                outputForDelivery = resolvedOutputConfiguration
+                responseConfig = shouldRespondInRecorder ? resolvedEnhancementConfiguration : nil
 
-            let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
-            let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
-            let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
-            let shouldSkipEnhancement = isSkipShortEnhancementEnabled && WordCounter.count(in: text) <= shortEnhancementWordThreshold
+                let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
+                let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
+                let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
+                let shouldSkipEnhancement = !shouldRespondInRecorder &&
+                    isSkipShortEnhancementEnabled &&
+                    WordCounter.count(in: text) <= shortEnhancementWordThreshold
 
-            if let enhancementService,
-               let resolvedEnhancementConfiguration,
-               resolvedEnhancementConfiguration.isEnabled,
-               enhancementService.isConfigured(for: resolvedEnhancementConfiguration),
-               !shouldSkipEnhancement {
-                if shouldCancel() { await finishCanceledTranscription(); return }
-
-                onStateChange(.enhancing)
-
-                do {
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
-                        text,
-                        configuration: resolvedEnhancementConfiguration
-                    )
-                    transcription.enhancedText = enhancedText
-                    transcription.aiEnhancementModelName = resolvedEnhancementConfiguration.modelName ?? resolvedEnhancementConfiguration.provider?.defaultModel
-                    transcription.promptName = promptName
-                    transcription.enhancementDuration = enhancementDuration
-                    transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
-                    transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
-                    finalPastedText = enhancedText
-                } catch {
-                    let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                    transcription.enhancedText = "Enhancement failed: \(errorDescription)"
-                    let shortReason = String(errorDescription.prefix(80))
-                    await MainActor.run {
-                        NotificationManager.shared.showNotification(
-                            title: "Enhancement failed: \(shortReason)",
-                            type: .warning
-                        )
-                    }
+                if let enhancementService,
+                   let resolvedEnhancementConfiguration,
+                   resolvedEnhancementConfiguration.isEnabled,
+                   enhancementService.isConfigured(for: resolvedEnhancementConfiguration),
+                   !shouldSkipEnhancement {
                     if shouldCancel() { await finishCanceledTranscription(); return }
+
+                    onStateChange(.enhancing)
+                    if shouldRespondInRecorder {
+                        await assistant.startResponse(cleanedText, resolvedEnhancementConfiguration)
+                    }
+
+                    do {
+                        let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
+                            text,
+                            configuration: resolvedEnhancementConfiguration
+                        )
+                        transcription.enhancedText = enhancedText
+                        transcription.aiEnhancementModelName = resolvedEnhancementConfiguration.modelName ?? resolvedEnhancementConfiguration.provider?.defaultModel
+                        transcription.promptName = promptName
+                        transcription.enhancementDuration = enhancementDuration
+                        transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
+                        transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
+                        finalText = enhancedText
+                    } catch {
+                        let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                        transcription.enhancedText = "Enhancement failed: \(errorDescription)"
+                        responseError = errorDescription
+                        let shortReason = String(errorDescription.prefix(80))
+                        await MainActor.run {
+                            NotificationManager.shared.showNotification(
+                                title: "Enhancement failed: \(shortReason)",
+                                type: .warning
+                            )
+                        }
+                        if shouldCancel() { await finishCanceledTranscription(); return }
+                    }
                 }
             }
 
@@ -215,31 +245,23 @@ class TranscriptionPipeline {
             return
         }
 
-        if var textToPaste = finalPastedText,
-           transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue {
-            if case .trialExpired = licenseViewModel.licenseState {
-                textToPaste = """
-                    Your trial has expired. Upgrade to VoiceInk Pro at tryvoiceink.com/buy
-                    \n\(textToPaste)
-                    """
-            }
-
-            let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-            let pastedText = textToPaste + (appendSpace ? " " : "")
-            _ = await CursorPaster.startPasteAtCursor(pastedText).value
-            SoundManager.shared.playStopSound()
-            await dismiss {
-                let autoSendKey = ModeManager.shared.currentEffectiveConfiguration?.autoSendKey
-                if let autoSendKey, autoSendKey.isEnabled {
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                        CursorPaster.performAutoSend(autoSendKey)
-                    }
-                }
-            }
-        } else {
-            await dismiss()
-        }
+        await delivery.deliver(
+            TranscriptionDelivery.Request(
+                transcription: transcription,
+                text: finalText,
+                output: outputForDelivery ?? outputConfiguration(),
+                responseConfig: responseConfig,
+                responseError: responseError,
+                isAssistantFollowUp: assistant.isFollowUp
+            ),
+            actions: TranscriptionDelivery.Actions(
+                setState: onStateChange,
+                dismiss: onDismiss,
+                sendFollowUp: assistant.sendFollowUp,
+                showResponse: assistant.showResponse,
+                failResponse: assistant.failResponse
+            )
+        )
 
         saveTranscriptionAndPostCompletion()
     }

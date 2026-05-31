@@ -64,9 +64,22 @@ struct ModeConfigFormView: View {
             footer
         }
         .onAppear {
+            applyOutputRules()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isNameFieldFocused = true
             }
+        }
+        .onChange(of: draft.isAIEnhancementEnabled) { _, _ in
+            applyOutputRules()
+        }
+        .onChange(of: draft.selectedPromptId) { _, _ in
+            applyOutputRules()
+        }
+        .onChange(of: draft.selectedAIProvider) { _, _ in
+            applyOutputRules()
+        }
+        .onChange(of: draft.selectedAIModel) { _, _ in
+            applyOutputRules()
         }
     }
 
@@ -500,23 +513,49 @@ struct ModeConfigFormView: View {
         }
     }
 
+    private var outputChoices: [ModeOutputMode] {
+        ModeOutputMode.choices(canRespond: canRespond)
+    }
+
+    private var canRespond: Bool {
+        draft.isAIEnhancementEnabled &&
+            selectedPrompt != nil &&
+            configuredSelectedAIProvider != nil
+    }
+
+    private func applyOutputRules() {
+        draft.applyOutputRules(canRespond: canRespond)
+    }
+
     private var advancedSection: some View {
         Section("Advanced") {
-            Toggle(isOn: $draft.isDefault) {
-                HStack(spacing: 6) {
-                    Text("Set as default")
-                    InfoTip("Default mode is used when no specific app or website matches are found.")
+            Picker("Output", selection: $draft.outputMode) {
+                ForEach(outputChoices, id: \.self) { outputMode in
+                    Label(outputMode.displayName, systemImage: outputMode.iconName)
+                        .tag(outputMode)
                 }
             }
+            .onChange(of: draft.outputMode) { _, _ in
+                applyOutputRules()
+            }
 
-            Picker(selection: $draft.autoSendKey) {
-                ForEach(AutoSendKey.allCases, id: \.self) { key in
-                    Text(key.displayName).tag(key)
+            if draft.outputMode.usesPasteOptions {
+                Toggle(isOn: $draft.isDefault) {
+                    HStack(spacing: 6) {
+                        Text("Set as default")
+                        InfoTip("Default mode is used when no specific app or website matches are found.")
+                    }
                 }
-            } label: {
-                HStack(spacing: 6) {
-                    Text("Auto Send")
-                    InfoTip("Automatically presses a key combination after pasting text. Useful for chat applications or forms that use different send shortcuts.")
+
+                Picker(selection: $draft.autoSendKey) {
+                    ForEach(AutoSendKey.allCases, id: \.self) { key in
+                        Text(key.displayName).tag(key)
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Auto Send")
+                        InfoTip("Automatically presses a key combination after pasting text. Useful for chat applications or forms that use different send shortcuts.")
+                    }
                 }
             }
 

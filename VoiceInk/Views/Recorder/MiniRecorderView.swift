@@ -3,13 +3,16 @@ import SwiftUI
 struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
+    @ObservedObject var assistantSession: AssistantSession
     let onRecordButtonTapped: () -> Void
+    let onAssistantFollowUp: (String) -> Void
 
     // MARK: - Layout Constants
 
     private let controlBarHeight: CGFloat = 40
     private let compactWidth: CGFloat = 184
     private let expandedWidth: CGFloat = 300
+    private let assistantWidth: CGFloat = 520
     private let compactCornerRadius: CGFloat = 20
     private let expandedCornerRadius: CGFloat = 14
 
@@ -17,6 +20,10 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var hasLiveTranscript: Bool {
         stateProvider.recordingState == .recording
             && !stateProvider.partialTranscript.isEmpty
+    }
+
+    private var hasAssistantResponse: Bool {
+        assistantSession.isVisible
     }
 
     private var controlBar: some View {
@@ -56,13 +63,22 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            transcriptSection
+            if hasAssistantResponse {
+                AssistantPanelView(
+                    session: assistantSession,
+                    onSend: onAssistantFollowUp
+                )
+                Divider().background(Color.white.opacity(0.15))
+            } else {
+                transcriptSection
+            }
             controlBar
         }
-        .frame(width: hasLiveTranscript ? expandedWidth : compactWidth)
+        .frame(width: hasAssistantResponse ? assistantWidth : (hasLiveTranscript ? expandedWidth : compactWidth))
         .background(Color.black)
-        .clipShape(RoundedRectangle(cornerRadius: hasLiveTranscript ? expandedCornerRadius : compactCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: hasLiveTranscript || hasAssistantResponse ? expandedCornerRadius : compactCornerRadius, style: .continuous))
         .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
+        .animation(.easeInOut(duration: 0.3), value: hasAssistantResponse)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }

@@ -85,9 +85,15 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                 notchWindowManager = NotchWindowManager(
                     engine: engine,
                     recorder: recorder,
+                    assistantSession: engine.assistantSession,
                     onRecordButtonTapped: { [weak self] in
                         Task { @MainActor in
                             await self?.toggleRecorderPanel()
+                        }
+                    },
+                    onAssistantFollowUp: { [weak engine] text in
+                        Task { @MainActor in
+                            await engine?.sendAssistantFollowUp(text)
                         }
                     }
                 )
@@ -98,9 +104,15 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                 miniWindowManager = MiniWindowManager(
                     engine: engine,
                     recorder: recorder,
+                    assistantSession: engine.assistantSession,
                     onRecordButtonTapped: { [weak self] in
                         Task { @MainActor in
                             await self?.toggleRecorderPanel()
+                        }
+                    },
+                    onAssistantFollowUp: { [weak engine] text in
+                        Task { @MainActor in
+                            await engine?.sendAssistantFollowUp(text)
                         }
                     }
                 )
@@ -150,7 +162,19 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             case .starting, .transcribing, .enhancing:
                 logger.notice("toggleRecorderPanel: cancelling active recorder work")
                 await cancelRecording()
-            case .idle, .busy:
+            case .idle:
+                if engine.assistantSession.canSendFollowUp {
+                    logger.notice("toggleRecorderPanel: starting assistant voice follow-up")
+                    SoundManager.shared.playStartSound()
+                    await engine.toggleRecord(
+                        modeId: modeId,
+                        isAssistantFollowUp: true
+                    )
+                } else {
+                    logger.notice("toggleRecorderPanel: dismissing recorder panel")
+                    await dismissRecorderPanel()
+                }
+            case .busy:
                 logger.notice("toggleRecorderPanel: dismissing recorder panel")
                 await dismissRecorderPanel()
             }
@@ -167,6 +191,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
         hideRecorderPanel()
         isRecorderPanelVisible = false
+        engine.assistantSession.reset()
 
         logger.notice("dismissRecorderPanel completed")
     }
@@ -177,6 +202,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         await engine.resetRecordingSession()
         hideRecorderPanel()
         isRecorderPanelVisible = false
+        engine.assistantSession.reset()
     }
 
     func cancelRecording() async {

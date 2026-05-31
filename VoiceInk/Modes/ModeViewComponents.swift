@@ -141,6 +141,7 @@ struct ConfigurationRow: View {
         (selectedModel.map { $0 != "Default" } ?? false) ||
         (selectedLanguage.map { $0 != "Default" } ?? false) ||
         config.isAIEnhancementEnabled ||
+        config.outputMode == .respond ||
         config.autoSendKey.isEnabled
     }
     
@@ -285,7 +286,24 @@ struct ConfigurationRow: View {
                         )
                     }
                     
-                    if config.autoSendKey.isEnabled {
+                    if config.outputMode == .respond {
+                        HStack(spacing: 4) {
+                            Image(systemName: config.outputMode.iconName)
+                                .font(.system(size: 10))
+                            Text(config.outputMode.displayName)
+                                .font(.caption)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule()
+                            .fill(AppTheme.Surface.control))
+                        .overlay(
+                            Capsule()
+                                .stroke(AppTheme.Border.control, lineWidth: 0.5)
+                        )
+                    }
+
+                    if config.outputMode == .paste && config.autoSendKey.isEnabled {
                         HStack(spacing: 4) {
                             Image(systemName: "keyboard")
                                 .font(.system(size: 10))

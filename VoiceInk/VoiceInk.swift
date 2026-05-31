@@ -194,7 +194,9 @@ struct VoiceInkApp: App {
             let statsStoreURL = appSupportURL.appendingPathComponent("stats.store")
 
             // Transcript configuration
-            let transcriptSchema = Schema([Transcription.self])
+            let transcriptSchema = Schema([
+                Transcription.self
+            ])
             let transcriptConfig = ModelConfiguration(
                 "default",
                 schema: transcriptSchema,
@@ -239,7 +241,9 @@ struct VoiceInkApp: App {
     private static func createInMemoryContainer(schema: Schema, logger: Logger) -> ModelContainer? {
         do {
             // Transcript configuration
-            let transcriptSchema = Schema([Transcription.self])
+            let transcriptSchema = Schema([
+                Transcription.self
+            ])
             let transcriptConfig = ModelConfiguration(
                 "default",
                 schema: transcriptSchema,

@@ -20,6 +20,7 @@ struct ModeConfigDraft {
     var useScreenCapture: Bool
     var selectedAIProvider: String?
     var selectedAIModel: String?
+    var outputMode: ModeOutputMode
     var autoSendKey: AutoSendKey
     var isDefault: Bool
     var isTranscriptionFormattingExpanded: Bool
@@ -50,6 +51,7 @@ struct ModeConfigDraft {
             useScreenCapture = true
             selectedAIProvider = inheritedConfig?.selectedAIProvider
             selectedAIModel = inheritedConfig?.selectedAIModel
+            outputMode = .paste
             autoSendKey = .none
             isDefault = false
             isTranscriptionFormattingExpanded = false
@@ -76,6 +78,7 @@ struct ModeConfigDraft {
             useScreenCapture = latestConfig.useScreenCapture
             selectedAIProvider = latestConfig.selectedAIProvider
             selectedAIModel = latestConfig.selectedAIModel
+            outputMode = latestConfig.outputMode
             autoSendKey = latestConfig.autoSendKey
             isDefault = latestConfig.isDefault
             isTranscriptionFormattingExpanded = latestConfig.isTextFormattingEnabled ||
@@ -141,7 +144,21 @@ struct ModeConfigDraft {
         )
     }
 
+    mutating func applyOutputRules(canRespond: Bool) {
+        if outputMode == .respond && !canRespond {
+            outputMode = .paste
+        }
+
+        if !outputMode.usesPasteOptions {
+            autoSendKey = .none
+            isDefault = false
+        }
+    }
+
     func makeConfig(mode: ConfigurationMode) -> ModeConfig {
+        let savedAutoSendKey: AutoSendKey = outputMode.usesPasteOptions ? autoSendKey : .none
+        let savedIsDefault = outputMode.usesPasteOptions ? isDefault : false
+
         switch mode {
         case .add:
             return ModeConfig(
@@ -164,8 +181,9 @@ struct ModeConfigDraft {
                 lowercaseTranscription: lowercaseTranscription,
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
-                autoSendKey: autoSendKey,
-                isDefault: isDefault
+                outputMode: outputMode,
+                autoSendKey: savedAutoSendKey,
+                isDefault: savedIsDefault
             )
 
         case .edit(let config):
@@ -188,8 +206,9 @@ struct ModeConfigDraft {
             updatedConfig.useScreenCapture = useScreenCapture
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
-            updatedConfig.autoSendKey = autoSendKey
-            updatedConfig.isDefault = isDefault
+            updatedConfig.outputMode = outputMode
+            updatedConfig.autoSendKey = savedAutoSendKey
+            updatedConfig.isDefault = savedIsDefault
             return updatedConfig
         }
     }

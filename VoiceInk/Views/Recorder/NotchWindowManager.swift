@@ -8,13 +8,21 @@ class NotchWindowManager {
 
     private let makeView: () -> AnyView
 
-    init(engine: VoiceInkEngine, recorder: Recorder, onRecordButtonTapped: @escaping () -> Void) {
+    init(
+        engine: VoiceInkEngine,
+        recorder: Recorder,
+        assistantSession: AssistantSession,
+        onRecordButtonTapped: @escaping () -> Void,
+        onAssistantFollowUp: @escaping (String) -> Void
+    ) {
         self.makeView = {
             AnyView(
                 NotchRecorderView(
                     stateProvider: engine,
                     recorder: recorder,
-                    onRecordButtonTapped: onRecordButtonTapped
+                    assistantSession: assistantSession,
+                    onRecordButtonTapped: onRecordButtonTapped,
+                    onAssistantFollowUp: onAssistantFollowUp
                 )
             )
         }

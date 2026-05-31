@@ -7,6 +7,15 @@ import os
 
 @MainActor
 class VoiceInkEngine: NSObject, ObservableObject {
+    private enum RecordingUseCase {
+        case newSession
+        case assistantFollowUp
+
+        var isAssistantFollowUp: Bool {
+            self == .assistantFollowUp
+        }
+    }
+
     @Published var recordingState: RecordingState = .idle
     @Published var shouldCancelRecording = false
     var partialTranscript: String = ""
@@ -15,6 +24,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
     private var activeRecordingStartID: UUID?
     private var activePipelineTranscriptionID: UUID?
     private var canceledPipelineTranscriptionIDs = Set<UUID>()
+    private var activeRecordingUseCase: RecordingUseCase = .newSession
+    private var activePipelineUseCase: RecordingUseCase = .newSession
 
     let recorder = Recorder()
     var recordedFile: URL? = nil
@@ -28,6 +39,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
     let modelContext: ModelContext
     internal let serviceRegistry: TranscriptionServiceRegistry
     let enhancementService: AIEnhancementService?
+    let assistantSession = AssistantSession()
+    let assistantChat: AssistantChatService?
     private let pipeline: TranscriptionPipeline
 
     let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "VoiceInkEngine")
@@ -42,6 +55,14 @@ class VoiceInkEngine: NSObject, ObservableObject {
         self.whisperModelManager = whisperModelManager
         self.transcriptionModelManager = transcriptionModelManager
         self.enhancementService = enhancementService
+        if let aiService = enhancementService?.getAIService() {
+            self.assistantChat = AssistantChatService(
+                modelContext: modelContext,
+                aiService: aiService
+            )
+        } else {
+            self.assistantChat = nil
+        }
 
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("com.prakashjoshipax.VoiceInk")
@@ -78,7 +99,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
     // MARK: - Toggle Record
 
-    func toggleRecord(modeId: UUID? = nil) async {
+    func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false) async {
         logger.notice("toggleRecord called – state=\(String(describing: self.recordingState), privacy: .public)")
 
         if recordingState == .starting {
@@ -88,6 +109,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
 
         if recordingState == .recording {
+            activePipelineUseCase = activeRecordingUseCase
+            activeRecordingUseCase = .newSession
             activeRecordingStartID = nil
             partialTranscript = ""
             recordingState = .transcribing
@@ -119,9 +142,17 @@ class VoiceInkEngine: NSObject, ObservableObject {
             }
         } else {
             logger.notice("toggleRecord: entering start-recording branch")
+            let canContinueAssistantSession = isAssistantFollowUp && assistantSession.canSendFollowUp
+            let recordingUseCase: RecordingUseCase = canContinueAssistantSession ? .assistantFollowUp : .newSession
+
             activePipelineTranscriptionID = nil
             shouldCancelRecording = false
             partialTranscript = ""
+            activeRecordingUseCase = recordingUseCase
+
+            if !recordingUseCase.isAssistantFollowUp {
+                assistantSession.reset()
+            }
 
             requestRecordPermission { [self] granted in
                 if granted {
@@ -281,6 +312,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
             try? modelContext.save()
             recordingState = .idle
+            activePipelineUseCase = .newSession
             return
         }
 
@@ -307,6 +339,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     aiService: aiService
                 )
             },
+            outputConfiguration: {
+                ModeRuntimeResolver.outputConfiguration()
+            },
             onStateChange: { [weak self] state in
                 guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
                 self.recordingState = state
@@ -323,7 +358,33 @@ class VoiceInkEngine: NSObject, ObservableObject {
             onDismiss: { [weak self] in
                 guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
                 await self.recorderUIManager?.dismissRecorderPanel()
-            }
+            },
+            assistant: TranscriptionPipeline.AssistantHooks(
+                isFollowUp: activePipelineUseCase.isAssistantFollowUp,
+                sendFollowUp: { [weak self] text, transcription in
+                    guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
+                    await self.sendAssistantFollowUp(text, transcription: transcription)
+                },
+                startResponse: { [weak self] transcript, configuration in
+                    guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
+                    self.assistantSession.beginInitialResponse(
+                        transcript: transcript,
+                        provider: configuration.provider,
+                        modelName: configuration.modelName ?? configuration.provider?.defaultModel,
+                        modeName: configuration.mode?.name,
+                        modeEmoji: configuration.mode?.icon.legacyEmojiValue,
+                        promptName: configuration.prompt?.title
+                    )
+                },
+                showResponse: { [weak self] response in
+                    guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
+                    await self.completeAssistantResponse(response)
+                },
+                failResponse: { [weak self] message in
+                    guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
+                    self.assistantSession.fail(message)
+                }
+            )
         )
 
         let didFinishActivePipeline = activePipelineTranscriptionID == transcriptionID
@@ -335,6 +396,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             currentSessionTranscriptionConfiguration = nil
             recordedFile = nil
             shouldCancelRecording = false
+            activePipelineUseCase = .newSession
         }
         canceledPipelineTranscriptionIDs.remove(transcriptionID)
 
@@ -379,6 +441,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
         canceledPipelineTranscriptionIDs.removeAll()
         shouldCancelRecording = false
         partialTranscript = ""
+        assistantSession.reset()
+        activeRecordingUseCase = .newSession
+        activePipelineUseCase = .newSession
         await recorder.stopRecording()
         recordedFile = nil
         recordingState = .idle
@@ -487,6 +552,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     func cleanupResources() async {
         logger.notice("cleanupResources: releasing model resources")
         activeRecordingStartID = nil
+        activeRecordingUseCase = .newSession
         await whisperModelManager.cleanupResources()
         await serviceRegistry.cleanup()
         logger.notice("cleanupResources: completed")
@@ -497,20 +563,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
     func setupNotifications() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleLicenseStatusChanged),
-            name: .licenseStatusChanged,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
             selector: #selector(handlePromptChange),
             name: .promptDidChange,
             object: nil
         )
-    }
-
-    @objc func handleLicenseStatusChanged() {
-        pipeline.licenseViewModel = LicenseViewModel()
     }
 
     @objc func handlePromptChange() {

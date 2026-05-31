@@ -52,6 +52,12 @@ struct EnhancementRuntimeConfiguration {
     }
 }
 
+struct OutputRuntimeConfiguration {
+    let mode: ModeConfig?
+    let outputMode: ModeOutputMode
+    let autoSendKey: AutoSendKey
+}
+
 @MainActor
 enum ModeRuntimeResolver {
     static func transcriptionConfiguration(
@@ -120,6 +126,16 @@ enum ModeRuntimeResolver {
             useClipboardContext: mode?.useClipboardContext ?? false,
             useSelectedTextContext: mode?.useSelectedTextContext ?? true,
             useScreenCaptureContext: mode?.useScreenCapture ?? false
+        )
+    }
+
+    static func outputConfiguration(mode: ModeConfig? = nil) -> OutputRuntimeConfiguration {
+        let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
+
+        return OutputRuntimeConfiguration(
+            mode: mode,
+            outputMode: mode?.outputMode ?? .paste,
+            autoSendKey: mode?.autoSendKey ?? .none
         )
     }
 
