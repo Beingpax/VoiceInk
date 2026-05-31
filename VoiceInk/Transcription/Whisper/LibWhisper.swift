@@ -65,7 +65,9 @@ actor WhisperContext {
         params.offset_ms = 0
         params.no_context = true
         params.single_segment = false
-        params.temperature = 0.2
+        params.temperature = UserDefaults.standard.object(forKey: "whisperTemperature") != nil
+            ? Float(UserDefaults.standard.double(forKey: "whisperTemperature"))
+            : 0.2
 
         whisper_reset_timings(context)
         

@@ -12,6 +12,7 @@ struct ModelSettingsView: View {
     @AppStorage("CopyToClipboardOnly") private var copyToClipboardOnly = false
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
+    @AppStorage("whisperTemperature") private var whisperTemperature: Double = 0.2
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
 
@@ -139,6 +140,14 @@ struct ModelSettingsView: View {
                     }
                 }
                 .toggleStyle(.switch)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text("Temperature: \(whisperTemperature, specifier: "%.2f")")
+                        InfoTip("Controls randomness of transcription. Lower = more deterministic (0.0), higher = more creative/varied (1.0). Default: 0.2 for local, 0.0 for cloud models.")
+                    }
+                    Slider(value: $whisperTemperature, in: 0.0...1.0, step: 0.05)
+                }
 
                 Toggle(isOn: $showLiveTextPreview) {
                     HStack(spacing: 4) {
