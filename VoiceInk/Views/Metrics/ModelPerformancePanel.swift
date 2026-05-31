@@ -426,8 +426,7 @@ private struct ModelPerformancePanelContent: View {
 // MARK: - Voice Intelligence Animated Dark Hero Card
 
 struct VoiceIntelligenceHeroView: View {
-    @State private var time: Double = 0.0
-    private let timer = Timer.publish(every: 1.0/60.0, on: .main, in: .common).autoconnect()
+    @State private var isVisible = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -450,7 +449,8 @@ struct VoiceIntelligenceHeroView: View {
                         Circle()
                             .fill(Color(red: 0.28, green: 0.65, blue: 0.45))
                             .frame(width: 6, height: 6)
-                            .opacity(0.6 + 0.4 * sin(time * 6.0))
+                            .opacity(isVisible ? 1.0 : 0.6)
+                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isVisible)
                         
                         Text("Live")
                             .font(.system(size: 11, weight: .bold))
@@ -535,20 +535,23 @@ struct VoiceIntelligenceHeroView: View {
                         .foregroundColor(.white.opacity(0.35))
                         .textCase(.uppercase)
                     
-                    HStack(spacing: 3) {
-                        ForEach(0..<15) { idx in
-                            let heightMultiplier = abs(sin(time * 4.0 + Double(idx) * 0.4))
-                            let height = 4.0 + 12.0 * heightMultiplier
-                            RoundedRectangle(cornerRadius: 1)
-                                .fill(LinearGradient(
-                                    colors: [Color(red: 0.54, green: 0.12, blue: 0.92), Color(red: 0.28, green: 0.58, blue: 0.95)],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                ))
-                                .frame(width: 2.5, height: height)
+                    TimelineView(.animation) { timeline in
+                        let time = timeline.date.timeIntervalSinceReferenceDate
+                        HStack(spacing: 3) {
+                            ForEach(0..<15, id: \.self) { idx in
+                                let heightMultiplier = abs(sin(time * 4.0 + Double(idx) * 0.4))
+                                let height = 4.0 + 12.0 * heightMultiplier
+                                RoundedRectangle(cornerRadius: 1)
+                                    .fill(LinearGradient(
+                                        colors: [Color(red: 0.54, green: 0.12, blue: 0.92), Color(red: 0.28, green: 0.58, blue: 0.95)],
+                                        startPoint: .bottom,
+                                        endPoint: .top
+                                    ))
+                                    .frame(width: 2.5, height: height)
+                            }
                         }
+                        .frame(height: 18, alignment: .bottom)
                     }
-                    .frame(height: 18, alignment: .bottom)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
@@ -613,9 +616,8 @@ struct VoiceIntelligenceHeroView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
         )
         .shadow(color: Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.12), radius: 15, x: 0, y: 10)
-        .onReceive(timer) { _ in
-            time += 1.0/60.0
-        }
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
     }
 }
 

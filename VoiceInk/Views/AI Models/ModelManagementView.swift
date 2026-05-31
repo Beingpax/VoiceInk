@@ -362,8 +362,7 @@ struct ModelManagementView: View {
 // MARK: - Premium AI Models Hero Panel
 
 struct AIModelsHeroView: View {
-    @State private var time: Double = 0.0
-    private let timer = Timer.publish(every: 1.0/60.0, on: .main, in: .common).autoconnect()
+    @State private var isVisible = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -386,7 +385,8 @@ struct AIModelsHeroView: View {
                         Circle()
                             .fill(Color(red: 0.36, green: 0.28, blue: 0.88))
                             .frame(width: 6, height: 6)
-                            .opacity(0.6 + 0.4 * sin(time * 6.0))
+                            .opacity(isVisible ? 1.0 : 0.6)
+                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isVisible)
                         
                         Text("Ready")
                             .font(.system(size: 11, weight: .bold))
@@ -513,8 +513,7 @@ struct AIModelsHeroView: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
         )
         .shadow(color: Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.12), radius: 15, x: 0, y: 10)
-        .onReceive(timer) { _ in
-            time += 1.0/60.0
-        }
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false }
     }
 }
