@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreAudio
 import Foundation
 import SwiftUI
 import MediaRemoteAdapter
@@ -21,6 +22,13 @@ class PlaybackController: ObservableObject {
             } else {
                 stopMediaTracking()
             }
+        }
+    }
+
+    /// When true, only pause media if audio is routing through built-in speakers (#331)
+    @Published var pauseOnlyOnBuiltInSpeakers: Bool = UserDefaults.standard.bool(forKey: "PauseMediaOnlyBuiltInSpeakers") {
+        didSet {
+            UserDefaults.standard.set(pauseOnlyOnBuiltInSpeakers, forKey: "PauseMediaOnlyBuiltInSpeakers")
         }
     }
     
@@ -66,6 +74,11 @@ class PlaybackController: ObservableObject {
               isMediaPlaying,
               lastKnownTrackInfo?.payload.isPlaying == true,
               let bundleId = lastKnownTrackInfo?.payload.bundleIdentifier else {
+            return
+        }
+
+        // If user only wants to pause on built-in speakers, skip when using headphones/BT (#331)
+        if pauseOnlyOnBuiltInSpeakers && !isOutputBuiltInSpeakers() {
             return
         }
 
@@ -145,6 +158,32 @@ class PlaybackController: ObservableObject {
     private func isAppStillRunning(bundleId: String) -> Bool {
         let runningApps = NSWorkspace.shared.runningApplications
         return runningApps.contains { $0.bundleIdentifier == bundleId }
+    }
+
+    /// Returns true if the default output device is the built-in speaker (not headphones, BT, or external)
+    private func isOutputBuiltInSpeakers() -> Bool {
+        var deviceID = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID) == noErr else {
+            return true // Assume built-in if we can't determine
+        }
+
+        // Get transport type
+        var transportType: UInt32 = 0
+        size = UInt32(MemoryLayout<UInt32>.size)
+        address.mSelector = kAudioDevicePropertyTransportType
+        address.mScope = kAudioObjectPropertyScopeOutput
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &transportType) == noErr else {
+            return true
+        }
+
+        // kAudioDeviceTransportTypeBuiltIn = 'bltn' = 0x626C746E
+        return transportType == kAudioDeviceTransportTypeBuiltIn
     }
 }
 
