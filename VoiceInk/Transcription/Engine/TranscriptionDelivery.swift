@@ -15,7 +15,7 @@ final class TranscriptionDelivery {
         let setState: (RecordingState) -> Void
         let dismiss: () async -> Void
         let sendFollowUp: (String, Transcription) async -> Void
-        let showResponse: (String) async -> Void
+        let showResponse: (String, String?) async -> Void
         let failResponse: (String) async -> Void
     }
 
@@ -64,7 +64,7 @@ final class TranscriptionDelivery {
             await actions.failResponse("Enhancement failed: \(responseError)")
         } else if let text = item.text,
                   item.responseConfig != nil {
-            await actions.showResponse(text)
+            await actions.showResponse(text, item.transcription.aiRequestSystemMessage)
         } else {
             await actions.failResponse("No response was generated.")
         }

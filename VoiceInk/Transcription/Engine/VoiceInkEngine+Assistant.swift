@@ -14,12 +14,14 @@ extension VoiceInkEngine {
         let modeName = assistantSession.modeName
         let modeEmoji = assistantSession.modeEmoji
         let promptName = assistantSession.promptName
+        let systemPrompt = assistantSession.systemPrompt
         let userMessage = assistantSession.beginFollowUp(trimmed)
 
         do {
             let reply = try await assistantChat.requestAssistantReply(
                 provider: provider,
                 modelName: modelName,
+                systemPrompt: systemPrompt,
                 messages: assistantSession.messages
             )
 
@@ -68,8 +70,9 @@ extension VoiceInkEngine {
     }
 
     func completeAssistantResponse(
-        _ response: String
+        _ response: String,
+        systemPrompt: String?
     ) async {
-        assistantSession.finishInitialResponse(response)
+        assistantSession.finishInitialResponse(response, systemPrompt: systemPrompt)
     }
 }

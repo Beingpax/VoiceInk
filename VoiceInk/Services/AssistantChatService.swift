@@ -7,6 +7,7 @@ final class AssistantChatService {
     struct Reply {
         let text: String
         let duration: TimeInterval
+        let systemPrompt: String?
         let requestLog: String
     }
 
@@ -26,6 +27,7 @@ final class AssistantChatService {
     func requestAssistantReply(
         provider: AIProvider,
         modelName: String?,
+        systemPrompt: String?,
         messages: [AssistantDisplayMessage]
     ) async throws -> Reply {
         let chatMessages = messages.map { message in
@@ -42,12 +44,14 @@ final class AssistantChatService {
             provider: provider,
             modelName: modelName,
             messages: chatMessages,
+            systemPrompt: systemPrompt,
             timeout: requestTimeout
         )
 
         return Reply(
             text: text,
             duration: Date().timeIntervalSince(startTime),
+            systemPrompt: systemPrompt,
             requestLog: Self.requestLog(from: messages)
         )
     }
@@ -63,7 +67,7 @@ final class AssistantChatService {
         transcription.aiEnhancementModelName = modelName ?? provider.defaultModel
         transcription.promptName = promptName
         transcription.enhancementDuration = response.duration
-        transcription.aiRequestSystemMessage = nil
+        transcription.aiRequestSystemMessage = response.systemPrompt
         transcription.aiRequestUserMessage = response.requestLog
         transcription.transcriptionStatus = TranscriptionStatus.completed.rawValue
     }
@@ -84,7 +88,7 @@ final class AssistantChatService {
             aiEnhancementModelName: modelName ?? provider.defaultModel,
             promptName: promptName,
             enhancementDuration: response.duration,
-            aiRequestSystemMessage: nil,
+            aiRequestSystemMessage: response.systemPrompt,
             aiRequestUserMessage: response.requestLog,
             modeName: modeName,
             modeEmoji: modeEmoji,

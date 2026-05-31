@@ -376,9 +376,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         promptName: configuration.prompt?.title
                     )
                 },
-                showResponse: { [weak self] response in
+                showResponse: { [weak self] response, systemPrompt in
                     guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
-                    await self.completeAssistantResponse(response)
+                    await self.completeAssistantResponse(response, systemPrompt: systemPrompt)
                 },
                 failResponse: { [weak self] message in
                     guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }

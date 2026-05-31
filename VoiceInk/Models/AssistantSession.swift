@@ -31,6 +31,7 @@ final class AssistantSession: ObservableObject {
     private(set) var modeName: String?
     private(set) var modeEmoji: String?
     private(set) var promptName: String?
+    private(set) var systemPrompt: String?
 
     var isVisible: Bool {
         phase != .inactive
@@ -74,7 +75,9 @@ final class AssistantSession: ObservableObject {
         phase = .responding
     }
 
-    func finishInitialResponse(_ response: String) {
+    func finishInitialResponse(_ response: String, systemPrompt: String?) {
+        self.systemPrompt = systemPrompt
+
         let trimmedResponse = response.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmedResponse.isEmpty {
             appendOrReplace(
@@ -131,6 +134,7 @@ final class AssistantSession: ObservableObject {
         modeName = nil
         modeEmoji = nil
         promptName = nil
+        systemPrompt = nil
     }
 
     private func appendOrReplace(message: AssistantDisplayMessage) {

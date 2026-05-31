@@ -10,14 +10,14 @@ class TranscriptionPipeline {
         let isFollowUp: Bool
         let sendFollowUp: (String, Transcription) async -> Void
         let startResponse: (String, EnhancementRuntimeConfiguration) async -> Void
-        let showResponse: (String) async -> Void
+        let showResponse: (String, String?) async -> Void
         let failResponse: (String) async -> Void
 
         static let inactive = AssistantHooks(
             isFollowUp: false,
             sendFollowUp: { _, _ in },
             startResponse: { _, _ in },
-            showResponse: { _ in },
+            showResponse: { _, _ in },
             failResponse: { _ in }
         )
     }
