@@ -250,9 +250,15 @@ class Recorder: NSObject, ObservableObject {
         smoothedValuesLock.unlock()
 
         // Dispatch to main queue for UI updates (more efficient than Task)
+        // Only update if values changed meaningfully to reduce view invalidations
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.audioMeter = newAudioMeter
+            let current = self.audioMeter
+            let avgDiff = abs(newAudioMeter.averagePower - current.averagePower)
+            let peakDiff = abs(newAudioMeter.peakPower - current.peakPower)
+            if avgDiff > 0.005 || peakDiff > 0.005 {
+                self.audioMeter = newAudioMeter
+            }
         }
     }
     
