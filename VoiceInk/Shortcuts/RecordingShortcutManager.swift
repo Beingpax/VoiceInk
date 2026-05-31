@@ -363,7 +363,10 @@ final class RecordingShortcutModeHandler {
     private var activeShortcutCanCancelAccidentalStart = false
     private var lastShortcutPressTime: Date?
 
-    private let shortcutPressCooldown: TimeInterval = 0.5
+    private let shortcutPressCooldown: TimeInterval = {
+        let ms = UserDefaults.standard.integer(forKey: "shortcutPressCooldownMs")
+        return ms > 0 ? TimeInterval(ms) / 1000.0 : 0.5
+    }()
     private let hybridPressThreshold: TimeInterval = 0.5
 
     init(

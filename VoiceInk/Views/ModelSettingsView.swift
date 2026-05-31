@@ -13,6 +13,7 @@ struct ModelSettingsView: View {
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
     @AppStorage("showLiveTextPreview") private var showLiveTextPreview = false
     @AppStorage("whisperTemperature") private var whisperTemperature: Double = 0.2
+    @AppStorage("shortcutPressCooldownMs") private var shortcutPressCooldownMs: Int = 500
     @State private var customPrompt: String = ""
     @State private var isEditing: Bool = false
 
@@ -147,6 +148,17 @@ struct ModelSettingsView: View {
                         InfoTip("Controls randomness of transcription. Lower = more deterministic (0.0), higher = more creative/varied (1.0). Default: 0.2 for local, 0.0 for cloud models.")
                     }
                     Slider(value: $whisperTemperature, in: 0.0...1.0, step: 0.05)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text("Shortcut Cooldown: \(shortcutPressCooldownMs) ms")
+                        InfoTip("Minimum time between shortcut activations. Lower = faster response but may double-fire. Set to 0 to disable. Default: 500 ms. Requires app restart.")
+                    }
+                    Slider(value: Binding(
+                        get: { Double(shortcutPressCooldownMs) },
+                        set: { shortcutPressCooldownMs = Int($0) }
+                    ), in: 0...1000, step: 50)
                 }
 
                 Toggle(isOn: $showLiveTextPreview) {
