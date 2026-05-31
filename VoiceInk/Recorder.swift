@@ -131,13 +131,10 @@ class Recorder: NSObject, ObservableObject {
         logger.notice("startRecording called – deviceID=\(self.deviceManager.getCurrentDevice(), privacy: .public), file=\(url.lastPathComponent, privacy: .public)")
         deviceManager.isRecordingActive = true
 
-        let currentDeviceID = deviceManager.getCurrentDevice()
-        let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
-        if String(currentDeviceID) != lastDeviceID {
-            // Log device switch but do not display on-screen toast
-            if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
-                logger.notice("Using microphone device: \(deviceName, privacy: .public)")
-            }
+        let currentDeviceID = deviceManager.getCurrentDeviceWithClamshellFallback()
+        // Log device being used
+        if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
+            logger.notice("Using microphone device: \(deviceName, privacy: .public)")
         }
         UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
 
