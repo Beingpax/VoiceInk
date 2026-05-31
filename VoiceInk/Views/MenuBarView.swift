@@ -22,6 +22,7 @@ struct MenuBarView: View {
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleMiniRecorder()
             }
+            .keyboardShortcut("r", modifiers: [.command])
 
             Divider()
 
@@ -57,6 +58,7 @@ struct MenuBarView: View {
             Divider()
             
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
+                .keyboardShortcut("e", modifiers: [.command])
             
             Menu {
                 ForEach(enhancementService.allPrompts) { prompt in
@@ -201,6 +203,7 @@ struct MenuBarView: View {
                     enhancementService: enhancementService
                 )
             }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
 
             Button("Copy Last Transcription") {
                 LastTranscriptionService.copyLastTranscription(from: engine.modelContext)
@@ -261,6 +264,7 @@ struct MenuBarView: View {
             Button("Quit VoiceInk") {
                 NSApplication.shared.terminate(nil)
             }
+            .keyboardShortcut("q", modifiers: .command)
         }
     }
 }
