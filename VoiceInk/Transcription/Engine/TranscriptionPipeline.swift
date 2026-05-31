@@ -263,19 +263,16 @@ class TranscriptionPipeline {
                     """
             }
 
-            let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-            let pastedText = textToPaste + (appendSpace ? " " : "")
-            _ = await CursorPaster.startPasteAtCursor(pastedText).value
             let autoSendKey = activeConfig?.autoSendKey
-            SoundManager.shared.playStopSound()
-            await restorePromptDetectionSettingsAndDismiss {
-                if let autoSendKey, autoSendKey.isEnabled {
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                        CursorPaster.performAutoSend(autoSendKey)
-                    }
-                }
+            if let autoSendKey, autoSendKey.isEnabled {
+                CursorPaster.pasteAndAutoSend(textToPaste, autoSendKey: autoSendKey)
+            } else {
+                let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+                let pastedText = textToPaste + (appendSpace ? " " : "")
+                _ = await CursorPaster.startPasteAtCursor(pastedText).value
             }
+            SoundManager.shared.playStopSound()
+            await restorePromptDetectionSettingsAndDismiss()
         } else {
             SoundManager.shared.playStopSound()
             await restorePromptDetectionSettingsAndDismiss()
