@@ -175,13 +175,17 @@ struct VoiceInkApp: App {
 
         let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: resolvedContainer)
         let mainContext = resolvedContainer.mainContext
-        Task {
+        Task.detached(priority: .utility) {
             await migrationTask?.value
-            TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
+            await MainActor.run {
+                TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
+            }
 
             if UserDefaults.standard.bool(forKey: "enableMCPServer") {
                 let port = UserDefaults.standard.integer(forKey: "mcpServerPort")
-                MCPServerService.shared.start(port: port > 0 ? port : 51089)
+                await MainActor.run {
+                    MCPServerService.shared.start(port: port > 0 ? port : 51089)
+                }
             }
         }
     }
