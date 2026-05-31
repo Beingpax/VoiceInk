@@ -155,7 +155,7 @@ class AIEnhancementService: ObservableObject {
             """
 
 
-            The following are important vocabulary words, proper nouns, and technical terms. When these words or similar-sounding words appear in the <TRANSCRIPT>, ensure they are spelled EXACTLY as shown below:
+            The following are important vocabulary words, proper nouns, and technical terms. When these words or similar-sounding words appear in the <USER_MESSAGE>, ensure they are spelled EXACTLY as shown below:
             <CUSTOM_VOCABULARY>
             \(customVocabulary)
             </CUSTOM_VOCABULARY>
@@ -187,7 +187,7 @@ class AIEnhancementService: ObservableObject {
             return ""
         }
 
-        let formattedText = "\n<TRANSCRIPT>\n\(text)\n</TRANSCRIPT>"
+        let formattedText = "\n<USER_MESSAGE>\n\(text)\n</USER_MESSAGE>"
         let systemMessage = await getSystemMessage(prompt: prompt, configuration: configuration)
 
         await MainActor.run {
