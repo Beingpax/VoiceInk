@@ -8,10 +8,15 @@ struct CopyIconButton: View {
         Button(action: copy) {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(copied ? AppTheme.Status.success : .secondary)
+                .foregroundColor(copied ? AppTheme.Status.success : AppTheme.Selection.foreground)
                 .frame(width: 28, height: 28)
                 .background(
-                    AppCardBackground(isSelected: false, cornerRadius: AppTheme.Radius.control)
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                        .fill(AppTheme.Surface.window.opacity(0.92))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                                .strokeBorder(AppTheme.Border.card, lineWidth: 1)
+                        }
                 )
         }
         .buttonStyle(.plain)
