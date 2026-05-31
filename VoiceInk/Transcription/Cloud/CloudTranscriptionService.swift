@@ -11,6 +11,8 @@ enum CloudTranscriptionError: Error, LocalizedError {
     case networkError(Error)
     case noTranscriptionReturned
     case dataEncodingError
+    /// Every configured API key for the provider failed with a key-level error.
+    case allKeysExhausted(provider: String, lastReason: String)
 
     var errorDescription: String? {
         switch self {
@@ -30,6 +32,8 @@ enum CloudTranscriptionError: Error, LocalizedError {
             return "The API returned an empty or invalid response."
         case .dataEncodingError:
             return "Failed to encode the request body."
+        case .allKeysExhausted(let provider, let lastReason):
+            return "All configured \(provider) API keys failed. Last error: \(lastReason)"
         }
     }
 }
@@ -58,6 +62,19 @@ class CloudTranscriptionService: TranscriptionService {
             guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
                 throw CloudTranscriptionError.unsupportedProvider
             }
+
+            // ElevenLabs uses multi-key rotation
+            if model.provider == .elevenLabs {
+                return try await transcribeWithKeyRotation(
+                    provider: cloudProvider,
+                    providerKey: cloudProvider.providerKey,
+                    audioData: audioData,
+                    fileName: fileName,
+                    model: model,
+                    language: language
+                )
+            }
+
             let apiKey = try requireAPIKey(forProvider: cloudProvider.providerKey)
             return try await cloudProvider.transcribe(
                 audioData: audioData,
@@ -74,6 +91,96 @@ class CloudTranscriptionService: TranscriptionService {
             throw mapLLMKitError(error)
         } catch {
             throw CloudTranscriptionError.networkError(error)
+        }
+    }
+
+    // MARK: - Key Rotation
+
+    /// Transcribes via a cloud provider, auto-rotating through configured API keys
+    /// on key-level failures (HTTP 401/403/429). Transient failures surface immediately.
+    private func transcribeWithKeyRotation(
+        provider: any CloudProvider,
+        providerKey: String,
+        audioData: Data,
+        fileName: String,
+        model: any TranscriptionModel,
+        language: String?
+    ) async throws -> String {
+        let keys = APIKeyManager.shared.getAPIKeys(forProvider: providerKey)
+        let enabledKeys = keys.filter { !$0.disabled && !$0.key.isEmpty }
+
+        guard !enabledKeys.isEmpty else {
+            throw CloudTranscriptionError.missingAPIKey
+        }
+
+        let firstActive = APIKeyManager.shared.activeAPIKey(forProvider: providerKey)
+        var attemptOrder: [APIKeyEntry] = []
+        var seen = Set<UUID>()
+        if let firstActive, !firstActive.disabled {
+            attemptOrder.append(firstActive)
+            seen.insert(firstActive.id)
+        }
+        for entry in enabledKeys where !seen.contains(entry.id) {
+            attemptOrder.append(entry)
+            seen.insert(entry.id)
+        }
+
+        var lastReason = "unknown"
+        for entry in attemptOrder {
+            do {
+                let result = try await provider.transcribe(
+                    audioData: audioData,
+                    fileName: fileName,
+                    apiKey: entry.key,
+                    model: model.name,
+                    language: language,
+                    prompt: transcriptionPrompt(),
+                    customVocabulary: getCustomDictionaryTerms()
+                )
+                APIKeyManager.shared.setActiveKey(id: entry.id, forProvider: providerKey)
+                APIKeyManager.shared.updateAPIKey(
+                    id: entry.id,
+                    clearFailure: true,
+                    forProvider: providerKey
+                )
+                return result
+            } catch let error as LLMKitError {
+                let classification = classifyLLMKitError(error)
+                switch classification {
+                case .keyLevel(let reason):
+                    lastReason = reason
+                    APIKeyManager.shared.markKeyFailed(
+                        id: entry.id,
+                        reason: reason,
+                        forProvider: providerKey
+                    )
+                    continue
+                case .transient:
+                    throw mapLLMKitError(error)
+                }
+            } catch {
+                throw CloudTranscriptionError.networkError(error)
+            }
+        }
+
+        throw CloudTranscriptionError.allKeysExhausted(
+            provider: providerKey,
+            lastReason: lastReason
+        )
+    }
+
+    private func classifyLLMKitError(_ error: LLMKitError) -> APIKeyFailureClass {
+        switch error {
+        case .missingAPIKey:
+            return .keyLevel(reason: "missing API key")
+        case .httpError(let statusCode, let message):
+            return APIKeyFailureClass.classifyHTTP(statusCode: statusCode, message: message)
+        case .networkError(let detail):
+            return .transient(reason: detail)
+        case .timeout:
+            return .transient(reason: "timeout")
+        case .invalidURL, .decodingError, .encodingError, .noResultReturned:
+            return .transient(reason: error.errorDescription ?? "unknown")
         }
     }
 

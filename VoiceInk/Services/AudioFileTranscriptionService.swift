@@ -98,7 +98,7 @@ class AudioTranscriptionService: ObservableObject {
                enhancementService.isConfigured {
                 do {
                     let textForAI = promptDetectionResult?.processedText ?? text
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
+                    let (enhancedText, enhancementDuration, promptName, modelName) = try await enhancementService.enhance(textForAI)
                     let newTranscription = Transcription(
                         text: originalText,
                         duration: duration,

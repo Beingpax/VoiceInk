@@ -180,7 +180,7 @@ class AudioTranscriptionManager: ObservableObject {
                enhancementService.isConfigured {
                 item.status = .processing(phase: .enhancing)
                 do {
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(text)
+                    let (enhancedText, enhancementDuration, promptName, modelName) = try await enhancementService.enhance(text)
                     transcription = Transcription(
                         text: cleanedText,
                         duration: duration,

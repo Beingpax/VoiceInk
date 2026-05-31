@@ -85,6 +85,7 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
     let isPredefined: Bool
     let triggerWords: [String]
     let useSystemInstructions: Bool
+    let providerConfigurationId: UUID?
     
     init(
         id: UUID = UUID(),
@@ -95,7 +96,8 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         description: String? = nil,
         isPredefined: Bool = false,
         triggerWords: [String] = [],
-        useSystemInstructions: Bool = true
+        useSystemInstructions: Bool = true,
+        providerConfigurationId: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -106,10 +108,11 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         self.isPredefined = isPredefined
         self.triggerWords = triggerWords
         self.useSystemInstructions = useSystemInstructions
+        self.providerConfigurationId = providerConfigurationId
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, title, promptText, isActive, icon, description, isPredefined, triggerWords, useSystemInstructions
+        case id, title, promptText, isActive, icon, description, isPredefined, triggerWords, useSystemInstructions, providerConfigurationId
     }
 
     init(from decoder: Decoder) throws {
@@ -123,6 +126,7 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
         isPredefined = try container.decode(Bool.self, forKey: .isPredefined)
         triggerWords = try container.decode([String].self, forKey: .triggerWords)
         useSystemInstructions = try container.decodeIfPresent(Bool.self, forKey: .useSystemInstructions) ?? true
+        providerConfigurationId = try container.decodeIfPresent(UUID.self, forKey: .providerConfigurationId)
     }
     
     var finalPromptText: String {
