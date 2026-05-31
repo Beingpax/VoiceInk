@@ -148,9 +148,10 @@ class FluidAudioTranscriptionService: TranscriptionService {
                 throw ASRError.invalidAudioData
             }
 
-            let floats = stride(from: dataOffset, to: data.count, by: 2).map {
-                return data[$0..<$0 + 2].withUnsafeBytes {
-                    let short = Int16(littleEndian: $0.load(as: Int16.self))
+            let floats = stride(from: dataOffset, to: data.count - 1, by: 2).map { i -> Float in
+                return data[i..<i + 2].withUnsafeBytes { buf in
+                    guard buf.count >= 2 else { return Float(0) }
+                    let short = Int16(littleEndian: buf.loadUnaligned(as: Int16.self))
                     return max(-1.0, min(Float(short) / 32767.0, 1.0))
                 }
             }
@@ -176,16 +177,18 @@ class FluidAudioTranscriptionService: TranscriptionService {
         var offset = 12
         while offset + 8 <= data.count {
             let chunkID = String(data: data[offset..<offset+4], encoding: .ascii) ?? ""
-            let chunkSize = data[offset+4..<offset+8].withUnsafeBytes {
-                UInt32(littleEndian: $0.load(as: UInt32.self))
+            let chunkSize: UInt32 = data[offset+4..<offset+8].withUnsafeBytes { buf in
+                guard buf.count >= 4 else { return 0 }
+                return buf.loadUnaligned(as: UInt32.self)
             }
+            let chunkSizeLE = UInt32(littleEndian: chunkSize)
 
             if chunkID == "data" {
                 return offset + 8 // PCM data starts after chunk header
             }
 
             // Move to next chunk (chunks are word-aligned)
-            let advance = 8 + Int(chunkSize)
+            let advance = 8 + Int(chunkSizeLE)
             let aligned = advance + (advance % 2) // pad to even boundary
             offset += aligned
         }

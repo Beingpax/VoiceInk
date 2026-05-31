@@ -357,8 +357,12 @@ final class ShortcutMonitor {
             return
         }
 
+        logToFile("[ShortcutMonitor] handleModifierOnly: action=\(action), isDown=\(state.isDown), eventKeyCode=\(keyCode), eventFlags=\(modifierFlags.rawValue), shortcutKeyCode=\(state.shortcut.keyCode), shortcutFlags=\(state.shortcut.modifierFlags.rawValue)")
+
         if state.isDown {
-            if state.shortcut.shouldReleaseModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags) {
+            let shouldRelease = state.shortcut.shouldReleaseModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags)
+            logToFile("[ShortcutMonitor] handleModifierOnly: shouldRelease=\(shouldRelease)")
+            if shouldRelease {
                 state.isDown = false
                 state.pressedAt = nil
                 state.isInterrupted = false
@@ -369,12 +373,15 @@ final class ShortcutMonitor {
             return
         }
 
-        if state.shortcut.matchesModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags) {
+        let matches = state.shortcut.matchesModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags)
+        logToFile("[ShortcutMonitor] handleModifierOnly: matchesModifierEvent=\(matches)")
+        if matches {
             state.isDown = true
             state.pressedAt = eventTime
             state.isInterrupted = false
             shortcuts[action] = state
             dispatchKeyDown(for: action, eventTime: eventTime)
+            logToFile("[ShortcutMonitor] handleModifierOnly: dispatched keyDown for \(action)")
         }
     }
 

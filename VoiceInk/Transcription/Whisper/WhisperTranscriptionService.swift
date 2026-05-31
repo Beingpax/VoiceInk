@@ -81,9 +81,10 @@ class WhisperTranscriptionService: TranscriptionService {
 
     private func readAudioSamples(_ url: URL) throws -> [Float] {
         let data = try Data(contentsOf: url)
-        let floats = stride(from: 44, to: data.count, by: 2).map {
-            return data[$0..<$0 + 2].withUnsafeBytes {
-                let short = Int16(littleEndian: $0.load(as: Int16.self))
+        let floats = stride(from: 44, to: data.count - 1, by: 2).map { i -> Float in
+            return data[i..<i + 2].withUnsafeBytes { buf in
+                guard buf.count >= 2 else { return Float(0) }
+                let short = Int16(littleEndian: buf.loadUnaligned(as: Int16.self))
                 return max(-1.0, min(Float(short) / 32767.0, 1.0))
             }
         }
