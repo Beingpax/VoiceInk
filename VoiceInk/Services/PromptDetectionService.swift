@@ -59,7 +59,7 @@ class PromptDetectionService {
         }
         
         if result.shouldEnableAI {
-            try? await Task.sleep(nanoseconds: 50_000_000)
+            // No delay needed — settings are applied synchronously
         }
     }
     

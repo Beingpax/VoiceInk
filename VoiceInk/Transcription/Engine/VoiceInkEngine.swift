@@ -485,10 +485,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
     }
 
     func cleanupResources() async {
-        logger.notice("cleanupResources: releasing model resources")
+        logger.notice("cleanupResources: resetting state (models kept warm)")
         activeRecordingStartID = nil
-        await whisperModelManager.cleanupResources()
-        await serviceRegistry.cleanup()
+        // NOTE: Models are intentionally kept loaded to avoid cold-start on next recording.
+        // They will be cleaned up only on app termination or memory pressure.
         logger.notice("cleanupResources: completed")
     }
 

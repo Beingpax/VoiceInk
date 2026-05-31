@@ -246,15 +246,21 @@ private struct ModelPerformancePanelContent: View {
     private var powerModeCount: Int { metrics.filter { $0.powerModeName != nil }.count }
 
     private var usageStatsGrid: some View {
+        let fastestModel = modelStats.first
+        let slowestModel = modelStats.last
+        let fastestEnhancement = enhancementStats.first
+        let avgLatency = totalSessions > 0 ? totalProcessingSeconds / Double(totalSessions) : 0
+        let enhancementRate = totalSessions > 0 ? Double(enhancedCount) / Double(totalSessions) * 100 : 0
+
         let statItems: [(String, String, String, Color)] = [
-            ("mic.fill", "\(totalSessions)", "Sessions", Color(red: 0.36, green: 0.28, blue: 0.88)),
-            ("textformat.size", formatNumber(totalWords), "Words", Color(red: 0.28, green: 0.58, blue: 0.95)),
-            ("clock.fill", formatDuration(totalAudioMinutes), "Audio", Color(red: 0.54, green: 0.12, blue: 0.92)),
-            ("bolt.fill", String(format: "%.1fx", avgSpeedFactor), "Avg Speed", Color(red: 0.28, green: 0.65, blue: 0.45)),
-            ("wand.and.stars", "\(enhancedCount)", "Enhanced", Color(red: 0.85, green: 0.45, blue: 0.12)),
-            ("sparkles.square.fill.on.square", "\(powerModeCount)", "Power Mode", Color(red: 0.85, green: 0.25, blue: 0.55)),
-            ("doc.text", String(format: "%.0f", avgWordsPerSession), "Words/Session", Color(red: 0.22, green: 0.65, blue: 0.65)),
-            ("timer", String(format: "%.0fs", totalProcessingSeconds), "Processing", Color(red: 0.55, green: 0.35, blue: 0.85)),
+            ("hare.fill", fastestModel?.name ?? "—", "Fastest Model", Color(red: 0.22, green: 0.72, blue: 0.42)),
+            ("bolt.fill", String(format: "%.1fx", fastestModel?.speedFactor ?? 0), "Best Speed", Color(red: 0.28, green: 0.58, blue: 0.95)),
+            ("clock.badge.checkmark.fill", String(format: "%.2fs", avgLatency), "Avg Latency", Color(red: 0.54, green: 0.12, blue: 0.92)),
+            ("tortoise.fill", slowestModel.map { String(format: "%.2fs", $0.avgProcessingTime) } ?? "—", "Slowest Avg", Color(red: 0.85, green: 0.25, blue: 0.25)),
+            ("wand.and.stars", fastestEnhancement?.name.components(separatedBy: "/").last ?? "—", "Best Enhancer", Color(red: 0.85, green: 0.45, blue: 0.12)),
+            ("gauge.with.needle.fill", String(format: "%.2fs", fastestEnhancement?.avgDuration ?? 0), "Enhance Latency", Color(red: 0.65, green: 0.35, blue: 0.85)),
+            ("percent", String(format: "%.0f%%", enhancementRate), "Enhanced", Color(red: 0.22, green: 0.65, blue: 0.65)),
+            ("number", "\(totalSessions)", "Total Sessions", Color(red: 0.36, green: 0.28, blue: 0.88)),
         ]
 
         return LazyVGrid(columns: [
@@ -273,8 +279,10 @@ private struct ModelPerformancePanelContent: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     Text(item.1)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
                     Text(item.2)
                         .font(.system(size: 10, weight: .medium))

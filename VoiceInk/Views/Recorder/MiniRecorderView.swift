@@ -272,8 +272,8 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                         .stroke(Color.white.opacity(0.85 * miniRecorderOpacity), lineWidth: 1.5)
                 )
                 .shadow(color: Color.black.opacity(0.14 * miniRecorderOpacity), radius: 24, x: 0, y: 12)
-                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: hasLiveTranscript)
-                .animation(.spring(response: 0.45, dampingFraction: 0.78), value: stateProvider.recordingState)
+                .animation(.easeOut(duration: 0.15), value: hasLiveTranscript)
+                .animation(.easeOut(duration: 0.15), value: stateProvider.recordingState)
                 
                 // Drag-to-Target overlay
                 if isDraggingToTarget {
