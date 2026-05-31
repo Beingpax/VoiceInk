@@ -27,6 +27,7 @@ struct PromptEditorView: View {
     @State private var description: String
     @State private var triggerWords: [String]
     @State private var useSystemInstructions: Bool
+    @State private var selectedProviderConfigId: UUID?
     @State private var showingIconPicker = false
     
     private var isEditingPredefinedPrompt: Bool {
@@ -47,6 +48,7 @@ struct PromptEditorView: View {
             _description = State(initialValue: "")
             _triggerWords = State(initialValue: [])
             _useSystemInstructions = State(initialValue: true)
+            _selectedProviderConfigId = State(initialValue: nil)
         case .edit(let prompt):
             _title = State(initialValue: prompt.title)
             _promptText = State(initialValue: prompt.promptText)
@@ -54,6 +56,7 @@ struct PromptEditorView: View {
             _description = State(initialValue: prompt.description ?? "")
             _triggerWords = State(initialValue: prompt.triggerWords)
             _useSystemInstructions = State(initialValue: prompt.useSystemInstructions)
+            _selectedProviderConfigId = State(initialValue: prompt.providerConfigurationId)
         }
     }
     
@@ -216,6 +219,22 @@ struct PromptEditorView: View {
                 HStack(spacing: 4) {
                     Text("Trigger Words")
                     InfoTip("Add words that automatically activate this prompt. For example, 'summarize', 'email', 'translate'.")
+                }
+            }
+
+            Section {
+                Picker("AI Provider", selection: $selectedProviderConfigId) {
+                    Text("Default").tag(nil as UUID?)
+                    if let aiService = enhancementService.getAIService() {
+                        ForEach(aiService.providerConfigurations) { config in
+                            Text(config.name).tag(config.id as UUID?)
+                        }
+                    }
+                }
+            } header: {
+                HStack(spacing: 4) {
+                    Text("AI Provider Override")
+                    InfoTip("Optionally use a specific AI provider/model for this prompt instead of the global default.")
                 }
             }
 
