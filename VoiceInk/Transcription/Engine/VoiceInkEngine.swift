@@ -97,6 +97,20 @@ class VoiceInkEngine: NSObject, ObservableObject {
             await recorder.stopRecording()
 
             if let recordedFile {
+                // Guard against empty/truncated recordings caused by hardware init race (#687)
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: recordedFile.path)[.size] as? Int) ?? 0
+                let minimumUsableSize = 8000 // ~0.1s of 16kHz mono PCM + WAV header
+                if fileSize < minimumUsableSize {
+                    logger.warning("⚠️ Recording file too small (\(fileSize) bytes) — likely hardware init race. Discarding.")
+                    NotificationManager.shared.showNotification(
+                        title: "Recording too short — please try again",
+                        type: .warning
+                    )
+                    recordingState = .idle
+                    await cleanupResources()
+                    return
+                }
+
                 if !shouldCancelRecording {
                     let transcription = makeRecordingTranscription(
                         for: recordedFile,
