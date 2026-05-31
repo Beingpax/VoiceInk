@@ -402,7 +402,7 @@ struct AIModelsHeroView: View {
             .padding(.top, 20)
             
             // Dual-frequency organic wave Canvas
-            TimelineView(.animation) { timeline in
+            TimelineView(.animation(minimumInterval: 0.05)) { timeline in
                 Canvas { context, size in
                     let w = size.width
                     let h = size.height

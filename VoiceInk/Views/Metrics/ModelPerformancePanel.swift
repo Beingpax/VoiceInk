@@ -470,7 +470,7 @@ struct VoiceIntelligenceHeroView: View {
             .padding(.top, 20)
             
             // Dual-frequency organic wave Canvas
-            TimelineView(.animation) { timeline in
+            TimelineView(.animation(minimumInterval: 0.05)) { timeline in
                 Canvas { context, size in
                     let w = size.width
                     let h = size.height
@@ -535,7 +535,7 @@ struct VoiceIntelligenceHeroView: View {
                         .foregroundColor(.white.opacity(0.35))
                         .textCase(.uppercase)
                     
-                    TimelineView(.animation) { timeline in
+                    TimelineView(.animation(minimumInterval: 0.1)) { timeline in
                         let time = timeline.date.timeIntervalSinceReferenceDate
                         HStack(spacing: 3) {
                             ForEach(0..<15, id: \.self) { idx in

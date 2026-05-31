@@ -311,7 +311,7 @@ struct ParticlesView: View {
     let particleCount = 60 // Increased particle count
     
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.animation(minimumInterval: 0.05)) { timeline in
             Canvas { context, size in
                 let timeOffset = timeline.date.timeIntervalSinceReferenceDate
                 
