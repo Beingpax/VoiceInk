@@ -126,7 +126,14 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     }
                     NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
-                    await runPipeline(on: transcription, audioURL: recordedFile)
+                    // Run pipeline without blocking recording state (#111)
+                    // User can start next recording immediately
+                    let pipeline = self
+                    Task {
+                        await pipeline.runPipeline(on: transcription, audioURL: recordedFile)
+                    }
+                    recordingState = .idle
+                    await cleanupResources()
                 } else {
                     await finishActiveRecorderCancellation()
                 }
@@ -272,7 +279,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
             } catch {
                 logger.error("Failed to save transcription failure state: \(error.localizedDescription)")
             }
-            recordingState = .idle
+            // Only reset state if not already recording again (#111)
+            if recordingState == .transcribing { recordingState = .idle }
             return
         }
 
