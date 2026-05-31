@@ -15,7 +15,6 @@ enum ViewType: String, CaseIterable, Identifiable {
     case dictionary = "Dictionary"
     case visualSettings = "Visual Settings"
     case settings = "Settings"
-    case license = "VoiceInk Pro"
 
     var id: String { rawValue }
 
@@ -32,7 +31,6 @@ enum ViewType: String, CaseIterable, Identifiable {
         case .dictionary: return "character.book.closed"
         case .visualSettings: return "paintpalette"
         case .settings: return "gearshape"
-        case .license: return "checkmark.seal"
         }
     }
 }
@@ -66,7 +64,6 @@ struct ContentView: View {
     @AppStorage("powerModeUIFlag") private var powerModeUIFlag = false
     @State private var selectedView: ViewType? = .metrics
     let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    @StateObject private var licenseViewModel = LicenseViewModel()
 
     private var visibleViewTypes: [ViewType] {
         ViewType.allCases.filter { viewType in
@@ -94,16 +91,6 @@ struct ContentView: View {
                         Text("VoiceInk")
                             .font(.system(size: 15, weight: .bold))
                             .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
-
-                        if case .licensed = licenseViewModel.licenseState {
-                            Text("PRO")
-                                .font(.system(size: 8, weight: .heavy))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1.5)
-                                .background(Color(red: 0.36, green: 0.28, blue: 0.88))
-                                .cornerRadius(4)
-                        }
 
                         Spacer()
                     }
@@ -151,68 +138,7 @@ struct ContentView: View {
                     }
                 }
             }
-            .background(Color(red: 0.97, green: 0.97, blue: 0.98)) // Custom light cement mockup theme
-            .safeAreaInset(edge: .bottom) {
-                // Bottom Pro Plan Card
-                VStack(spacing: 0) {
-                    Divider()
-                        .background(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.06))
-                        .padding(.bottom, 12)
-
-                    Button(action: {
-                        selectedView = .license
-                    }) {
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.08), lineWidth: 2.5)
-                                    .frame(width: 22, height: 22)
-
-                                Circle()
-                                    .trim(from: 0, to: 0.85)
-                                    .stroke(
-                                        AngularGradient(
-                                            colors: [Color(red: 0.54, green: 0.12, blue: 0.92), Color(red: 0.28, green: 0.58, blue: 0.95), Color(red: 0.54, green: 0.12, blue: 0.92)],
-                                            center: .center
-                                        ),
-                                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
-                                    )
-                                    .frame(width: 22, height: 22)
-                                    .rotationEffect(.degrees(-90))
-                            }
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("PRO PLAN")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
-
-                                Text("Active")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(Color(red: 0.28, green: 0.65, blue: 0.45))
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.3))
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 16)
-                        .background(Color.white.opacity(0.65))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.05), lineWidth: 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 20)
-                }
-                .background(Color(red: 0.97, green: 0.97, blue: 0.98))
-            }
+            .background(Color(red: 0.97, green: 0.97, blue: 0.98))
             .navigationSplitViewColumnWidth(min: 220, ideal: 230, max: 250)
         } detail: {
             if let selectedView = selectedView {
@@ -258,7 +184,7 @@ struct ContentView: View {
                 case "Dictionary":
                     selectedView = .dictionary
                 case "VoiceInk Pro":
-                    selectedView = .license
+                    selectedView = .settings
                 default:
                     break
                 }
@@ -291,8 +217,6 @@ struct ContentView: View {
             AudioInputSettingsView()
         case .dictionary:
             DictionarySettingsView(whisperPrompt: whisperModelManager.whisperPrompt)
-        case .license:
-            LicenseView()
         }
     }
 }

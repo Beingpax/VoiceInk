@@ -401,62 +401,8 @@ struct AIModelsHeroView: View {
             .padding(.horizontal, 24)
             .padding(.top, 20)
             
-            // Dual-frequency organic wave Canvas
-            TimelineView(.animation(minimumInterval: 0.05)) { timeline in
-                Canvas { context, size in
-                    let w = size.width
-                    let h = size.height
-                    let midY = h / 2
-                    
-                    let elapsed = timeline.date.timeIntervalSinceReferenceDate
-                    
-                    // Layer 1: Blue/Purple Wave
-                    var path1 = Path()
-                    path1.move(to: CGPoint(x: 0, y: midY))
-                    for x in stride(from: 0, to: w, by: 2) {
-                        let phase = x * 0.010 + elapsed * 1.3
-                        let noise = sin(x * 0.002 - elapsed * 0.7) * 12.0
-                        let y = midY + sin(phase) * 18.0 + sin(phase * 0.5) * 10.0 + noise
-                        if x == 0 { path1.move(to: CGPoint(x: x, y: y)) }
-                        else { path1.addLine(to: CGPoint(x: x, y: y)) }
-                    }
-                    context.stroke(path1, with: .linearGradient(
-                        Gradient(colors: [Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.85), Color(red: 0.28, green: 0.58, blue: 0.95).opacity(0.85)]),
-                        startPoint: CGPoint(x: 0, y: 0),
-                        endPoint: CGPoint(x: w, y: 0)
-                    ), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                    
-                    // Layer 2: Neon Purple/Violet Wave
-                    var path2 = Path()
-                    path2.move(to: CGPoint(x: w, y: midY))
-                    for x in stride(from: 0, to: w, by: 2) {
-                        let phase = x * 0.015 - elapsed * 1.8
-                        let noise = cos(x * 0.004 + elapsed * 0.9) * 10.0
-                        let y = midY + sin(phase * 0.9) * 14.0 + cos(phase * 1.2) * 8.0 + noise
-                        if x == 0 { path2.move(to: CGPoint(x: x, y: y)) }
-                        else { path2.addLine(to: CGPoint(x: x, y: y)) }
-                    }
-                    context.stroke(path2, with: .linearGradient(
-                        Gradient(colors: [Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.65), Color(red: 0.0, green: 0.8, blue: 1.0).opacity(0.65)]),
-                        startPoint: CGPoint(x: 0, y: 0),
-                        endPoint: CGPoint(x: w, y: 0)
-                    ), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    
-                    // Floating dynamic particles
-                    for i in 0..<8 {
-                        let seed = Double(i) * 45.2
-                        let px = (w * 0.1 + w * 0.8 * abs(sin(seed)))
-                        let py = midY + sin(elapsed * 1.5 + seed) * 20.0 + cos(elapsed * 0.7 + seed * 1.5) * 8.0
-                        
-                        let radius = 1.5 + 1.5 * abs(sin(elapsed * 3.0 + seed))
-                        let particleColor = Color(red: 0.36, green: 0.28, blue: 0.88).opacity(0.3 + 0.7 * abs(sin(elapsed * 2.5 + seed)))
-                        
-                        let rect = CGRect(x: px - radius, y: py - radius, width: radius * 2, height: radius * 2)
-                        context.fill(Path(ellipseIn: rect), with: .color(particleColor))
-                    }
-                }
-            }
-            .frame(height: 100)
+            Spacer()
+                .frame(height: 24)
             
             // Footer Info stats cards
             HStack(spacing: 0) {
