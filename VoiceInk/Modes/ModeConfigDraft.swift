@@ -81,9 +81,7 @@ struct ModeConfigDraft {
             outputMode = latestConfig.outputMode
             autoSendKey = latestConfig.autoSendKey
             isDefault = latestConfig.isDefault
-            isTranscriptionFormattingExpanded = latestConfig.isTextFormattingEnabled ||
-                latestConfig.punctuationCleanupMode != .keep ||
-                latestConfig.lowercaseTranscription
+            isTranscriptionFormattingExpanded = false
             sourceConfig = latestConfig
         }
     }

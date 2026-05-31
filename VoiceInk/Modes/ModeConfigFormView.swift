@@ -529,14 +529,16 @@ struct ModeConfigFormView: View {
 
     private var advancedSection: some View {
         Section("Advanced") {
-            Picker("Output", selection: $draft.outputMode) {
-                ForEach(outputChoices, id: \.self) { outputMode in
-                    Label(outputMode.displayName, systemImage: outputMode.iconName)
-                        .tag(outputMode)
+            if canRespond {
+                Picker("Output", selection: $draft.outputMode) {
+                    ForEach(outputChoices, id: \.self) { outputMode in
+                        Label(outputMode.displayName, systemImage: outputMode.iconName)
+                            .tag(outputMode)
+                    }
                 }
-            }
-            .onChange(of: draft.outputMode) { _, _ in
-                applyOutputRules()
+                .onChange(of: draft.outputMode) { _, _ in
+                    applyOutputRules()
+                }
             }
 
             if draft.outputMode.usesPasteOptions {
