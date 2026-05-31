@@ -22,11 +22,10 @@ struct ModeIcon: Codable, Equatable, Hashable {
         ModeIcon(kind: .emoji, value: value)
     }
 
-    static let defaultIcon = ModeIcon.symbol("pencil")
+    static let defaultIcon = ModeIcon.symbol("message.fill")
 
     static let defaultSymbols: [String] = [
         // Core
-        "pencil",
         "sparkles",
         "gearshape.fill",
 
@@ -34,11 +33,13 @@ struct ModeIcon: Codable, Equatable, Hashable {
         "envelope.fill",
         "message.fill",
         "bubble.left.and.bubble.right.fill",
+        "phone.fill",
 
         // Work
         "briefcase.fill",
         "building.2.fill",
-        "calendar",
+        "calendar.circle.fill",
+        "person.2.fill",
 
         // Writing
         "doc.text.fill",
@@ -51,11 +52,12 @@ struct ModeIcon: Codable, Equatable, Hashable {
 
         // Organization
         "folder.fill",
+        "tray.full.fill",
 
         // Business
-        "chart.bar.fill",
         "cart.fill",
         "creditcard.fill",
+        "banknote.fill",
 
         // Learning and health
         "lightbulb.fill",
@@ -64,7 +66,7 @@ struct ModeIcon: Codable, Equatable, Hashable {
 
         // Places
         "house.fill",
-        "globe",
+        "globe.americas.fill",
         "map.fill",
         "airplane",
 

@@ -33,11 +33,7 @@ struct ModeIconPickerView: View {
     private let columns = [GridItem(.adaptive(minimum: 44), spacing: 10)]
 
     private var symbolOptions: [String] {
-        var symbols = ModeIcon.defaultSymbols
-        if selectedIcon.kind == .symbol, !symbols.contains(selectedIcon.value) {
-            symbols.insert(selectedIcon.value, at: 0)
-        }
-        return symbols
+        ModeIcon.defaultSymbols
     }
 
     private var emojiOptions: [String] {
@@ -283,7 +279,7 @@ extension String {
 struct ModeIconPickerView_Previews: PreviewProvider {
     static var previews: some View {
         ModeIconPickerView(
-            selectedIcon: .constant(.symbol("pencil")),
+            selectedIcon: .constant(.symbol("message.fill")),
             isPresented: .constant(true)
         )
         .environmentObject(EmojiManager.shared)
