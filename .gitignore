@@ -32,6 +32,11 @@ playground.xcworkspace
 .build/
 build/
 .local-build/
+DerivedData/
+
+# Profiling
+*.profraw
+*.profdata
 
 # CocoaPods
 #
