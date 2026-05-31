@@ -33,9 +33,31 @@ class Recorder: NSObject, ObservableObject {
         case couldNotStartRecording
     }
     
+    private var prewarmedRecorder: CoreAudioRecorder?
+
     override init() {
         super.init()
         setupDeviceSwitchObserver()
+        prewarmAudioUnit()
+    }
+
+    /// Pre-warms the AudioUnit for the current mic so recording starts instantly.
+    private func prewarmAudioUnit() {
+        let deviceID = deviceManager.getCurrentDevice()
+        guard deviceID != 0 else { return }
+        audioSetupQueue.async { [weak self] in
+            guard let self else { return }
+            let warmRecorder = CoreAudioRecorder()
+            do {
+                try warmRecorder.prewarm(deviceID: deviceID)
+                DispatchQueue.main.async {
+                    self.prewarmedRecorder = warmRecorder
+                    self.logger.notice("🎙️ Audio pre-warm complete for device \(deviceID, privacy: .public)")
+                }
+            } catch {
+                self.logger.warning("Audio pre-warm failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 
     private func setupDeviceSwitchObserver() {
@@ -125,7 +147,15 @@ class Recorder: NSObject, ObservableObject {
         audioRestorationTask = nil
         audioMeterUpdateTimer?.cancel()
 
-        let coreAudioRecorder = CoreAudioRecorder()
+        // Use pre-warmed recorder if available and matches current device
+        let coreAudioRecorder: CoreAudioRecorder
+        if let warm = prewarmedRecorder, warm.isPrewarmed {
+            coreAudioRecorder = warm
+            prewarmedRecorder = nil
+            logger.notice("🎙️ Using pre-warmed recorder (fast path)")
+        } else {
+            coreAudioRecorder = CoreAudioRecorder()
+        }
         coreAudioRecorder.onAudioChunk = onAudioChunk
         recorder = coreAudioRecorder
 
@@ -186,6 +216,9 @@ class Recorder: NSObject, ObservableObject {
             await playbackController.resumeMedia()
         }
         deviceManager.isRecordingActive = false
+
+        // Re-prewarm for next recording
+        prewarmAudioUnit()
     }
 
     private func handleRecordingError(_ error: Error) async {
