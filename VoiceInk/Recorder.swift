@@ -136,7 +136,10 @@ class Recorder: NSObject, ObservableObject {
         if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
             logger.notice("Using microphone device: \(deviceName, privacy: .public)")
         }
-        UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
+        let idToSave = String(currentDeviceID)
+        Task.detached(priority: .background) {
+            UserDefaults.standard.set(idToSave, forKey: "lastUsedMicrophoneDeviceID")
+        }
 
         let deviceID = currentDeviceID
 

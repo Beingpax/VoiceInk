@@ -522,9 +522,7 @@ class AIEnhancementService: ObservableObject {
         }
 
         if let capturedText = await screenCaptureService.captureAndExtractText() {
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
+            // Screen context stored internally — no UI notification needed
         }
     }
 

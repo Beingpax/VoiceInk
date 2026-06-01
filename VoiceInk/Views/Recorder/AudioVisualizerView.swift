@@ -19,18 +19,36 @@ struct AudioVisualizer: View {
     let isActive: Bool
 
     @AppStorage("visualizerWaveformHeight") private var visualizerWaveformHeight = 75.0
+    @AppStorage("visualizerSpeed") private var visualizerSpeed = 1.0
+    @AppStorage("visualizerLineTheme") private var visualizerLineTheme = "cyber"
 
     var body: some View {
         let height = CGFloat(visualizerWaveformHeight)
+        let speed = visualizerSpeed
+        let primary = Self.resolveColor(theme: visualizerLineTheme, primary: true)
+        let secondary = Self.resolveColor(theme: visualizerLineTheme, primary: false)
         TimelineView(.animation(minimumInterval: 0.05)) { context in
             WaveCanvas(
                 audioPower: audioMeter.averagePower,
                 isActive: isActive,
                 maxHeight: height,
-                time: context.date.timeIntervalSinceReferenceDate
+                time: context.date.timeIntervalSinceReferenceDate,
+                speed: speed,
+                primaryColor: primary,
+                secondaryColor: secondary
             )
         }
         .frame(maxWidth: .infinity, idealHeight: height, maxHeight: height)
+    }
+
+    static func resolveColor(theme: String, primary: Bool) -> Color {
+        switch theme {
+        case "sunset": return primary ? Color(red: 1.0, green: 0.3, blue: 0.3) : Color(red: 0.9, green: 0.0, blue: 0.6)
+        case "matrix": return primary ? Color(red: 0.0, green: 1.0, blue: 0.53) : Color(red: 0.0, green: 0.8, blue: 0.2)
+        case "aurora": return primary ? Color(red: 0.0, green: 0.95, blue: 1.0) : Color(red: 0.5, green: 0.0, blue: 1.0)
+        case "mono": return primary ? .white : Color(red: 0.7, green: 0.7, blue: 0.7)
+        default: return primary ? Color(red: 0.28, green: 0.58, blue: 0.95) : Color(red: 0.54, green: 0.12, blue: 0.92)
+        }
     }
 }
 
@@ -41,49 +59,33 @@ struct StaticVisualizer: View {
 
     var body: some View {
         let height = CGFloat(visualizerWaveformHeight)
-        // Static: just draw once, no timeline needed
+        let primary = AudioVisualizer.resolveColor(theme: "cyber", primary: true)
+        let secondary = AudioVisualizer.resolveColor(theme: "cyber", primary: false)
         WaveCanvas(
             audioPower: 0,
             isActive: false,
             maxHeight: height,
-            time: 0
+            time: 0,
+            speed: 1.0,
+            primaryColor: primary,
+            secondaryColor: secondary
         )
         .frame(maxWidth: .infinity, idealHeight: height, maxHeight: height)
     }
 }
 
-// MARK: - Performant Wave Canvas (5 strands, 30 steps, 20fps)
+// MARK: - Performant Wave Canvas (5 strands, 30 steps, 20fps, zero @AppStorage)
 private struct WaveCanvas: View {
     let audioPower: Double
     let isActive: Bool
     let maxHeight: CGFloat
     let time: TimeInterval
-
-    @AppStorage("visualizerSpeed") private var visualizerSpeed = 1.0
-    @AppStorage("visualizerLineTheme") private var visualizerLineTheme = "cyber"
+    let speed: Double
+    let primaryColor: Color
+    let secondaryColor: Color
 
     private let strandsCount = 5
     private let stepsCount = 30
-
-    private var primaryColor: Color {
-        switch visualizerLineTheme {
-        case "sunset": return Color(red: 1.0, green: 0.3, blue: 0.3)
-        case "matrix": return Color(red: 0.0, green: 1.0, blue: 0.53)
-        case "aurora": return Color(red: 0.0, green: 0.95, blue: 1.0)
-        case "mono": return .white
-        default: return Color(red: 0.28, green: 0.58, blue: 0.95)
-        }
-    }
-
-    private var secondaryColor: Color {
-        switch visualizerLineTheme {
-        case "sunset": return Color(red: 0.9, green: 0.0, blue: 0.6)
-        case "matrix": return Color(red: 0.0, green: 0.8, blue: 0.2)
-        case "aurora": return Color(red: 0.5, green: 0.0, blue: 1.0)
-        case "mono": return Color(red: 0.7, green: 0.7, blue: 0.7)
-        default: return Color(red: 0.54, green: 0.12, blue: 0.92)
-        }
-    }
 
     var body: some View {
         Canvas { context, size in
@@ -97,12 +99,12 @@ private struct WaveCanvas: View {
 
             let profile = WaveProfile(minHeight: 8, maxHeight: maxHeight)
             let amp = profile.amplitude(for: audioPower, isActive: isActive) * scale
-            let t = time * visualizerSpeed
+            let t = time * speed
 
             // Draw strands directly — no fill pass, no glow filter
             for s in 0..<strandsCount {
                 let layer = Double(s)
-                let speed = 1.2 + layer * 0.3
+                let spd = 1.2 + layer * 0.3
                 let freq = 0.015 + layer * 0.002
                 let phaseOffset = layer * 0.9
                 let layerAmpScale: CGFloat = s == 0 ? 1.0 : (s == 1 ? 0.8 : 0.5 - CGFloat(s) * 0.05)
@@ -113,11 +115,10 @@ private struct WaveCanvas: View {
                 for i in 0..<stepsCount {
                     let x = sideInset + CGFloat(i) * stepX
                     let fraction = Double(i) / Double(stepsCount - 1)
-                    // Parabolic envelope — cheaper than exp()
                     let centered = fraction * 2.0 - 1.0
                     let envelope: CGFloat = CGFloat(1.0 - centered * centered)
 
-                    let phase: Double = Double(x) * freq + t * speed + phaseOffset
+                    let phase: Double = Double(x) * freq + t * spd + phaseOffset
                     let sinVal: CGFloat = CGFloat(sin(phase))
                     let y: CGFloat = midY + sinVal * amp * envelope * layerAmpScale
 
@@ -132,7 +133,6 @@ private struct WaveCanvas: View {
                 }
                 path.addLine(to: prevPoint)
 
-                // Style: first two strands are primary, rest are subtle
                 let isPrimary = s < 2
                 let opacity = isActive ? (isPrimary ? 0.9 : 0.3) : (isPrimary ? 0.4 : 0.1)
                 let lineWidth = (isPrimary ? 2.0 : 0.8) * scale

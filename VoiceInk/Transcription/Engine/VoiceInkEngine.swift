@@ -249,13 +249,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 }
                             }
 
-                            Task { @MainActor [weak self] in
+                            Task.detached(priority: .background) { [weak self] in
                                 guard let self else { return }
-
-                                if let enhancementService = self.enhancementService {
-                                    enhancementService.captureClipboardContext()
-                                    await enhancementService.captureScreenContext()
-                                }
+                                await self.enhancementService?.captureClipboardContext()
+                                await self.enhancementService?.captureScreenContext()
                             }
 
                         } catch {

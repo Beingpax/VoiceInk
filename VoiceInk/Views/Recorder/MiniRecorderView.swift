@@ -19,6 +19,9 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @AppStorage("miniRecorderOpacity") private var miniRecorderOpacity = 0.95
     @AppStorage("visualizerMovementType") private var visualizerMovementType = "alien"
     @AppStorage("visualizerLineTheme") private var visualizerLineTheme = "cyber"
+    @AppStorage("superchargeDynamicHUDIsland") private var dynamicHUDEnabled = false
+    @AppStorage("superchargeDragToTarget") private var dragToTargetEnabled = false
+    @AppStorage("superchargeTactileHapticScrubbing") private var hapticScrubbingEnabled = false
 
     @State private var showVoiceMenu = false
 
@@ -90,7 +93,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     private var dynamicWidth: CGFloat {
         let baseWidth = CGFloat(miniRecorderWidth)
-        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseWidth }
+        guard dynamicHUDEnabled else { return baseWidth }
         
         switch stateProvider.recordingState {
         case .idle, .starting:
@@ -104,7 +107,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     
     private var dynamicHeight: CGFloat {
         let baseHeight = CGFloat(miniRecorderHeight)
-        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseHeight }
+        guard dynamicHUDEnabled else { return baseHeight }
         
         switch stateProvider.recordingState {
         case .idle, .starting:
@@ -134,7 +137,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     activeTargetZone = "app"
                 }
                 
-                if oldZone != activeTargetZone && UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                if oldZone != activeTargetZone && hapticScrubbingEnabled {
                     #if canImport(AppKit)
                     NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
                     #endif
@@ -167,7 +170,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: 0) {
                     // Drag to Target Handle
-                    if UserDefaults.standard.bool(forKey: "superchargeDragToTarget") {
+                    if dragToTargetEnabled {
                         HStack {
                             Spacer()
                             HStack(spacing: 4) {
