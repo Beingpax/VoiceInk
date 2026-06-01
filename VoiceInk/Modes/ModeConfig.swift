@@ -243,7 +243,6 @@ class ModeManager: ObservableObject {
 
     private init() {
         loadConfigurations()
-        migrateLegacyModeDefaultsIfNeeded()
 
         if let activeConfigIdString = UserDefaults.standard.string(forKey: activeConfigIdKey),
            let activeConfigId = UUID(uuidString: activeConfigIdString) {

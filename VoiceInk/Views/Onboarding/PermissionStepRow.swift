@@ -1,0 +1,138 @@
+import SwiftUI
+
+struct PermissionStepRow: View {
+    let stepNumber: Int
+    let descriptor: OnboardingPermissionDescriptor
+    let status: OnboardingPermissionStatus
+    let isActive: Bool
+    let isLocked: Bool
+    let showsRestartHint: Bool
+    let actionTitle: String
+    let onSelect: () -> Void
+    let onAction: () -> Void
+    let onQuit: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                stepNumberView
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(descriptor.title)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        Text(descriptor.requirement)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(AppTheme.Surface.subtle)
+                            .clipShape(Capsule())
+                    }
+
+                    Text(descriptor.subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(AppTheme.Text.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 10)
+
+                if status.isGranted || isLocked {
+                    statusBadge
+                } else {
+                    actionButton
+                }
+            }
+
+            if isActive && !isLocked && showsRestartHint {
+                restartHint
+                    .padding(.leading, 44)
+            }
+        }
+        .padding(14)
+        .background(
+            AppMaterialCardBackground(
+                isSelected: isActive && !isLocked,
+                cornerRadius: 10
+            )
+        )
+        .opacity(isLocked ? 0.55 : 1)
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .onTapGesture {
+            guard !isLocked else { return }
+            onSelect()
+        }
+    }
+
+    private var stepNumberView: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(status.isGranted ? Color.primary.opacity(0.16) : AppTheme.Surface.controlActive)
+
+            if status.isGranted {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.primary.opacity(0.84))
+            } else {
+                Text("\(stepNumber)")
+                    .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(isActive && !isLocked ? .primary : AppTheme.Text.muted)
+            }
+        }
+        .frame(width: 30, height: 30)
+    }
+
+    private var actionButton: some View {
+        Button(action: onAction) {
+            Text(actionTitle)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(minWidth: 94)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                        .fill(Color.primary.opacity(0.78))
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var statusBadge: some View {
+        Text(isLocked ? "Locked" : status.label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(isLocked ? AppTheme.Text.muted : statusTone)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(isLocked ? AppTheme.Surface.subtle : statusTone.opacity(0.12))
+            .clipShape(Capsule())
+    }
+
+    private var statusTone: Color {
+        switch status {
+        case .denied, .restricted:
+            return AppTheme.Status.error
+        default:
+            return Color.primary.opacity(0.72)
+        }
+    }
+
+    private var restartHint: some View {
+        HStack(spacing: 8) {
+            Text("Restart VoiceInk after enabling Screen Recording.")
+                .font(.system(size: 12))
+                .foregroundColor(AppTheme.Text.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button("Quit") {
+                onQuit()
+            }
+            .font(.system(size: 12, weight: .semibold))
+            .buttonStyle(.plain)
+            .foregroundColor(.primary.opacity(0.78))
+        }
+    }
+}

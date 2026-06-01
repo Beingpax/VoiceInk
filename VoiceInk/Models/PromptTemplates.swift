@@ -21,6 +21,7 @@ enum PromptTemplates {
     static let chatPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
     static let emailPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
     static let rewritePromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
+    static let assistantPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000005")!
 
     static var all: [TemplatePrompt] {
         createTemplatePrompts()
@@ -87,17 +88,27 @@ enum PromptTemplates {
                 id: rewritePromptId,
                 title: "Rewrite",
                 promptText: """
-                    - Rewrite the <USER_MESSAGE> text with enhanced clarity, improved sentence structure, and rhythmic flow while preserving the original meaning and tone.
-                    - Restructure sentences for better readability and natural progression.
-                    - Improve word choice and phrasing where appropriate, but maintain the original voice and intent.
-                    - Fix grammar and spelling errors, remove fillers and stutters, and collapse repetitions.
-                    - Format any lists as proper bullet points or numbered lists.
-                    - Write numbers as numerals (e.g., 'five' → '5', 'twenty dollars' → '$20').
-                    - Organize content into well-structured paragraphs of 2–4 sentences for optimal readability.
-                    - Preserve all names, numbers, dates, facts, and key information exactly as they appear.
+                    - If <CURRENTLY_SELECTED_TEXT> is provided, rewrite that selected text.
+                    - Treat <USER_MESSAGE> as the user's rewrite instruction and follow it first.
+                    - If <USER_MESSAGE> asks for a specific tone, length, format, audience, or style, prioritize that over the default cleanup rules.
+                    - If no selected text is provided, rewrite the <USER_MESSAGE> text directly.
+                    - Improve clarity, flow, grammar, and wording only in ways that support the user's instruction.
+                    - Preserve the original meaning, voice, facts, names, numbers, and dates unless the user explicitly asks to change them.
                     - Do not add explanations, labels, metadata, or instructions.
                     - Output only the rewritten text.
-                    - Don't add any information not available in the <USER_MESSAGE> text ever.
+                    - Don't add any information not available in the selected text or <USER_MESSAGE> text ever.
+                    """,
+                useSystemInstructions: false
+            ),
+            TemplatePrompt(
+                id: assistantPromptId,
+                title: "Assistant",
+                promptText: """
+                    - Answer the user's <USER_MESSAGE> directly and helpfully.
+                    - Use any provided context only when it is relevant to the user's request.
+                    - Be concise by default, but include enough detail to fully answer the question.
+                    - If the user asks for steps, options, or a comparison, structure the response clearly.
+                    - Do not claim access to information that is not present in the request or context.
                     """,
                 useSystemInstructions: true
             )

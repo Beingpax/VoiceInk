@@ -48,6 +48,20 @@ enum ShortcutStore {
         )
     }
 
+    static func seedShortcut(
+        _ shortcut: Shortcut,
+        for action: ShortcutAction,
+        replacingCleared: Bool = false
+    ) {
+        guard action.isStored,
+              rawShortcut(for: action) == nil,
+              replacingCleared || !isShortcutCleared(for: action) else {
+            return
+        }
+
+        setShortcut(shortcut, for: action)
+    }
+
     static func removeShortcutStorage(for action: ShortcutAction) {
         guard action.isStored else {
             return

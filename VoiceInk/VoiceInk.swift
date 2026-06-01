@@ -341,11 +341,10 @@ struct VoiceInkApp: App {
                     .environmentObject(recorderUIManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
-                    .frame(minWidth: 880, minHeight: 780)
+                    .frame(width: 950)
+                    .frame(minHeight: 730)
                     .background(WindowAccessor { window in
-                        if window.identifier == nil || window.identifier != NSUserInterfaceItemIdentifier("com.prakashjoshipax.voiceink.onboardingWindow") {
-                            WindowManager.shared.configureOnboardingPanel(window)
-                        }
+                        WindowManager.shared.configureWindow(window)
                     })
             }
         }

@@ -57,6 +57,11 @@ struct ShortcutRecorder: View {
             guard let activeRecorderID = notification.object as? UUID, activeRecorderID != recorderID else { return }
             recorder.cancel()
         }
+        .onChange(of: action) { _, newAction in
+            recorder.cancel()
+            recorderID = UUID()
+            shortcut = ShortcutStore.shortcut(for: newAction)
+        }
         .onDisappear {
             recorder.cancel()
         }

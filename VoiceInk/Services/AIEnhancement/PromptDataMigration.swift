@@ -2,7 +2,7 @@ import Foundation
 
 enum PromptDataMigration {
     private static let seedVersionKey = "PromptDataMigration.seededTemplatePromptsVersion"
-    private static let currentSeedVersion = 1
+    private static let currentSeedVersion = 2
 
     static func migrate(_ prompts: [CustomPrompt], defaults: UserDefaults = .standard) -> (prompts: [CustomPrompt], didChange: Bool) {
         var migratedPrompts = prompts

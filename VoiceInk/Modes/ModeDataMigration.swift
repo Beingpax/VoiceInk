@@ -15,23 +15,6 @@ extension ModeManager {
         return legacyData
     }
 
-    func migrateLegacyModeDefaultsIfNeeded() {
-        guard configurations.isEmpty || !configurations.contains(where: { $0.isDefault }) else { return }
-
-        let legacyConfig = makeLegacyDefaultConfiguration(
-            name: uniqueConfigurationName(base: "Default"),
-            isDefault: true
-        )
-
-        if configurations.isEmpty {
-            configurations = [legacyConfig]
-        } else {
-            configurations.append(legacyConfig)
-        }
-
-        saveConfigurations()
-    }
-
     func migrateLoadedModeConfigurationsIfNeeded() {
         var didChange = false
 
@@ -77,48 +60,6 @@ extension ModeManager {
 
         migrateLegacyShortcutStorageIfNeeded()
     }
-
-    private func makeLegacyDefaultConfiguration(name: String, isDefault: Bool) -> ModeConfig {
-        let defaults = UserDefaults.standard
-        let selectedTextContext: Bool
-        if defaults.object(forKey: "useSelectedTextContext") == nil {
-            selectedTextContext = true
-        } else {
-            selectedTextContext = defaults.bool(forKey: "useSelectedTextContext")
-        }
-
-        let legacyAIProvider = defaults.string(forKey: "selectedAIProvider")
-        let legacyAIModel = legacyAIProvider.flatMap { defaults.string(forKey: "\($0)SelectedModel") }
-
-        return ModeConfig(
-            name: name,
-            icon: .defaultIcon,
-            isAIEnhancementEnabled: defaults.bool(forKey: "isAIEnhancementEnabled"),
-            selectedPrompt: defaults.string(forKey: "selectedPromptId"),
-            selectedTranscriptionModelName: defaults.string(forKey: "CurrentTranscriptionModel"),
-            selectedLanguage: defaults.string(forKey: "SelectedLanguage") ?? "en",
-            useClipboardContext: defaults.bool(forKey: "useClipboardContext"),
-            useSelectedTextContext: selectedTextContext,
-            useScreenCapture: defaults.bool(forKey: "useScreenCaptureContext"),
-            isTextFormattingEnabled: defaults.bool(forKey: "IsTextFormattingEnabled"),
-            punctuationCleanupMode: PunctuationCleanupMode.current(),
-            lowercaseTranscription: defaults.bool(forKey: "LowercaseTranscription"),
-            selectedAIProvider: legacyAIProvider,
-            selectedAIModel: legacyAIModel,
-            isDefault: isDefault
-        )
-    }
-
-    private func uniqueConfigurationName(base: String) -> String {
-        var candidate = base
-        var suffix = 2
-        while configurations.contains(where: { $0.name == candidate }) {
-            candidate = "\(base) \(suffix)"
-            suffix += 1
-        }
-        return candidate
-    }
-
     private func migrateLegacyShortcutStorageIfNeeded() {
         let defaults = UserDefaults.standard
 
