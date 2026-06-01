@@ -110,7 +110,7 @@ enum PromptTemplates {
                     - If the user asks for steps, options, or a comparison, structure the response clearly.
                     - Do not claim access to information that is not present in the request or context.
                     """,
-                useSystemInstructions: true
+                useSystemInstructions: false
             )
         ]
     }
