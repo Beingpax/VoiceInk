@@ -97,15 +97,35 @@ class WhisperModelManager: ObservableObject {
     }
 
     func loadAvailableModels() {
-        do {
-            let fileURLs = try FileManager.default.contentsOfDirectory(at: modelsDirectory, includingPropertiesForKeys: nil)
-            availableModels = fileURLs.compactMap { url in
-                guard url.pathExtension == "bin" else { return nil }
-                return WhisperModelFile(name: url.deletingPathExtension().lastPathComponent, url: url)
+        var models: [WhisperModelFile] = []
+        var seenNames: Set<String> = []
+
+        // Scan primary models directory
+        if let fileURLs = try? FileManager.default.contentsOfDirectory(at: modelsDirectory, includingPropertiesForKeys: nil) {
+            for url in fileURLs {
+                guard url.pathExtension == "bin" else { continue }
+                let name = url.deletingPathExtension().lastPathComponent
+                if seenNames.insert(name).inserted {
+                    models.append(WhisperModelFile(name: name, url: url))
+                }
             }
-        } catch {
-            logError("Error loading available models", error)
         }
+
+        // Also scan shared LocalModels/whisper/ directory (cross-app model registry)
+        let sharedDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/LocalModels/whisper")
+        if sharedDir != modelsDirectory,
+           let sharedURLs = try? FileManager.default.contentsOfDirectory(at: sharedDir, includingPropertiesForKeys: nil) {
+            for url in sharedURLs {
+                guard url.pathExtension == "bin" else { continue }
+                let name = url.deletingPathExtension().lastPathComponent
+                if seenNames.insert(name).inserted {
+                    models.append(WhisperModelFile(name: name, url: url))
+                }
+            }
+        }
+
+        availableModels = models
     }
 
     // MARK: - Model Loading
@@ -241,6 +261,15 @@ class WhisperModelManager: ObservableObject {
 
         let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
         try data.write(to: destinationURL)
+
+        // Sync to shared LocalModels/whisper/ directory for cross-app availability
+        let sharedDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/LocalModels/whisper")
+        try? FileManager.default.createDirectory(at: sharedDir, withIntermediateDirectories: true)
+        let sharedURL = sharedDir.appendingPathComponent(model.filename)
+        if !FileManager.default.fileExists(atPath: sharedURL.path) {
+            try? FileManager.default.createSymbolicLink(at: sharedURL, withDestinationURL: destinationURL)
+        }
 
         return WhisperModelFile(name: model.name, url: destinationURL)
     }
