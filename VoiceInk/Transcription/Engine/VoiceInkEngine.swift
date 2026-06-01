@@ -251,6 +251,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                             Task.detached(priority: .background) { [weak self] in
                                 guard let self else { return }
+                                // Skip context capture in Speed Mode
+                                guard !UserDefaults.standard.bool(forKey: "speedMode") else { return }
                                 await self.enhancementService?.captureClipboardContext()
                                 await self.enhancementService?.captureScreenContext()
                             }

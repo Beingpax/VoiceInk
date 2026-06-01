@@ -102,6 +102,9 @@ struct SettingsView: View {
                 .padding(.bottom, 8)
 
                 VStack(spacing: 16) {
+                    // MARK: - Speed Mode Card
+                    SpeedModeSettingsCard()
+
                     // MARK: - Shortcuts Card
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
