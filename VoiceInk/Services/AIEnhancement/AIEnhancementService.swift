@@ -102,31 +102,23 @@ class AIEnhancementService: ObservableObject {
         lastRequestTime = Date()
     }
 
-    private func getSystemMessage(prompt: CustomPrompt, configuration: EnhancementRuntimeConfiguration) async -> String {
+    private func getSystemMessage(
+        prompt: CustomPrompt,
+        configuration: EnhancementRuntimeConfiguration,
+        contextSnapshot: RecordingContextSnapshot?
+    ) async -> String {
         let useSelectedText = configuration.useSelectedTextContext
         let useClipboard = configuration.useClipboardContext
         let useScreenCapture = configuration.useScreenCaptureContext
 
-        if useClipboard {
-            captureClipboardContext()
-        } else {
-            lastCapturedClipboard = nil
-        }
-
-        if useScreenCapture {
-            screenCaptureService.lastCapturedText = nil
-            await captureScreenContext()
-        } else {
-            screenCaptureService.lastCapturedText = nil
-        }
+        lastCapturedClipboard = contextSnapshot?.clipboardText
+        screenCaptureService.lastCapturedText = contextSnapshot?.screenText
 
         let selectedTextContext: String
-        if useSelectedText && AXIsProcessTrusted() {
-            if let selectedText = await SelectedTextService.fetchSelectedText(), !selectedText.isEmpty {
-                selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
-            } else {
-                selectedTextContext = ""
-            }
+        if useSelectedText,
+           let selectedText = contextSnapshot?.selectedText,
+           !selectedText.isEmpty {
+            selectedTextContext = "\n\n<CURRENTLY_SELECTED_TEXT>\n\(selectedText)\n</CURRENTLY_SELECTED_TEXT>"
         } else {
             selectedTextContext = ""
         }
@@ -169,7 +161,11 @@ class AIEnhancementService: ObservableObject {
         return prompt.finalPromptText + finalContextSection
     }
 
-    private func makeRequest(text: String, configuration: EnhancementRuntimeConfiguration) async throws -> String {
+    private func makeRequest(
+        text: String,
+        configuration: EnhancementRuntimeConfiguration,
+        contextSnapshot: RecordingContextSnapshot?
+    ) async throws -> String {
         guard isConfigured(for: configuration) else {
             throw EnhancementError.notConfigured
         }
@@ -188,7 +184,11 @@ class AIEnhancementService: ObservableObject {
         }
 
         let formattedText = "\n<USER_MESSAGE>\n\(text)\n</USER_MESSAGE>"
-        let systemMessage = await getSystemMessage(prompt: prompt, configuration: configuration)
+        let systemMessage = await getSystemMessage(
+            prompt: prompt,
+            configuration: configuration,
+            contextSnapshot: contextSnapshot
+        )
 
         await MainActor.run {
             self.lastSystemMessageSent = systemMessage
@@ -330,13 +330,23 @@ class AIEnhancementService: ObservableObject {
         UserDefaults.standard.bool(forKey: "EnhancementRetryOnTimeout")
     }
 
-    private func makeRequestWithRetry(text: String, configuration: EnhancementRuntimeConfiguration, maxRetries: Int = 3, initialDelay: TimeInterval = 1.0) async throws -> String {
+    private func makeRequestWithRetry(
+        text: String,
+        configuration: EnhancementRuntimeConfiguration,
+        contextSnapshot: RecordingContextSnapshot?,
+        maxRetries: Int = 3,
+        initialDelay: TimeInterval = 1.0
+    ) async throws -> String {
         var retries = 0
         var currentDelay = initialDelay
 
         while retries < maxRetries {
             do {
-                return try await makeRequest(text: text, configuration: configuration)
+                return try await makeRequest(
+                    text: text,
+                    configuration: configuration,
+                    contextSnapshot: contextSnapshot
+                )
             } catch let error as EnhancementError {
                 switch error {
                 case .networkError, .serverError, .rateLimitExceeded:
@@ -386,12 +396,20 @@ class AIEnhancementService: ObservableObject {
         throw EnhancementError.enhancementFailed
     }
 
-    func enhance(_ text: String, configuration: EnhancementRuntimeConfiguration) async throws -> (String, TimeInterval, String?) {
+    func enhance(
+        _ text: String,
+        configuration: EnhancementRuntimeConfiguration,
+        contextSnapshot: RecordingContextSnapshot? = nil
+    ) async throws -> (String, TimeInterval, String?) {
         let startTime = Date()
         let promptName = configuration.prompt?.title
 
         do {
-            let result = try await makeRequestWithRetry(text: text, configuration: configuration)
+            let result = try await makeRequestWithRetry(
+                text: text,
+                configuration: configuration,
+                contextSnapshot: contextSnapshot
+            )
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
             return (result, duration, promptName)

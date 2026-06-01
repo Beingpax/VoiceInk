@@ -26,6 +26,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
     private var canceledPipelineTranscriptionIDs = Set<UUID>()
     private var activeRecordingUseCase: RecordingUseCase = .newSession
     private var activePipelineUseCase: RecordingUseCase = .newSession
+    private var activeRecordingContextStore: RecordingContextSnapshotStore?
+    private var activeRecordingContextTasks: [Task<Void, Never>] = []
 
     let recorder = Recorder()
     var recordedFile: URL? = nil
@@ -128,7 +130,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     try? modelContext.save()
                     NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
-                    await runPipeline(on: transcription, audioURL: recordedFile)
+                    await runPipeline(
+                        on: transcription,
+                        audioURL: recordedFile,
+                        contextStore: activeRecordingContextStore
+                    )
                 } else {
                     await finishActiveRecorderCancellation()
                 }
@@ -149,6 +155,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             shouldCancelRecording = false
             partialTranscript = ""
             activeRecordingUseCase = recordingUseCase
+            clearActiveRecordingContext()
 
             if !recordingUseCase.isAssistantFollowUp {
                 assistantSession.reset()
@@ -207,6 +214,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 return
                             }
 
+                            self.startRecordingContextCapture()
+
                             guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
                                 transcriptionModelManager: self.transcriptionModelManager
                             ) else {
@@ -216,6 +225,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.recordedFile = nil
                                 self.recordingState = .idle
                                 self.activeRecordingStartID = nil
+                                self.clearActiveRecordingContext()
                                 await self.cleanupResources()
                                 await self.recorderUIManager?.dismissRecorderPanel()
                                 return
@@ -286,6 +296,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             self.recordingState = .idle
                             self.recordedFile = nil
                             self.activeRecordingStartID = nil
+                            self.clearActiveRecordingContext()
                             await self.cleanupResources()
                             NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
                             self.logger.notice("toggleRecord: calling dismissRecorderPanel from error handler")
@@ -303,9 +314,29 @@ class VoiceInkEngine: NSObject, ObservableObject {
         response(true)
     }
 
+    // MARK: - Recording Context
+
+    private func startRecordingContextCapture() {
+        clearActiveRecordingContext()
+
+        let store = RecordingContextSnapshotStore()
+        activeRecordingContextStore = store
+        activeRecordingContextTasks = RecordingContextCaptureService.startCapture(into: store)
+    }
+
+    private func clearActiveRecordingContext() {
+        activeRecordingContextTasks.forEach { $0.cancel() }
+        activeRecordingContextTasks.removeAll()
+        activeRecordingContextStore = nil
+    }
+
     // MARK: - Pipeline Dispatch
 
-    private func runPipeline(on transcription: Transcription, audioURL: URL) async {
+    private func runPipeline(
+        on transcription: Transcription,
+        audioURL: URL,
+        contextStore: RecordingContextSnapshotStore?
+    ) async {
         guard let transcriptionConfiguration = currentSessionTranscriptionConfiguration ??
             ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: transcriptionModelManager) else {
             transcription.text = "Transcription Failed: No model selected"
@@ -338,6 +369,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     enhancementService: enhancementService,
                     aiService: aiService
                 )
+            },
+            recordingContextSnapshot: {
+                await MainActor.run {
+                    contextStore?.snapshot
+                }
             },
             outputConfiguration: {
                 ModeRuntimeResolver.outputConfiguration()
@@ -397,6 +433,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             recordedFile = nil
             shouldCancelRecording = false
             activePipelineUseCase = .newSession
+            clearActiveRecordingContext()
         }
         canceledPipelineTranscriptionIDs.remove(transcriptionID)
 
@@ -444,6 +481,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
         assistantSession.reset()
         activeRecordingUseCase = .newSession
         activePipelineUseCase = .newSession
+        clearActiveRecordingContext()
         await recorder.stopRecording()
         recordedFile = nil
         recordingState = .idle
@@ -464,6 +502,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
     private func finishActiveRecorderCancellation() async {
         activeRecordingStartID = nil
+        clearActiveRecordingContext()
         await recorder.stopRecording()
         await saveCanceledRecording()
         recordedFile = nil

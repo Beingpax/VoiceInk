@@ -55,6 +55,7 @@ class TranscriptionPipeline {
         formattingConfiguration resolveFormattingConfiguration: @escaping () -> TranscriptionFormattingConfiguration,
         session: TranscriptionSession?,
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
+        recordingContextSnapshot: @escaping () async -> RecordingContextSnapshot? = { nil },
         outputConfiguration: @escaping () -> OutputRuntimeConfiguration,
         onStateChange: @escaping (RecordingState) -> Void,
         shouldCancel: () -> Bool,
@@ -170,9 +171,11 @@ class TranscriptionPipeline {
                     }
 
                     do {
+                        let contextSnapshot = await recordingContextSnapshot()
                         let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
                             text,
-                            configuration: resolvedEnhancementConfiguration
+                            configuration: resolvedEnhancementConfiguration,
+                            contextSnapshot: contextSnapshot
                         )
                         transcription.enhancedText = enhancedText
                         transcription.aiEnhancementModelName = resolvedEnhancementConfiguration.modelName ?? resolvedEnhancementConfiguration.provider?.defaultModel
