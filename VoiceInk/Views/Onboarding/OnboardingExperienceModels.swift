@@ -3,7 +3,6 @@ import Foundation
 enum OnboardingExperienceKind: String, Identifiable, Hashable {
     case dictation
     case enhance
-    case enhanceAgain
     case rewrite
     case rewriteFormat
     case respond
@@ -51,23 +50,15 @@ enum OnboardingExperienceCatalog {
             starterModeKind: .clean,
             title: "Try a Simple Dictation",
             subtitle: "Uses a local transcription model for ultra-fast dictation.",
-            sampleText: "It's raining today. We'll meet tomorrow.",
+            sampleText: "Please send the calendar invite before lunch.",
             fieldPlaceholder: "Your dictated text will appear here."
         ),
         OnboardingExperienceStep(
             kind: .enhance,
             starterModeKind: .enhance,
             title: "Try Enhancement",
-            subtitle: "Combines local transcription with your AI provider to clean up rough speech.",
-            sampleText: "Umm, we will meet tomorrow at 3 pm. Uhh, wait, not actually 3 pm but 7 p.m.",
-            fieldPlaceholder: "Your enhanced message will appear here."
-        ),
-        OnboardingExperienceStep(
-            kind: .enhanceAgain,
-            starterModeKind: .enhance,
-            title: "Try Enhancement",
-            subtitle: "Combines local transcription with your AI provider to clean up rough speech.",
-            sampleText: "Umm, I think we should, like, send the report today, today if possible.",
+            subtitle: "Combines local transcription with an LLM to create a polished version.",
+            sampleText: "Um, tell the team we will meet on Thursday. Actually, no, Friday morning works better.",
             fieldPlaceholder: "Your enhanced message will appear here."
         ),
         OnboardingExperienceStep(
@@ -76,9 +67,9 @@ enum OnboardingExperienceCatalog {
             title: "Try Rewrite",
             subtitle: "Select text, say how to rewrite it, and let VoiceInk replace it.",
             sampleLabel: "Say this",
-            sampleText: "Rewrite this to be clearer and more confident.",
-            fieldPlaceholder: "Select this text, then use the shortcut.",
-            initialFieldText: "I think the plan is kind of okay, but maybe we should make the next steps more clear before sharing it."
+            sampleText: "Make this a short checklist with emojis.",
+            fieldPlaceholder: "Text to rewrite will appear here.",
+            initialFieldText: "For tomorrow's client update, I need to review the proposal, confirm the budget numbers, email the latest draft to the client, book the meeting room, prepare a short agenda, and share final notes with the team before the afternoon check-in."
         ),
         OnboardingExperienceStep(
             kind: .rewriteFormat,
@@ -86,17 +77,17 @@ enum OnboardingExperienceCatalog {
             title: "Try Rewrite",
             subtitle: "Select text, say how to rewrite it, and let VoiceInk replace it.",
             sampleLabel: "Say this",
-            sampleText: "Rewrite this with better structure and formatting.",
-            fieldPlaceholder: "Select this text, then use the shortcut.",
-            initialFieldText: "My wife called and asked me to bring five things from the grocery store: milk, bread, eggs, tomatoes, and coffee."
+            sampleText: "Translate this into English.",
+            fieldPlaceholder: "Text to rewrite will appear here.",
+            initialFieldText: "म अहिले नेपालीमा बोलिरहेको छु, र म यो उपकरणलाई यसलाई अंग्रेजीमा अनुवाद गर्न भन्नेछु।"
         ),
         OnboardingExperienceStep(
             kind: .respond,
             starterModeKind: .assistant,
-            title: "Try Respond",
-            subtitle: "Ask a question and keep the answer inside the recorder.",
+            title: "Ask a Quick Question",
+            subtitle: "Ask quick questions and VoiceInk will serve you the answers.",
             sampleLabel: "Ask this",
-            sampleText: "What do you think about the future of AI in the next 10 years? Write it under 200 words.",
+            sampleText: "What is the capital city of the USA?",
             fieldPlaceholder: ""
         )
     ]

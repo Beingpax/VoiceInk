@@ -86,7 +86,7 @@ struct OnboardingView: View {
         switch experienceStep.kind {
         case .dictation:
             return nil
-        case .enhance, .enhanceAgain:
+        case .enhance:
             return .rightCommand
         case .rewrite, .rewriteFormat:
             return nil

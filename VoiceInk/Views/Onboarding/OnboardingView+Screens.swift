@@ -77,7 +77,6 @@ extension OnboardingView {
             OnboardingExperienceCard(
                 step: experienceStep,
                 shortcutAction: experienceShortcutAction,
-                shortcutLabel: experienceShortcutLabel,
                 defaultShortcut: experienceDefaultShortcut,
                 hasShortcut: hasExperienceModeShortcut,
                 text: currentExperienceText,
@@ -102,7 +101,7 @@ extension OnboardingView {
         switch experienceStep.kind {
         case .dictation:
             return "text.cursor"
-        case .enhance, .enhanceAgain:
+        case .enhance:
             return "sparkles"
         case .rewrite, .rewriteFormat:
             return "quote.bubble.fill"
@@ -115,7 +114,6 @@ extension OnboardingView {
 private struct OnboardingExperienceCard: View {
     let step: OnboardingExperienceStep
     let shortcutAction: ShortcutAction
-    let shortcutLabel: String
     let defaultShortcut: Shortcut?
     let hasShortcut: Bool
     @Binding var text: String
@@ -126,11 +124,13 @@ private struct OnboardingExperienceCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            samplePanel
+            if step.kind == .respond {
+                instructionPanel
+            }
+            samplePromptPanel
             if step.kind != .respond {
                 notesSurface
             }
-            statusRow
         }
         .padding(18)
         .fixedSize(horizontal: false, vertical: true)
@@ -143,44 +143,46 @@ private struct OnboardingExperienceCard: View {
         }
     }
 
-    private var samplePanel: some View {
+    private var instructionPanel: some View {
+        statusInstruction
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 2)
+    }
+
+    private var samplePromptPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.primary.opacity(0.7))
+            sampleHeaderLabel
 
-                Text(step.sampleLabel)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.primary.opacity(0.76))
-            }
-
-            HStack(alignment: .center, spacing: 14) {
-                Text(step.sampleText)
-                    .font(.system(size: 15, weight: .semibold))
-                    .italic()
-                    .foregroundColor(.primary)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 12)
-                    .overlay(alignment: .leading) {
-                        Rectangle()
-                            .fill(AppTheme.Border.subtle)
-                            .frame(width: 2)
-                    }
-
-                Spacer(minLength: 12)
-
-                OnboardingShortcutSetupView(
-                    action: shortcutAction,
-                    defaultShortcut: defaultShortcut,
-                    onShortcutChanged: onShortcutChanged
-                )
-            }
+            Text(step.sampleText)
+                .font(.system(size: 15, weight: .semibold))
+                .italic()
+                .foregroundColor(.primary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, 12)
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(AppTheme.Border.subtle)
+                        .frame(width: 2)
+                }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(AppTheme.Surface.control.opacity(0.58))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var sampleHeaderLabel: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "waveform")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary.opacity(0.7))
+
+            Text(step.sampleLabel)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary.opacity(0.76))
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var notesSurface: some View {
@@ -232,7 +234,12 @@ private struct OnboardingExperienceCard: View {
                         .allowsHitTesting(hasShortcut)
                 }
             }
-            .frame(height: 158)
+            .frame(height: 112)
+            .overlay(alignment: .bottomLeading) {
+                statusInstruction
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+            }
         }
         .background(AppTheme.Surface.control.opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -242,39 +249,88 @@ private struct OnboardingExperienceCard: View {
         )
     }
 
-    private var statusRow: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 6, height: 6)
-
-            Text(statusText)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.primary.opacity(0.72))
-
-            Spacer(minLength: 0)
-        }
-        .padding(.top, 2)
-    }
-
-    private var statusText: String {
-        if !hasShortcut {
-            return "Set a shortcut to unlock the practice field."
-        }
-
-        if step.kind == .rewrite || step.kind == .rewriteFormat {
-            return "Select all text in the text field, press \(shortcutLabel), speak, then press it again."
-        }
-
-        if step.kind == .respond {
-            return "Press \(shortcutLabel), ask the question, then press it again."
-        }
-
-        return "Press \(shortcutLabel), speak, then press it again."
-    }
-
     private var fieldPlaceholder: String {
-        hasShortcut ? step.fieldPlaceholder : "Choose a shortcut above to unlock this field."
+        step.fieldPlaceholder
+    }
+
+    private var inlineShortcutControl: some View {
+        OnboardingShortcutSetupView(
+            action: shortcutAction,
+            defaultShortcut: defaultShortcut,
+            onShortcutChanged: onShortcutChanged,
+            showsLabel: false
+        )
+    }
+
+    private var statusInstruction: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 6) {
+                statusInstructionText(statusInstructionPrefix)
+                inlineShortcutControl
+                statusInstructionText(horizontalStatusInstructionSuffix)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 6) {
+                    statusInstructionText(statusInstructionPrefix)
+                    inlineShortcutControl
+                }
+                statusInstructionText(wrappedStatusInstructionSuffix)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var statusInstructionPrefix: String {
+        guard hasShortcut else {
+            return "Choose"
+        }
+
+        switch step.kind {
+        case .rewrite, .rewriteFormat:
+            return "Select all text, press"
+        case .respond:
+            return "Press"
+        default:
+            return "Press"
+        }
+    }
+
+    private var horizontalStatusInstructionSuffix: String {
+        guard hasShortcut else {
+            return "to unlock the practice field."
+        }
+
+        switch step.kind {
+        case .respond:
+            return ", ask the question, then press it again."
+        case .rewrite, .rewriteFormat:
+            return ", speak, then press it again."
+        default:
+            return " and read the sample text, then press it again."
+        }
+    }
+
+    private var wrappedStatusInstructionSuffix: String {
+        guard hasShortcut else {
+            return "to unlock the practice field."
+        }
+
+        switch step.kind {
+        case .respond:
+            return "Ask the question, then press it again."
+        case .rewrite, .rewriteFormat:
+            return "Speak, then press it again."
+        default:
+            return "Read the sample text, then press it again."
+        }
+    }
+
+    private func statusInstructionText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.primary.opacity(0.82))
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func focusFieldIfReady() {
@@ -288,10 +344,6 @@ private struct OnboardingExperienceCard: View {
         }
     }
 
-    private var statusColor: Color {
-        hasShortcut ? Color.primary.opacity(0.68) : AppTheme.Text.muted.opacity(0.5)
-    }
-
     private var fieldBorderColor: Color {
         isFieldFocused ? Color.primary.opacity(0.24) : AppTheme.Border.subtle
     }
@@ -301,15 +353,19 @@ private struct OnboardingShortcutSetupView: View {
     let action: ShortcutAction
     let defaultShortcut: Shortcut?
     let onShortcutChanged: () -> Void
+    var showsLabel = true
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 5) {
-            Text("Shortcut")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(AppTheme.Text.muted)
+        VStack(alignment: .trailing, spacing: showsLabel ? 5 : 0) {
+            if showsLabel {
+                Text("Shortcut")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(AppTheme.Text.muted)
+            }
 
             ShortcutRecorder(
                 action: action,
+                defaultShortcut: defaultShortcut,
                 onShortcutChanged: onShortcutChanged
             )
         }

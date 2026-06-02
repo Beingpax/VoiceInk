@@ -18,6 +18,7 @@ extension OnboardingView {
     func goToExperienceStep() {
         guard isReadyForExperience else { return }
         experienceStepIndex = 0
+        resetExperienceText(at: 0)
         installExperienceMode(at: 0)
         storedStage = OnboardingStage.experience.rawValue
         activateExperienceModeForDemo()
@@ -39,6 +40,7 @@ extension OnboardingView {
             completeOnboarding()
         } else {
             let nextIndex = normalizedExperienceStepIndex + 1
+            resetExperienceText(at: nextIndex)
             installExperienceMode(at: nextIndex)
             experienceStepIndex = nextIndex
         }
@@ -160,5 +162,13 @@ extension OnboardingView {
         }
 
         ModeManager.shared.setActiveConfiguration(cleanConfig)
+    }
+
+    func resetExperienceText(at index: Int) {
+        guard let step = OnboardingExperienceCatalog.steps[safe: index] else {
+            return
+        }
+
+        experienceTextByKind[step.kind] = step.initialFieldText
     }
 }
