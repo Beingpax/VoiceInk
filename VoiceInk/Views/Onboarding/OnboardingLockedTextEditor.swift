@@ -4,6 +4,7 @@ import AppKit
 struct OnboardingLockedTextEditor: NSViewRepresentable {
     @Binding var text: String
     let isEnabled: Bool
+    var isFocused: Binding<Bool>? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -51,6 +52,32 @@ struct OnboardingLockedTextEditor: NSViewRepresentable {
         textView.isEditable = isEnabled
         textView.isSelectable = isEnabled
         textView.locksManualEditing = true
+
+        syncFocus(for: textView, in: scrollView)
+    }
+
+    private func syncFocus(for textView: LockedTextView, in scrollView: NSScrollView) {
+        guard let isFocused else { return }
+
+        if isFocused.wrappedValue, isEnabled {
+            DispatchQueue.main.async {
+                guard let window = scrollView.window,
+                      window.firstResponder !== textView else {
+                    return
+                }
+
+                window.makeFirstResponder(textView)
+            }
+        } else if !isFocused.wrappedValue {
+            DispatchQueue.main.async {
+                guard let window = scrollView.window,
+                      window.firstResponder === textView else {
+                    return
+                }
+
+                window.makeFirstResponder(nil)
+            }
+        }
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {
@@ -63,6 +90,14 @@ struct OnboardingLockedTextEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+        }
+
+        func textDidBeginEditing(_ notification: Notification) {
+            parent.isFocused?.wrappedValue = true
+        }
+
+        func textDidEndEditing(_ notification: Notification) {
+            parent.isFocused?.wrappedValue = false
         }
     }
 }

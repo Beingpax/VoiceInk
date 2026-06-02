@@ -103,12 +103,6 @@ private struct ShortcutVisualization: View {
                     ShortcutKeyCap(title: token, isRecording: isRecording)
                 }
             } else {
-                if isRecording {
-                    Circle()
-                        .fill(AppTheme.Accent.primary)
-                        .frame(width: 5, height: 5)
-                }
-
                 Text(isRecording ? "Press shortcut" : "Record")
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)

@@ -333,12 +333,7 @@ struct VoiceInkApp: App {
                     }
             } else {
                 OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .environmentObject(recordingShortcutManager)
-                    .environmentObject(engine)
-                    .environmentObject(whisperModelManager)
                     .environmentObject(fluidAudioModelManager)
-                    .environmentObject(transcriptionModelManager)
-                    .environmentObject(recorderUIManager)
                     .environmentObject(aiService)
                     .environmentObject(enhancementService)
                     .frame(width: 950)

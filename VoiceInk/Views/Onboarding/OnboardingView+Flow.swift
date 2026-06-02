@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 extension OnboardingView {
     func goToPermissionsStep() {
@@ -17,17 +18,25 @@ extension OnboardingView {
 
     func goToExperienceStep() {
         guard isReadyForExperience else { return }
-        experienceStepIndex = 0
-        resetExperienceText(at: 0)
-        installExperienceMode(at: 0)
         storedStage = OnboardingStage.experience.rawValue
-        activateExperienceModeForDemo()
-        refreshExperienceModeState()
+        moveToExperienceStep(0)
+    }
+
+    func goToExperiencePracticePhase() {
+        withAnimation(.easeInOut(duration: 0.28)) {
+            isExperienceInIntroPhase = false
+        }
+    }
+
+    func goToExperienceIntroPhase() {
+        withAnimation(.easeInOut(duration: 0.28)) {
+            isExperienceInIntroPhase = true
+        }
     }
 
     func goToPreviousExperienceStep() {
         if normalizedExperienceStepIndex > 0 {
-            experienceStepIndex = normalizedExperienceStepIndex - 1
+            moveToExperienceStep(normalizedExperienceStepIndex - 1)
         } else {
             storedStage = OnboardingStage.api.rawValue
         }
@@ -39,10 +48,7 @@ extension OnboardingView {
         if isLastExperienceStep {
             completeOnboarding()
         } else {
-            let nextIndex = normalizedExperienceStepIndex + 1
-            resetExperienceText(at: nextIndex)
-            installExperienceMode(at: nextIndex)
-            experienceStepIndex = nextIndex
+            moveToExperienceStep(normalizedExperienceStepIndex + 1)
         }
     }
 
@@ -82,6 +88,20 @@ extension OnboardingView {
         }
     }
 
+    func moveToExperienceStep(_ index: Int) {
+        guard OnboardingExperienceCatalog.steps.indices.contains(index) else {
+            return
+        }
+
+        experienceStepIndex = index
+        isExperienceInIntroPhase = true
+        resetExperienceText(at: index)
+        installExperienceMode(at: index)
+        activateExperienceModeForDemo()
+        clearExperienceShortcutForIntroIfNeeded()
+        refreshExperienceModeState()
+    }
+
     func completeOnboarding() {
         guard isCurrentExperienceReady else { return }
 
@@ -106,9 +126,11 @@ extension OnboardingView {
             return
         }
 
+        var seenKinds = Set<StarterModeKind>()
         let installedKinds = OnboardingExperienceCatalog.steps
             .prefix(index + 1)
             .map(\.starterModeKind)
+            .filter { seenKinds.insert($0).inserted }
 
         let seedResult = StarterModePromptSeeder.ensurePrompts(
             for: installedKinds,
@@ -123,17 +145,12 @@ extension OnboardingView {
             provider: selectedOnboardingProvider,
             modelName: aiService.selectedModel(for: selectedOnboardingProvider)
         )
-        refreshExperienceModeState()
     }
 
     func installCurrentExperienceMode() {
         guard stage == .experience else { return }
         installExperienceMode(at: normalizedExperienceStepIndex)
-    }
-
-    func installCurrentExperienceModeIfNeeded() {
-        guard stage == .experience, !isExperienceModeInstalled else { return }
-        installCurrentExperienceMode()
+        refreshExperienceModeState()
     }
 
     func refreshExperienceModeState() {
@@ -144,6 +161,18 @@ extension OnboardingView {
 
         isExperienceModeInstalled = StarterModeFactory.isInstalled(kind: experienceModeTemplate.kind) && hasRequiredPrompts
         hasExperienceModeShortcut = ShortcutStore.shortcut(for: experienceShortcutAction) != nil
+    }
+
+    func clearExperienceShortcutForIntroIfNeeded() {
+        guard stage == .experience,
+              isExperienceInIntroPhase,
+              experienceStep.kind != .rewriteFormat,
+              !clearedExperienceShortcutActions.contains(experienceShortcutAction) else {
+            return
+        }
+
+        clearedExperienceShortcutActions.insert(experienceShortcutAction)
+        ShortcutStore.setShortcut(nil, for: experienceShortcutAction)
     }
 
     func activateExperienceModeForDemo() {

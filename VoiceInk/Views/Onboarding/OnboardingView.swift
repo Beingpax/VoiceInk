@@ -3,7 +3,6 @@ import AppKit
 
 struct OnboardingView: View {
     @Binding var hasCompletedOnboarding: Bool
-    @EnvironmentObject var engine: VoiceInkEngine
     @EnvironmentObject var fluidAudioModelManager: FluidAudioModelManager
     @EnvironmentObject var aiService: AIService
     @EnvironmentObject var enhancementService: AIEnhancementService
@@ -19,6 +18,8 @@ struct OnboardingView: View {
     @State var hasExperienceModeShortcut = false
     @State var isExperienceModeInstalled = false
     @State var experienceTextByKind: [OnboardingExperienceKind: String] = [:]
+    @State var isExperienceInIntroPhase = true
+    @State var clearedExperienceShortcutActions: Set<ShortcutAction> = []
 
     let contentMaxWidth: CGFloat = 560
 
@@ -76,23 +77,6 @@ struct OnboardingView: View {
         }
 
         return .mode(experienceModeTemplate.id)
-    }
-
-    var experienceShortcutLabel: String {
-        ShortcutStore.shortcut(for: experienceShortcutAction)?.displayString ?? "the shortcut"
-    }
-
-    var experienceDefaultShortcut: Shortcut? {
-        switch experienceStep.kind {
-        case .dictation:
-            return nil
-        case .enhance:
-            return .rightCommand
-        case .rewrite, .rewriteFormat:
-            return nil
-        case .respond:
-            return nil
-        }
     }
 
     var currentExperienceText: Binding<String> {
@@ -204,13 +188,7 @@ struct OnboardingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .modeConfigurationsDidChange)) { _ in
             refreshExperienceModeState()
         }
-        .onChange(of: experienceStepIndex) { _, _ in
-            installCurrentExperienceMode()
-            activateExperienceModeForDemo()
-            refreshExperienceModeState()
-        }
         .onChange(of: storedStage) { _, _ in
-            installCurrentExperienceModeIfNeeded()
             activateExperienceModeForDemo()
             refreshExperienceModeState()
         }

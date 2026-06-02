@@ -436,10 +436,11 @@ struct AssistantPanelView: View {
 
     private var followUpRow: some View {
         HStack(spacing: 8) {
-            TextField("", text: $draftMessage, prompt: Text("Follow up").foregroundColor(.white.opacity(0.42)))
+            TextField("", text: $draftMessage)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundStyle(.white.opacity(0.9))
+                .tint(.white.opacity(0.9))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(Color.white.opacity(0.10))
