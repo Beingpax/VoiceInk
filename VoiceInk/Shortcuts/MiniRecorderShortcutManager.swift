@@ -6,6 +6,7 @@ import Carbon.HIToolbox
 class MiniRecorderShortcutManager: ObservableObject {
     private var engine: VoiceInkEngine
     private var recorderUIManager: RecorderUIManager
+    private let activeHeldModifierFlags: @MainActor () -> NSEvent.ModifierFlags
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
     private let visibleRecorderMonitor = ShortcutMonitor()
@@ -15,9 +16,14 @@ class MiniRecorderShortcutManager: ObservableObject {
     private let escapeDoublePressThreshold: TimeInterval = 1.5
     private var escapeTimeoutTask: Task<Void, Never>?
     
-    init(engine: VoiceInkEngine, recorderUIManager: RecorderUIManager) {
+    init(
+        engine: VoiceInkEngine,
+        recorderUIManager: RecorderUIManager,
+        activeHeldModifierFlags: @escaping @MainActor () -> NSEvent.ModifierFlags = { [] }
+    ) {
         self.engine = engine
         self.recorderUIManager = recorderUIManager
+        self.activeHeldModifierFlags = activeHeldModifierFlags
         setupShortcutChangeObserver()
         setupVisibilityObserver()
     }
@@ -65,7 +71,7 @@ class MiniRecorderShortcutManager: ObservableObject {
         escapeTimeoutTask = nil
     }
     
-    private func refreshVisibleShortcuts() {
+    func refreshVisibleShortcuts() {
         guard recorderUIManager.isMiniRecorderVisible else {
             visibleRecorderMonitor.stop()
             resetEscapeState()
@@ -78,18 +84,21 @@ class MiniRecorderShortcutManager: ObservableObject {
             shortcuts[.miniRecorderEscape] = .key(keyCode: UInt16(kVK_Escape), modifierFlags: [])
         }
 
+        let ambientModifierFlags = activeHeldModifierFlags()
+
         for (index, keyCode) in Self.digitKeyCodes.enumerated() {
             shortcuts[.miniRecorderPrompt(index)] = .key(
                 keyCode: keyCode,
-                modifierFlags: [.command]
+                modifierFlags: Self.promptDigitModifierFlags(ambientModifierFlags: ambientModifierFlags)
             )
         }
 
-        if canUsePowerModeShortcuts {
+        if canUsePowerModeShortcuts,
+           Self.shouldRegisterPowerModeDigitShortcuts(ambientModifierFlags: ambientModifierFlags) {
             for (index, keyCode) in Self.digitKeyCodes.enumerated() {
                 shortcuts[.miniRecorderPowerMode(index)] = .key(
                     keyCode: keyCode,
-                    modifierFlags: [.option]
+                    modifierFlags: Self.powerModeDigitModifierFlags(ambientModifierFlags: ambientModifierFlags)
                 )
             }
         }
@@ -198,4 +207,17 @@ class MiniRecorderShortcutManager: ObservableObject {
         UInt16(kVK_ANSI_9),
         UInt16(kVK_ANSI_0)
     ]
+
+    static func promptDigitModifierFlags(ambientModifierFlags: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
+        [.command].union(ambientModifierFlags)
+    }
+
+    static func powerModeDigitModifierFlags(ambientModifierFlags: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
+        [.option].union(ambientModifierFlags)
+    }
+
+    static func shouldRegisterPowerModeDigitShortcuts(ambientModifierFlags: NSEvent.ModifierFlags) -> Bool {
+        powerModeDigitModifierFlags(ambientModifierFlags: ambientModifierFlags) !=
+            promptDigitModifierFlags(ambientModifierFlags: ambientModifierFlags)
+    }
 }

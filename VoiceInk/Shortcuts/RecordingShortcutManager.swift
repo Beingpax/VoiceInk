@@ -141,8 +141,14 @@ class RecordingShortcutManager: ObservableObject {
 
         self.engine = engine
         self.recorderUIManager = recorderUIManager
-        self.miniRecorderShortcutManager = MiniRecorderShortcutManager(engine: engine, recorderUIManager: recorderUIManager)
         self.shortcutModeHandler = shortcutModeHandler
+        self.miniRecorderShortcutManager = MiniRecorderShortcutManager(
+            engine: engine,
+            recorderUIManager: recorderUIManager,
+            activeHeldModifierFlags: { [weak shortcutModeHandler] in
+                shortcutModeHandler?.activeHeldModifierFlags ?? []
+            }
+        )
         self.primaryRecordingShortcutModeSource = primaryRecordingShortcutModeSource
         self.powerModeShortcutManager = PowerModeShortcutManager(
             modeProvider: {
@@ -249,6 +255,7 @@ class RecordingShortcutManager: ObservableObject {
                             eventTime: eventTime,
                             mode: mode
                         )
+                        self.miniRecorderShortcutManager.refreshVisibleShortcuts()
                     } else {
                         await self.handleGlobalShortcut(action)
                     }
@@ -392,6 +399,14 @@ final class RecordingShortcutModeHandler {
         activeRecordingShortcutAction = nil
         interruptedRecordingActions.removeAll()
         activeShortcutCanCancelAccidentalStart = false
+    }
+
+    var activeHeldModifierFlags: NSEvent.ModifierFlags {
+        guard isShortcutPressed, let activeRecordingShortcutAction else {
+            return []
+        }
+
+        return ShortcutStore.shortcut(for: activeRecordingShortcutAction)?.modifierFlags ?? []
     }
 
     func handleKeyDown(
