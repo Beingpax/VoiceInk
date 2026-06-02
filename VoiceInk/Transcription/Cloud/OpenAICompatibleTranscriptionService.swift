@@ -57,7 +57,10 @@ class OpenAICompatibleTranscriptionService {
 
         field("model", modelName)
         field("response_format", "json")
-        field("temperature", "0")
+        let temp = UserDefaults.standard.object(forKey: "whisperTemperature") != nil
+            ? UserDefaults.standard.double(forKey: "whisperTemperature")
+            : 0.0
+        field("temperature", String(temp))
 
         if selectedLanguage != "auto" && !selectedLanguage.isEmpty {
             field("language", selectedLanguage)

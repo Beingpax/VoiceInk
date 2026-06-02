@@ -263,6 +263,29 @@ struct RecorderPowerModeButton: View {
     }
 }
 
+// MARK: - Language Mode Indicator
+
+struct RecorderLanguageModeButton: View {
+    @ObservedObject private var languageModeManager = LanguageModeManager.shared
+    let buttonSize: CGFloat
+    let padding: EdgeInsets
+
+    init(buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7)) {
+        self.buttonSize = buttonSize
+        self.padding = padding
+    }
+
+    var body: some View {
+        if let active = languageModeManager.activeMode {
+            Text(active.emoji)
+                .font(.system(size: 14))
+                .frame(width: buttonSize)
+                .padding(padding)
+                .help("Language: \(active.displayName)")
+        }
+    }
+}
+
 // MARK: - Live Transcript View
 
 struct LiveTranscriptView: View {

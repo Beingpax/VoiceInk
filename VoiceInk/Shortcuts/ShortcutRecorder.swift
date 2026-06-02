@@ -201,6 +201,11 @@ final class ShortcutRecorderModel: ObservableObject {
             return
         }
 
+        // Show non-blocking warning (e.g., F5 + macOS dictation conflict) but still allow binding
+        if let warning = ShortcutValidator.validationWarning(for: shortcut) {
+            showWarningNotification(warning.notificationTitle(for: shortcut) + " — Disable macOS Dictation in System Settings → Keyboard → Dictation")
+        }
+
         let capture = onCapture
         removeRecordingMonitor()
         resetRecordingState()
@@ -223,6 +228,15 @@ final class ShortcutRecorderModel: ObservableObject {
             NotificationManager.shared.showNotification(
                 title: title,
                 type: .error
+            )
+        }
+    }
+
+    private func showWarningNotification(_ title: String) {
+        Task { @MainActor in
+            NotificationManager.shared.showNotification(
+                title: title,
+                type: .warning
             )
         }
     }

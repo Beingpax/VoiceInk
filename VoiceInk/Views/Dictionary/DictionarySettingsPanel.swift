@@ -43,6 +43,18 @@ struct DictionarySettingsPanel: View {
                     Text("Shortcuts")
                 }
 
+                Section {
+                    Toggle("Auto-learn from corrections", isOn: Binding(
+                        get: { UserDefaults.standard.bool(forKey: "AutoLearnFromCorrections") },
+                        set: { UserDefaults.standard.set($0, forKey: "AutoLearnFromCorrections") }
+                    ))
+                    Text("When you correct a transcription in the target app, the corrected word is automatically added to your dictionary.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } header: {
+                    Text("Auto-Learn")
+                }
+
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)

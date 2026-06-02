@@ -33,9 +33,31 @@ class Recorder: NSObject, ObservableObject {
         case couldNotStartRecording
     }
     
+    private var prewarmedRecorder: CoreAudioRecorder?
+
     override init() {
         super.init()
         setupDeviceSwitchObserver()
+        prewarmAudioUnit()
+    }
+
+    /// Pre-warms the AudioUnit for the current mic so recording starts instantly.
+    private func prewarmAudioUnit() {
+        let deviceID = deviceManager.getCurrentDevice()
+        guard deviceID != 0 else { return }
+        audioSetupQueue.async { [weak self] in
+            guard let self else { return }
+            let warmRecorder = CoreAudioRecorder()
+            do {
+                try warmRecorder.prewarm(deviceID: deviceID)
+                DispatchQueue.main.async {
+                    self.prewarmedRecorder = warmRecorder
+                    self.logger.notice("🎙️ Audio pre-warm complete for device \(deviceID, privacy: .public)")
+                }
+            } catch {
+                self.logger.warning("Audio pre-warm failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 
     private func setupDeviceSwitchObserver() {
@@ -109,15 +131,15 @@ class Recorder: NSObject, ObservableObject {
         logger.notice("startRecording called – deviceID=\(self.deviceManager.getCurrentDevice(), privacy: .public), file=\(url.lastPathComponent, privacy: .public)")
         deviceManager.isRecordingActive = true
 
-        let currentDeviceID = deviceManager.getCurrentDevice()
-        let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
-        if String(currentDeviceID) != lastDeviceID {
-            // Log device switch but do not display on-screen toast
-            if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
-                logger.notice("Using microphone device: \(deviceName, privacy: .public)")
-            }
+        let currentDeviceID = deviceManager.getCurrentDeviceWithClamshellFallback()
+        // Log device being used
+        if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
+            logger.notice("Using microphone device: \(deviceName, privacy: .public)")
         }
-        UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
+        let idToSave = String(currentDeviceID)
+        Task.detached(priority: .background) {
+            UserDefaults.standard.set(idToSave, forKey: "lastUsedMicrophoneDeviceID")
+        }
 
         let deviceID = currentDeviceID
 
@@ -125,7 +147,15 @@ class Recorder: NSObject, ObservableObject {
         audioRestorationTask = nil
         audioMeterUpdateTimer?.cancel()
 
-        let coreAudioRecorder = CoreAudioRecorder()
+        // Use pre-warmed recorder if available and matches current device
+        let coreAudioRecorder: CoreAudioRecorder
+        if let warm = prewarmedRecorder, warm.isPrewarmed {
+            coreAudioRecorder = warm
+            prewarmedRecorder = nil
+            logger.notice("🎙️ Using pre-warmed recorder (fast path)")
+        } else {
+            coreAudioRecorder = CoreAudioRecorder()
+        }
         coreAudioRecorder.onAudioChunk = onAudioChunk
         recorder = coreAudioRecorder
 
@@ -186,6 +216,9 @@ class Recorder: NSObject, ObservableObject {
             await playbackController.resumeMedia()
         }
         deviceManager.isRecordingActive = false
+
+        // Re-prewarm for next recording
+        prewarmAudioUnit()
     }
 
     private func handleRecordingError(_ error: Error) async {
@@ -205,7 +238,7 @@ class Recorder: NSObject, ObservableObject {
 
     private func startAudioMeterTimer() {
         let timer = DispatchSource.makeTimerSource(queue: audioMeterQueue)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(17)) 
+        timer.schedule(deadline: .now(), repeating: .milliseconds(33)) // ~30fps, sufficient for audio visualizer
         timer.setEventHandler { [weak self] in
             self?.updateAudioMeter()
         }
@@ -250,9 +283,15 @@ class Recorder: NSObject, ObservableObject {
         smoothedValuesLock.unlock()
 
         // Dispatch to main queue for UI updates (more efficient than Task)
+        // Only update if values changed meaningfully to reduce view invalidations
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.audioMeter = newAudioMeter
+            let current = self.audioMeter
+            let avgDiff = abs(newAudioMeter.averagePower - current.averagePower)
+            let peakDiff = abs(newAudioMeter.peakPower - current.peakPower)
+            if avgDiff > 0.005 || peakDiff > 0.005 {
+                self.audioMeter = newAudioMeter
+            }
         }
     }
     

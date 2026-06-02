@@ -30,16 +30,18 @@ class WordReplacementService {
         return resolved
     }
 
-    private func cachedRegex(for pattern: String) -> NSRegularExpression? {
+    private func cachedRegex(for pattern: String, caseSensitive: Bool = false) -> NSRegularExpression? {
+        let cacheKey = "\(caseSensitive ? "CS" : "CI"):\(pattern)"
         cacheLock.lock()
         defer { cacheLock.unlock() }
-        if let cached = regexCache[pattern] {
+        if let cached = regexCache[cacheKey] {
             return cached
         }
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+        let options: NSRegularExpression.Options = caseSensitive ? [] : .caseInsensitive
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else {
             return nil
         }
-        regexCache[pattern] = regex
+        regexCache[cacheKey] = regex
         return regex
     }
 
@@ -69,6 +71,21 @@ class WordReplacementService {
         for replacement in sortedReplacements {
             let originalGroup = replacement.originalText
             let replacementText = resolvePlaceholders(in: replacement.replacementText)
+            let caseSensitive = replacement.isCaseSensitive
+
+            // Raw regex mode: use originalText as the pattern directly
+            if replacement.isRegex {
+                if let regex = cachedRegex(for: originalGroup, caseSensitive: caseSensitive) {
+                    let range = NSRange(modifiedText.startIndex..., in: modifiedText)
+                    modifiedText = regex.stringByReplacingMatches(
+                        in: modifiedText,
+                        options: [],
+                        range: range,
+                        withTemplate: replacementText
+                    )
+                }
+                continue
+            }
 
             let variants = originalGroup
                 .split(separator: ",")
@@ -82,7 +99,7 @@ class WordReplacementService {
                 if usesBoundaries {
                     let escaped = NSRegularExpression.escapedPattern(for: original)
                     let pattern = "(?<![\\p{L}\\p{N}])\(escaped)(?![\\p{L}\\p{N}])"
-                    if let regex = cachedRegex(for: pattern) {
+                    if let regex = cachedRegex(for: pattern, caseSensitive: caseSensitive) {
                         let range = NSRange(modifiedText.startIndex..., in: modifiedText)
                         modifiedText = regex.stringByReplacingMatches(
                             in: modifiedText,
@@ -92,7 +109,8 @@ class WordReplacementService {
                         )
                     }
                 } else {
-                    modifiedText = modifiedText.replacingOccurrences(of: original, with: replacementText, options: .caseInsensitive)
+                    let options: String.CompareOptions = caseSensitive ? [] : .caseInsensitive
+                    modifiedText = modifiedText.replacingOccurrences(of: original, with: replacementText, options: options)
                 }
             }
         }

@@ -165,6 +165,8 @@ class RecordingShortcutManager: ObservableObject {
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.refreshShortcutMonitoring()
         }
+
+        LanguageModeManager.shared.configure(engine: engine, recorderUIManager: recorderUIManager)
     }
     
     private func refreshShortcutMonitoring() {
@@ -292,6 +294,8 @@ class RecordingShortcutManager: ObservableObject {
             )
         case .quickAddToDictionary:
             DictionaryQuickAddManager.shared.toggle(modelContainer: engine.modelContext.container)
+        case .cycleLanguageMode:
+            await LanguageModeManager.shared.cycleToNext()
         default:
             break
         }
@@ -359,7 +363,10 @@ final class RecordingShortcutModeHandler {
     private var activeShortcutCanCancelAccidentalStart = false
     private var lastShortcutPressTime: Date?
 
-    private let shortcutPressCooldown: TimeInterval = 0.5
+    private let shortcutPressCooldown: TimeInterval = {
+        let ms = UserDefaults.standard.integer(forKey: "shortcutPressCooldownMs")
+        return ms > 0 ? TimeInterval(ms) / 1000.0 : 0.5
+    }()
     private let hybridPressThreshold: TimeInterval = 0.5
 
     init(

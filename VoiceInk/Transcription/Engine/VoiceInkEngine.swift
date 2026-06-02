@@ -13,6 +13,15 @@ class VoiceInkEngine: NSObject, ObservableObject {
     var currentSession: TranscriptionSession?
     private var activeRecordingStartID: UUID?
     private var activePipelineTranscriptionID: UUID?
+
+    /// Validates and applies a recording state transition. Logs and skips invalid ones.
+    private func transitionState(to newState: RecordingState) {
+        guard recordingState.canTransition(to: newState) else {
+            logger.warning("Invalid state transition: \(String(describing: self.recordingState)) → \(String(describing: newState)) — skipped")
+            return
+        }
+        recordingState = newState
+    }
     private var canceledPipelineTranscriptionIDs = Set<UUID>()
 
     let recorder = Recorder()
@@ -97,6 +106,20 @@ class VoiceInkEngine: NSObject, ObservableObject {
             await recorder.stopRecording()
 
             if let recordedFile {
+                // Guard against empty/truncated recordings caused by hardware init race (#687)
+                let fileSize = (try? FileManager.default.attributesOfItem(atPath: recordedFile.path)[.size] as? Int) ?? 0
+                let minimumUsableSize = 8000 // ~0.1s of 16kHz mono PCM + WAV header
+                if fileSize < minimumUsableSize {
+                    logger.warning("⚠️ Recording file too small (\(fileSize) bytes) — likely hardware init race. Discarding.")
+                    NotificationManager.shared.showNotification(
+                        title: "Recording too short — please try again",
+                        type: .warning
+                    )
+                    recordingState = .idle
+                    await cleanupResources()
+                    return
+                }
+
                 if !shouldCancelRecording {
                     let transcription = makeRecordingTranscription(
                         for: recordedFile,
@@ -112,7 +135,14 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     }
                     NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
 
-                    await runPipeline(on: transcription, audioURL: recordedFile)
+                    // Run pipeline without blocking recording state (#111)
+                    // User can start next recording immediately
+                    let pipeline = self
+                    Task {
+                        await pipeline.runPipeline(on: transcription, audioURL: recordedFile)
+                    }
+                    recordingState = .idle
+                    await cleanupResources()
                 } else {
                     await finishActiveRecorderCancellation()
                 }
@@ -152,6 +182,22 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                             self.recordingState = .starting
                             self.logger.notice("toggleRecord: state=starting, starting audio hardware")
+
+                            // Ensure model is loaded before recording starts (#614)
+                            if let model = self.transcriptionModelManager.currentTranscriptionModel,
+                               model.provider == .whisper {
+                                if let localWhisperModel = self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
+                                   self.whisperModelManager.whisperContext == nil {
+                                    do {
+                                        try await self.whisperModelManager.loadModel(localWhisperModel)
+                                    } catch {
+                                        self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
+                                    }
+                                }
+                            } else if let fluidAudioModel = self.transcriptionModelManager.currentTranscriptionModel as? FluidAudioModel {
+                                try? await self.serviceRegistry.fluidAudioTranscriptionService.loadModel(for: fluidAudioModel)
+                            }
+
                             self.recorder.scheduleSystemMute()
 
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
@@ -203,27 +249,12 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 }
                             }
 
-                            Task { @MainActor [weak self] in
+                            Task.detached(priority: .background) { [weak self] in
                                 guard let self else { return }
-
-                                if let model = self.transcriptionModelManager.currentTranscriptionModel,
-                                   model.provider == .whisper {
-                                    if let localWhisperModel = self.whisperModelManager.availableModels.first(where: { $0.name == model.name }),
-                                       self.whisperModelManager.whisperContext == nil {
-                                        do {
-                                            try await self.whisperModelManager.loadModel(localWhisperModel)
-                                        } catch {
-                                            self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
-                                        }
-                                    }
-                                } else if let fluidAudioModel = self.transcriptionModelManager.currentTranscriptionModel as? FluidAudioModel {
-                                    try? await self.serviceRegistry.fluidAudioTranscriptionService.loadModel(for: fluidAudioModel)
-                                }
-
-                                if let enhancementService = self.enhancementService {
-                                    enhancementService.captureClipboardContext()
-                                    await enhancementService.captureScreenContext()
-                                }
+                                // Skip context capture in Speed Mode
+                                guard !UserDefaults.standard.bool(forKey: "speedMode") else { return }
+                                await self.enhancementService?.captureClipboardContext()
+                                await self.enhancementService?.captureScreenContext()
                             }
 
                         } catch {
@@ -258,7 +289,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
             } catch {
                 logger.error("Failed to save transcription failure state: \(error.localizedDescription)")
             }
-            recordingState = .idle
+            // Only reset state if not already recording again (#111)
+            if recordingState == .transcribing { recordingState = .idle }
             return
         }
 
@@ -303,7 +335,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
         if didFinishActivePipeline &&
             (recordingState == .transcribing || recordingState == .enhancing || recordingState == .busy) {
-            recordingState = .idle
+            transitionState(to: .idle)
         }
     }
 
@@ -452,10 +484,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
     }
 
     func cleanupResources() async {
-        logger.notice("cleanupResources: releasing model resources")
+        logger.notice("cleanupResources: resetting state (models kept warm)")
         activeRecordingStartID = nil
-        await whisperModelManager.cleanupResources()
-        await serviceRegistry.cleanup()
+        // NOTE: Models are intentionally kept loaded to avoid cold-start on next recording.
+        // They will be cleaned up only on app termination or memory pressure.
         logger.notice("cleanupResources: completed")
     }
 

@@ -180,6 +180,7 @@ struct InlineHistoryView: View {
                                         toggleSelection(transcription)
                                     }
                                 )
+                                .equatable()
                             }
 
                             if hasMoreContent {
@@ -442,12 +443,18 @@ struct VerticalDivider: View {
 
 // MARK: - History Sidebar Row Card
 
-private struct HistorySidebarRowCard: View {
+private struct HistorySidebarRowCard: View, Equatable {
     let transcription: Transcription
     let isSelected: Bool
     let isChecked: Bool
     let onSelect: () -> Void
     let onCheckToggle: () -> Void
+
+    static func == (lhs: HistorySidebarRowCard, rhs: HistorySidebarRowCard) -> Bool {
+        lhs.transcription.id == rhs.transcription.id &&
+        lhs.isSelected == rhs.isSelected &&
+        lhs.isChecked == rhs.isChecked
+    }
 
     var body: some View {
         HStack(spacing: 8) {

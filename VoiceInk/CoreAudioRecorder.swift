@@ -64,6 +64,59 @@ final class CoreAudioRecorder: @unchecked Sendable {
         stopRecording()
     }
 
+    // MARK: - Pre-warm (eliminates ~650ms hardware init delay on first recording)
+
+    /// Pre-initializes the AudioUnit for the given device without starting capture.
+    /// Call once at app launch or device change so that startRecording() only needs
+    /// to open the file and call AudioOutputUnitStart (~20ms vs ~700ms cold).
+    private(set) var isPrewarmed = false
+    private var prewarmedDeviceID: AudioDeviceID = 0
+
+    func prewarm(deviceID: AudioDeviceID) throws {
+        // Already prewarmed for this device
+        if isPrewarmed && prewarmedDeviceID == deviceID && audioUnit != nil { return }
+
+        // Tear down any existing unit
+        if let unit = audioUnit {
+            AudioOutputUnitStop(unit)
+            AudioUnitUninitialize(unit)
+            AudioComponentInstanceDispose(unit)
+            audioUnit = nil
+        }
+
+        guard deviceID != 0 else { return }
+        guard isDeviceAvailable(deviceID) else { return }
+
+        currentDeviceID = deviceID
+        try createAudioUnit()
+        try setInputDevice(deviceID)
+        try configureFormats()
+        try setupInputCallback()
+
+        // Initialize but don't start — this compiles the audio graph (~200ms)
+        guard let unit = audioUnit else { return }
+        let status = AudioUnitInitialize(unit)
+        if status != noErr {
+            logger.error("Prewarm: failed to initialize AudioUnit: \(status, privacy: .public)")
+            throw CoreAudioRecorderError.failedToInitialize(status: status)
+        }
+
+        prewarmedDeviceID = deviceID
+        isPrewarmed = true
+        logger.notice("🎙️ AudioUnit pre-warmed for device \(deviceID, privacy: .public)")
+    }
+
+    /// Tears down the pre-warmed AudioUnit (e.g. when entering sleep)
+    func teardownPrewarm() {
+        guard isPrewarmed, let unit = audioUnit, !isRecording else { return }
+        AudioUnitUninitialize(unit)
+        AudioComponentInstanceDispose(unit)
+        audioUnit = nil
+        isPrewarmed = false
+        prewarmedDeviceID = 0
+        logger.notice("🎙️ AudioUnit pre-warm torn down")
+    }
+
     // MARK: - Public Interface
 
     /// Starts recording from the specified device to the given URL (WAV format)
@@ -88,27 +141,46 @@ final class CoreAudioRecorder: @unchecked Sendable {
         logger.notice("🎙️ Starting recording from device \(deviceID, privacy: .public)")
         logDeviceDetails(deviceID: deviceID)
 
-        // Step 1: Create and configure the AudioUnit (AUHAL)
-        try createAudioUnit()
+        if isPrewarmed && prewarmedDeviceID == deviceID && audioUnit != nil {
+            // Fast path: AudioUnit already initialized, just open file and start (~20ms)
+            logger.notice("🎙️ Using pre-warmed AudioUnit (fast start)")
+            try createOutputFile(at: url)
+            // AudioUnit already initialized — just start it
+            guard let unit = audioUnit else {
+                throw CoreAudioRecorderError.audioUnitNotInitialized
+            }
+            let status = AudioOutputUnitStart(unit)
+            if status != noErr {
+                logger.error("Failed to start pre-warmed AudioUnit: \(status, privacy: .public)")
+                throw CoreAudioRecorderError.failedToStart(status: status)
+            }
+        } else {
+            // Cold path: full hardware init (~700ms)
+            logger.notice("🎙️ Cold start — full AudioUnit initialization")
 
-        // Step 2: Set the input device (does NOT change system default)
-        try setInputDevice(deviceID)
+            // Step 1: Create and configure the AudioUnit (AUHAL)
+            try createAudioUnit()
 
-        // Step 3: Configure formats
-        try configureFormats()
+            // Step 2: Set the input device (does NOT change system default)
+            try setInputDevice(deviceID)
 
-        // Step 4: Set up the input callback
-        try setupInputCallback()
+            // Step 3: Configure formats
+            try configureFormats()
 
-        // Step 5: Create the output file
-        try createOutputFile(at: url)
+            // Step 4: Set up the input callback
+            try setupInputCallback()
 
-        // Step 6: Initialize and start the AudioUnit
-        try startAudioUnit()
+            // Step 5: Create the output file
+            try createOutputFile(at: url)
+
+            // Step 6: Initialize and start the AudioUnit
+            try startAudioUnit()
+        }
 
         // Cache gain setting before entering real-time path (avoid UserDefaults on audio thread)
         cachedWhisperModeGain = UserDefaults.standard.bool(forKey: "IsWhisperModeEnabled") ? 2.5 : 1.0
 
+        isPrewarmed = false // consumed
         isStopping = false
         isRecording = true
     }

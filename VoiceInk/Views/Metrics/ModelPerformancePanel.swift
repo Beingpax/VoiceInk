@@ -171,8 +171,8 @@ private struct ModelPerformancePanelContent: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Section 1: Voice Intelligence Hero Panel
-                VoiceIntelligenceHeroView()
+                // Section 1: Aggregate Stats Grid
+                usageStatsGrid
                 
                 // Section 2: Transcription Models
                 VStack(alignment: .leading, spacing: 14) {
@@ -229,6 +229,83 @@ private struct ModelPerformancePanelContent: View {
             }
             .padding(.horizontal, 24)
         }
+    }
+
+    // MARK: - Usage Stats Grid
+
+    private var totalSessions: Int { metrics.count }
+    private var totalWords: Int { metrics.reduce(0) { $0 + $1.wordCount } }
+    private var totalAudioMinutes: Double { metrics.reduce(0.0) { $0 + $1.audioDuration } / 60.0 }
+    private var totalProcessingSeconds: Double { metrics.compactMap(\.transcriptionDuration).reduce(0, +) }
+    private var avgWordsPerSession: Double { totalSessions > 0 ? Double(totalWords) / Double(totalSessions) : 0 }
+    private var avgSpeedFactor: Double {
+        let factors = metrics.compactMap(\.speedFactor).filter { $0 > 0 }
+        return factors.isEmpty ? 0 : factors.reduce(0, +) / Double(factors.count)
+    }
+    private var enhancedCount: Int { metrics.filter { $0.aiEnhancementModelName != nil }.count }
+    private var powerModeCount: Int { metrics.filter { $0.powerModeName != nil }.count }
+
+    private var usageStatsGrid: some View {
+        let fastestModel = modelStats.first
+        let slowestModel = modelStats.last
+        let fastestEnhancement = enhancementStats.first
+        let avgLatency = totalSessions > 0 ? totalProcessingSeconds / Double(totalSessions) : 0
+        let enhancementRate = totalSessions > 0 ? Double(enhancedCount) / Double(totalSessions) * 100 : 0
+
+        let statItems: [(String, String, String, Color)] = [
+            ("hare.fill", fastestModel?.name ?? "—", "Fastest Model", Color(red: 0.22, green: 0.72, blue: 0.42)),
+            ("bolt.fill", String(format: "%.1fx", fastestModel?.speedFactor ?? 0), "Best Speed", Color(red: 0.28, green: 0.58, blue: 0.95)),
+            ("clock.badge.checkmark.fill", String(format: "%.2fs", avgLatency), "Avg Latency", Color(red: 0.54, green: 0.12, blue: 0.92)),
+            ("tortoise.fill", slowestModel.map { String(format: "%.2fs", $0.avgProcessingTime) } ?? "—", "Slowest Avg", Color(red: 0.85, green: 0.25, blue: 0.25)),
+            ("wand.and.stars", fastestEnhancement?.name.components(separatedBy: "/").last ?? "—", "Best Enhancer", Color(red: 0.85, green: 0.45, blue: 0.12)),
+            ("gauge.with.needle.fill", String(format: "%.2fs", fastestEnhancement?.avgDuration ?? 0), "Enhance Latency", Color(red: 0.65, green: 0.35, blue: 0.85)),
+            ("percent", String(format: "%.0f%%", enhancementRate), "Enhanced", Color(red: 0.22, green: 0.65, blue: 0.65)),
+            ("number", "\(totalSessions)", "Total Sessions", Color(red: 0.36, green: 0.28, blue: 0.88)),
+        ]
+
+        return LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12),
+            GridItem(.flexible(), spacing: 12)
+        ], spacing: 12) {
+            ForEach(Array(statItems.enumerated()), id: \.offset) { _, item in
+                VStack(spacing: 8) {
+                    Image(systemName: item.0)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(item.3)
+                        .frame(width: 32, height: 32)
+                        .background(item.3.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    Text(item.1)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 0.12, green: 0.12, blue: 0.18))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    Text(item.2)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.5))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.white)
+                .cornerRadius(12)
+                .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
+            }
+        }
+    }
+
+    private func formatNumber(_ n: Int) -> String {
+        if n >= 1_000_000 { return String(format: "%.1fM", Double(n) / 1_000_000) }
+        if n >= 1_000 { return String(format: "%.1fK", Double(n) / 1_000) }
+        return "\(n)"
+    }
+
+    private func formatDuration(_ minutes: Double) -> String {
+        if minutes >= 60 { return String(format: "%.1fh", minutes / 60) }
+        return String(format: "%.0fm", minutes)
     }
 
     // MARK: - Transcription Model Card
@@ -420,202 +497,6 @@ private struct ModelPerformancePanelContent: View {
                 .stroke(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.04), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.015), radius: 8, x: 0, y: 4)
-    }
-}
-
-// MARK: - Voice Intelligence Animated Dark Hero Card
-
-struct VoiceIntelligenceHeroView: View {
-    @State private var time: Double = 0.0
-    private let timer = Timer.publish(every: 1.0/60.0, on: .main, in: .common).autoconnect()
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header: Info and Live Indicator
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Voice Intelligence")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white)
-                    Text("Real-time Analysis")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.4))
-                }
-                
-                Spacer()
-                
-                HStack(spacing: 12) {
-                    // Pulsing Live Badge
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color(red: 0.28, green: 0.65, blue: 0.45))
-                            .frame(width: 6, height: 6)
-                            .opacity(0.6 + 0.4 * sin(time * 6.0))
-                        
-                        Text("Live")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.white.opacity(0.08))
-                    .cornerRadius(6)
-                    
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.4))
-                }
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
-            
-            // Dual-frequency organic wave Canvas
-            TimelineView(.animation) { timeline in
-                Canvas { context, size in
-                    let w = size.width
-                    let h = size.height
-                    let midY = h / 2
-                    
-                    let elapsed = timeline.date.timeIntervalSinceReferenceDate
-                    
-                    // Layer 1: Electric Purple
-                    var path1 = Path()
-                    path1.move(to: CGPoint(x: 0, y: midY))
-                    for x in stride(from: 0, to: w, by: 2) {
-                        let phase = x * 0.012 + elapsed * 1.5
-                        let noise = sin(x * 0.003 - elapsed * 0.8) * 15.0
-                        let y = midY + sin(phase) * 22.0 + sin(phase * 0.43) * 14.0 + noise
-                        if x == 0 { path1.move(to: CGPoint(x: x, y: y)) }
-                        else { path1.addLine(to: CGPoint(x: x, y: y)) }
-                    }
-                    context.stroke(path1, with: .linearGradient(
-                        Gradient(colors: [Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.85), Color(red: 0.28, green: 0.58, blue: 0.95).opacity(0.85)]),
-                        startPoint: CGPoint(x: 0, y: 0),
-                        endPoint: CGPoint(x: w, y: 0)
-                    ), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    
-                    // Layer 2: Neon Pink/Violet (Asymmetric and out-of-phase)
-                    var path2 = Path()
-                    path2.move(to: CGPoint(x: w, y: midY))
-                    for x in stride(from: 0, to: w, by: 2) {
-                        let phase = x * 0.018 - elapsed * 2.1
-                        let noise = cos(x * 0.005 + elapsed * 1.1) * 12.0
-                        let y = midY + sin(phase * 0.85) * 18.0 + cos(phase * 1.3) * 10.0 + noise
-                        if x == 0 { path2.move(to: CGPoint(x: x, y: y)) }
-                        else { path2.addLine(to: CGPoint(x: x, y: y)) }
-                    }
-                    context.stroke(path2, with: .linearGradient(
-                        Gradient(colors: [Color(red: 0.88, green: 0.15, blue: 0.92).opacity(0.65), Color(red: 0.0, green: 0.8, blue: 1.0).opacity(0.65)]),
-                        startPoint: CGPoint(x: 0, y: 0),
-                        endPoint: CGPoint(x: w, y: 0)
-                    ), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    
-                    // Floating dynamic particles
-                    for i in 0..<12 {
-                        let seed = Double(i) * 37.5
-                        let px = (w * 0.08 + w * 0.8 * abs(sin(seed)))
-                        let py = midY + sin(elapsed * 2.0 + seed) * 30.0 + cos(elapsed * 0.8 + seed * 2) * 10.0
-                        
-                        let radius = 2.0 + 2.0 * abs(sin(elapsed * 4.0 + seed))
-                        let particleColor = Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.4 + 0.6 * abs(sin(elapsed * 3.0 + seed)))
-                        
-                        let rect = CGRect(x: px - radius, y: py - radius, width: radius * 2, height: radius * 2)
-                        context.fill(Path(ellipseIn: rect), with: .color(particleColor))
-                    }
-                }
-            }
-            .frame(height: 124)
-            
-            // Footer Info: Level, Status, Accuracy
-            HStack(spacing: 0) {
-                // Signal Level Block
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Signal Level")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white.opacity(0.35))
-                        .textCase(.uppercase)
-                    
-                    HStack(spacing: 3) {
-                        ForEach(0..<15) { idx in
-                            let heightMultiplier = abs(sin(time * 4.0 + Double(idx) * 0.4))
-                            let height = 4.0 + 12.0 * heightMultiplier
-                            RoundedRectangle(cornerRadius: 1)
-                                .fill(LinearGradient(
-                                    colors: [Color(red: 0.54, green: 0.12, blue: 0.92), Color(red: 0.28, green: 0.58, blue: 0.95)],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                ))
-                                .frame(width: 2.5, height: height)
-                        }
-                    }
-                    .frame(height: 18, alignment: .bottom)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                
-                Spacer()
-                
-                // Status Block
-                VStack(alignment: .center, spacing: 3) {
-                    Text("Status")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white.opacity(0.35))
-                        .textCase(.uppercase)
-                    
-                    Text("Real-time")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                
-                Spacer()
-                
-                // Accuracy Block with Mini Line Chart
-                VStack(alignment: .trailing, spacing: 3) {
-                    Text("Accuracy")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white.opacity(0.35))
-                        .textCase(.uppercase)
-                    
-                    HStack(spacing: 8) {
-                        Text("96.8%")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red: 0.28, green: 0.65, blue: 0.45))
-                        
-                        // Mini Line Chart
-                        Canvas { context, size in
-                            let w = size.width
-                            let h = size.height
-                            let points = [
-                                CGPoint(x: 0, y: h * 0.7),
-                                CGPoint(x: w * 0.2, y: h * 0.5),
-                                CGPoint(x: w * 0.4, y: h * 0.6),
-                                CGPoint(x: w * 0.6, y: h * 0.2),
-                                CGPoint(x: w * 0.8, y: h * 0.4),
-                                CGPoint(x: w, y: h * 0.3)
-                            ]
-                            
-                            var path = Path()
-                            path.addLines(points)
-                            context.stroke(path, with: .color(Color(red: 0.28, green: 0.65, blue: 0.45)), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                        }
-                        .frame(width: 32, height: 14)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 20)
-        }
-        .background(Color(red: 0.06, green: 0.05, blue: 0.12)) // Dark premium obsidian background
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
-        )
-        .shadow(color: Color(red: 0.54, green: 0.12, blue: 0.92).opacity(0.12), radius: 15, x: 0, y: 10)
-        .onReceive(timer) { _ in
-            time += 1.0/60.0
-        }
     }
 }
 

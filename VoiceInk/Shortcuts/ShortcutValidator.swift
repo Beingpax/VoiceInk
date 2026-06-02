@@ -6,6 +6,7 @@ enum ShortcutValidationError: Equatable {
     case shiftTypingKeyRequiresAdditionalModifier
     case reservedBySystem
     case alreadyUsedBy(String)
+    case macosDictationConflict
 
     func notificationTitle(for shortcut: Shortcut) -> String {
         switch self {
@@ -17,6 +18,8 @@ enum ShortcutValidationError: Equatable {
             return "Shortcut reserved by macOS: \(shortcut.displayString)"
         case .alreadyUsedBy(let actionName):
             return "Shortcut already used by \(actionName)"
+        case .macosDictationConflict:
+            return "⚠️ F5 may be captured by macOS Dictation"
         }
     }
 }
@@ -39,6 +42,18 @@ enum ShortcutValidator {
             return .alreadyUsedBy(existingAction.displayName)
         }
 
+        return nil
+    }
+
+    /// Non-blocking warning for shortcuts that may conflict with macOS system features
+    static func validationWarning(for shortcut: Shortcut) -> ShortcutValidationError? {
+        // F5 is the default macOS dictation trigger — warn the user (#63)
+        if shortcut.kind == .key, shortcut.keyCode == UInt16(kVK_F5), shortcut.modifierFlags.isEmpty {
+            let dictationEnabled = UserDefaults(suiteName: "com.apple.HIToolbox")?.bool(forKey: "AppleDictationAutoEnable") ?? false
+            if dictationEnabled {
+                return .macosDictationConflict
+            }
+        }
         return nil
     }
 

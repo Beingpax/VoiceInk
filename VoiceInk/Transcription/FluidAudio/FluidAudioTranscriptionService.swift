@@ -143,13 +143,15 @@ class FluidAudioTranscriptionService: TranscriptionService {
     private func readAudioSamples(from url: URL) throws -> [Float] {
         do {
             let data = try Data(contentsOf: url)
-            guard data.count > 44 else {
+            let dataOffset = findWAVDataChunkOffset(in: data)
+            guard dataOffset > 0, data.count > dataOffset else {
                 throw ASRError.invalidAudioData
             }
 
-            let floats = stride(from: 44, to: data.count, by: 2).map {
-                return data[$0..<$0 + 2].withUnsafeBytes {
-                    let short = Int16(littleEndian: $0.load(as: Int16.self))
+            let floats = stride(from: dataOffset, to: data.count - 1, by: 2).map { i -> Float in
+                return data[i..<i + 2].withUnsafeBytes { buf in
+                    guard buf.count >= 2 else { return Float(0) }
+                    let short = Int16(littleEndian: buf.loadUnaligned(as: Int16.self))
                     return max(-1.0, min(Float(short) / 32767.0, 1.0))
                 }
             }
@@ -158,6 +160,41 @@ class FluidAudioTranscriptionService: TranscriptionService {
         } catch {
             throw ASRError.invalidAudioData
         }
+    }
+
+    /// Parse WAV file to find the actual PCM data chunk offset.
+    /// WAV files may have extra chunks (LIST, fact, bext, etc.) before the "data" chunk.
+    private func findWAVDataChunkOffset(in data: Data) -> Int {
+        // Minimum WAV: RIFF(4) + size(4) + WAVE(4) + fmt (8+16) + data(8) = 44
+        guard data.count >= 44 else { return -1 }
+
+        // Verify RIFF header
+        let riff = String(data: data[0..<4], encoding: .ascii)
+        let wave = String(data: data[8..<12], encoding: .ascii)
+        guard riff == "RIFF", wave == "WAVE" else { return -1 }
+
+        // Walk chunks starting at offset 12
+        var offset = 12
+        while offset + 8 <= data.count {
+            let chunkID = String(data: data[offset..<offset+4], encoding: .ascii) ?? ""
+            let chunkSize: UInt32 = data[offset+4..<offset+8].withUnsafeBytes { buf in
+                guard buf.count >= 4 else { return 0 }
+                return buf.loadUnaligned(as: UInt32.self)
+            }
+            let chunkSizeLE = UInt32(littleEndian: chunkSize)
+
+            if chunkID == "data" {
+                return offset + 8 // PCM data starts after chunk header
+            }
+
+            // Move to next chunk (chunks are word-aligned)
+            let advance = 8 + Int(chunkSizeLE)
+            let aligned = advance + (advance % 2) // pad to even boundary
+            offset += aligned
+        }
+
+        // Fallback to standard 44-byte offset if parsing fails
+        return 44
     }
 
     // Releases ASR/VAD resources but preserves cached models for reuse

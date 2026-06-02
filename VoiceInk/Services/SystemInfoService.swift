@@ -7,7 +7,7 @@ class SystemInfoService {
 
     private init() {}
 
-    func getSystemInfoString() -> String {
+    @MainActor func getSystemInfoString() -> String {
         let info = """
         === VOICEINK SYSTEM INFORMATION ===
         Generated: \(Date().formatted(date: .long, time: .standard))
@@ -78,7 +78,7 @@ class SystemInfoService {
         return info
     }
 
-    func copySystemInfoToClipboard() {
+    @MainActor func copySystemInfoToClipboard() {
         let info = getSystemInfoString()
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -126,7 +126,7 @@ class SystemInfoService {
         return "System Default"
     }
 
-    private func getCurrentAudioDevice() -> String {
+    @MainActor private func getCurrentAudioDevice() -> String {
         let audioManager = AudioDeviceManager.shared
         let deviceID = audioManager.getCurrentDevice()
         if deviceID != 0, let deviceName = audioManager.getDeviceName(deviceID: deviceID) {
@@ -135,7 +135,7 @@ class SystemInfoService {
         return "Unknown"
     }
 
-    private func getAvailableAudioDevices() -> String {
+    @MainActor private func getAvailableAudioDevices() -> String {
         let devices = AudioDeviceManager.shared.availableDevices
         if devices.isEmpty {
             return "None detected"

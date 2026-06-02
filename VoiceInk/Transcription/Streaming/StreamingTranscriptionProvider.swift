@@ -16,6 +16,10 @@ enum StreamingTranscriptionError: LocalizedError {
     case serverError(String)
     case notConnected
     case unsupportedProvider(String)
+    /// All configured API keys for this provider have been tried and failed.
+    case allKeysExhausted(lastReason: String)
+    /// The currently-active key hit a quota / auth error mid-session.
+    case keyQuotaExceeded(keyLabel: String, reason: String)
 
     var errorDescription: String? {
         switch self {
@@ -31,6 +35,10 @@ enum StreamingTranscriptionError: LocalizedError {
             return "Not connected to streaming transcription service"
         case .unsupportedProvider(let provider):
             return "Unsupported streaming provider: \(provider)"
+        case .allKeysExhausted(let reason):
+            return "All configured API keys failed. Last error: \(reason)"
+        case .keyQuotaExceeded(let label, let reason):
+            return "API key \"\(label)\" hit a quota/auth error mid-session (\(reason)). The next recording will use the next configured key."
         }
     }
 }

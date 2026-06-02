@@ -222,7 +222,23 @@ struct TranscriptionOutputFilter {
         let punctuationMode = PunctuationCleanupMode.current()
         let shouldLowercase = UserDefaults.standard.bool(forKey: lowercaseTranscriptionKey)
 
-        return applyCleanupPreferences(text, punctuationMode: punctuationMode, shouldLowercase: shouldLowercase)
+        var result = applyCleanupPreferences(text, punctuationMode: punctuationMode, shouldLowercase: shouldLowercase)
+
+        // Fix #666: Remove spurious periods inserted by whisper after structural markers
+        // e.g. ">.I was" → ">I was", "-.item" → "-item"
+        result = removePeriodsAfterStructuralMarkers(result)
+
+        return result
+    }
+
+    /// Remove periods that whisper inserts after structural markers like >, -, *, •
+    private static func removePeriodsAfterStructuralMarkers(_ text: String) -> String {
+        // Pattern: a structural marker followed by a period and then a letter/space
+        // This preserves legitimate uses like decimal numbers (3.14) or abbreviations
+        let pattern = "([>\\-\\*•])\\. *(?=[\\p{L}])"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return text }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.stringByReplacingMatches(in: text, range: range, withTemplate: "$1")
     }
 
     static func applyCleanupPreferences(_ text: String, punctuationMode: PunctuationCleanupMode, shouldLowercase: Bool) -> String {

@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import os
 import AppKit
+import IOKit.ps
 
 @MainActor
 final class ModelPrewarmService: ObservableObject {
@@ -16,6 +17,10 @@ final class ModelPrewarmService: ObservableObject {
     )
     private let prewarmAudioURL = Bundle.main.url(forResource: "sound7", withExtension: "wav")
     private let prewarmEnabledKey = "PrewarmModelOnWake"
+    private let keepAliveEnabledKey = "KeepModelAlive"
+    private let keepAliveOnBatteryKey = "KeepModelAliveOnBattery"
+    private let keepAliveInterval: TimeInterval = 5 * 60 // 5 minutes
+    private var keepAliveTask: Task<Void, Never>?
 
     init(transcriptionModelManager: TranscriptionModelManager, whisperModelManager: WhisperModelManager, modelContext: ModelContext) {
         self.transcriptionModelManager = transcriptionModelManager
@@ -23,6 +28,7 @@ final class ModelPrewarmService: ObservableObject {
         self.modelContext = modelContext
         setupNotifications()
         schedulePrewarmOnAppLaunch()
+        startKeepAlive()
     }
 
     // MARK: - Notification Setup
@@ -115,7 +121,47 @@ final class ModelPrewarmService: ObservableObject {
     }
 
     deinit {
+        keepAliveTask?.cancel()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
         logger.notice("ModelPrewarmService deinitialized")
+    }
+
+    // MARK: - Keep-Alive (prevents macOS from paging model memory after idle)
+
+    private func startKeepAlive() {
+        keepAliveTask?.cancel()
+        guard UserDefaults.standard.bool(forKey: keepAliveEnabledKey) else {
+            logger.notice("Keep-alive disabled by user")
+            return
+        }
+        let interval = keepAliveInterval
+        let batteryKey = keepAliveOnBatteryKey
+        keepAliveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(interval))
+                guard !Task.isCancelled, let self else { break }
+
+                // Skip on battery unless explicitly allowed
+                if !UserDefaults.standard.bool(forKey: batteryKey) && self.isOnBattery() {
+                    self.logger.notice("Keep-alive skipped — on battery")
+                    continue
+                }
+
+                // Skip if low power mode
+                if ProcessInfo.processInfo.isLowPowerModeEnabled {
+                    self.logger.notice("Keep-alive skipped — Low Power Mode")
+                    continue
+                }
+
+                await self.performPrewarm()
+            }
+        }
+        logger.notice("Keep-alive timer started (interval: \(Int(interval))s)")
+    }
+
+    private nonisolated func isOnBattery() -> Bool {
+        let snapshot = IOPSCopyPowerSourcesInfo()?.takeRetainedValue()
+        let type = IOPSGetProvidingPowerSourceType(snapshot)?.takeRetainedValue() as String?
+        return type == kIOPSBatteryPowerValue
     }
 }

@@ -8,6 +8,7 @@ struct MenuBarView: View {
     @EnvironmentObject var whisperModelManager: WhisperModelManager
     @EnvironmentObject var recordingShortcutManager: RecordingShortcutManager
     @EnvironmentObject var menuBarManager: MenuBarManager
+    @EnvironmentObject var shortcutProfileManager: ShortcutProfileManager
     @EnvironmentObject var updaterViewModel: UpdaterViewModel
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var aiService: AIService
@@ -21,6 +22,7 @@ struct MenuBarView: View {
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleMiniRecorder()
             }
+            .keyboardShortcut("r", modifiers: [.command])
 
             Divider()
 
@@ -56,6 +58,7 @@ struct MenuBarView: View {
             Divider()
             
             Toggle("AI Enhancement", isOn: $enhancementService.isEnhancementEnabled)
+                .keyboardShortcut("e", modifiers: [.command])
             
             Menu {
                 ForEach(enhancementService.allPrompts) { prompt in
@@ -200,6 +203,7 @@ struct MenuBarView: View {
                     enhancementService: enhancementService
                 )
             }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
 
             Button("Copy Last Transcription") {
                 LastTranscriptionService.copyLastTranscription(from: engine.modelContext)
@@ -237,11 +241,30 @@ struct MenuBarView: View {
                 EmailSupport.openSupportEmail()
             }
             
+            if shortcutProfileManager.isEnabled && !shortcutProfileManager.profiles.isEmpty {
+                Divider()
+
+                Menu("Shortcut Profile: \(shortcutProfileManager.activeProfileName)") {
+                    ForEach(shortcutProfileManager.profiles) { profile in
+                        Button {
+                            shortcutProfileManager.switchToProfile(id: profile.id)
+                        } label: {
+                            if profile.id == shortcutProfileManager.activeProfileID {
+                                Text("✓ \(profile.name)")
+                            } else {
+                                Text("  \(profile.name)")
+                            }
+                        }
+                    }
+                }
+            }
+
             Divider()
 
             Button("Quit VoiceInk") {
                 NSApplication.shared.terminate(nil)
             }
+            .keyboardShortcut("q", modifiers: .command)
         }
     }
 }

@@ -1,6 +1,7 @@
 import Foundation
 import CoreAudio
 import AVFoundation
+import IOKit
 import os
 
 struct PrioritizedDevice: Codable, Identifiable {
@@ -15,6 +16,7 @@ enum AudioInputMode: String, CaseIterable {
     case prioritized = "Prioritized"
 }
 
+@MainActor
 class AudioDeviceManager: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioDeviceManager")
     @Published var availableDevices: [(id: AudioDeviceID, uid: String, name: String)] = []
@@ -130,6 +132,47 @@ class AudioDeviceManager: ObservableObject {
             return false
         }
         return uid.contains("BuiltIn")
+    }
+
+    /// Detect clamshell mode (lid closed) by checking if the built-in display is off (#566)
+    func isInClamshellMode() -> Bool {
+        guard let service = IOServiceGetMatchingService(
+            kIOMainPortDefault,
+            IOServiceMatching("AppleBacklightDisplay")
+        ) as Optional, service != IO_OBJECT_NULL else {
+            // No built-in display service found — likely clamshell or Mac mini/Studio/Pro
+            // Check for lid state via AppleClamshellState
+            let platformExpert = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+            defer { if platformExpert != IO_OBJECT_NULL { IOObjectRelease(platformExpert) } }
+            guard platformExpert != IO_OBJECT_NULL,
+                  let prop = IORegistryEntryCreateCFProperty(platformExpert, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0) else {
+                return false
+            }
+            return (prop.takeRetainedValue() as? Bool) ?? false
+        }
+        IOObjectRelease(service)
+        // If we got here, built-in display exists — not clamshell
+        // But to be sure, also check AppleClamshellState
+        let platformExpert = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        defer { if platformExpert != IO_OBJECT_NULL { IOObjectRelease(platformExpert) } }
+        guard platformExpert != IO_OBJECT_NULL,
+              let prop = IORegistryEntryCreateCFProperty(platformExpert, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0) else {
+            return false
+        }
+        return (prop.takeRetainedValue() as? Bool) ?? false
+    }
+
+    /// If in clamshell mode and user's selected device is built-in, fall back to next available external device
+    func getCurrentDeviceWithClamshellFallback() -> AudioDeviceID {
+        let device = getCurrentDevice()
+        guard isBuiltInDevice(device), isInClamshellMode() else {
+            return device
+        }
+        logger.notice("🖥️ Clamshell mode detected — skipping built-in mic, using first external device")
+        if let external = availableDevices.first(where: { !isBuiltInDevice($0.id) }) {
+            return external.id
+        }
+        return device
     }
     
     func loadAvailableDevices(completion: (() -> Void)? = nil) {

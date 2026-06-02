@@ -19,6 +19,10 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @AppStorage("miniRecorderOpacity") private var miniRecorderOpacity = 0.95
     @AppStorage("visualizerMovementType") private var visualizerMovementType = "alien"
     @AppStorage("visualizerLineTheme") private var visualizerLineTheme = "cyber"
+    @AppStorage("superchargeDynamicHUDIsland") private var dynamicHUDEnabled = false
+    @AppStorage("superchargeDragToTarget") private var dragToTargetEnabled = false
+    @AppStorage("superchargeTactileHapticScrubbing") private var hapticScrubbingEnabled = false
+    @AppStorage("speedMode") private var speedMode = false
 
     @State private var showVoiceMenu = false
 
@@ -90,7 +94,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     private var dynamicWidth: CGFloat {
         let baseWidth = CGFloat(miniRecorderWidth)
-        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseWidth }
+        guard dynamicHUDEnabled else { return baseWidth }
         
         switch stateProvider.recordingState {
         case .idle, .starting:
@@ -104,7 +108,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     
     private var dynamicHeight: CGFloat {
         let baseHeight = CGFloat(miniRecorderHeight)
-        guard UserDefaults.standard.bool(forKey: "superchargeDynamicHUDIsland") else { return baseHeight }
+        guard dynamicHUDEnabled else { return baseHeight }
         
         switch stateProvider.recordingState {
         case .idle, .starting:
@@ -134,7 +138,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     activeTargetZone = "app"
                 }
                 
-                if oldZone != activeTargetZone && UserDefaults.standard.bool(forKey: "superchargeTactileHapticScrubbing") {
+                if oldZone != activeTargetZone && hapticScrubbingEnabled {
                     #if canImport(AppKit)
                     NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
                     #endif
@@ -167,7 +171,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: 0) {
                     // Drag to Target Handle
-                    if UserDefaults.standard.bool(forKey: "superchargeDragToTarget") {
+                    if dragToTargetEnabled {
                         HStack {
                             Spacer()
                             HStack(spacing: 4) {
@@ -185,62 +189,69 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                         .gesture(dragGesture)
                     }
 
-                    // 1. Decorative Backdrop & Waveform Area
-                    ZStack {
-                        // Left decorative vertical Japanese label
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("•")
-                                Text("音")
-                                Text("声")
-                                Text("解")
-                                Text("析")
-                                Text("•")
+                    // 1. Waveform / Speed Mode Area
+                    if speedMode {
+                        // Speed Mode: minimal recording indicator — zero animation overhead
+                        SpeedModeIndicator(state: stateProvider.recordingState)
+                            .frame(maxHeight: .infinity)
+                            .padding(.top, 10)
+                    } else {
+                        ZStack {
+                            // Left decorative vertical Japanese label
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("•")
+                                    Text("音")
+                                    Text("声")
+                                    Text("解")
+                                    Text("析")
+                                    Text("•")
+                                }
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                                .padding(.leading, 12)
+                                Spacer()
                             }
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
-                            .padding(.leading, 12)
-                            Spacer()
-                        }
-                        
-                        // Top right decorative Japanese label
-                        VStack {
+                            
+                            // Top right decorative Japanese label
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    Text("ライブ •")
+                                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                        .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                                        .padding(.top, 10)
+                                        .padding(.trailing, 16)
+                                }
+                                Spacer()
+                            }
+
+                            // Right decorative vertical Japanese label
                             HStack {
                                 Spacer()
-                                Text("ライブ •")
-                                    .font(.system(size: 8, weight: .bold, design: .monospaced))
-                                    .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
-                                    .padding(.top, 10)
-                                    .padding(.trailing, 16)
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    Text("•")
+                                    Text("解")
+                                    Text("析")
+                                    Text("中")
+                                    Text("•")
+                                }
+                                .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
+                                .padding(.trailing, 12)
                             }
-                            Spacer()
-                        }
 
-                        // Right decorative vertical Japanese label
-                        HStack {
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 4) {
-                                Text("•")
-                                Text("解")
-                                Text("析")
-                                Text("中")
-                                Text("•")
-                            }
-                            .font(.system(size: 8, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(red: 0.22, green: 0.24, blue: 0.35).opacity(0.12))
-                            .padding(.trailing, 12)
+                            // The actual waveform visualizer
+                            RecorderStatusDisplay(
+                                currentState: stateProvider.recordingState,
+                                audioMeter: recorder.audioMeter
+                            )
+                            .frame(height: CGFloat(visualizerWaveformHeight))
+                            .padding(.horizontal, 24)
                         }
-
-                        // The actual waveform visualizer
-                        RecorderStatusDisplay(
-                            currentState: stateProvider.recordingState,
-                            audioMeter: recorder.audioMeter
-                        )
-                        .frame(height: CGFloat(visualizerWaveformHeight))
-                        .padding(.horizontal, 24)
+                        .frame(maxHeight: .infinity)
+                        .padding(.top, 10)
                     }
-                    .frame(maxHeight: .infinity)
-                    .padding(.top, 10)
 
                     // 2. Live Transcript Section (scrolls under the waveform)
                     if hasLiveTranscript {
@@ -258,22 +269,24 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                     // 3. Bottom Status Bar
                     bottomStatusBar
                 }
-                .frame(width: dynamicWidth, height: dynamicHeight)
+                .frame(width: dynamicWidth, height: speedMode ? 80 : dynamicHeight)
                 .background(
-                    LinearGradient(
-                        colors: [Color(red: 0.89, green: 0.90, blue: 0.94).opacity(miniRecorderOpacity), Color(red: 0.92, green: 0.93, blue: 0.96).opacity(miniRecorderOpacity)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+                    speedMode
+                        ? AnyShapeStyle(Color(red: 0.92, green: 0.93, blue: 0.96).opacity(miniRecorderOpacity))
+                        : AnyShapeStyle(LinearGradient(
+                            colors: [Color(red: 0.89, green: 0.90, blue: 0.94).opacity(miniRecorderOpacity), Color(red: 0.92, green: 0.93, blue: 0.96).opacity(miniRecorderOpacity)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ))
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: speedMode ? 10 : 16, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.85 * miniRecorderOpacity), lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: speedMode ? 10 : 16, style: .continuous)
+                        .stroke(Color.white.opacity(0.85 * miniRecorderOpacity), lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.14 * miniRecorderOpacity), radius: 24, x: 0, y: 12)
-                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: hasLiveTranscript)
-                .animation(.spring(response: 0.45, dampingFraction: 0.78), value: stateProvider.recordingState)
+                .shadow(color: Color.black.opacity(speedMode ? 0.06 : 0.14 * miniRecorderOpacity), radius: speedMode ? 8 : 24, x: 0, y: speedMode ? 4 : 12)
+                .animation(speedMode ? nil : .easeOut(duration: 0.15), value: hasLiveTranscript)
+                .animation(speedMode ? nil : .easeOut(duration: 0.15), value: stateProvider.recordingState)
                 
                 // Drag-to-Target overlay
                 if isDraggingToTarget {

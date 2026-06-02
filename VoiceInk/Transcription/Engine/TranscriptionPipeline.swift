@@ -147,9 +147,9 @@ class TranscriptionPipeline {
                 let textForAI = promptDetectionResult?.processedText ?? text
 
                 do {
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(textForAI)
+                    let (enhancedText, enhancementDuration, promptName, modelName) = try await enhancementService.enhance(textForAI)
                     transcription.enhancedText = enhancedText
-                    transcription.aiEnhancementModelName = enhancementService.getAIService()?.currentModel
+                    transcription.aiEnhancementModelName = modelName
                     transcription.promptName = promptName
                     transcription.enhancementDuration = enhancementDuration
                     transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
@@ -263,18 +263,26 @@ class TranscriptionPipeline {
                     """
             }
 
-            let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
-            let pastedText = textToPaste + (appendSpace ? " " : "")
-            _ = await CursorPaster.startPasteAtCursor(pastedText).value
-            let autoSendKey = activeConfig?.autoSendKey
-            SoundManager.shared.playStopSound()
-            await restorePromptDetectionSettingsAndDismiss {
+            // Clipboard-only mode: copy text without pasting into active field (#670)
+            let clipboardOnly = UserDefaults.standard.bool(forKey: "CopyToClipboardOnly")
+            if clipboardOnly {
+                _ = ClipboardManager.copyToClipboard(textToPaste)
+            } else {
+                let autoSendKey = activeConfig?.autoSendKey
                 if let autoSendKey, autoSendKey.isEnabled {
-                    Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 500_000_000)
-                        CursorPaster.performAutoSend(autoSendKey)
-                    }
+                    CursorPaster.pasteAndAutoSend(textToPaste, autoSendKey: autoSendKey)
+                } else {
+                    let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
+                    let pastedText = textToPaste + (appendSpace ? " " : "")
+                    _ = await CursorPaster.startPasteAtCursor(pastedText).value
                 }
+            }
+            SoundManager.shared.playStopSound()
+            await restorePromptDetectionSettingsAndDismiss()
+
+            // Start auto-learn monitoring after successful paste
+            if !clipboardOnly {
+                AutoLearnService.shared.startMonitoring(pastedText: textToPaste, modelContext: modelContext)
             }
         } else {
             SoundManager.shared.playStopSound()

@@ -102,6 +102,9 @@ struct SettingsView: View {
                 .padding(.bottom, 8)
 
                 VStack(spacing: 16) {
+                    // MARK: - Speed Mode Card
+                    SpeedModeSettingsCard()
+
                     // MARK: - Shortcuts Card
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
@@ -463,6 +466,10 @@ struct SettingsView: View {
                             .stroke(Color.primary.opacity(0.04), lineWidth: 1)
                     )
                     .shadow(color: Color.black.opacity(0.01), radius: 4, x: 0, y: 2)
+
+                    // MARK: - Language Modes Card
+                    LanguageModesSettingsView()
+                        .environmentObject(transcriptionModelManager)
 
                     // MARK: - Power Mode Card
                     PowerModeSection()
