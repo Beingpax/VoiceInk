@@ -38,11 +38,12 @@ class AudioDeviceManager: ObservableObject {
             inputMode = .systemDefault
         }
 
-        loadAvailableDevices { [weak self] in
-            self?.initializeSelectedDevice()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.loadAvailableDevices {
+                self?.initializeSelectedDevice()
+            }
+            self?.setupDeviceChangeNotifications()
         }
-
-        setupDeviceChangeNotifications()
     }
 
     /// Returns the current system default input device from macOS

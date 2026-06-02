@@ -43,9 +43,11 @@ struct VoiceInkApp: App {
 
         AppDefaults.registerDefaults()
 
-        if UserDefaults.standard.object(forKey: "powerModeUIFlag") == nil {
-            let hasEnabledPowerModes = PowerModeManager.shared.configurations.contains { $0.isEnabled }
-            UserDefaults.standard.set(hasEnabledPowerModes, forKey: "powerModeUIFlag")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if UserDefaults.standard.object(forKey: "powerModeUIFlag") == nil {
+                let hasEnabledPowerModes = PowerModeManager.shared.configurations.contains { $0.isEnabled }
+                UserDefaults.standard.set(hasEnabledPowerModes, forKey: "powerModeUIFlag")
+            }
         }
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")

@@ -31,7 +31,9 @@ class PowerModeSessionManager {
     private var enhancementService: AIEnhancementService?
 
     private init() {
-        recoverSession()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.recoverSession()
+        }
     }
 
     /// Configure with new VoiceInkEngine-based provider.
