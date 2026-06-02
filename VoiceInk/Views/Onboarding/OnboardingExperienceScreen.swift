@@ -36,7 +36,6 @@ struct OnboardingExperienceScreen: View {
             title: step.title,
             subtitle: step.subtitle,
             contentMaxWidth: 560,
-            bottomBarMaxWidth: 560,
             showsHeader: true,
             contentYOffset: 24
         ) {
@@ -64,7 +63,6 @@ struct OnboardingExperienceScreen: View {
             title: step.title,
             subtitle: step.subtitle,
             contentMaxWidth: 700,
-            bottomBarMaxWidth: 700,
             showsHeader: true,
             contentYOffset: 38
         ) {
@@ -80,7 +78,6 @@ struct OnboardingExperienceScreen: View {
                 leadingTitle: "Back",
                 primaryTitle: isLastStep ? "Continue" : "Next",
                 isPrimaryEnabled: isReady && isComplete,
-                showsPrimaryButton: hasShortcut,
                 onLeading: onBackFromPractice,
                 onPrimary: onAdvance
             )

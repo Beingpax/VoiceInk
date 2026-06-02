@@ -10,6 +10,10 @@ struct OnboardingBackground: View {
     }
 }
 
+enum OnboardingLayout {
+    static let chromeMaxWidth: CGFloat = 560
+}
+
 struct OnboardingHeroHeader: View {
     let systemImage: String
     let title: String
@@ -64,46 +68,50 @@ struct OnboardingBottomBar: View {
     let leadingTitle: String?
     let primaryTitle: String
     let isPrimaryEnabled: Bool
-    var showsPrimaryButton: Bool = true
     let onLeading: (() -> Void)?
     let onPrimary: () -> Void
 
     var body: some View {
-        HStack {
-            if let leadingTitle, let onLeading {
-                Button(action: onLeading) {
-                    Text(leadingTitle)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.primary.opacity(0.78))
-                        .frame(width: 104, height: 42)
-                        .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
-                }
-                .buttonStyle(.plain)
+        HStack(spacing: 0) {
+            leadingSlot
 
-                Spacer()
-            } else {
-                Spacer()
-            }
+            Spacer(minLength: 0)
 
-            if showsPrimaryButton {
-                Button(action: onPrimary) {
-                    Text(primaryTitle)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(isPrimaryEnabled ? .white : .secondary)
-                        .frame(width: 132, height: 42)
-                        .background(
-                            RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
-                                .fill(isPrimaryEnabled ? Color.primary.opacity(0.78) : AppTheme.Surface.controlActive)
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(!isPrimaryEnabled)
-            }
-
-            if leadingTitle == nil || onLeading == nil {
-                Spacer()
-            }
+            primaryButton
         }
+    }
+
+    @ViewBuilder
+    private var leadingSlot: some View {
+        if let leadingTitle, let onLeading {
+            Button(action: onLeading) {
+                Text(leadingTitle)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary.opacity(0.78))
+                    .frame(width: 104, height: 42)
+                    .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
+            }
+            .buttonStyle(.plain)
+        } else {
+            Color.clear
+                .frame(width: 104, height: 42)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var primaryButton: some View {
+        Button(action: onPrimary) {
+            Text(primaryTitle)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(isPrimaryEnabled ? .white : .secondary)
+                .frame(width: 132, height: 42)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
+                        .fill(isPrimaryEnabled ? Color.primary.opacity(0.78) : AppTheme.Surface.controlActive)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(!isPrimaryEnabled)
     }
 }
 
@@ -112,7 +120,6 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
     let title: String
     let subtitle: String
     let contentMaxWidth: CGFloat
-    let bottomBarMaxWidth: CGFloat
     let showsHeader: Bool
     let contentYOffset: CGFloat
     let content: Content
@@ -121,7 +128,6 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
     init(
         stage: OnboardingStage,
         contentMaxWidth: CGFloat,
-        bottomBarMaxWidth: CGFloat? = nil,
         showsHeader: Bool = true,
         contentYOffset: CGFloat = 0,
         @ViewBuilder content: () -> Content,
@@ -131,7 +137,6 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
         self.title = stage.title
         self.subtitle = stage.subtitle
         self.contentMaxWidth = contentMaxWidth
-        self.bottomBarMaxWidth = bottomBarMaxWidth ?? contentMaxWidth
         self.showsHeader = showsHeader
         self.contentYOffset = contentYOffset
         self.content = content()
@@ -143,7 +148,6 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
         title: String,
         subtitle: String,
         contentMaxWidth: CGFloat,
-        bottomBarMaxWidth: CGFloat? = nil,
         showsHeader: Bool = true,
         contentYOffset: CGFloat = 0,
         @ViewBuilder content: () -> Content,
@@ -153,7 +157,6 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
         self.title = title
         self.subtitle = subtitle
         self.contentMaxWidth = contentMaxWidth
-        self.bottomBarMaxWidth = bottomBarMaxWidth ?? contentMaxWidth
         self.showsHeader = showsHeader
         self.contentYOffset = contentYOffset
         self.content = content()
@@ -169,7 +172,7 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
                         title: title,
                         subtitle: subtitle
                     )
-                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: OnboardingLayout.chromeMaxWidth)
 
                     Spacer(minLength: 0)
                 }
@@ -185,7 +188,7 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
                 Spacer(minLength: 0)
 
                 bottomBar
-                    .frame(maxWidth: bottomBarMaxWidth)
+                    .frame(maxWidth: OnboardingLayout.chromeMaxWidth)
             }
             .padding(.bottom, 28)
         }

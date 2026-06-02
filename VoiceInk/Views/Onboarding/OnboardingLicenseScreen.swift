@@ -21,7 +21,6 @@ struct OnboardingLicenseScreen: View {
         OnboardingStepScreen(
             stage: .license,
             contentMaxWidth: 620,
-            bottomBarMaxWidth: 620,
             contentYOffset: -18
         ) {
             OnboardingLicenseSetupCard(
@@ -35,7 +34,6 @@ struct OnboardingLicenseScreen: View {
                 leadingTitle: "Back",
                 primaryTitle: "Finish",
                 isPrimaryEnabled: false,
-                showsPrimaryButton: false,
                 onLeading: onBack,
                 onPrimary: { }
             )
@@ -48,7 +46,6 @@ struct OnboardingLicenseScreen: View {
             title: "Verification Successful",
             subtitle: "Your license key is verified. VoiceInk is ready to use on this Mac.",
             contentMaxWidth: 560,
-            bottomBarMaxWidth: 560,
             contentYOffset: 68
         ) {
             OnboardingVerifiedLicenseCard(
