@@ -136,8 +136,8 @@ final class ShortcutMonitor {
 
     private func installEventTap() -> Bool {
         logToFile("[ShortcutMonitor] installEventTap called")
-        let hasAccess = Self.hasListenEventAccess()
-        logToFile("[ShortcutMonitor] hasListenEventAccess returned: \(hasAccess)")
+        let hasAccess = Self.requestListenEventAccessIfNeeded()
+        logToFile("[ShortcutMonitor] requestListenEventAccessIfNeeded returned: \(hasAccess)")
         guard hasAccess else {
             logToFile("[ShortcutMonitor] installEventTap failed: No listen event access")
             return false
@@ -190,7 +190,12 @@ final class ShortcutMonitor {
         return true
     }
 
-    private static func hasListenEventAccess() -> Bool {
+    /// Pure preflight check — does NOT trigger a permission request. Safe to call from UI.
+    static func hasListenEventAccess() -> Bool {
+        CGPreflightListenEventAccess()
+    }
+
+    private static func requestListenEventAccessIfNeeded() -> Bool {
         logToFile("[ShortcutMonitor] Checking preflight listen event access")
         if CGPreflightListenEventAccess() {
             logToFile("[ShortcutMonitor] Preflight listen event access: GRANTED")

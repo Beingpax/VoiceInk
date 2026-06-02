@@ -45,6 +45,11 @@ class CursorPaster {
 
     @MainActor
     private static func performPasteSession(_ text: String) async -> PasteResult {
+        if PasteMethod.current() == .directTyping {
+            await typeTextDirectly(text)
+            return .commandPosted
+        }
+
         let pasteboard = NSPasteboard.general
         let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
@@ -228,6 +233,47 @@ class CursorPaster {
         guard seconds > 0 else { return }
         let nanoseconds = UInt64(seconds * 1_000_000_000)
         try? await Task.sleep(nanoseconds: nanoseconds)
+    }
+
+    // MARK: - Direct Typing (for Remote Desktop / virtual machine sessions)
+
+    // Types text character-by-character via CGEvent instead of using clipboard paste.
+    // Remote desktop clients forward individual keystrokes to the remote machine, so
+    // this bypasses the Mac↔Windows clipboard sync problem entirely.
+    @MainActor
+    private static func typeTextDirectly(_ text: String) async {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility not trusted — cannot type text directly")
+            return
+        }
+
+        let source = CGEventSource(stateID: .privateState)
+        // Give the recorder UI time to dismiss and hand focus back before the
+        // first character. Some apps/remote-desktop clients drop the first event
+        // if typing starts while focus is still settling.
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        // 5 ms between key-pairs: enough for RD clients to queue and forward each
+        // keystroke without dropping characters, fast enough for normal usage.
+        let interKeyDelay: UInt64 = 5_000_000
+
+        for scalar in text.unicodeScalars {
+            // Represent each Unicode scalar as a UTF-16 code unit sequence so that
+            // characters outside the BMP (e.g. emoji) are encoded as surrogate pairs.
+            var utf16Units = Array(String(scalar).utf16)
+
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
+            keyDown?.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+            keyDown?.post(tap: .cghidEventTap)
+
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+            keyUp?.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+            keyUp?.post(tap: .cghidEventTap)
+
+            try? await Task.sleep(nanoseconds: interKeyDelay)
+        }
+
+        logger.notice("Direct-typed \(text.unicodeScalars.count) characters")
     }
 
     // MARK: - Paste then Auto Send

@@ -3,6 +3,7 @@ import Foundation
 enum PasteMethod: String, CaseIterable, Identifiable {
     case standard = "default"
     case appleScript = "appleScript"
+    case directTyping = "directTyping"
 
     static let userDefaultsKey = "pasteMethod"
     static let legacyAppleScriptPasteKey = "useAppleScriptPaste"
@@ -15,6 +16,8 @@ enum PasteMethod: String, CaseIterable, Identifiable {
             return "Default"
         case .appleScript:
             return "AppleScript"
+        case .directTyping:
+            return "Direct Typing (Remote Desktop)"
         }
     }
 

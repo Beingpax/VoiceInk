@@ -170,6 +170,7 @@ class ImportExportService {
             middleClickActivationDelay: recordingShortcutManager.middleClickActivationDelay,
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
+            showMenuBarIcon: UserDefaults.standard.object(forKey: "ShowMenuBarIcon") as? Bool ?? true,
             recorderType: recorderUIManager.recorderType,
             isTranscriptionCleanupEnabled: UserDefaults.standard.bool(forKey: keyIsTranscriptionCleanupEnabled),
             transcriptionRetentionMinutes: UserDefaults.standard.integer(forKey: keyTranscriptionRetentionMinutes),

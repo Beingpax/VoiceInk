@@ -61,6 +61,7 @@ struct SettingsView: View {
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
+    @AppStorage("ShowMenuBarIcon") private var showMenuBarIcon = true
     @AppStorage("IDERoutingMode") private var ideRoutingMode = IDERoutingMode.activeApp.rawValue
 
     @State private var showResetOnboardingAlert = false
@@ -554,7 +555,17 @@ struct SettingsView: View {
                         Divider().opacity(0.5)
 
                         VStack(spacing: 12) {
+                            Toggle("Show Menu Bar Icon", isOn: $showMenuBarIcon)
+                                .onChange(of: showMenuBarIcon) { _, newValue in
+                                    if !newValue {
+                                        menuBarManager.isMenuBarOnly = false
+                                    }
+                                }
+
+                            Divider().opacity(0.3)
+
                             Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
+                                .disabled(!showMenuBarIcon)
                             
                             Divider().opacity(0.3)
 

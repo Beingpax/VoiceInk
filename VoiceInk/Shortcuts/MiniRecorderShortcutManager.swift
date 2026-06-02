@@ -209,11 +209,11 @@ class MiniRecorderShortcutManager: ObservableObject {
     ]
 
     static func promptDigitModifierFlags(ambientModifierFlags: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
-        [.command].union(ambientModifierFlags)
+        NSEvent.ModifierFlags.command.union(ambientModifierFlags)
     }
 
     static func powerModeDigitModifierFlags(ambientModifierFlags: NSEvent.ModifierFlags) -> NSEvent.ModifierFlags {
-        [.option].union(ambientModifierFlags)
+        NSEvent.ModifierFlags.option.union(ambientModifierFlags)
     }
 
     static func shouldRegisterPowerModeDigitShortcuts(ambientModifierFlags: NSEvent.ModifierFlags) -> Bool {
