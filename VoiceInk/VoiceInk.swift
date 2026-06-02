@@ -132,13 +132,17 @@ struct VoiceInkApp: App {
         recorderUIManager.configure(engine: engine, recorder: engine.recorder)
         engine.recorderUIManager = recorderUIManager
 
-        // 6. Initialize model state
-        // Migration and refreshAllAvailableModels must run before loadCurrentTranscriptionModel so renamed keys are remapped and imported models are present when restoring the saved selection.
+        // 6. Initialize model state (deferred to avoid blocking app launch)
+        // Migration must run synchronously so renamed keys are remapped before UI appears.
         StreamingKeysMigration.run()
         whisperModelManager.createModelsDirectoryIfNeeded()
-        whisperModelManager.loadAvailableModels()
-        transcriptionModelManager.refreshAllAvailableModels()
-        transcriptionModelManager.loadCurrentTranscriptionModel()
+        
+        // Defer heavy model scanning and loading to after first frame renders
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            whisperModelManager.loadAvailableModels()
+            transcriptionModelManager.refreshAllAvailableModels()
+            transcriptionModelManager.loadCurrentTranscriptionModel()
+        }
 
         _whisperModelManager = StateObject(wrappedValue: whisperModelManager)
         _fluidAudioModelManager = StateObject(wrappedValue: fluidAudioModelManager)
@@ -158,9 +162,12 @@ struct VoiceInkApp: App {
         shortcutProfileManager.setRecordingShortcutManager(recordingShortcutManager)
         _shortcutProfileManager = StateObject(wrappedValue: shortcutProfileManager)
 
+        // Defer ActiveWindowService configuration — only needed when PowerMode activates
         let activeWindowService = ActiveWindowService.shared
-        activeWindowService.configure(with: enhancementService)
         _activeWindowService = StateObject(wrappedValue: activeWindowService)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            activeWindowService.configure(with: enhancementService)
+        }
 
         let prewarmService = ModelPrewarmService(
             transcriptionModelManager: transcriptionModelManager,
@@ -176,11 +183,14 @@ struct VoiceInkApp: App {
             await recorderUIManager.resetOnLaunch()
         }
 
-        AppShortcuts.updateAppShortcutParameters()
+        // Defer non-critical startup tasks
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            AppShortcuts.updateAppShortcutParameters()
+        }
 
         let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: resolvedContainer)
         let mainContext = resolvedContainer.mainContext
-        Task.detached(priority: .utility) {
+        Task.detached(priority: .background) {
             await migrationTask?.value
             await MainActor.run {
                 TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
@@ -416,7 +426,7 @@ class UpdaterViewModel: ObservableObject {
     @Published var automaticallyChecksForUpdates = false
 
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        updaterController = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
 
         automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
@@ -425,6 +435,11 @@ class UpdaterViewModel: ObservableObject {
 
         updaterController.updater.publisher(for: \.automaticallyChecksForUpdates)
             .assign(to: &$automaticallyChecksForUpdates)
+
+        // Defer update check to avoid blocking launch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            try? self?.updaterController.updater.start()
+        }
     }
 
     func setAutomaticallyChecksForUpdates(_ value: Bool) {

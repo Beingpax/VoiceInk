@@ -26,9 +26,12 @@ final class ModelPrewarmService: ObservableObject {
         self.transcriptionModelManager = transcriptionModelManager
         self.whisperModelManager = whisperModelManager
         self.modelContext = modelContext
-        setupNotifications()
-        schedulePrewarmOnAppLaunch()
-        startKeepAlive()
+        // Defer notification setup and prewarm to avoid blocking app launch
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            self?.setupNotifications()
+            self?.schedulePrewarmOnAppLaunch()
+            self?.startKeepAlive()
+        }
     }
 
     // MARK: - Notification Setup
