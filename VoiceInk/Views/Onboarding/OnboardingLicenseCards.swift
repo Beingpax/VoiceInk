@@ -142,7 +142,7 @@ private struct OnboardingLicenseActionRow: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.82))
+                        .foregroundColor(AppTheme.Text.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.88)
 
@@ -156,7 +156,7 @@ private struct OnboardingLicenseActionRow: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.primary.opacity(0.42))
+                    .foregroundColor(AppTheme.Text.disabled)
                     .frame(width: 24, height: 24)
                     .background(
                         Circle()
@@ -189,7 +189,7 @@ private struct OnboardingLicenseActionRow: View {
     }
 
     private var iconForeground: Color {
-        .primary.opacity(0.62)
+        AppTheme.Text.muted
     }
 }
 
@@ -214,7 +214,7 @@ private struct OnboardingLicensePrimaryButton: View {
                 Text(isLoading ? "Activating" : title)
                     .font(.system(size: 13, weight: .semibold))
             }
-            .foregroundColor(isEnabled ? .primary.opacity(0.82) : .primary.opacity(0.42))
+            .foregroundColor(isEnabled ? AppTheme.Text.primary : AppTheme.Text.disabled)
             .frame(maxWidth: .infinity)
             .frame(height: 44)
             .background(

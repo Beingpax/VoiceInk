@@ -24,7 +24,7 @@ struct OnboardingLockedTextEditor: NSViewRepresentable {
         textView.importsGraphics = false
         textView.allowsUndo = false
         textView.font = .systemFont(ofSize: 13)
-        textView.textColor = .labelColor
+        textView.textColor = AppTheme.NativeText.primary
         textView.textContainerInset = .zero
         textView.textContainer?.lineFragmentPadding = 0
         textView.textContainer?.widthTracksTextView = true

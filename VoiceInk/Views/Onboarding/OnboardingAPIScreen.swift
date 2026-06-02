@@ -55,7 +55,7 @@ struct OnboardingAPIScreen: View {
         Button(action: onRequestSkip) {
             Text("Skip API setup")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.primary.opacity(0.62))
+                .foregroundColor(AppTheme.Text.muted)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(

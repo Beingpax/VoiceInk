@@ -21,11 +21,11 @@ struct PermissionStepRow: View {
                     HStack(spacing: 8) {
                         Text(descriptor.title)
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(AppTheme.Text.primary)
 
                         Text(descriptor.requirement)
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(AppTheme.Text.secondary)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
                             .background(AppTheme.Surface.subtle)
@@ -70,16 +70,16 @@ struct PermissionStepRow: View {
     private var stepNumberView: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(status.isGranted ? Color.primary.opacity(0.16) : AppTheme.Surface.controlActive)
+                .fill(status.isGranted ? AppTheme.Selection.fill : AppTheme.Surface.controlActive)
 
             if status.isGranted {
                 Image(systemName: "checkmark")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.primary.opacity(0.84))
+                    .foregroundColor(AppTheme.Text.primary)
             } else {
                 Text("\(stepNumber)")
                     .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(isActive && !isLocked ? .primary : AppTheme.Text.muted)
+                    .foregroundColor(isActive && !isLocked ? AppTheme.Text.primary : AppTheme.Text.muted)
             }
         }
         .frame(width: 30, height: 30)
@@ -89,13 +89,13 @@ struct PermissionStepRow: View {
         Button(action: onAction) {
             Text(actionTitle)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(AppTheme.Action.primaryForeground)
                 .frame(minWidth: 94)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(
                     RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
-                        .fill(Color.primary.opacity(0.78))
+                        .fill(AppTheme.Action.primaryFill)
                 )
         }
         .buttonStyle(.plain)
@@ -116,7 +116,7 @@ struct PermissionStepRow: View {
         case .denied, .restricted:
             return AppTheme.Status.error
         default:
-            return Color.primary.opacity(0.72)
+            return AppTheme.Text.secondary
         }
     }
 
@@ -132,7 +132,7 @@ struct PermissionStepRow: View {
             }
             .font(.system(size: 12, weight: .semibold))
             .buttonStyle(.plain)
-            .foregroundColor(.primary.opacity(0.78))
+            .foregroundColor(AppTheme.Action.secondaryForeground)
         }
     }
 }

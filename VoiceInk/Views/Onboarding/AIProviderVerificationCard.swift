@@ -68,7 +68,7 @@ struct AIProviderVerificationCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(selectedProvider.rawValue)
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.Text.primary)
             }
 
             Spacer(minLength: 0)
@@ -83,7 +83,7 @@ struct AIProviderVerificationCard: View {
                             .font(.system(size: 9, weight: .bold))
                     }
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.primary.opacity(0.74))
+                    .foregroundColor(AppTheme.Text.secondary)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 7)
                     .background(Capsule().fill(AppTheme.Surface.controlActive))
@@ -106,7 +106,7 @@ struct AIProviderVerificationCard: View {
             HStack(alignment: .center) {
                 Text("\(selectedProvider.rawValue) API Key")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.primary.opacity(0.82))
+                    .foregroundColor(AppTheme.Text.primary)
 
                 Spacer()
 
@@ -120,7 +120,7 @@ struct AIProviderVerificationCard: View {
                                 .font(.system(size: 9, weight: .semibold))
                         }
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.72))
+                        .foregroundColor(AppTheme.Text.secondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -158,12 +158,12 @@ struct AIProviderVerificationCard: View {
                     Text(isVerifying ? "Testing..." : "Test connection")
                 }
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(canVerify ? .white : .secondary)
+                .foregroundColor(canVerify ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
                 .background(
                     Capsule()
-                        .fill(canVerify ? Color.primary.opacity(0.78) : AppTheme.Surface.controlActive)
+                        .fill(canVerify ? AppTheme.Action.primaryFill : AppTheme.Action.disabledFill)
                 )
             }
             .buttonStyle(.plain)
@@ -182,7 +182,7 @@ struct AIProviderVerificationCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Connection verified.")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.78))
+                        .foregroundColor(AppTheme.Text.primary)
                 }
             }
 
@@ -203,7 +203,7 @@ struct AIProviderVerificationCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(verificationMessage)
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(verificationSucceeded ? .primary.opacity(0.74) : AppTheme.Status.error)
+                        .foregroundColor(verificationSucceeded ? AppTheme.Text.secondary : AppTheme.Status.error)
                         .fixedSize(horizontal: false, vertical: true)
 
                     if let verificationDetailMessage, !verificationSucceeded {
@@ -217,7 +217,7 @@ struct AIProviderVerificationCard: View {
         } else {
             Text("Test the connection to continue.")
                 .font(.system(size: 12))
-                .foregroundColor(Color(.secondaryLabelColor))
+                .foregroundColor(AppTheme.Text.secondary)
         }
     }
 
@@ -353,7 +353,7 @@ private struct ProviderChoiceButton: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(provider.rawValue)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.86))
+                        .foregroundColor(AppTheme.Text.primary)
                         .lineLimit(1)
 
                     if provider == .groq {
@@ -366,7 +366,7 @@ private struct ProviderChoiceButton: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary.opacity(0.72))
+                        .foregroundColor(AppTheme.Text.secondary)
                 }
             }
             .padding(.horizontal, 10)
@@ -384,7 +384,7 @@ private struct RecommendedProviderPill: View {
     var body: some View {
         Text("Recommended")
             .font(.system(size: 9, weight: .semibold))
-            .foregroundColor(.primary.opacity(0.62))
+            .foregroundColor(AppTheme.Text.muted)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 6)

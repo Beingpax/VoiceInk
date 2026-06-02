@@ -56,6 +56,7 @@ struct OnboardingLicenseScreen: View {
                 leadingTitle: nil,
                 primaryTitle: "Finish Onboarding",
                 isPrimaryEnabled: true,
+                placement: .centered,
                 onLeading: nil,
                 onPrimary: onFinish
             )

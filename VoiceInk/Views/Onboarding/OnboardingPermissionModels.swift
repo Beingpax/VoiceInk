@@ -156,13 +156,13 @@ enum OnboardingPermissionStatus: Equatable {
     var color: Color {
         switch self {
         case .granted:
-            return Color.primary.opacity(0.72)
+            return AppTheme.Text.secondary
         case .needsAccess:
-            return Color.primary.opacity(0.72)
+            return AppTheme.Text.secondary
         case .denied, .restricted:
             return AppTheme.Status.error
         case .unknown:
-            return Color.primary.opacity(0.72)
+            return AppTheme.Text.secondary
         }
     }
 }

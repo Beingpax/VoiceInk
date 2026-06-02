@@ -28,11 +28,11 @@ struct TranscriptionModelDownloadCard: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(model.displayName)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(AppTheme.Text.primary)
 
                     Text("Fast multilingual transcription that runs locally on Mac.")
                         .font(.system(size: 12))
-                        .foregroundColor(Color(.secondaryLabelColor))
+                        .foregroundColor(AppTheme.Text.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.92)
                 }
@@ -75,7 +75,7 @@ struct TranscriptionModelDownloadCard: View {
     private func metadataPill(_ text: String) -> some View {
         Text(text)
             .font(.system(size: 11, weight: .medium))
-            .foregroundColor(.primary.opacity(0.70))
+            .foregroundColor(AppTheme.Text.secondary)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(Capsule().fill(AppTheme.Surface.subtle))
@@ -93,11 +93,11 @@ struct TranscriptionModelDownloadCard: View {
                     .fontDesign(.monospaced)
             }
             .font(.system(size: 11, weight: .medium))
-            .foregroundColor(Color(.secondaryLabelColor))
+            .foregroundColor(AppTheme.Text.secondary)
 
             ProgressView(value: status.fractionCompleted)
                 .progressViewStyle(.linear)
-                .tint(Color.primary.opacity(0.72))
+                .tint(AppTheme.Accent.primary)
         }
         .animation(.smooth, value: status.fractionCompleted)
     }
@@ -113,12 +113,12 @@ struct TranscriptionModelDownloadCard: View {
                 Text(downloadButtonTitle)
             }
             .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(canDownload ? .white : .secondary)
+            .foregroundColor(canDownload ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(canDownload ? Color.primary.opacity(0.78) : AppTheme.Surface.controlActive)
+                    .fill(canDownload ? AppTheme.Action.primaryFill : AppTheme.Action.disabledFill)
             )
         }
         .buttonStyle(.plain)
@@ -128,7 +128,7 @@ struct TranscriptionModelDownloadCard: View {
     private var statusBadge: some View {
         Text("Downloaded")
             .font(.system(size: 11, weight: .semibold))
-            .foregroundColor(.primary.opacity(0.72))
+            .foregroundColor(AppTheme.Text.secondary)
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(Capsule().fill(AppTheme.Surface.controlActive))

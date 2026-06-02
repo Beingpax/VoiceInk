@@ -47,7 +47,7 @@ struct OnboardingExperienceCard: View {
         panelShell(kicker: step.sampleLabel) {
             Text(step.sampleText)
                 .font(.system(size: 17, weight: .medium))
-                .foregroundColor(.primary)
+                .foregroundColor(AppTheme.Text.primary)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,11 +81,11 @@ struct OnboardingExperienceCard: View {
 
             Image(systemName: "note.text")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.primary.opacity(0.72))
+                .foregroundColor(AppTheme.Text.secondary)
 
             Text("Notes")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(.primary.opacity(0.78))
+                .foregroundColor(AppTheme.Text.primary)
 
             Spacer(minLength: 0)
 
@@ -101,11 +101,11 @@ struct OnboardingExperienceCard: View {
     private var trafficLights: some View {
         HStack(spacing: 5) {
             Circle()
-                .fill(Color.red.opacity(0.78))
+                .fill(AppTheme.Status.error.opacity(0.78))
             Circle()
-                .fill(Color.yellow.opacity(0.78))
+                .fill(AppTheme.Status.warningStrong.opacity(0.78))
             Circle()
-                .fill(Color.green.opacity(0.78))
+                .fill(AppTheme.Status.positive.opacity(0.78))
         }
         .frame(width: 42, height: 10)
     }
@@ -115,7 +115,7 @@ struct OnboardingExperienceCard: View {
             if text.isEmpty {
                 Text(step.fieldPlaceholder)
                     .font(.system(size: 13))
-                    .foregroundColor(AppTheme.Text.muted.opacity(0.72))
+                    .foregroundColor(AppTheme.Text.muted)
                     .padding(editorTextInset)
                     .allowsHitTesting(false)
             }
@@ -138,7 +138,7 @@ struct OnboardingExperienceCard: View {
         panelShell(kicker: step.sampleLabel, height: 150) {
             Text(step.sampleText)
                 .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.primary)
+                .foregroundColor(AppTheme.Text.primary)
                 .lineSpacing(5)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -190,7 +190,7 @@ struct OnboardingExperienceCard: View {
     }
 
     private var fieldBorderColor: Color {
-        isFieldFocused ? Color.primary.opacity(0.24) : AppTheme.Border.subtle
+        isFieldFocused ? AppTheme.Accent.border : AppTheme.Border.subtle
     }
 }
 
@@ -235,7 +235,7 @@ private struct OnboardingExperienceInstruction: View {
     private func instructionText(_ value: String) -> some View {
         Text(value)
             .font(.system(size: 15, weight: .medium))
-            .foregroundColor(.primary.opacity(0.78))
+            .foregroundColor(AppTheme.Text.primary)
             .fixedSize(horizontal: false, vertical: true)
     }
 

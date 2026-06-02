@@ -13,7 +13,7 @@ struct OnboardingExperienceIntroCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(introText)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary.opacity(0.86))
+                    .foregroundColor(AppTheme.Text.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

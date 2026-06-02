@@ -23,7 +23,7 @@ struct OnboardingHeroHeader: View {
         VStack(spacing: 16) {
             Image(systemName: systemImage)
                 .font(.system(size: 24, weight: .semibold))
-                .foregroundColor(.primary.opacity(0.82))
+                .foregroundColor(AppTheme.Text.primary)
                 .frame(width: 56, height: 56)
                 .background(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -33,7 +33,7 @@ struct OnboardingHeroHeader: View {
             VStack(spacing: 8) {
                 Text(title)
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.primary)
+                    .foregroundColor(AppTheme.Text.primary)
 
                 Text(subtitle)
                     .font(.system(size: 14))
@@ -64,20 +64,41 @@ struct OnboardingProgressBadge: View {
     }
 }
 
+enum OnboardingBottomBarPlacement {
+    case split
+    case centered
+}
+
 struct OnboardingBottomBar: View {
     let leadingTitle: String?
     let primaryTitle: String
     let isPrimaryEnabled: Bool
+    var placement: OnboardingBottomBarPlacement = .split
     let onLeading: (() -> Void)?
     let onPrimary: () -> Void
 
+    private enum Metrics {
+        static let leadingButtonWidth: CGFloat = 104
+        static let primaryButtonMinWidth: CGFloat = 132
+        static let buttonHeight: CGFloat = 42
+        static let primaryButtonHorizontalPadding: CGFloat = 20
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            leadingSlot
-
-            Spacer(minLength: 0)
+            switch placement {
+            case .split:
+                leadingSlot
+                Spacer(minLength: 0)
+            case .centered:
+                Spacer(minLength: 0)
+            }
 
             primaryButton
+
+            if case .centered = placement {
+                Spacer(minLength: 0)
+            }
         }
     }
 
@@ -87,14 +108,14 @@ struct OnboardingBottomBar: View {
             Button(action: onLeading) {
                 Text(leadingTitle)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.primary.opacity(0.78))
-                    .frame(width: 104, height: 42)
+                    .foregroundColor(AppTheme.Action.secondaryForeground)
+                    .frame(width: Metrics.leadingButtonWidth, height: Metrics.buttonHeight)
                     .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
             }
             .buttonStyle(.plain)
         } else {
-            Color.clear
-                .frame(width: 104, height: 42)
+            AppTheme.Surface.clear
+                .frame(width: Metrics.leadingButtonWidth, height: Metrics.buttonHeight)
                 .accessibilityHidden(true)
         }
     }
@@ -103,11 +124,12 @@ struct OnboardingBottomBar: View {
         Button(action: onPrimary) {
             Text(primaryTitle)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(isPrimaryEnabled ? .white : .secondary)
-                .frame(width: 132, height: 42)
+                .foregroundColor(isPrimaryEnabled ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
+                .padding(.horizontal, Metrics.primaryButtonHorizontalPadding)
+                .frame(minWidth: Metrics.primaryButtonMinWidth, minHeight: Metrics.buttonHeight)
                 .background(
                     RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
-                        .fill(isPrimaryEnabled ? Color.primary.opacity(0.78) : AppTheme.Surface.controlActive)
+                        .fill(isPrimaryEnabled ? AppTheme.Action.primaryFill : AppTheme.Action.disabledFill)
                 )
         }
         .buttonStyle(.plain)
@@ -210,7 +232,7 @@ private struct SegmentedProgressRing: View {
                 Circle()
                     .trim(from: segmentStart(index), to: segmentEnd(index))
                     .stroke(
-                        index < filledSegments ? Color.primary.opacity(0.72) : AppTheme.Surface.controlActive,
+                        index < filledSegments ? AppTheme.Accent.primary : AppTheme.Surface.controlActive,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
@@ -218,7 +240,7 @@ private struct SegmentedProgressRing: View {
 
             Text("\(percent)%")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.primary.opacity(0.82))
+                .foregroundColor(AppTheme.Text.primary)
         }
         .frame(width: 46, height: 46)
     }

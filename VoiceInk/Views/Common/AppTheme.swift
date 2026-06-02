@@ -15,18 +15,19 @@ enum AppTheme {
 
     enum Surface {
         static let card = Color.secondary.opacity(0.10)
-        static let materialCard = Color(NSColor.controlBackgroundColor).opacity(0.50)
+        static let materialCard = Color(nsColor: .controlBackgroundColor).opacity(0.50)
         static let subtle = Color.primary.opacity(0.06)
         static let controlActive = Color.secondary.opacity(0.14)
-        static let control = Color(NSColor.controlBackgroundColor)
-        static let window = Color(NSColor.windowBackgroundColor)
-        static let sidePanelOverlay = Color(NSColor.windowBackgroundColor).opacity(0.50)
+        static let control = Color(nsColor: .controlBackgroundColor)
+        static let window = Color(nsColor: .windowBackgroundColor)
+        static let sidePanelOverlay = Color(nsColor: .windowBackgroundColor).opacity(0.50)
+        static let clear = Color.clear
     }
 
     enum Border {
-        static let subtle = Color(NSColor.separatorColor).opacity(0.28)
-        static let card = Color(NSColor.separatorColor).opacity(0.35)
-        static let control = Color(NSColor.separatorColor)
+        static let subtle = Color(nsColor: .separatorColor).opacity(0.28)
+        static let card = Color(nsColor: .separatorColor).opacity(0.35)
+        static let control = Color(nsColor: .separatorColor)
         static let tint = Color.primary.opacity(0.12)
         static let sidePanelOuter = Color.white.opacity(0.12)
     }
@@ -38,13 +39,13 @@ enum AppTheme {
     }
 
     enum Status {
-        static let success = Color.white.opacity(0.85)
-        static let positive = Color.green
-        static let info = Color.white.opacity(0.75)
-        static let infoStrong = Color.blue
-        static let warning = Color.white.opacity(0.85)
-        static let warningStrong = Color.orange
-        static let error = Color.red
+        static let success = Color(nsColor: .alternateSelectedControlTextColor).opacity(0.85)
+        static let positive = Color(nsColor: .systemGreen)
+        static let info = Color(nsColor: .alternateSelectedControlTextColor).opacity(0.75)
+        static let infoStrong = Color(nsColor: .systemBlue)
+        static let warning = Color(nsColor: .alternateSelectedControlTextColor).opacity(0.85)
+        static let warningStrong = Color(nsColor: .systemOrange)
+        static let error = Color(nsColor: .systemRed)
     }
 
     enum Data {
@@ -77,7 +78,23 @@ enum AppTheme {
     }
 
     enum Text {
-        static let muted = Color.secondary.opacity(0.70)
+        static let primary = Color(nsColor: .labelColor)
+        static let secondary = Color(nsColor: .secondaryLabelColor)
+        static let muted = secondary.opacity(0.70)
+        static let disabled = Color(nsColor: .disabledControlTextColor)
+        static let onAccent = Color(nsColor: .alternateSelectedControlTextColor)
+    }
+
+    enum NativeText {
+        static let primary = NSColor.labelColor
+    }
+
+    enum Action {
+        static let primaryFill = Accent.primary
+        static let primaryForeground = Text.onAccent
+        static let secondaryForeground = Text.primary
+        static let disabledFill = Surface.controlActive
+        static let disabledForeground = Text.disabled
     }
 
     enum Radius {
