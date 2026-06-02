@@ -12,8 +12,10 @@ struct ProviderDetailPanel: View {
     @State private var isVerifying = false
     @State private var isRefreshingOpenRouterModels = false
     @State private var verificationMessage: String?
+    @State private var verificationDetailMessage: String?
     @State private var verificationSucceeded = false
     @State private var isShowingRemoveAPIKeyConfirmation = false
+    @State private var activeDescriptorID = ""
 
     private var isConfigured: Bool {
         APIKeyManager.shared.hasAPIKey(forProvider: descriptor.providerKey)
@@ -45,6 +47,9 @@ struct ProviderDetailPanel: View {
             }
         }
         .onAppear(perform: loadSavedAPIKey)
+        .onChange(of: descriptor.id) { _, _ in
+            resetProviderState()
+        }
     }
 
     private var header: some View {
@@ -88,10 +93,26 @@ struct ProviderDetailPanel: View {
                     apiKeyInputRow
                 }
 
-                if let verificationMessage {
-                    Text(verificationMessage)
+                verificationStatusMessage
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var verificationStatusMessage: some View {
+        if let verificationMessage {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verificationMessage)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(verificationSucceeded ? AppTheme.Status.positive : AppTheme.Status.error)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let verificationDetailMessage, !verificationSucceeded {
+                    Text(verificationDetailMessage)
                         .font(.caption)
-                        .foregroundStyle(verificationSucceeded ? AppTheme.Status.positive : AppTheme.Status.error)
+                        .foregroundStyle(AppTheme.Status.error.opacity(0.82))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -157,6 +178,11 @@ struct ProviderDetailPanel: View {
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12))
                     .disabled(isVerifying)
+                    .onChange(of: apiKey) { _, newValue in
+                        guard !newValue.isEmpty else { return }
+                        verificationMessage = nil
+                        verificationDetailMessage = nil
+                    }
 
                 Button {
                     verifyAndSaveAPIKey()
@@ -388,8 +414,18 @@ struct ProviderDetailPanel: View {
     }
 
     private func loadSavedAPIKey() {
+        resetProviderState()
+    }
+
+    private func resetProviderState() {
+        activeDescriptorID = descriptor.id
         verificationSucceeded = isConfigured
         apiKey = ""
+        isVerifying = false
+        isRefreshingOpenRouterModels = false
+        verificationMessage = nil
+        verificationDetailMessage = nil
+        isShowingRemoveAPIKeyConfirmation = false
     }
 
     private func verificationModel(for provider: AIProvider) -> String {
@@ -409,6 +445,8 @@ struct ProviderDetailPanel: View {
 
         isVerifying = true
         verificationMessage = nil
+        verificationDetailMessage = nil
+        let providerID = descriptor.id
 
         Task {
             let result: (isValid: Bool, errorMessage: String?)
@@ -425,6 +463,8 @@ struct ProviderDetailPanel: View {
             }
 
             await MainActor.run {
+                guard activeDescriptorID == providerID else { return }
+
                 isVerifying = false
                 verificationSucceeded = result.isValid
 
@@ -436,10 +476,12 @@ struct ProviderDetailPanel: View {
                     }
                     apiKey = ""
                     verificationMessage = nil
+                    verificationDetailMessage = nil
                     transcriptionModelManager.refreshAllAvailableModels()
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
-                    verificationMessage = result.errorMessage ?? "Verification failed"
+                    verificationMessage = "Could not verify this API key. Check the key and try again."
+                    verificationDetailMessage = result.errorMessage
                 }
             }
         }
@@ -450,6 +492,7 @@ struct ProviderDetailPanel: View {
         apiKey = ""
         verificationSucceeded = false
         verificationMessage = nil
+        verificationDetailMessage = nil
         transcriptionModelManager.refreshAllAvailableModels()
         NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
     }

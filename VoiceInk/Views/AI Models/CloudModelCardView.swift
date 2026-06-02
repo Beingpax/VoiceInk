@@ -16,6 +16,7 @@ struct CloudModelCardView: View {
     @State private var isVerifying = false
     @State private var verificationStatus: VerificationStatus = .none
     @State private var verificationError: String? = nil
+    @State private var verificationErrorDetail: String? = nil
     
     enum VerificationStatus {
         case none, verifying, success, failure
@@ -171,6 +172,14 @@ struct CloudModelCardView: View {
                 SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
                     .textFieldStyle(.roundedBorder)
                     .disabled(isVerifying)
+                    .onChange(of: apiKey) { _, newValue in
+                        guard !newValue.isEmpty else { return }
+                        if verificationStatus == .failure {
+                            verificationStatus = .none
+                        }
+                        verificationError = nil
+                        verificationErrorDetail = nil
+                    }
                 
                 Button(action: verifyAPIKey) {
                     HStack(spacing: 4) {
@@ -198,14 +207,18 @@ struct CloudModelCardView: View {
             }
             
             if verificationStatus == .failure {
-                if let error = verificationError {
-                    Text(error)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(verificationError ?? "Could not verify this API key. Check the key and try again.")
                         .font(.caption)
+                        .fontWeight(.medium)
                         .foregroundColor(AppTheme.Status.error)
-                } else {
-                    Text("Verification failed")
-                        .font(.caption)
-                        .foregroundColor(AppTheme.Status.error)
+
+                    if let verificationErrorDetail {
+                        Text(verificationErrorDetail)
+                            .font(.caption)
+                            .foregroundColor(AppTheme.Status.error.opacity(0.82))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             } else if verificationStatus == .success {
                 Text("Verified")
@@ -227,12 +240,15 @@ struct CloudModelCardView: View {
 
         isVerifying = true
         verificationStatus = .verifying
+        verificationError = nil
+        verificationErrorDetail = nil
         let key = apiKey
 
         guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
             isVerifying = false
             verificationStatus = .failure
-            verificationError = "Unsupported provider"
+            verificationError = "Could not verify this API key. Check the key and try again."
+            verificationErrorDetail = "Unsupported provider"
             return
         }
 
@@ -244,6 +260,7 @@ struct CloudModelCardView: View {
                 if result.isValid {
                     verificationStatus = .success
                     verificationError = nil
+                    verificationErrorDetail = nil
                     APIKeyManager.shared.saveAPIKey(key, forProvider: providerKey)
                     transcriptionModelManager.refreshAllAvailableModels()
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -251,7 +268,8 @@ struct CloudModelCardView: View {
                     }
                 } else {
                     verificationStatus = .failure
-                    verificationError = result.errorMessage
+                    verificationError = "Could not verify this API key. Check the key and try again."
+                    verificationErrorDetail = result.errorMessage
                 }
             }
         }
@@ -262,6 +280,7 @@ struct CloudModelCardView: View {
         apiKey = ""
         verificationStatus = .none
         verificationError = nil
+        verificationErrorDetail = nil
 
         transcriptionModelManager.refreshAllAvailableModels()
 

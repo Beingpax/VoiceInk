@@ -6,6 +6,7 @@ struct TrialMessageView: View {
     var onAddLicenseKey: (() -> Void)? = nil
     
     enum MessageType {
+        case licenseRequired
         case warning
         case expired
         case info
@@ -53,6 +54,7 @@ struct TrialMessageView: View {
     
     private var icon: String {
         switch type {
+        case .licenseRequired: return "checkmark.seal.fill"
         case .warning: return "exclamationmark.triangle.fill"
         case .expired: return "xmark.circle.fill"
         case .info: return "info.circle.fill"
@@ -61,6 +63,7 @@ struct TrialMessageView: View {
     
     private var iconColor: Color {
         switch type {
+        case .licenseRequired: return AppTheme.Sidebar.license
         case .warning: return AppTheme.Status.warningStrong
         case .expired: return AppTheme.Status.error
         case .info: return AppTheme.Accent.primary
@@ -69,6 +72,7 @@ struct TrialMessageView: View {
     
     private var title: String {
         switch type {
+        case .licenseRequired: return "License Required"
         case .warning: return "Trial Ending Soon"
         case .expired: return "Trial Expired"
         case .info: return "Trial Active"

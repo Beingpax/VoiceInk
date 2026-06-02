@@ -79,9 +79,11 @@ struct OnboardingBottomBar: View {
                         .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
                 }
                 .buttonStyle(.plain)
-            }
 
-            Spacer()
+                Spacer()
+            } else {
+                Spacer()
+            }
 
             if showsPrimaryButton {
                 Button(action: onPrimary) {
@@ -96,6 +98,10 @@ struct OnboardingBottomBar: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(!isPrimaryEnabled)
+            }
+
+            if leadingTitle == nil || onLeading == nil {
+                Spacer()
             }
         }
     }

@@ -1,225 +1,6 @@
 import SwiftUI
 
-extension OnboardingView {
-    var permissionsScreen: some View {
-        OnboardingStepScreen(
-            stage: .permissions,
-            contentMaxWidth: contentMaxWidth
-        ) {
-            permissionList
-        } bottomBar: {
-            OnboardingBottomBar(
-                leadingTitle: "Recheck",
-                primaryTitle: "Continue",
-                isPrimaryEnabled: requiredPermissionsGranted,
-                onLeading: refreshPermissionStatuses,
-                onPrimary: goToModelStep
-            )
-        }
-    }
-
-    var modelScreen: some View {
-        OnboardingStepScreen(
-            stage: .model,
-            contentMaxWidth: contentMaxWidth
-        ) {
-            if let requiredTranscriptionModel {
-                TranscriptionModelDownloadCard(
-                    model: requiredTranscriptionModel,
-                    isDownloaded: isTranscriptionModelDownloaded,
-                    isDownloading: fluidAudioModelManager.isFluidAudioModelDownloading(requiredTranscriptionModel),
-                    status: fluidAudioModelManager.downloadStatus(for: requiredTranscriptionModel),
-                    onDownload: {
-                        downloadTranscriptionModel(requiredTranscriptionModel)
-                    }
-                )
-            }
-        } bottomBar: {
-            OnboardingBottomBar(
-                leadingTitle: "Back",
-                primaryTitle: "Continue",
-                isPrimaryEnabled: isTranscriptionModelDownloaded,
-                onLeading: goToPermissionsStep,
-                onPrimary: goToAPIStep
-            )
-        }
-    }
-
-    var apiScreen: some View {
-        OnboardingStepScreen(
-            stage: .api,
-            contentMaxWidth: contentMaxWidth
-        ) {
-            AIProviderVerificationCard(aiService: aiService)
-        } bottomBar: {
-            OnboardingBottomBar(
-                leadingTitle: "Back",
-                primaryTitle: "Continue",
-                isPrimaryEnabled: requiredPermissionsGranted &&
-                    isTranscriptionModelDownloaded &&
-                    isSelectedAPIProviderVerified,
-                onLeading: goToModelStep,
-                onPrimary: goToExperienceStep
-            )
-        }
-    }
-
-    // The experience stage runs in two phases that share the same header.
-    //   Phase 1 (intro):    choose a shortcut, then Continue.
-    //   Phase 2 (practice): the before/after panels with the instruction docked below.
-    var experienceScreen: some View {
-        Group {
-            if isExperienceInIntroPhase {
-                experienceIntroScreen
-                    .transition(.opacity)
-            } else {
-                experiencePracticeScreen
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeInOut(duration: 0.3), value: isExperienceInIntroPhase)
-        .onAppear {
-            activateExperienceModeForDemo()
-        }
-    }
-
-    private var experienceIntroScreen: some View {
-        OnboardingStepScreen(
-            systemImage: experienceSystemImage,
-            title: experienceStep.title,
-            subtitle: experienceStep.subtitle,
-            contentMaxWidth: 560,
-            bottomBarMaxWidth: 560,
-            showsHeader: true,
-            contentYOffset: 24
-        ) {
-            OnboardingExperienceIntroCard(
-                step: experienceStep,
-                shortcutAction: experienceShortcutAction,
-                hasShortcut: hasExperienceModeShortcut,
-                onShortcutChanged: refreshExperienceModeState
-            )
-            .id(experienceStep.id)
-        } bottomBar: {
-            OnboardingBottomBar(
-                leadingTitle: "Back",
-                primaryTitle: "Continue",
-                isPrimaryEnabled: hasExperienceModeShortcut,
-                onLeading: goToPreviousExperienceStep,
-                onPrimary: goToExperiencePracticePhase
-            )
-        }
-    }
-
-    private var experiencePracticeScreen: some View {
-        OnboardingStepScreen(
-            systemImage: experienceSystemImage,
-            title: experienceStep.title,
-            subtitle: experienceStep.subtitle,
-            contentMaxWidth: 700,
-            bottomBarMaxWidth: 700,
-            showsHeader: true,
-            contentYOffset: 38
-        ) {
-            OnboardingExperienceCard(
-                step: experienceStep,
-                shortcutAction: experienceShortcutAction,
-                hasShortcut: hasExperienceModeShortcut,
-                text: currentExperienceText,
-                onShortcutChanged: refreshExperienceModeState
-            )
-        } bottomBar: {
-            OnboardingBottomBar(
-                leadingTitle: "Back",
-                primaryTitle: isLastExperienceStep ? "Complete" : "Next",
-                isPrimaryEnabled: isCurrentExperienceReady && isCurrentExperienceComplete,
-                showsPrimaryButton: hasExperienceModeShortcut,
-                onLeading: goToExperienceIntroPhase,
-                onPrimary: advanceExperienceStep
-            )
-        }
-    }
-
-    private var experienceSystemImage: String {
-        switch experienceStep.kind {
-        case .dictation:
-            return "text.cursor"
-        case .enhance:
-            return "sparkles"
-        case .rewrite, .rewriteFormat:
-            return "quote.bubble.fill"
-        case .respond:
-            return "text.bubble.fill"
-        }
-    }
-
-}
-
-// MARK: - Phase 1: Intro
-
-// A focused shortcut setup step before showing the practice layout.
-private struct OnboardingExperienceIntroCard: View {
-    let step: OnboardingExperienceStep
-    let shortcutAction: ShortcutAction
-    let hasShortcut: Bool
-    let onShortcutChanged: () -> Void
-
-    @State private var isVisible = false
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(introText)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary.opacity(0.86))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if showsShortcutControl {
-                OnboardingShortcutSetupView(
-                    action: shortcutAction,
-                    onShortcutChanged: onShortcutChanged
-                )
-            }
-        }
-        .padding(.horizontal, 28)
-        .padding(.vertical, 20)
-        .fixedSize(horizontal: true, vertical: false)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(AppTheme.Surface.control.opacity(0.45))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(AppTheme.Border.subtle, lineWidth: 1)
-        )
-        .opacity(isVisible ? 1 : 0)
-        .scaleEffect(isVisible ? 1 : 0.98)
-        .offset(y: isVisible ? 0 : 10)
-        .onAppear {
-            isVisible = false
-            withAnimation(.easeInOut(duration: 0.3).delay(0.08)) {
-                isVisible = true
-            }
-        }
-    }
-
-    private var introText: String {
-        if step.kind == .rewriteFormat {
-            return "Let's try it once again."
-        }
-
-        return hasShortcut ? "Keyboard shortcut:" : "Choose a shortcut to get started."
-    }
-
-    private var showsShortcutControl: Bool {
-        step.kind != .rewriteFormat
-    }
-}
-
-// MARK: - Phase 2: Practice
-
-private struct OnboardingExperienceCard: View {
+struct OnboardingExperienceCard: View {
     let step: OnboardingExperienceStep
     let shortcutAction: ShortcutAction
     let hasShortcut: Bool
@@ -254,8 +35,6 @@ private struct OnboardingExperienceCard: View {
         }
     }
 
-    // MARK: - Before -> After
-
     private var transformStage: some View {
         HStack(alignment: .center, spacing: 0) {
             sayPanel
@@ -264,7 +43,6 @@ private struct OnboardingExperienceCard: View {
         }
     }
 
-    // What you speak (read-only script).
     private var sayPanel: some View {
         panelShell(kicker: step.sampleLabel) {
             Text(step.sampleText)
@@ -276,7 +54,6 @@ private struct OnboardingExperienceCard: View {
         }
     }
 
-    // Where the result lands, shown as a compact Apple Notes-style window.
     private var notesPreviewPanel: some View {
         VStack(spacing: 0) {
             notesToolbar
@@ -357,7 +134,6 @@ private struct OnboardingExperienceCard: View {
             .frame(width: 46)
     }
 
-    // Respond has no landing field; the answer opens in the VoiceInk window.
     private var respondStage: some View {
         panelShell(kicker: step.sampleLabel, height: 150) {
             Text(step.sampleText)
@@ -418,9 +194,6 @@ private struct OnboardingExperienceCard: View {
     }
 }
 
-// MARK: - Shared instruction line
-
-// The practice instruction appears only after the shortcut has been configured.
 private struct OnboardingExperienceInstruction: View {
     let step: OnboardingExperienceStep
     let shortcutAction: ShortcutAction
@@ -466,8 +239,6 @@ private struct OnboardingExperienceInstruction: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: Copy
-
     private var prefix: String {
         guard hasShortcut else {
             return "Choose"
@@ -508,22 +279,6 @@ private struct OnboardingExperienceInstruction: View {
             return "Read the sample text aloud, then press it again."
         default:
             return "Read the sample text, then press it again."
-        }
-    }
-}
-
-private struct OnboardingShortcutSetupView: View {
-    let action: ShortcutAction
-    let onShortcutChanged: () -> Void
-
-    var body: some View {
-        ShortcutRecorder(
-            action: action,
-            onShortcutChanged: onShortcutChanged
-        )
-        .fixedSize(horizontal: true, vertical: false)
-        .onChange(of: action) { _, _ in
-            onShortcutChanged()
         }
     }
 }

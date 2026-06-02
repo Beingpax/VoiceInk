@@ -120,6 +120,7 @@ struct ModelManagementView: View {
             ProviderDetailPanel(descriptor: descriptor, onClose: closePanel)
                 .environmentObject(aiService)
                 .environmentObject(transcriptionModelManager)
+                .id(descriptor.id)
         case .customTranscriptionModel(let model):
             CustomTranscriptionModelEditorPanel(
                 editingModel: model,

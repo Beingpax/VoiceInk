@@ -282,7 +282,7 @@ struct APIKeyManagementView: View {
                                 aiService.saveAPIKey(apiKey) { success, errorMessage in
                                     isVerifying = false
                                     if !success {
-                                        alertMessage = errorMessage ?? "Verification failed"
+                                        alertMessage = errorMessage ?? "Could not verify this API key. Check the key and try again."
                                         showAlert = true
                                     }
                                     apiKey = ""

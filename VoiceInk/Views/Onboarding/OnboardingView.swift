@@ -6,198 +6,203 @@ struct OnboardingView: View {
     @EnvironmentObject var fluidAudioModelManager: FluidAudioModelManager
     @EnvironmentObject var aiService: AIService
     @EnvironmentObject var enhancementService: AIEnhancementService
-
-    @AppStorage("onboardingStage") var storedStage = OnboardingStage.permissions.rawValue
-    @AppStorage("onboardingActivePermission") var storedActivePermission = OnboardingPermissionKind.microphone.rawValue
-    @AppStorage("onboardingRequestedScreenRecording") var hasRequestedScreenRecording = false
-    @AppStorage("onboardingExperienceIndex") var experienceStepIndex = 0
-
-    @State var permissionStatuses: [OnboardingPermissionKind: OnboardingPermissionStatus] = [:]
-    @State var refreshTask: Task<Void, Never>?
-    @State var isSelectedAPIProviderVerified = false
-    @State var hasExperienceModeShortcut = false
-    @State var isExperienceModeInstalled = false
-    @State var experienceTextByKind: [OnboardingExperienceKind: String] = [:]
-    @State var isExperienceInIntroPhase = true
-    @State var clearedExperienceShortcutActions: Set<ShortcutAction> = []
+    @StateObject private var coordinator = OnboardingCoordinator()
 
     let contentMaxWidth: CGFloat = 560
 
-    var stage: OnboardingStage {
-        if let stage = OnboardingStage(rawValue: storedStage) {
-            return stage
-        }
-
-        if storedStage == "starterMode" || storedStage == "shortcut" {
-            return .experience
-        }
-
-        return storedStage == "parakeet" ? .model : .permissions
-    }
-
-    var activePermission: OnboardingPermissionKind {
-        OnboardingPermissionKind(rawValue: storedActivePermission) ?? .microphone
-    }
-
-    var requiredPermissionsGranted: Bool {
-        OnboardingPermissionKind.required.allSatisfy { status(for: $0).isGranted }
-    }
-
-    var currentStepNumber: Int {
-        if stage == .experience {
-            return OnboardingStage.baseStepCount + normalizedExperienceStepIndex + 1
-        }
-
-        return stage.stepNumber
-    }
-
-    var totalStepCount: Int {
-        OnboardingStage.baseStepCount + OnboardingExperienceCatalog.steps.count
-    }
-
-    var experienceStep: OnboardingExperienceStep {
-        OnboardingExperienceCatalog.steps[safe: normalizedExperienceStepIndex] ?? OnboardingExperienceCatalog.steps[0]
-    }
-
-    var experienceModeTemplate: StarterModeTemplate {
-        StarterModeCatalog.templates.first { $0.kind == experienceStep.starterModeKind } ?? StarterModeCatalog.templates[0]
-    }
-
-    var normalizedExperienceStepIndex: Int {
-        min(max(experienceStepIndex, 0), max(OnboardingExperienceCatalog.steps.count - 1, 0))
-    }
-
-    var isLastExperienceStep: Bool {
-        normalizedExperienceStepIndex == OnboardingExperienceCatalog.steps.count - 1
-    }
-
-    var experienceShortcutAction: ShortcutAction {
-        if experienceStep.kind == .dictation {
-            return .primaryRecording
-        }
-
-        return .mode(experienceModeTemplate.id)
-    }
-
-    var currentExperienceText: Binding<String> {
-        Binding(
-            get: {
-                experienceTextByKind[experienceStep.kind] ?? experienceStep.initialFieldText
-            },
-            set: { newValue in
-                experienceTextByKind[experienceStep.kind] = newValue
-            }
-        )
-    }
-
-    var isCurrentExperienceComplete: Bool {
-        if experienceStep.kind == .respond {
-            return true
-        }
-
-        let text = experienceTextByKind[experienceStep.kind] ?? ""
-        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let initialText = experienceStep.initialFieldText.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if !initialText.isEmpty {
-            return !trimmedText.isEmpty && trimmedText != initialText
-        }
-
-        return !trimmedText.isEmpty
-    }
-
-    var isReadyForExperience: Bool {
-        requiredPermissionsGranted &&
-            isTranscriptionModelDownloaded &&
-            isSelectedAPIProviderVerified
-    }
-
-    var isCurrentExperienceReady: Bool {
-        isReadyForExperience &&
-            isExperienceModeInstalled &&
-            hasExperienceModeShortcut
-    }
-
-    var selectedOnboardingProvider: AIProvider {
-        .groq
-    }
-
-    var requiredTranscriptionModel: FluidAudioModel? {
-        TranscriptionModelRegistry.models
-            .compactMap { $0 as? FluidAudioModel }
-            .first { $0.name == "parakeet-tdt-0.6b-v3" }
-    }
-
-    var isTranscriptionModelDownloaded: Bool {
-        guard let requiredTranscriptionModel else { return false }
-        return fluidAudioModelManager.isFluidAudioModelDownloaded(requiredTranscriptionModel)
-    }
-
     var body: some View {
+        let isTranscriptionModelDownloaded = coordinator.isTranscriptionModelDownloaded(
+            using: fluidAudioModelManager
+        )
+
         ZStack(alignment: .bottomLeading) {
             OnboardingBackground()
 
             Group {
-                switch stage {
+                switch coordinator.stage {
                 case .permissions:
-                    permissionsScreen
+                    OnboardingPermissionsScreen(
+                        contentMaxWidth: contentMaxWidth,
+                        isComplete: coordinator.requiredPermissionsGranted,
+                        activePermission: coordinator.activePermission,
+                        hasRequestedScreenRecording: coordinator.hasRequestedScreenRecording,
+                        stepNumber: { coordinator.permissions.stepNumber(for: $0) },
+                        status: { coordinator.permissions.status(for: $0) },
+                        isLocked: { coordinator.permissions.isLocked($0) },
+                        actionTitle: { coordinator.permissions.actionTitle(for: $0) },
+                        onSelect: coordinator.permissions.setActivePermission,
+                        onAction: coordinator.permissions.performAction,
+                        onQuit: {
+                            NSApplication.shared.terminate(nil)
+                        },
+                        onRecheck: coordinator.permissions.refreshPermissionStatuses,
+                        onContinue: coordinator.flow.goToModelStep
+                    )
                         .transition(.opacity)
                 case .model:
-                    modelScreen
+                    OnboardingModelScreen(
+                        contentMaxWidth: contentMaxWidth,
+                        model: coordinator.requiredTranscriptionModel,
+                        isDownloaded: isTranscriptionModelDownloaded,
+                        isDownloading: coordinator.requiredTranscriptionModel.map {
+                            fluidAudioModelManager.isFluidAudioModelDownloading($0)
+                        } ?? false,
+                        downloadStatus: coordinator.requiredTranscriptionModel.flatMap {
+                            fluidAudioModelManager.downloadStatus(for: $0)
+                        },
+                        onDownload: {
+                            coordinator.flow.downloadTranscriptionModel(
+                                $0,
+                                modelManager: fluidAudioModelManager
+                            )
+                        },
+                        onBack: coordinator.flow.goToPermissionsStep,
+                        onContinue: {
+                            coordinator.flow.goToAPIStep(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                aiService: aiService
+                            )
+                        }
+                    )
                         .transition(.opacity)
                 case .api:
-                    apiScreen
+                    OnboardingAPIScreen(
+                        aiService: aiService,
+                        contentMaxWidth: contentMaxWidth,
+                        providerOptions: coordinator.onboardingProviderOptions,
+                        selectedProvider: coordinator.selectedOnboardingProviderBinding(aiService: aiService),
+                        isSelectedProviderVerified: coordinator.isSelectedAPIProviderVerified,
+                        canContinue: coordinator.isReadyForExperience(
+                            isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                        ),
+                        isShowingSkipWarning: $coordinator.isShowingSkipAPISetupWarning,
+                        onVerificationChanged: coordinator.flow.refreshAPIVerification,
+                        onBack: coordinator.flow.goToModelStep,
+                        onContinue: {
+                            coordinator.flow.goToExperienceStep(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                enhancementService: enhancementService
+                            )
+                        },
+                        onRequestSkip: coordinator.flow.requestSkipAPISetup,
+                        onConfirmSkip: {
+                            coordinator.flow.skipAPISetupAndContinue(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                enhancementService: enhancementService
+                            )
+                        }
+                    )
                         .transition(.opacity)
                 case .experience:
-                    experienceScreen
+                    OnboardingExperienceScreen(
+                        step: coordinator.experienceStep,
+                        isInIntroPhase: coordinator.isExperienceInIntroPhase,
+                        shortcutAction: coordinator.experienceShortcutAction,
+                        hasShortcut: coordinator.hasExperienceModeShortcut,
+                        text: coordinator.currentExperienceText,
+                        isLastStep: coordinator.isLastExperienceStep,
+                        isReady: coordinator.isCurrentExperienceReady(
+                            isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                        ),
+                        isComplete: coordinator.isCurrentExperienceComplete,
+                        onBackFromIntro: {
+                            coordinator.flow.goToPreviousExperienceStep(enhancementService: enhancementService)
+                        },
+                        onContinueIntro: coordinator.flow.goToExperiencePracticePhase,
+                        onBackFromPractice: coordinator.flow.goToExperienceIntroPhase,
+                        onAdvance: {
+                            coordinator.flow.advanceExperienceStep(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                enhancementService: enhancementService
+                            )
+                        },
+                        onShortcutChanged: {
+                            coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
+                        },
+                        onAppear: coordinator.flow.activateExperienceModeForDemo
+                    )
+                        .transition(.opacity)
+                case .license:
+                    OnboardingLicenseScreen(
+                        licenseViewModel: coordinator.licenseViewModel,
+                        onBack: {
+                            coordinator.flow.goToPreviousLicenseStep(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                enhancementService: enhancementService
+                            )
+                        },
+                        onPurchase: {
+                            coordinator.licenseViewModel.openPurchaseLink()
+                        },
+                        onStartTrial: {
+                            coordinator.flow.startLicenseTrial(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                            ) {
+                                hasCompletedOnboarding = true
+                            }
+                        },
+                        onActivate: coordinator.flow.activateLicense,
+                        onFinish: {
+                            coordinator.flow.completeOnboarding(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                            ) {
+                                hasCompletedOnboarding = true
+                            }
+                        }
+                    )
                         .transition(.opacity)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             OnboardingProgressBadge(
-                currentStep: currentStepNumber,
-                totalSteps: totalStepCount
+                currentStep: coordinator.currentStepNumber,
+                totalSteps: coordinator.totalStepCount
             )
             .padding(.leading, 28)
             .padding(.bottom, 26)
             .allowsHitTesting(false)
         }
         .frame(minWidth: 820, minHeight: 680)
-        .animation(.easeInOut(duration: 0.22), value: stage)
+        .animation(.easeInOut(duration: 0.22), value: coordinator.stage)
         .onAppear {
-            refreshPermissionStatuses()
-            refreshAPIVerification()
-            refreshExperienceModeState()
-            reconcileStage()
+            coordinator.flow.ensureDefaultOnboardingProvider()
+            coordinator.permissions.refreshPermissionStatuses()
+            coordinator.flow.refreshAPIVerification()
+            coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
+            coordinator.flow.reconcileStage(
+                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                enhancementService: enhancementService
+            )
         }
         .onDisappear {
-            refreshTask?.cancel()
+            coordinator.permissions.cancelRefreshTask()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            refreshPermissionStatuses()
-            reconcileStage()
+            coordinator.permissions.refreshPermissionStatuses()
+            coordinator.flow.reconcileStage(
+                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                enhancementService: enhancementService
+            )
         }
         .onReceive(NotificationCenter.default.publisher(for: .aiProviderKeyChanged)) { _ in
-            refreshAPIVerification()
+            coordinator.flow.refreshAPIVerification()
         }
         .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
-            guard let action = notification.object as? ShortcutAction, action == experienceShortcutAction else { return }
-            refreshExperienceModeState()
+            guard let action = notification.object as? ShortcutAction,
+                  action == coordinator.experienceShortcutAction else {
+                return
+            }
+
+            coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
         }
         .onReceive(NotificationCenter.default.publisher(for: .modeConfigurationsDidChange)) { _ in
-            refreshExperienceModeState()
+            coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
         }
-        .onChange(of: storedStage) { _, _ in
-            activateExperienceModeForDemo()
-            refreshExperienceModeState()
+        .onChange(of: coordinator.stage) { _, _ in
+            coordinator.flow.activateExperienceModeForDemo()
+            coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
         }
-    }
-}
-
-extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }
 

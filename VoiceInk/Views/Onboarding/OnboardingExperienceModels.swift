@@ -3,6 +3,7 @@ import Foundation
 enum OnboardingExperienceKind: String, Identifiable, Hashable {
     case dictation
     case enhance
+    case email
     case rewrite
     case rewriteFormat
     case respond
@@ -62,6 +63,15 @@ enum OnboardingExperienceCatalog {
             sampleLabel: "Sample text",
             sampleText: "Um, tell the team we will meet on Thursday. Actually, no, Friday morning works better.",
             fieldPlaceholder: "Your enhanced message will appear here."
+        ),
+        OnboardingExperienceStep(
+            kind: .email,
+            starterModeKind: .email,
+            title: "Write an Email",
+            subtitle: "Turn your spoken note into a clean email draft with VoiceInk.",
+            sampleLabel: "Sample text",
+            sampleText: "Hello Paul, um, we'll meet tomorrow at nine PM, right, for the business meeting we had last week. Thanks John.",
+            fieldPlaceholder: "Your formatted email will appear here."
         ),
         OnboardingExperienceStep(
             kind: .rewrite,

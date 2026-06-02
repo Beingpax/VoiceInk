@@ -122,7 +122,7 @@ struct LicenseManagementView: View {
     private var purchasePanel: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 18) {
-                ProCardMark()
+                LicenseProMark()
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("VoiceInk Pro")
@@ -192,28 +192,13 @@ struct LicenseManagementView: View {
     }
 
     private var activeLicenseCard: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .top, spacing: 18) {
-                ProCardMark()
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("VoiceInk Pro")
-                        .font(licenseTitleFont)
-
-                    Text("Version \(appVersion) (\(appBuild))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-            }
-
-            Divider()
-
-            licenseKeyControl
-
-            Divider()
-
+        LicenseActiveSummaryCard(
+            title: "VoiceInk Pro",
+            subtitle: "Version \(appVersion) (\(appBuild))",
+            licenseKey: licenseViewModel.licenseKey,
+            didCopyLicenseKey: didCopyLicenseKey,
+            onCopyLicenseKey: copyLicenseKey
+        ) {
             HStack(spacing: 10) {
                 ResourceButton(title: "Manage License", systemImage: "person.crop.circle.badge.checkmark", tint: AppTheme.Sidebar.license) {
                     openLicensePortal()
@@ -227,6 +212,148 @@ struct LicenseManagementView: View {
                 ) {
                     showingDeactivateConfirmation = true
                 }
+            }
+        }
+    }
+
+    private var resourceDock: some View {
+        HStack(spacing: 10) {
+            ResourceButton(title: "Lost Key?", systemImage: "key.fill", tint: AppTheme.Data.audio) {
+                openLicensePortal()
+            }
+
+            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: AppTheme.Status.warningStrong, action: showReportPanel)
+
+            ResourceButton(title: "Docs", systemImage: "book.fill", tint: AppTheme.Data.transcript) {
+                openURL("https://tryvoiceink.com/docs")
+            }
+        }
+    }
+
+    private var activeResourceDock: some View {
+        HStack(spacing: 10) {
+            ResourceButton(title: "Changelog", systemImage: "list.bullet.clipboard.fill", tint: AppTheme.Sidebar.dictionary) {
+                openURL("https://github.com/Beingpax/VoiceInk/releases")
+            }
+
+            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: AppTheme.Status.warningStrong, action: showReportPanel)
+
+            ResourceButton(title: "Docs", systemImage: "book.fill", tint: AppTheme.Data.transcript) {
+                openURL("https://tryvoiceink.com/docs")
+            }
+        }
+    }
+
+    private var trialSummary: String {
+        switch licenseViewModel.licenseState {
+        case .unlicensed:
+            return "License required"
+        case .licensed:
+            return "Licensed"
+        case .trial(let daysRemaining):
+            return "\(daysRemaining) day\(daysRemaining == 1 ? "" : "s") left in trial"
+        case .trialExpired:
+            return "Trial ended"
+        }
+    }
+
+    private func copyLicenseKey() {
+        let key = licenseViewModel.licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(key, forType: .string)
+
+        withAnimation(.snappy(duration: 0.22)) {
+            didCopyLicenseKey = true
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
+            withAnimation(.snappy(duration: 0.22)) {
+                didCopyLicenseKey = false
+            }
+        }
+    }
+
+    private func openLicensePortal() {
+        openURL("https://polar.sh/beingpax/portal/request")
+    }
+
+    private func openURL(_ urlString: String) {
+        if let url = URL(string: urlString) {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+struct LicenseActiveSummaryCard<Actions: View>: View {
+    let title: String
+    let subtitle: String
+    let licenseKey: String
+    let didCopyLicenseKey: Bool
+    let onCopyLicenseKey: () -> Void
+    let actions: () -> Actions
+    let showsActions: Bool
+
+    init(
+        title: String,
+        subtitle: String,
+        licenseKey: String,
+        didCopyLicenseKey: Bool,
+        onCopyLicenseKey: @escaping () -> Void,
+        @ViewBuilder actions: @escaping () -> Actions
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.licenseKey = licenseKey
+        self.didCopyLicenseKey = didCopyLicenseKey
+        self.onCopyLicenseKey = onCopyLicenseKey
+        self.actions = actions
+        self.showsActions = true
+    }
+
+    init(
+        title: String,
+        subtitle: String,
+        licenseKey: String,
+        didCopyLicenseKey: Bool,
+        onCopyLicenseKey: @escaping () -> Void
+    ) where Actions == EmptyView {
+        self.title = title
+        self.subtitle = subtitle
+        self.licenseKey = licenseKey
+        self.didCopyLicenseKey = didCopyLicenseKey
+        self.onCopyLicenseKey = onCopyLicenseKey
+        self.actions = { EmptyView() }
+        self.showsActions = false
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .top, spacing: 18) {
+                LicenseProMark()
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 28, weight: .semibold, design: .rounded))
+
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+            }
+
+            Divider()
+
+            licenseKeyControl
+
+            if showsActions {
+                Divider()
+
+                actions()
             }
         }
         .padding(22)
@@ -243,11 +370,7 @@ struct LicenseManagementView: View {
                 .textCase(.uppercase)
                 .frame(width: 82, alignment: .leading)
 
-            Button {
-                withAnimation(.snappy(duration: 0.22)) {
-                    copyLicenseKey()
-                }
-            } label: {
+            Button(action: onCopyLicenseKey) {
                 HStack(spacing: 10) {
                     Text(maskedLicenseKey)
                         .font(.system(size: 18, weight: .medium, design: .monospaced))
@@ -282,47 +405,8 @@ struct LicenseManagementView: View {
         }
     }
 
-    private var resourceDock: some View {
-        HStack(spacing: 10) {
-            ResourceButton(title: "Lost Key?", systemImage: "key.fill", tint: AppTheme.Data.audio) {
-                openLicensePortal()
-            }
-
-            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: AppTheme.Status.warningStrong, action: showReportPanel)
-
-            ResourceButton(title: "Docs", systemImage: "book.fill", tint: AppTheme.Data.transcript) {
-                openURL("https://tryvoiceink.com/docs")
-            }
-        }
-    }
-
-    private var activeResourceDock: some View {
-        HStack(spacing: 10) {
-            ResourceButton(title: "Changelog", systemImage: "list.bullet.clipboard.fill", tint: AppTheme.Sidebar.dictionary) {
-                openURL("https://github.com/Beingpax/VoiceInk/releases")
-            }
-
-            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: AppTheme.Status.warningStrong, action: showReportPanel)
-
-            ResourceButton(title: "Docs", systemImage: "book.fill", tint: AppTheme.Data.transcript) {
-                openURL("https://tryvoiceink.com/docs")
-            }
-        }
-    }
-
-    private var trialSummary: String {
-        switch licenseViewModel.licenseState {
-        case .licensed:
-            return "Licensed"
-        case .trial(let daysRemaining):
-            return "\(daysRemaining) day\(daysRemaining == 1 ? "" : "s") left in trial"
-        case .trialExpired:
-            return "Trial ended"
-        }
-    }
-
     private var maskedLicenseKey: String {
-        let key = licenseViewModel.licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !key.isEmpty else {
             return "•••• •••• •••• ••••"
@@ -330,34 +414,9 @@ struct LicenseManagementView: View {
 
         return "•••• •••• •••• \(key.suffix(4))"
     }
-
-    private func copyLicenseKey() {
-        let key = licenseViewModel.licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { return }
-
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(key, forType: .string)
-        didCopyLicenseKey = true
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
-            withAnimation(.snappy(duration: 0.22)) {
-                didCopyLicenseKey = false
-            }
-        }
-    }
-
-    private func openLicensePortal() {
-        openURL("https://polar.sh/beingpax/portal/request")
-    }
-
-    private func openURL(_ urlString: String) {
-        if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
-        }
-    }
 }
 
-private struct ProCardMark: View {
+struct LicenseProMark: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 10, style: .continuous)

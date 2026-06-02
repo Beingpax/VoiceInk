@@ -449,36 +449,39 @@ class AIService: ObservableObject {
         }
 
         let verificationModel = model ?? selectedModel(for: provider)
+        let result: (isValid: Bool, errorMessage: String?)
 
         switch provider {
         case .anthropic:
-            return await AnthropicLLMClient.verifyAPIKey(key)
+            result = await AnthropicLLMClient.verifyAPIKey(key)
         case .elevenLabs:
-            return await ElevenLabsClient.verifyAPIKey(key)
+            result = await ElevenLabsClient.verifyAPIKey(key)
         case .deepgram:
-            return await DeepgramClient.verifyAPIKey(key)
+            result = await DeepgramClient.verifyAPIKey(key)
         case .mistral:
-            return await MistralTranscriptionClient.verifyAPIKey(key)
+            result = await MistralTranscriptionClient.verifyAPIKey(key)
         case .soniox:
-            return await SonioxClient.verifyAPIKey(key)
+            result = await SonioxClient.verifyAPIKey(key)
         case .speechmatics:
-            return await SpeechmaticsClient.verifyAPIKey(key)
+            result = await SpeechmaticsClient.verifyAPIKey(key)
         case .assemblyAI:
-            return await AssemblyAIClient.verifyAPIKey(key)
+            result = await AssemblyAIClient.verifyAPIKey(key)
         case .openRouter:
-            return await OpenRouterClient.verifyAPIKey(key, model: verificationModel)
+            result = await OpenRouterClient.verifyAPIKey(key, model: verificationModel)
         case .gemini:
-            return await GeminiTranscriptionClient.verifyAPIKey(key)
+            result = await GeminiTranscriptionClient.verifyAPIKey(key)
         default:
             guard let baseURL = URL(string: provider.baseURL) else {
                 return (false, "Invalid or missing base URL configuration")
             }
-            return await OpenAILLMClient.verifyAPIKey(
+            result = await OpenAILLMClient.verifyAPIKey(
                 baseURL: baseURL,
                 apiKey: key,
                 model: verificationModel
             )
         }
+
+        return result
     }
     
     func clearAPIKey() {

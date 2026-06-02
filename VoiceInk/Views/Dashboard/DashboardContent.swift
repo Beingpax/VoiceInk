@@ -258,6 +258,12 @@ struct DashboardContent: View {
     @ViewBuilder
     private var licenseStatusMessage: some View {
         switch licenseState {
+        case .unlicensed:
+            TrialMessageView(
+                message: "Activate a license to continue using VoiceInk.",
+                type: .licenseRequired,
+                onAddLicenseKey: onAddLicenseKey
+            )
         case .trial(let daysRemaining):
             TrialMessageView(
                 message: "You have \(daysRemaining) days left in your trial",

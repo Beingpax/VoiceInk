@@ -19,8 +19,6 @@ final class TranscriptionDelivery {
         let failResponse: (String) async -> Void
     }
 
-    private let licenseViewModel = LicenseViewModel()
-
     func deliver(_ request: Request, actions: Actions) async {
         guard request.transcription.transcriptionStatus == TranscriptionStatus.completed.rawValue else {
             await actions.dismiss()
@@ -72,9 +70,9 @@ final class TranscriptionDelivery {
 
     private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
         var textToPaste = text
-        if case .trialExpired = licenseViewModel.licenseState {
+        if let restrictionMessage = LicenseViewModel().usageRestrictionMessage {
             textToPaste = """
-                Your trial has expired. Upgrade to VoiceInk Pro at tryvoiceink.com/buy
+                \(restrictionMessage)
                 \n\(textToPaste)
                 """
         }

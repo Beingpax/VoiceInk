@@ -13,10 +13,35 @@ struct MenuBarView: View {
     @EnvironmentObject var aiService: AIService
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     
     var body: some View {
         VStack {
+            if hasCompletedOnboarding {
+                completedOnboardingMenu
+            } else {
+                onboardingMenu
+            }
+        }
+    }
+
+    private var onboardingMenu: some View {
+        Group {
+            Button("Complete Onboarding") {
+                menuBarManager.focusMainWindow()
+            }
+
+            Divider()
+
+            Button("Quit VoiceInk") {
+                NSApplication.shared.terminate(nil)
+            }
+        }
+    }
+
+    private var completedOnboardingMenu: some View {
+        Group {
             Button("Toggle Recorder") {
                 recorderUIManager.handleToggleRecorderPanelNotification()
             }

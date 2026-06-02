@@ -51,13 +51,13 @@ enum StarterModeFactory {
             icon: template.icon,
             appConfigs: nil,
             urlConfigs: nil,
-            triggerGroups: nil,
+            triggerGroups: triggerGroups(for: template.kind),
             isAIEnhancementEnabled: template.usesAIEnhancement,
             selectedPrompt: template.promptId?.uuidString,
             selectedTranscriptionModelName: transcriptionModelName,
             isRealtimeTranscriptionEnabled: true,
             selectedLanguage: "en",
-            useClipboardContext: false,
+            useClipboardContext: template.kind == .email,
             useSelectedTextContext: template.useSelectedTextContext,
             useScreenCapture: template.useScreenCapture,
             isTextFormattingEnabled: true,
@@ -70,6 +70,31 @@ enum StarterModeFactory {
             isEnabled: true,
             isDefault: template.isDefault
         )
+    }
+
+    private static func triggerGroups(for kind: StarterModeKind) -> [ModeTriggerGroup]? {
+        guard kind == .email,
+              let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == "email" }) else {
+            return nil
+        }
+
+        let appConfigs = emailTemplate.apps.map { app in
+            AppConfig(
+                bundleIdentifier: app.bundleIdentifier,
+                appName: app.nameHints.first ?? app.bundleIdentifier
+            )
+        }
+
+        let urlConfigs = emailTemplate.websites.map { URLConfig(url: $0) }
+
+        return [
+            ModeTriggerGroup(
+                templateId: emailTemplate.id,
+                name: emailTemplate.name,
+                appConfigs: appConfigs,
+                urlConfigs: urlConfigs
+            )
+        ]
     }
 
 }

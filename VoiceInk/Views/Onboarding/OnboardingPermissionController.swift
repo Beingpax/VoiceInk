@@ -1,35 +1,13 @@
-import SwiftUI
 import AVFoundation
 import AppKit
 import ApplicationServices
 
-extension OnboardingView {
-    var permissionList: some View {
-        VStack(spacing: 10) {
-            ForEach(OnboardingPermissionKind.allCases) { permission in
-                PermissionStepRow(
-                    stepNumber: stepNumber(for: permission),
-                    descriptor: permission.descriptor,
-                    status: status(for: permission),
-                    isActive: !requiredPermissionsGranted && activePermission == permission,
-                    isLocked: isLocked(permission),
-                    showsRestartHint: permission == .screenRecording &&
-                        hasRequestedScreenRecording &&
-                        !status(for: .screenRecording).isGranted,
-                    actionTitle: actionTitle(for: permission),
-                    onSelect: {
-                        guard !isLocked(permission) else { return }
-                        setActivePermission(permission)
-                    },
-                    onAction: {
-                        performAction(for: permission)
-                    },
-                    onQuit: {
-                        NSApplication.shared.terminate(nil)
-                    }
-                )
-            }
-        }
+@MainActor
+final class OnboardingPermissionController {
+    private unowned let coordinator: OnboardingCoordinator
+
+    init(coordinator: OnboardingCoordinator) {
+        self.coordinator = coordinator
     }
 
     func stepNumber(for permission: OnboardingPermissionKind) -> Int {
@@ -41,11 +19,11 @@ extension OnboardingView {
     }
 
     func status(for permission: OnboardingPermissionKind) -> OnboardingPermissionStatus {
-        permissionStatuses[permission] ?? diagnose(permission)
+        coordinator.permissionStatuses[permission] ?? diagnose(permission)
     }
 
     func setActivePermission(_ permission: OnboardingPermissionKind) {
-        storedActivePermission = permission.rawValue
+        coordinator.storedActivePermission = permission.rawValue
     }
 
     func refreshPermissionStatuses() {
@@ -55,12 +33,12 @@ extension OnboardingView {
             }
         )
 
-        permissionStatuses = diagnosedStatuses
+        coordinator.permissionStatuses = diagnosedStatuses
         reconcileActivePermission(with: diagnosedStatuses)
     }
 
     func reconcileActivePermission(with statuses: [OnboardingPermissionKind: OnboardingPermissionStatus]) {
-        if let storedPermission = OnboardingPermissionKind(rawValue: storedActivePermission),
+        if let storedPermission = OnboardingPermissionKind(rawValue: coordinator.storedActivePermission),
            !isLocked(storedPermission, statuses: statuses),
            !storedPermission.isRequired || !(statuses[storedPermission] ?? diagnose(storedPermission)).isGranted {
             return
@@ -79,7 +57,7 @@ extension OnboardingView {
     }
 
     func isLocked(_ permission: OnboardingPermissionKind) -> Bool {
-        isLocked(permission, statuses: permissionStatuses)
+        isLocked(permission, statuses: coordinator.permissionStatuses)
     }
 
     func isLocked(
@@ -92,30 +70,6 @@ extension OnboardingView {
 
         let priorRequiredPermissions = OnboardingPermissionKind.allCases[..<index].filter(\.isRequired)
         return priorRequiredPermissions.contains { !(statuses[$0] ?? diagnose($0)).isGranted }
-    }
-
-    func diagnose(_ permission: OnboardingPermissionKind) -> OnboardingPermissionStatus {
-        switch permission {
-        case .microphone:
-            switch AVCaptureDevice.authorizationStatus(for: .audio) {
-            case .authorized:
-                return .granted
-            case .denied:
-                return .denied
-            case .restricted:
-                return .restricted
-            case .notDetermined:
-                return .needsAccess
-            @unknown default:
-                return .unknown
-            }
-
-        case .accessibility:
-            return AXIsProcessTrusted() ? .granted : .needsAccess
-
-        case .screenRecording:
-            return CGPreflightScreenCaptureAccess() ? .granted : .needsAccess
-        }
     }
 
     func actionTitle(for permission: OnboardingPermissionKind) -> String {
@@ -153,22 +107,51 @@ extension OnboardingView {
         }
     }
 
-    func handleMicrophoneAction() {
+    func cancelRefreshTask() {
+        coordinator.refreshTask?.cancel()
+        coordinator.refreshTask = nil
+    }
+
+    private func diagnose(_ permission: OnboardingPermissionKind) -> OnboardingPermissionStatus {
+        switch permission {
+        case .microphone:
+            switch AVCaptureDevice.authorizationStatus(for: .audio) {
+            case .authorized:
+                return .granted
+            case .denied:
+                return .denied
+            case .restricted:
+                return .restricted
+            case .notDetermined:
+                return .needsAccess
+            @unknown default:
+                return .unknown
+            }
+
+        case .accessibility:
+            return AXIsProcessTrusted() ? .granted : .needsAccess
+
+        case .screenRecording:
+            return CGPreflightScreenCaptureAccess() ? .granted : .needsAccess
+        }
+    }
+
+    private func handleMicrophoneAction() {
         if status(for: .microphone).requiresSettings {
             openPrivacySettings(.microphone)
             startPollingPermissionStatus()
             return
         }
 
-        AVCaptureDevice.requestAccess(for: .audio) { _ in
+        AVCaptureDevice.requestAccess(for: .audio) { [weak self] _ in
             DispatchQueue.main.async {
-                self.refreshPermissionStatuses()
-                self.startPollingPermissionStatus()
+                self?.refreshPermissionStatuses()
+                self?.startPollingPermissionStatus()
             }
         }
     }
 
-    func requestAccessibility() {
+    private func requestAccessibility() {
         let options: NSDictionary = [
             kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
         ]
@@ -177,14 +160,14 @@ extension OnboardingView {
         startPollingPermissionStatus()
     }
 
-    func requestScreenRecording() {
-        hasRequestedScreenRecording = true
+    private func requestScreenRecording() {
+        coordinator.hasRequestedScreenRecording = true
         CGRequestScreenCaptureAccess()
         openPrivacySettings(.screenRecording)
         startPollingPermissionStatus()
     }
 
-    func advanceFrom(_ permission: OnboardingPermissionKind) {
+    private func advanceFrom(_ permission: OnboardingPermissionKind) {
         guard let currentIndex = OnboardingPermissionKind.allCases.firstIndex(of: permission) else {
             refreshPermissionStatuses()
             return
@@ -199,14 +182,16 @@ extension OnboardingView {
         refreshPermissionStatuses()
     }
 
-    func startPollingPermissionStatus() {
-        refreshTask?.cancel()
-        refreshTask = Task { @MainActor in
+    private func startPollingPermissionStatus() {
+        cancelRefreshTask()
+        coordinator.refreshTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+
             for _ in 0..<60 {
                 guard !Task.isCancelled else { return }
                 refreshPermissionStatuses()
 
-                if requiredPermissionsGranted {
+                if coordinator.requiredPermissionsGranted {
                     return
                 }
 
@@ -215,9 +200,8 @@ extension OnboardingView {
         }
     }
 
-    func openPrivacySettings(_ pane: PrivacySettingsPane) {
+    private func openPrivacySettings(_ pane: PrivacySettingsPane) {
         guard let url = URL(string: pane.urlString) else { return }
         NSWorkspace.shared.open(url)
     }
 }
-
