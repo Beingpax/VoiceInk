@@ -236,7 +236,12 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                     for: transcriptionConfiguration,
                                     onPartialTranscript: { [weak self] partial in
                                         Task { @MainActor in
-                                            self?.partialTranscript = partial
+                                            guard let self,
+                                                  self.activeRecordingStartID == startID,
+                                                  self.recordingState == .recording else {
+                                                return
+                                            }
+                                            self.partialTranscript = partial
                                         }
                                     }
                                 )

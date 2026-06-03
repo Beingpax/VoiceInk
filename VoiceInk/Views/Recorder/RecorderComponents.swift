@@ -379,6 +379,7 @@ struct AssistantPanelView: View {
     @FocusState private var isFollowUpFieldFocused: Bool
 
     private let horizontalPadding: CGFloat = 20
+    private let followUpTextColor = Color.white.opacity(0.9)
 
     private var statusText: String? {
         switch session.phase {
@@ -437,18 +438,29 @@ struct AssistantPanelView: View {
 
     private var followUpRow: some View {
         HStack(spacing: 8) {
-            TextField("", text: $draftMessage, prompt: followUpPrompt)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-                .foregroundStyle(.white.opacity(0.9))
-                .tint(.white.opacity(0.9))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(Color.white.opacity(0.10))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .disabled(!session.canSendFollowUp)
-                .focused($isFollowUpFieldFocused)
-                .onSubmit(sendDraftMessage)
+            ZStack(alignment: .leading) {
+                if shouldShowLiveFollowUpText {
+                    Text(liveFollowUpText)
+                        .font(.system(size: 12))
+                        .foregroundStyle(followUpTextColor)
+                        .lineLimit(1)
+                        .allowsHitTesting(false)
+                }
+
+                TextField("", text: $draftMessage)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(followUpTextColor)
+                    .tint(followUpTextColor)
+                    .disabled(!session.canSendFollowUp)
+                    .focused($isFollowUpFieldFocused)
+                    .onSubmit(sendDraftMessage)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(Color.white.opacity(0.10))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button(action: sendDraftMessage) {
                 Image(systemName: "paperplane.fill")
@@ -464,10 +476,9 @@ struct AssistantPanelView: View {
         }
     }
 
-    private var followUpPrompt: Text? {
-        let trimmedLiveText = liveFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedLiveText.isEmpty else { return nil }
-        return Text(trimmedLiveText).foregroundColor(.white.opacity(0.58))
+    private var shouldShowLiveFollowUpText: Bool {
+        draftMessage.isEmpty &&
+            !liveFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var canSendDraft: Bool {
