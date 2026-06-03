@@ -1,15 +1,31 @@
+import AppKit
 import Foundation
 
 enum StarterModeFactory {
     static let transcriptionModelName = "parakeet-tdt-0.6b-v3"
 
-    static func install(kinds: [StarterModeKind], provider: AIProvider, modelName: String?) {
+    static func install(
+        kinds: [StarterModeKind],
+        provider: AIProvider,
+        modelName: String?,
+        installedApps: [InstalledAppInfo]? = nil
+    ) {
         let manager = ModeManager.shared
         let requestedKinds = Set(kinds)
+        let availableInstalledApps = requestedKinds.contains(.email)
+            ? (installedApps ?? InstalledApps.load())
+            : []
 
         let starterConfigs = StarterModeCatalog.templates
             .filter { requestedKinds.contains($0.kind) }
-            .map { makeConfig(from: $0, provider: provider, modelName: modelName) }
+            .map {
+                makeConfig(
+                    from: $0,
+                    provider: provider,
+                    modelName: modelName,
+                    installedApps: availableInstalledApps
+                )
+            }
 
         let nonStarterConfigs = manager.configurations
             .filter { !StarterModeCatalog.ids.contains($0.id) }
@@ -43,7 +59,8 @@ enum StarterModeFactory {
     private static func makeConfig(
         from template: StarterModeTemplate,
         provider: AIProvider,
-        modelName: String?
+        modelName: String?,
+        installedApps: [InstalledAppInfo]
     ) -> ModeConfig {
         ModeConfig(
             id: template.id,
@@ -51,7 +68,7 @@ enum StarterModeFactory {
             icon: template.icon,
             appConfigs: nil,
             urlConfigs: nil,
-            triggerGroups: triggerGroups(for: template.kind),
+            triggerGroups: triggerGroups(for: template.kind, installedApps: installedApps),
             isAIEnhancementEnabled: template.usesAIEnhancement,
             selectedPrompt: template.promptId?.uuidString,
             selectedTranscriptionModelName: transcriptionModelName,
@@ -72,29 +89,23 @@ enum StarterModeFactory {
         )
     }
 
-    private static func triggerGroups(for kind: StarterModeKind) -> [ModeTriggerGroup]? {
+    private static func triggerGroups(
+        for kind: StarterModeKind,
+        installedApps: [InstalledAppInfo]
+    ) -> [ModeTriggerGroup]? {
         guard kind == .email,
               let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == "email" }) else {
             return nil
         }
 
-        let appConfigs = emailTemplate.apps.map { app in
-            AppConfig(
-                bundleIdentifier: app.bundleIdentifier,
-                appName: app.nameHints.first ?? app.bundleIdentifier
-            )
-        }
+        let group = emailTemplate.availableGroup(
+            installedApps: installedApps,
+            existingAppBundleIds: [],
+            existingWebsites: [],
+            cleanURL: ModeManager.shared.cleanURL
+        )
 
-        let urlConfigs = emailTemplate.websites.map { URLConfig(url: $0) }
-
-        return [
-            ModeTriggerGroup(
-                templateId: emailTemplate.id,
-                name: emailTemplate.name,
-                appConfigs: appConfigs,
-                urlConfigs: urlConfigs
-            )
-        ]
+        return group.isEmpty ? nil : [group]
     }
 
 }
