@@ -208,8 +208,7 @@ struct LicenseManagementView: View {
                 ResourceButton(
                     title: "Deactivate",
                     systemImage: "xmark.circle.fill",
-                    tint: neutralIconColor,
-                    foreground: AppTheme.Status.error
+                    tint: neutralIconColor
                 ) {
                     showingDeactivateConfirmation = true
                 }

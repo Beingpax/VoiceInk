@@ -111,11 +111,11 @@ private extension ViewType {
         case .models:
             return .init(background: AppTheme.Sidebar.models)
         case .audio:
-            return .init(background: AppTheme.Sidebar.audio)
+            return .init(background: AppTheme.Sidebar.fallback)
         case .dictionary:
             return .init(background: AppTheme.Sidebar.dictionary)
         case .history:
-            return .init(background: AppTheme.Sidebar.fallback)
+            return .init(background: AppTheme.Sidebar.audio)
         case .transcribeAudio:
             return .init(background: AppTheme.Sidebar.transcribeAudio)
         case .settings:
