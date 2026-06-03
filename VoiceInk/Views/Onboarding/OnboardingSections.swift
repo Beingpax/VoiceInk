@@ -12,6 +12,9 @@ struct OnboardingBackground: View {
 
 enum OnboardingLayout {
     static let chromeMaxWidth: CGFloat = 560
+    static let horizontalPadding: CGFloat = 48
+    static let headerTopPadding: CGFloat = 52
+    static let bottomPadding: CGFloat = 28
 }
 
 struct OnboardingHeroHeader: View {
@@ -188,35 +191,47 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
     }
 
     var body: some View {
-        ZStack {
-            if showsHeader {
-                VStack(spacing: 0) {
-                    OnboardingHeroHeader(
-                        systemImage: systemImage,
-                        title: title,
-                        subtitle: subtitle
-                    )
-                    .frame(maxWidth: OnboardingLayout.chromeMaxWidth)
-
-                    Spacer(minLength: 0)
-                }
-                .padding(.top, 52)
-            }
-
-            content
-                .frame(maxWidth: contentMaxWidth)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .offset(y: contentYOffset)
-
+        if showsHeader {
             VStack(spacing: 0) {
+                OnboardingHeroHeader(
+                    systemImage: systemImage,
+                    title: title,
+                    subtitle: subtitle
+                )
+                .frame(maxWidth: OnboardingLayout.chromeMaxWidth)
+                .padding(.top, OnboardingLayout.headerTopPadding)
+
+                Spacer(minLength: 0)
+
+                content
+                    .frame(maxWidth: contentMaxWidth)
+                    .offset(y: contentYOffset)
+
                 Spacer(minLength: 0)
 
                 bottomBar
                     .frame(maxWidth: OnboardingLayout.chromeMaxWidth)
+                    .padding(.bottom, OnboardingLayout.bottomPadding)
             }
-            .padding(.bottom, 28)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, OnboardingLayout.horizontalPadding)
+        } else {
+            ZStack {
+                content
+                    .frame(maxWidth: contentMaxWidth)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .offset(y: contentYOffset)
+
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+
+                    bottomBar
+                        .frame(maxWidth: OnboardingLayout.chromeMaxWidth)
+                }
+                .padding(.bottom, OnboardingLayout.bottomPadding)
+            }
+            .padding(.horizontal, OnboardingLayout.horizontalPadding)
         }
-        .padding(.horizontal, 48)
     }
 }
 

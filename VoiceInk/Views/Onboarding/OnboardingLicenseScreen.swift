@@ -20,8 +20,7 @@ struct OnboardingLicenseScreen: View {
     private var setupScreen: some View {
         OnboardingStepScreen(
             stage: .license,
-            contentMaxWidth: 620,
-            contentYOffset: -18
+            contentMaxWidth: 620
         ) {
             OnboardingLicenseSetupCard(
                 licenseViewModel: licenseViewModel,
@@ -45,8 +44,7 @@ struct OnboardingLicenseScreen: View {
             systemImage: "checkmark.seal.fill",
             title: "Verification Successful",
             subtitle: "Your license key is verified. VoiceInk is ready to use on this Mac.",
-            contentMaxWidth: 560,
-            contentYOffset: 68
+            contentMaxWidth: 560
         ) {
             OnboardingVerifiedLicenseCard(
                 licenseKey: licenseViewModel.licenseKey

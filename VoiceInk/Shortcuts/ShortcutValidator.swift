@@ -89,8 +89,12 @@ enum ShortcutValidator {
     }
 
     private static var allStoredActions: [ShortcutAction] {
-        ShortcutAction.legacyKeyboardShortcutActions +
-            ModeManager.shared.configurations.map { ShortcutAction.mode($0.id) }
+        var seenActions = Set<ShortcutAction>()
+        let actions = ShortcutAction.legacyKeyboardShortcutActions +
+            ModeManager.shared.configurations.map { ShortcutAction.mode($0.id) } +
+            StarterModeCatalog.templates.map { ShortcutAction.mode($0.id) }
+
+        return actions.filter { seenActions.insert($0).inserted }
     }
 
     private static var reservedRecorderPanelShortcuts: [(ShortcutAction, Shortcut)] {

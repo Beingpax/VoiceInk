@@ -76,6 +76,10 @@ enum ShortcutAction: Hashable {
                 return "\(config.name) Mode"
             }
 
+            if let template = StarterModeCatalog.templates.first(where: { $0.id == id }) {
+                return "\(template.name) Mode"
+            }
+
             return "Mode"
         case .recorderPanelEscape:
             return "Recorder Cancel"

@@ -70,7 +70,7 @@ enum OnboardingExperienceCatalog {
             title: "Write an Email",
             subtitle: "Turn your spoken note into a clean email draft with VoiceInk.",
             sampleLabel: "Sample text",
-            sampleText: "Hello Paul, um, we'll meet tomorrow at nine PM, right, for the business meeting we had last week. Thanks John.",
+            sampleText: "Hi Morgan, um, I wanted to follow up on the proposal we discussed yesterday. I talked to Julie about it, and, like, like, she said you can call her at 555-0194 if you need the latest numbers. Thanks, Alex.",
             fieldPlaceholder: "Your formatted email will appear here."
         ),
         OnboardingExperienceStep(

@@ -36,8 +36,7 @@ struct OnboardingExperienceScreen: View {
             title: step.title,
             subtitle: step.subtitle,
             contentMaxWidth: 560,
-            showsHeader: true,
-            contentYOffset: 24
+            showsHeader: true
         ) {
             OnboardingExperienceIntroCard(
                 step: step,
@@ -63,8 +62,7 @@ struct OnboardingExperienceScreen: View {
             title: step.title,
             subtitle: step.subtitle,
             contentMaxWidth: 700,
-            showsHeader: true,
-            contentYOffset: 38
+            showsHeader: true
         ) {
             OnboardingExperienceCard(
                 step: step,
