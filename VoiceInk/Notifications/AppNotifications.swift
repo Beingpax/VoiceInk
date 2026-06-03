@@ -9,6 +9,7 @@ extension Notification.Name {
     static let didChangeModel = Notification.Name("didChangeModel")
     static let aiProviderKeyChanged = Notification.Name("aiProviderKeyChanged")
     static let licenseStatusChanged = Notification.Name("licenseStatusChanged")
+    static let licenseCelebrationRequested = Notification.Name("licenseCelebrationRequested")
     static let navigateToDestination = Notification.Name("navigateToDestination")
     static let modeConfigurationApplied = Notification.Name("modeConfigurationApplied")
     static let modeConfigurationsDidChange = Notification.Name("ModeConfigurationsDidChange")

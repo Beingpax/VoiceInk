@@ -48,10 +48,14 @@ final class LicenseManager {
         }
     }
 
-    func startTrialIfNeeded() {
-        if trialStartDate == nil {
-            trialStartDate = Date()
+    @discardableResult
+    func startTrialIfNeeded() -> Bool {
+        guard trialStartDate == nil else {
+            return false
         }
+
+        trialStartDate = Date()
+        return true
     }
 
     // MARK: - Activation ID

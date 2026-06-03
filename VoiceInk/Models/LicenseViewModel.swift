@@ -33,9 +33,13 @@ class LicenseViewModel: ObservableObject {
     }
 
     func startTrial() {
-        licenseManager.startTrialIfNeeded()
+        let didStartTrial = licenseManager.startTrialIfNeeded()
         refreshTrialState()
         NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+
+        if didStartTrial {
+            requestLicenseCelebration()
+        }
     }
 
     private func loadLicenseState() {
@@ -152,10 +156,7 @@ class LicenseViewModel: ObservableObject {
                         userDefaults.set(true, forKey: "VoiceInkLicenseRequiresActivation")
                         activationsLimit = limit
                         userDefaults.activationsLimit = limit
-                        licenseState = .licensed
-                        validationSuccess = true
-                        validationMessage = "License activated successfully!"
-                        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+                        completeSuccessfulValidation(message: "License activated successfully!")
                         isValidating = false
                         return
                     }
@@ -182,19 +183,13 @@ class LicenseViewModel: ObservableObject {
                 userDefaults.activationsLimit = licenseCheck.activationsLimit ?? 0
 
                 // Update the license state for unlimited license
-                licenseState = .licensed
-                validationSuccess = true
-                validationMessage = "License validated successfully!"
-                NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+                completeSuccessfulValidation(message: "License validated successfully!")
                 isValidating = false
                 return
             }
             
             // Update the license state for activated license
-            licenseState = .licensed
-            validationSuccess = true
-            validationMessage = "License activated successfully!"
-            NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+            completeSuccessfulValidation(message: "License activated successfully!")
 
         } catch LicenseError.keyNotFound {
             validationSuccess = false
@@ -216,6 +211,18 @@ class LicenseViewModel: ObservableObject {
         }
         
         isValidating = false
+    }
+
+    private func completeSuccessfulValidation(message: String) {
+        licenseState = .licensed
+        validationSuccess = true
+        validationMessage = message
+        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+        requestLicenseCelebration()
+    }
+
+    private func requestLicenseCelebration() {
+        NotificationCenter.default.post(name: .licenseCelebrationRequested, object: nil)
     }
     
     func removeLicense() {

@@ -274,74 +274,77 @@ struct VoiceInkApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                ContentView()
-                    .environmentObject(engine)
-                    .environmentObject(whisperModelManager)
-                    .environmentObject(fluidAudioModelManager)
-                    .environmentObject(transcriptionModelManager)
-                    .environmentObject(recorderUIManager)
-                    .environmentObject(recordingShortcutManager)
-                    .environmentObject(updaterViewModel)
-                    .environmentObject(menuBarManager)
-                    .environmentObject(aiService)
-                    .environmentObject(enhancementService)
-                    .modelContainer(container)
-                    .onAppear {
-                        // Check if container initialization failed
-                        if containerInitializationFailed {
-                            let alert = NSAlert()
-                            alert.messageText = "Critical Storage Error"
-                            alert.informativeText = "VoiceInk cannot initialize its storage system. The app cannot continue.\n\nPlease try reinstalling the app or contact support if the issue persists."
-                            alert.alertStyle = .critical
-                            alert.addButton(withTitle: "Quit")
-                            alert.runModal()
+            Group {
+                if hasCompletedOnboarding {
+                    ContentView()
+                        .environmentObject(engine)
+                        .environmentObject(whisperModelManager)
+                        .environmentObject(fluidAudioModelManager)
+                        .environmentObject(transcriptionModelManager)
+                        .environmentObject(recorderUIManager)
+                        .environmentObject(recordingShortcutManager)
+                        .environmentObject(updaterViewModel)
+                        .environmentObject(menuBarManager)
+                        .environmentObject(aiService)
+                        .environmentObject(enhancementService)
+                        .modelContainer(container)
+                        .onAppear {
+                            // Check if container initialization failed
+                            if containerInitializationFailed {
+                                let alert = NSAlert()
+                                alert.messageText = "Critical Storage Error"
+                                alert.informativeText = "VoiceInk cannot initialize its storage system. The app cannot continue.\n\nPlease try reinstalling the app or contact support if the issue persists."
+                                alert.alertStyle = .critical
+                                alert.addButton(withTitle: "Quit")
+                                alert.runModal()
 
-                            NSApplication.shared.terminate(nil)
-                            return
-                        }
-
-                        if enableAnnouncements {
-                            AnnouncementsService.shared.start()
-                        }
-
-                        showAccessibilityReminderIfNeeded()
-
-                        // Start the automatic audio cleanup process only if transcript cleanup is not enabled
-                        if !UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled") {
-                            audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
-                        }
-
-                        // Process any pending open-file request now that the main ContentView is ready.
-                        if let pendingURL = appDelegate.pendingOpenFileURL {
-                            NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
+                                NSApplication.shared.terminate(nil)
+                                return
                             }
-                            appDelegate.pendingOpenFileURL = nil
-                        }
-                    }
-                    .background(WindowAccessor { window in
-                        WindowManager.shared.configureWindow(window)
-                    })
-                    .onDisappear {
-                        AnnouncementsService.shared.stop()
-                        whisperModelManager.unloadModel()
 
-                        // Stop the automatic audio cleanup process
-                        audioCleanupManager.stopAutomaticCleanup()
-                    }
-            } else {
-                OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
-                    .environmentObject(fluidAudioModelManager)
-                    .environmentObject(aiService)
-                    .environmentObject(enhancementService)
-                    .frame(width: 950)
-                    .frame(minHeight: 730)
-                    .background(WindowAccessor { window in
-                        WindowManager.shared.configureWindow(window)
-                    })
+                            if enableAnnouncements {
+                                AnnouncementsService.shared.start()
+                            }
+
+                            showAccessibilityReminderIfNeeded()
+
+                            // Start the automatic audio cleanup process only if transcript cleanup is not enabled
+                            if !UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled") {
+                                audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
+                            }
+
+                            // Process any pending open-file request now that the main ContentView is ready.
+                            if let pendingURL = appDelegate.pendingOpenFileURL {
+                                NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
+                                }
+                                appDelegate.pendingOpenFileURL = nil
+                            }
+                        }
+                        .background(WindowAccessor { window in
+                            WindowManager.shared.configureWindow(window)
+                        })
+                        .onDisappear {
+                            AnnouncementsService.shared.stop()
+                            whisperModelManager.unloadModel()
+
+                            // Stop the automatic audio cleanup process
+                            audioCleanupManager.stopAutomaticCleanup()
+                        }
+                } else {
+                    OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+                        .environmentObject(fluidAudioModelManager)
+                        .environmentObject(aiService)
+                        .environmentObject(enhancementService)
+                        .frame(width: 950)
+                        .frame(minHeight: 730)
+                        .background(WindowAccessor { window in
+                            WindowManager.shared.configureWindow(window)
+                        })
+                }
             }
+            .confettiCelebrationPresenter()
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 950, height: 730)
