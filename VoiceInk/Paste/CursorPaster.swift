@@ -34,7 +34,10 @@ class CursorPaster {
     @discardableResult
     static func startPasteAtCursor(_ text: String) -> Task<PasteResult, Never> {
         Task { @MainActor in
-            await performPasteSession(text)
+            if PasteMethod.current() == .directTyping {
+                return await typeTextDirectly(text)
+            }
+            return await performPasteSession(text)
         }
     }
 
@@ -211,6 +214,43 @@ class CursorPaster {
         guard seconds > 0 else { return }
         let nanoseconds = UInt64(seconds * 1_000_000_000)
         try? await Task.sleep(nanoseconds: nanoseconds)
+    }
+
+    // MARK: - Direct Typing (for Remote Desktop / virtual machine sessions)
+
+    @MainActor
+    private static func typeTextDirectly(_ text: String) async -> PasteResult {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility permission is required to type text directly")
+            return .commandNotPosted
+        }
+
+        let source = CGEventSource(stateID: .privateState)
+        // Give the recorder UI time to dismiss and hand focus back before the
+        // first character. Some apps/remote-desktop clients drop the first event
+        // if typing starts while focus is still settling.
+        await wait(prePasteDelay)
+
+        let interKeyDelay: UInt64 = 5_000_000
+
+        for scalar in text.unicodeScalars {
+            var utf16Units = Array(String(scalar).utf16)
+
+            guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+                  let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else {
+                logger.error("Failed to create direct-typing keyboard events")
+                return .commandNotPosted
+            }
+
+            keyDown.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+            keyDown.post(tap: .cghidEventTap)
+            keyUp.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+            keyUp.post(tap: .cghidEventTap)
+
+            try? await Task.sleep(nanoseconds: interKeyDelay)
+        }
+
+        return .commandPosted
     }
 
     // MARK: - Auto Send Keys

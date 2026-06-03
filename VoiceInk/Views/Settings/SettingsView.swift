@@ -202,7 +202,7 @@ struct SettingsView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Text("Paste Method")
-                        InfoTip("Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly.")
+                        InfoTip("Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly. Direct Typing types character by character — use this when dictating into a remote desktop or virtual machine.")
                     }
                 }
                 .pickerStyle(.menu)
