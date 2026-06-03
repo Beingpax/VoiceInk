@@ -41,6 +41,11 @@ final class OnboardingFlowController {
         coordinator.storedStage = OnboardingStage.license.rawValue
     }
 
+    func goToTrustStep(isTranscriptionModelDownloaded: Bool) {
+        guard coordinator.isReadyForExperience(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded) else { return }
+        coordinator.storedStage = OnboardingStage.trust.rawValue
+    }
+
     func requestSkipAPISetup() {
         coordinator.isShowingSkipAPISetupWarning = true
     }
@@ -80,7 +85,7 @@ final class OnboardingFlowController {
         }
     }
 
-    func goToPreviousLicenseStep(
+    func goToPreviousTrustStep(
         isTranscriptionModelDownloaded: Bool,
         enhancementService: AIEnhancementService
     ) {
@@ -98,6 +103,15 @@ final class OnboardingFlowController {
         refreshExperienceModeState(enhancementService: enhancementService)
     }
 
+    func goToPreviousLicenseStep(isTranscriptionModelDownloaded: Bool) {
+        guard coordinator.isReadyForExperience(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded) else {
+            coordinator.storedStage = OnboardingStage.api.rawValue
+            return
+        }
+
+        coordinator.storedStage = OnboardingStage.trust.rawValue
+    }
+
     func advanceExperienceStep(
         isTranscriptionModelDownloaded: Bool,
         enhancementService: AIEnhancementService
@@ -107,7 +121,7 @@ final class OnboardingFlowController {
         }
 
         if coordinator.isLastExperienceStep {
-            goToLicenseStep(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded)
+            goToTrustStep(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded)
         } else {
             moveToExperienceStep(
                 coordinator.normalizedExperienceStepIndex + 1,
@@ -145,7 +159,7 @@ final class OnboardingFlowController {
             goToFirstIncompleteSetupStep(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded)
         }
 
-        if (coordinator.stage == .experience || coordinator.stage == .license) &&
+        if (coordinator.stage == .experience || coordinator.stage == .trust || coordinator.stage == .license) &&
             !coordinator.isReadyForExperience(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded) {
             goToFirstIncompleteSetupStep(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded)
         }

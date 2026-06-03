@@ -93,15 +93,19 @@ final class OnboardingCoordinator: ObservableObject {
             return OnboardingStage.baseStepCount + normalizedExperienceStepIndex + 1
         }
 
-        if stage == .license {
+        if stage == .trust {
             return OnboardingStage.baseStepCount + activeExperienceSteps.count + 1
+        }
+
+        if stage == .license {
+            return OnboardingStage.baseStepCount + activeExperienceSteps.count + 2
         }
 
         return stage.stepNumber
     }
 
     var totalStepCount: Int {
-        OnboardingStage.baseStepCount + activeExperienceSteps.count + 1
+        OnboardingStage.baseStepCount + activeExperienceSteps.count + 2
     }
 
     var experienceStep: OnboardingExperienceStep {

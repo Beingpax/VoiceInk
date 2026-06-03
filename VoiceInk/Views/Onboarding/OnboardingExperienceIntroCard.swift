@@ -24,17 +24,9 @@ struct OnboardingExperienceIntroCard: View {
                 )
             }
         }
-        .padding(.horizontal, 28)
-        .padding(.vertical, 20)
-        .fixedSize(horizontal: true, vertical: false)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(AppTheme.Surface.control.opacity(0.45))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(AppTheme.Border.subtle, lineWidth: 1)
-        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .fixedSize(horizontal: false, vertical: false)
         .opacity(isVisible ? 1 : 0)
         .scaleEffect(isVisible ? 1 : 0.98)
         .offset(y: isVisible ? 0 : 10)

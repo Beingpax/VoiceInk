@@ -32,8 +32,11 @@ struct OnboardingHeroHeader: View {
 
             VStack(spacing: 8) {
                 Text(title)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundColor(AppTheme.Text.primary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(subtitle)
                     .font(.system(size: 14))
@@ -78,8 +81,7 @@ struct OnboardingBottomBar: View {
     let onPrimary: () -> Void
 
     private enum Metrics {
-        static let leadingButtonWidth: CGFloat = 104
-        static let primaryButtonMinWidth: CGFloat = 132
+        static let controlButtonWidth: CGFloat = 132
         static let buttonHeight: CGFloat = 42
         static let primaryButtonHorizontalPadding: CGFloat = 20
     }
@@ -109,13 +111,13 @@ struct OnboardingBottomBar: View {
                 Text(leadingTitle)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(AppTheme.Action.secondaryForeground)
-                    .frame(width: Metrics.leadingButtonWidth, height: Metrics.buttonHeight)
+                    .frame(width: Metrics.controlButtonWidth, height: Metrics.buttonHeight)
                     .background(AppMaterialCardBackground(cornerRadius: AppTheme.Radius.control))
             }
             .buttonStyle(.plain)
         } else {
             AppTheme.Surface.clear
-                .frame(width: Metrics.leadingButtonWidth, height: Metrics.buttonHeight)
+                .frame(width: Metrics.controlButtonWidth, height: Metrics.buttonHeight)
                 .accessibilityHidden(true)
         }
     }
@@ -126,7 +128,7 @@ struct OnboardingBottomBar: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(isPrimaryEnabled ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
                 .padding(.horizontal, Metrics.primaryButtonHorizontalPadding)
-                .frame(minWidth: Metrics.primaryButtonMinWidth, minHeight: Metrics.buttonHeight)
+                .frame(minWidth: Metrics.controlButtonWidth, minHeight: Metrics.buttonHeight)
                 .background(
                     RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
                         .fill(isPrimaryEnabled ? AppTheme.Action.primaryFill : AppTheme.Action.disabledFill)

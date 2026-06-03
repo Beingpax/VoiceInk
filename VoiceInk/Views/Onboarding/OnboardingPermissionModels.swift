@@ -5,6 +5,7 @@ enum OnboardingStage: String, CaseIterable {
     case model
     case api
     case experience
+    case trust
     case license
 
     var stepNumber: Int {
@@ -17,8 +18,10 @@ enum OnboardingStage: String, CaseIterable {
             return 3
         case .experience:
             return 4
-        case .license:
+        case .trust:
             return 5
+        case .license:
+            return 6
         }
     }
 
@@ -32,6 +35,8 @@ enum OnboardingStage: String, CaseIterable {
             return "checkmark.seal"
         case .experience:
             return "square.grid.2x2.fill"
+        case .trust:
+            return "lock.shield"
         case .license:
             return "checkmark.seal.fill"
         }
@@ -47,6 +52,8 @@ enum OnboardingStage: String, CaseIterable {
             return "Verify API Key"
         case .experience:
             return "Experience VoiceInk"
+        case .trust:
+            return "VoiceInk is Open Source"
         case .license:
             return "Buy VoiceInk License"
         }
@@ -62,6 +69,8 @@ enum OnboardingStage: String, CaseIterable {
             return "VoiceInk uses LLMs to enhance transcripts and perform AI actions. Set up an API key before continuing."
         case .experience:
             return "Try a few short samples and see how VoiceInk works before you start."
+        case .trust:
+            return "VoiceInk is private by default. No data leaves your device unless you opt in."
         case .license:
             return "Activate an existing key, purchase a license, or start a 7-day free trial."
         }

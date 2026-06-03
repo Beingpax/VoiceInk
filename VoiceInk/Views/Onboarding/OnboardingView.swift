@@ -122,13 +122,28 @@ struct OnboardingView: View {
                         onAppear: coordinator.flow.activateExperienceModeForDemo
                     )
                         .transition(.opacity)
+                case .trust:
+                    OnboardingTrustScreen(
+                        contentMaxWidth: contentMaxWidth,
+                        onBack: {
+                            coordinator.flow.goToPreviousTrustStep(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                enhancementService: enhancementService
+                            )
+                        },
+                        onContinue: {
+                            coordinator.flow.goToLicenseStep(
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                            )
+                        }
+                    )
+                        .transition(.opacity)
                 case .license:
                     OnboardingLicenseScreen(
                         licenseViewModel: coordinator.licenseViewModel,
                         onBack: {
                             coordinator.flow.goToPreviousLicenseStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
-                                enhancementService: enhancementService
+                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
                             )
                         },
                         onPurchase: {
