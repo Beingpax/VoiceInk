@@ -20,25 +20,19 @@ struct OnboardingAPIScreen: View {
             stage: .api,
             contentMaxWidth: contentMaxWidth
         ) {
-            VStack(spacing: 14) {
-                AIProviderVerificationCard(
-                    aiService: aiService,
-                    providerOptions: providerOptions,
-                    selectedProvider: $selectedProvider,
-                    onVerificationChanged: onVerificationChanged
-                )
-
-                if !isSelectedProviderVerified {
-                    skipAPISetupButton
-                }
-            }
+            AIProviderVerificationCard(
+                aiService: aiService,
+                providerOptions: providerOptions,
+                selectedProvider: $selectedProvider,
+                onVerificationChanged: onVerificationChanged
+            )
         } bottomBar: {
             OnboardingBottomBar(
                 leadingTitle: "Back",
-                primaryTitle: "Continue",
-                isPrimaryEnabled: canContinue,
+                primaryTitle: primaryButtonTitle,
+                isPrimaryEnabled: isPrimaryEnabled,
                 onLeading: onBack,
-                onPrimary: onContinue
+                onPrimary: primaryAction
             )
         }
         .alert("Skip API setup?", isPresented: $isShowingSkipWarning) {
@@ -47,23 +41,23 @@ struct OnboardingAPIScreen: View {
                 onConfirmSkip()
             }
         } message: {
-            Text("VoiceInk will skip API setup during onboarding. Most enhancement and AI-related features will not work without an API key. You can always set it up later in the app.")
+            Text("Enhancement modes and AI actions will stay off. You can always set it up later in the app.")
         }
     }
 
-    private var skipAPISetupButton: some View {
-        Button(action: onRequestSkip) {
-            Text("Skip API setup")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(AppTheme.Text.muted)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(AppTheme.Surface.subtle)
-                )
+    private var primaryButtonTitle: String {
+        isSelectedProviderVerified ? "Continue" : "Skip API Setup"
+    }
+
+    private var isPrimaryEnabled: Bool {
+        canContinue || !isSelectedProviderVerified
+    }
+
+    private func primaryAction() {
+        if isSelectedProviderVerified {
+            onContinue()
+        } else {
+            onRequestSkip()
         }
-        .buttonStyle(.plain)
-        .help("Continue with local dictation only")
     }
 }

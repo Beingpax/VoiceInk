@@ -32,10 +32,10 @@ struct OnboardingLicenseScreen: View {
         } bottomBar: {
             OnboardingBottomBar(
                 leadingTitle: "Back",
-                primaryTitle: "Finish",
-                isPrimaryEnabled: false,
+                primaryTitle: "Start 7-day Trial",
+                isPrimaryEnabled: true,
                 onLeading: onBack,
-                onPrimary: { }
+                onPrimary: onStartTrial
             )
         }
     }
