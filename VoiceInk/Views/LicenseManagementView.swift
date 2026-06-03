@@ -10,6 +10,7 @@ struct LicenseManagementView: View {
     private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
     private let appBuild = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
     private let licenseTitleFont = Font.system(size: 28, weight: .semibold, design: .rounded)
+    private let neutralIconColor = AppTheme.Text.secondary
 
     private var reportPanelAnimation: Animation {
         reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.32)
@@ -137,15 +138,15 @@ struct LicenseManagementView: View {
             }
 
             HStack(spacing: 10) {
-                BenefitPill(title: "Lifetime access", systemImage: "infinity", tint: AppTheme.Sidebar.license)
-                BenefitPill(title: "Free updates", systemImage: "arrow.down.circle.fill", tint: AppTheme.Status.infoStrong)
-                BenefitPill(title: "Priority support", systemImage: "bubble.left.and.bubble.right.fill", tint: AppTheme.Status.warningStrong)
+                BenefitPill(title: "Lifetime access", systemImage: "infinity", tint: neutralIconColor)
+                BenefitPill(title: "Free updates", systemImage: "arrow.down.circle.fill", tint: neutralIconColor)
+                BenefitPill(title: "Priority support", systemImage: "bubble.left.and.bubble.right.fill", tint: neutralIconColor)
             }
 
             LicenseActionButton(
                 title: "Buy License",
                 systemImage: "checkmark.seal.fill",
-                iconColor: AppTheme.Sidebar.license,
+                iconColor: neutralIconColor,
                 fillsWidth: true
             ) {
                 licenseViewModel.openPurchaseLink()
@@ -170,7 +171,7 @@ struct LicenseManagementView: View {
                 LicenseActionButton(
                     title: "Activate",
                     systemImage: "key.fill",
-                    iconColor: AppTheme.Sidebar.license,
+                    iconColor: neutralIconColor,
                     fixedWidth: 112,
                     isLoading: licenseViewModel.isValidating,
                     loadingTitle: "Activating"
@@ -200,14 +201,14 @@ struct LicenseManagementView: View {
             onCopyLicenseKey: copyLicenseKey
         ) {
             HStack(spacing: 10) {
-                ResourceButton(title: "Manage License", systemImage: "person.crop.circle.badge.checkmark", tint: AppTheme.Sidebar.license) {
+                ResourceButton(title: "Manage License", systemImage: "person.crop.circle.badge.checkmark", tint: neutralIconColor) {
                     openLicensePortal()
                 }
 
                 ResourceButton(
                     title: "Deactivate",
                     systemImage: "xmark.circle.fill",
-                    tint: AppTheme.Status.error,
+                    tint: neutralIconColor,
                     foreground: AppTheme.Status.error
                 ) {
                     showingDeactivateConfirmation = true
@@ -218,13 +219,13 @@ struct LicenseManagementView: View {
 
     private var resourceDock: some View {
         HStack(spacing: 10) {
-            ResourceButton(title: "Lost Key?", systemImage: "key.fill", tint: AppTheme.Data.audio) {
+            ResourceButton(title: "Lost Key?", systemImage: "key.fill", tint: neutralIconColor) {
                 openLicensePortal()
             }
 
-            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: AppTheme.Status.warningStrong, action: showReportPanel)
+            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: neutralIconColor, action: showReportPanel)
 
-            ResourceButton(title: "Docs", systemImage: "book.fill", tint: AppTheme.Data.transcript) {
+            ResourceButton(title: "Docs", systemImage: "book.fill", tint: neutralIconColor) {
                 openURL("https://tryvoiceink.com/docs")
             }
         }
@@ -232,13 +233,13 @@ struct LicenseManagementView: View {
 
     private var activeResourceDock: some View {
         HStack(spacing: 10) {
-            ResourceButton(title: "Changelog", systemImage: "list.bullet.clipboard.fill", tint: AppTheme.Sidebar.dictionary) {
+            ResourceButton(title: "Changelog", systemImage: "list.bullet.clipboard.fill", tint: neutralIconColor) {
                 openURL("https://github.com/Beingpax/VoiceInk/releases")
             }
 
-            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: AppTheme.Status.warningStrong, action: showReportPanel)
+            ResourceButton(title: "Report or Feedback", systemImage: "exclamationmark.bubble.fill", tint: neutralIconColor, action: showReportPanel)
 
-            ResourceButton(title: "Docs", systemImage: "book.fill", tint: AppTheme.Data.transcript) {
+            ResourceButton(title: "Docs", systemImage: "book.fill", tint: neutralIconColor) {
                 openURL("https://tryvoiceink.com/docs")
             }
         }
@@ -490,14 +491,14 @@ private struct ReportFeedbackBottomPanel: View {
                     ReportPanelButton(
                         title: "Email Support",
                         systemImage: "envelope.fill",
-                        iconColor: AppTheme.Data.audio,
+                        iconColor: AppTheme.Text.secondary,
                         action: onEmail
                     )
 
                     ReportPanelButton(
                         title: "Join Discord",
                         systemImage: "bubble.left.and.bubble.right.fill",
-                        iconColor: AppTheme.Status.infoStrong,
+                        iconColor: AppTheme.Text.secondary,
                         action: onDiscord
                     )
                 }
@@ -598,7 +599,7 @@ private struct CopiedStatePill: View {
 private struct ResourceButton: View {
     let title: String
     let systemImage: String
-    var tint: Color = AppTheme.Accent.primary
+    var tint: Color = AppTheme.Text.secondary
     var foreground: Color = .primary
     let action: () -> Void
 

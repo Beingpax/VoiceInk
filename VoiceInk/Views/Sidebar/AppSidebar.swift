@@ -91,7 +91,7 @@ private extension ViewType {
     var icon: String {
         switch self {
         case .dashboard: return "gauge.medium"
-        case .transcribeAudio: return "waveform.mid"
+        case .transcribeAudio: return "waveform.path"
         case .history: return "doc.text.fill"
         case .models: return "cpu"
         case .modes: return "sparkles.square.fill.on.square"

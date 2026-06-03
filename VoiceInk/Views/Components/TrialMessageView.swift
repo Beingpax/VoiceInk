@@ -62,12 +62,7 @@ struct TrialMessageView: View {
     }
     
     private var iconColor: Color {
-        switch type {
-        case .licenseRequired: return AppTheme.Sidebar.license
-        case .warning: return AppTheme.Status.warningStrong
-        case .expired: return AppTheme.Status.error
-        case .info: return AppTheme.Accent.primary
-        }
+        AppTheme.Text.secondary
     }
     
     private var title: String {
