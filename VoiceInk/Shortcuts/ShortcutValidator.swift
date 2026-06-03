@@ -117,8 +117,6 @@ enum ShortcutValidator {
             shortcut(kVK_ANSI_A, [.command]),
             shortcut(kVK_ANSI_C, [.command]),
             shortcut(kVK_ANSI_F, [.command]),
-            shortcut(kVK_ANSI_G, [.command]),
-            shortcut(kVK_ANSI_G, [.shift, .command]),
             shortcut(kVK_ANSI_H, [.command]),
             shortcut(kVK_ANSI_H, [.option, .command]),
             shortcut(kVK_ANSI_M, [.command]),
