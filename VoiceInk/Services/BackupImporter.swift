@@ -272,6 +272,7 @@ enum BackupImporter {
             if skippedInvalidReplacements > 0 {
                 print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
+            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
             return
         }
 
@@ -281,6 +282,7 @@ enum BackupImporter {
             if skippedInvalidReplacements > 0 {
                 print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
+            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
         } catch {
             modelContext.rollback()
             throw BackupImportError.saveFailed("dictionary entries", error)

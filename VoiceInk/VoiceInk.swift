@@ -88,6 +88,7 @@ struct VoiceInkApp: App {
 
         container = resolvedContainer
         containerInitializationFailed = initializationFailed
+        DictionaryService.removeExactDuplicateContent(context: resolvedContainer.mainContext, source: "launch")
 
         // Initialize services with proper sharing of instances
         let aiService = AIService()

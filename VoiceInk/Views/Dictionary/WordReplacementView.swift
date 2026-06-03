@@ -146,7 +146,7 @@ struct WordReplacementView: View {
                     Divider()
 
                     LazyVStack(spacing: 0) {
-                        ForEach(sortedReplacements) { replacement in
+                        ForEach(sortedReplacements, id: \.persistentModelID) { replacement in
                             ReplacementRow(
                                 original: replacement.originalText,
                                 replacement: replacement.replacementText,
@@ -154,7 +154,7 @@ struct WordReplacementView: View {
                                 onEdit: { editingReplacement = replacement }
                             )
 
-                            if replacement.id != sortedReplacements.last?.id {
+                            if replacement.persistentModelID != sortedReplacements.last?.persistentModelID {
                                 Divider()
                             }
                         }
@@ -164,8 +164,10 @@ struct WordReplacementView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .sheet(item: $editingReplacement) { replacement in
-            EditReplacementSheet(replacement: replacement, modelContext: modelContext)
+        .sheet(isPresented: isEditingReplacement) {
+            if let editingReplacement {
+                EditReplacementSheet(replacement: editingReplacement, modelContext: modelContext)
+            }
         }
         .alert("Word Replacement", isPresented: $showAlert) {
             Button("OK", role: .cancel) {}
@@ -197,6 +199,17 @@ struct WordReplacementView: View {
             alertMessage = "Failed to remove replacement: \(error.localizedDescription)"
             showAlert = true
         }
+    }
+
+    private var isEditingReplacement: Binding<Bool> {
+        Binding(
+            get: { editingReplacement != nil },
+            set: { isPresented in
+                if !isPresented {
+                    editingReplacement = nil
+                }
+            }
+        )
     }
 }
 

@@ -137,7 +137,7 @@ struct EditReplacementSheet: View {
         if let allReplacements = try? modelContext.fetch(descriptor) {
             for existingReplacement in allReplacements {
                 // Skip checking against itself
-                if existingReplacement.id == replacement.id {
+                if existingReplacement.persistentModelID == replacement.persistentModelID {
                     continue
                 }
 
