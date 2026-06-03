@@ -33,6 +33,11 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             !assistantSession.isBusy
     }
 
+    private var liveAssistantFollowUpText: String {
+        guard stateProvider.recordingState == .recording else { return "" }
+        return stateProvider.partialTranscript
+    }
+
     private var controlBar: some View {
         HStack(spacing: 0) {
             Group {
@@ -79,6 +84,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             if hasAssistantResponse {
                 AssistantPanelView(
                     session: assistantSession,
+                    liveFollowUpText: liveAssistantFollowUpText,
                     onSend: onAssistantFollowUp
                 )
                 Divider().background(Color.white.opacity(0.15))

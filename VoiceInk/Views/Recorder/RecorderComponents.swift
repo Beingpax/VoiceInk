@@ -372,6 +372,7 @@ struct RecorderStatusDisplay: View {
 
 struct AssistantPanelView: View {
     @ObservedObject var session: AssistantSession
+    let liveFollowUpText: String
     let onSend: (String) -> Void
 
     @State private var draftMessage = ""
@@ -436,7 +437,7 @@ struct AssistantPanelView: View {
 
     private var followUpRow: some View {
         HStack(spacing: 8) {
-            TextField("", text: $draftMessage)
+            TextField("", text: $draftMessage, prompt: followUpPrompt)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.9))
@@ -461,6 +462,12 @@ struct AssistantPanelView: View {
             .disabled(!canSendDraft)
             .help("Send follow up")
         }
+    }
+
+    private var followUpPrompt: Text? {
+        let trimmedLiveText = liveFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedLiveText.isEmpty else { return nil }
+        return Text(trimmedLiveText).foregroundColor(.white.opacity(0.58))
     }
 
     private var canSendDraft: Bool {

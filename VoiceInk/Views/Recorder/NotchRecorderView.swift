@@ -102,6 +102,11 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             !assistantSession.isBusy
     }
 
+    private var liveAssistantFollowUpText: String {
+        guard stateProvider.recordingState == .recording else { return "" }
+        return stateProvider.partialTranscript
+    }
+
     // MARK: - Animation
 
     private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
@@ -205,6 +210,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                 Divider().background(Color.white.opacity(0.15))
                 AssistantPanelView(
                     session: assistantSession,
+                    liveFollowUpText: liveAssistantFollowUpText,
                     onSend: onAssistantFollowUp
                 )
             }

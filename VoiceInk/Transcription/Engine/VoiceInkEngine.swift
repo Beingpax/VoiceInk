@@ -18,7 +18,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
     @Published var recordingState: RecordingState = .idle
     @Published var shouldCancelRecording = false
-    var partialTranscript: String = ""
+    @Published var partialTranscript: String = ""
     var currentSession: TranscriptionSession?
     private var currentSessionTranscriptionConfiguration: TranscriptionRuntimeConfiguration?
     private var activeRecordingStartID: UUID?
