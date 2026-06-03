@@ -23,13 +23,15 @@ enum AppDefaults {
             // Clipboard
             "restoreClipboardAfterPaste": true,
             "clipboardRestoreDelay": 2.0,
-            "pasteMethod": "cgEvent",
+            "pasteMethod": PasteMethod.standard.rawValue,
 
             // Audio & Media
             "isSystemMuteEnabled": true,
             "audioResumptionDelay": 0.0,
             "isPauseMediaEnabled": false,
             "isSoundFeedbackEnabled": true,
+            CustomSoundManager.SoundType.start.builtInSoundKey: CustomSoundManager.SoundType.start.defaultBuiltInSound.rawValue,
+            CustomSoundManager.SoundType.stop.builtInSoundKey: CustomSoundManager.SoundType.stop.defaultBuiltInSound.rawValue,
 
             // Recording & Transcription
             "IsTextFormattingEnabled": true,
@@ -67,5 +69,6 @@ enum AppDefaults {
         ])
 
         PunctuationCleanupMode.migrateLegacyUserDefaultIfNeeded()
+        PasteMethod.migrateLegacyUserDefaultIfNeeded()
     }
 }

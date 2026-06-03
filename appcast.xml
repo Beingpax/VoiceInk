@@ -3,20 +3,19 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>1.77</title>
+            <title>1.79</title>
             <description><![CDATA[
-                <h3>What's New in v1.77</h3>
+                <h3>What's New in v1.79</h3>
                 <ul>
-                    <li>⌨️ Added a better unified shortcut system</li>
-                    <li>🧹 Added punctuation cleanup mode</li>
-                    <li>🐛 Stability improvements and bug fixes</li>
+                    <li>🛠️ Fixed AppleScript paste crash</li>
+                    <li>⌨️ Fixed accidental Fn shortcut triggers</li>
                 </ul>
             ]]></description>
-            <pubDate>Mon, 18 May 2026 16:08:20 +0545</pubDate>
-            <sparkle:version>177</sparkle:version>
-            <sparkle:shortVersionString>1.77</sparkle:shortVersionString>
+            <pubDate>Sat, 23 May 2026 20:23:30 +0545</pubDate>
+            <sparkle:version>179</sparkle:version>
+            <sparkle:shortVersionString>1.79</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.77/VoiceInk.dmg" length="14193702" type="application/octet-stream" sparkle:edSignature="jXgNaoPsqd5uawdGtFr/wQOq86V0KdYqj577Ex7JXfxFbPMR2q2GGCFhCnQ0vLbswUnGi52Yxq8Z1El57CgeDA=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.79/VoiceInk.dmg" length="14406786" type="application/octet-stream" sparkle:edSignature="TI2RXCaX+lx8Dp7fERw9B4Ef+xHwJQxsshBnDClUAKsyafQjfM4DYOCm3Iz9dF7VaajUZccafIktBDsbtuRzCA=="/>
         </item>
     </channel>
 </rss>

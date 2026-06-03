@@ -201,13 +201,18 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
-        // Restore paste method, migrating the legacy bool if needed.
         if let method = general.pasteMethod {
-            UserDefaults.standard.set(method, forKey: "pasteMethod")
+            let resolved: PasteMethod
+            if method == "cgEvent" {
+                resolved = .standard
+            } else if let parsed = PasteMethod(rawValue: method) {
+                resolved = parsed
+            } else {
+                resolved = .standard
+            }
+            PasteMethod.setCurrent(resolved)
         } else if let appleScriptPaste = general.useAppleScriptPaste {
-            // Always write so a false value correctly overwrites any stale pasteMethod.
-            let method = appleScriptPaste ? PasteMethod.appleScript.rawValue : PasteMethod.cgEvent.rawValue
-            UserDefaults.standard.set(method, forKey: "pasteMethod")
+            PasteMethod.setCurrent(appleScriptPaste ? .appleScript : .standard)
         }
 
         print("Successfully imported general settings.")

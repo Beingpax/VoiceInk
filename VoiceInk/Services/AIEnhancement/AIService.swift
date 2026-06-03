@@ -106,6 +106,7 @@ enum AIProvider: String, CaseIterable {
             ]
         case .gemini:
             return [
+                "gemini-3.5-flash",
                 "gemini-3.1-pro-preview",
                 "gemini-3-flash-preview",
                 "gemini-3.1-flash-lite",

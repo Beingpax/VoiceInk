@@ -4,13 +4,20 @@ import SwiftUI
 
 struct ShortcutRecorder: View {
     let action: ShortcutAction
+    let defaultShortcut: Shortcut?
     let onShortcutChanged: () -> Void
 
     @StateObject private var recorder = ShortcutRecorderModel()
+    @State private var recorderID = UUID()
     @State private var shortcut: Shortcut?
 
-    init(action: ShortcutAction, onShortcutChanged: @escaping () -> Void = {}) {
+    init(
+        action: ShortcutAction,
+        defaultShortcut: Shortcut? = nil,
+        onShortcutChanged: @escaping () -> Void = {}
+    ) {
         self.action = action
+        self.defaultShortcut = defaultShortcut
         self.onShortcutChanged = onShortcutChanged
         _shortcut = State(initialValue: ShortcutStore.shortcut(for: action))
     }
@@ -21,6 +28,10 @@ struct ShortcutRecorder: View {
                 if recorder.isRecording {
                     recorder.cancel()
                 } else {
+                    NotificationCenter.default.post(
+                        name: Self.shortcutRecordingDidStart,
+                        object: recorderID
+                    )
                     clearShortcutBeforeRecording()
                     recorder.start(action: action) { newShortcut in
                         shortcut = newShortcut
@@ -29,7 +40,7 @@ struct ShortcutRecorder: View {
                 }
             } label: {
                 ShortcutVisualization(
-                    shortcut: recorder.isRecording ? recorder.previewShortcut : shortcut,
+                    shortcut: displayedShortcut,
                     isRecording: recorder.isRecording
                 )
             }
@@ -42,6 +53,10 @@ struct ShortcutRecorder: View {
             guard let changedAction = notification.object as? ShortcutAction, changedAction == action else { return }
             shortcut = ShortcutStore.shortcut(for: action)
         }
+        .onReceive(NotificationCenter.default.publisher(for: Self.shortcutRecordingDidStart)) { notification in
+            guard let activeRecorderID = notification.object as? UUID, activeRecorderID != recorderID else { return }
+            recorder.cancel()
+        }
         .onDisappear {
             recorder.cancel()
         }
@@ -52,7 +67,15 @@ struct ShortcutRecorder: View {
             return recorder.previewShortcut?.displayString ?? "Press shortcut"
         }
 
-        return shortcut?.displayString ?? "Record shortcut"
+        return displayedShortcut?.displayString ?? "Record shortcut"
+    }
+
+    private var displayedShortcut: Shortcut? {
+        if recorder.isRecording {
+            return recorder.previewShortcut
+        }
+
+        return shortcut ?? defaultShortcut
     }
 
     private func clearShortcutBeforeRecording() {
@@ -60,6 +83,8 @@ struct ShortcutRecorder: View {
         shortcut = nil
         onShortcutChanged()
     }
+
+    private static let shortcutRecordingDidStart = Notification.Name("ShortcutRecorderRecordingDidStart")
 }
 
 private struct ShortcutVisualization: View {

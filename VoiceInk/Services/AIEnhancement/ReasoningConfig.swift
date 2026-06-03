@@ -1,7 +1,7 @@
 import Foundation
 
 struct ReasoningConfig {
-    // Gemini Flash models support "none" to turn off thinking.
+    // Gemini 2.5 Flash models support "none" to turn off thinking.
     static let geminiNoneReasoningModels: Set<String> = [
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite"
@@ -14,6 +14,7 @@ struct ReasoningConfig {
 
     // These Gemini models only go down to "minimal".
     static let geminiMinimalReasoningModels: Set<String> = [
+        "gemini-3.5-flash",
         "gemini-2.5-pro",
         "gemini-3-flash-preview",
         "gemini-3.1-flash-lite"
