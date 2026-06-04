@@ -444,6 +444,7 @@ struct AssistantPanelView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(followUpTextColor)
                         .lineLimit(1)
+                        .truncationMode(.head)
                         .allowsHitTesting(false)
                 }
 

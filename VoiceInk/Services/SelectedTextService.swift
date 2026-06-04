@@ -10,8 +10,7 @@ final class SelectedTextService {
     private static let selectedTextStrategies: [TextStrategy] = [
         .accessibility,
         .menuAction,
-        .appleScript,
-        .shortcut
+        .appleScript
     ]
 
     static func fetchSelectedText() async -> String? {
