@@ -75,10 +75,12 @@ private struct MessageBubble: View {
                     .padding(.horizontal, 12)
 
                 ScrollView {
-                    Text(text)
-                        .font(.system(size: 14, weight: .regular))
-                        .lineSpacing(2)
-                        .textSelection(.enabled)
+                    MarkdownContentView(
+                        text,
+                        fontSize: 14,
+                        foregroundColor: AppTheme.Text.primary,
+                        alignment: isEnhanced ? .leading : .trailing
+                    )
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
                 }
@@ -109,6 +111,5 @@ private struct MessageBubble: View {
             if !isEnhanced { Spacer(minLength: 60) }
         }
     }
-
 
 }

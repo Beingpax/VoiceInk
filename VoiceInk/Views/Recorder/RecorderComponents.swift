@@ -528,11 +528,12 @@ private struct AssistantMessageBubble: View {
                 Spacer(minLength: 36)
             }
 
-            Text(.init(message.content))
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(isUser ? 0.92 : 0.86))
-                .lineLimit(isUser ? 4 : nil)
-                .textSelection(.enabled)
+            MarkdownContentView(
+                message.content,
+                fontSize: 12,
+                foregroundColor: .white.opacity(isUser ? 0.92 : 0.86),
+                alignment: .leading
+            )
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(isUser ? Color.white.opacity(0.16) : Color.white.opacity(0.08))

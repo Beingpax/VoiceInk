@@ -543,10 +543,11 @@ private struct HistoryCardRow: View {
             }
 
             ScrollView {
-                Text(displayText)
-                    .font(.body)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                MarkdownContentView(
+                    displayText,
+                    fontSize: 14,
+                    foregroundColor: AppTheme.Text.primary
+                )
             }
             .frame(maxHeight: 350)
             .overlay(alignment: .bottomTrailing) {
@@ -558,7 +559,7 @@ private struct HistoryCardRow: View {
                let url = URL(string: urlString) {
                 Divider()
                 AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
-                .padding(.vertical, 4)
+                    .padding(.vertical, 4)
             } else {
                 HStack {
                     Spacer()
@@ -573,5 +574,4 @@ private struct HistoryCardRow: View {
             }
         }
     }
-
 }
