@@ -39,14 +39,14 @@ struct OnboardingExperienceIntroCard: View {
     }
 
     private var introText: String {
-        if step.kind == .rewriteFormat {
-            return "Let's try it once again."
+        if let shortcutIntroTitle = step.shortcutIntroTitle {
+            return shortcutIntroTitle
         }
 
         return hasShortcut ? "Keyboard shortcut:" : "Choose a shortcut to get started."
     }
 
     private var showsShortcutControl: Bool {
-        step.kind != .rewriteFormat
+        step.showsShortcutControl
     }
 }

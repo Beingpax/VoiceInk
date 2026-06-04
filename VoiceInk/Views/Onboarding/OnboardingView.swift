@@ -96,7 +96,7 @@ struct OnboardingView: View {
                 case .experience:
                     OnboardingExperienceScreen(
                         step: coordinator.experienceStep,
-                        isInIntroPhase: coordinator.isExperienceInIntroPhase,
+                        isInIntroPhase: coordinator.isShowingExperienceIntroPhase,
                         shortcutAction: coordinator.experienceShortcutAction,
                         hasShortcut: coordinator.hasExperienceModeShortcut,
                         text: coordinator.currentExperienceText,
@@ -109,7 +109,9 @@ struct OnboardingView: View {
                             coordinator.flow.goToPreviousExperienceStep(enhancementService: enhancementService)
                         },
                         onContinueIntro: coordinator.flow.goToExperiencePracticePhase,
-                        onBackFromPractice: coordinator.flow.goToExperienceIntroPhase,
+                        onBackFromPractice: {
+                            coordinator.flow.goBackFromExperiencePractice(enhancementService: enhancementService)
+                        },
                         onAdvance: {
                             coordinator.flow.advanceExperienceStep(
                                 isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
@@ -120,6 +122,21 @@ struct OnboardingView: View {
                             coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
                         },
                         onAppear: coordinator.flow.activateExperienceModeForDemo
+                    )
+                        .transition(.opacity)
+                case .contextAwareness:
+                    OnboardingContextAwarenessScreen(
+                        contentMaxWidth: contentMaxWidth,
+                        onBack: {
+                            coordinator.flow.goToPreviousContextAwarenessStep(
+                                enhancementService: enhancementService
+                            )
+                        },
+                        onContinue: {
+                            coordinator.flow.continueFromContextAwarenessStep(
+                                enhancementService: enhancementService
+                            )
+                        }
                     )
                         .transition(.opacity)
                 case .trust:

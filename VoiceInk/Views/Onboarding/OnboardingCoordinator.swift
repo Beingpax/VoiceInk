@@ -90,22 +90,26 @@ final class OnboardingCoordinator: ObservableObject {
 
     var currentStepNumber: Int {
         if stage == .experience {
-            return OnboardingStage.baseStepCount + normalizedExperienceStepIndex + 1
+            return experienceStepNumber(for: normalizedExperienceStepIndex)
+        }
+
+        if stage == .contextAwareness {
+            return contextAwarenessStepNumber
         }
 
         if stage == .trust {
-            return OnboardingStage.baseStepCount + activeExperienceSteps.count + 1
+            return OnboardingStage.baseStepCount + activeExperienceSteps.count + contextAwarenessStepCount + 1
         }
 
         if stage == .license {
-            return OnboardingStage.baseStepCount + activeExperienceSteps.count + 2
+            return OnboardingStage.baseStepCount + activeExperienceSteps.count + contextAwarenessStepCount + 2
         }
 
         return stage.stepNumber
     }
 
     var totalStepCount: Int {
-        OnboardingStage.baseStepCount + activeExperienceSteps.count + 2
+        OnboardingStage.baseStepCount + activeExperienceSteps.count + contextAwarenessStepCount + 2
     }
 
     var experienceStep: OnboardingExperienceStep {
@@ -129,11 +133,32 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     var experienceShortcutAction: ShortcutAction {
-        if experienceStep.kind == .dictation {
-            return .primaryRecording
+        experienceStep.shortcutAction(modeTemplate: experienceModeTemplate)
+    }
+
+    var shouldSkipCurrentExperienceIntro: Bool {
+        experienceStep.shouldSkipShortcutIntro(
+            hasConfiguredShortcut: ShortcutStore.shortcut(for: experienceShortcutAction) != nil
+        )
+    }
+
+    var shouldShowContextAwarenessAfterCurrentExperience: Bool {
+        let nextIndex = normalizedExperienceStepIndex + 1
+        return experienceStep.showsContextAwarenessAfterCompletion &&
+            activeExperienceSteps.indices.contains(nextIndex)
+    }
+
+    var shouldShowContextAwarenessBeforeCurrentExperience: Bool {
+        let previousIndex = normalizedExperienceStepIndex - 1
+        guard activeExperienceSteps.indices.contains(previousIndex) else {
+            return false
         }
 
-        return .mode(experienceModeTemplate.id)
+        return activeExperienceSteps[previousIndex].showsContextAwarenessAfterCompletion
+    }
+
+    var isShowingExperienceIntroPhase: Bool {
+        isExperienceInIntroPhase && !shouldSkipCurrentExperienceIntro
     }
 
     var currentExperienceText: Binding<String> {
@@ -152,7 +177,7 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     var isCurrentExperienceComplete: Bool {
-        if experienceStep.kind == .respond {
+        if !experienceStep.requiresTextChangeForCompletion {
             return true
         }
 
@@ -198,10 +223,39 @@ final class OnboardingCoordinator: ObservableObject {
 
     var activeExperienceSteps: [OnboardingExperienceStep] {
         if hasSkippedAPISetup && !isSelectedAPIProviderVerified {
-            return OnboardingExperienceCatalog.steps.filter { $0.kind == .dictation }
+            return OnboardingExperienceCatalog.steps.filter { !$0.requiresVerifiedAPIProvider }
         }
 
         return OnboardingExperienceCatalog.steps
+    }
+
+    private var contextAwarenessInsertionIndices: [Int] {
+        activeExperienceSteps.indices.compactMap { index in
+            let nextIndex = index + 1
+            guard activeExperienceSteps[index].showsContextAwarenessAfterCompletion,
+                  activeExperienceSteps.indices.contains(nextIndex) else {
+                return nil
+            }
+
+            return nextIndex
+        }
+    }
+
+    private var contextAwarenessStepCount: Int {
+        contextAwarenessInsertionIndices.count
+    }
+
+    private var contextAwarenessStepNumber: Int {
+        guard let insertionIndex = contextAwarenessInsertionIndices.first else {
+            return OnboardingStage.baseStepCount + activeExperienceSteps.count + 1
+        }
+
+        return OnboardingStage.baseStepCount + insertionIndex + 1
+    }
+
+    private func experienceStepNumber(for index: Int) -> Int {
+        let priorContextScreens = contextAwarenessInsertionIndices.filter { $0 <= index }.count
+        return OnboardingStage.baseStepCount + index + priorContextScreens + 1
     }
 
     var selectedOnboardingProvider: AIProvider {

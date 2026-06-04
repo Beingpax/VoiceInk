@@ -83,17 +83,6 @@ struct OnboardingExperienceScreen: View {
     }
 
     private var systemImage: String {
-        switch step.kind {
-        case .dictation:
-            return "text.cursor"
-        case .enhance:
-            return "sparkles"
-        case .email:
-            return "envelope.fill"
-        case .rewrite, .rewriteFormat:
-            return "quote.bubble.fill"
-        case .respond:
-            return "text.bubble.fill"
-        }
+        step.systemImage
     }
 }

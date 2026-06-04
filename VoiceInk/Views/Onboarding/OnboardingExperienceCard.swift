@@ -13,7 +13,7 @@ struct OnboardingExperienceCard: View {
 
     var body: some View {
         VStack(spacing: 26) {
-            if step.kind == .respond {
+            if step.layout == .respond {
                 respondStage
             } else {
                 transformStage
@@ -244,12 +244,7 @@ private struct OnboardingExperienceInstruction: View {
             return "Choose"
         }
 
-        switch step.kind {
-        case .rewrite, .rewriteFormat:
-            return "Select all text, press"
-        default:
-            return "Press"
-        }
+        return step.configuredInstructionPrefix
     }
 
     private var horizontalSuffix: String {
@@ -257,14 +252,7 @@ private struct OnboardingExperienceInstruction: View {
             return "to get started."
         }
 
-        switch step.kind {
-        case .respond:
-            return ", ask the question, then press it again."
-        case .rewrite, .rewriteFormat:
-            return ", read the sample text aloud, then press it again."
-        default:
-            return " and read the sample text, then press it again."
-        }
+        return step.configuredHorizontalInstructionSuffix
     }
 
     private var wrappedSuffix: String {
@@ -272,13 +260,6 @@ private struct OnboardingExperienceInstruction: View {
             return "to get started."
         }
 
-        switch step.kind {
-        case .respond:
-            return "Ask the question, then press it again."
-        case .rewrite, .rewriteFormat:
-            return "Read the sample text aloud, then press it again."
-        default:
-            return "Read the sample text, then press it again."
-        }
+        return step.configuredWrappedInstructionSuffix
     }
 }

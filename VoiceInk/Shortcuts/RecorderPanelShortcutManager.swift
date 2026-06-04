@@ -124,7 +124,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
         firstEscapePressTime = now
         NotificationManager.shared.showNotification(
-            title: "Press ESC again to cancel recording",
+            title: "Press Esc again to cancel",
             type: .info,
             duration: escapeDoublePressThreshold
         )
