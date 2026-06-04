@@ -4,7 +4,8 @@ enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
             // Onboarding & General
-            "hasCompletedOnboarding": false,
+            "hasCompletedOnboardingV2": false,
+            "hasPreparedOnboardingV2": false,
             "enableAnnouncements": true,
 
             // Clipboard

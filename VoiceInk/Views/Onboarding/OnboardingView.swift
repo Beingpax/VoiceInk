@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 struct OnboardingView: View {
-    @Binding var hasCompletedOnboarding: Bool
+    @Binding var hasCompletedOnboardingV2: Bool
     @EnvironmentObject var fluidAudioModelManager: FluidAudioModelManager
     @EnvironmentObject var aiService: AIService
     @EnvironmentObject var enhancementService: AIEnhancementService
@@ -153,7 +153,7 @@ struct OnboardingView: View {
                             coordinator.flow.startLicenseTrial(
                                 isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
                             ) {
-                                hasCompletedOnboarding = true
+                                hasCompletedOnboardingV2 = true
                             }
                         },
                         onActivate: coordinator.flow.activateLicense,
@@ -161,7 +161,7 @@ struct OnboardingView: View {
                             coordinator.flow.completeOnboarding(
                                 isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
                             ) {
-                                hasCompletedOnboarding = true
+                                hasCompletedOnboardingV2 = true
                             }
                         }
                     )
@@ -222,5 +222,5 @@ struct OnboardingView: View {
 }
 
 #Preview {
-    OnboardingView(hasCompletedOnboarding: .constant(false))
+    OnboardingView(hasCompletedOnboardingV2: .constant(false))
 }

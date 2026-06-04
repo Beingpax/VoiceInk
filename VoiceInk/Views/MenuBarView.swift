@@ -13,12 +13,12 @@ struct MenuBarView: View {
     @EnvironmentObject var aiService: AIService
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
     @State private var launchAtLoginEnabled = LaunchAtLogin.isEnabled
     
     var body: some View {
         VStack {
-            if hasCompletedOnboarding {
+            if hasCompletedOnboardingV2 {
                 completedOnboardingMenu
             } else {
                 onboardingMenu

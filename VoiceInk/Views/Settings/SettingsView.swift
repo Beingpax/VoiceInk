@@ -13,7 +13,7 @@ struct SettingsView: View {
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = true
+    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
@@ -272,7 +272,7 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) { }
             Button("Reset", role: .destructive) {
                 DispatchQueue.main.async {
-                    hasCompletedOnboarding = false
+                    hasCompletedOnboardingV2 = false
                 }
             }
         } message: {

@@ -24,7 +24,6 @@ enum BackupImporter {
 
     @MainActor
     static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
-        var shouldSeedImportedPrompts = false
         var shouldRepairModePromptSelections = false
 
         if categories.contains(.dictionary) {
@@ -44,7 +43,6 @@ enum BackupImporter {
 
         if categories.contains(.prompts) {
             enhancementService.customPrompts = backup.customPrompts
-            shouldSeedImportedPrompts = true
             shouldRepairModePromptSelections = true
             print("Successfully imported \(backup.customPrompts.count) prompts.")
         }
@@ -81,10 +79,6 @@ enum BackupImporter {
                 }
             }
             print("Successfully imported \(backup.modeConfigs.count) Mode configurations.")
-        }
-
-        if shouldSeedImportedPrompts {
-            enhancementService.ensureDefaultPromptsExist()
         }
 
         if shouldRepairModePromptSelections {

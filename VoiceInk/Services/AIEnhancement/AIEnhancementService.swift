@@ -47,11 +47,6 @@ class AIEnhancementService: ObservableObject {
             self.customPrompts = []
         }
 
-        let migrationResult = PromptDataMigration.migrate(self.customPrompts)
-        self.customPrompts = migrationResult.prompts
-        if migrationResult.didChange {
-            savePrompts()
-        }
         repairModePromptSelections()
 
         NotificationCenter.default.addObserver(
@@ -455,13 +450,6 @@ class AIEnhancementService: ObservableObject {
     func deletePrompt(_ prompt: CustomPrompt) {
         customPrompts.removeAll { $0.id == prompt.id }
         repairModePromptSelections()
-    }
-
-    func ensureDefaultPromptsExist() {
-        let seedResult = PromptDataMigration.ensureDefaultPromptsExist(in: customPrompts)
-        if seedResult.didChange {
-            customPrompts = seedResult.prompts
-        }
     }
 
     func repairModePromptSelections() {

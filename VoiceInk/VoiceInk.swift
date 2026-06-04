@@ -23,7 +23,7 @@ struct VoiceInkApp: App {
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
     @State private var didShowAccessibilityReminder = false
@@ -42,6 +42,7 @@ struct VoiceInkApp: App {
         URLCache.shared = URLCache(memoryCapacity: 0, diskCapacity: 0)
 
         AppDefaults.registerDefaults()
+        OnboardingV2Migration.prepareIfNeeded()
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
         // Keep existing model order stable; append new models after synced entities.
@@ -276,7 +277,7 @@ struct VoiceInkApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if hasCompletedOnboarding {
+                if hasCompletedOnboardingV2 {
                     ContentView()
                         .environmentObject(engine)
                         .environmentObject(whisperModelManager)
@@ -334,7 +335,7 @@ struct VoiceInkApp: App {
                             audioCleanupManager.stopAutomaticCleanup()
                         }
                 } else {
-                    OnboardingView(hasCompletedOnboarding: $hasCompletedOnboarding)
+                    OnboardingView(hasCompletedOnboardingV2: $hasCompletedOnboardingV2)
                         .environmentObject(fluidAudioModelManager)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
