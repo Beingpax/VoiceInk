@@ -50,9 +50,9 @@ class CustomSoundManager: ObservableObject {
         var defaultBuiltInSound: BuiltInSound {
             switch self {
             case .start:
-                return .sound1
+                return .sound5
             case .stop:
-                return .sound2
+                return .sound6
             }
         }
     }
