@@ -1,6 +1,15 @@
 {
-  "originHash" : "c1baea6abc834e2c2fd008ca760fa57e9bfdc3d3f2f343c34d0eda4345556f89",
+  "originHash" : "962d15e4469c46f0295027f5076e70baac4c214907c6a9cc9e4fa8d15511252d",
   "pins" : [
+    {
+      "identity" : "axswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tisfeng/AXSwift.git",
+      "state" : {
+        "revision" : "d737b605c99f6e0f6a21448d0836110bd15b7710",
+        "version" : "0.3.7"
+      }
+    },
     {
       "identity" : "fluidaudio",
       "kind" : "remoteSourceControl",
@@ -8,6 +17,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "50aa07193e84b9cf192d8f36041c24a9a4867cd6"
+      }
+    },
+    {
+      "identity" : "keysender",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jordanbaird/KeySender",
+      "state" : {
+        "revision" : "99584bf1a03ab600cc44be89a2dcd98b2dbeb9de",
+        "version" : "0.0.5"
       }
     },
     {
@@ -35,6 +53,15 @@
       "state" : {
         "branch" : "master",
         "revision" : "b97fa53f0654c8e33519e8a601b0bead3abd310a"
+      }
+    },
+    {
+      "identity" : "selectedtextkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Beingpax/SelectedTextKit.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "9c51732dd6b6c1dad161762ec3bb8bb73bc82833"
       }
     },
     {

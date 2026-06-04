@@ -1,10 +1,18 @@
 import Foundation
 import ApplicationServices
 import os
+import SelectedTextKit
 
 @MainActor
 final class SelectedTextService {
     private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "SelectedTextService")
+    private static let textManager = SelectedTextManager.shared
+    private static let selectedTextStrategies: [TextStrategy] = [
+        .accessibility,
+        .menuAction,
+        .appleScript,
+        .shortcut
+    ]
 
     static func fetchSelectedText() async -> String? {
         guard AXIsProcessTrusted() else {
@@ -12,37 +20,12 @@ final class SelectedTextService {
             return nil
         }
 
-        return getSelectedTextByAccessibility()
-    }
-
-    private static func getSelectedTextByAccessibility() -> String? {
-        let systemWideElement = AXUIElementCreateSystemWide()
-        guard let focusedElement = copyAXElementAttribute(kAXFocusedUIElementAttribute, from: systemWideElement),
-              let selectedText = copyStringAttribute(kAXSelectedTextAttribute, from: focusedElement) else {
+        do {
+            return normalized(try await textManager.getSelectedText(strategies: selectedTextStrategies))
+        } catch {
+            logger.debug("SelectedTextKit failed to capture selected text: \(error.localizedDescription, privacy: .public)")
             return nil
         }
-
-        return normalized(selectedText)
-    }
-
-    private static func copyAXElementAttribute(_ attribute: String, from element: AXUIElement) -> AXUIElement? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
-              let value,
-              CFGetTypeID(value) == AXUIElementGetTypeID() else {
-            return nil
-        }
-
-        return (value as! AXUIElement)
-    }
-
-    private static func copyStringAttribute(_ attribute: String, from element: AXUIElement) -> String? {
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else {
-            return nil
-        }
-
-        return value as? String
     }
 
     private static func normalized(_ text: String?) -> String? {
