@@ -83,7 +83,7 @@ final class OnboardingPermissionController {
         case .microphone:
             return permissionStatus.requiresSettings ? "Open Settings" : "Allow"
         case .accessibility, .screenRecording:
-            return "Open Settings"
+            return "Allow"
         }
     }
 
