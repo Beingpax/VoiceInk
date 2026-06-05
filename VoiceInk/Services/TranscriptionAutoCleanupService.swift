@@ -11,8 +11,6 @@ class TranscriptionAutoCleanupService {
     private let keyIsEnabled = "IsTranscriptionCleanupEnabled"
     private let keyRetentionMinutes = "TranscriptionRetentionMinutes"
 
-    private let defaultRetentionMinutes: Int = 24 * 60
-
     private var recordingsDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("com.prakashjoshipax.VoiceInk")

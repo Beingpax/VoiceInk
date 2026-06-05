@@ -83,10 +83,6 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         return model
     }
 
-    private var primaryShortcutString: String {
-        ShortcutStore.shortcut(for: .primaryRecording)?.displayString ?? "⌃⇧Z"
-    }
-
     // Drag-to-Target State
     @State private var dragOffset = CGSize.zero
     @State private var isDraggingToTarget = false

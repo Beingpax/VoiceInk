@@ -31,9 +31,6 @@ struct VoiceInkApp: App {
     // Audio cleanup manager for automatic deletion of old audio files
     private let audioCleanupManager = AudioCleanupManager.shared
 
-    // Transcription auto-cleanup service for zero data retention
-    private let transcriptionAutoCleanupService = TranscriptionAutoCleanupService.shared
-
     // Model prewarm service for optimizing model on wake from sleep
     @StateObject private var prewarmService: ModelPrewarmService
 

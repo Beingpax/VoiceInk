@@ -8,7 +8,6 @@ class AudioCleanupManager {
     private var cleanupTimer: Timer?
     
     // Default cleanup settings
-    private let defaultRetentionDays = 7
     private let cleanupCheckInterval: TimeInterval = 86400 // Check once per day (in seconds)
     
     private init() {}
