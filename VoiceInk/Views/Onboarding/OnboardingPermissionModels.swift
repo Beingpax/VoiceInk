@@ -2,6 +2,7 @@ import SwiftUI
 
 enum OnboardingStage: String, CaseIterable {
     case permissions
+    case microphone
     case model
     case api
     case experience
@@ -13,18 +14,20 @@ enum OnboardingStage: String, CaseIterable {
         switch self {
         case .permissions:
             return 1
-        case .model:
+        case .microphone:
             return 2
-        case .api:
+        case .model:
             return 3
-        case .experience:
+        case .api:
             return 4
-        case .contextAwareness:
+        case .experience:
             return 5
-        case .trust:
+        case .contextAwareness:
             return 6
-        case .license:
+        case .trust:
             return 7
+        case .license:
+            return 8
         }
     }
 
@@ -32,6 +35,8 @@ enum OnboardingStage: String, CaseIterable {
         switch self {
         case .permissions:
             return "lock.shield"
+        case .microphone:
+            return "mic"
         case .model:
             return "arrow.down"
         case .api:
@@ -51,6 +56,8 @@ enum OnboardingStage: String, CaseIterable {
         switch self {
         case .permissions:
             return "Allow Permissions"
+        case .microphone:
+            return "Choose Microphone"
         case .model:
             return "Download Transcription Model"
         case .api:
@@ -70,6 +77,8 @@ enum OnboardingStage: String, CaseIterable {
         switch self {
         case .permissions:
             return "Allow VoiceInk to work across all your apps."
+        case .microphone:
+            return "Pick the microphone VoiceInk should use for recordings."
         case .model:
             return "VoiceInk will download NVIDIA's Parakeet model to set up fast local transcription."
         case .api:
@@ -86,7 +95,7 @@ enum OnboardingStage: String, CaseIterable {
     }
 
     static var baseStepCount: Int {
-        3
+        4
     }
 }
 

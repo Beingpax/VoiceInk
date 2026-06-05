@@ -88,6 +88,11 @@ final class OnboardingCoordinator: ObservableObject {
         OnboardingPermissionKind.required.allSatisfy { permissions.status(for: $0).isGranted }
     }
 
+    var hasSelectedOnboardingMicrophone: Bool {
+        defaults.audioInputModeRawValue == AudioInputMode.custom.rawValue &&
+            defaults.selectedAudioDeviceUID != nil
+    }
+
     var currentStepNumber: Int {
         if stage == .experience {
             return experienceStepNumber(for: normalizedExperienceStepIndex)
@@ -295,6 +300,7 @@ final class OnboardingCoordinator: ObservableObject {
 
     func isReadyForExperience(isTranscriptionModelDownloaded: Bool) -> Bool {
         requiredPermissionsGranted &&
+            hasSelectedOnboardingMicrophone &&
             isTranscriptionModelDownloaded &&
             (isSelectedAPIProviderVerified || hasSkippedAPISetup)
     }

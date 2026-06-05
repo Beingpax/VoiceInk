@@ -12,8 +12,14 @@ final class OnboardingFlowController {
         coordinator.storedStage = OnboardingStage.permissions.rawValue
     }
 
-    func goToModelStep() {
+    func goToMicrophoneStep() {
         guard coordinator.requiredPermissionsGranted else { return }
+        coordinator.storedStage = OnboardingStage.microphone.rawValue
+    }
+
+    func goToModelStep() {
+        guard coordinator.requiredPermissionsGranted,
+              coordinator.hasSelectedOnboardingMicrophone else { return }
         coordinator.storedStage = OnboardingStage.model.rawValue
     }
 
@@ -21,10 +27,21 @@ final class OnboardingFlowController {
         isTranscriptionModelDownloaded: Bool,
         aiService: AIService
     ) {
-        guard coordinator.requiredPermissionsGranted, isTranscriptionModelDownloaded else { return }
+        guard coordinator.requiredPermissionsGranted,
+              coordinator.hasSelectedOnboardingMicrophone,
+              isTranscriptionModelDownloaded else { return }
         ensureDefaultOnboardingProvider()
         selectOnboardingProvider(coordinator.selectedOnboardingProvider, aiService: aiService)
         coordinator.storedStage = OnboardingStage.api.rawValue
+    }
+
+    func goBackToModelStep() {
+        guard coordinator.requiredPermissionsGranted else {
+            goToPermissionsStep()
+            return
+        }
+
+        coordinator.storedStage = OnboardingStage.model.rawValue
     }
 
     func goToExperienceStep(
@@ -198,11 +215,19 @@ final class OnboardingFlowController {
         isTranscriptionModelDownloaded: Bool,
         enhancementService: AIEnhancementService
     ) {
-        if coordinator.stage == .model && !coordinator.requiredPermissionsGranted {
+        if coordinator.stage == .microphone && !coordinator.requiredPermissionsGranted {
             goToPermissionsStep()
         }
 
-        if coordinator.stage == .api && (!coordinator.requiredPermissionsGranted || !isTranscriptionModelDownloaded) {
+        if coordinator.stage == .model &&
+            (!coordinator.requiredPermissionsGranted || !coordinator.hasSelectedOnboardingMicrophone) {
+            goToFirstIncompleteSetupStep(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded)
+        }
+
+        if coordinator.stage == .api &&
+            (!coordinator.requiredPermissionsGranted ||
+             !coordinator.hasSelectedOnboardingMicrophone ||
+             !isTranscriptionModelDownloaded) {
             goToFirstIncompleteSetupStep(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded)
         }
 
@@ -229,6 +254,8 @@ final class OnboardingFlowController {
     func goToFirstIncompleteSetupStep(isTranscriptionModelDownloaded: Bool) {
         if !coordinator.requiredPermissionsGranted {
             coordinator.storedStage = OnboardingStage.permissions.rawValue
+        } else if !coordinator.hasSelectedOnboardingMicrophone {
+            coordinator.storedStage = OnboardingStage.microphone.rawValue
         } else if !isTranscriptionModelDownloaded {
             coordinator.storedStage = OnboardingStage.model.rawValue
         } else {
@@ -241,6 +268,7 @@ final class OnboardingFlowController {
         modelManager: FluidAudioModelManager
     ) {
         guard coordinator.requiredPermissionsGranted,
+              coordinator.hasSelectedOnboardingMicrophone,
               !modelManager.isFluidAudioModelDownloaded(model),
               !modelManager.isFluidAudioModelDownloading(model) else {
             return

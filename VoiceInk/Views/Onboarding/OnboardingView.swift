@@ -36,6 +36,13 @@ struct OnboardingView: View {
                             NSApplication.shared.terminate(nil)
                         },
                         onRecheck: coordinator.permissions.refreshPermissionStatuses,
+                        onContinue: coordinator.flow.goToMicrophoneStep
+                    )
+                        .transition(.opacity)
+                case .microphone:
+                    OnboardingMicrophoneScreen(
+                        contentMaxWidth: contentMaxWidth,
+                        onBack: coordinator.flow.goToPermissionsStep,
                         onContinue: coordinator.flow.goToModelStep
                     )
                         .transition(.opacity)
@@ -56,7 +63,7 @@ struct OnboardingView: View {
                                 modelManager: fluidAudioModelManager
                             )
                         },
-                        onBack: coordinator.flow.goToPermissionsStep,
+                        onBack: coordinator.flow.goToMicrophoneStep,
                         onContinue: {
                             coordinator.flow.goToAPIStep(
                                 isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
@@ -77,7 +84,7 @@ struct OnboardingView: View {
                         ),
                         isShowingSkipWarning: $coordinator.isShowingSkipAPISetupWarning,
                         onVerificationChanged: coordinator.flow.refreshAPIVerification,
-                        onBack: coordinator.flow.goToModelStep,
+                        onBack: coordinator.flow.goBackToModelStep,
                         onContinue: {
                             coordinator.flow.goToExperienceStep(
                                 isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
