@@ -56,7 +56,7 @@ private struct TrustHeader: View {
                         .fill(AppTheme.Surface.controlActive)
                 )
 
-            Text("VoiceInk is private by default.")
+            Text("VoiceInk is private by default")
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(AppTheme.Text.primary)
                 .multilineTextAlignment(.center)
