@@ -33,7 +33,7 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
     
     var finalPromptText: String {
         if useSystemInstructions {
-            return String(format: AIPrompts.customPromptTemplate, self.promptText)
+            return String(format: AIPrompts.enhancementSystemTemplate, self.promptText)
         } else {
             return self.promptText
         }

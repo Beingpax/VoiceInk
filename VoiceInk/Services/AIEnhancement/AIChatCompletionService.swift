@@ -91,18 +91,30 @@ extension AIService {
     }
 
     private func chatPrompt(from messages: [ChatMessage]) -> String {
-        messages.map { message in
+        let formattedMessages = messages.map { message in
             let label: String
             switch message.role {
             case "assistant":
-                label = "Assistant"
+                label = "assistant"
             case "user":
-                label = "User"
+                label = "user"
+            case "system":
+                label = "system"
             default:
-                label = message.role.capitalized
+                label = "other"
             }
-            return "\(label):\n\(message.content)"
+            return """
+            <message role="\(label)">
+            \(message.content)
+            </message>
+            """
         }
         .joined(separator: "\n\n")
+
+        return """
+        <conversation>
+        \(formattedMessages)
+        </conversation>
+        """
     }
 }

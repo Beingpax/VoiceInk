@@ -98,13 +98,15 @@ final class LocalCLIService {
 
     static func makeFullPrompt(systemPrompt: String, userPrompt: String) -> String {
         """
-        <SYSTEM_PROMPT>
+        # System Message
+        <SYSTEM_MESSAGE>
         \(systemPrompt)
-        </SYSTEM_PROMPT>
+        </SYSTEM_MESSAGE>
 
-        <USER_PROMPT>
+        # User Message Payload
+        <USER_MESSAGE_PAYLOAD>
         \(userPrompt)
-        </USER_PROMPT>
+        </USER_MESSAGE_PAYLOAD>
         """
     }
 
