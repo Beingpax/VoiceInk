@@ -69,7 +69,7 @@ enum OnboardingStage: String, CaseIterable {
     var subtitle: String {
         switch self {
         case .permissions:
-            return "VoiceInk needs a few macOS permissions before it can record, paste, and use screen context."
+            return "Allow VoiceInk to work across all your apps."
         case .model:
             return "VoiceInk will download NVIDIA's Parakeet model to set up fast local transcription."
         case .api:
@@ -98,7 +98,7 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     static var required: [OnboardingPermissionKind] {
-        [.microphone, .accessibility, .screenRecording]
+        [.microphone, .accessibility]
     }
 
     var isRequired: Bool {
@@ -110,25 +110,19 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
         case .microphone:
             return OnboardingPermissionDescriptor(
                 title: "Microphone",
-                subtitle: "Records your voice for transcription.",
-                detail: "VoiceInk cannot start a recording session without this.",
-                requirement: "Required"
+                subtitle: "VoiceInk uses your microphone to capture your voice."
             )
 
         case .accessibility:
             return OnboardingPermissionDescriptor(
                 title: "Accessibility",
-                subtitle: "Lets VoiceInk paste text, auto-send, and read selected text.",
-                detail: "This is what allows VoiceInk to work smoothly across apps.",
-                requirement: "Required"
+                subtitle: "VoiceInk uses Accessibility to type transcriptions directly into any app."
             )
 
         case .screenRecording:
             return OnboardingPermissionDescriptor(
                 title: "Screen Recording",
-                subtitle: "Lets VoiceInk read visible context for better AI responses.",
-                detail: "After granting access, macOS may require you to restart VoiceInk.",
-                requirement: "Required"
+                subtitle: "VoiceInk reads visible screen content to improve the accuracy of transcripts."
             )
         }
     }
@@ -137,8 +131,6 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
 struct OnboardingPermissionDescriptor {
     let title: String
     let subtitle: String
-    let detail: String
-    let requirement: String
 }
 
 enum OnboardingPermissionStatus: Equatable {

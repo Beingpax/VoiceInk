@@ -162,9 +162,18 @@ final class OnboardingPermissionController {
 
     private func requestScreenRecording() {
         coordinator.hasRequestedScreenRecording = true
-        CGRequestScreenCaptureAccess()
-        openPrivacySettings(.screenRecording)
         startPollingPermissionStatus()
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            let isGranted = await ScreenCaptureService.requestScreenCapturePermissionRegistration()
+            refreshPermissionStatuses()
+
+            if !isGranted {
+                openPrivacySettings(.screenRecording)
+            }
+        }
     }
 
     private func advanceFrom(_ permission: OnboardingPermissionKind) {

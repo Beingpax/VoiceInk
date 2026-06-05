@@ -19,6 +19,24 @@ class ScreenCaptureService: ObservableObject {
     private static let maximumCaptureDimension: CGFloat = 2800
     private static let focusedWindowFrameTolerance: CGFloat = 96
 
+    static func requestScreenCapturePermissionRegistration() async -> Bool {
+        if CGPreflightScreenCaptureAccess() {
+            return true
+        }
+
+        if CGRequestScreenCaptureAccess() {
+            return true
+        }
+
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        } catch {
+            return CGPreflightScreenCaptureAccess()
+        }
+
+        return CGPreflightScreenCaptureAccess()
+    }
+
     func captureAndExtractText() async -> String? {
         guard !isCapturing else { return nil }
 

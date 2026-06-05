@@ -18,19 +18,9 @@ struct PermissionStepRow: View {
                 stepNumberView
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(descriptor.title)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(AppTheme.Text.primary)
-
-                        Text(descriptor.requirement)
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(AppTheme.Text.secondary)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(AppTheme.Surface.subtle)
-                            .clipShape(Capsule())
-                    }
+                    Text(descriptor.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(AppTheme.Text.primary)
 
                     Text(descriptor.subtitle)
                         .font(.system(size: 12))
