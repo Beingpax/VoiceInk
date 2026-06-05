@@ -156,7 +156,7 @@ enum OnboardingExperienceCatalog {
             starterModeKind: .clean,
             defaultModeKind: .clean,
             shortcutBehavior: .primaryRecording(
-                skipsIntroWhenConfigured: true,
+                skipsIntroWhenConfigured: false,
                 clearsOnIntro: true
             ),
             requiresVerifiedAPIProvider: false,
@@ -205,7 +205,7 @@ enum OnboardingExperienceCatalog {
             shortcutBehavior: .starterMode(clearsOnIntro: true),
             systemImage: "quote.bubble.fill",
             title: "Try Rewrite",
-            subtitle: "Start with selected text, tell VoiceInk what change you want, and it will replace the text for you.",
+            subtitle: "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you.",
             sampleLabel: "Sample text",
             sampleText: "Make it a checklist and add appropriate emoji for each item at the end.",
             fieldPlaceholder: "Text to rewrite will appear here.",
@@ -221,7 +221,7 @@ enum OnboardingExperienceCatalog {
             shortcutBehavior: .starterMode(clearsOnIntro: false),
             systemImage: "quote.bubble.fill",
             title: "Try Rewrite",
-            subtitle: "Start with selected text, tell VoiceInk what change you want, and it will replace the text for you.",
+            subtitle: "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you.",
             sampleLabel: "Sample text",
             sampleText: "Translate this into English.",
             fieldPlaceholder: "Text to rewrite will appear here.",
