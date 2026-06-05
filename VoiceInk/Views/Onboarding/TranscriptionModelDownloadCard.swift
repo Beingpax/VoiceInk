@@ -12,7 +12,7 @@ struct TranscriptionModelDownloadCard: View {
             header
             modelMetadata
 
-            if let status, !isDownloaded {
+            if let status {
                 progressPanel(status)
             }
         }
@@ -46,7 +46,10 @@ struct TranscriptionModelDownloadCard: View {
 
     @ViewBuilder
     private var statusControl: some View {
-        if isDownloaded {
+        if isDownloading {
+            downloadButton
+                .fixedSize()
+        } else if isDownloaded {
             statusBadge
                 .fixedSize()
         } else {

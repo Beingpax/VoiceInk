@@ -30,7 +30,7 @@ struct OnboardingModelScreen: View {
             OnboardingBottomBar(
                 leadingTitle: "Back",
                 primaryTitle: "Continue",
-                isPrimaryEnabled: isDownloaded,
+                isPrimaryEnabled: isDownloaded && !isDownloading,
                 onLeading: onBack,
                 onPrimary: onContinue
             )

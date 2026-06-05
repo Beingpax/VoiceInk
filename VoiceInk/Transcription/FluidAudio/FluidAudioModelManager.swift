@@ -11,6 +11,7 @@ struct FluidAudioDownloadStatus {
 @MainActor
 class FluidAudioModelManager: ObservableObject {
     @Published private var downloadStatuses: [String: FluidAudioDownloadStatus] = [:]
+    @Published private var modelStateRevision = 0
     private var activeDownloadIDs: [String: UUID] = [:]
 
     var onModelDeleted: ((String) -> Void)?
@@ -89,6 +90,7 @@ class FluidAudioModelManager: ObservableObject {
                 version: version,
                 progressHandler: progressHandler
             )
+            modelStateRevision += 1
         } catch {
             logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error.localizedDescription, privacy: .public)")
         }
@@ -108,6 +110,7 @@ class FluidAudioModelManager: ObservableObject {
         }
 
         // Notify TranscriptionModelManager to clear currentTranscriptionModel if it matches
+        modelStateRevision += 1
         onModelDeleted?(model.name)
     }
 
