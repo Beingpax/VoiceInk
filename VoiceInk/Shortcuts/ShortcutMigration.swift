@@ -31,7 +31,7 @@ struct ShortcutBackup: Codable {
 
 enum ShortcutMigration {
     static func migrateLegacyShortcutsIfNeeded() {
-        migrateLegacyCustomRecordingShortcutsIfNeeded()
+        discardLegacyCustomRecordingShortcutsIfNeeded()
         migrateLegacyKeyboardShortcutsIfNeeded()
     }
 
@@ -80,8 +80,6 @@ enum ShortcutMigration {
         }
 
         if !allowsNone {
-            migrateDefaultPrimaryShortcutIfNeeded(for: action)
-            UserDefaults.standard.set(RecordingShortcutManager.ShortcutSelection.custom.rawValue, forKey: userDefaultsKey)
             return .custom
         }
 
@@ -128,7 +126,8 @@ enum ShortcutMigration {
             return selection
         }
 
-        if let shortcut = legacyPresetShortcut(for: storedValue) {
+        if let shortcut = legacyPresetShortcut(for: storedValue),
+           !isRecordingShortcutAction(action) {
             ShortcutStore.setShortcut(shortcut, for: action)
             saveShortcutSelection(.custom, forKey: userDefaultsKey, removing: legacyKey)
             return .custom
@@ -166,6 +165,10 @@ enum ShortcutMigration {
             removeLegacyKeyboardShortcut(for: action)
         }
 
+        guard !isRecordingShortcutAction(action) else {
+            return
+        }
+
         guard
             ShortcutStore.rawShortcut(for: action) == nil,
             !ShortcutStore.isShortcutCleared(for: action),
@@ -177,46 +180,17 @@ enum ShortcutMigration {
         ShortcutStore.setShortcut(shortcut, for: action)
     }
 
-    private static func migrateLegacyCustomRecordingShortcutsIfNeeded() {
+    private static func discardLegacyCustomRecordingShortcutsIfNeeded() {
         let migrationKey = "Shortcut_LegacyCustomRecordingShortcutsMigrated"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else {
             return
         }
 
         for action in [ShortcutAction.primaryRecording, .secondaryRecording] {
-            migrateLegacyCustomRecordingShortcut(for: action)
-        }
-
-        UserDefaults.standard.set(true, forKey: migrationKey)
-    }
-
-    private static func migrateLegacyCustomRecordingShortcut(for action: ShortcutAction) {
-        defer {
             removeLegacyCustomRecordingShortcut(for: action)
         }
 
-        guard
-            ShortcutStore.rawShortcut(for: action) == nil,
-            !ShortcutStore.isShortcutCleared(for: action),
-            let data = UserDefaults.standard.data(forKey: legacyCustomRecordingShortcutKey(for: action)),
-            let shortcut = try? JSONDecoder().decode(Shortcut.self, from: data)
-        else {
-            return
-        }
-
-        ShortcutStore.setShortcut(shortcut, for: action)
-    }
-
-    private static func migrateDefaultPrimaryShortcutIfNeeded(for action: ShortcutAction) {
-        guard
-            action == .primaryRecording,
-            ShortcutStore.shortcut(for: action) == nil,
-            let shortcut = legacyPresetShortcut(for: "rightCommand")
-        else {
-            return
-        }
-
-        ShortcutStore.setShortcut(shortcut, for: action)
+        UserDefaults.standard.set(true, forKey: migrationKey)
     }
 
     private static func legacyPresetShortcut(for rawValue: String) -> Shortcut? {
@@ -237,6 +211,15 @@ enum ShortcutMigration {
             return .modifierOnly(keyCode: UInt16(kVK_RightShift), modifierFlags: [.shift])
         default:
             return nil
+        }
+    }
+
+    private static func isRecordingShortcutAction(_ action: ShortcutAction) -> Bool {
+        switch action {
+        case .primaryRecording, .secondaryRecording:
+            return true
+        default:
+            return false
         }
     }
 
