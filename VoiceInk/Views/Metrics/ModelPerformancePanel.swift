@@ -234,16 +234,8 @@ private struct ModelPerformancePanelContent: View {
     // MARK: - Usage Stats Grid
 
     private var totalSessions: Int { metrics.count }
-    private var totalWords: Int { metrics.reduce(0) { $0 + $1.wordCount } }
-    private var totalAudioMinutes: Double { metrics.reduce(0.0) { $0 + $1.audioDuration } / 60.0 }
     private var totalProcessingSeconds: Double { metrics.compactMap(\.transcriptionDuration).reduce(0, +) }
-    private var avgWordsPerSession: Double { totalSessions > 0 ? Double(totalWords) / Double(totalSessions) : 0 }
-    private var avgSpeedFactor: Double {
-        let factors = metrics.compactMap(\.speedFactor).filter { $0 > 0 }
-        return factors.isEmpty ? 0 : factors.reduce(0, +) / Double(factors.count)
-    }
     private var enhancedCount: Int { metrics.filter { $0.aiEnhancementModelName != nil }.count }
-    private var powerModeCount: Int { metrics.filter { $0.powerModeName != nil }.count }
 
     private var usageStatsGrid: some View {
         let fastestModel = modelStats.first
@@ -295,17 +287,6 @@ private struct ModelPerformancePanelContent: View {
                 .shadow(color: Color.black.opacity(0.03), radius: 4, x: 0, y: 2)
             }
         }
-    }
-
-    private func formatNumber(_ n: Int) -> String {
-        if n >= 1_000_000 { return String(format: "%.1fM", Double(n) / 1_000_000) }
-        if n >= 1_000 { return String(format: "%.1fK", Double(n) / 1_000) }
-        return "\(n)"
-    }
-
-    private func formatDuration(_ minutes: Double) -> String {
-        if minutes >= 60 { return String(format: "%.1fh", minutes / 60) }
-        return String(format: "%.0fm", minutes)
     }
 
     // MARK: - Transcription Model Card

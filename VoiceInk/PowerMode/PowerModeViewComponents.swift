@@ -97,8 +97,6 @@ struct ConfigurationRow: View {
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @State private var isHovering = false
     
-    private let maxAppIconsToShow = 5
-    
     private var selectedPrompt: CustomPrompt? {
         guard let promptId = config.selectedPrompt,
               let uuid = UUID(uuidString: promptId) else { return nil }
@@ -139,14 +137,6 @@ struct ConfigurationRow: View {
     private var appText: String {
         if appCount == 0 { return "" }
         return appCount == 1 ? "1 App" : "\(appCount) Apps"
-    }
-    
-    private var extraAppsCount: Int {
-        return max(0, appCount - maxAppIconsToShow)
-    }
-    
-    private var visibleAppConfigs: [AppConfig] {
-        return Array(config.appConfigs?.prefix(maxAppIconsToShow) ?? [])
     }
     
     var body: some View {

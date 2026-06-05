@@ -40,18 +40,6 @@ struct CloudModelCardView: View {
     private var supportsMultiKey: Bool {
         return model.provider == .elevenLabs
     }
-
-    private var configuredKeyCount: Int {
-        APIKeyManager.shared.apiKeyCounts(forProvider: providerKey).enabled
-    }
-
-    private var configuredBadgeText: String {
-        if supportsMultiKey {
-            let count = configuredKeyCount
-            return count > 1 ? "Configured (\(count) keys)" : "Configured"
-        }
-        return "Configured"
-    }
     
     private var providerKey: String {
         CloudProviderRegistry.provider(for: model.provider)?.providerKey ?? model.provider.rawValue
