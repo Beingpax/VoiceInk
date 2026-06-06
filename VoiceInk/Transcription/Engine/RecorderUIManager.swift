@@ -77,7 +77,6 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     private func showRecorderPanel() {
         guard let engine = engine, let recorder = recorder else { return }
-        logger.notice("Showing \(self.recorderPanelStyle.rawValue, privacy: .public) recorder panel")
 
         switch recorderPanelStyle {
         case .notch:
@@ -162,30 +161,24 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     func toggleRecorderPanel(modeId: UUID? = nil) async {
         guard let engine = engine else { return }
-        logger.notice("toggleRecorderPanel called – visible=\(self.isRecorderPanelVisible, privacy: .public), state=\(String(describing: engine.recordingState), privacy: .public)")
 
         if isRecorderPanelVisible {
             switch engine.recordingState {
             case .recording:
-                logger.notice("toggleRecorderPanel: stopping recording (was recording)")
                 await engine.toggleRecord(modeId: modeId)
             case .starting, .transcribing, .enhancing:
-                logger.notice("toggleRecorderPanel: cancelling active recorder work")
                 await cancelRecording()
             case .idle:
                 if engine.assistantSession.canSendFollowUp {
-                    logger.notice("toggleRecorderPanel: starting assistant voice follow-up")
                     SoundManager.shared.playStartSound()
                     await engine.toggleRecord(
                         modeId: modeId,
                         isAssistantFollowUp: true
                     )
                 } else {
-                    logger.notice("toggleRecorderPanel: dismissing recorder panel")
                     await dismissRecorderPanel()
                 }
             case .busy:
-                logger.notice("toggleRecorderPanel: dismissing recorder panel")
                 await dismissRecorderPanel()
             }
         } else {
@@ -197,13 +190,10 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     func dismissRecorderPanel() async {
         guard let engine = engine else { return }
-        logger.notice("dismissRecorderPanel called – state=\(String(describing: engine.recordingState), privacy: .public)")
 
         hideRecorderPanel()
         isRecorderPanelVisible = false
         engine.assistantSession.reset()
-
-        logger.notice("dismissRecorderPanel completed")
     }
 
     func resetOnLaunch() async {
@@ -217,7 +207,6 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     func cancelRecording() async {
         guard let engine = engine else { return }
-        logger.notice("cancelRecording called")
         await engine.cancelRecording()
         await dismissRecorderPanel()
     }
@@ -240,14 +229,12 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     }
 
     @objc public func handleToggleRecorderPanelNotification() {
-        logger.notice("handleToggleRecorderPanelNotification: recorder panel toggle notification received")
         Task {
             await toggleRecorderPanel()
         }
     }
 
     @objc public func handleDismissRecorderPanelNotification() {
-        logger.notice("handleDismissRecorderPanelNotification: recorder panel dismiss notification received")
         Task {
             switch engine?.recordingState {
             case .starting, .recording, .transcribing, .enhancing:

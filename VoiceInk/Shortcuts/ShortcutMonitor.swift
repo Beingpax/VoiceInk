@@ -118,7 +118,6 @@ final class ShortcutMonitor {
         eventTapRunLoopSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
-        logger.notice("Global shortcut event tap installed for \(self.shortcuts.count, privacy: .public) shortcut(s)")
         return true
     }
 
@@ -314,14 +313,12 @@ final class ShortcutMonitor {
     }
 
     private func dispatchKeyDown(for action: ShortcutAction, eventTime: TimeInterval) {
-        logger.notice("Global shortcut matched keyDown for \(action.displayName, privacy: .public)")
         DispatchQueue.main.async { [onKeyDown] in
             onKeyDown?(action, eventTime)
         }
     }
 
     private func dispatchKeyUp(for action: ShortcutAction, eventTime: TimeInterval) {
-        logger.notice("Global shortcut matched keyUp for \(action.displayName, privacy: .public)")
         DispatchQueue.main.async { [onKeyUp] in
             onKeyUp?(action, eventTime)
         }

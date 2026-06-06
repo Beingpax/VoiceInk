@@ -102,10 +102,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     // MARK: - Toggle Record
 
     func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false) async {
-        logger.notice("toggleRecord called – state=\(String(describing: self.recordingState), privacy: .public)")
-
         if recordingState == .starting {
-            logger.notice("toggleRecord: cancelling in-flight recording start")
             await cancelRecording()
             return
         }
@@ -147,7 +144,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 await cleanupResources()
             }
         } else {
-            logger.notice("toggleRecord: entering start-recording branch")
             let canContinueAssistantSession = isAssistantFollowUp && assistantSession.canSendFollowUp
             let recordingUseCase: RecordingUseCase = canContinueAssistantSession ? .assistantFollowUp : .newSession
 
@@ -182,7 +178,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .starting
-                            self.logger.notice("toggleRecord: state=starting, starting audio hardware")
                             self.recorder.scheduleSystemMute()
 
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
@@ -204,7 +199,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .recording
-                            self.logger.notice("toggleRecord: recording started successfully, state=recording")
 
                             await activeModeTask.value
 
@@ -292,7 +286,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                         } catch {
                             activeModeTask.cancel()
-                            self.logger.error("❌ Failed to start recording: \(error.localizedDescription, privacy: .public)")
+                            self.logger.error("Recording failed to start: \(error.localizedDescription, privacy: .public)")
                             await self.recorder.stopRecording()
                             self.cancelCurrentSession()
                             if let recordedFile = self.recordedFile {
@@ -304,12 +298,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             self.clearActiveRecordingContext()
                             await self.cleanupResources()
                             NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
-                            self.logger.notice("toggleRecord: calling dismissRecorderPanel from error handler")
                             await self.recorderUIManager?.dismissRecorderPanel()
                         }
                     }
                 } else {
-                    logger.error("❌ Recording permission denied.")
+                    logger.error("Recording permission denied")
                 }
             }
         }
@@ -451,8 +444,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
     // MARK: - Cancellation
 
     func cancelRecording() async {
-        logger.notice("cancelRecording called – state=\(String(describing: self.recordingState), privacy: .public)")
-
         let shouldFinishSessionImmediately: Bool
         switch recordingState {
         case .starting, .recording:

@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import os
 
 @MainActor
 class RecordingShortcutManager: ObservableObject {
@@ -115,9 +114,7 @@ class RecordingShortcutManager: ObservableObject {
         self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled")
         self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: "middleClickActivationDelay")
 
-        let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "RecordingShortcutManager")
         let shortcutModeHandler = RecordingShortcutModeHandler(
-            logger: logger,
             canHandleShortcutAction: {
                 Self.canHandleShortcutAction(for: engine.recordingState)
             },
@@ -344,7 +341,6 @@ private final class RecordingShortcutModeSource {
 
 @MainActor
 final class RecordingShortcutModeHandler {
-    private let logger: Logger
     private let canHandleShortcutAction: @MainActor () -> Bool
     private let isRecorderVisible: @MainActor () -> Bool
     private let recordingState: @MainActor () -> RecordingState
@@ -363,14 +359,12 @@ final class RecordingShortcutModeHandler {
     private let hybridPressThreshold: TimeInterval = 0.5
 
     init(
-        logger: Logger,
         canHandleShortcutAction: @escaping @MainActor () -> Bool,
         isRecorderVisible: @escaping @MainActor () -> Bool,
         recordingState: @escaping @MainActor () -> RecordingState,
         toggleRecorderPanel: @escaping @MainActor (UUID?) async -> Void,
         cancelRecording: @escaping @MainActor () async -> Void
     ) {
-        self.logger = logger
         self.canHandleShortcutAction = canHandleShortcutAction
         self.isRecorderVisible = isRecorderVisible
         self.recordingState = recordingState
@@ -402,7 +396,9 @@ final class RecordingShortcutModeHandler {
             return
         }
 
-        guard !isShortcutPressed else { return }
+        guard !isShortcutPressed else {
+            return
+        }
         isShortcutPressed = true
         activeRecordingShortcutAction = action
         activeShortcutCanCancelAccidentalStart = canCurrentShortcutPressCancelAccidentalStart
@@ -414,21 +410,18 @@ final class RecordingShortcutModeHandler {
             if isHandsFreeRecording {
                 isHandsFreeRecording = false
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyDown: toggling recorder panel (hands-free toggle)")
                 await toggleRecorderPanel(modeId)
                 return
             }
 
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyDown: toggling recorder panel (key down while not visible)")
                 await toggleRecorderPanel(modeId)
             }
 
         case .pushToTalk:
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyDown: starting recording (push-to-talk key down)")
                 await toggleRecorderPanel(modeId)
             }
         }
@@ -452,7 +445,6 @@ final class RecordingShortcutModeHandler {
         case .pushToTalk:
             if isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyUp: stopping recording (push-to-talk key up)")
                 await toggleRecorderPanel(modeId)
             }
 
@@ -460,7 +452,6 @@ final class RecordingShortcutModeHandler {
             let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
             if pressDuration >= hybridPressThreshold && recordingState() == .recording {
                 guard canHandleShortcutAction() else { return }
-                logger.notice("handleShortcutKeyUp: stopping recording (hybrid push-to-talk, duration=\(pressDuration, privacy: .public)s)")
                 await toggleRecorderPanel(modeId)
             } else {
                 isHandsFreeRecording = true
@@ -480,7 +471,6 @@ final class RecordingShortcutModeHandler {
 
         guard activeShortcutCanCancelAccidentalStart else { return }
 
-        logger.notice("handleShortcutInterruption: cancelling recording shortcut that became part of a larger key chord")
         reset()
         await cancelRecording()
     }
