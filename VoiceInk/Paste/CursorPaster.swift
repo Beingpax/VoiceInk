@@ -338,10 +338,11 @@ class CursorPaster {
         var focusedElement: AnyObject?
         let result = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute as CFString, &focusedElement)
 
-        guard result == .success, let element = focusedElement else { return nil }
+        guard result == .success,
+              let element = focusedElement as? AXUIElement else { return nil }
 
         var value: AnyObject?
-        let valueResult = AXUIElementCopyAttributeValue(element as! AXUIElement, kAXValueAttribute as CFString, &value)
+        let valueResult = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value)
 
         guard valueResult == .success, let stringValue = value as? String else { return nil }
         return stringValue

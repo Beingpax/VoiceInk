@@ -105,11 +105,11 @@ class AutoLearnService {
             kAXFocusedUIElementAttribute as CFString,
             &focusedElement
         )
-        guard result == .success, let element = focusedElement else { return nil }
+        guard result == .success, let element = focusedElement as? AXUIElement else { return nil }
 
         var value: AnyObject?
         let valueResult = AXUIElementCopyAttributeValue(
-            element as! AXUIElement,
+            element,
             kAXValueAttribute as CFString,
             &value
         )
