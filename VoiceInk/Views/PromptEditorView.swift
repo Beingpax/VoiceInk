@@ -198,7 +198,7 @@ struct PromptEditorView: View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $promptText)
                 .font(.system(.body, design: .monospaced))
-                .frame(minHeight: 220)
+                .frame(height: 440)
                 .scrollContentBackground(.hidden)
                 .padding(8)
                 .background(AppCardBackground(cornerRadius: 8))
@@ -209,7 +209,7 @@ struct PromptEditorView: View {
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 16)
+                    .padding(.top, 10)
                     .allowsHitTesting(false)
             }
         }
