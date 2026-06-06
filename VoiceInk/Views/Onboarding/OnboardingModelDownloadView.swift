@@ -9,9 +9,16 @@ struct OnboardingModelDownloadView: View {
     @State private var isDownloading = false
     @State private var isModelSet = false
     @State private var showTutorial = false
-    
-    private let turboModel = TranscriptionModelRegistry.models.first { $0.name == "ggml-large-v3-turbo-q5_0" } as! WhisperModel
-    
+
+    private let turboModel: WhisperModel = {
+        guard let model = TranscriptionModelRegistry.models.first(
+            where: { $0.name == "ggml-large-v3-turbo-q5_0" }
+        ) as? WhisperModel else {
+            preconditionFailure("Expected bundled turbo model to be a WhisperModel")
+        }
+        return model
+    }()
+
     var body: some View {
         ZStack {
             if showTutorial {
