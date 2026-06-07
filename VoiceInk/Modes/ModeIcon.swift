@@ -22,62 +22,44 @@ struct ModeIcon: Codable, Equatable, Hashable {
         ModeIcon(kind: .emoji, value: value)
     }
 
-    static let defaultIcon = ModeIcon.symbol("message.fill")
+    static let defaultIcon = ModeIcon.symbol("receipt.fill")
 
     static let defaultSymbols: [String] = [
-        // Core
-        "sparkles",
-        "gearshape.fill",
-
-        // Communication
-        "envelope.fill",
-        "message.fill",
-        "bubble.left.and.bubble.right.fill",
-        "phone.fill",
-
-        // Work
+        "1.calendar",
+        "apple.terminal.fill",
+        "archivebox.fill",
+        "bag.fill",
+        "bolt.horizontal.circle.fill",
+        "book.pages.fill",
         "briefcase.fill",
-        "building.2.fill",
-        "calendar.circle.fill",
-        "person.2.fill",
-
-        // Writing
-        "doc.text.fill",
-        "book.fill",
-        "quote.bubble.fill",
-
-        // Technical
-        "terminal.fill",
-        "wrench.and.screwdriver.fill",
-
-        // Organization
-        "folder.fill",
-        "tray.full.fill",
-
-        // Business
-        "cart.fill",
-        "creditcard.fill",
-        "banknote.fill",
-
-        // Learning and health
-        "lightbulb.fill",
-        "graduationcap.fill",
-        "heart.fill",
-
-        // Places
-        "house.fill",
-        "globe.americas.fill",
-        "map.fill",
-        "airplane",
-
-        // Creative
+        "bubble.left.and.text.bubble.right.fill",
+        "building.columns.circle.fill",
         "camera.fill",
-        "photo.fill",
-        "paintpalette.fill",
-        "mic.fill",
-
-        // Personal
-        "leaf.fill"
+        "captions.bubble.fill",
+        "character.book.closed.fill",
+        "dollarsign.bank.building.fill",
+        "envelope.fill",
+        "flask.fill",
+        "graduationcap.fill",
+        "house.fill",
+        "keyboard.fill",
+        "lightbulb.max.fill",
+        "long.text.page.and.pencil.fill",
+        "magazine.fill",
+        "map.fill",
+        "microphone.fill",
+        "music.pages",
+        "paintbrush.pointed.fill",
+        "phone.bubble.fill",
+        "photo.fill.on.rectangle.fill",
+        "play.rectangle.fill",
+        "quote.bubble.fill",
+        "receipt.fill",
+        "sparkles",
+        "star.hexagon.fill",
+        "tray.full.fill",
+        "tree.fill",
+        "wallet.bifold.fill"
     ]
 
     var legacyEmojiValue: String? {

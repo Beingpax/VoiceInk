@@ -279,7 +279,7 @@ extension String {
 struct ModeIconPickerView_Previews: PreviewProvider {
     static var previews: some View {
         ModeIconPickerView(
-            selectedIcon: .constant(.symbol("message.fill")),
+            selectedIcon: .constant(.defaultIcon),
             isPresented: .constant(true)
         )
         .environmentObject(EmojiManager.shared)

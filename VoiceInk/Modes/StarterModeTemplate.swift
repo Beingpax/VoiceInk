@@ -62,7 +62,7 @@ enum StarterModeCatalog {
         StarterModeTemplate(
             kind: .enhance,
             id: UUID(uuidString: "10000000-0000-0000-0000-000000000002")!,
-            name: "Enhancement Mode",
+            name: "Enhancement",
             icon: .symbol("sparkles"),
             description: "Clean up dictated text while preserving your meaning.",
             guidance: "Use this for everyday writing when you want grammar, flow, and light formatting improved before the result is pasted.",
