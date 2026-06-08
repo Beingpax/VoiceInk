@@ -4,6 +4,7 @@ struct ModeTriggerSection: View {
     @Binding var appConfigs: [AppConfig]
     @Binding var websiteConfigs: [URLConfig]
     @Binding var triggerGroups: [ModeTriggerGroup]
+    let modeId: UUID
     let cleanURL: (String) -> String
 
     @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
@@ -29,6 +30,16 @@ struct ModeTriggerSection: View {
                 .padding(.vertical, 2)
             } else {
                 emptyTriggerState
+            }
+
+            HStack {
+                Text("Keyboard Shortcut")
+                InfoTip("Assign a unique keyboard shortcut to instantly activate this mode and start recording.")
+
+                Spacer()
+
+                ShortcutRecorder(action: .mode(modeId))
+                    .frame(minHeight: 28)
             }
         } header: {
             triggerHeader

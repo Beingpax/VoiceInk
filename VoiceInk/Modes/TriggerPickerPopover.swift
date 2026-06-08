@@ -231,14 +231,13 @@ struct TriggerPickerPopover: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 14, weight: .semibold))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.accentColor)
                 }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? AppTheme.Surface.card : Color.clear))
+            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear))
         }
         .buttonStyle(.plain)
     }

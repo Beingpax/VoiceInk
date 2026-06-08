@@ -131,6 +131,7 @@ struct ModeConfigFormView: View {
                 appConfigs: $draft.appConfigs,
                 websiteConfigs: $draft.websiteConfigs,
                 triggerGroups: $draft.triggerGroups,
+                modeId: draft.id,
                 cleanURL: modeManager.cleanURL
             )
             transcriptionSection
@@ -559,16 +560,6 @@ struct ModeConfigFormView: View {
                         InfoTip("Automatically presses a key combination after pasting text. Useful for chat applications or forms that use different send shortcuts.")
                     }
                 }
-            }
-
-            HStack {
-                Text("Keyboard Shortcut")
-                InfoTip("Assign a unique keyboard shortcut to instantly activate this mode and start recording.")
-
-                Spacer()
-
-                ShortcutRecorder(action: .mode(draft.id))
-                    .frame(minHeight: 28)
             }
         }
     }
