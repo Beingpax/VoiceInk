@@ -454,11 +454,11 @@ struct DownloadProgressView: View {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.separatorColor).opacity(0.3))
+                        .fill(AppTheme.Border.control.opacity(0.3))
                         .frame(height: 6)
 
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color(.controlAccentColor))
+                        .fill(AppTheme.Accent.primary)
                         .frame(width: max(0, min(geometry.size.width * totalProgress, geometry.size.width)), height: 6)
                 }
             }

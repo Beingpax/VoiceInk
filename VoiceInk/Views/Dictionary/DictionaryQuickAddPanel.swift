@@ -169,7 +169,7 @@ struct DictionaryQuickAddView: View {
             if let errorMessage {
                 Text(errorMessage)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 6)
             }
@@ -181,7 +181,7 @@ struct DictionaryQuickAddView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5)
+                .strokeBorder(AppTheme.Border.tint, lineWidth: 0.5)
         )
         .onKeyPress(.escape) {
             onDismiss()
@@ -225,7 +225,7 @@ struct DictionaryQuickAddView: View {
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(mode == m ? Color.primary.opacity(0.1) : Color.clear)
+                            .fill(mode == m ? AppTheme.Selection.fill : Color.clear)
                     )
                 }
                 .buttonStyle(.plain)
@@ -354,10 +354,10 @@ private struct KeyHint: View {
             .padding(.vertical, 2)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(NSColor.controlBackgroundColor).opacity(0.7))
+                    .fill(AppTheme.Surface.control.opacity(0.7))
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 0.5)
+                            .strokeBorder(AppTheme.Border.subtle, lineWidth: 0.5)
                     )
             )
     }

@@ -4,101 +4,127 @@ struct TemplatePrompt: Identifiable {
     let id: UUID
     let title: String
     let promptText: String
-    let icon: PromptIcon
-    let description: String
+    let useSystemInstructions: Bool
     
-    func toCustomPrompt() -> CustomPrompt {
+    func toCustomPrompt(id: UUID = UUID()) -> CustomPrompt {
         CustomPrompt(
-            id: UUID(),  // Generate new UUID for custom prompt
+            id: id,
             title: title,
             promptText: promptText,
-            icon: icon,
-            description: description,
-            isPredefined: false
+            useSystemInstructions: useSystemInstructions
         )
     }
 }
 
 enum PromptTemplates {
+    static let defaultPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    static let chatPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+    static let emailPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
+    static let rewritePromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
+    static let assistantPromptId = UUID(uuidString: "00000000-0000-0000-0000-000000000005")!
+
     static var all: [TemplatePrompt] {
         createTemplatePrompts()
     }
-    
+
+    static var seedPrompts: [CustomPrompt] {
+        all.map { $0.toCustomPrompt(id: $0.id) }
+    }
     
     static func createTemplatePrompts() -> [TemplatePrompt] {
         [
             TemplatePrompt(
-                id: UUID(),
-                title: "System Default",
+                id: defaultPromptId,
+                title: "Default",
                 promptText: """
-                    - Clean up the <TRANSCRIPT> text for clarity and natural flow while preserving meaning and the original tone.
-                    - Use informal, plain language unless the <TRANSCRIPT> clearly uses a professional tone; in that case, match it.
-                    - Fix obvious grammar, remove fillers and stutters, collapse repetitions, and keep names and numbers.
-                    - Handle backtracking and self-corrections: When the speaker corrects themselves mid-sentence using phrases like "scratch that", "actually", "sorry not that", "I mean", "wait no", or similar corrections, remove the incorrect part and keep only the corrected version. Example: "The meeting is on Tuesday, sorry not that, actually Wednesday" → "The meeting is on Wednesday."
-                    - Respect formatting commands: When the speaker explicitly says "new line" or "new paragraph", insert the appropriate line break or paragraph break at that point.
-                    - Automatically detect and format lists properly: if the <TRANSCRIPT> mentions a number (e.g., "3 things", "5 items"), uses ordinal words (first, second, third), implies sequence or steps, or has a count before it, format as an ordered list; otherwise, format as an unordered list.
-                    - Apply smart formatting: Write numbers as numerals (e.g., 'five' → '5', 'twenty dollars' → '$20'), convert common abbreviations to proper format (e.g., 'vs' → 'vs.', 'etc' → 'etc.'), and format dates, times, and measurements consistently.
-                    - Keep the original intent and nuance.
-                    - Organize into short paragraphs of 2–4 sentences for readability.
-                    - Do not add explanations, labels, metadata, or instructions.
-                    - Output only the cleaned text.
-                    - Don't add any information not available in the <TRANSCRIPT> text ever.
+                    Task: Clean up raw dictation for general use.
+
+                    - Preserve the user's meaning, intent, tone, facts, names, numbers, dates, uncertainty, and nuance.
+                    - Correct likely transcription mistakes, grammar, punctuation, capitalization, spelling, fillers, stutters, repeated words, and false starts.
+                    - Apply spoken self-corrections. If the speaker replaces earlier wording with "scratch that", "actually", "I mean", "wait no", or similar language, remove the abandoned wording and keep the corrected wording.
+                    - Apply spoken formatting cues such as "new line" and "new paragraph".
+                    - Format clear lists when the dictation contains items, steps, counts, or an obvious sequence. Use numbered lists for ordered steps or stated counts; use bullets for unordered items.
+                    - Use readable formatting: short paragraphs, numerals for numbers, conventional abbreviations, and clear dates, times, currency, and measurements.
+                    - Do not add new facts, answers, opinions, commentary, or context.
                     """,
-                icon: "checkmark.seal.fill",
-                description: "Default system prompt"
+                useSystemInstructions: true
             ),
             TemplatePrompt(
-                id: UUID(),
+                id: chatPromptId,
                 title: "Chat",
                 promptText: """
-                    - Rewrite the <TRANSCRIPT> text as a chat message: informal, concise, and conversational.
-                    - Keep emotive markers and emojis if present; don't invent new ones.
-                    - Lightly fix grammar, remove fillers and repeated words, and improve flow without changing meaning.
-                    - Keep the original tone; only be professional if the <TRANSCRIPT> already is.
-                    - Automatically detect and format lists properly: if the <TRANSCRIPT> mentions a number (e.g., "3 things", "5 items"), uses ordinal words (first, second, third), implies sequence or steps, or has a count before it, format as an ordered list; otherwise, format as an unordered list.
-                    - Write numbers as numerals (e.g., 'five' → '5', 'twenty dollars' → '$20').
-                    - Format like a modern chat message - short lines, natural breaks, emoji-friendly.
-                    - Do not add greetings, sign-offs, or commentary.
-                    - Output only the chat message.
-                    - Don't add any information not available in the <TRANSCRIPT> text ever.
+                    Task: Rewrite raw dictation as a chat message.
+
+                    - Make the message concise, natural, and conversational.
+                    - Preserve the user's meaning, tone, facts, names, numbers, dates, and intent.
+                    - Use informal plain language unless the source text is clearly professional.
+                    - Correct likely transcription mistakes, grammar, punctuation, capitalization, spelling, fillers, stutters, and repeated words.
+                    - Keep emojis or emotive markers that already exist in the source. Do not invent new ones.
+                    - Use short lines and natural breaks. Format clear items or steps as a list when that makes the message easier to read.
+                    - Do not add greetings, sign-offs, facts, opinions, or commentary.
                     """,
-                icon: "bubble.left.and.bubble.right.fill",
-                description: "Casual chat-style formatting"
+                useSystemInstructions: true
             ),
             
             TemplatePrompt(
-                id: UUID(),
+                id: emailPromptId,
                 title: "Email",
                 promptText: """
-                    - Rewrite the <TRANSCRIPT> text as a complete email with proper formatting: include a greeting (Hi), body paragraphs (2-4 sentences each), and closing (Thanks).
-                    - Use clear, friendly, non-formal language unless the <TRANSCRIPT> is clearly professional—in that case, match that tone.
-                    - Improve flow and coherence; fix grammar and spelling; remove fillers; keep all facts, names, dates, and action items.
-                    - Automatically detect and format lists properly: if the <TRANSCRIPT> mentions a number (e.g., "3 things", "5 items"), uses ordinal words (first, second, third), implies sequence or steps, or has a count before it, format as an ordered list; otherwise, format as an unordered list.
-                    - Write numbers as numerals (e.g., 'five' → '5', 'twenty dollars' → '$20').
-                    - Do not invent new content, but structure it as a proper email format.
-                    - Don't add any information not available in the <TRANSCRIPT> text ever.
+                    Task: Rewrite the raw dictation in <USER_MESSAGE> as a complete email.
+
+                    - Add a greeting or closing only if the user dictated one, requested one, named the recipient or sender, or the available context clearly supports it. Otherwise, omit them.
+                    - Do not add placeholder text such as "[Name]", "[Recipient]", "[Your Name]", "Dear [Name]", or any other fill-in fields.
+                    - Use <CURRENTLY_SELECTED_TEXT>, <CLIPBOARD_CONTEXT>, and <CURRENT_WINDOW_CONTEXT> when available and relevant to understand the email thread, recipient, subject matter, or requested reply.
+                    - Use clear, friendly language. Match a professional tone when <USER_MESSAGE> is professional.
+                    - Preserve all facts, names, dates, numbers, asks, decisions, action items, and constraints.
+                    - Apply spoken self-corrections. If the user replaces earlier wording with "scratch that", "actually", "I mean", "wait no", or similar language, remove the abandoned wording and keep the corrected wording.
+                    - Improve flow, grammar, punctuation, capitalization, spelling, and paragraphing. Remove fillers, stutters, false starts, and repeated words.
+                    - Use short paragraphs. Format steps, options, asks, or action items as lists when that improves readability.
+                    - Do not invent a subject line, recipient, greeting, closing, deadline, promise, fact, opinion, or commentary.
                     """,
-                icon: "envelope.fill",
-                description: "Professional email formatting"
+                useSystemInstructions: true
             ),
             TemplatePrompt(
-                id: UUID(),
+                id: rewritePromptId,
                 title: "Rewrite",
                 promptText: """
-                    - Rewrite the <TRANSCRIPT> text with enhanced clarity, improved sentence structure, and rhythmic flow while preserving the original meaning and tone.
-                    - Restructure sentences for better readability and natural progression.
-                    - Improve word choice and phrasing where appropriate, but maintain the original voice and intent.
-                    - Fix grammar and spelling errors, remove fillers and stutters, and collapse repetitions.
-                    - Format any lists as proper bullet points or numbered lists.
-                    - Write numbers as numerals (e.g., 'five' → '5', 'twenty dollars' → '$20').
-                    - Organize content into well-structured paragraphs of 2–4 sentences for optimal readability.
-                    - Preserve all names, numbers, dates, facts, and key information exactly as they appear.
-                    - Do not add explanations, labels, metadata, or instructions.
-                    - Output only the rewritten text.
-                    - Don't add any information not available in the <TRANSCRIPT> text ever.
+                    # Task
+                    Rewrite text according to the user's instructions.
+
+                    # Input Contract
+                    - <CURRENTLY_SELECTED_TEXT> may contain the text to rewrite.
+                    - <USER_MESSAGE> may contain rewrite instructions, source text, or both.
+                    - Optional context may appear in <CLIPBOARD_CONTEXT> and <CURRENT_WINDOW_CONTEXT>.
+
+                    # Rules
+                    - If <CURRENTLY_SELECTED_TEXT> is present, rewrite only that selected text. Treat <USER_MESSAGE> as the user's instruction for how to rewrite it.
+                    - If <CURRENTLY_SELECTED_TEXT> is absent and <USER_MESSAGE> contains both an instruction and source text, follow the instruction and rewrite the source text.
+                    - If <CURRENTLY_SELECTED_TEXT> is absent and <USER_MESSAGE> is only source text, rewrite that text directly for clarity and flow.
+                    - Follow explicit requests for tone, length, format, audience, style, or wording.
+                    - Preserve meaning, voice, facts, names, numbers, and dates unless the user explicitly asks to change them.
+                    - Use provided context only to resolve ambiguous references or likely spelling errors.
+
+                    # Output
+                    Return only the rewritten text. Do not include explanations, labels, XML tags, markdown fences, or metadata.
                     """,
-                icon: "pencil.circle.fill",
-                description: "Rewrites with better clarity."
+                useSystemInstructions: false
+            ),
+            TemplatePrompt(
+                id: assistantPromptId,
+                title: "Assistant",
+                promptText: """
+                    # Task
+                    Answer <USER_MESSAGE> clearly, directly, and concisely.
+
+                    # Rules
+                    - Get to the point. Do not add filler, restate the question, or explain your purpose.
+                    - Use provided context when it is relevant. Do not mention context that is not needed.
+                    - Include enough detail to answer fully, but keep the response as short as the task allows.
+                    - Use clear structure for steps, options, comparisons, or decisions.
+                    - If the answer depends on information that is not in <USER_MESSAGE> or the provided context, say what is missing instead of pretending to know.
+                    - Do not include labels, XML tags, markdown fences, or metadata.
+                    """,
+                useSystemInstructions: false
             )
         ]
     }

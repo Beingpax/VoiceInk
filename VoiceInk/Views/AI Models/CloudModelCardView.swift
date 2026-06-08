@@ -5,25 +5,18 @@ import LLMkit
 // MARK: - Cloud Model Card View
 struct CloudModelCardView: View {
     let model: CloudModel
-    let isCurrent: Bool
-    var setDefaultAction: () -> Void
 
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
     @State private var isExpanded = false
     @State private var apiKey = ""
-    @State private var streamingEnabled: Bool
 
-    init(model: CloudModel, isCurrent: Bool, setDefaultAction: @escaping () -> Void) {
+    init(model: CloudModel) {
         self.model = model
-        self.isCurrent = isCurrent
-        self.setDefaultAction = setDefaultAction
-        let key = "streaming-enabled-\(model.name)"
-        _streamingEnabled = State(initialValue: UserDefaults.standard.object(forKey: key) as? Bool ?? true)
     }
     @State private var isVerifying = false
     @State private var verificationStatus: VerificationStatus = .none
     @State private var verificationError: String? = nil
+    @State private var verificationErrorDetail: String? = nil
     
     enum VerificationStatus {
         case none, verifying, success, failure
@@ -61,7 +54,7 @@ struct CloudModelCardView: View {
                     .padding(16)
             }
         }
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+        .background(AppMaterialCardBackground())
         .onAppear {
             loadSavedAPIKey()
         }
@@ -73,44 +66,7 @@ struct CloudModelCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
-            if model.supportsStreaming && isConfigured {
-                streamingModeBadge
-            }
-
             Spacer()
-        }
-    }
-    
-    private var isStreamingOnly: Bool {
-        CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly ?? false
-    }
-
-    private var streamingModeBadge: some View {
-        Toggle("Real-time", isOn: isStreamingOnly ? .constant(true) : $streamingEnabled)
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(Color(.secondaryLabelColor))
-            .disabled(isStreamingOnly)
-            .onChange(of: streamingEnabled) { _, newValue in
-                if !isStreamingOnly {
-                    UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
-                    ensureCurrentModelLanguageIsStillValid()
-                    NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
-                }
-            }
-            .help(isStreamingOnly ? "This model only supports real-time streaming" : (streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming"))
-    }
-
-    private func ensureCurrentModelLanguageIsStillValid() {
-        guard transcriptionModelManager.currentTranscriptionModel?.name == model.name else {
-            return
-        }
-
-        let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(selectedLanguage, for: model)
-        if selectedLanguage != compatibleLanguage {
-            selectedLanguage = compatibleLanguage
-            NotificationCenter.default.post(name: .languageDidChange, object: nil)
         }
     }
 
@@ -162,17 +118,8 @@ struct CloudModelCardView: View {
     
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            } else if isConfigured {
-                Button(action: setDefaultAction) {
-                    Text("Set as Default")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if isConfigured {
+                modelStatusPill("Connected", systemImage: "checkmark.circle")
             } else {
                 Button(action: {
                     withAnimation(.interpolatingSpring(stiffness: 170, damping: 20)) {
@@ -182,7 +129,7 @@ struct CloudModelCardView: View {
                     HStack(spacing: 4) {
                         Text("Configure")
                             .font(.system(size: 12, weight: .medium))
-                        Image(systemName: "gear")
+                        Image(systemName: "gear.circle.fill")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)
@@ -190,8 +137,8 @@ struct CloudModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(AppTheme.Accent.primary)
+                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -225,6 +172,14 @@ struct CloudModelCardView: View {
                 SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
                     .textFieldStyle(.roundedBorder)
                     .disabled(isVerifying)
+                    .onChange(of: apiKey) { _, newValue in
+                        guard !newValue.isEmpty else { return }
+                        if verificationStatus == .failure {
+                            verificationStatus = .none
+                        }
+                        verificationError = nil
+                        verificationErrorDetail = nil
+                    }
                 
                 Button(action: verifyAPIKey) {
                     HStack(spacing: 4) {
@@ -244,7 +199,7 @@ struct CloudModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(verificationStatus == .success ? Color(.systemGreen) : Color(.controlAccentColor))
+                            .fill(verificationStatus == .success ? AppTheme.Status.positive : AppTheme.Accent.primary)
                     )
                 }
                 .buttonStyle(.plain)
@@ -252,27 +207,27 @@ struct CloudModelCardView: View {
             }
             
             if verificationStatus == .failure {
-                if let error = verificationError {
-                    Text(error)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(verificationError ?? "Could not verify this API key. Check the key and try again.")
                         .font(.caption)
-                        .foregroundColor(Color(.systemRed))
-                } else {
-                    Text("Verification failed")
-                        .font(.caption)
-                        .foregroundColor(Color(.systemRed))
+                        .fontWeight(.medium)
+                        .foregroundColor(AppTheme.Status.error)
+
+                    if let verificationErrorDetail {
+                        Text(verificationErrorDetail)
+                            .font(.caption)
+                            .foregroundColor(AppTheme.Status.error.opacity(0.82))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             } else if verificationStatus == .success {
-                Text("API key verified successfully!")
+                Text("Verified")
                     .font(.caption)
-                    .foregroundColor(Color(.systemGreen))
+                    .foregroundColor(AppTheme.Status.positive)
             }
         }
     }
     
-    private var streamingDefaultsKey: String {
-        "streaming-enabled-\(model.name)"
-    }
-
     private func loadSavedAPIKey() {
         if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: providerKey) {
             apiKey = savedKey
@@ -285,12 +240,15 @@ struct CloudModelCardView: View {
 
         isVerifying = true
         verificationStatus = .verifying
+        verificationError = nil
+        verificationErrorDetail = nil
         let key = apiKey
 
         guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
             isVerifying = false
             verificationStatus = .failure
-            verificationError = "Unsupported provider"
+            verificationError = "Could not verify this API key. Check the key and try again."
+            verificationErrorDetail = "Unsupported provider"
             return
         }
 
@@ -302,6 +260,7 @@ struct CloudModelCardView: View {
                 if result.isValid {
                     verificationStatus = .success
                     verificationError = nil
+                    verificationErrorDetail = nil
                     APIKeyManager.shared.saveAPIKey(key, forProvider: providerKey)
                     transcriptionModelManager.refreshAllAvailableModels()
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -309,7 +268,8 @@ struct CloudModelCardView: View {
                     }
                 } else {
                     verificationStatus = .failure
-                    verificationError = result.errorMessage
+                    verificationError = "Could not verify this API key. Check the key and try again."
+                    verificationErrorDetail = result.errorMessage
                 }
             }
         }
@@ -320,10 +280,7 @@ struct CloudModelCardView: View {
         apiKey = ""
         verificationStatus = .none
         verificationError = nil
-
-        if isCurrent {
-            transcriptionModelManager.clearCurrentTranscriptionModel()
-        }
+        verificationErrorDetail = nil
 
         transcriptionModelManager.refreshAllAvailableModels()
 

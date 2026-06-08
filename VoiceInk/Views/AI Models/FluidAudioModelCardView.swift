@@ -1,27 +1,13 @@
 import SwiftUI
-import Combine
 import AppKit
 
 struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
     @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
-    @ObservedObject var transcriptionModelManager: TranscriptionModelManager
-    @State private var streamingEnabled: Bool
 
-    init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager, transcriptionModelManager: TranscriptionModelManager) {
+    init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager) {
         self.model = model
         _fluidAudioModelManager = ObservedObject(wrappedValue: fluidAudioModelManager)
-        _transcriptionModelManager = ObservedObject(wrappedValue: transcriptionModelManager)
-        let key = "streaming-enabled-\(model.name)"
-        _streamingEnabled = State(initialValue: UserDefaults.standard.object(forKey: key) as? Bool ?? true)
-    }
-
-    private var streamingDefaultsKey: String {
-        "streaming-enabled-\(model.name)"
-    }
-
-    var isCurrent: Bool {
-        transcriptionModelManager.currentTranscriptionModel?.name == model.name
     }
 
     var isDownloaded: Bool {
@@ -45,7 +31,7 @@ struct FluidAudioModelCardView: View {
             actionSection
         }
         .padding(16)
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+        .background(AppMaterialCardBackground())
     }
 
     private var headerSection: some View {
@@ -53,18 +39,6 @@ struct FluidAudioModelCardView: View {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
-
-            if model.supportsStreaming && isDownloaded {
-                Toggle("Real-time", isOn: $streamingEnabled)
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                    .onChange(of: streamingEnabled) { _, newValue in
-                        UserDefaults.standard.set(newValue, forKey: streamingDefaultsKey)
-                    }
-                    .help(streamingEnabled ? "Live streaming enabled — click to switch to batch" : "Batch mode — click to enable live streaming")
-            }
 
             Spacer()
         }
@@ -127,21 +101,8 @@ struct FluidAudioModelCardView: View {
 
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            } else if isDownloaded {
-                Button(action: {
-                    Task {
-                        transcriptionModelManager.setDefaultTranscriptionModel(model)
-                    }
-                }) {
-                    Text("Set as Default")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if isDownloaded {
+                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
                 Button(action: {
                     Task {
@@ -156,7 +117,7 @@ struct FluidAudioModelCardView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(Color.accentColor))
+                    .background(Capsule().fill(AppTheme.Accent.primary))
                 }
                 .buttonStyle(.plain)
                 .disabled(isDownloading)

@@ -5,5 +5,4 @@ import Foundation
 protocol RecorderStateProvider: AnyObject {
     var recordingState: RecordingState { get }
     var partialTranscript: String { get }
-    var enhancementService: AIEnhancementService? { get }
 }

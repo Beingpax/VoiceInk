@@ -16,16 +16,16 @@ enum TranscriptionLanguageSupport {
         "tk", "ur", "uz", "cy", "yi", "yo"
     ]
 
-    static func languages(for model: any TranscriptionModel) -> [String: String] {
+    static func languages(for model: any TranscriptionModel, realtimeEnabled: Bool? = nil) -> [String: String] {
         if model.provider == .assemblyAI {
-            return assemblyAILanguages(usesRealtime: assemblyAIUsesRealtime(for: model))
+            return assemblyAILanguages(usesRealtime: assemblyAIUsesRealtime(for: model, realtimeEnabled: realtimeEnabled))
         }
 
         return model.supportedLanguages
     }
 
-    static func validLanguageOrFallback(_ language: String?, for model: any TranscriptionModel) -> String {
-        let languages = languages(for: model)
+    static func validLanguageOrFallback(_ language: String?, for model: any TranscriptionModel, realtimeEnabled: Bool? = nil) -> String {
+        let languages = languages(for: model, realtimeEnabled: realtimeEnabled)
 
         if let language, languages[language] != nil {
             return language
@@ -57,16 +57,12 @@ enum TranscriptionLanguageSupport {
         return filtered
     }
 
-    private static func assemblyAIUsesRealtime(for model: any TranscriptionModel) -> Bool {
+    private static func assemblyAIUsesRealtime(for model: any TranscriptionModel, realtimeEnabled: Bool?) -> Bool {
         guard model.provider == .assemblyAI, model.supportsStreaming else {
             return false
         }
 
-        if let cloudProvider = CloudProviderRegistry.provider(for: model.provider), cloudProvider.isStreamingOnly {
-            return true
-        }
-
-        return UserDefaults.standard.object(forKey: "streaming-enabled-\(model.name)") as? Bool ?? true
+        return TranscriptionRealtimeSupport.isEnabled(for: model, modeValue: realtimeEnabled)
     }
 }
 

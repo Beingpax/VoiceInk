@@ -11,7 +11,7 @@ struct MistralProvider: CloudProvider {
     var models: [CloudModel] {[
         CloudModel(
             name: "voxtral-mini-latest",
-            displayName: "Voxtral (Mistral)",
+            displayName: "Voxtral",
             description: "Mistral's Voxtral model for fast and accurate transcription",
             provider: .mistral,
             speed: 0.99,

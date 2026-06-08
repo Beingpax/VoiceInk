@@ -6,7 +6,6 @@ class WindowManager: NSObject {
     static let shared = WindowManager()
 
     private static let mainWindowIdentifier = NSUserInterfaceItemIdentifier("com.prakashjoshipax.voiceink.mainWindow")
-    private static let onboardingWindowIdentifier = NSUserInterfaceItemIdentifier("com.prakashjoshipax.voiceink.onboardingWindow")
     private static let mainWindowAutosaveName = NSWindow.FrameAutosaveName("VoiceInkMainWindowFrame")
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "WindowManager")
@@ -30,12 +29,12 @@ class WindowManager: NSObject {
         window.styleMask.formUnion(requiredStyleMask)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.backgroundColor = .windowBackgroundColor
+        window.backgroundColor = .clear
         window.isReleasedWhenClosed = false
         window.title = "VoiceInk"
         window.collectionBehavior = [.fullScreenPrimary]
         window.level = .normal
-        window.isOpaque = true
+        window.isOpaque = false
         window.isMovableByWindowBackground = false
         window.minSize = NSSize(width: 0, height: 0)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
@@ -44,26 +43,6 @@ class WindowManager: NSObject {
         window.orderFrontRegardless()
     }
     
-    func configureOnboardingPanel(_ window: NSWindow) {
-        if window.identifier == nil || window.identifier != Self.onboardingWindowIdentifier {
-            window.identifier = Self.onboardingWindowIdentifier
-        }
-        
-        let requiredStyleMask: NSWindow.StyleMask = [.titled, .fullSizeContentView, .resizable]
-        window.styleMask.formUnion(requiredStyleMask)
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
-        window.level = .normal
-        window.backgroundColor = .clear
-        window.isReleasedWhenClosed = false
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        window.title = "VoiceInk Onboarding"
-        window.isOpaque = false
-        window.minSize = NSSize(width: 900, height: 780)
-        window.makeKeyAndOrderFront(nil)
-    }
-
     func registerMainWindow(_ window: NSWindow) {
         mainWindow = window
         window.identifier = Self.mainWindowIdentifier

@@ -7,8 +7,8 @@ class KeyablePanel: NSPanel {
 }
 
 class NotchRecorderPanel: KeyablePanel {
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
 
     init(contentRect: NSRect) {
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
@@ -60,11 +60,11 @@ class NotchRecorderPanel: KeyablePanel {
             return 180
         }()
 
-        let maxSideExpansion: CGFloat = 110
+        let maxSideExpansion: CGFloat = 240
         let sideMargin: CGFloat = 10
         let totalWidth = notchWidth + (maxSideExpansion + sideMargin) * 2
 
-        let maxContentHeight: CGFloat = 200
+        let maxContentHeight: CGFloat = 430
         let xPosition = screen.frame.midX - (totalWidth / 2)
         let yPosition = screen.frame.maxY - maxContentHeight
 
@@ -76,10 +76,6 @@ class NotchRecorderPanel: KeyablePanel {
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
         setFrame(metrics.frame, display: true)
         orderFrontRegardless()
-    }
-
-    func hide(completion: @escaping () -> Void) {
-        completion()
     }
 
     @objc private func handleScreenParametersChange() {

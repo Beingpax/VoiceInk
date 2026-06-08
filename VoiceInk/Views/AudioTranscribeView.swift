@@ -5,12 +5,16 @@ import UniformTypeIdentifiers
 struct AudioTranscribeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var engine: VoiceInkEngine
-    @EnvironmentObject private var enhancementService: AIEnhancementService
+    @ObservedObject private var modeManager = ModeManager.shared
     @StateObject private var transcriptionManager = AudioTranscriptionManager.shared
     @State private var isDropTargeted = false
-    @State private var isEnhancementEnabled = false
-    @State private var selectedPromptId: UUID?
+    @State private var showModePopover = false
+    @State private var selectedModeId: UUID?
     @State private var expandedItemId: UUID?
+
+    private var selectedMode: ModeConfig? {
+        modeManager.resolvedEnabledConfiguration(preferredId: selectedModeId)
+    }
 
     var body: some View {
         Group {
@@ -21,7 +25,6 @@ struct AudioTranscribeView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor))
         .onDrop(of: [.fileURL, .data, .audio, .movie], isTargeted: $isDropTargeted) { providers in
             handleDroppedFiles(providers)
             return true
@@ -53,20 +56,20 @@ struct AudioTranscribeView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(.windowBackgroundColor).opacity(0.4))
+                    .fill(AppTheme.Surface.window.opacity(0.4))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .strokeBorder(
                                 style: StrokeStyle(lineWidth: 2, dash: [8])
                             )
-                            .foregroundColor(isDropTargeted ? .accentColor : .gray.opacity(0.5))
+                            .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray.opacity(0.5))
                     )
                     .animation(.easeInOut(duration: 0.15), value: isDropTargeted)
 
                 VStack(spacing: 14) {
                     Image(systemName: "arrow.down.doc")
                         .font(.system(size: 32))
-                        .foregroundColor(isDropTargeted ? .accentColor : .gray)
+                        .foregroundColor(isDropTargeted ? AppTheme.Accent.primary : .gray)
 
                     Text("Drop audio or video files here")
                         .font(.headline)
@@ -119,9 +122,7 @@ struct AudioTranscribeView: View {
                             },
                             onRetry: {
                                 transcriptionManager.retryItem(id: item.id)
-                                if !transcriptionManager.isProcessingQueue {
-                                    transcriptionManager.startProcessing(modelContext: modelContext, engine: engine)
-                                }
+                                startProcessing()
                             }
                         )
                     }
@@ -161,7 +162,7 @@ struct AudioTranscribeView: View {
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(Color.secondary.opacity(0.12))
+                        .fill(AppTheme.Surface.controlActive)
                 )
             }
             .buttonStyle(.plain)
@@ -169,7 +170,7 @@ struct AudioTranscribeView: View {
 
             Spacer()
 
-            enhancementControls
+            modePicker
 
             if transcriptionManager.isProcessingQueue {
                 Button {
@@ -181,19 +182,19 @@ struct AudioTranscribeView: View {
                         Text("Cancel")
                             .font(.system(size: 12, weight: .medium))
                     }
-                    .foregroundColor(.red)
+                    .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(Color.red.opacity(0.12))
+                            .fill(AppTheme.Status.error.opacity(0.12))
                     )
                 }
                 .buttonStyle(.plain)
                 .help("Cancel transcription")
             } else if transcriptionManager.hasPendingItems {
                 Button {
-                    transcriptionManager.startProcessing(modelContext: modelContext, engine: engine)
+                    startProcessing()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "play.fill")
@@ -206,11 +207,14 @@ struct AudioTranscribeView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(AppTheme.Accent.primary)
+                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled(selectedMode == nil)
+                .opacity(selectedMode == nil ? 0.5 : 1.0)
+                .help(selectedMode == nil ? "Select an enabled mode to start" : "Start transcription")
             }
 
             Button {
@@ -230,66 +234,106 @@ struct AudioTranscribeView: View {
                 .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(Color.secondary.opacity(0.12))
+                        .fill(AppTheme.Surface.controlActive)
                 )
             }
             .buttonStyle(.plain)
             .help("Clear all items")
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 24)
         .padding(.vertical, 10)
     }
 
-    private var enhancementControls: some View {
-        HStack(spacing: 8) {
-            Toggle("AI Enhancement", isOn: $isEnhancementEnabled)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .onChange(of: isEnhancementEnabled) { _, newValue in
-                    enhancementService.isEnhancementEnabled = newValue
-                }
+    private var modePicker: some View {
+        HStack(spacing: 6) {
+            Text("Mode")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
-            if isEnhancementEnabled && !enhancementService.allPrompts.isEmpty {
-                Divider().frame(height: 16)
-
-                let promptBinding = Binding<UUID>(
-                    get: {
-                        selectedPromptId ?? enhancementService.allPrompts.first?.id ?? UUID()
-                    },
-                    set: { newValue in
-                        selectedPromptId = newValue
-                        enhancementService.selectedPromptId = newValue
+            if modeManager.enabledConfigurations.isEmpty {
+                Text("None")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            } else if let selectedMode {
+                Button {
+                    showModePopover.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        ModeIconView(icon: selectedMode.icon, size: selectedMode.icon.kind == .emoji ? 13 : 11)
+                            .frame(width: 16)
+                        Text(selectedMode.name)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary)
                     }
-                )
-
-                Picker("Prompt", selection: promptBinding) {
-                    ForEach(enhancementService.allPrompts) { prompt in
-                        Text(prompt.title).tag(prompt.id)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .frame(maxWidth: 160, alignment: .leading)
+                    .background(
+                        Capsule()
+                            .fill(AppTheme.Surface.subtle)
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(AppTheme.Accent.fillSubtle, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .popover(isPresented: $showModePopover, arrowEdge: .bottom) {
+                    ModePopover(selectedModeId: selectedMode.id) { mode in
+                        selectMode(mode)
                     }
                 }
-                .labelsHidden()
-                .fixedSize()
             }
         }
+        .fixedSize(horizontal: true, vertical: false)
         .onAppear {
-            isEnhancementEnabled = enhancementService.isEnhancementEnabled
-            selectedPromptId = enhancementService.selectedPromptId
+            syncSelectedMode()
         }
+        .onChange(of: modeManager.currentEffectiveConfiguration?.id) { _, _ in
+            syncSelectedMode()
+        }
+        .onChange(of: modeManager.enabledConfigurations.map(\.id)) { _, _ in
+            syncSelectedMode()
+        }
+    }
+
+    private func syncSelectedMode() {
+        selectedModeId = modeManager.resolvedEnabledConfigurationId(preferredId: selectedModeId)
+    }
+
+    private func selectMode(_ mode: ModeConfig) {
+        selectedModeId = mode.id
+        modeManager.setActiveConfiguration(mode)
+        showModePopover = false
+    }
+
+    private func startProcessing() {
+        guard let selectedMode else { return }
+        transcriptionManager.startProcessing(modelContext: modelContext, engine: engine, mode: selectedMode)
     }
 
     // MARK: - Drop Overlay
 
     private var dropOverlay: some View {
         RoundedRectangle(cornerRadius: 12)
-            .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8]))
+            .strokeBorder(AppTheme.Accent.primary, style: StrokeStyle(lineWidth: 2, dash: [8]))
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.accentColor.opacity(0.06))
+                    .fill(AppTheme.Accent.fillSubtle)
             )
             .overlay {
                 Text("Drop to add files")
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(AppTheme.Accent.primary)
             }
             .padding(16)
             .transition(.opacity)

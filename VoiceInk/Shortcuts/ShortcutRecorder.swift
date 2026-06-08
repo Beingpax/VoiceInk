@@ -57,6 +57,11 @@ struct ShortcutRecorder: View {
             guard let activeRecorderID = notification.object as? UUID, activeRecorderID != recorderID else { return }
             recorder.cancel()
         }
+        .onChange(of: action) { _, newAction in
+            recorder.cancel()
+            recorderID = UUID()
+            shortcut = ShortcutStore.shortcut(for: newAction)
+        }
         .onDisappear {
             recorder.cancel()
         }
@@ -98,12 +103,6 @@ private struct ShortcutVisualization: View {
                     ShortcutKeyCap(title: token, isRecording: isRecording)
                 }
             } else {
-                if isRecording {
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 5, height: 5)
-                }
-
                 Text(isRecording ? "Press shortcut" : "Record")
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
@@ -116,11 +115,11 @@ private struct ShortcutVisualization: View {
         .fixedSize(horizontal: true, vertical: false)
         .background {
             RoundedRectangle(cornerRadius: 6)
-                .fill(isRecording ? Color.accentColor.opacity(0.14) : Color(NSColor.controlBackgroundColor))
+                .fill(isRecording ? AppTheme.Accent.fill : AppTheme.Surface.control)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 6)
-                .stroke(isRecording ? Color.accentColor.opacity(0.55) : Color.secondary.opacity(0.25), lineWidth: 1)
+                .stroke(isRecording ? AppTheme.Accent.border : AppTheme.Border.subtle, lineWidth: 1)
         }
     }
 }
@@ -156,7 +155,7 @@ private struct ShortcutKeyCap: View {
     }
 
     private var borderColor: Color {
-        isRecording ? Color.accentColor.opacity(0.65) : foregroundColor.opacity(0.28)
+        isRecording ? AppTheme.Accent.foreground : foregroundColor.opacity(0.28)
     }
 }
 

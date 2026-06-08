@@ -29,7 +29,7 @@ final class LicenseManager {
 
     // MARK: - Trial Start Date
 
-    var trialStartDate: Date? {
+    private(set) var trialStartDate: Date? {
         get {
             guard let data = keychain.getData(forKey: trialStartDateIdentifier, syncable: false),
                   let timestamp = String(data: data, encoding: .utf8),
@@ -48,6 +48,16 @@ final class LicenseManager {
         }
     }
 
+    @discardableResult
+    func startTrialIfNeeded() -> Bool {
+        guard trialStartDate == nil else {
+            return false
+        }
+
+        trialStartDate = Date()
+        return true
+    }
+
     // MARK: - Activation ID
 
     var activationId: String? {
@@ -59,6 +69,11 @@ final class LicenseManager {
                 keychain.delete(forKey: activationIdIdentifier, syncable: false)
             }
         }
+    }
+
+    func removeStoredLicense() {
+        licenseKey = nil
+        activationId = nil
     }
 
     /// Removes all license data (for license removal/reset).

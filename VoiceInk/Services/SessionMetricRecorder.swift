@@ -47,7 +47,7 @@ enum SessionMetricRecorder {
             transcriptionModelName: transcription.transcriptionModelName ?? model?.displayName,
             transcriptionDuration: transcriptionDuration,
             speedFactor: speedFactor,
-            powerModeName: transcription.powerModeName,
+            modeName: transcription.modeName,
             aiEnhancementModelName: transcription.aiEnhancementModelName,
             enhancementDuration: enhancementDuration
         )

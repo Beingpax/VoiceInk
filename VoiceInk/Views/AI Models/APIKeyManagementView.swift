@@ -3,6 +3,7 @@ import LLMkit
 
 struct APIKeyManagementView: View {
     @EnvironmentObject private var aiService: AIService
+    @ObservedObject private var customAIProviderManager = CustomAIProviderManager.shared
     @State private var apiKey: String = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -15,22 +16,32 @@ struct APIKeyManagementView: View {
     @State private var localCLICommandTemplate: String = ""
     @State private var localCLITimeoutSeconds: Double = LocalCLIService.defaultTimeoutSeconds
     @State private var isSyncingLocalCLIState = false
+
+    private var providerOptions: [AIProvider] {
+        AIProvider.allCases.filter { provider in
+            guard provider.supportsEnhancement else { return false }
+            if provider == .custom {
+                return customAIProviderManager.hasConfiguredModels
+            }
+            return true
+        }
+    }
     
     var body: some View {
         Section("AI Provider Integration") {
             HStack {
                 Picker("Provider", selection: $aiService.selectedProvider) {
-                    ForEach(AIProvider.allCases.filter { $0 != .elevenLabs && $0 != .deepgram && $0 != .soniox && $0 != .speechmatics && $0 != .assemblyAI }, id: \.self) { provider in
-                        Text(provider.rawValue).tag(provider)
+                    ForEach(providerOptions, id: \.self) { provider in
+                        Text(providerTitle(provider)).tag(provider)
                     }
                 }
                 .pickerStyle(.automatic)
-                .tint(.blue)
+                .tint(AppTheme.Status.infoStrong)
                 
                 if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
                     Spacer()
                     Circle()
-                        .fill(Color.green)
+                        .fill(AppTheme.Status.positive)
                         .frame(width: 8, height: 8)
                     Text("Connected")
                         .font(.subheadline)
@@ -42,14 +53,14 @@ struct APIKeyManagementView: View {
                             .controlSize(.small)
                     } else if !ollamaModels.isEmpty {
                         Circle()
-                            .fill(Color.green)
+                            .fill(AppTheme.Status.positive)
                             .frame(width: 8, height: 8)
                         Text("Connected")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     } else {
                         Circle()
-                            .fill(Color.red)
+                            .fill(AppTheme.Status.error)
                             .frame(width: 8, height: 8)
                         Text("Disconnected")
                             .font(.subheadline)
@@ -57,13 +68,22 @@ struct APIKeyManagementView: View {
                     }
                 }
             }
+            .onAppear {
+                syncSelectedProviderAvailability()
+                syncSelectedCustomModelIfNeeded()
+            }
             .onChange(of: aiService.selectedProvider) { oldValue, newValue in
                 if aiService.selectedProvider == .ollama {
-                    checkOllamaConnection()
+                    checkOllamaConnection(showError: false)
                 }
                 if aiService.selectedProvider == .localCLI {
                     syncLocalCLIStateFromService()
                 }
+                syncSelectedCustomModelIfNeeded()
+            }
+            .onChange(of: customAIProviderManager.providers) { _, _ in
+                syncSelectedProviderAvailability()
+                syncSelectedCustomModelIfNeeded()
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -106,8 +126,7 @@ struct APIKeyManagementView: View {
                     }
                     
                 } else if !aiService.availableModels.isEmpty &&
-                            aiService.selectedProvider != .ollama &&
-                            aiService.selectedProvider != .custom {
+                            aiService.selectedProvider != .ollama {
                     Picker("Model", selection: Binding(
                         get: { aiService.currentModel },
                         set: { aiService.selectModel($0) }
@@ -187,7 +206,7 @@ struct APIKeyManagementView: View {
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.secondary.opacity(0.25), lineWidth: 1)
+                                    .stroke(AppTheme.Border.subtle, lineWidth: 1)
                             )
                             .onChange(of: localCLICommandTemplate) { _, newValue in
                                 guard !isSyncingLocalCLIState else { return }
@@ -218,46 +237,12 @@ struct APIKeyManagementView: View {
                     if !aiService.isAPIKeyValid {
                         Text("Load a template or enter a command to enable Local CLI enhancement.")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundColor(AppTheme.Status.warningStrong)
                     }
-
                 } else if aiService.selectedProvider == .custom {
-                    TextField("API Endpoint URL", text: $aiService.customBaseURL, prompt: Text("e.g. https://api.openai.com/v1/chat/completions"))
-                        .textFieldStyle(.roundedBorder)
-
-                    Divider()
-
-                    TextField("Model Name", text: $aiService.customModel, prompt: Text("e.g. gemini-3.1-pro-preview, gpt-5.5"))
-                        .textFieldStyle(.roundedBorder)
-
-                    Divider()
-
-                    if aiService.isAPIKeyValid {
-                        HStack {
-                            Text("API Key Set")
-                            Spacer()
-                            Button("Remove Key", role: .destructive) {
-                                aiService.clearAPIKey()
-                            }
-                        }
-                    } else {
-                        SecureField("API Key", text: $apiKey)
-                            .textFieldStyle(.roundedBorder)
-
-                        Button("Verify and Save") {
-                            isVerifying = true
-                            aiService.saveAPIKey(apiKey) { success, errorMessage in
-                                isVerifying = false
-                                if !success {
-                                    alertMessage = errorMessage ?? "Verification failed"
-                                    showAlert = true
-                                }
-                                apiKey = ""
-                            }
-                        }
-                        .disabled(aiService.customBaseURL.isEmpty || aiService.customModel.isEmpty || apiKey.isEmpty)
-                    }
-                    
+                    Text("Manage custom enhancement models in the Custom tab.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 } else {
                     if aiService.isAPIKeyValid {
                         HStack {
@@ -281,10 +266,10 @@ struct APIKeyManagementView: View {
                                         Text("Get API Key")
                                     }
                                     .font(.caption)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppTheme.Status.infoStrong)
                                     .padding(.vertical, 4)
                                     .padding(.horizontal, 8)
-                                    .background(Color.blue.opacity(0.1))
+                                    .background(AppTheme.Status.infoStrong.opacity(0.10))
                                     .cornerRadius(6)
                                 }
                                 .buttonStyle(.plain)
@@ -297,7 +282,7 @@ struct APIKeyManagementView: View {
                                 aiService.saveAPIKey(apiKey) { success, errorMessage in
                                     isVerifying = false
                                     if !success {
-                                        alertMessage = errorMessage ?? "Verification failed"
+                                        alertMessage = errorMessage ?? "Could not verify this API key. Check the key and try again."
                                         showAlert = true
                                     }
                                     apiKey = ""
@@ -323,11 +308,35 @@ struct APIKeyManagementView: View {
         }
         .onAppear {
             if aiService.selectedProvider == .ollama {
-                checkOllamaConnection()
+                checkOllamaConnection(showError: false)
             }
             if aiService.selectedProvider == .localCLI {
                 syncLocalCLIStateFromService()
             }
+        }
+    }
+
+    private func providerTitle(_ provider: AIProvider) -> String {
+        provider == .custom ? "Custom Models" : provider.rawValue
+    }
+
+    private func syncSelectedProviderAvailability() {
+        guard !providerOptions.contains(aiService.selectedProvider),
+              let fallbackProvider = providerOptions.first else {
+            return
+        }
+
+        aiService.selectedProvider = fallbackProvider
+    }
+
+    private func syncSelectedCustomModelIfNeeded() {
+        guard aiService.selectedProvider == .custom else { return }
+
+        let models = aiService.availableModels
+        if models.contains(aiService.currentModel) {
+            aiService.selectModel(aiService.currentModel)
+        } else if let defaultModel = models.first {
+            aiService.selectModel(defaultModel)
         }
     }
 
@@ -340,18 +349,16 @@ struct APIKeyManagementView: View {
         }
     }
     
-    private func checkOllamaConnection() {
+    private func checkOllamaConnection(showError: Bool = true) {
         isCheckingOllama = true
-        aiService.checkOllamaConnection { connected in
-            if connected {
-                Task {
-                    ollamaModels = await aiService.fetchOllamaModels()
-                    isCheckingOllama = false
-                }
-            } else {
-                ollamaModels = []
-                isCheckingOllama = false
-                alertMessage = "Could not connect to Ollama. Please check if Ollama is running and the base URL is correct."
+        Task { @MainActor in
+            let result = await aiService.refreshOllamaAvailability()
+
+            ollamaModels = result.models
+            isCheckingOllama = false
+
+            if let errorMessage = result.errorMessage, showError {
+                alertMessage = errorMessage
                 showAlert = true
             }
         }

@@ -29,7 +29,7 @@ struct TranscriptionListItem: View {
                             .padding(.vertical, 3)
                             .background(
                                 RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                    .fill(Color.secondary.opacity(0.1))
+                                    .fill(AppTheme.Surface.card)
                             )
                             .foregroundColor(.secondary)
                     }
@@ -44,11 +44,19 @@ struct TranscriptionListItem: View {
         .padding(10)
         .background {
             if isSelected {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(NSColor.selectedContentBackgroundColor).opacity(0.3))
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .fill(AppTheme.Selection.fill)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .strokeBorder(AppTheme.Selection.border, lineWidth: 1)
+                    }
             } else {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.thinMaterial)
+                RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                    .fill(AppTheme.Surface.subtle)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .strokeBorder(AppTheme.Border.tint, lineWidth: 1)
+                    }
             }
         }
         .contentShape(Rectangle())
@@ -63,7 +71,7 @@ struct CircularCheckboxStyle: ToggleStyle {
         }) {
             Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
                 .symbolRenderingMode(.hierarchical)
-                .foregroundColor(configuration.isOn ? Color(NSColor.controlAccentColor) : .secondary)
+                .foregroundColor(configuration.isOn ? AppTheme.Selection.foreground : .secondary)
                 .font(.system(size: 18))
         }
         .buttonStyle(.plain)

@@ -1,6 +1,7 @@
 import AppKit
 import CoreGraphics
 import Foundation
+import os
 
 final class ShortcutMonitor {
     fileprivate enum EventKind {
@@ -23,8 +24,8 @@ final class ShortcutMonitor {
     private var onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)?
     private var eventTap: CFMachPort?
     private var eventTapRunLoopSource: CFRunLoopSource?
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ShortcutMonitor")
 
-    private static var hasRequestedListenEventAccess = false
     private static let shortcutInterruptionWindow: TimeInterval = 1.0
 
     deinit {
@@ -76,10 +77,6 @@ final class ShortcutMonitor {
     }
 
     private func installEventTap() -> Bool {
-        guard Self.hasListenEventAccess() else {
-            return false
-        }
-
         let callback: CGEventTapCallBack = { _, type, event, userInfo in
             guard let userInfo else {
                 return Unmanaged.passUnretained(event)
@@ -107,11 +104,13 @@ final class ShortcutMonitor {
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
+            logger.error("Failed to install global shortcut event tap")
             return false
         }
 
         guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0) else {
             CFMachPortInvalidate(eventTap)
+            logger.error("Failed to create global shortcut event tap run loop source")
             return false
         }
 
@@ -120,19 +119,6 @@ final class ShortcutMonitor {
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: eventTap, enable: true)
         return true
-    }
-
-    private static func hasListenEventAccess() -> Bool {
-        if CGPreflightListenEventAccess() {
-            return true
-        }
-
-        guard !hasRequestedListenEventAccess else {
-            return false
-        }
-
-        hasRequestedListenEventAccess = true
-        return CGRequestListenEventAccess()
     }
 
     private func handleCGEvent(type: CGEventType, event: CGEvent) -> Bool {

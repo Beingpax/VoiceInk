@@ -49,7 +49,7 @@ class SystemInfoService {
         Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "mini")
 
         RECORDING FEEDBACK:
-        Sound Feedback: \(UserDefaults.standard.bool(forKey: "isSoundFeedbackEnabled"))
+        Sound Feedback: \(CustomSoundManager.shared.hasAnyRecordingSoundEnabled)
         Pause Media While Recording: \(UserDefaults.standard.bool(forKey: "isPauseMediaEnabled"))
         Mute Audio While Recording: \(UserDefaults.standard.bool(forKey: "isSystemMuteEnabled"))
         Audio Resumption Delay: \(UserDefaults.standard.double(forKey: "audioResumptionDelay"))s
@@ -58,10 +58,6 @@ class SystemInfoService {
         Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
         Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
         Paste Method: \(PasteMethod.current().displayName)
-
-        POWER MODE:
-        Power Mode Enabled: \(UserDefaults.standard.bool(forKey: "powerModeUIFlag"))
-        Persist Configured Preferences: \(UserDefaults.standard.bool(forKey: "powerModePersistConfig"))
 
         DATA CLEANUP SETTINGS:
         Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled"))
@@ -156,7 +152,7 @@ class SystemInfoService {
     }
 
     private func getCurrentTranscriptionModel() -> String {
-        if let modelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel") {
+        if let modelName = ModeManager.shared.currentEffectiveConfiguration?.selectedTranscriptionModelName {
             if let model = TranscriptionModelRegistry.models.first(where: { $0.name == modelName }) {
                 return model.displayName
             }
@@ -166,26 +162,15 @@ class SystemInfoService {
     }
 
     private func getAIEnhancementStatus() -> String {
-        let enhancementEnabled = UserDefaults.standard.bool(forKey: "isAIEnhancementEnabled")
-        return enhancementEnabled ? "Enabled" : "Disabled"
+        ModeManager.shared.currentEffectiveConfiguration?.isAIEnhancementEnabled == true ? "Enabled" : "Disabled"
     }
 
     private func getAIProvider() -> String {
-        if let providerRaw = UserDefaults.standard.string(forKey: "selectedAIProvider") {
-            return providerRaw
-        }
-        return "None selected"
+        ModeManager.shared.currentEffectiveConfiguration?.selectedAIProvider ?? "None selected"
     }
 
     private func getAIModel() -> String {
-        if let providerRaw = UserDefaults.standard.string(forKey: "selectedAIProvider") {
-            let modelKey = "\(providerRaw)SelectedModel"
-            if let savedModel = UserDefaults.standard.string(forKey: modelKey), !savedModel.isEmpty {
-                return savedModel
-            }
-            return "Default (\(providerRaw))"
-        }
-        return "None selected"
+        ModeManager.shared.currentEffectiveConfiguration?.selectedAIModel ?? "None selected"
     }
     private func getAccessibilityStatus() -> String {
         return AXIsProcessTrusted() ? "Granted" : "Not Granted"

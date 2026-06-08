@@ -9,7 +9,7 @@ struct ProBadge: View {
             .padding(.vertical, 2)
             .background(
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.blue.opacity(0.8))
+                    .fill(AppTheme.Status.infoStrong.opacity(0.80))
             )
     }
 }

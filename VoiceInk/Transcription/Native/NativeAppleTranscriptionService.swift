@@ -17,6 +17,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
         case localeNotSupported
         case invalidModel
         case assetDownloadRequired(String)
+        case assetReservationFailed(String)
         case resultStreamTimedOut
         
         var errorDescription: String? {
@@ -31,19 +32,24 @@ class NativeAppleTranscriptionService: TranscriptionService {
                 return "Invalid model type provided for Native Apple transcription."
             case .assetDownloadRequired(let displayName):
                 return "Download required for \(displayName)."
+            case .assetReservationFailed(let displayName):
+                return "Apple Speech could not reserve language assets for \(displayName). Manage reserved Apple Speech languages in settings."
             case .resultStreamTimedOut:
                 return "Apple Speech did not finish returning transcription results."
             }
         }
+
+        var shouldShowNotification: Bool {
+            switch self {
+            case .assetDownloadRequired, .assetReservationFailed:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
-    private func languageDisplayName(for localeIdentifier: String) -> String {
-        LanguageDictionary.appleNative[localeIdentifier]
-            ?? Locale.current.localizedString(forIdentifier: localeIdentifier)
-            ?? localeIdentifier
-    }
-
-    func transcribe(audioURL: URL, model: any TranscriptionModel) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String {
         guard model is NativeAppleModel else {
             throw ServiceError.invalidModel
         }
@@ -60,43 +66,36 @@ class NativeAppleTranscriptionService: TranscriptionService {
         let audioDuration = Double(audioFile.length) / audioFile.processingFormat.sampleRate
         
         // Apple Speech stores and consumes actual BCP-47 locale identifiers directly.
-        let selectedLanguage = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en-US"
-        let locale = Locale(identifier: selectedLanguage)
-
-        let supportedLocales = await SpeechTranscriber.supportedLocales
-        let installedLocales = await SpeechTranscriber.installedLocales
-        let supportedIdentifiers = Set(supportedLocales.map { $0.identifier(.bcp47) })
-        let installedIdentifiers = Set(installedLocales.map { $0.identifier(.bcp47) })
-        let isLocaleSupported = supportedIdentifiers.contains(locale.identifier(.bcp47))
-        let isLocaleInstalled = installedIdentifiers.contains(locale.identifier(.bcp47))
-        
-        let selectedLocaleIdentifier = locale.identifier(.bcp47)
-        let displayName = languageDisplayName(for: selectedLocaleIdentifier)
-
-        guard isLocaleSupported else {
-            logger.error("Transcription failed: Locale '\(locale.identifier(.bcp47), privacy: .public)' is not supported by SpeechTranscriber.")
+        let selectedLanguage = context.language ?? "en-US"
+        guard let assetContext = await NativeAppleSpeechAssetManager.assetContext(for: selectedLanguage) else {
+            let requestedIdentifier = Locale(identifier: selectedLanguage).identifier(.bcp47)
+            logger.error("Transcription failed: Locale '\(requestedIdentifier, privacy: .public)' is not supported by SpeechTranscriber.")
             throw ServiceError.localeNotSupported
         }
 
-        guard isLocaleInstalled else {
-            logger.error("Transcription failed: Assets for '\(selectedLocaleIdentifier, privacy: .public)' are not downloaded.")
-            throw ServiceError.assetDownloadRequired(displayName)
+        switch assetContext.status {
+        case .installed:
+            break
+        case .supported, .downloading:
+            logger.error("Transcription failed: Assets for '\(assetContext.localeIdentifier, privacy: .public)' are not ready. Status: \(String(describing: assetContext.status), privacy: .public).")
+            throw ServiceError.assetDownloadRequired(assetContext.displayName)
+        case .unsupported:
+            logger.error("Transcription failed: Locale '\(assetContext.localeIdentifier, privacy: .public)' is not supported by SpeechTranscriber.")
+            throw ServiceError.localeNotSupported
+        @unknown default:
+            logger.error("Transcription failed: Unknown Apple Speech asset status for '\(assetContext.localeIdentifier, privacy: .public)': \(String(describing: assetContext.status), privacy: .public).")
+            throw ServiceError.assetDownloadRequired(assetContext.displayName)
         }
         
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [],
-            attributeOptions: []
-        )
+        guard await NativeAppleSpeechAssetManager.reserveLocaleIfNeeded(for: assetContext) else {
+            throw ServiceError.assetReservationFailed(assetContext.displayName)
+        }
         
-        await ensureModelIsReserved(for: locale, transcriber: transcriber)
-        
-        let modules: [any SpeechModule] = [transcriber]
+        let modules: [any SpeechModule] = [assetContext.transcriber]
         let analyzer = SpeechAnalyzer(modules: modules)
         let resultTask = Task<String, Error> {
             var transcript = ""
-            for try await result in transcriber.results {
+            for try await result in assetContext.transcriber.results {
                 transcript += String(result.text.characters)
             }
             return transcript
@@ -110,7 +109,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
             } else {
                 resultTask.cancel()
                 await analyzer.cancelAndFinishNow()
-                logger.error("Transcription failed: Apple Speech received no audio samples for '\(selectedLocaleIdentifier, privacy: .public)'.")
+                logger.error("Transcription failed: Apple Speech received no audio samples for '\(assetContext.localeIdentifier, privacy: .public)'.")
                 throw ServiceError.transcriptionFailed
             }
         } catch {
@@ -136,36 +135,6 @@ class NativeAppleTranscriptionService: TranscriptionService {
         return finalTranscription
         #else
         throw ServiceError.unsupportedOS
-        #endif
-    }
-    
-    
-    
-    @available(macOS 26, *)
-    private func ensureModelIsReserved(for locale: Locale, transcriber: SpeechTranscriber) async {
-        #if canImport(Speech) && ENABLE_NATIVE_SPEECH_ANALYZER
-        let localeIdentifier = locale.identifier(.bcp47)
-        let reservedLocales = await AssetInventory.reservedLocales
-        guard !reservedLocales.contains(where: { $0.identifier(.bcp47) == localeIdentifier }) else {
-            return
-        }
-
-        for reservedLocale in reservedLocales {
-            await AssetInventory.release(reservedLocale: reservedLocale)
-        }
-
-        do {
-            let reserved = try await AssetInventory.reserve(locale: locale)
-
-            guard reserved else {
-                let finalStatus = await AssetInventory.status(forModules: [transcriber])
-                logger.warning("Apple Speech asset reservation returned false for '\(localeIdentifier, privacy: .public)'. Continuing because the locale is already downloaded. Status: \(String(describing: finalStatus), privacy: .public).")
-                return
-            }
-        } catch {
-            let finalStatus = await AssetInventory.status(forModules: [transcriber])
-            logger.warning("Apple Speech asset reservation failed for '\(localeIdentifier, privacy: .public)': \(error.localizedDescription, privacy: .public). Continuing because the locale is already downloaded. Status: \(String(describing: finalStatus), privacy: .public).")
-        }
         #endif
     }
 

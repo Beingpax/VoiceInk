@@ -62,6 +62,10 @@ struct Shortcut: Codable, Equatable {
         )
     }
 
+    static var rightCommand: Self {
+        .modifierOnly(keyCode: UInt16(kVK_RightCommand), modifierFlags: [.command])
+    }
+
     static func fromLegacyShortcut(_ shortcut: LegacyKeyboardShortcut) -> Self {
         Self(
             kind: .key,

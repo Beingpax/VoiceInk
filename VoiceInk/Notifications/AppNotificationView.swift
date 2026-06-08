@@ -28,10 +28,10 @@ struct AppNotificationView: View {
 
         var iconColor: Color {
             switch self {
-            case .error: return .red
-            case .warning: return .yellow
-            case .info: return .blue
-            case .success: return .green
+            case .error: return AppTheme.Status.error
+            case .warning: return AppTheme.Status.warning
+            case .info: return AppTheme.Status.info
+            case .success: return AppTheme.Status.success
             }
         }
     }
@@ -62,10 +62,10 @@ struct AppNotificationView: View {
                     }) {
                         Text(actionButton.label)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(type.iconColor)
+                            .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(type.iconColor.opacity(0.15))
+                            .background(Color.white.opacity(0.14))
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     .buttonStyle(PlainButtonStyle())
@@ -84,7 +84,7 @@ struct AppNotificationView: View {
         }
         .frame(minWidth: 220, maxWidth: 750, minHeight: 44)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
                 .fill(.clear)
                 .background(
                     ZStack {
@@ -105,12 +105,12 @@ struct AppNotificationView: View {
                         VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
                             .opacity(0.05)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
                 )
         )
         .overlay(
             // Subtle inner border
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
         )
         .overlay(
@@ -124,7 +124,7 @@ struct AppNotificationView: View {
                 }
                 .frame(height: 2)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous))
         )
         .onAppear {
             startProgressTimer()
@@ -155,4 +155,3 @@ struct AppNotificationView: View {
         }
     }
 }
-

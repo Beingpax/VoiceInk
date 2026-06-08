@@ -61,11 +61,11 @@ enum AIProvider: String, CaseIterable {
         case .groq:
             return "openai/gpt-oss-120b"
         case .gemini:
-            return "gemini-2.5-flash-lite"
+            return "gemini-3.5-flash"
         case .anthropic:
             return "claude-sonnet-4-6"
         case .openAI:
-            return "gpt-5.4"
+            return "gpt-5.5"
         case .mistral:
             return "mistral-large-latest"
         case .elevenLabs:
@@ -83,7 +83,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return "local-cli"
         case .custom:
-            return UserDefaults.standard.string(forKey: "customProviderModel") ?? ""
+            return CustomAIProviderManager.shared.defaultModelName
         case .openRouter:
             return "openai/gpt-oss-120b"
         }
@@ -129,7 +129,7 @@ enum AIProvider: String, CaseIterable {
                 "gpt-5.4",
                 "gpt-5.4-mini",
                 "gpt-5.4-nano",
-                "gpt-5.2",
+                "gpt-5",
                 "gpt-4.1",
                 "gpt-4.1-mini",
                 "gpt-4.1-nano"
@@ -155,7 +155,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return []
         case .custom:
-            return []
+            return CustomAIProviderManager.shared.availableModelNames
         case .openRouter:
             return []
         }
@@ -169,6 +169,20 @@ enum AIProvider: String, CaseIterable {
             return true
         }
     }
+
+    var supportsEnhancement: Bool {
+        switch self {
+        case .elevenLabs, .deepgram, .soniox, .speechmatics, .assemblyAI:
+            return false
+        default:
+            return true
+        }
+    }
+}
+
+struct OllamaRefreshResult {
+    let models: [OllamaModel]
+    let errorMessage: String?
 }
 
 class AIService: ObservableObject {
@@ -200,8 +214,7 @@ class AIService: ObservableObject {
                 self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
                 if selectedProvider == .ollama {
                     Task {
-                        await ollamaService.checkConnection()
-                        await ollamaService.refreshModels()
+                        await refreshOllamaAvailability()
                     }
                 }
             }
@@ -213,12 +226,20 @@ class AIService: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
     private lazy var localCLIService = LocalCLIService()
+    private var apiKeyChangeObserver: NSObjectProtocol?
     
     @Published private var openRouterModels: [String] = []
+    @Published private(set) var isOllamaRefreshing = false
     
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
-            if provider == .ollama {
+            guard provider.supportsEnhancement else {
+                return false
+            }
+
+            if provider == .custom {
+                return CustomAIProviderManager.shared.hasConfiguredModels
+            } else if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider == .localCLI {
                 return localCLIService.isConfigured
@@ -236,6 +257,13 @@ class AIService: ObservableObject {
             return selectedModel
         }
         return selectedProvider.defaultModel
+    }
+
+    func selectedModel(for provider: AIProvider) -> String {
+        if let selectedModel = selectedModels[provider], !selectedModel.isEmpty {
+            return selectedModel
+        }
+        return provider.defaultModel
     }
     
     var availableModels: [String] {
@@ -259,6 +287,8 @@ class AIService: ObservableObject {
             return ollamaService.availableModels.map { $0.name }
         } else if provider == .openRouter {
             return openRouterModels
+        } else if provider == .custom {
+            return CustomAIProviderManager.shared.availableModelNames
         }
         return provider.availableModels
     }
@@ -286,6 +316,47 @@ class AIService: ObservableObject {
 
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
+
+        apiKeyChangeObserver = NotificationCenter.default.addObserver(
+            forName: .aiProviderKeyChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.reloadSelectedProviderConfiguration()
+            }
+        }
+    }
+
+    deinit {
+        if let apiKeyChangeObserver {
+            NotificationCenter.default.removeObserver(apiKeyChangeObserver)
+        }
+    }
+
+    private func reloadSelectedProviderConfiguration() {
+        if selectedProvider == .custom {
+            customBaseURL = userDefaults.string(forKey: "customProviderBaseURL") ?? ""
+            customModel = userDefaults.string(forKey: "customProviderModel") ?? ""
+        }
+
+        let selectedModelKey = "\(selectedProvider.rawValue)SelectedModel"
+        if let savedModel = userDefaults.string(forKey: selectedModelKey), !savedModel.isEmpty {
+            selectedModels[selectedProvider] = savedModel
+        }
+
+        if selectedProvider.requiresAPIKey {
+            if let savedKey = APIKeyManager.shared.getAPIKey(forProvider: selectedProvider.rawValue) {
+                apiKey = savedKey
+                isAPIKeyValid = true
+            } else {
+                apiKey = ""
+                isAPIKeyValid = false
+            }
+        } else {
+            apiKey = ""
+            isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+        }
     }
     
     private func loadSavedModelSelections() {
@@ -308,16 +379,26 @@ class AIService: ObservableObject {
     }
     
     func selectModel(_ model: String) {
+        selectModel(model, for: selectedProvider)
+    }
+
+    func selectModel(_ model: String, for provider: AIProvider) {
         guard !model.isEmpty else { return }
-        
-        selectedModels[selectedProvider] = model
-        let key = "\(selectedProvider.rawValue)SelectedModel"
-        userDefaults.set(model, forKey: key)
-        
-        if selectedProvider == .ollama {
-            updateSelectedOllamaModel(model)
+
+        if provider == .custom {
+            guard CustomAIProviderManager.shared.applyConfiguration(forModel: model) else { return }
         }
-        
+
+        selectedModels[provider] = model
+        let key = "\(provider.rawValue)SelectedModel"
+        userDefaults.set(model, forKey: key)
+
+        if provider == .ollama {
+            updateSelectedOllamaModel(model)
+        } else if provider == .custom {
+            reloadSelectedProviderConfiguration()
+        }
+
         objectWillChange.send()
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
@@ -351,43 +432,56 @@ class AIService: ObservableObject {
         }
 
         Task {
-            let result: (isValid: Bool, errorMessage: String?)
-            switch selectedProvider {
-            case .anthropic:
-                result = await AnthropicLLMClient.verifyAPIKey(key)
-            case .elevenLabs:
-                result = await ElevenLabsClient.verifyAPIKey(key)
-            case .deepgram:
-                result = await DeepgramClient.verifyAPIKey(key)
-            case .mistral:
-                result = await MistralTranscriptionClient.verifyAPIKey(key)
-            case .soniox:
-                result = await SonioxClient.verifyAPIKey(key)
-            case .speechmatics:
-                result = await SpeechmaticsClient.verifyAPIKey(key)
-            case .assemblyAI:
-                result = await AssemblyAIClient.verifyAPIKey(key)
-            case .openRouter:
-                result = await OpenRouterClient.verifyAPIKey(key, model: currentModel)
-            case .gemini:
-                result = await GeminiTranscriptionClient.verifyAPIKey(key)
-            default:
-                guard let baseURL = URL(string: selectedProvider.baseURL) else {
-                    DispatchQueue.main.async {
-                        completion(false, "Invalid or missing base URL configuration")
-                    }
-                    return
-                }
-                result = await OpenAILLMClient.verifyAPIKey(
-                    baseURL: baseURL,
-                    apiKey: key,
-                    model: currentModel
-                )
-            }
+            let result = await verifyAPIKey(
+                key,
+                for: selectedProvider,
+                model: currentModel
+            )
             DispatchQueue.main.async {
                 completion(result.isValid, result.errorMessage)
             }
         }
+    }
+
+    func verifyAPIKey(_ key: String, for provider: AIProvider, model: String? = nil) async -> (isValid: Bool, errorMessage: String?) {
+        guard provider.requiresAPIKey else {
+            return (true, nil)
+        }
+
+        let verificationModel = model ?? selectedModel(for: provider)
+        let result: (isValid: Bool, errorMessage: String?)
+
+        switch provider {
+        case .anthropic:
+            result = await AnthropicLLMClient.verifyAPIKey(key)
+        case .elevenLabs:
+            result = await ElevenLabsClient.verifyAPIKey(key)
+        case .deepgram:
+            result = await DeepgramClient.verifyAPIKey(key)
+        case .mistral:
+            result = await MistralTranscriptionClient.verifyAPIKey(key)
+        case .soniox:
+            result = await SonioxClient.verifyAPIKey(key)
+        case .speechmatics:
+            result = await SpeechmaticsClient.verifyAPIKey(key)
+        case .assemblyAI:
+            result = await AssemblyAIClient.verifyAPIKey(key)
+        case .openRouter:
+            result = await OpenRouterClient.verifyAPIKey(key, model: verificationModel)
+        case .gemini:
+            result = await GeminiTranscriptionClient.verifyAPIKey(key)
+        default:
+            guard let baseURL = URL(string: provider.baseURL) else {
+                return (false, "Invalid or missing base URL configuration")
+            }
+            result = await OpenAILLMClient.verifyAPIKey(
+                baseURL: baseURL,
+                apiKey: key,
+                model: verificationModel
+            )
+        }
+
+        return result
     }
     
     func clearAPIKey() {
@@ -402,22 +496,101 @@ class AIService: ObservableObject {
     func checkOllamaConnection(completion: @escaping (Bool) -> Void) {
         Task { [weak self] in
             guard let self = self else { return }
-            await self.ollamaService.checkConnection()
-            DispatchQueue.main.async {
+            await self.refreshOllamaAvailability()
+            await MainActor.run {
                 completion(self.ollamaService.isConnected)
             }
         }
     }
     
     func fetchOllamaModels() async -> [OllamaModel] {
-        await ollamaService.refreshModels()
-        return ollamaService.availableModels
+        let result = await refreshOllamaAvailability()
+        return result.models
+    }
+
+    func refreshOllamaAvailabilityInBackground() {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.refreshOllamaAvailability()
+        }
+    }
+
+    @MainActor
+    @discardableResult
+    func refreshOllamaConnectionAndModels() async -> [OllamaModel] {
+        let result = await refreshOllamaAvailability()
+        return result.models
+    }
+
+    @MainActor
+    func refreshOllamaAvailability() async -> OllamaRefreshResult {
+        guard !isOllamaRefreshing else {
+            return OllamaRefreshResult(models: ollamaService.availableModels, errorMessage: nil)
+        }
+
+        isOllamaRefreshing = true
+        defer {
+            isOllamaRefreshing = false
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+
+        let result = await ollamaService.refreshConnectionAndModels()
+        switch result {
+        case .success(let models):
+            return OllamaRefreshResult(models: models, errorMessage: nil)
+        case .failure(let error):
+            return OllamaRefreshResult(models: [], errorMessage: ollamaErrorMessage(for: error))
+        }
+    }
+
+    private func ollamaErrorMessage(for error: Error) -> String {
+        if let llmKitError = error as? LLMKitError {
+            return ollamaErrorMessage(for: llmKitError)
+        }
+
+        if let localAIError = error as? LocalAIError,
+           let errorDescription = localAIError.errorDescription {
+            return errorDescription
+        }
+
+        let nsError = error as NSError
+        var details = [nsError.localizedDescription]
+
+        if let failingURL = nsError.userInfo["NSErrorFailingURLKey"] as? URL {
+            details.append("URL: \(failingURL.absoluteString)")
+        } else if let failingURLString = nsError.userInfo["NSErrorFailingURLStringKey"] as? String {
+            details.append("URL: \(failingURLString)")
+        }
+
+        details.append("Code: \(nsError.domain) \(nsError.code)")
+
+        if let underlyingError = nsError.userInfo[NSUnderlyingErrorKey] as? NSError {
+            details.append("Underlying: \(underlyingError.localizedDescription)")
+            details.append("Underlying code: \(underlyingError.domain) \(underlyingError.code)")
+        }
+
+        if let streamErrorCode = nsError.userInfo["_kCFStreamErrorCodeKey"] {
+            details.append("Network code: \(streamErrorCode)")
+        }
+
+        return details.joined(separator: "\n")
+    }
+
+    private func ollamaErrorMessage(for error: LLMKitError) -> String {
+        switch error {
+        case .httpError(let statusCode, let message):
+            let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedMessage.isEmpty else { return "HTTP \(statusCode)" }
+            return "HTTP \(statusCode): \(trimmedMessage)"
+        default:
+            return error.localizedDescription
+        }
     }
     
-    func enhanceWithOllama(text: String, systemPrompt: String, timeout: TimeInterval = 30) async throws -> String {
-        try await ollamaService.enhance(text, withSystemPrompt: systemPrompt, timeout: timeout)
+    func enhanceWithOllama(text: String, systemPrompt: String, model: String? = nil, timeout: TimeInterval = 30) async throws -> String {
+        try await ollamaService.enhance(text, withSystemPrompt: systemPrompt, model: model, timeout: timeout)
     }
-    
+
     func updateOllamaBaseURL(_ newURL: String) {
         ollamaService.baseURL = newURL
         userDefaults.set(newURL, forKey: "ollamaBaseURL")

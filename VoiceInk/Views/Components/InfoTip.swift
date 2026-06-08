@@ -7,7 +7,7 @@ struct InfoTip: View {
     var learnMoreLink: URL?
 
     // Appearance customization
-    var iconName: String = "info.circle.fill"
+    var iconName: String = "info.circle"
     var iconSize: Image.Scale = .medium
     var iconColor: Color = .primary
     var width: CGFloat = 280
@@ -31,7 +31,7 @@ struct InfoTip: View {
                         +
                         Text("Learn more")
                             .font(.callout)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(AppTheme.Accent.primary)
                     } else {
                         Text(message)
                             .font(.callout)

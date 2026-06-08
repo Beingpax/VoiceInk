@@ -4,14 +4,12 @@ import AppKit
 struct WhisperModelCardView: View {
     let model: WhisperModel
     let isDownloaded: Bool
-    let isCurrent: Bool
     let downloadProgress: [String: Double]
     let modelURL: URL?
     let isWarming: Bool
     
     // Actions
     var deleteAction: () -> Void
-    var setDefaultAction: () -> Void
     var downloadAction: () -> Void
     private var isDownloading: Bool {
         downloadProgress.keys.contains(model.name + "_main") || 
@@ -33,7 +31,7 @@ struct WhisperModelCardView: View {
             actionSection
         }
         .padding(16)
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+        .background(AppMaterialCardBackground())
     }
     
     private var headerSection: some View {
@@ -108,17 +106,8 @@ struct WhisperModelCardView: View {
     
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isCurrent {
-                Text("Default Model")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(.secondaryLabelColor))
-            } else if isDownloaded {
-                Button(action: setDefaultAction) {
-                    Text("Set as Default")
-                        .font(.system(size: 12))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            if isDownloaded {
+                modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
                 Button(action: downloadAction) {
                     HStack(spacing: 4) {
@@ -132,8 +121,8 @@ struct WhisperModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(Color(.controlAccentColor))
-                            .shadow(color: Color(.controlAccentColor).opacity(0.2), radius: 2, x: 0, y: 1)
+                            .fill(AppTheme.Accent.primary)
+                            .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
@@ -169,11 +158,9 @@ struct WhisperModelCardView: View {
 struct ImportedWhisperModelCardView: View {
     let model: ImportedWhisperModel
     let isDownloaded: Bool
-    let isCurrent: Bool
     let modelURL: URL?
 
     var deleteAction: () -> Void
-    var setDefaultAction: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -195,17 +182,8 @@ struct ImportedWhisperModelCardView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 8) {
-                if isCurrent {
-                    Text("Default Model")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color(.secondaryLabelColor))
-                } else if isDownloaded {
-                    Button(action: setDefaultAction) {
-                        Text("Set as Default")
-                            .font(.system(size: 12))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                if isDownloaded {
+                    modelStatusPill("Imported", systemImage: "checkmark.circle")
                 }
 
                 if isDownloaded {
@@ -231,7 +209,7 @@ struct ImportedWhisperModelCardView: View {
             }
         }
         .padding(16)
-        .background(CardBackground(isSelected: isCurrent, useAccentGradientWhenSelected: isCurrent))
+        .background(AppMaterialCardBackground())
     }
 }
 
@@ -259,9 +237,19 @@ func progressDots(value: Double) -> some View {
 
 func performanceColor(value: Double) -> Color {
     switch value {
-    case 0.8...1.0: return Color(.systemGreen)
-    case 0.6..<0.8: return Color(.systemYellow)
-    case 0.4..<0.6: return Color(.systemOrange)
-    default: return Color(.systemRed)
+    case 0.8...1.0: return AppTheme.Status.positive
+    case 0.6..<0.8: return AppTheme.Data.yellow
+    case 0.4..<0.6: return AppTheme.Status.warningStrong
+    default: return AppTheme.Status.error
     }
+}
+
+func modelStatusPill(_ text: String, systemImage: String) -> some View {
+    Label(text, systemImage: systemImage)
+        .font(.system(size: 11, weight: .medium))
+        .foregroundColor(Color(.secondaryLabelColor))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(AppTheme.Surface.card)
+        .clipShape(Capsule())
 }

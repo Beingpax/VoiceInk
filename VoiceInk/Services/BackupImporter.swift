@@ -23,7 +23,9 @@ enum BackupImporter {
     private static let keyLowercaseTranscription = "LowercaseTranscription"
 
     @MainActor
-    static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
+    static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
+        var shouldRepairModePromptSelections = false
+
         if categories.contains(.dictionary) {
             try importDictionary(from: backup, modelContext: modelContext)
         }
@@ -35,40 +37,40 @@ enum BackupImporter {
                 menuBarManager: menuBarManager,
                 mediaController: mediaController,
                 playbackController: playbackController,
-                soundManager: soundManager,
                 recorderUIManager: recorderUIManager
             )
         }
 
         if categories.contains(.prompts) {
-            let predefinedPrompts = enhancementService.customPrompts.filter { $0.isPredefined }
-            enhancementService.customPrompts = predefinedPrompts + backup.customPrompts
-            print("Successfully imported \(backup.customPrompts.count) custom prompts.")
+            enhancementService.customPrompts = backup.customPrompts
+            shouldRepairModePromptSelections = true
+            print("Successfully imported \(backup.customPrompts.count) prompts.")
         }
 
-        if categories.contains(.powerMode) {
-            let powerModeManager = PowerModeManager.shared
-            for config in powerModeManager.configurations {
-                ShortcutStore.removeShortcutStorage(for: .powerMode(config.id))
+        if categories.contains(.modes) {
+            let modeManager = ModeManager.shared
+            for config in modeManager.configurations {
+                ShortcutStore.removeShortcutStorage(for: .mode(config.id))
             }
 
-            powerModeManager.configurations = backup.powerModeConfigs
-            let importedPowerModeIds = Set(backup.powerModeConfigs.map(\.id))
+            modeManager.configurations = backup.modeConfigs
+            let importedModeIds = Set(backup.modeConfigs.map(\.id))
 
-            if let shortcuts = backup.powerModeShortcuts {
+            if let shortcuts = backup.modeShortcuts {
                 for (idString, shortcutBackup) in shortcuts {
                     guard
                         let id = UUID(uuidString: idString),
-                        importedPowerModeIds.contains(id)
+                        importedModeIds.contains(id)
                     else {
                         continue
                     }
 
-                    ShortcutStore.setShortcut(shortcutBackup.shortcut, for: .powerMode(id))
+                    ShortcutStore.setShortcut(shortcutBackup.shortcut, for: .mode(id))
                 }
             }
 
-            powerModeManager.saveConfigurations()
+            modeManager.saveConfigurations()
+            shouldRepairModePromptSelections = true
 
             if let customEmojis = backup.customEmojis {
                 let emojiManager = EmojiManager.shared
@@ -76,7 +78,11 @@ enum BackupImporter {
                     _ = emojiManager.addCustomEmoji(emoji)
                 }
             }
-            print("Successfully imported \(backup.powerModeConfigs.count) Power Mode configurations.")
+            print("Successfully imported \(backup.modeConfigs.count) Mode configurations.")
+        }
+
+        if shouldRepairModePromptSelections {
+            enhancementService.repairModePromptSelections()
         }
 
         if categories.contains(.customModels) {
@@ -85,7 +91,7 @@ enum BackupImporter {
     }
 
     @MainActor
-    private static func importGeneral(_ general: GeneralBackup?, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, soundManager: SoundManager, recorderUIManager: RecorderUIManager) {
+    private static func importGeneral(_ general: GeneralBackup?, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager) {
         guard let general else {
             print("No general settings found in the imported file.")
             return
@@ -116,9 +122,6 @@ enum BackupImporter {
         }
         if let dictionaryShortcut = general.quickAddToDictionaryShortcut {
             ShortcutStore.setShortcut(dictionaryShortcut.shortcut, for: .quickAddToDictionary)
-        }
-        if let enhancementShortcut = general.toggleEnhancementShortcut {
-            ShortcutStore.setShortcut(enhancementShortcut.shortcut, for: .toggleEnhancement)
         }
 
         if let shortcutRawValue = general.primaryRecordingShortcutRawValue,
@@ -166,9 +169,6 @@ enum BackupImporter {
             UserDefaults.standard.set(audioRetention, forKey: keyAudioRetentionPeriod)
         }
 
-        if let soundFeedback = general.isSoundFeedbackEnabled {
-            soundManager.isEnabled = soundFeedback
-        }
         if let muteSystem = general.isSystemMuteEnabled {
             mediaController.isSystemMuteEnabled = muteSystem
         }
@@ -266,6 +266,7 @@ enum BackupImporter {
             if skippedInvalidReplacements > 0 {
                 print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
+            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
             return
         }
 
@@ -275,6 +276,7 @@ enum BackupImporter {
             if skippedInvalidReplacements > 0 {
                 print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
+            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
         } catch {
             modelContext.rollback()
             throw BackupImportError.saveFailed("dictionary entries", error)

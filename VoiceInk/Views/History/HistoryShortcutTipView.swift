@@ -6,7 +6,7 @@ struct HistoryShortcutTipView: View {
             HStack(spacing: 12) {
                 Image(systemName: "command.circle")
                     .font(.system(size: 20))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(.secondary)
                     .frame(width: 24, height: 24)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -35,12 +35,12 @@ struct HistoryShortcutTipView: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                .fill(AppTheme.Surface.materialCard)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                .strokeBorder(AppTheme.Border.card, lineWidth: 1)
         )
     }
 }

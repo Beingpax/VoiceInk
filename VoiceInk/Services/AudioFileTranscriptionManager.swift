@@ -69,7 +69,7 @@ class AudioTranscriptionManager: ObservableObject {
     }
 
     /// Start processing pending items in the queue sequentially.
-    func startProcessing(modelContext: ModelContext, engine: VoiceInkEngine) {
+    func startProcessing(modelContext: ModelContext, engine: VoiceInkEngine, mode: ModeConfig) {
         guard !isProcessingQueue else { return }
         isProcessingQueue = true
         processingGeneration &+= 1
@@ -80,7 +80,7 @@ class AudioTranscriptionManager: ObservableObject {
 
             while let item = self.nextPendingItem() {
                 guard !Task.isCancelled else { break }
-                await self.processItem(item, modelContext: modelContext, engine: engine)
+                await self.processItem(item, modelContext: modelContext, engine: engine, mode: mode)
             }
 
             if self.processingGeneration == generation {
@@ -112,7 +112,7 @@ class AudioTranscriptionManager: ObservableObject {
         queue.first { if case .pending = $0.status { return true }; return false }
     }
 
-    private func processItem(_ item: AudioFileQueueItem, modelContext: ModelContext, engine: VoiceInkEngine) async {
+    private func processItem(_ item: AudioFileQueueItem, modelContext: ModelContext, engine: VoiceInkEngine, mode: ModeConfig) async {
         let serviceRegistry = TranscriptionServiceRegistry(
             modelProvider: engine.whisperModelManager,
             modelsDirectory: engine.whisperModelManager.modelsDirectory,
@@ -120,9 +120,13 @@ class AudioTranscriptionManager: ObservableObject {
         )
 
         do {
-            guard let currentModel = engine.transcriptionModelManager.currentTranscriptionModel else {
+            guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
+                mode: mode,
+                transcriptionModelManager: engine.transcriptionModelManager
+            ) else {
                 throw TranscriptionError.noModelSelected
             }
+            let currentModel = transcriptionConfiguration.model
 
             // Phase: Loading
             item.status = .processing(phase: .loading)
@@ -154,47 +158,68 @@ class AudioTranscriptionManager: ObservableObject {
             // Phase: Transcribing
             item.status = .processing(phase: .transcribing)
             let transcriptionStart = Date()
-            var text = try await serviceRegistry.transcribe(audioURL: permanentURL, model: currentModel)
+            var text = try await serviceRegistry.transcribe(
+                audioURL: permanentURL,
+                model: currentModel,
+                context: transcriptionConfiguration.requestContext
+            )
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            let powerModeManager = PowerModeManager.shared
-            let activePowerModeConfig = powerModeManager.currentActiveConfiguration
-            let powerModeName = (activePowerModeConfig?.isEnabled == true) ? activePowerModeConfig?.name : nil
-            let powerModeEmoji = (activePowerModeConfig?.isEnabled == true) ? activePowerModeConfig?.emoji : nil
+            let modeMetadata = transcriptionConfiguration.metadata
+            let formattingConfiguration = ModeRuntimeResolver.transcriptionFormattingConfiguration(mode: mode)
 
-            if UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled") {
-                text = WhisperTextFormatter.format(text)
+            if formattingConfiguration.isTextFormattingEnabled {
+                text = ParagraphFormatter.format(text)
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            let cleanedText = TranscriptionOutputFilter.applyUserCleanupPreferences(text)
+            let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
+                text,
+                punctuationMode: formattingConfiguration.punctuationCleanupMode,
+                shouldLowercase: formattingConfiguration.lowercaseTranscription
+            )
             try Task.checkCancellation()
 
             // Handle enhancement if enabled
             var transcription: Transcription
 
+            let enhancementConfiguration = engine.enhancementService
+                .flatMap { enhancementService in
+                    enhancementService.getAIService().map { aiService in
+                        ModeRuntimeResolver.currentEnhancementConfiguration(
+                            mode: mode,
+                            enhancementService: enhancementService,
+                            aiService: aiService
+                        )
+                    }
+                }
+
             if let enhancementService = engine.enhancementService,
-               enhancementService.isEnhancementEnabled,
-               enhancementService.isConfigured {
+               let enhancementConfiguration,
+               enhancementConfiguration.isEnabled,
+               enhancementService.isConfigured(for: enhancementConfiguration) {
                 item.status = .processing(phase: .enhancing)
                 do {
-                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(text)
+                    let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
+                        text,
+                        configuration: enhancementConfiguration
+                    )
                     transcription = Transcription(
                         text: cleanedText,
                         duration: duration,
                         enhancedText: enhancedText,
                         audioFileURL: permanentURL.absoluteString,
                         transcriptionModelName: currentModel.displayName,
-                        aiEnhancementModelName: enhancementService.getAIService()?.currentModel,
+                        aiEnhancementModelName: enhancementConfiguration.modelName ?? enhancementConfiguration.provider?.defaultModel,
                         promptName: promptName,
                         transcriptionDuration: transcriptionDuration,
                         enhancementDuration: enhancementDuration,
                         aiRequestSystemMessage: enhancementService.lastSystemMessageSent,
                         aiRequestUserMessage: enhancementService.lastUserMessageSent,
-                        powerModeName: powerModeName,
-                        powerModeEmoji: powerModeEmoji
+                        modeName: modeMetadata.name,
+                        modeEmoji: modeMetadata.emoji
                     )
                 } catch {
                     logger.error("Enhancement failed: \(error.localizedDescription, privacy: .public)")
@@ -206,8 +231,8 @@ class AudioTranscriptionManager: ObservableObject {
                         transcriptionModelName: currentModel.displayName,
                         promptName: nil,
                         transcriptionDuration: transcriptionDuration,
-                        powerModeName: powerModeName,
-                        powerModeEmoji: powerModeEmoji
+                        modeName: modeMetadata.name,
+                        modeEmoji: modeMetadata.emoji
                     )
                 }
             } else {
@@ -218,8 +243,8 @@ class AudioTranscriptionManager: ObservableObject {
                     transcriptionModelName: currentModel.displayName,
                     promptName: nil,
                     transcriptionDuration: transcriptionDuration,
-                    powerModeName: powerModeName,
-                    powerModeEmoji: powerModeEmoji
+                    modeName: modeMetadata.name,
+                    modeEmoji: modeMetadata.emoji
                 )
             }
 

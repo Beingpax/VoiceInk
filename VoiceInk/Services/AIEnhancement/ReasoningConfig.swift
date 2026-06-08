@@ -20,13 +20,13 @@ struct ReasoningConfig {
         "gemini-3.1-flash-lite"
     ]
 
-    // OpenAI GPT-5.x models support explicit "none"; GPT-4.1 models need no param.
+    // OpenAI GPT-5 models support explicit "none"; GPT-4.1 models need no param.
     static let openAINoneReasoningModels: Set<String> = [
         "gpt-5.5",
         "gpt-5.4",
         "gpt-5.4-mini",
         "gpt-5.4-nano",
-        "gpt-5.2"
+        "gpt-5"
     ]
 
     // Cerebras GPT-OSS has no true "none"; use lowest effort.

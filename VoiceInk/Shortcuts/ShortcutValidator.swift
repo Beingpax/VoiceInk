@@ -79,7 +79,7 @@ enum ShortcutValidator {
     }
 
     private static func reservedActionConflicting(with shortcut: Shortcut) -> ShortcutAction? {
-        for (action, reservedShortcut) in reservedMiniRecorderShortcuts {
+        for (action, reservedShortcut) in reservedRecorderPanelShortcuts {
             if reservedShortcut.conflicts(with: shortcut) {
                 return action
             }
@@ -89,22 +89,20 @@ enum ShortcutValidator {
     }
 
     private static var allStoredActions: [ShortcutAction] {
-        ShortcutAction.legacyKeyboardShortcutActions +
-            PowerModeManager.shared.configurations.map { ShortcutAction.powerMode($0.id) }
+        var seenActions = Set<ShortcutAction>()
+        let actions = ShortcutAction.legacyKeyboardShortcutActions +
+            ModeManager.shared.configurations.map { ShortcutAction.mode($0.id) } +
+            StarterModeCatalog.templates.map { ShortcutAction.mode($0.id) }
+
+        return actions.filter { seenActions.insert($0).inserted }
     }
 
-    private static var reservedMiniRecorderShortcuts: [(ShortcutAction, Shortcut)] {
-        digitKeyCodes.enumerated().flatMap { index, keyCode in
-            [
-                (
-                    ShortcutAction.miniRecorderPrompt(index),
-                    Shortcut.key(keyCode: keyCode, modifierFlags: [.command])
-                ),
-                (
-                    ShortcutAction.miniRecorderPowerMode(index),
-                    Shortcut.key(keyCode: keyCode, modifierFlags: [.option])
-                )
-            ]
+    private static var reservedRecorderPanelShortcuts: [(ShortcutAction, Shortcut)] {
+        digitKeyCodes.enumerated().map { index, keyCode in
+            (
+                ShortcutAction.recorderPanelMode(index),
+                Shortcut.key(keyCode: keyCode, modifierFlags: [.option])
+            )
         }
     }
 
@@ -119,8 +117,6 @@ enum ShortcutValidator {
             shortcut(kVK_ANSI_A, [.command]),
             shortcut(kVK_ANSI_C, [.command]),
             shortcut(kVK_ANSI_F, [.command]),
-            shortcut(kVK_ANSI_G, [.command]),
-            shortcut(kVK_ANSI_G, [.shift, .command]),
             shortcut(kVK_ANSI_H, [.command]),
             shortcut(kVK_ANSI_H, [.option, .command]),
             shortcut(kVK_ANSI_M, [.command]),

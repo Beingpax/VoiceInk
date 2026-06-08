@@ -177,7 +177,7 @@ struct LanguageSelectionView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(AppTheme.Surface.control)
         .cornerRadius(10)
     }
 
