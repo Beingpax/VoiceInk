@@ -11,6 +11,8 @@ enum AppDefaults {
             "restoreClipboardAfterPaste": true,
             "clipboardRestoreDelay": 2.0,
             "useAppleScriptPaste": false,
+            "pasteInChunks": false,
+            "pasteChunkSize": 250,
 
             // Audio & Media
             "isSystemMuteEnabled": true,

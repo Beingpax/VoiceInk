@@ -20,6 +20,8 @@ struct SettingsView: View {
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
+    @AppStorage("pasteInChunks") private var pasteInChunks = false
+    @AppStorage("pasteChunkSize") private var pasteChunkSize = 250
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
     @State private var showResetOnboardingAlert = false
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
@@ -30,6 +32,7 @@ struct SettingsView: View {
     @State private var isSoundFeedbackExpanded = false
     @State private var isMuteSystemExpanded = false
     @State private var isRestoreClipboardExpanded = false
+    @State private var isPasteInChunksExpanded = false
 
     var body: some View {
         Form {
@@ -212,6 +215,21 @@ struct SettingsView: View {
                         return
                     }
                     PasteMethod.setCurrent(method)
+                }
+
+                // Paste in Chunks
+                ExpandableSettingsRow(
+                    isExpanded: $isPasteInChunksExpanded,
+                    isEnabled: $pasteInChunks,
+                    label: "Paste in Chunks",
+                    infoMessage: "Some terminal apps (such as Claude Code) collapse a single large paste into a \"[Pasted text]\" placeholder. When enabled, VoiceInk pastes the transcription in smaller pieces so the full text stays visible inline. A smaller chunk size avoids the placeholder in more apps but makes pasting slightly slower."
+                ) {
+                    Picker("Chunk Size", selection: $pasteChunkSize) {
+                        Text("250 characters").tag(250)
+                        Text("500 characters").tag(500)
+                        Text("750 characters").tag(750)
+                        Text("1000 characters").tag(1000)
+                    }
                 }
             }
 
