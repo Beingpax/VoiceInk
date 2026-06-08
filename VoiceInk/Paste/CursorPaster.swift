@@ -54,7 +54,8 @@ class CursorPaster {
         let sessionID = UUID().uuidString
 
         let chunks = chunksForPaste(text)
-        var pasteResult: PasteResult = .commandNotPosted
+        var allChunksPosted = true
+        var lastPreparedChunk: String?
 
         for (index, chunk) in chunks.enumerated() {
             guard ClipboardManager.setClipboard(
@@ -63,11 +64,15 @@ class CursorPaster {
                 sessionID: shouldRestoreClipboard ? sessionID : nil
             ) else {
                 logger.error("Failed to prepare clipboard for paste")
-                return .commandNotPosted
+                allChunksPosted = false
+                break
             }
+            lastPreparedChunk = chunk
 
             await wait(prePasteDelay)
-            pasteResult = await postPasteCommand()
+            if await postPasteCommand() == .commandNotPosted {
+                allChunksPosted = false
+            }
 
             // Pause before replacing the clipboard with the next chunk so the
             // target app has time to consume this one.
@@ -76,16 +81,18 @@ class CursorPaster {
             }
         }
 
+        // Always schedule the restore, even if a chunk failed partway through,
+        // so a partial paste does not leave the user's clipboard clobbered.
         if shouldRestoreClipboard {
             scheduleClipboardRestore(
                 savedContents,
-                expectedText: chunks.last ?? text,
+                expectedText: lastPreparedChunk ?? text,
                 sessionID: sessionID,
                 on: pasteboard
             )
         }
 
-        return pasteResult
+        return allChunksPosted ? .commandPosted : .commandNotPosted
     }
 
     // MARK: - Chunking
@@ -97,20 +104,23 @@ class CursorPaster {
     private static func chunksForPaste(_ text: String) -> [String] {
         guard UserDefaults.standard.bool(forKey: "pasteInChunks") else { return [text] }
         let chunkSize = UserDefaults.standard.integer(forKey: "pasteChunkSize")
-        guard chunkSize > 0, text.count > chunkSize else { return [text] }
+        guard chunkSize > 0 else { return [text] }
         return splitIntoChunks(text, maxLength: chunkSize)
     }
 
     // Splits on the last whitespace at or before maxLength so words and lines
     // are not torn apart; falls back to a hard split for a single oversized run.
-    private static func splitIntoChunks(_ text: String, maxLength: Int) -> [String] {
-        guard maxLength > 0, text.count > maxLength else { return [text] }
+    // Advances by index arithmetic rather than `remainder.count`, which is O(n)
+    // per call on Swift strings (grapheme-cluster counting) and would otherwise
+    // make splitting O(n^2) for large transcriptions.
+    static func splitIntoChunks(_ text: String, maxLength: Int) -> [String] {
+        guard maxLength > 0 else { return [text] }
 
         var chunks: [String] = []
         var remainder = Substring(text)
 
-        while remainder.count > maxLength {
-            let hardEnd = remainder.index(remainder.startIndex, offsetBy: maxLength)
+        while let hardEnd = remainder.index(remainder.startIndex, offsetBy: maxLength, limitedBy: remainder.endIndex),
+              hardEnd != remainder.endIndex {
             var breakIndex = hardEnd
             if let whitespace = remainder[..<hardEnd].lastIndex(where: { $0 == " " || $0 == "\n" || $0 == "\t" }) {
                 // Keep the whitespace with the preceding chunk.
@@ -124,7 +134,7 @@ class CursorPaster {
             chunks.append(String(remainder))
         }
 
-        return chunks
+        return chunks.isEmpty ? [text] : chunks
     }
 
     private static func snapshotClipboard(from pasteboard: NSPasteboard) -> ClipboardSnapshot {
