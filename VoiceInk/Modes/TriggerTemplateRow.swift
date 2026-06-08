@@ -12,11 +12,11 @@ struct TriggerTemplateRow: View {
     }
 
     private var cardBackground: Color {
-        isAdded ? AppTheme.Surface.card : AppTheme.Surface.control
+        isAdded ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear
     }
 
     private var cardBorder: Color {
-        AppTheme.Border.control
+        isAdded ? Color(nsColor: .separatorColor) : AppTheme.Border.control
     }
 
     var body: some View {
@@ -42,8 +42,7 @@ struct TriggerTemplateRow: View {
                 if isAdded {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 16, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.accentColor)
                         .frame(width: 22, height: 22)
                 } else if !isDisabled {
                     Image(systemName: "plus.circle.fill")
@@ -54,7 +53,7 @@ struct TriggerTemplateRow: View {
                 }
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
             .background {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)

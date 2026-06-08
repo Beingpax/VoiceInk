@@ -8,6 +8,7 @@ struct ModeSettingsPanelView: View {
     @AppStorage("ModeTipDismissed")
     private var isTipDismissed = false
 
+
     private let contentInset: CGFloat = 20
 
     var body: some View {
@@ -38,6 +39,9 @@ struct ModeSettingsPanelView: View {
                 Text("Reorder Modes")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
+                + Text(" (drag to reorder)")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.tertiary)
                 Spacer()
             }
             .padding(.horizontal, contentInset)
@@ -152,6 +156,7 @@ private struct ModeReorderRow: View {
                     ModeReorderBadge(title: "Disabled", systemImage: "slash.circle.fill")
                 }
             }
+
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)

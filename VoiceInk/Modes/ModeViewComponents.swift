@@ -104,7 +104,6 @@ struct ConfigurationRow: View {
     let onEditConfig: (ModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
-    @State private var isHovering = false
     
     private let maxAppIconsToShow = 5
     
@@ -180,6 +179,8 @@ struct ConfigurationRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(config.name)
                         .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     
                     HStack(spacing: 12) {
                         if appCount > 0 {
@@ -337,6 +338,23 @@ struct ConfigurationRow: View {
                     }
 
                     Spacer()
+
+                    Button {
+                        onEditConfig(config)
+                    } label: {
+                        Text("Edit")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.Text.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(AppTheme.Surface.control))
+                            .overlay(
+                                Capsule()
+                                    .stroke(AppTheme.Border.control, lineWidth: 0.5)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .help("Edit mode")
                 }
                 
                 .padding(.vertical, 6)
@@ -360,37 +378,11 @@ struct ConfigurationRow: View {
         }
     }
     .opacity(config.isEnabled ? 1.0 : 0.70)
-
-    .onHover { hovering in
-        withAnimation(.easeInOut(duration: 0.15)) {
-            isHovering = hovering
-        }
-    }
-    .onTapGesture(count: 2) {
-        onEditConfig(config)
-    }
     .contextMenu {
         Button(action: {
             onEditConfig(config)
         }) {
             Label("Edit", systemImage: "pencil")
-        }
-        if modeManager.configurations.count > 1 {
-            Button(role: .destructive, action: {
-                let alert = NSAlert()
-                alert.messageText = "Delete Mode?"
-                alert.informativeText = "Are you sure you want to delete the '\(config.name)' mode? This action cannot be undone."
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Delete")
-                alert.addButton(withTitle: "Cancel")
-                alert.buttons[0].hasDestructiveAction = true
-
-                if alert.runModal() == .alertFirstButtonReturn {
-                    modeManager.removeConfiguration(with: config.id)
-                }
-            }) {
-                Label("Delete", systemImage: "trash")
-            }
         }
     }
     }

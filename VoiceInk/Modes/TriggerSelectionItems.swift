@@ -48,7 +48,7 @@ struct TriggerGroupRow: View {
             .fixedSize()
         }
         .padding(.horizontal, 8)
-        .frame(height: 48)
+        .padding(.vertical, 6)
         .background {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(AppTheme.Surface.control)
