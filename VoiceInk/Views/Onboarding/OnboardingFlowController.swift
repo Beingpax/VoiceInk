@@ -314,6 +314,13 @@ final class OnboardingFlowController {
         onComplete()
     }
 
+    func skipOnboarding(onComplete: () -> Void) {
+        OnboardingStorageKeys.onboardingKeys.forEach {
+            coordinator.defaults.removeObject(forKey: $0)
+        }
+        onComplete()
+    }
+
     func refreshAPIVerification() {
         coordinator.isSelectedAPIProviderVerified = APIKeyManager.shared.hasAPIKey(
             forProvider: coordinator.selectedOnboardingProvider.rawValue
