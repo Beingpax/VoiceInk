@@ -83,7 +83,13 @@ struct VoiceInkApp: App {
             // Create minimal in-memory container to satisfy initialization
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             resolvedContainer = (try? ModelContainer(for: schema, configurations: [config])) ?? {
-                preconditionFailure("Unable to create ModelContainer. SwiftData is unavailable.")
+                let alert = NSAlert()
+                alert.messageText = "VoiceInk Could Not Start"
+                alert.informativeText = "VoiceInk failed to initialize and must quit.\n\nTry restarting your Mac. If the problem persists, please contact support."
+                alert.alertStyle = .critical
+                alert.addButton(withTitle: "Quit")
+                alert.runModal()
+                exit(1)
             }()
         }
 
