@@ -12,11 +12,11 @@ enum TranscriptionStatus: String, Codable {
 final class Transcription {
     static let canceledTranscriptionText = "The transcription was canceled."
 
-    var id: UUID
-    var text: String
+    var id: UUID = UUID()
+    var text: String = ""
     var enhancedText: String?
-    var timestamp: Date
-    var duration: TimeInterval
+    var timestamp: Date = Date()
+    var duration: TimeInterval = 0
     var audioFileURL: String?
     var transcriptionModelName: String?
     var aiEnhancementModelName: String?
