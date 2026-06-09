@@ -272,7 +272,13 @@ class CursorPaster {
     private static func keyStroke(for character: Character, in map: [Character: KeyStroke]) -> KeyStroke? {
         switch character {
         case "\n", "\r":
-            return KeyStroke(keyCode: CGKeyCode(kVK_Return), shift: false)
+            // Use Shift+Return rather than a bare Return. A plain Return is
+            // treated as "send" by many chat apps (Slack, Teams, Messages),
+            // which would submit the message at an embedded line break. Shift+
+            // Return is the near-universal "insert a line break, don't submit"
+            // convention and still inserts a newline in editors. Intentional
+            // submission is handled separately by the Auto Send feature.
+            return KeyStroke(keyCode: CGKeyCode(kVK_Return), shift: true)
         case "\t":
             return KeyStroke(keyCode: CGKeyCode(kVK_Tab), shift: false)
         default:
