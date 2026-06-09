@@ -376,6 +376,7 @@ struct AssistantPanelView: View {
     let onSend: (String) -> Void
 
     @State private var draftMessage = ""
+    @State private var isHovering = false
     @FocusState private var isFollowUpFieldFocused: Bool
 
     private let horizontalPadding: CGFloat = 20
@@ -400,10 +401,27 @@ struct AssistantPanelView: View {
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, 10)
         .frame(height: 320)
+        .overlay(alignment: .topLeading) {
+            if isHovering {
+                CopyIconButton(textToCopy: fullConversationText)
+                    .padding(.top, 10)
+                    .padding(.leading, horizontalPadding)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: isHovering)
+        .onHover { isHovering = $0 }
         .onAppear(perform: focusFollowUpFieldIfAvailable)
         .onChange(of: session.phase) {
             focusFollowUpFieldIfAvailable()
         }
+    }
+
+    private var fullConversationText: String {
+        session.messages.map { message in
+            let label = message.role == .user ? "You" : "Assistant"
+            return "\(label): \(message.content)"
+        }.joined(separator: "\n\n")
     }
 
     private var messageList: some View {
@@ -538,6 +556,12 @@ private struct AssistantMessageBubble: View {
                 .padding(.vertical, 7)
                 .background(isUser ? Color.white.opacity(0.16) : Color.white.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(alignment: .bottomTrailing) {
+                    if !isUser {
+                        CopyIconButton(textToCopy: message.content)
+                            .padding(4)
+                    }
+                }
                 .help(isUser ? message.content : "")
 
             if !isUser {
@@ -546,3 +570,4 @@ private struct AssistantMessageBubble: View {
         }
     }
 }
+
