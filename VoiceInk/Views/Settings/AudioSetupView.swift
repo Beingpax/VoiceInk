@@ -317,7 +317,7 @@ struct AudioSetupView: View {
 
     private func updatePriorities(_ devices: [PrioritizedDevice]) {
         let updatedDevices = devices.enumerated().map { index, device in
-            PrioritizedDevice(id: device.id, name: device.name, priority: index)
+            PrioritizedDevice(id: device.id, name: device.name, priority: index, modelUID: device.modelUID)
         }
         audioDeviceManager.updatePriorities(devices: updatedDevices)
     }
