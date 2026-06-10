@@ -71,14 +71,11 @@ struct TranscriptionInfoPanel: View {
                 )
             }
 
-            if let modeValue = modeDisplay(
-                name: transcription.modeName,
-                emoji: transcription.modeEmoji
-            ) {
+            if let modeName = transcription.modeName {
                 metadataRow(
                     icon: "bolt.fill",
                     label: "Mode",
-                    value: modeValue
+                    value: modeName
                 )
             }
         } header: {
@@ -160,18 +157,4 @@ struct TranscriptionInfoPanel: View {
         }
     }
 
-    private func modeDisplay(name: String?, emoji: String?) -> String? {
-        guard name != nil || emoji != nil else { return nil }
-
-        switch (emoji?.trimmingCharacters(in: .whitespacesAndNewlines), name?.trimmingCharacters(in: .whitespacesAndNewlines)) {
-        case let (.some(emojiValue), .some(nameValue)) where !emojiValue.isEmpty && !nameValue.isEmpty:
-            return "\(emojiValue) \(nameValue)"
-        case let (.some(emojiValue), _) where !emojiValue.isEmpty:
-            return emojiValue
-        case let (_, .some(nameValue)) where !nameValue.isEmpty:
-            return nameValue
-        default:
-            return nil
-        }
-    }
 }

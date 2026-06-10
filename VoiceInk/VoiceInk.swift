@@ -177,7 +177,7 @@ struct VoiceInkApp: App {
         var lines: [String] = []
         lines.append("\(indent)[\(ns.domain) \(ns.code)] \(ns.localizedDescription)")
         for (key, value) in ns.userInfo {
-            let keyStr = (key as? NSErrorUserInfoKey)?.rawValue ?? "\(key)"
+            let keyStr = "\(key)"
             if keyStr == NSUnderlyingErrorKey || keyStr == "NSDetailedErrors" { continue }
             lines.append("\(indent)  \(keyStr): \(value)")
         }

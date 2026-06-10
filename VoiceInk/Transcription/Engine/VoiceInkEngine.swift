@@ -406,7 +406,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         provider: configuration.provider,
                         modelName: configuration.modelName ?? configuration.provider?.defaultModel,
                         modeName: configuration.mode?.name,
-                        modeEmoji: configuration.mode?.icon.legacyEmojiValue,
+                        modeEmoji: configuration.mode?.icon.value,
                         promptName: configuration.prompt?.title
                     )
                 },
@@ -557,7 +557,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             return (nil, nil)
         }
 
-        return (mode.name, mode.icon.legacyEmojiValue)
+        return (mode.name, mode.icon.value)
     }
 
     // MARK: - Resource Cleanup

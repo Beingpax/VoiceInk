@@ -53,14 +53,8 @@ struct MenuBarView: View {
                     Button {
                         modeManager.setActiveConfiguration(config)
                     } label: {
-                        HStack {
-                            ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 13 : 11)
-                                .frame(width: 16)
-                            Text(config.name)
-                            if modeManager.currentEffectiveConfiguration?.id == config.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
+                        let isActive = modeManager.currentEffectiveConfiguration?.id == config.id
+                        Text(isActive ? "\(config.name)  ✓" : config.name)
                     }
                 }
 
@@ -80,13 +74,10 @@ struct MenuBarView: View {
                 }
             } label: {
                 HStack {
+                    Image(systemName: "sparkles.square.fill.on.square")
+                        .font(.system(size: 11, weight: .medium))
                     let activeMode = modeManager.currentEffectiveConfiguration
-                    if let activeMode {
-                        ModeIconView(icon: activeMode.icon, size: activeMode.icon.kind == .emoji ? 13 : 11)
-                        Text("Mode: \(activeMode.name)")
-                    } else {
-                        Text("Mode: None")
-                    }
+                    Text("Mode: \(activeMode?.name ?? "None")")
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
                 }
@@ -97,12 +88,8 @@ struct MenuBarView: View {
                     Button {
                         audioDeviceManager.selectDeviceAndSwitchToCustomMode(id: device.id)
                     } label: {
-                        HStack {
-                            Text(device.name)
-                            if audioDeviceManager.getCurrentDevice() == device.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
+                        let isActive = audioDeviceManager.getCurrentDevice() == device.id
+                        Text(isActive ? "\(device.name)  ✓" : device.name)
                     }
                 }
 
@@ -112,6 +99,8 @@ struct MenuBarView: View {
                 }
             } label: {
                 HStack {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 11, weight: .medium))
                     Text("Audio Input")
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
@@ -139,29 +128,27 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("h", modifiers: [.command, .shift])
             
-            Button("Settings") {
-                menuBarManager.openMainWindowAndNavigate(to: "Settings")
-            }
-            .keyboardShortcut(",", modifiers: .command)
-            
             Button(menuBarManager.isMenuBarOnly ? "Show Dock Icon" : "Hide Dock Icon") {
                 menuBarManager.toggleMenuBarOnly()
             }
             .keyboardShortcut("d", modifiers: [.command, .shift])
-            
+
             Toggle("Launch at Login", isOn: $launchAtLoginEnabled)
                 .onChange(of: launchAtLoginEnabled) { oldValue, newValue in
                     LaunchAtLogin.isEnabled = newValue
                 }
-            
+
             Divider()
-            
+
+            Button("Settings") {
+                menuBarManager.openMainWindowAndNavigate(to: "Settings")
+            }
+            .keyboardShortcut(",", modifiers: .command)
+
             Button("Check for Updates") {
                 updaterViewModel.checkForUpdates()
             }
             .disabled(!updaterViewModel.canCheckForUpdates)
-            
-            Divider()
 
             Button("Quit VoiceInk") {
                 NSApplication.shared.terminate(nil)

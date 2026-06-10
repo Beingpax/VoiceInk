@@ -32,7 +32,7 @@ class VoiceInkCSVExportService {
             let enhancementModel = escapeCSVString(transcription.aiEnhancementModelName ?? "")
             let promptName = escapeCSVString(transcription.promptName ?? "")
             let transcriptionModel = escapeCSVString(transcription.transcriptionModelName ?? "")
-            let mode = escapeCSVString(modeDisplay(name: transcription.modeName, emoji: transcription.modeEmoji))
+            let mode = escapeCSVString(transcription.modeName ?? "")
             let enhancementTime = transcription.enhancementDuration ?? 0
             let transcriptionTime = transcription.transcriptionDuration ?? 0
             let timestamp = transcription.timestamp.ISO8601Format()
@@ -53,16 +53,4 @@ class VoiceInkCSVExportService {
         return escapedString
     }
 
-    private func modeDisplay(name: String?, emoji: String?) -> String {
-        switch (emoji?.trimmingCharacters(in: .whitespacesAndNewlines), name?.trimmingCharacters(in: .whitespacesAndNewlines)) {
-        case let (.some(emojiValue), .some(nameValue)) where !emojiValue.isEmpty && !nameValue.isEmpty:
-            return "\(emojiValue) \(nameValue)"
-        case let (.some(emojiValue), _) where !emojiValue.isEmpty:
-            return emojiValue
-        case let (_, .some(nameValue)) where !nameValue.isEmpty:
-            return nameValue
-        default:
-            return ""
-        }
-    }
 }
