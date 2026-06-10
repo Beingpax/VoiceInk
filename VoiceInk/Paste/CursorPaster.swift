@@ -252,9 +252,10 @@ class CursorPaster {
         await wait(prePasteDelay)
 
         let keyStrokeMap = buildKeyStrokeMap()
+        let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey ?? .none
 
         for character in text {
-            if let keyStroke = keyStroke(for: character, in: keyStrokeMap) {
+            if let keyStroke = keyStroke(for: character, in: keyStrokeMap, autoSendKey: autoSendKey) {
                 postKeyStroke(keyStroke, source: source)
             } else {
                 // Emoji, accented dead-key characters, etc. that aren't reachable
@@ -269,16 +270,14 @@ class CursorPaster {
         return .commandPosted
     }
 
-    private static func keyStroke(for character: Character, in map: [Character: KeyStroke]) -> KeyStroke? {
+    private static func keyStroke(for character: Character, in map: [Character: KeyStroke], autoSendKey: AutoSendKey) -> KeyStroke? {
         switch character {
         case "\n", "\r":
-            // Use Shift+Return rather than a bare Return. A plain Return is
-            // treated as "send" by many chat apps (Slack, Teams, Messages),
-            // which would submit the message at an embedded line break. Shift+
-            // Return is the near-universal "insert a line break, don't submit"
-            // convention and still inserts a newline in editors. Intentional
-            // submission is handled separately by the Auto Send feature.
-            return KeyStroke(keyCode: CGKeyCode(kVK_Return), shift: true)
+            // Prefer bare Return so Direct Typing matches literal pasted text in
+            // terminals and form fields. If Return is the configured Auto Send
+            // key, use Shift+Return for embedded line breaks so the final Auto
+            // Send remains the only intentional submission keystroke.
+            return KeyStroke(keyCode: CGKeyCode(kVK_Return), shift: autoSendKey == .enter)
         case "\t":
             return KeyStroke(keyCode: CGKeyCode(kVK_Tab), shift: false)
         default:
