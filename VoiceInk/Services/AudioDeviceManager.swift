@@ -484,6 +484,7 @@ class AudioDeviceManager: ObservableObject {
     }
 
     private func rebindPrioritizedDevice(savedUID: String, newUID: String, newModelUID: String?) {
+        prioritizedDevices.removeAll { $0.id == newUID && $0.id != savedUID }
         prioritizedDevices = prioritizedDevices.map { device in
             guard device.id == savedUID else { return device }
             return PrioritizedDevice(id: newUID, name: device.name, priority: device.priority, modelUID: newModelUID ?? device.modelUID)
