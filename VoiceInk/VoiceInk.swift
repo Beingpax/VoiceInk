@@ -10,7 +10,6 @@ import FluidAudio
 struct VoiceInkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let container: ModelContainer
-    let containerInitializationFailed: Bool
 
     @StateObject private var engine: VoiceInkEngine
     @StateObject private var whisperModelManager: WhisperModelManager
@@ -52,7 +51,6 @@ struct VoiceInkApp: App {
             WordReplacement.self,
             SessionMetric.self
         ])
-        var initializationFailed = false
         let resolvedContainer: ModelContainer
 
         // Attempt 1: Try persistent storage
@@ -62,7 +60,6 @@ struct VoiceInkApp: App {
             // Attempt 2: Try in-memory storage
             do {
                 resolvedContainer = try Self.createInMemoryContainer(schema: schema, logger: logger)
-                initializationFailed = true
                 logger.warning("Using in-memory storage as fallback. Data will not persist between sessions.")
 
                 DispatchQueue.main.async {
@@ -74,16 +71,14 @@ struct VoiceInkApp: App {
                     alert.runModal()
                 }
             } catch let memoryError {
-                let persistentDetail = (persistentError as NSError).debugDescription
-                let memoryDetail = (memoryError as NSError).debugDescription
-                // Both attempts failed — crash with full NSError detail so Apple's crash reporter captures domain/code/userInfo chain
-                logger.critical("❌ All ModelContainer init attempts failed.\nPersistent: \(persistentDetail, privacy: .public)\nIn-memory: \(memoryDetail, privacy: .public)")
-                fatalError("VoiceInk failed to initialize storage.\nPersistent: \(persistentDetail)\nIn-memory: \(memoryDetail)")
+                let persistentDetail = Self.fullErrorDescription(persistentError)
+                let memoryDetail = Self.fullErrorDescription(memoryError)
+                logger.critical("❌ All ModelContainer init attempts failed.\nPersistent:\n\(persistentDetail, privacy: .public)\nIn-memory:\n\(memoryDetail, privacy: .public)")
+                fatalError("VoiceInk failed to initialize storage.\nPersistent:\n\(persistentDetail)\nIn-memory:\n\(memoryDetail)")
             }
         }
 
         container = resolvedContainer
-        containerInitializationFailed = initializationFailed
         DictionaryService.removeExactDuplicateContent(context: resolvedContainer.mainContext, source: "launch")
 
         // Initialize services with proper sharing of instances
@@ -176,6 +171,30 @@ struct VoiceInkApp: App {
 
     // MARK: - Container Creation Helpers
 
+    private static func fullErrorDescription(_ error: Error, depth: Int = 0) -> String {
+        let ns = error as NSError
+        let indent = String(repeating: "  ", count: depth)
+        var lines: [String] = []
+        lines.append("\(indent)[\(ns.domain) \(ns.code)] \(ns.localizedDescription)")
+        for (key, value) in ns.userInfo {
+            let keyStr = (key as? NSErrorUserInfoKey)?.rawValue ?? "\(key)"
+            if keyStr == NSUnderlyingErrorKey || keyStr == "NSDetailedErrors" { continue }
+            lines.append("\(indent)  \(keyStr): \(value)")
+        }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? Error {
+            lines.append("\(indent)  Underlying:")
+            lines.append(fullErrorDescription(underlying, depth: depth + 2))
+        }
+        if let details = ns.userInfo["NSDetailedErrors"] as? [Error] {
+            lines.append("\(indent)  DetailedErrors (\(details.count)):")
+            for (i, detail) in details.enumerated() {
+                lines.append("\(indent)    [\(i)]:")
+                lines.append(fullErrorDescription(detail, depth: depth + 3))
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private static func createPersistentContainer(schema: Schema, logger: Logger) throws -> ModelContainer {
         let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
@@ -218,7 +237,7 @@ struct VoiceInkApp: App {
         do {
             return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
         } catch {
-            logger.error("❌ Failed to create persistent ModelContainer: \(error.localizedDescription, privacy: .public)")
+            logger.error("❌ Failed to create persistent ModelContainer:\n\(Self.fullErrorDescription(error), privacy: .public)")
             throw error
         }
     }
@@ -236,7 +255,7 @@ struct VoiceInkApp: App {
         do {
             return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
         } catch {
-            logger.error("❌ Failed to create in-memory ModelContainer: \(error.localizedDescription, privacy: .public)")
+            logger.error("❌ Failed to create in-memory ModelContainer:\n\(Self.fullErrorDescription(error), privacy: .public)")
             throw error
         }
     }
@@ -258,19 +277,6 @@ struct VoiceInkApp: App {
                         .environmentObject(enhancementService)
                         .modelContainer(container)
                         .onAppear {
-                            // Check if container initialization failed
-                            if containerInitializationFailed {
-                                let alert = NSAlert()
-                                alert.messageText = "Critical Storage Error"
-                                alert.informativeText = "VoiceInk cannot initialize its storage system. The app cannot continue.\n\nPlease try reinstalling the app or contact support if the issue persists."
-                                alert.alertStyle = .critical
-                                alert.addButton(withTitle: "Quit")
-                                alert.runModal()
-
-                                NSApplication.shared.terminate(nil)
-                                return
-                            }
-
                             if enableAnnouncements {
                                 AnnouncementsService.shared.start()
                             }
