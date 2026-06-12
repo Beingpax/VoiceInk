@@ -3371,16 +3371,6 @@
         }
       }
     },
-    "Dictated %@ words across %d %@.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sie haben %@ Wörter in %d %@ diktiert."
-          }
-        }
-      }
-    },
     "Dictation": {
       "localizations": {
         "de": {
@@ -8221,26 +8211,6 @@
         }
       }
     },
-    "session": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sitzung"
-          }
-        }
-      }
-    },
-    "sessions": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sitzungen"
-          }
-        }
-      }
-    },
     "Sessions Recorded": {
       "localizations": {
         "de": {
@@ -10517,6 +10487,47 @@
           "stringUnit": {
             "state": "translated",
             "value": "YouTube-Videos & Anleitungen"
+          }
+        }
+      }
+    },
+    "Dictated %1$@ words across %2$lld sessions.": {
+      "comment": "Hero subtitle showing word count and session count",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Dictated %1$@ words across %2$lld session."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Dictated %1$@ words across %2$lld sessions."
+                }
+              }
+            }
+          }
+        },
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sie haben %1$@ Wörter in %2$lld Sitzung diktiert."
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "Sie haben %1$@ Wörter in %2$lld Sitzungen diktiert."
+                }
+              }
+            }
           }
         }
       }

@@ -433,11 +433,11 @@ struct DashboardContent: View {
         }
 
         let wordsText = Formatters.formattedNumber(totalWords)
-        let sessionText = totalCount == 1
-            ? String(localized: "session")
-            : String(localized: "sessions")
-
-        return String(format: String(localized: "Dictated %@ words across %d %@."), wordsText, totalCount, sessionText)
+        return String.localizedStringWithFormat(
+            String(localized: "Dictated %1$@ words across %2$lld sessions."),
+            wordsText,
+            Int64(totalCount)
+        )
     }
     
     private var heroGradient: LinearGradient {
