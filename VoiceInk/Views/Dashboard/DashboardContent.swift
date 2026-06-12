@@ -266,7 +266,7 @@ struct DashboardContent: View {
             )
         case .trial(let daysRemaining):
             TrialMessageView(
-                message: Text(String.localizedStringWithFormat(String(localized: "You have %lld days left in your trial"), Int64(daysRemaining))),
+                message: Text(String(localized: "You have \(daysRemaining) days left in your trial")),
                 type: daysRemaining <= 2 ? .warning : .info,
                 onAddLicenseKey: onAddLicenseKey
             )
@@ -433,11 +433,7 @@ struct DashboardContent: View {
         }
 
         let wordsText = Formatters.formattedNumber(totalWords)
-        return String.localizedStringWithFormat(
-            String(localized: "Dictated %1$@ words across %2$lld sessions."),
-            wordsText,
-            Int64(totalCount)
-        )
+        return String(localized: "Dictated \(wordsText) words across \(totalCount) sessions.")
     }
     
     private var heroGradient: LinearGradient {

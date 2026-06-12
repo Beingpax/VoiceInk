@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 private func localizedSessionCount(_ count: Int) -> String {
-    String.localizedStringWithFormat(String(localized: "%d sessions"), count)
+    String(localized: "\(count) sessions")
 }
 
 // MARK: - Time filter

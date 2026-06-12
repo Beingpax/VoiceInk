@@ -63,7 +63,7 @@ struct LocalEnhancementProviderManagementView: View {
 
     private var localModelCountLabel: String {
         let count = ollamaModelNames.count
-        return String.localizedStringWithFormat(String(localized: "%lld models"), Int64(count))
+        return String(localized: "\(count) models")
     }
 
     private var ollamaStatusTitle: Text {

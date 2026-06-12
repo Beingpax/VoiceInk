@@ -145,7 +145,7 @@ struct AudioTranscribeView: View {
     private var topBar: some View {
         HStack(spacing: 10) {
             let count = transcriptionManager.queue.count
-            Text(String.localizedStringWithFormat(String(localized: "%d files"), count))
+            Text(String(localized: "\(count) files"))
             .font(.subheadline)
             .foregroundColor(.secondary)
 

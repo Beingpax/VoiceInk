@@ -62,7 +62,7 @@ struct VocabularyView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: toggleSort) {
                         HStack(spacing: 4) {
-                            Text(String.localizedStringWithFormat(String(localized: "Vocabulary Words (%lld)"), Int64(vocabularyWords.count)))
+                            Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 

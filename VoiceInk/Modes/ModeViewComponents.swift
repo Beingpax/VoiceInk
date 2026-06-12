@@ -149,12 +149,12 @@ struct ConfigurationRow: View {
     
     private var websiteText: String {
         if websiteCount == 0 { return "" }
-        return String.localizedStringWithFormat(String(localized: "%d Websites"), websiteCount)
+        return String(localized: "\(websiteCount) Websites")
     }
 
     private var appText: String {
         if appCount == 0 { return "" }
-        return String.localizedStringWithFormat(String(localized: "%d Apps"), appCount)
+        return String(localized: "\(appCount) Apps")
     }
     
     private var extraAppsCount: Int {

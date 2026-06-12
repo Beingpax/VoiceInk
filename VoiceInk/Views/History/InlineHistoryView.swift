@@ -111,7 +111,7 @@ struct InlineHistoryView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String.localizedStringWithFormat(String(localized: "This action cannot be undone. Are you sure you want to delete %lld items?"), Int64(selectedTranscriptions.count)))
+            Text(String(localized: "This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) items?"))
         }
         .onAppear {
             isViewCurrentlyVisible = true

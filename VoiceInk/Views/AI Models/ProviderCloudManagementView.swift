@@ -224,9 +224,9 @@ private struct ProviderListRow: View {
 
     private func modelCountText(_ count: Int, key: String) -> String {
         if key == "%lld Transcription models" {
-            return String.localizedStringWithFormat(String(localized: "%lld Transcription models"), Int64(count))
+            return String(localized: "\(count) Transcription models")
         }
-        return String.localizedStringWithFormat(String(localized: "%lld Enhancement models"), Int64(count))
+        return String(localized: "\(count) Enhancement models")
     }
 
     var body: some View {

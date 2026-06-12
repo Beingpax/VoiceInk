@@ -353,7 +353,7 @@ struct ProviderDetailPanel: View {
             return String(localized: "No models loaded.")
         }
 
-        return String.localizedStringWithFormat(String(localized: "%lld models available"), Int64(count))
+        return String(localized: "\(count) models available")
     }
 
     private func modelRow(title: String, subtitle: String?, trailing: String?, systemImage: String) -> some View {

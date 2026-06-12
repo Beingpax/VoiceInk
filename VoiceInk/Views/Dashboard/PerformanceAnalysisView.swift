@@ -1,7 +1,7 @@
 import SwiftUI
 
 private func localizedTranscriptCount(_ count: Int) -> String {
-    String.localizedStringWithFormat(String(localized: "%d transcripts"), count)
+    String(localized: "\(count) transcripts")
 }
 
 // MARK: - Shared Analysis Logic

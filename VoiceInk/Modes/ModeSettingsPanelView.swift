@@ -209,9 +209,9 @@ private struct ModeReorderRow: View {
         }
 
         if plural == "Apps" {
-            return String.localizedStringWithFormat(String(localized: "%lld Apps"), Int64(count))
+            return String(localized: "\(count) Apps")
         } else {
-            return String.localizedStringWithFormat(String(localized: "%lld Websites"), Int64(count))
+            return String(localized: "\(count) Websites")
         }
     }
 }

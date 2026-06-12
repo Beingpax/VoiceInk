@@ -251,7 +251,7 @@ struct LicenseManagementView: View {
         case .licensed:
             return String(localized: "Licensed")
         case .trial(let daysRemaining):
-            return String.localizedStringWithFormat(String(localized: "%lld days left in trial"), Int64(daysRemaining))
+            return String(localized: "\(daysRemaining) days left in trial")
         case .trialExpired:
             return String(localized: "Trial ended")
         }

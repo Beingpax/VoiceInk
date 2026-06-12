@@ -114,7 +114,7 @@ struct TranscriptionHistoryView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             let count = selectedTranscriptions.count
-            Text(String.localizedStringWithFormat(String(localized: "This action cannot be undone. Are you sure you want to delete %lld items?"), Int64(count)))
+            Text(String(localized: "This action cannot be undone. Are you sure you want to delete \(count) items?"))
         }
         .sidePanel(isPresented: .init(
             get: { isRightSidebarVisible },

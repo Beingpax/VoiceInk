@@ -31,8 +31,8 @@ extension ModeTriggerGroup {
 
     private func countText(_ count: Int, key: String) -> String {
         if key == "%lld apps" {
-            return String.localizedStringWithFormat(String(localized: "%lld apps"), Int64(count))
+            return String(localized: "\(count) apps")
         }
-        return String.localizedStringWithFormat(String(localized: "%lld websites"), Int64(count))
+        return String(localized: "\(count) websites")
     }
 }

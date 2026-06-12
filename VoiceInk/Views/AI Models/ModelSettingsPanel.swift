@@ -101,7 +101,7 @@ private struct EnhancementModelSettingsView: View {
                 ) {
                     Picker("Minimum words", selection: $shortEnhancementWordThreshold) {
                         ForEach(1...15, id: \.self) { count in
-                            Text(String.localizedStringWithFormat(String(localized: "%d words"), count)).tag(count)
+                            Text(String(localized: "\(count) words")).tag(count)
                         }
                     }
                 }
