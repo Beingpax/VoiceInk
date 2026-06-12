@@ -1409,7 +1409,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已存在使用此显示名称的自定义润色模型"
+            "value": "已存在使用此显示名称的自定润色模型"
           }
         }
       }
@@ -1425,7 +1425,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已存在使用此模型名称的自定义润色模型"
+            "value": "已存在使用此模型名称的自定润色模型"
           }
         }
       }
@@ -1698,7 +1698,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加自定义微调的 whisper 模型以在 VoiceInk 中使用。请选择已下载的 .bin 文件。"
+            "value": "添加自定微调的 whisper 模型以在 VoiceInk 中使用。请选择已下载的 .bin 文件。"
           }
         }
       }
@@ -1747,7 +1747,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加应用或网站…"
+            "value": "添加 App 或网站…"
           }
         }
       }
@@ -1763,7 +1763,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加自定义表情符号"
+            "value": "添加自定表情符号"
           }
         }
       }
@@ -1779,7 +1779,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加自定义润色模型"
+            "value": "添加自定润色模型"
           }
         }
       }
@@ -1796,7 +1796,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加自定义模型"
+            "value": "添加自定模型"
           }
         }
       }
@@ -1812,7 +1812,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加自定义转录模型"
+            "value": "添加自定转录模型"
           }
         }
       }
@@ -1828,7 +1828,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "为不同场景添加自定义模式"
+            "value": "为不同场景添加自定模式"
           }
         }
       }
@@ -1957,7 +1957,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "新增"
+            "value": "新建"
           }
         }
       }
@@ -2248,7 +2248,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "AI 润色处理文本失败。"
+            "value": "AI 润色无法处理该文本。"
           }
         }
       }
@@ -2264,7 +2264,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "AI 润色未启用或未配置"
+            "value": "AI 润色未开启或未配置"
           }
         }
       }
@@ -2442,7 +2442,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "允许 VoiceInk 在你的所有应用中工作。"
+            "value": "允许 VoiceInk 在你的所有 App 中工作。"
           }
         }
       }
@@ -2699,7 +2699,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Speech 最多可保留 5 种语言。下载所选语言前，请先选择一种移除。"
+            "value": "Apple Speech 最多可保留 5 种语言。下载所选语言前，请先选取一种移除。"
           }
         }
       }
@@ -2860,7 +2860,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确定要删除「%@」提示词吗？此操作无法撤销。"
+            "value": "确定要删除提示词「%@」吗？此操作无法撤销。"
           }
         }
       }
@@ -2892,7 +2892,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确定要删除自定义润色模型「%@」吗？"
+            "value": "确定要删除自定润色模型「%@」吗？"
           }
         }
       }
@@ -2908,7 +2908,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "确定要删除自定义模型「%@」吗？"
+            "value": "确定要删除自定模型「%@」吗？"
           }
         }
       }
@@ -2991,7 +2991,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "助手回复未保存：%@"
+            "value": "助手回复未存储：%@"
           }
         }
       }
@@ -3233,7 +3233,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "粘贴文本后自动按下组合键。适用于使用不同发送快捷键的聊天应用或表单。"
+            "value": "粘贴文本后自动按下组合键。适用于使用不同发送快捷键的聊天 App 或表单。"
           }
         }
       }
@@ -3570,7 +3570,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法保存模式"
+            "value": "无法存储模式"
           }
         }
       }
@@ -3698,7 +3698,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择"
+            "value": "选取"
           }
         }
       }
@@ -3746,7 +3746,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选取一个位置来保存你的设置。"
+            "value": "选取一个位置来存储你的设置。"
           }
         }
       }
@@ -3762,7 +3762,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择一个设置备份，然后选择要导入的内容。"
+            "value": "选取一个设置备份，然后选择要导入的内容。"
           }
         }
       }
@@ -3779,7 +3779,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择一个快捷键以开始。"
+            "value": "选取一个快捷键以开始。"
           }
         }
       }
@@ -3827,7 +3827,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "选择要从此备份中导入的内容。"
+            "value": "选取要从此备份中导入的内容。"
           }
         }
       }
@@ -4436,7 +4436,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法将设置保存到文件：%@"
+            "value": "无法将设置存储到文件：%@"
           }
         }
       }
@@ -4500,7 +4500,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建第一个模式，根据你正在使用的应用或网站自动化你的 VoiceInk 工作流程"
+            "value": "创建第一个模式，根据你正在使用的 App 或网站自动化你的 VoiceInk 工作流程"
           }
         }
       }
@@ -4533,7 +4533,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义"
+            "value": "自定"
           }
         }
       }
@@ -4549,7 +4549,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义命令"
+            "value": "自定命令"
           }
         }
       }
@@ -4565,7 +4565,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义命令不能为空。"
+            "value": "自定命令不能为空。"
           }
         }
       }
@@ -4581,7 +4581,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义命令无法启动：%@"
+            "value": "自定命令无法启动：%@"
           }
         }
       }
@@ -4597,7 +4597,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义命令以退出状态码 %d 结束：%@"
+            "value": "自定命令以状态码 %d 退出：%@"
           }
         }
       }
@@ -4613,7 +4613,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义命令以退出状态码 %d 结束。"
+            "value": "自定命令以状态码 %d 退出。"
           }
         }
       }
@@ -4629,7 +4629,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义命令为空。"
+            "value": "自定命令为空。"
           }
         }
       }
@@ -4662,7 +4662,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义设备"
+            "value": "自定设备"
           }
         }
       }
@@ -4678,7 +4678,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义润色模型"
+            "value": "自定润色模型"
           }
         }
       }
@@ -4694,7 +4694,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义模型定义"
+            "value": "自定模型定义"
           }
         }
       }
@@ -4710,7 +4710,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义提示词"
+            "value": "自定提示词"
           }
         }
       }
@@ -4726,7 +4726,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义转录模型"
+            "value": "自定转录模型"
           }
         }
       }
@@ -4742,7 +4742,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "自定义：%@"
+            "value": "自定：%@"
           }
         }
       }
@@ -4759,7 +4759,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "仪表盘"
+            "value": "概览"
           }
         }
       }
@@ -4823,7 +4823,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "停用许可证？"
+            "value": "要停用许可证吗？"
           }
         }
       }
@@ -4855,7 +4855,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当没有匹配的应用或网站时，将使用默认模式"
+            "value": "当没有匹配的 App 或网站时，将使用默认模式"
           }
         }
       }
@@ -4872,7 +4872,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "当未找到匹配的特定应用或网站时，将使用默认模式。"
+            "value": "当未找到匹配的特定 App 或网站时，将使用默认模式。"
           }
         }
       }
@@ -4889,7 +4889,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "默认使用模拟的 Cmd+V 按键事件。当自定义键盘布局无法正确粘贴时，AppleScript 会有所帮助。"
+            "value": "默认使用模拟的 Cmd+V 按键事件。当自定键盘布局无法正确粘贴时，AppleScript 会有所帮助。"
           }
         }
       }
@@ -4989,7 +4989,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除自定义润色模型"
+            "value": "删除自定润色模型"
           }
         }
       }
@@ -5005,7 +5005,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除自定义模型"
+            "value": "删除自定模型"
           }
         }
       }
@@ -5053,7 +5053,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除提示词？"
+            "value": "要删除此提示词吗？"
           }
         }
       }
@@ -5069,7 +5069,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "删除所选项目？"
+            "value": "要删除所选项目吗？"
           }
         }
       }
@@ -5577,7 +5577,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "双击编辑 • 右键查看更多选项"
+            "value": "连按两下以编辑 • 右键点按查看更多选项"
           }
         }
       }
@@ -5625,7 +5625,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ 需要下载。"
+            "value": "需要先下载 %@。"
           }
         }
       }
@@ -5929,7 +5929,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "编辑自定义润色模型"
+            "value": "编辑自定润色模型"
           }
         }
       }
@@ -5945,7 +5945,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "编辑自定义转录模型"
+            "value": "编辑自定转录模型"
           }
         }
       }
@@ -6025,7 +6025,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "编辑此分组中的应用与网站。"
+            "value": "编辑此分组中的 App 与网站。"
           }
         }
       }
@@ -6269,7 +6269,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "润色模式与 AI 操作将保持关闭。之后你随时可以在应用中设置。"
+            "value": "润色模式与 AI 操作将保持关闭。之后你随时可以在 App 中设置。"
           }
         }
       }
@@ -6769,7 +6769,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加替换项失败：%@"
+            "value": "无法添加替换项：%@"
           }
         }
       }
@@ -6819,7 +6819,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拷贝音频文件失败"
+            "value": "无法拷贝音频文件"
           }
         }
       }
@@ -6851,7 +6851,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建音频文件失败：%lld"
+            "value": "无法创建音频文件：%lld"
           }
         }
       }
@@ -6867,7 +6867,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "创建 AudioUnit 失败：%lld"
+            "value": "无法创建 AudioUnit：%lld"
           }
         }
       }
@@ -6883,7 +6883,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法创建自定义提示音目录"
+            "value": "无法创建自定提示音目录"
           }
         }
       }
@@ -6915,7 +6915,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "启用输入失败：%lld"
+            "value": "无法启用输入：%lld"
           }
         }
       }
@@ -6947,7 +6947,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "执行本地 CLI 命令失败：%@"
+            "value": "无法执行本地 CLI 命令：%@"
           }
         }
       }
@@ -6979,7 +6979,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "提取音频样本失败"
+            "value": "无法提取音频样本"
           }
         }
       }
@@ -6995,7 +6995,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "获取设备格式失败：%lld"
+            "value": "无法获取设备格式：%lld"
           }
         }
       }
@@ -7011,7 +7011,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入模型失败：%@"
+            "value": "无法导入模型：%@"
           }
         }
       }
@@ -7043,7 +7043,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "载入转录模型失败。"
+            "value": "无法载入转录模型。"
           }
         }
       }
@@ -7075,7 +7075,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除词语失败：%@"
+            "value": "无法移除词语：%@"
           }
         }
       }
@@ -7091,7 +7091,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法安全地保存 API 密钥"
+            "value": "无法安全地存储 API 密钥"
           }
         }
       }
@@ -7107,7 +7107,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存更改失败：%@"
+            "value": "无法存储更改：%@"
           }
         }
       }
@@ -7123,7 +7123,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存自定义润色模型失败"
+            "value": "无法存储自定润色模型"
           }
         }
       }
@@ -7139,7 +7139,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无法保存导入的 %@：%@"
+            "value": "无法存储导入的 %@：%@"
           }
         }
       }
@@ -7171,7 +7171,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置文件格式失败：%lld"
+            "value": "无法设置文件格式：%lld"
           }
         }
       }
@@ -7203,7 +7203,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "设置输入设备失败：%lld"
+            "value": "无法设置输入设备：%lld"
           }
         }
       }
@@ -7235,7 +7235,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "音频转录失败。"
+            "value": "无法转录该音频。"
           }
         }
       }
@@ -7251,7 +7251,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "解压缩已下载的 Core ML 模型失败。"
+            "value": "无法解压缩已下载的 Core ML 模型。"
           }
         }
       }
@@ -8266,7 +8266,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "了解更多"
+            "value": "进一步了解"
           }
         }
       }
@@ -8572,7 +8572,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在载入应用"
+            "value": "正在载入 App"
           }
         }
       }
@@ -8669,7 +8669,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本地 CLI 命令执行失败，退出码 %lld：%@"
+            "value": "本地 CLI 命令执行失败，退出代码 %lld：%@"
           }
         }
       }
@@ -8685,7 +8685,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "本地 CLI 命令失败，退出代码为 %lld。"
+            "value": "本地 CLI 命令执行失败，退出代码 %lld。"
           }
         }
       }
@@ -8830,7 +8830,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "丢失密钥？"
+            "value": "找不到密钥？"
           }
         }
       }
@@ -8878,7 +8878,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "在「自定义」标签页中管理自定义润色模型。"
+            "value": "在「自定」标签页中管理自定润色模型。"
           }
         }
       }
@@ -9442,7 +9442,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "我的自定义模型"
+            "value": "我的自定模型"
           }
         }
       }
@@ -9586,7 +9586,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未找到应用"
+            "value": "未找到 App"
           }
         }
       }
@@ -9670,7 +9670,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "暂无自定义润色模型"
+            "value": "暂无自定润色模型"
           }
         }
       }
@@ -9686,7 +9686,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "无自定义转录模型"
+            "value": "无自定转录模型"
           }
         }
       }
@@ -9734,7 +9734,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有匹配的应用"
+            "value": "没有匹配的 App"
           }
         }
       }
@@ -9926,7 +9926,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有可用的模式"
+            "value": "无可用模式"
           }
         }
       }
@@ -9974,7 +9974,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有可用的提示词"
+            "value": "无可用提示词"
           }
         }
       }
@@ -9990,7 +9990,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有可用的提示词"
+            "value": "无可用提示词"
           }
         }
       }
@@ -10102,7 +10102,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有可用的转录内容"
+            "value": "无可用转录内容"
           }
         }
       }
@@ -10150,7 +10150,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "没有可供自定义命令使用的转录文本。"
+            "value": "没有可供自定命令使用的转录文本。"
           }
         }
       }
@@ -10507,7 +10507,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "超时时"
+            "value": "超时后"
           }
         }
       }
@@ -10716,7 +10716,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "原始文本（多个请用逗号分隔）"
+            "value": "原文（多个用逗号分隔）"
           }
         }
       }
@@ -11020,7 +11020,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请先修正验证错误，然后再保存。"
+            "value": "请先修正验证错误，然后再存储。"
           }
         }
       }
@@ -11036,7 +11036,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "请重新启动应用程序。如果问题仍然存在，请联系支持人员。"
+            "value": "请重新启动 App。如果问题仍然存在，请联系支持人员。"
           }
         }
       }
@@ -11554,7 +11554,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "进一步了解自定义本地模型"
+            "value": "进一步了解自定本地模型"
           }
         }
       }
@@ -11731,7 +11731,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "录音启动失败"
+            "value": "无法开始录音"
           }
         }
       }
@@ -11939,7 +11939,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除 API 密钥？"
+            "value": "要移除 API 密钥吗？"
           }
         }
       }
@@ -12599,7 +12599,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存"
+            "value": "存储"
           }
         }
       }
@@ -12615,7 +12615,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存并选择"
+            "value": "存储并选择"
           }
         }
       }
@@ -12631,7 +12631,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存为 MD"
+            "value": "存储为 MD"
           }
         }
       }
@@ -12647,7 +12647,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存为 TXT"
+            "value": "存储为 TXT"
           }
         }
       }
@@ -12663,7 +12663,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存更改"
+            "value": "存储更改"
           }
         }
       }
@@ -12679,7 +12679,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存并选择此提示词。"
+            "value": "存储并选择此提示词。"
           }
         }
       }
@@ -12695,7 +12695,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存到文件"
+            "value": "存储到文件"
           }
         }
       }
@@ -12711,7 +12711,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存转录内容"
+            "value": "存储转录内容"
           }
         }
       }
@@ -12727,7 +12727,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在保存"
+            "value": "正在存储"
           }
         }
       }
@@ -12775,7 +12775,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "搜索应用或输入网址…"
+            "value": "搜索 App 或输入网址…"
           }
         }
       }
@@ -13565,7 +13565,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跳过 API 设置？"
+            "value": "要跳过 API 设置吗？"
           }
         }
       }
@@ -13613,7 +13613,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "跳过新手引导？"
+            "value": "要跳过新手引导吗？"
           }
         }
       }
@@ -13870,7 +13870,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "开始你的第一次录音，解锁价值洞察。"
+            "value": "开始第一次录音，看看 VoiceInk 为你节省了多少。"
           }
         }
       }
@@ -14335,7 +14335,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "应用「%@」已在「%@」模式中配置。"
+            "value": "App「%@」已在「%@」模式中配置。"
           }
         }
       }
@@ -14431,7 +14431,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "导入的设置文件（版本 %@）与你的应用程序（版本 %@）版本不同。将继续导入，但请注意可能存在的不兼容问题。"
+            "value": "导入的设置文件（版本 %@）与你的 App（版本 %@）版本不同。将继续导入，但请注意可能存在的不兼容问题。"
           }
         }
       }
@@ -14447,7 +14447,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "密钥有效，但 VoiceInk 无法安全地保存它。"
+            "value": "密钥有效，但 VoiceInk 无法安全地存储它。"
           }
         }
       }
@@ -14643,7 +14643,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "这可能是由录音问题或系统资源不足导致的。请重试，或重新启动应用。"
+            "value": "这可能是由录音问题或系统资源不足导致的。请重试，或重新启动 App。"
           }
         }
       }
@@ -15408,7 +15408,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "如果本地模型转录耗时超出预期，请开启此选项。应用在启动和唤醒时会静默运行后台转录，以触发优化。"
+            "value": "如果本地模型转录耗时超出预期，请开启此选项。App 在启动和唤醒时会静默运行后台转录，以触发优化。"
           }
         }
       }
@@ -15555,7 +15555,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "将当前应用中选中的文本用作此模式的上下文。"
+            "value": "将当前 App 中选中的文本用作此模式的上下文。"
           }
         }
       }
@@ -15701,7 +15701,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "验证并保存"
+            "value": "验证并存储"
           }
         }
       }
@@ -15994,7 +15994,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk 可以根据你正在使用的应用和你配置的规则选择合适的模式。"
+            "value": "VoiceInk 可以根据你正在使用的 App 和你配置的规则选择合适的模式。"
           }
         }
       }
@@ -16010,7 +16010,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk 无法访问其存储位置。你的转录记录将无法在会话之间保存。"
+            "value": "VoiceInk 无法访问其存储位置。你的转录记录将无法跨会话存储。"
           }
         }
       }
@@ -16026,7 +16026,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk 洞察"
+            "value": "VoiceInk 使用分析"
           }
         }
       }
@@ -16266,7 +16266,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk 会临时使用剪贴板来粘贴转录内容。启用后，它会在所选延迟后恢复你之前的剪贴板内容。停用后，粘贴的转录内容会保留在剪贴板中。"
+            "value": "VoiceInk 会临时使用剪贴板来粘贴转录内容。打开后，它会在所选延迟后恢复你之前的剪贴板内容。关闭后，粘贴的转录内容会保留在剪贴板中。"
           }
         }
       }
@@ -16282,7 +16282,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk 使用辅助功能将转录内容直接输入到任何应用中。"
+            "value": "VoiceInk 使用辅助功能将转录内容直接输入到任何 App 中。"
           }
         }
       }
@@ -16542,7 +16542,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "字词"
+            "value": "词数"
           }
         }
       }
@@ -16558,7 +16558,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "听写字数"
+            "value": "听写词数"
           }
         }
       }
@@ -16574,7 +16574,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "已生成的字词"
+            "value": "已生成词数"
           }
         }
       }
@@ -16590,7 +16590,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "每分钟字数"
+            "value": "每分钟词数"
           }
         }
       }
@@ -16707,7 +16707,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "下次启动应用时，你会再次看到介绍页面。"
+            "value": "下次启动 App 时，你会再次看到介绍页面。"
           }
         }
       }
