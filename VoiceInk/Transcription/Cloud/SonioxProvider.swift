@@ -17,9 +17,9 @@ struct SonioxProvider: CloudProvider {
 
     var models: [CloudModel] {[
         CloudModel(
-            name: "stt-async-v4",
-            displayName: "Soniox V4",
-            description: "Soniox transcription model v4 with human-parity accuracy",
+            name: "stt-async-v5",
+            displayName: "Soniox V5",
+            description: "Soniox transcription model v5 with improved accuracy and structured data formatting",
             provider: .soniox,
             speed: 0.99,
             accuracy: 0.98,

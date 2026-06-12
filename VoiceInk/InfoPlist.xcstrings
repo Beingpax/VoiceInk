@@ -1,125 +1,130 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "CFBundleDisplayName": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "VoiceInk"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoiceInk"
           }
         }
       }
     },
-    "CFBundleName": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk"
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "VoiceInk"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoiceInk"
           }
         }
       }
     },
-    "CFBundleTypeName": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Audio-/Videodatei"
+    "CFBundleTypeName" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio-/Videodatei"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Audio/Video File"
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Audio/Video File"
           }
         }
       }
     },
-    "NSAppleEventsUsageDescription": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk muss mit Ihrem Browser interagieren, um die aktuelle Website zu erkennen und website-spezifische Konfigurationen anzuwenden."
+    "NSAppleEventsUsageDescription" : {
+      "comment" : "Privacy - AppleEvents Sending Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk muss mit Ihrem Browser interagieren, um die aktuelle Website zu erkennen und website-spezifische Konfigurationen anzuwenden."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations."
           }
         }
       }
     },
-    "NSHumanReadableCopyright": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ""
+    "NSHumanReadableCopyright" : {
+      "comment" : "Copyright (human-readable)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": ""
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : ""
           }
         }
       }
     },
-    "NSMicrophoneUsageDescription": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk benötigt Zugriff auf Ihr Mikrofon, um Audio für die Transkription aufzunehmen."
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy - Microphone Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk benötigt Zugriff auf Ihr Mikrofon, um Audio für die Transkription aufzunehmen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "VoiceInk needs access to your microphone to record audio for transcription."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoiceInk needs access to your microphone to record audio for transcription."
           }
         }
       }
     },
-    "NSScreenCaptureUsageDescription": {
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk benötigt Zugriff auf die Bildschirmaufnahme, um Kontext von Ihrem Bildschirm für eine höhere Transkriptionsgenauigkeit zu erfassen."
+    "NSScreenCaptureUsageDescription" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk benötigt Zugriff auf die Bildschirmaufnahme, um Kontext von Ihrem Bildschirm für eine höhere Transkriptionsgenauigkeit zu erfassen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "VoiceInk needs screen recording access to understand context from your screen for improved transcription accuracy."
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "VoiceInk needs screen recording access to understand context from your screen for improved transcription accuracy."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
