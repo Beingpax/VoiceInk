@@ -291,7 +291,7 @@ struct ConfigurationRow: View {
                         HStack(spacing: 4) {
                             Image(systemName: config.outputMode.iconName)
                                 .font(.system(size: 10))
-                            Text(LocalizedStringKey(config.outputMode.displayName))
+                            Text(config.outputMode.displayName)
                                 .font(.caption)
                         }
                         .padding(.horizontal, 6)

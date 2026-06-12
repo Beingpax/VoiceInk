@@ -205,7 +205,7 @@ struct ModeConfigFormView: View {
 
                     Picker(selection: $draft.punctuationCleanupMode) {
                         ForEach(PunctuationCleanupMode.allCases) { mode in
-                            Text(LocalizedStringKey(mode.displayName)).tag(mode)
+                            Text(mode.displayName).tag(mode)
                         }
                     } label: {
                         HStack(spacing: 4) {
