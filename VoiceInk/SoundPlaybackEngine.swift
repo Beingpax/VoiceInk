@@ -92,7 +92,7 @@ final class SoundPlaybackEngine: @unchecked Sendable {
             player.prepareToPlay()
             return player
         } catch {
-            logger.error("Failed to load sound: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to load sound: \(error, privacy: .public)")
             return nil
         }
     }

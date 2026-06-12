@@ -974,33 +974,33 @@ enum CoreAudioRecorderError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .audioUnitNotFound:
-            return "HAL Output AudioUnit not found"
+            return String(localized: "HAL Output AudioUnit not found")
         case .audioUnitNotInitialized:
-            return "AudioUnit not initialized"
+            return String(localized: "AudioUnit not initialized")
         case .deviceNotAvailable:
-            return "Audio device is no longer available"
+            return String(localized: "Audio device is no longer available")
         case .failedToCreateAudioUnit(let status):
-            return "Failed to create AudioUnit: \(status)"
+            return String(format: String(localized: "Failed to create AudioUnit: %lld"), Int64(status))
         case .failedToEnableInput(let status):
-            return "Failed to enable input: \(status)"
+            return String(format: String(localized: "Failed to enable input: %lld"), Int64(status))
         case .failedToDisableOutput(let status):
-            return "Failed to disable output: \(status)"
+            return String(format: String(localized: "Failed to disable output: %lld"), Int64(status))
         case .failedToSetDevice(let status):
-            return "Failed to set input device: \(status)"
+            return String(format: String(localized: "Failed to set input device: %lld"), Int64(status))
         case .failedToGetDeviceFormat(let status):
-            return "Failed to get device format: \(status)"
+            return String(format: String(localized: "Failed to get device format: %lld"), Int64(status))
         case .failedToSetFormat(let status):
-            return "Failed to set audio format: \(status)"
+            return String(format: String(localized: "Failed to set audio format: %lld"), Int64(status))
         case .failedToSetCallback(let status):
-            return "Failed to set input callback: \(status)"
+            return String(format: String(localized: "Failed to set input callback: %lld"), Int64(status))
         case .failedToCreateFile(let status):
-            return "Failed to create audio file: \(status)"
+            return String(format: String(localized: "Failed to create audio file: %lld"), Int64(status))
         case .failedToSetFileFormat(let status):
-            return "Failed to set file format: \(status)"
+            return String(format: String(localized: "Failed to set file format: %lld"), Int64(status))
         case .failedToInitialize(let status):
-            return "Failed to initialize AudioUnit: \(status)"
+            return String(format: String(localized: "Failed to initialize AudioUnit: %lld"), Int64(status))
         case .failedToStart(let status):
-            return "Failed to start AudioUnit: \(status)"
+            return String(format: String(localized: "Failed to start AudioUnit: %lld"), Int64(status))
         }
     }
 }

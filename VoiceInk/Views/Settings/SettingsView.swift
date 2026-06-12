@@ -160,7 +160,7 @@ struct SettingsView: View {
 
                 Picker(selection: $pasteMethodRawValue) {
                     ForEach(PasteMethod.allCases) { method in
-                        Text(method.displayName).tag(method.rawValue)
+                        Text(LocalizedStringKey(method.displayName)).tag(method.rawValue)
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -181,7 +181,7 @@ struct SettingsView: View {
             Section("Interface") {
                 Picker("Recorder Style", selection: $recorderUIManager.recorderPanelStyle) {
                     ForEach(RecorderPanelStyle.allCases) { style in
-                        Text(style.displayName).tag(style)
+                        Text(LocalizedStringKey(style.displayName)).tag(style)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -289,7 +289,7 @@ struct SettingsView: View {
     private func shortcutModePicker(binding: Binding<RecordingShortcutManager.Mode>) -> some View {
         Picker("", selection: binding) {
             ForEach(RecordingShortcutManager.Mode.allCases, id: \.self) { mode in
-                Text(mode.displayName).tag(mode)
+                Text(LocalizedStringKey(mode.displayName)).tag(mode)
             }
         }
         .labelsHidden()

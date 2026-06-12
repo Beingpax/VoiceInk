@@ -1,5 +1,9 @@
 import SwiftUI
 
+private func localizedTranscriptCount(_ count: Int) -> String {
+    String.localizedStringWithFormat(String(localized: "%d transcripts"), count)
+}
+
 /// Compact panel-optimized performance analysis view for side panels and sidebars.
 struct PerformanceAnalysisPanelView: View {
     let transcriptions: [Transcription]
@@ -157,7 +161,7 @@ struct PerformanceAnalysisPanelView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text("\(modelStat.fileCount) transcripts")
+                Text(localizedTranscriptCount(modelStat.fileCount))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
@@ -230,7 +234,7 @@ struct PerformanceAnalysisPanelView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text("\(modelStat.fileCount) transcripts")
+                Text(localizedTranscriptCount(modelStat.fileCount))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }

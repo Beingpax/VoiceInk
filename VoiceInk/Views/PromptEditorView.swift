@@ -27,15 +27,15 @@ struct PromptEditorView: View {
     @State private var useSystemInstructions: Bool
     @State private var showDeleteConfirmation = false
 
-    private var saveButtonTitle: String {
+    private var saveButtonTitle: LocalizedStringKey {
         mode == .add ? "Create & Select" : "Save & Select"
     }
 
-    private var panelTitle: String {
+    private var panelTitle: LocalizedStringKey {
         mode == .add ? "New Prompt" : "Edit Prompt"
     }
 
-    private var promptKindLabel: String {
+    private var promptKindLabel: LocalizedStringKey {
         "Prompt"
     }
 
@@ -111,7 +111,7 @@ struct PromptEditorView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Are you sure you want to delete '\(title)'? This action cannot be undone.")
+            Text(String(format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."), title))
         }
     }
 

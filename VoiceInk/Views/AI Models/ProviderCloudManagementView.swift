@@ -182,7 +182,7 @@ private struct ProviderListRow: View {
         APIKeyManager.shared.hasAPIKey(forProvider: descriptor.providerKey)
     }
 
-    private var statusText: String {
+    private var statusText: LocalizedStringKey {
         isConfigured ? "Connected" : "Not connected"
     }
 
@@ -201,19 +201,32 @@ private struct ProviderListRow: View {
 
         let transcriptionCount = descriptor.transcriptionModels.count
         if transcriptionCount > 0 {
-            parts.append(modelCountText(transcriptionCount, title: "Transcription"))
+            parts.append(
+                modelCountText(
+                    transcriptionCount,
+                    key: "%lld Transcription models"
+                )
+            )
         }
 
         if let provider = descriptor.aiProvider {
             let enhancementCount = aiService.availableModels(for: provider).count
-            parts.append(modelCountText(enhancementCount, title: "Enhancement"))
+            parts.append(
+                modelCountText(
+                    enhancementCount,
+                    key: "%lld Enhancement models"
+                )
+            )
         }
 
         return parts.joined(separator: " · ")
     }
 
-    private func modelCountText(_ count: Int, title: String) -> String {
-        "\(count) \(title) \(count == 1 ? "model" : "models")"
+    private func modelCountText(_ count: Int, key: String) -> String {
+        if key == "%lld Transcription models" {
+            return String.localizedStringWithFormat(String(localized: "%lld Transcription models"), Int64(count))
+        }
+        return String.localizedStringWithFormat(String(localized: "%lld Enhancement models"), Int64(count))
     }
 
     var body: some View {

@@ -141,7 +141,7 @@ class BrowserURLService {
             }
             throw CancellationError()
         } catch {
-            logger.error("❌ AppleScript execution failed for \(browser.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("❌ AppleScript execution failed for \(browser.displayName, privacy: .public): \(error, privacy: .public)")
             throw BrowserURLError.executionFailed
         }
     }

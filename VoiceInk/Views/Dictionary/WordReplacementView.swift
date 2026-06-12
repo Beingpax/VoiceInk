@@ -196,7 +196,7 @@ struct WordReplacementView: View {
         } catch {
             // Rollback the delete to restore UI consistency
             modelContext.rollback()
-            alertMessage = "Failed to remove replacement: \(error.localizedDescription)"
+            alertMessage = String(format: String(localized: "Failed to remove replacement: %@"), error.localizedDescription)
             showAlert = true
         }
     }
@@ -256,7 +256,7 @@ struct WordReplacementInfoPopover: View {
                         Text("Replacement:")
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        Text("https://tryvoiceink.com")
+                        Text(verbatim: "https://tryvoiceink.com")
                             .font(.callout)
                     }
                 }

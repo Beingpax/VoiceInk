@@ -19,15 +19,15 @@ enum StreamingTranscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return "API key not configured for streaming transcription"
+            return String(localized: "API key not configured for streaming transcription")
         case .connectionFailed(let message):
-            return "Streaming connection failed: \(message)"
+            return String(format: String(localized: "Streaming connection failed: %@"), message)
         case .timeout:
-            return "Streaming transcription timed out waiting for final result"
+            return String(localized: "Streaming transcription timed out waiting for final result")
         case .serverError(let message):
-            return "Streaming server error: \(message)"
+            return String(format: String(localized: "Streaming server error: %@"), message)
         case .notConnected:
-            return "Not connected to streaming transcription service"
+            return String(localized: "Not connected to streaming transcription service")
         }
     }
 }

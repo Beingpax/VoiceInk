@@ -56,35 +56,35 @@ enum ShortcutAction: Hashable {
     var displayName: String {
         switch self {
         case .primaryRecording:
-            return "Primary Shortcut"
+            return String(localized: "Primary Shortcut")
         case .secondaryRecording:
-            return "Secondary Shortcut"
+            return String(localized: "Secondary Shortcut")
         case .pasteLastTranscription:
-            return "Paste Last Transcription"
+            return String(localized: "Paste Last Transcription")
         case .pasteLastEnhancement:
-            return "Paste Last Enhanced Transcription"
+            return String(localized: "Paste Last Enhanced Transcription")
         case .retryLastTranscription:
-            return "Retry Last Transcription"
+            return String(localized: "Retry Last Transcription")
         case .cancelRecorder:
-            return "Cancel Recording"
+            return String(localized: "Cancel Recording")
         case .openHistoryWindow:
-            return "Open History Window"
+            return String(localized: "Open History Window")
         case .quickAddToDictionary:
-            return "Quick Add to Dictionary"
+            return String(localized: "Quick Add to Dictionary")
         case .mode(let id):
             if let config = ModeManager.shared.getConfiguration(with: id) {
-                return "\(config.name) Mode"
+                return String(format: String(localized: "%@ Mode"), config.name)
             }
 
             if let template = StarterModeCatalog.templates.first(where: { $0.id == id }) {
-                return "\(template.name) Mode"
+                return String(format: String(localized: "%@ Mode"), template.name)
             }
 
-            return "Mode"
+            return String(localized: "Mode")
         case .recorderPanelEscape:
-            return "Recorder Cancel"
+            return String(localized: "Recorder Cancel")
         case .recorderPanelMode(let index):
-            return "Select Mode \(Self.displayNumber(forRecorderPanelIndex: index))"
+            return String(format: String(localized: "Select Mode %@"), Self.displayNumber(forRecorderPanelIndex: index))
         }
     }
 

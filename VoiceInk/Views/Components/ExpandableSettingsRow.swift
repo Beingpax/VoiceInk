@@ -4,8 +4,8 @@ struct ExpandableSettingsRow<Content: View>: View {
     @Binding private var isExpanded: Bool
 
     private let isEnabled: Binding<Bool>?
-    private let label: String
-    private let infoMessage: String?
+    private let label: LocalizedStringKey
+    private let infoMessage: LocalizedStringKey?
     private let infoURL: String?
     private let expandedContentTransition: AnyTransition
     private let content: () -> Content
@@ -15,8 +15,8 @@ struct ExpandableSettingsRow<Content: View>: View {
     init(
         isExpanded: Binding<Bool>,
         isEnabled: Binding<Bool>,
-        label: String,
-        infoMessage: String? = nil,
+        label: LocalizedStringKey,
+        infoMessage: LocalizedStringKey? = nil,
         infoURL: String? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -30,7 +30,7 @@ struct ExpandableSettingsRow<Content: View>: View {
     }
 
     init(
-        title: String,
+        title: LocalizedStringKey,
         isExpanded: Binding<Bool>,
         @ViewBuilder content: @escaping () -> Content
     ) {

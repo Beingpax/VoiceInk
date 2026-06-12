@@ -1,7 +1,8 @@
 import SwiftUI
+import Foundation
 
 struct AddIconButton: View {
-    let helpText: String
+    let helpText: LocalizedStringResource
     var size: CGFloat = 18
     var isDisabled: Bool = false
     let action: () -> Void

@@ -184,7 +184,7 @@ struct TriggerPickerPopover: View {
                 TriggerSymbol(systemName: isWebsiteAlreadyAdded ? "checkmark" : "globe")
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(isWebsiteAlreadyAdded ? "Remove website" : "Add website")
+                    Text(isWebsiteAlreadyAdded ? LocalizedStringKey("Remove website") : LocalizedStringKey("Add website"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.primary)
                     Text(websiteCandidate)
@@ -243,7 +243,7 @@ struct TriggerPickerPopover: View {
     }
 
     private var emptyState: some View {
-        Text(query.isEmpty ? "No apps found" : "No matching apps")
+        Text(query.isEmpty ? LocalizedStringKey("No apps found") : LocalizedStringKey("No matching apps"))
             .font(.system(size: 12, weight: .medium))
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)

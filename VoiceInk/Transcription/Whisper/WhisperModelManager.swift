@@ -355,7 +355,7 @@ class WhisperModelManager: ObservableObject {
 
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             await NotificationManager.shared.showNotification(
-                title: "A model named \(baseName).bin already exists",
+                title: String(format: String(localized: "A model named %@.bin already exists"), baseName),
                 type: .warning,
                 duration: 4.0
             )
@@ -372,14 +372,14 @@ class WhisperModelManager: ObservableObject {
             onModelsChanged?()
 
             await NotificationManager.shared.showNotification(
-                title: "Imported \(destinationURL.lastPathComponent)",
+                title: String(format: String(localized: "Imported %@"), destinationURL.lastPathComponent),
                 type: .success,
                 duration: 3.0
             )
         } catch {
             logError("Failed to import local model", error)
             await NotificationManager.shared.showNotification(
-                title: "Failed to import model: \(error.localizedDescription)",
+                title: String(format: String(localized: "Failed to import model: %@"), error.localizedDescription),
                 type: .error,
                 duration: 5.0
             )
@@ -389,7 +389,7 @@ class WhisperModelManager: ObservableObject {
     // MARK: - Helpers
 
     private func logError(_ message: String, _ error: Error) {
-        logger.error("❌ \(message, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        logger.error("❌ \(message, privacy: .public): \(error, privacy: .public)")
     }
 }
 
@@ -428,13 +428,13 @@ struct DownloadProgressView: View {
 
     private var downloadPhase: String {
         if isOptimizing {
-            return "Optimizing model for your device"
+            return String(localized: "Optimizing model for your device")
         }
 
         if supportsCoreML && downloadProgress[modelName + "_coreml"] != nil {
-            return "Downloading Core ML Model for \(modelName)"
+            return String(format: String(localized: "Downloading Core ML Model for %@"), modelName)
         }
-        return "Downloading \(modelName) Model"
+        return String(format: String(localized: "Downloading %@ Model"), modelName)
     }
 
     var body: some View {

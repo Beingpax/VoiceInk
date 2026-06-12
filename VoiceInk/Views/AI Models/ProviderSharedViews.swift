@@ -52,8 +52,8 @@ struct ProviderBrandIcon: View {
 }
 
 struct ProviderSectionHeader: View {
-    let title: String
-    let subtitle: String
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -68,10 +68,10 @@ struct ProviderSectionHeader: View {
 }
 
 struct ProviderConfigurationGroup<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let content: () -> Content
 
-    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+    init(title: LocalizedStringKey, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.content = content
     }
@@ -88,10 +88,10 @@ struct ProviderConfigurationGroup<Content: View>: View {
 }
 
 struct ProviderModelListSection<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let content: () -> Content
 
-    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+    init(title: LocalizedStringKey, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.content = content
     }
@@ -123,7 +123,7 @@ struct ProviderSurface: View {
 }
 
 struct ProviderStatusBadge: View {
-    let title: String
+    let title: LocalizedStringKey
     let color: Color
 
     var body: some View {

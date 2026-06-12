@@ -22,7 +22,7 @@ final class SelectedTextService {
         do {
             return normalized(try await textManager.getSelectedText(strategies: selectedTextStrategies))
         } catch {
-            logger.debug("SelectedTextKit failed to capture selected text: \(error.localizedDescription, privacy: .public)")
+            logger.debug("SelectedTextKit failed to capture selected text: \(error, privacy: .public)")
             return nil
         }
     }

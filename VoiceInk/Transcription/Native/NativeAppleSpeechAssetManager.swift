@@ -55,7 +55,7 @@ enum NativeAppleSpeechAssetManager {
                 return .reservationLimitReached(reservedLocales)
             }
 
-            logger.error("Apple Speech asset download failed for '\(localeIdentifier, privacy: .public)': \(error.localizedDescription, privacy: .public).")
+            logger.error("Apple Speech asset download failed for '\(localeIdentifier, privacy: .public)': \(error, privacy: .public).")
             return .failed(error.localizedDescription)
         }
         #else
@@ -208,7 +208,7 @@ enum NativeAppleSpeechAssetManager {
             if isReservationLimitError(error) {
                 logger.warning("Apple Speech reservation limit reached for '\(context.localeIdentifier, privacy: .public)'. User must release a reserved language in settings. Status: \(String(describing: finalStatus), privacy: .public).")
             } else {
-                logger.warning("Apple Speech asset reservation failed for '\(context.localeIdentifier, privacy: .public)': \(error.localizedDescription, privacy: .public). Status: \(String(describing: finalStatus), privacy: .public).")
+                logger.warning("Apple Speech asset reservation failed for '\(context.localeIdentifier, privacy: .public)': \(error, privacy: .public). Status: \(String(describing: finalStatus), privacy: .public).")
             }
 
             return false

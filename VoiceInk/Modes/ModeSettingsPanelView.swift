@@ -205,14 +205,14 @@ private struct ModeReorderRow: View {
 
     private func countText(_ count: Int, singular: String, plural: String) -> String {
         if count == 0 {
-            return "No \(plural)"
+            return plural == "Apps" ? String(localized: "No Apps") : String(localized: "No Websites")
         }
 
-        if count == 1 {
-            return "1 \(singular)"
+        if plural == "Apps" {
+            return String.localizedStringWithFormat(String(localized: "%lld Apps"), Int64(count))
+        } else {
+            return String.localizedStringWithFormat(String(localized: "%lld Websites"), Int64(count))
         }
-
-        return "\(count) \(plural)"
     }
 }
 
@@ -234,7 +234,7 @@ private struct ModeReorderMeta: View {
 }
 
 private struct ModeReorderBadge: View {
-    let title: String
+    let title: LocalizedStringKey
     var systemImage: String?
 
     var body: some View {

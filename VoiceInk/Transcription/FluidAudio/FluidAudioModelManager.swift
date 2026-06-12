@@ -92,7 +92,7 @@ class FluidAudioModelManager: ObservableObject {
             )
             modelStateRevision += 1
         } catch {
-            logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error, privacy: .public)")
         }
     }
 
@@ -152,17 +152,17 @@ class FluidAudioModelManager: ObservableObject {
     private static func statusMessage(for progress: DownloadUtils.DownloadProgress) -> String {
         switch progress.phase {
         case .listing:
-            return "Listing files from repository..."
+            return String(localized: "Listing files from repository...")
         case .downloading(let completedFiles, let totalFiles):
             guard totalFiles > 0 else {
-                return "Checking cached models..."
+                return String(localized: "Checking cached models...")
             }
-            return "Downloading models: \(completedFiles)/\(totalFiles) files"
+            return String(format: String(localized: "Downloading model files: %lld/%lld"), Int64(completedFiles), Int64(totalFiles))
         case .compiling(let modelName):
             guard !modelName.isEmpty else {
-                return "Finalizing models..."
+                return String(localized: "Finalizing models...")
             }
-            return "Compiling \(displayName(forModelComponent: modelName))"
+            return String(format: String(localized: "Compiling %@"), displayName(forModelComponent: modelName))
         }
     }
 

@@ -122,24 +122,27 @@ struct NativeAppleLanguageAssetControl: View {
     private var helpText: String {
         switch state {
         case .checking:
-            return "Checking whether this Apple Speech language is downloaded."
+            return String(localized: "Checking whether this Apple Speech language is downloaded.")
         case .downloaded:
-            return "Apple Speech language is downloaded."
+            return String(localized: "Apple Speech language is downloaded.")
         case .needsDownload:
-            return "Download this Apple Speech language."
+            return String(localized: "Download this Apple Speech language.")
         case .downloading:
-            return "Downloading assets for the selected Apple Speech language."
+            return String(localized: "Downloading assets for the selected Apple Speech language.")
         case .notSupported:
-            return "Apple Speech does not support this language."
+            return String(localized: "Apple Speech does not support this language.")
         case .assetManagementUnavailable:
-            return "Apple Speech language downloads are not available on this system."
+            return String(localized: "Apple Speech language downloads are not available on this system.")
         case .reservationLimitReached:
             if allowsReservationReplacement {
-                return "Apple Speech can reserve up to 5 languages. Choose one to remove before downloading the selected language."
+                return String(localized: "Apple Speech can reserve up to 5 languages. Choose one to remove before downloading the selected language.")
             }
-            return "Apple Speech can reserve up to 5 languages. Manage reserved languages in Mode settings."
+            return String(localized: "Apple Speech can reserve up to 5 languages. Manage reserved languages in Mode settings.")
         case .failed(let message):
-            return "Apple Speech language download failed: \(message)"
+            return String(
+                format: String(localized: "Apple Speech language download failed: %@"),
+                message
+            )
         }
     }
 
@@ -151,7 +154,7 @@ struct NativeAppleLanguageAssetControl: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
-                Text("Remove one reserved language to download \(selectedLanguageName).")
+                Text(String(format: String(localized: "Remove one reserved language to download %@."), selectedLanguageName))
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -193,7 +196,7 @@ struct NativeAppleLanguageAssetControl: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help("Remove \(languageDisplayName(for: identifier)) from reserved Apple Speech languages.")
+        .help(String(format: String(localized: "Remove %@ from reserved Apple Speech languages."), languageDisplayName(for: identifier)))
     }
 
     private var reservationLimitLocaleIdentifiers: [String] {
@@ -267,7 +270,12 @@ struct NativeAppleLanguageAssetControl: View {
             }
 
             guard released else {
-                state = .failed("Could not remove \(languageDisplayName(for: reservedLocaleIdentifier)) from reserved Apple Speech languages.")
+                state = .failed(
+                    String(
+                        format: String(localized: "Could not remove %@ from reserved Apple Speech languages."),
+                        languageDisplayName(for: reservedLocaleIdentifier)
+                    )
+                )
                 return
             }
 

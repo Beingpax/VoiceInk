@@ -106,9 +106,12 @@ class LicenseViewModel: ObservableObject {
     var usageRestrictionMessage: String? {
         switch licenseState {
         case .unlicensed:
-            return "Start a 7-day trial or buy VoiceInk Pro to continue using VoiceInk."
+            return String(localized: "Start a 7-day trial or buy VoiceInk Pro to continue using VoiceInk.")
         case .trialExpired:
-            return "Your trial has expired. Upgrade to VoiceInk Pro at tryvoiceink.com/buy"
+            return String(
+                format: String(localized: "Your trial has expired. Upgrade to VoiceInk Pro at %@"),
+                "tryvoiceink.com/buy"
+            )
         case .trial, .licensed:
             return nil
         }
@@ -125,7 +128,7 @@ class LicenseViewModel: ObservableObject {
 
         guard !normalizedLicenseKey.isEmpty else {
             validationSuccess = false
-            validationMessage = "Please enter a license key"
+            validationMessage = String(localized: "Please enter a license key")
             return
         }
         
@@ -140,7 +143,7 @@ class LicenseViewModel: ObservableObject {
             
             if !licenseCheck.isValid {
                 validationSuccess = false
-                validationMessage = "This license has been revoked or disabled. Please contact support."
+                validationMessage = String(localized: "This license has been revoked or disabled. Please contact support.")
                 isValidating = false
                 return
             }
@@ -156,7 +159,7 @@ class LicenseViewModel: ObservableObject {
                         userDefaults.set(true, forKey: "VoiceInkLicenseRequiresActivation")
                         activationsLimit = limit
                         userDefaults.activationsLimit = limit
-                        completeSuccessfulValidation(message: "License activated successfully!")
+                        completeSuccessfulValidation(message: String(localized: "License activated successfully!"))
                         isValidating = false
                         return
                     }
@@ -183,31 +186,37 @@ class LicenseViewModel: ObservableObject {
                 userDefaults.activationsLimit = licenseCheck.activationsLimit ?? 0
 
                 // Update the license state for unlimited license
-                completeSuccessfulValidation(message: "License validated successfully!")
+                completeSuccessfulValidation(message: String(localized: "License validated successfully!"))
                 isValidating = false
                 return
             }
             
             // Update the license state for activated license
-            completeSuccessfulValidation(message: "License activated successfully!")
+            completeSuccessfulValidation(message: String(localized: "License activated successfully!"))
 
         } catch LicenseError.keyNotFound {
             validationSuccess = false
-            validationMessage = "License key not found. Please double-check your key and try again."
+            validationMessage = String(localized: "License key not found. Please double-check your key and try again.")
         } catch LicenseError.activationLimitReached {
             validationSuccess = false
-            validationMessage = "This license has reached its device limit. Visit the License Management Portal to deactivate other devices."
+            validationMessage = String(localized: "This license has reached its device limit. Visit the License Management Portal to deactivate other devices.")
         } catch LicenseError.serverError(let code) {
             validationSuccess = false
-            validationMessage = "Server error (\(code)). Please try again later or contact support."
+            validationMessage = String(
+                format: String(localized: "Server error (%d). Please try again later or contact support."),
+                code
+            )
         } catch let urlError as URLError {
             validationSuccess = false
-            logger.error("🔑 License network error: \(urlError.localizedDescription, privacy: .public)")
-            validationMessage = "Could not reach the server. Please check your internet connection and try again."
+            logger.error("🔑 License network error: \(urlError, privacy: .public)")
+            validationMessage = String(localized: "Could not reach the server. Please check your internet connection and try again.")
         } catch {
             validationSuccess = false
             logger.error("🔑 Unexpected license error: \(error, privacy: .public)")
-            validationMessage = "An unexpected error occurred. Please try again or contact support at support@tryvoiceink.com"
+            validationMessage = String(
+                format: String(localized: "An unexpected error occurred. Please try again or contact support at %@"),
+                "support@tryvoiceink.com"
+            )
         }
         
         isValidating = false

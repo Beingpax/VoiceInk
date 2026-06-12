@@ -89,7 +89,7 @@ class TranscriptionPipeline {
             do {
                 try modelContext.save()
             } catch {
-                logger.error("Failed to save canceled transcription: \(error.localizedDescription, privacy: .public)")
+                logger.error("Failed to save canceled transcription: \(error, privacy: .public)")
             }
         }
 
@@ -186,12 +186,12 @@ class TranscriptionPipeline {
                         finalText = enhancedText
                     } catch {
                         let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                        transcription.enhancedText = "Enhancement failed: \(errorDescription)"
+                        transcription.enhancedText = String(format: String(localized: "Enhancement failed: %@"), errorDescription)
                         responseError = errorDescription
                         let shortReason = String(errorDescription.prefix(80))
                         await MainActor.run {
                             NotificationManager.shared.showNotification(
-                                title: "Enhancement failed: \(shortReason)",
+                                title: String(format: String(localized: "Enhancement failed: %@"), shortReason),
                                 type: .warning
                             )
                         }
@@ -215,7 +215,7 @@ class TranscriptionPipeline {
                 }
             }
 
-            transcription.text = "Transcription Failed: \(errorDescription)"
+            transcription.text = String(format: String(localized: "Transcription Failed: %@"), errorDescription)
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
         }
 
@@ -228,7 +228,7 @@ class TranscriptionPipeline {
                         in: modelContext
                     )
                 } catch {
-                    logger.error("Failed to record session metric: \(error.localizedDescription, privacy: .public)")
+                    logger.error("Failed to record session metric: \(error, privacy: .public)")
                 }
             }
 
@@ -239,7 +239,7 @@ class TranscriptionPipeline {
                 }
                 NotificationCenter.default.post(name: .transcriptionCompleted, object: transcription)
             } catch {
-                logger.error("Failed to save transcription: \(error.localizedDescription, privacy: .public)")
+                logger.error("Failed to save transcription: \(error, privacy: .public)")
             }
         }
 

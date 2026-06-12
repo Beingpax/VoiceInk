@@ -123,7 +123,7 @@ struct DictionaryQuickAddView: View {
     enum Mode: CaseIterable {
         case vocabulary, replacement
 
-        var label: String {
+        var label: LocalizedStringKey {
             switch self {
             case .vocabulary: return "Vocabulary"
             case .replacement: return "Word Replacement"
@@ -343,8 +343,8 @@ struct DictionaryQuickAddView: View {
 // MARK: - Key Hint
 
 private struct KeyHint: View {
-    let label: String
-    init(_ label: String) { self.label = label }
+    let label: LocalizedStringKey
+    init(_ label: LocalizedStringKey) { self.label = label }
 
     var body: some View {
         Text(label)

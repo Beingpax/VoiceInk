@@ -46,7 +46,7 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
         )
 
         window.contentViewController = hostingController
-        window.title = "History"
+        window.title = String(localized: "History")
         window.identifier = windowIdentifier
         window.delegate = self
         window.titlebarAppearsTransparent = true

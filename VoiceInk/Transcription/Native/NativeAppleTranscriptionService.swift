@@ -23,19 +23,19 @@ class NativeAppleTranscriptionService: TranscriptionService {
         var errorDescription: String? {
             switch self {
             case .unsupportedOS:
-                return "SpeechAnalyzer requires macOS 26 or later."
+                return String(localized: "SpeechAnalyzer requires macOS 26 or later.")
             case .transcriptionFailed:
-                return "Transcription failed using SpeechAnalyzer."
+                return String(localized: "Transcription failed using SpeechAnalyzer.")
             case .localeNotSupported:
-                return "The selected language is not supported by SpeechAnalyzer."
+                return String(localized: "The selected language is not supported by SpeechAnalyzer.")
             case .invalidModel:
-                return "Invalid model type provided for Native Apple transcription."
+                return String(localized: "Invalid model type provided for Native Apple transcription.")
             case .assetDownloadRequired(let displayName):
-                return "Download required for \(displayName)."
+                return String(format: String(localized: "Download required for %@."), displayName)
             case .assetReservationFailed(let displayName):
-                return "Apple Speech could not reserve language assets for \(displayName). Manage reserved Apple Speech languages in settings."
+                return String(format: String(localized: "Apple Speech could not reserve language assets for %@. Manage reserved Apple Speech languages in settings."), displayName)
             case .resultStreamTimedOut:
-                return "Apple Speech did not finish returning transcription results."
+                return String(localized: "Apple Speech did not finish returning transcription results.")
             }
         }
 
@@ -160,7 +160,7 @@ class NativeAppleTranscriptionService: TranscriptionService {
                 return result
             } catch {
                 group.cancelAll()
-                logger.error("Apple Speech result wait failed: \(error.localizedDescription, privacy: .public).")
+                logger.error("Apple Speech result wait failed: \(error, privacy: .public).")
                 throw error
             }
         }

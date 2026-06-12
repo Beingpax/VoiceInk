@@ -402,15 +402,15 @@ enum CustomSoundError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .fileNotFound:
-            return "Audio file not found"
+            return String(localized: "Audio file not found")
         case .invalidAudioFile:
-            return "Invalid audio file format"
+            return String(localized: "Invalid audio file format")
         case .durationTooLong(let duration, let maxDuration):
-            return String(format: "Audio file is %.1f seconds long. Please use an audio file that is %.0f seconds or shorter for start and stop sounds.", duration, maxDuration)
+            return String(format: String(localized: "Audio file is %.1f seconds long. Please use an audio file that is %.0f seconds or shorter for start and stop sounds."), duration, maxDuration)
         case .directoryCreationFailed:
-            return "Failed to create custom sounds directory"
+            return String(localized: "Failed to create custom sounds directory")
         case .fileCopyFailed:
-            return "Failed to copy audio file"
+            return String(localized: "Failed to copy audio file")
         }
     }
 }

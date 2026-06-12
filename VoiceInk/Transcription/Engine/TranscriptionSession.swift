@@ -125,7 +125,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                 logger.notice("Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)")
                 return text
             } catch {
-                logger.error("❌ Streaming failed, falling back to batch: \(error.localizedDescription, privacy: .public)")
+                logger.error("❌ Streaming failed, falling back to batch: \(error, privacy: .public)")
                 streamingService.cancel()
             }
         } else {

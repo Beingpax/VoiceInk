@@ -79,9 +79,9 @@ struct CustomProviderManagementView: View {
     }
 
     private func sectionHeader(
-        title: String,
-        subtitle: String,
-        addHelp: String,
+        title: LocalizedStringKey,
+        subtitle: LocalizedStringKey,
+        addHelp: LocalizedStringResource,
         onAdd: @escaping () -> Void
     ) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -97,7 +97,7 @@ struct CustomProviderManagementView: View {
 
 private struct CustomProviderEmptyState: View {
     let systemImage: String
-    let title: String
+    let title: LocalizedStringKey
 
     var body: some View {
         VStack(spacing: 10) {
@@ -141,10 +141,17 @@ private struct CustomEnhancementModelRow: View {
                 Text(provider.name)
                     .font(.system(size: 13, weight: .semibold))
 
-                Text(provider.modelName.isEmpty ? "No model configured" : provider.modelName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                if provider.modelName.isEmpty {
+                    Text("No model configured")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else {
+                    Text(provider.modelName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
@@ -191,10 +198,10 @@ struct CustomTranscriptionModelEditorPanel: View {
                 VStack(alignment: .leading, spacing: 18) {
                     CustomModelEditorSection(title: "Details") {
                         VStack(spacing: 10) {
-                            CustomModelTextField(label: "Display Name", placeholder: "My Custom Model", text: $displayName)
+                            CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Custom Model"), text: $displayName)
                             CustomModelTextField(label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions", text: $apiEndpoint)
                             if !isEditing {
-                                CustomModelTextField(label: "API Key", placeholder: "Paste API key", text: $apiKey, isSecure: true)
+                                CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
                             }
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
                             CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
@@ -262,7 +269,7 @@ struct CustomTranscriptionModelEditorPanel: View {
         )
 
         if !isEditing && trimmedKey.isEmpty {
-            validationErrors.append("API key cannot be empty")
+            validationErrors.append(String(localized: "API key cannot be empty"))
         }
 
         guard validationErrors.isEmpty else { return }
@@ -291,7 +298,7 @@ struct CustomTranscriptionModelEditorPanel: View {
             )
 
             guard customModelManager.addCustomModel(customModel, apiKey: trimmedKey) else {
-                validationErrors = ["Failed to save API key securely"]
+                validationErrors = [String(localized: "Failed to save API key securely")]
                 isSaving = false
                 return
             }
@@ -301,11 +308,11 @@ struct CustomTranscriptionModelEditorPanel: View {
         onSave()
     }
 
-    private func editorHeader(title: String) -> some View {
+    private func editorHeader(title: LocalizedStringKey) -> some View {
         CustomModelEditorHeader(title: title, onClose: onClose)
     }
 
-    private func editorFooter(primaryTitle: String, isPrimaryDisabled: Bool, primaryAction: @escaping () -> Void) -> some View {
+    private func editorFooter(primaryTitle: LocalizedStringKey, isPrimaryDisabled: Bool, primaryAction: @escaping () -> Void) -> some View {
         CustomModelEditorFooter(
             primaryTitle: primaryTitle,
             isPrimaryDisabled: isPrimaryDisabled,
@@ -344,10 +351,10 @@ struct CustomEnhancementModelEditorPanel: View {
                 VStack(alignment: .leading, spacing: 18) {
                     CustomModelEditorSection(title: "Details") {
                         VStack(spacing: 10) {
-                            CustomModelTextField(label: "Display Name", placeholder: "My Enhancement Model", text: $displayName)
+                            CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Enhancement Model"), text: $displayName)
                             CustomModelTextField(label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions", text: $baseURL)
                             if !isEditing {
-                                CustomModelTextField(label: "API Key", placeholder: "Paste API key", text: $apiKey, isSecure: true)
+                                CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
                             }
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-5.5", text: $modelName)
                         }
@@ -398,7 +405,7 @@ struct CustomEnhancementModelEditorPanel: View {
         isVerifying = false
     }
 
-    private var primaryButtonTitle: String {
+    private var primaryButtonTitle: LocalizedStringKey {
         if isVerifying {
             return "Verifying"
         }
@@ -424,7 +431,7 @@ struct CustomEnhancementModelEditorPanel: View {
         )
 
         if !isEditing && trimmedKey.isEmpty {
-            validationErrors.append("API key cannot be empty")
+            validationErrors.append(String(localized: "API key cannot be empty"))
         }
 
         guard validationErrors.isEmpty else {
@@ -450,13 +457,13 @@ struct CustomEnhancementModelEditorPanel: View {
             if didSave {
                 onSave()
             } else {
-                errorMessage = "Failed to save custom enhancement model"
+                errorMessage = String(localized: "Failed to save custom enhancement model")
             }
             return
         }
 
         guard let verificationURL = URL(string: trimmedURL) else {
-            errorMessage = "Base URL must be a valid URL"
+            errorMessage = String(localized: "Base URL must be a valid URL")
             return
         }
 
@@ -473,7 +480,7 @@ struct CustomEnhancementModelEditorPanel: View {
                 isVerifying = false
 
                 guard result.isValid else {
-                    errorMessage = result.errorMessage ?? "Could not verify this API key"
+                    errorMessage = result.errorMessage ?? String(localized: "Could not verify this API key")
                     return
                 }
 
@@ -484,7 +491,7 @@ struct CustomEnhancementModelEditorPanel: View {
                 if didSave {
                     onSave()
                 } else {
-                    errorMessage = "Failed to save API key securely"
+                    errorMessage = String(localized: "Failed to save API key securely")
                 }
             }
         }
@@ -497,10 +504,10 @@ private enum CustomModelEditorMetrics {
 }
 
 private struct CustomModelEditorSection<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let content: () -> Content
 
-    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+    init(title: LocalizedStringKey, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.content = content
     }
@@ -521,7 +528,7 @@ private struct CustomModelEditorSection<Content: View>: View {
 }
 
 private struct CustomModelTextField: View {
-    let label: String
+    let label: LocalizedStringKey
     let placeholder: String
     @Binding var text: String
     var isSecure = false
@@ -538,7 +545,7 @@ private struct CustomModelTextField: View {
                 if isSecure {
                     SecureField(placeholder, text: $text)
                 } else {
-                    TextField("", text: $text, prompt: Text(placeholder))
+                    TextField("", text: $text, prompt: Text(verbatim: placeholder))
                 }
             }
             .textFieldStyle(.roundedBorder)
@@ -550,7 +557,7 @@ private struct CustomModelTextField: View {
 }
 
 private struct CustomModelToggleRow: View {
-    let title: String
+    let title: LocalizedStringKey
     @Binding var isOn: Bool
 
     var body: some View {
@@ -588,7 +595,7 @@ private struct CustomModelErrorBox: View {
 }
 
 private struct CustomModelEditorHeader: View {
-    let title: String
+    let title: LocalizedStringKey
     let onClose: () -> Void
 
     var body: some View {
@@ -618,7 +625,7 @@ private struct CustomModelEditorHeader: View {
 }
 
 private struct CustomModelEditorFooter: View {
-    let primaryTitle: String
+    let primaryTitle: LocalizedStringKey
     let isPrimaryDisabled: Bool
     let onCancel: () -> Void
     let onPrimary: () -> Void
@@ -722,13 +729,13 @@ private struct CustomModelsSidePanelPreview: View {
         }
     }
 
-    private func customSectionHeader(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func customSectionHeader(title: LocalizedStringKey, subtitle: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         HStack(alignment: .top, spacing: 12) {
             ProviderSectionHeader(title: title, subtitle: subtitle)
 
             Spacer()
 
-            AddIconButton(helpText: "Add \(title)", action: action)
+            AddIconButton(helpText: "Add model", action: action)
         }
     }
 

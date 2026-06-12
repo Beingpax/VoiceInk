@@ -74,7 +74,7 @@ class TranscriptionAutoCleanupService {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
-                logger.error("Failed to delete audio file: \(error.localizedDescription, privacy: .public)")
+                logger.error("Failed to delete audio file: \(error, privacy: .public)")
             }
         }
 
@@ -84,7 +84,7 @@ class TranscriptionAutoCleanupService {
             try modelContext.save()
             NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
         } catch {
-            logger.error("Failed to save after transcription deletion: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to save after transcription deletion: \(error, privacy: .public)")
         }
     }
 
@@ -127,7 +127,7 @@ class TranscriptionAutoCleanupService {
                 }
             }
         } catch {
-            logger.error("Failed during transcription cleanup: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed during transcription cleanup: \(error, privacy: .public)")
         }
     }
 
@@ -171,7 +171,7 @@ class TranscriptionAutoCleanupService {
                 logger.notice("Cleaned up \(deletedCount, privacy: .public) orphan audio file(s)")
             }
         } catch {
-            logger.error("Failed during orphan audio cleanup: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed during orphan audio cleanup: \(error, privacy: .public)")
         }
     }
 }

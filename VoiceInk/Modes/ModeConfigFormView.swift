@@ -153,7 +153,7 @@ struct ModeConfigFormView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Are you sure you want to delete '\(draft.name)'? This action cannot be undone.")
+            Text(String(format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."), draft.name))
         }
         .modeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
     }
@@ -205,7 +205,7 @@ struct ModeConfigFormView: View {
 
                     Picker(selection: $draft.punctuationCleanupMode) {
                         ForEach(PunctuationCleanupMode.allCases) { mode in
-                            Text(mode.displayName).tag(mode)
+                            Text(LocalizedStringKey(mode.displayName)).tag(mode)
                         }
                     } label: {
                         HStack(spacing: 4) {
@@ -393,7 +393,7 @@ struct ModeConfigFormView: View {
             let models = aiModelOptions(for: provider)
             if models.isEmpty {
                 LabeledContent("AI Model") {
-                    Text(provider == .openRouter ? "No models loaded" : "No models available")
+                    Text(provider == .openRouter ? LocalizedStringKey("No models loaded") : LocalizedStringKey("No models available"))
                         .foregroundColor(.secondary)
                         .italic()
                 }
@@ -552,7 +552,7 @@ struct ModeConfigFormView: View {
 
                 Picker(selection: $draft.autoSendKey) {
                     ForEach(AutoSendKey.allCases, id: \.self) { key in
-                        Text(key.displayName).tag(key)
+                        Text(LocalizedStringKey(key.displayName)).tag(key)
                     }
                 } label: {
                     HStack(spacing: 6) {

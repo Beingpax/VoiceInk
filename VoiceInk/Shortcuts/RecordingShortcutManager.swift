@@ -66,9 +66,9 @@ class RecordingShortcutManager: ObservableObject {
 
         var displayName: String {
             switch self {
-            case .toggle: return "Toggle"
-            case .pushToTalk: return "Push to Talk"
-            case .hybrid: return "Hybrid"
+            case .toggle: return String(localized: "Toggle")
+            case .pushToTalk: return String(localized: "Push to Talk")
+            case .hybrid: return String(localized: "Hybrid")
             }
         }
     }
@@ -79,8 +79,8 @@ class RecordingShortcutManager: ObservableObject {
         
         var displayName: String {
             switch self {
-            case .none: return "None"
-            case .custom: return "Custom"
+            case .none: return String(localized: "None")
+            case .custom: return String(localized: "Custom")
             }
         }
     }

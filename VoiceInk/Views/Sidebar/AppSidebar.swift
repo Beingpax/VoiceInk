@@ -57,12 +57,12 @@ struct AppSidebar: View {
 }
 
 private extension ViewType {
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .transcribeAudio:
             return "Transcribe"
         default:
-            return rawValue
+            return LocalizedStringKey(rawValue)
         }
     }
 

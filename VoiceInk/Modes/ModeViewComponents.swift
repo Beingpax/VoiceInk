@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct VoiceInkButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let action: () -> Void
     var isDisabled: Bool = false
     
@@ -149,12 +149,12 @@ struct ConfigurationRow: View {
     
     private var websiteText: String {
         if websiteCount == 0 { return "" }
-        return websiteCount == 1 ? "1 Website" : "\(websiteCount) Websites"
+        return String.localizedStringWithFormat(String(localized: "%d Websites"), websiteCount)
     }
-    
+
     private var appText: String {
         if appCount == 0 { return "" }
-        return appCount == 1 ? "1 App" : "\(appCount) Apps"
+        return String.localizedStringWithFormat(String(localized: "%d Apps"), appCount)
     }
     
     private var extraAppsCount: Int {
@@ -291,7 +291,7 @@ struct ConfigurationRow: View {
                         HStack(spacing: 4) {
                             Image(systemName: config.outputMode.iconName)
                                 .font(.system(size: 10))
-                            Text(config.outputMode.displayName)
+                            Text(LocalizedStringKey(config.outputMode.displayName))
                                 .font(.caption)
                         }
                         .padding(.horizontal, 6)
@@ -308,7 +308,7 @@ struct ConfigurationRow: View {
                         HStack(spacing: 4) {
                             Image(systemName: "keyboard")
                                 .font(.system(size: 10))
-                            Text(config.autoSendKey.displayName)
+                            Text(LocalizedStringKey(config.autoSendKey.displayName))
                                 .font(.caption)
                         }
                         .padding(.horizontal, 6)

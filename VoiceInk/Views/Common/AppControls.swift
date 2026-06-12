@@ -1,8 +1,9 @@
 import SwiftUI
+import Foundation
 
 struct AppIconButton: View {
     let systemName: String
-    let help: String
+    let help: LocalizedStringResource
     var size: CGFloat = 40
     var iconSize: CGFloat = 18
     var cornerRadius: CGFloat = AppTheme.Radius.pill
@@ -11,7 +12,7 @@ struct AppIconButton: View {
 
     init(
         systemName: String,
-        help: String,
+        help: LocalizedStringResource,
         size: CGFloat = 40,
         iconSize: CGFloat = 18,
         cornerRadius: CGFloat = AppTheme.Radius.pill,
@@ -45,7 +46,7 @@ struct AppIconButton: View {
 }
 
 struct AppPanelHeader: View {
-    let title: String
+    let title: LocalizedStringKey
     let onClose: () -> Void
 
     var body: some View {
@@ -74,8 +75,8 @@ struct AppPanelHeader: View {
 }
 
 struct AppScreenHeader<Trailing: View>: View {
-    let title: String
-    var infoMessage: String?
+    let title: LocalizedStringKey
+    var infoMessage: LocalizedStringKey?
     var infoURL: String?
     @ViewBuilder let trailing: () -> Trailing
 
@@ -108,7 +109,7 @@ struct AppScreenHeader<Trailing: View>: View {
 }
 
 extension AppScreenHeader where Trailing == EmptyView {
-    init(title: String, infoMessage: String? = nil, infoURL: String? = nil) {
+    init(title: LocalizedStringKey, infoMessage: LocalizedStringKey? = nil, infoURL: String? = nil) {
         self.title = title
         self.infoMessage = infoMessage
         self.infoURL = infoURL

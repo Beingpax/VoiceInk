@@ -10,7 +10,7 @@ class SystemInfoService {
     func getSystemInfoString() -> String {
         let info = """
         === VOICEINK SYSTEM INFORMATION ===
-        Generated: \(Date().formatted(date: .long, time: .standard))
+        Generated: \(Self.englishTimestamp())
 
         APP INFORMATION:
         App Version: \(getAppVersion())
@@ -107,7 +107,8 @@ class SystemInfoService {
 
     private func getMemoryInfo() -> String {
         let totalMemory = ProcessInfo.processInfo.physicalMemory
-        return ByteCountFormatter.string(fromByteCount: Int64(totalMemory), countStyle: .memory)
+        let gibibytes = Double(totalMemory) / 1_073_741_824
+        return String(format: "%.2f GB (%llu bytes)", locale: Locale(identifier: "en_US_POSIX"), gibibytes, totalMemory)
     }
 
     private func getArchitecture() -> String {
@@ -117,7 +118,14 @@ class SystemInfoService {
     private func getAudioInputMode() -> String {
         if let mode = UserDefaults.standard.audioInputModeRawValue,
            let audioMode = AudioInputMode(rawValue: mode) {
-            return audioMode.rawValue
+            switch audioMode {
+            case .systemDefault:
+                return "System Default"
+            case .custom:
+                return "Custom Device"
+            case .prioritized:
+                return "Prioritized"
+            }
         }
         return "System Default"
     }
@@ -210,6 +218,12 @@ class SystemInfoService {
 
     private func getCurrentLanguage() -> String {
         return UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
+    }
+
+    private static func englishTimestamp() -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: Date())
     }
 
 }

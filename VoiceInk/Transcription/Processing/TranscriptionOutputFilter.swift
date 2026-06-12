@@ -13,11 +13,11 @@ enum PunctuationCleanupMode: String, Codable, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .keep:
-            return "Keep"
+            return String(localized: "Keep")
         case .removeAll:
-            return "Remove all"
+            return String(localized: "Remove all")
         case .removeTrailingPeriod:
-            return "Remove trailing period"
+            return String(localized: "Remove trailing period")
         }
     }
 

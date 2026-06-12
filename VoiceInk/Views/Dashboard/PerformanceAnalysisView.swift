@@ -1,5 +1,9 @@
 import SwiftUI
 
+private func localizedTranscriptCount(_ count: Int) -> String {
+    String.localizedStringWithFormat(String(localized: "%d transcripts"), count)
+}
+
 // MARK: - Shared Analysis Logic
 
 enum PanelMode {
@@ -252,7 +256,7 @@ struct PerformanceAnalysisView: View {
 struct SummaryCard: View {
     let icon: String
     let value: String
-    let label: String
+    let label: LocalizedStringKey
     let color: Color
 
     var body: some View {
@@ -277,7 +281,7 @@ struct SummaryCard: View {
 }
 
 struct InfoRow: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
 
     var body: some View {
@@ -294,7 +298,7 @@ struct InfoRow: View {
 }
 
 struct SystemInfoCard: View {
-    let label: String
+    let label: LocalizedStringKey
     let value: String
 
     var body: some View {
@@ -332,7 +336,7 @@ struct TranscriptionModelCard: View {
 
                 Spacer()
                 
-                Text("\(modelStat.fileCount) transcripts")
+                Text(localizedTranscriptCount(modelStat.fileCount))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -397,7 +401,7 @@ struct EnhancementModelCard: View {
 
                 Spacer()
                 
-                Text("\(modelStat.fileCount) transcripts")
+                Text(localizedTranscriptCount(modelStat.fileCount))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -421,7 +425,7 @@ struct EnhancementModelCard: View {
 }
 
 struct MetricDisplay: View {
-    let title: String
+    let title: LocalizedStringKey
     let value: String
     let color: Color
     

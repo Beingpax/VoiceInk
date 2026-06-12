@@ -19,13 +19,24 @@ enum ModeValidationError: Error, Identifiable {
     var localizedDescription: String {
         switch self {
         case .emptyName:
-            return "Mode name cannot be empty."
+            return String(localized: "Mode name cannot be empty.")
         case .duplicateName(let name):
-            return "A mode with the name '\(name)' already exists."
+            return String(
+                format: String(localized: "A mode with the name '%@' already exists."),
+                name
+            )
         case .duplicateAppTrigger(let appName, let modeName):
-            return "The app '\(appName)' is already configured in the '\(modeName)' mode."
+            return String(
+                format: String(localized: "The app '%@' is already configured in the '%@' mode."),
+                appName,
+                modeName
+            )
         case .duplicateWebsiteTrigger(let website, let modeName):
-            return "The website '\(website)' is already configured in the '\(modeName)' mode."
+            return String(
+                format: String(localized: "The website '%@' is already configured in the '%@' mode."),
+                website,
+                modeName
+            )
         }
     }
 }

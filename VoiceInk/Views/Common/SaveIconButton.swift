@@ -29,7 +29,7 @@ struct SaveIconButton: View {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [contentType]
         panel.nameFieldStringValue = "\(generateFileName()).\(fileExtension)"
-        panel.title = "Save Transcription"
+        panel.title = String(localized: "Save Transcription")
 
         if panel.runModal() == .OK {
             guard let url = panel.url else { return }

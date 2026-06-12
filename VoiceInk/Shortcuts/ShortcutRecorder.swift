@@ -69,10 +69,10 @@ struct ShortcutRecorder: View {
 
     private var accessibilityLabel: String {
         if recorder.isRecording {
-            return recorder.previewShortcut?.displayString ?? "Press shortcut"
+            return recorder.previewShortcut?.displayString ?? String(localized: "Press shortcut")
         }
 
-        return displayedShortcut?.displayString ?? "Record shortcut"
+        return displayedShortcut?.displayString ?? String(localized: "Record shortcut")
     }
 
     private var displayedShortcut: Shortcut? {
@@ -103,7 +103,7 @@ private struct ShortcutVisualization: View {
                     ShortcutKeyCap(title: token, isRecording: isRecording)
                 }
             } else {
-                Text(isRecording ? "Press shortcut" : "Record")
+                Text(isRecording ? LocalizedStringKey("Press shortcut") : LocalizedStringKey("Record"))
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

@@ -27,8 +27,8 @@ struct LocalEnhancementProviderManagementView: View {
 
             VStack(spacing: 0) {
                 LocalProviderDisclosureRow(
-                    title: "Ollama",
-                    subtitle: ollamaModelNames.isEmpty ? "Local server" : localModelCountLabel,
+                    title: Text(verbatim: "Ollama"),
+                    subtitle: ollamaModelNames.isEmpty ? Text("Local server") : Text(localModelCountLabel),
                     systemImage: "server.rack",
                     statusTitle: ollamaStatusTitle,
                     isExpanded: $isOllamaExpanded
@@ -40,10 +40,10 @@ struct LocalEnhancementProviderManagementView: View {
                     .padding(.leading, 58)
 
                 LocalProviderDisclosureRow(
-                    title: "Local CLI",
-                    subtitle: "Claude, Codex, scripts, or any command",
+                    title: Text("Local CLI"),
+                    subtitle: Text("Claude, Codex, scripts, or any command"),
                     systemImage: "terminal",
-                    statusTitle: isLocalCLIConfigured ? "Configured" : "Not configured",
+                    statusTitle: isLocalCLIConfigured ? Text("Configured") : Text("Not configured"),
                     isExpanded: $isLocalCLIExpanded
                 ) {
                     localCLIConfiguration
@@ -62,22 +62,23 @@ struct LocalEnhancementProviderManagementView: View {
     }
 
     private var localModelCountLabel: String {
-        "\(ollamaModelNames.count) \(ollamaModelNames.count == 1 ? "model" : "models")"
+        let count = ollamaModelNames.count
+        return String.localizedStringWithFormat(String(localized: "%lld models"), Int64(count))
     }
 
-    private var ollamaStatusTitle: String {
+    private var ollamaStatusTitle: Text {
         if aiService.isOllamaRefreshing {
-            return "Checking"
+            return Text("Checking")
         }
 
         if !aiService.connectedProviders.contains(.ollama) {
-            return "Disconnected"
+            return Text("Disconnected")
         }
 
-        return ollamaModelNames.isEmpty ? "No models" : localModelCountLabel
+        return ollamaModelNames.isEmpty ? Text("No models") : Text(localModelCountLabel)
     }
 
-    private var ollamaActionTitle: String {
+    private var ollamaActionTitle: LocalizedStringKey {
         aiService.connectedProviders.contains(.ollama) ? "Refresh" : "Connect"
     }
 
@@ -85,7 +86,7 @@ struct LocalEnhancementProviderManagementView: View {
         LocalProviderExpandedContent {
             LocalProviderFormRow(title: "Server") {
                 HStack(spacing: 8) {
-                    TextField("http://localhost:11434", text: $ollamaBaseURL)
+                    TextField("", text: $ollamaBaseURL, prompt: Text(verbatim: "http://localhost:11434"))
                         .textFieldStyle(.roundedBorder)
                         .frame(maxWidth: 320)
                         .disabled(aiService.isOllamaRefreshing)
@@ -243,18 +244,18 @@ private enum LocalProviderMetrics {
 }
 
 private struct LocalProviderDisclosureRow<Content: View>: View {
-    let title: String
-    let subtitle: String
+    let title: Text
+    let subtitle: Text
     let systemImage: String
-    let statusTitle: String
+    let statusTitle: Text
     @Binding var isExpanded: Bool
     let content: () -> Content
 
     init(
-        title: String,
-        subtitle: String,
+        title: Text,
+        subtitle: Text,
         systemImage: String,
-        statusTitle: String,
+        statusTitle: Text,
         isExpanded: Binding<Bool>,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -289,11 +290,11 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
                         )
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
+                        title
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(.primary)
 
-                        Text(subtitle)
+                        subtitle
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -301,7 +302,7 @@ private struct LocalProviderDisclosureRow<Content: View>: View {
 
                     Spacer(minLength: 12)
 
-                    Text(statusTitle)
+                    statusTitle
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -347,10 +348,10 @@ private struct LocalProviderExpandedContent<Content: View>: View {
 }
 
 private struct LocalProviderFormRow<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     let content: () -> Content
 
-    init(title: String, @ViewBuilder content: @escaping () -> Content) {
+    init(title: LocalizedStringKey, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.content = content
     }

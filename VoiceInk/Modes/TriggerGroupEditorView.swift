@@ -122,7 +122,7 @@ struct TriggerGroupEditorView: View {
         Button(action: addWebsiteIfPossible) {
             HStack(spacing: 8) {
                 TriggerSymbol(systemName: "globe")
-                Text("Add \(websiteCandidate)")
+                Text(String(format: String(localized: "Add %@"), websiteCandidate))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)

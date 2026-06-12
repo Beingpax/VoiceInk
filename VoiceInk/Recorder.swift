@@ -97,7 +97,7 @@ class Recorder: NSObject, ObservableObject {
             if let deviceName = deviceManager.availableDevices.first(where: { $0.id == newDeviceID })?.name {
                 await MainActor.run {
                     NotificationManager.shared.showNotification(
-                        title: "Switched to: \(deviceName)",
+                        title: String(format: String(localized: "Switched to: %@"), deviceName),
                         type: .info
                     )
                 }
@@ -105,7 +105,7 @@ class Recorder: NSObject, ObservableObject {
 
             logger.notice("🎙️ Successfully switched recording to device \(newDeviceID, privacy: .public)")
         } catch {
-            logger.error("❌ Failed to switch device: \(error.localizedDescription, privacy: .public)")
+            logger.error("❌ Failed to switch device: \(error, privacy: .public)")
 
             // If switch fails, stop recording and notify user
             await handleRecordingError(error)
@@ -128,7 +128,10 @@ class Recorder: NSObject, ObservableObject {
         let lastDeviceID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceID")
         if String(currentDeviceID) != lastDeviceID {
             if let deviceName = deviceManager.availableDevices.first(where: { $0.id == currentDeviceID })?.name {
-                NotificationManager.shared.showNotification(title: "Using: \(deviceName)", type: .info)
+                NotificationManager.shared.showNotification(
+                    title: String(format: String(localized: "Using: %@"), deviceName),
+                    type: .info
+                )
             }
         }
         UserDefaults.standard.set(String(currentDeviceID), forKey: "lastUsedMicrophoneDeviceID")
@@ -162,7 +165,7 @@ class Recorder: NSObject, ObservableObject {
                 await self.playbackController.pauseMedia()
             }
         } catch {
-            logger.error("Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)")
             await stopRecording()
             throw RecorderError.couldNotStartRecording
         }
@@ -200,7 +203,7 @@ class Recorder: NSObject, ObservableObject {
     }
 
     private func handleRecordingError(_ error: Error) async {
-        logger.error("❌ Recording error occurred: \(error.localizedDescription, privacy: .public)")
+        logger.error("❌ Recording error occurred: \(error, privacy: .public)")
 
         // Stop the recording
         await stopRecording()
@@ -208,7 +211,7 @@ class Recorder: NSObject, ObservableObject {
         // Notify the user about the recording failure
         await MainActor.run {
             NotificationManager.shared.showNotification(
-                title: "Recording Failed: \(error.localizedDescription)",
+                title: String(format: String(localized: "Recording Failed: %@"), error.localizedDescription),
                 type: .error
             )
         }
@@ -243,7 +246,7 @@ class Recorder: NSObject, ObservableObject {
             do {
                 try coreAudioRecorder.prepare(deviceID: deviceID)
             } catch {
-                logger.warning("Recorder prepare failed reason=\(reason, privacy: .public) deviceID=\(deviceID, privacy: .public) error=\(error.localizedDescription, privacy: .public)")
+                logger.warning("Recorder prepare failed reason=\(reason, privacy: .public) deviceID=\(deviceID, privacy: .public) error=\(error, privacy: .public)")
             }
         }
     }

@@ -77,7 +77,7 @@ struct MenuBarView: View {
                     Image(systemName: "sparkles.square.fill.on.square")
                         .font(.system(size: 11, weight: .medium))
                     let activeMode = modeManager.currentEffectiveConfiguration
-                    Text("Mode: \(activeMode?.name ?? "None")")
+                    Text(String(format: String(localized: "Mode: %@"), activeMode?.name ?? String(localized: "None")))
                     Image(systemName: "chevron.up.chevron.down")
                         .font(.system(size: 10))
                 }

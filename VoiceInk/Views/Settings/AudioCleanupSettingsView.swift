@@ -56,7 +56,7 @@ struct AudioCleanupSettingsView: View {
                     Button("Cancel", role: .cancel) { }
 
                     if cleanupInfo.fileCount > 0 {
-                        Button("Delete \(cleanupInfo.fileCount) Files", role: .destructive) {
+                        Button(String.localizedStringWithFormat(String(localized: "Delete %lld Files"), Int64(cleanupInfo.fileCount)), role: .destructive) {
                             Task {
                                 await MainActor.run { isPerformingCleanup = true }
                                 let result = await AudioCleanupManager.shared.runCleanupForTranscriptions(
@@ -73,18 +73,18 @@ struct AudioCleanupSettingsView: View {
                     }
                 } message: {
                     if cleanupInfo.fileCount > 0 {
-                        Text("This will delete \(cleanupInfo.fileCount) audio files (\(AudioCleanupManager.shared.formatFileSize(cleanupInfo.totalSize))).")
+                        Text(String.localizedStringWithFormat(String(localized: "This will delete %lld audio files (%@)."), Int64(cleanupInfo.fileCount), AudioCleanupManager.shared.formatFileSize(cleanupInfo.totalSize)))
                     } else {
-                        Text("No audio files found older than \(audioRetentionPeriod) day\(audioRetentionPeriod > 1 ? "s" : "").")
+                        Text(String.localizedStringWithFormat(String(localized: "No audio files found older than %lld days."), Int64(audioRetentionPeriod)))
                     }
                 }
                 .alert("Cleanup Complete", isPresented: $showResultAlert) {
                     Button("OK", role: .cancel) { }
                 } message: {
                     if cleanupResult.errorCount > 0 {
-                        Text("Deleted \(cleanupResult.deletedCount) files. Failed: \(cleanupResult.errorCount).")
+                        Text(String(format: String(localized: "Deleted files: %lld. Failed: %lld."), Int64(cleanupResult.deletedCount), Int64(cleanupResult.errorCount)))
                     } else {
-                        Text("Deleted \(cleanupResult.deletedCount) audio files.")
+                        Text(String.localizedStringWithFormat(String(localized: "Deleted %lld audio files."), Int64(cleanupResult.deletedCount)))
                     }
                 }
             }

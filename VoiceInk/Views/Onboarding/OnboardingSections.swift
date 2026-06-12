@@ -34,14 +34,14 @@ struct OnboardingHeroHeader: View {
                 )
 
             VStack(spacing: 8) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.system(size: 30, weight: .bold))
                     .foregroundColor(AppTheme.Text.primary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(subtitle)
+                Text(LocalizedStringKey(subtitle))
                     .font(.system(size: 14))
                     .foregroundColor(AppTheme.Text.muted)
                     .multilineTextAlignment(.center)
@@ -111,7 +111,7 @@ struct OnboardingBottomBar: View {
     private var leadingSlot: some View {
         if let leadingTitle, let onLeading {
             Button(action: onLeading) {
-                Text(leadingTitle)
+                Text(LocalizedStringKey(leadingTitle))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(AppTheme.Action.secondaryForeground)
                     .frame(width: Metrics.controlButtonWidth, height: Metrics.buttonHeight)
@@ -127,7 +127,7 @@ struct OnboardingBottomBar: View {
 
     private var primaryButton: some View {
         Button(action: onPrimary) {
-            Text(primaryTitle)
+            Text(LocalizedStringKey(primaryTitle))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(isPrimaryEnabled ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
                 .padding(.horizontal, Metrics.primaryButtonHorizontalPadding)

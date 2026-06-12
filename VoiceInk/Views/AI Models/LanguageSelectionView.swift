@@ -215,7 +215,7 @@ struct LanguageSelectionView: View {
                         }
                     } label: {
                         HStack {
-                            Text("Language: \(currentLanguageDisplayName())")
+                            Text(String(format: String(localized: "Language: %@"), currentLanguageDisplayName()))
                             Image(systemName: "chevron.up.chevron.down")
                                 .font(.system(size: 10))
                         }

@@ -22,7 +22,7 @@ class LastTranscriptionService: ObservableObject {
         guard let lastTranscription = getLastTranscription(from: modelContext) else {
             Task { @MainActor in
                 NotificationManager.shared.showNotification(
-                    title: "No transcription available",
+                    title: String(localized: "No transcription available"),
                     type: .error
                 )
             }
@@ -43,12 +43,12 @@ class LastTranscriptionService: ObservableObject {
         Task { @MainActor in
             if success {
                 NotificationManager.shared.showNotification(
-                    title: "Last transcription copied",
+                    title: String(localized: "Last transcription copied"),
                     type: .success
                 )
             } else {
                 NotificationManager.shared.showNotification(
-                    title: "Failed to copy transcription",
+                    title: String(localized: "Failed to copy transcription"),
                     type: .error
                 )
             }
@@ -59,7 +59,7 @@ class LastTranscriptionService: ObservableObject {
         guard let lastTranscription = getLastTranscription(from: modelContext) else {
             Task { @MainActor in
                 NotificationManager.shared.showNotification(
-                    title: "No transcription available",
+                    title: String(localized: "No transcription available"),
                     type: .error
                 )
             }
@@ -77,7 +77,7 @@ class LastTranscriptionService: ObservableObject {
         guard let lastTranscription = getLastTranscription(from: modelContext) else {
             Task { @MainActor in
                 NotificationManager.shared.showNotification(
-                    title: "No transcription available",
+                    title: String(localized: "No transcription available"),
                     type: .error
                 )
             }
@@ -105,7 +105,7 @@ class LastTranscriptionService: ObservableObject {
                   let audioURL = URL(string: audioURLString),
                   FileManager.default.fileExists(atPath: audioURL.path) else {
                 NotificationManager.shared.showNotification(
-                    title: "Cannot retry: Audio file not found",
+                    title: String(localized: "Cannot retry: Audio file not found"),
                     type: .error
                 )
                 return
@@ -115,7 +115,7 @@ class LastTranscriptionService: ObservableObject {
                 transcriptionModelManager: transcriptionModelManager
             ) else {
                 NotificationManager.shared.showNotification(
-                    title: "No transcription model selected",
+                    title: String(localized: "No transcription model selected"),
                     type: .error
                 )
                 return
@@ -136,12 +136,12 @@ class LastTranscriptionService: ObservableObject {
                 ClipboardManager.copyToClipboard(textToCopy)
 
                 NotificationManager.shared.showNotification(
-                    title: "Copied to clipboard",
+                    title: String(localized: "Copied to clipboard"),
                     type: .success
                 )
             } catch {
                 NotificationManager.shared.showNotification(
-                    title: "Retry failed: \(error.localizedDescription)",
+                    title: String(format: String(localized: "Retry failed: %@"), error.localizedDescription),
                     type: .error
                 )
             }
