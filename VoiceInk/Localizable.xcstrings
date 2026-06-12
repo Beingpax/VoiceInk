@@ -8391,16 +8391,6 @@
         }
       }
     },
-    "Start a 7-day trial or buy VoiceInk Pro to continue using VoiceInk.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Starten Sie eine 7-tägige Testversion oder kaufen Sie VoiceInk Pro, um VoiceInk weiter zu verwenden."
-          }
-        }
-      }
-    },
     "Start or stop the VoiceInk recorder for voice transcription.": {
       "localizations": {
         "de": {
@@ -10291,12 +10281,12 @@
         }
       }
     },
-    "Your trial has expired. Upgrade to VoiceInk Pro at %@": {
+    "Your trial has ended. Upgrade to VoiceInk Pro at %@": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Testversion ist abgelaufen. Upgraden Sie auf VoiceInk Pro unter %@"
+            "value": "Ihre Testversion ist beendet. Upgraden Sie auf VoiceInk Pro unter %@"
           }
         }
       }

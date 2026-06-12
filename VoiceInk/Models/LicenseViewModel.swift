@@ -105,11 +105,9 @@ class LicenseViewModel: ObservableObject {
 
     var usageRestrictionMessage: String? {
         switch licenseState {
-        case .unlicensed:
-            return String(localized: "Start a 7-day trial or buy VoiceInk Pro to continue using VoiceInk.")
-        case .trialExpired:
+        case .unlicensed, .trialExpired:
             return String(
-                format: String(localized: "Your trial has expired. Upgrade to VoiceInk Pro at %@"),
+                format: String(localized: "Your trial has ended. Upgrade to VoiceInk Pro at %@"),
                 "tryvoiceink.com/buy"
             )
         case .trial, .licensed:
