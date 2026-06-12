@@ -36,8 +36,6 @@ final class LocalCLIService {
     static let selectedTemplateKey = "localCLISelectedTemplate"
     static let timeoutSecondsKey = "localCLITimeoutSeconds"
     static let defaultTimeoutSeconds: Double = 45
-    private static let shellPathQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.localcli.path")
-    private static var cachedInteractiveLoginPATH: String?
 
     var commandTemplate: String {
         didSet {
@@ -124,7 +122,7 @@ final class LocalCLIService {
                 process.arguments = ["-lc", commandTemplate]
 
                 var environment = ProcessInfo.processInfo.environment
-                environment["PATH"] = Self.preferredPATH(fallback: environment["PATH"])
+                environment["PATH"] = ShellCommandEnvironment.preferredPATH(fallback: environment["PATH"])
                 environment["VOICEINK_SYSTEM_PROMPT"] = systemPrompt
                 environment["VOICEINK_USER_PROMPT"] = userPrompt
                 environment["VOICEINK_FULL_PROMPT"] = fullPrompt
@@ -189,74 +187,6 @@ final class LocalCLIService {
                 continuation.resume(returning: stdout)
             }
         }
-    }
-
-    private static func preferredPATH(fallback: String?) -> String {
-        shellPathQueue.sync {
-            if let cachedInteractiveLoginPATH {
-                return cachedInteractiveLoginPATH
-            }
-
-            if let discovered = discoverPATHFromInteractiveLoginShell() {
-                cachedInteractiveLoginPATH = discovered
-                return discovered
-            }
-
-            return fallback?.isEmpty == false ? fallback! : "/usr/bin:/bin:/usr/sbin:/sbin"
-        }
-    }
-
-    private static func discoverPATHFromInteractiveLoginShell() -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = [
-            "-ilc",
-            "echo __VOICEINK_PATH_START__; print -r -- $PATH; echo __VOICEINK_PATH_END__"
-        ]
-
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
-
-        let semaphore = DispatchSemaphore(value: 0)
-        process.terminationHandler = { _ in semaphore.signal() }
-
-        do {
-            try process.run()
-        } catch {
-            return nil
-        }
-        let waitResult = semaphore.wait(timeout: .now() + 3)
-        if waitResult == .timedOut {
-            if process.isRunning {
-                process.terminate()
-            }
-            return nil
-        }
-
-        guard process.terminationStatus == 0 else {
-            return nil
-        }
-
-        let output = String(data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-        let startMarker = "__VOICEINK_PATH_START__"
-        let endMarker = "__VOICEINK_PATH_END__"
-
-        guard let startRange = output.range(of: startMarker),
-              let endRange = output.range(of: endMarker, range: startRange.upperBound..<output.endIndex)
-        else {
-            return nil
-        }
-
-        let pathSection = output[startRange.upperBound..<endRange.lowerBound]
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !pathSection.isEmpty else {
-            return nil
-        }
-
-        return pathSection
     }
 
     private static func cleanOutput(_ value: String) -> String {

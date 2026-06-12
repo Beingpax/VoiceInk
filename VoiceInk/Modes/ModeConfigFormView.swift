@@ -530,16 +530,14 @@ struct ModeConfigFormView: View {
 
     private var advancedSection: some View {
         Section("Advanced") {
-            if canRespond {
-                Picker("Output", selection: $draft.outputMode) {
-                    ForEach(outputChoices, id: \.self) { outputMode in
-                        Label(outputMode.displayName, systemImage: outputMode.iconName)
-                            .tag(outputMode)
-                    }
+            Picker("Output", selection: $draft.outputMode) {
+                ForEach(outputChoices, id: \.self) { outputMode in
+                    Label(outputMode.displayName, systemImage: outputMode.iconName)
+                        .tag(outputMode)
                 }
-                .onChange(of: draft.outputMode) { _, _ in
-                    applyOutputRules()
-                }
+            }
+            .onChange(of: draft.outputMode) { _, _ in
+                applyOutputRules()
             }
 
             if draft.outputMode.usesPasteOptions {
@@ -561,6 +559,45 @@ struct ModeConfigFormView: View {
                     }
                 }
             }
+
+            if draft.outputMode == .customCommand {
+                customCommandControls
+            }
+        }
+    }
+
+    private var customCommandControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Text("Command")
+                InfoTip(LocalizedStringKey("Runs locally with your user permissions. The final transcript is sent on stdin and exposed as VOICEINK_TRANSCRIPT."))
+                Spacer()
+                Menu {
+                    ForEach(CustomCommandTemplate.allCases) { template in
+                        Button(template.displayName) {
+                            draft.customCommand = template.command
+                        }
+                    }
+                } label: {
+                    Label("Template", systemImage: "doc.on.doc")
+                }
+                .menuStyle(.button)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+
+            TextEditor(text: $draft.customCommand)
+                .font(.system(size: 12, design: .monospaced))
+                .frame(minHeight: 96)
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .background(AppTheme.Surface.control)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(AppTheme.Border.control.opacity(0.4), lineWidth: 1)
+                )
+
         }
     }
 

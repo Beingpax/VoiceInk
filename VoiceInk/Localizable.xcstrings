@@ -1842,6 +1842,16 @@
         }
       }
     },
+    "Append to Journal" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An Journal anhängen"
+          }
+        }
+      }
+    },
     "Apple Speech can reserve up to 5 languages. Choose one to remove before downloading the selected language." : {
       "localizations" : {
         "de" : {
@@ -3001,6 +3011,86 @@
         }
       }
     },
+    "Custom Command" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl"
+          }
+        }
+      }
+    },
+    "Custom command cannot be empty." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl darf nicht leer sein."
+          }
+        }
+      }
+    },
+    "Custom command could not start: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl konnte nicht gestartet werden: %@"
+          }
+        }
+      }
+    },
+    "Custom command exited with status %d: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl wurde mit Status %d beendet: %@"
+          }
+        }
+      }
+    },
+    "Custom command exited with status %d." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl wurde mit Status %d beendet."
+          }
+        }
+      }
+    },
+    "Custom command failed: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "Custom command is empty." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl ist leer."
+          }
+        }
+      }
+    },
+    "Custom command timed out after %.0f seconds." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benutzerdefinierter Befehl hat nach %.0f Sekunden das Zeitlimit überschritten."
+          }
+        }
+      }
+    },
     "Custom Device" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3271,6 +3361,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ausgewählte Elemente löschen?"
+          }
+        }
+      }
+    },
+    "Paste and Press Tab" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einfügen und Tab drücken"
           }
         }
       }
@@ -6458,6 +6558,16 @@
         }
       }
     },
+    "No transcription text was available for the custom command." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für den benutzerdefinierten Befehl war kein Transkriptionstext verfügbar."
+          }
+        }
+      }
+    },
     "No transcriptions" : {
       "localizations" : {
         "de" : {
@@ -7927,6 +8037,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbesserung mit Ollama auf diesem Mac ausführen oder an einen CLI-Befehl senden."
+          }
+        }
+      }
+    },
+    "Search Web" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Web durchsuchen"
+          }
+        }
+      }
+    },
+    "Runs locally with your user permissions. The final transcript is sent on stdin and exposed as VOICEINK_TRANSCRIPT." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird lokal mit Ihren Benutzerberechtigungen ausgeführt. Das finale Transkript wird über stdin gesendet und als VOICEINK_TRANSCRIPT bereitgestellt."
           }
         }
       }

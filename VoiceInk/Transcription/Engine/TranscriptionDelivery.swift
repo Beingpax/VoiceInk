@@ -1,7 +1,10 @@
 import Foundation
+import os
 
 @MainActor
 final class TranscriptionDelivery {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionDelivery")
+
     struct Request {
         let transcription: Transcription
         let text: String?
@@ -33,6 +36,11 @@ final class TranscriptionDelivery {
         if request.output.outputMode == .respond,
            request.responseConfig != nil || request.responseError != nil {
             await deliverResponse(request, actions: actions)
+            return
+        }
+
+        if request.output.outputMode == .customCommand {
+            await deliverCustomCommand(request, actions: actions)
             return
         }
 
@@ -68,28 +76,89 @@ final class TranscriptionDelivery {
         }
     }
 
-    private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
-        var textToPaste = text
-        if let restrictionMessage = LicenseViewModel().usageRestrictionMessage {
-            textToPaste = """
-                \(restrictionMessage)
-                \n\(textToPaste)
-                """
+    private func deliverCustomCommand(_ item: Request, actions: Actions) async {
+        guard let text = item.text else {
+            notifyCustomCommandFailure(CustomCommandDeliveryError.noTextToDeliver)
+            SoundManager.shared.playStopSound()
+            await actions.dismiss()
+            return
         }
 
+        guard let customCommand = item.output.customCommand,
+              let command = customCommand.trimmedCommand else {
+            notifyCustomCommandFailure(CustomCommandDeliveryError.commandNotConfigured)
+            SoundManager.shared.playStopSound()
+            await actions.dismiss()
+            return
+        }
+
+        let commandText = deliverableText(from: text)
+        SoundManager.shared.playStopSound()
+        await actions.dismiss()
+
+        Task {
+            await runCustomCommand(command: command, commandText: commandText)
+        }
+    }
+
+    private func runCustomCommand(command: String, commandText: String) async {
+        do {
+            let result = try await CustomCommandDeliveryRunner.run(
+                command: command,
+                timeout: 10,
+                context: CustomCommandDeliveryContext(transcript: commandText)
+            )
+
+            if !result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                logger.debug("Custom command stdout: \(result.stdout, privacy: .public)")
+            }
+
+            if !result.stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                logger.warning("Custom command stderr: \(result.stderr, privacy: .public)")
+            }
+        } catch {
+            notifyCustomCommandFailure(error)
+        }
+    }
+
+    private func notifyCustomCommandFailure(_ error: Error) {
+        let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        logger.error("Custom command failed: \(message, privacy: .public)")
+        NotificationManager.shared.showNotification(
+            title: String(format: String(localized: "Custom command failed: %@"), String(message.prefix(120))),
+            type: .warning
+        )
+    }
+
+    private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
+        let textToPaste = deliverableText(from: text)
         let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
         let pastedText = textToPaste + (appendSpace ? " " : "")
-        _ = await CursorPaster.startPasteAtCursor(pastedText).value
         SoundManager.shared.playStopSound()
+        await actions.dismiss()
+
+        let pasteTask = CursorPaster.startPasteAtCursor(pastedText)
 
         let autoSendKey = output.outputMode == .paste ? output.autoSendKey : .none
-        if autoSendKey.isEnabled {
-            Task { @MainActor in
+        Task { @MainActor in
+            _ = await pasteTask.value
+
+            if autoSendKey.isEnabled {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 CursorPaster.performAutoSend(autoSendKey)
             }
         }
+    }
 
-        await actions.dismiss()
+    private func deliverableText(from text: String) -> String {
+        var textToDeliver = text
+        if let restrictionMessage = LicenseViewModel().usageRestrictionMessage {
+            textToDeliver = """
+                \(restrictionMessage)
+                \n\(textToDeliver)
+                """
+        }
+
+        return textToDeliver
     }
 }
