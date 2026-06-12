@@ -552,7 +552,7 @@ struct ModeConfigFormView: View {
 
                 Picker(selection: $draft.autoSendKey) {
                     ForEach(AutoSendKey.allCases, id: \.self) { key in
-                        Text(LocalizedStringKey(key.displayName)).tag(key)
+                        Text(key.displayName).tag(key)
                     }
                 } label: {
                     HStack(spacing: 6) {

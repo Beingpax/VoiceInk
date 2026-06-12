@@ -308,7 +308,7 @@ struct ConfigurationRow: View {
                         HStack(spacing: 4) {
                             Image(systemName: "keyboard")
                                 .font(.system(size: 10))
-                            Text(LocalizedStringKey(config.autoSendKey.displayName))
+                            Text(config.autoSendKey.displayName)
                                 .font(.caption)
                         }
                         .padding(.horizontal, 6)
