@@ -106,7 +106,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
                 do {
                     vadManager = try await VadManager(config: vadConfig)
                 } catch {
-                    logger.notice("VAD init failed; falling back to full audio: \(error.localizedDescription, privacy: .public)")
+                    logger.notice("VAD init failed; falling back to full audio: \(error, privacy: .public)")
                     vadManager = nil
                 }
             }
@@ -116,7 +116,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
                     let segments = try await vadManager.segmentSpeechAudio(audioSamples)
                     speechAudio = segments.isEmpty ? audioSamples : segments.flatMap { $0 }
                 } catch {
-                    logger.notice("VAD segmentation failed; using full audio: \(error.localizedDescription, privacy: .public)")
+                    logger.notice("VAD segmentation failed; using full audio: \(error, privacy: .public)")
                     speechAudio = audioSamples
                 }
             }

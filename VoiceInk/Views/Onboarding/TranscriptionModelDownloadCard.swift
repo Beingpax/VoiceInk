@@ -64,18 +64,27 @@ struct TranscriptionModelDownloadCard: View {
             .scaledToFit()
             .frame(width: 34, height: 28)
             .frame(width: 38, height: 38)
-            .accessibilityLabel("NVIDIA")
+            .accessibilityLabel(Text(verbatim: "NVIDIA"))
     }
 
     private var modelMetadata: some View {
         HStack(spacing: 6) {
             metadataPill(model.size)
-            metadataPill("25+ languages")
-            metadataPill("Local")
+            localizedMetadataPill("25+ languages")
+            localizedMetadataPill("Local")
         }
     }
 
     private func metadataPill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(AppTheme.Text.secondary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(AppTheme.Surface.subtle))
+    }
+
+    private func localizedMetadataPill(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.system(size: 11, weight: .medium))
             .foregroundColor(AppTheme.Text.secondary)
@@ -137,7 +146,7 @@ struct TranscriptionModelDownloadCard: View {
             .background(Capsule().fill(AppTheme.Surface.controlActive))
     }
 
-    private var downloadButtonTitle: String {
+    private var downloadButtonTitle: LocalizedStringKey {
         if isDownloading {
             return "Downloading..."
         }

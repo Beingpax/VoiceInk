@@ -126,17 +126,17 @@ struct RecorderRecordButton: View {
     private var accessibilityLabel: String {
         switch recordingState {
         case .idle:
-            return "Start recording"
+            return String(localized: "Start recording")
         case .starting:
-            return "Starting recording"
+            return String(localized: "Starting recording")
         case .recording:
-            return "Stop recording"
+            return String(localized: "Stop recording")
         case .transcribing:
-            return "Transcribing recording"
+            return String(localized: "Transcribing recording")
         case .enhancing:
-            return "Enhancing recording"
+            return String(localized: "Enhancing recording")
         case .busy:
-            return "Recorder unavailable"
+            return String(localized: "Recorder unavailable")
         }
     }
 
@@ -384,7 +384,7 @@ struct AssistantPanelView: View {
     private var statusText: String? {
         switch session.phase {
         case .responding, .sendingFollowUp:
-            return "Thinking"
+            return String(localized: "Thinking")
         case .failed(let message):
             return message
         case .inactive, .ready:

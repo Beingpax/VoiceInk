@@ -222,7 +222,7 @@ class AudioTranscriptionManager: ObservableObject {
                         modeEmoji: modeMetadata.emoji
                     )
                 } catch {
-                    logger.error("Enhancement failed: \(error.localizedDescription, privacy: .public)")
+                    logger.error("Enhancement failed: \(error, privacy: .public)")
                     transcription = Transcription(
                         text: cleanedText,
                         duration: duration,
@@ -261,7 +261,7 @@ class AudioTranscriptionManager: ObservableObject {
             if Task.isCancelled || error is CancellationError {
                 item.status = .pending
             } else {
-                logger.error("Transcription error: \(error.localizedDescription, privacy: .public)")
+                logger.error("Transcription error: \(error, privacy: .public)")
                 item.status = .failed(message: error.localizedDescription)
             }
         }
@@ -277,9 +277,9 @@ enum TranscriptionError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noModelSelected:
-            return "No transcription model selected"
+            return String(localized: "No transcription model selected")
         case .transcriptionCancelled:
-            return "Transcription was cancelled"
+            return String(localized: "Transcription was cancelled")
         }
     }
 }

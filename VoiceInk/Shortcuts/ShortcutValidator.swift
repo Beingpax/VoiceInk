@@ -10,13 +10,13 @@ enum ShortcutValidationError: Equatable {
     func notificationTitle(for shortcut: Shortcut) -> String {
         switch self {
         case .plainKeyRequiresModifier:
-            return "Shortcut not allowed: \(shortcut.displayString)"
+            return String(format: String(localized: "Shortcut not allowed: %@"), shortcut.displayString)
         case .shiftTypingKeyRequiresAdditionalModifier:
-            return "Shortcut not allowed: \(shortcut.displayString)"
+            return String(format: String(localized: "Shortcut not allowed: %@"), shortcut.displayString)
         case .reservedBySystem:
-            return "Shortcut reserved by macOS: \(shortcut.displayString)"
+            return String(format: String(localized: "Shortcut reserved by macOS: %@"), shortcut.displayString)
         case .alreadyUsedBy(let actionName):
-            return "Shortcut already used by \(actionName)"
+            return String(format: String(localized: "Shortcut already used by %@"), actionName)
         }
     }
 }

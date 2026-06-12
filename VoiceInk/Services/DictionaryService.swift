@@ -1,4 +1,5 @@
 import OSLog
+import Foundation
 import SwiftData
 
 enum DictionaryService {
@@ -23,7 +24,7 @@ enum DictionaryService {
 
         if parts.count == 1, let word = parts.first {
             if existing.contains(where: { $0.word.lowercased() == word.lowercased() }) {
-                return "'\(word)' is already in the vocabulary"
+                return String(format: String(localized: "'%@' is already in the vocabulary"), word)
             }
             return insertVocabularyWord(word, context: context)
         }
@@ -51,7 +52,7 @@ enum DictionaryService {
             return nil
         } catch {
             context.delete(entry)
-            return "Failed to add '\(word)': \(error.localizedDescription)"
+            return String(format: String(localized: "Failed to add '%@': %@"), word, error.localizedDescription)
         }
     }
 
@@ -106,7 +107,7 @@ enum DictionaryService {
             return true
         } catch {
             context.rollback()
-            logger.error("Failed to remove exact dictionary duplicates from \(source, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to remove exact dictionary duplicates from \(source, privacy: .public): \(error, privacy: .public)")
             return false
         }
     }
@@ -137,7 +138,7 @@ enum DictionaryService {
 
             for token in tokens {
                 if existingTokens.contains(token.lowercased()) {
-                    return "'\(token)' already exists in word replacements"
+                    return String(format: String(localized: "'%@' already exists in word replacements"), token)
                 }
             }
         }
@@ -149,7 +150,7 @@ enum DictionaryService {
             return nil
         } catch {
             context.delete(entry)
-            return "Failed to add replacement: \(error.localizedDescription)"
+            return String(format: String(localized: "Failed to add replacement: %@"), error.localizedDescription)
         }
     }
 }

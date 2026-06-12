@@ -81,7 +81,7 @@ struct AudioFileRow: View {
 
             Spacer()
 
-            Text(phase.rawValue)
+            Text(LocalizedStringKey(phase.rawValue))
                 .font(.caption)
                 .foregroundColor(AppTheme.Accent.primary)
         }
@@ -168,7 +168,7 @@ struct AudioFileRow: View {
         Button {
             selectedTab = tab
         } label: {
-            Text(tab.rawValue)
+            Text(LocalizedStringKey(tab.rawValue))
                 .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
                 .foregroundColor(selectedTab == tab ? AppTheme.Accent.primary : .secondary)
                 .padding(.horizontal, 10)

@@ -111,7 +111,7 @@ struct InlineHistoryView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) item\(selectedTranscriptions.count == 1 ? "" : "s")?")
+            Text(String(localized: "This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) items?"))
         }
         .onAppear {
             isViewCurrentlyVisible = true
@@ -163,7 +163,7 @@ struct InlineHistoryView: View {
 
     private var selectionBar: some View {
         HStack(spacing: 16) {
-            Text("\(selectedTranscriptions.count) selected")
+            Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.secondary)
 
@@ -526,7 +526,7 @@ private struct HistoryCardRow: View {
                                 selectedTab = tab
                             }
                         } label: {
-                            Text(tab.rawValue)
+                            Text(LocalizedStringKey(tab.rawValue))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(selectedTab == tab ? .primary : .secondary)
                                 .padding(.horizontal, 10)

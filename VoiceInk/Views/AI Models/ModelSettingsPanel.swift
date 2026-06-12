@@ -50,7 +50,7 @@ private struct ModelSettingsTabBar: View {
                             .font(.system(size: 13, weight: .semibold))
                             .symbolRenderingMode(.hierarchical)
 
-                        Text(tab.rawValue)
+                        Text(LocalizedStringKey(tab.rawValue))
                             .font(.system(size: 14, weight: selection == tab ? .semibold : .medium))
                     }
                     .foregroundStyle(selection == tab ? Color.primary : Color.secondary)
@@ -101,7 +101,7 @@ private struct EnhancementModelSettingsView: View {
                 ) {
                     Picker("Minimum words", selection: $shortEnhancementWordThreshold) {
                         ForEach(1...15, id: \.self) { count in
-                            Text("\(count) \(count == 1 ? "word" : "words")").tag(count)
+                            Text(String(localized: "\(count) words")).tag(count)
                         }
                     }
                 }
@@ -113,7 +113,7 @@ private struct EnhancementModelSettingsView: View {
             Section {
                 Picker("Timeout duration", selection: $enhancementTimeoutSeconds) {
                     ForEach([3, 5, 7, 10, 15, 20, 30, 40, 50, 60], id: \.self) { seconds in
-                        Text("\(seconds) seconds").tag(seconds)
+                        Text(String(format: String(localized: "%d seconds"), seconds)).tag(seconds)
                     }
                 }
                 .pickerStyle(.menu)

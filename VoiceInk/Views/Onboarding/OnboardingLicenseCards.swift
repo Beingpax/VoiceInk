@@ -93,7 +93,7 @@ struct OnboardingVerifiedLicenseCard: View {
     var body: some View {
         LicenseActiveSummaryCard(
             title: "VoiceInk Pro",
-            subtitle: "License active on this Mac.",
+            subtitle: String(localized: "License active on this Mac."),
             licenseKey: licenseKey,
             didCopyLicenseKey: didCopyLicenseKey,
             onCopyLicenseKey: copyLicenseKey
@@ -140,13 +140,13 @@ private struct OnboardingLicenseActionRow: View {
                 .frame(width: 34, height: 34)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(LocalizedStringKey(title))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.88)
 
-                    Text(subtitle)
+                    Text(LocalizedStringKey(subtitle))
                         .font(.system(size: 11))
                         .foregroundColor(AppTheme.Text.muted)
                         .lineLimit(2)
@@ -194,7 +194,7 @@ private struct OnboardingLicenseActionRow: View {
 }
 
 private struct OnboardingLicensePrimaryButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let isLoading: Bool
     let isEnabled: Bool
@@ -211,7 +211,7 @@ private struct OnboardingLicensePrimaryButton: View {
                         .font(.system(size: 12, weight: .semibold))
                 }
 
-                Text(isLoading ? "Activating" : title)
+                Text(isLoading ? LocalizedStringKey("Activating") : title)
                     .font(.system(size: 13, weight: .semibold))
             }
             .foregroundColor(isEnabled ? AppTheme.Text.primary : AppTheme.Text.disabled)

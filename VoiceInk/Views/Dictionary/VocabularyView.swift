@@ -62,7 +62,7 @@ struct VocabularyView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: toggleSort) {
                         HStack(spacing: 4) {
-                            Text("Vocabulary Words (\(vocabularyWords.count))")
+                            Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 
@@ -113,7 +113,7 @@ struct VocabularyView: View {
         } catch {
             // Rollback the delete to restore UI consistency
             modelContext.rollback()
-            alertMessage = "Failed to remove word: \(error.localizedDescription)"
+            alertMessage = String(format: String(localized: "Failed to remove word: %@"), error.localizedDescription)
             showAlert = true
         }
     }

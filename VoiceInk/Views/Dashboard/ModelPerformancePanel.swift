@@ -1,6 +1,10 @@
 import SwiftUI
 import SwiftData
 
+private func localizedSessionCount(_ count: Int) -> String {
+    String(localized: "\(count) sessions")
+}
+
 // MARK: - Time filter
 
 enum TimeFilter: String, CaseIterable, Identifiable {
@@ -56,7 +60,7 @@ struct ModelPerformancePanel: View {
             Spacer()
             Picker("", selection: Binding(get: { filter }, set: { filterRaw = $0.rawValue })) {
                 ForEach(TimeFilter.allCases) { f in
-                    Text(f.rawValue).tag(f)
+                    Text(LocalizedStringKey(f.rawValue)).tag(f)
                 }
             }
             .pickerStyle(.menu)
@@ -170,7 +174,7 @@ private struct ModelPerformancePanelContent: View {
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text("\(stat.sessionCount) sessions")
+                Text(localizedSessionCount(stat.sessionCount))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
@@ -180,7 +184,7 @@ private struct ModelPerformancePanelContent: View {
                 Text(String(format: "%.1fx", stat.speedFactor))
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundColor(AppTheme.Data.enhancement)
-                Text(stat.speedFactor >= 1.0 ? "Faster than Real-time" : "Slower than Real-time")
+                Text(stat.speedFactor >= 1.0 ? LocalizedStringKey("Faster than Real-time") : LocalizedStringKey("Slower than Real-time"))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
@@ -238,7 +242,7 @@ private struct ModelPerformancePanelContent: View {
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                Text("\(stat.sessionCount) sessions")
+                Text(localizedSessionCount(stat.sessionCount))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }

@@ -146,7 +146,7 @@ private struct ContextAwarenessModePill: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
-            Text(model.title)
+            Text(LocalizedStringKey(model.title))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineLimit(1)

@@ -206,25 +206,25 @@ class ImportExportService {
             let savePanel = NSSavePanel()
             savePanel.allowedContentTypes = [UTType.json]
             savePanel.nameFieldStringValue = "VoiceInk_Settings_Backup.json"
-            savePanel.title = "Export VoiceInk Settings"
-            savePanel.message = "Choose a location to save your settings."
+            savePanel.title = String(localized: "Export VoiceInk Settings")
+            savePanel.message = String(localized: "Choose a location to save your settings.")
 
             DispatchQueue.main.async {
                 if savePanel.runModal() == .OK {
                     if let url = savePanel.url {
                         do {
                             try jsonData.write(to: url)
-                            self.showAlert(title: "Export Successful", message: "Your settings have been successfully exported to \(url.lastPathComponent).")
+                            self.showAlert(title: String(localized: "Export Successful"), message: String(format: String(localized: "Your settings have been successfully exported to %@."), url.lastPathComponent))
                         } catch {
-                            self.showAlert(title: "Export Error", message: "Could not save settings to file: \(error.localizedDescription)")
+                            self.showAlert(title: String(localized: "Export Error"), message: String(format: String(localized: "Could not save settings to file: %@"), error.localizedDescription))
                         }
                     }
                 } else {
-                    self.showAlert(title: "Export Canceled", message: "The settings export operation was canceled.")
+                    self.showAlert(title: String(localized: "Export Canceled"), message: String(localized: "The settings export operation was canceled."))
                 }
             }
         } catch {
-            self.showAlert(title: "Export Error", message: "Could not encode settings to JSON: \(error.localizedDescription)")
+            self.showAlert(title: String(localized: "Export Error"), message: String(format: String(localized: "Could not encode settings to JSON: %@"), error.localizedDescription))
         }
     }
 
@@ -235,16 +235,16 @@ class ImportExportService {
         openPanel.canChooseFiles = true
         openPanel.canChooseDirectories = false
         openPanel.allowsMultipleSelection = false
-        openPanel.title = "Import VoiceInk Settings"
-        openPanel.message = "Choose a settings backup, then select what you want to import."
+        openPanel.title = String(localized: "Import VoiceInk Settings")
+        openPanel.message = String(localized: "Choose a settings backup, then select what you want to import.")
 
         guard openPanel.runModal() == .OK else {
-            showAlert(title: "Import Canceled", message: "The settings import operation was canceled.")
+            showAlert(title: String(localized: "Import Canceled"), message: String(localized: "The settings import operation was canceled."))
             return
         }
 
         guard let url = openPanel.url else {
-            showAlert(title: "Import Error", message: "Could not get the file URL from the open panel.")
+            showAlert(title: String(localized: "Import Error"), message: String(localized: "Could not get the file URL from the open panel."))
             return
         }
 
@@ -254,16 +254,16 @@ class ImportExportService {
             let backup = try decoder.decode(BackupFile.self, from: jsonData)
 
             if backup.version != currentSettingsVersion {
-                showAlert(title: "Version Mismatch", message: "The imported settings file (version \(backup.version)) is from a different version than your application (version \(currentSettingsVersion)). Proceeding with import, but be aware of potential incompatibilities.")
+                showAlert(title: String(localized: "Version Mismatch"), message: String(format: String(localized: "The imported settings file (version %@) is from a different version than your application (version %@). Proceeding with import, but be aware of potential incompatibilities."), backup.version, currentSettingsVersion))
             }
 
             guard let selectedCategories = presentImportSelectionDialog() else {
-                showAlert(title: "Import Canceled", message: "No settings were imported.")
+                showAlert(title: String(localized: "Import Canceled"), message: String(localized: "No settings were imported."))
                 return
             }
 
             guard !selectedCategories.isEmpty else {
-                showAlert(title: "Import Error", message: "Select at least one category to import.")
+                showAlert(title: String(localized: "Import Error"), message: String(localized: "Select at least one category to import."))
                 return
             }
 
@@ -281,22 +281,22 @@ class ImportExportService {
             )
 
             showImportSuccessAlert(
-                message: "Settings imported successfully from \(url.lastPathComponent).\n\nImported: \(categorySummary(for: selectedCategories)).",
+                message: String(format: String(localized: "Settings imported successfully from %@.\n\nImported: %@."), url.lastPathComponent, categorySummary(for: selectedCategories)),
                 needsAPIKeyReminder: needsAPIKeyReminder(for: selectedCategories)
             )
         } catch {
-            showAlert(title: "Import Error", message: "Error importing settings: \(error.localizedDescription). The file might be corrupted or not in the correct format.")
+            showAlert(title: String(localized: "Import Error"), message: String(format: String(localized: "Error importing settings: %@. The file might be corrupted or not in the correct format."), error.localizedDescription))
         }
     }
 
     private func presentImportSelectionDialog() -> Set<BackupCategory>? {
         let accessory = BackupOptions()
         let alert = NSAlert()
-        alert.messageText = "Import Settings"
-        alert.informativeText = "Choose what to import from this backup."
+        alert.messageText = String(localized: "Import Settings")
+        alert.informativeText = String(localized: "Choose what to import from this backup.")
         alert.alertStyle = .informational
         alert.accessoryView = accessory.view
-        alert.addButton(withTitle: "Import")
+        alert.addButton(withTitle: String(localized: "Import"))
         alert.addButton(withTitle: "Cancel")
 
         let response = alert.runModal()
@@ -309,7 +309,7 @@ class ImportExportService {
 
     private func categorySummary(for categories: Set<BackupCategory>) -> String {
         if categories == Set(BackupCategory.allCases) {
-            return "All settings"
+            return String(localized: "All settings")
         }
 
         return BackupCategory.allCases
@@ -328,7 +328,7 @@ class ImportExportService {
             alert.messageText = title
             alert.informativeText = message
             alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: String(localized: "OK"))
             alert.runModal()
         }
     }
@@ -336,17 +336,17 @@ class ImportExportService {
     private func showImportSuccessAlert(message: String, needsAPIKeyReminder: Bool) {
         DispatchQueue.main.async {
             let alert = NSAlert()
-            alert.messageText = "Import Successful"
+            alert.messageText = String(localized: "Import Successful")
             var informativeText = message
             if needsAPIKeyReminder {
-                informativeText += "\n\nIMPORTANT: If you were using AI enhancement features, please make sure to reconfigure your API keys in the AI Models section."
+                informativeText += "\n\n" + String(localized: "IMPORTANT: If you were using AI enhancement features, please make sure to reconfigure your API keys in the AI Models section.")
             }
-            informativeText += "\n\nIt is recommended to restart VoiceInk for all changes to take full effect."
+            informativeText += "\n\n" + String(localized: "It is recommended to restart VoiceInk for all changes to take full effect.")
             alert.informativeText = informativeText
             alert.alertStyle = .informational
-            alert.addButton(withTitle: "OK")
+            alert.addButton(withTitle: String(localized: "OK"))
             if needsAPIKeyReminder {
-                alert.addButton(withTitle: "Configure API Keys")
+                alert.addButton(withTitle: String(localized: "Configure API Keys"))
             }
             
             let response = alert.runModal()

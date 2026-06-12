@@ -15,21 +15,21 @@ enum CloudTranscriptionError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedProvider:
-            return "The model provider is not supported by this service."
+            return String(localized: "The model provider is not supported by this service.")
         case .missingAPIKey:
-            return "API key for this service is missing. Please configure it in the settings."
+            return String(localized: "API key for this service is missing. Please configure it in the settings.")
         case .invalidAPIKey:
-            return "The provided API key is invalid."
+            return String(localized: "The provided API key is invalid.")
         case .audioFileNotFound:
-            return "The audio file to transcribe could not be found."
+            return String(localized: "The audio file to transcribe could not be found.")
         case .apiRequestFailed(let statusCode, let message):
-            return "The API request failed with status code \(statusCode): \(message)"
+            return String(format: String(localized: "The API request failed with status code %lld: %@"), Int64(statusCode), message)
         case .networkError(let error):
-            return "A network error occurred: \(error.localizedDescription)"
+            return String(format: String(localized: "A network error occurred: %@"), error.localizedDescription)
         case .noTranscriptionReturned:
-            return "The API returned an empty or invalid response."
+            return String(localized: "The API returned an empty or invalid response.")
         case .dataEncodingError:
-            return "Failed to encode the request body."
+            return String(localized: "Failed to encode the request body.")
         }
     }
 }

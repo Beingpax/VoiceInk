@@ -144,9 +144,10 @@ struct AudioTranscribeView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            Text("\(transcriptionManager.queue.count) file\(transcriptionManager.queue.count == 1 ? "" : "s")")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            let count = transcriptionManager.queue.count
+            Text(String(localized: "\(count) files"))
+            .font(.subheadline)
+            .foregroundColor(.secondary)
 
             Button {
                 selectFiles()

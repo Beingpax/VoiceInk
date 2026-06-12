@@ -43,7 +43,7 @@ struct HelpAndResourcesSection: View {
         .background(AppCardBackground(cornerRadius: 28))
     }
     
-    private func resourceLink(icon: String, title: String, color: Color, url: String? = nil, action: (() -> Void)? = nil) -> some View {
+    private func resourceLink(icon: String, title: LocalizedStringKey, color: Color, url: String? = nil, action: (() -> Void)? = nil) -> some View {
         Button(action: {
             if let action = action {
                 action()

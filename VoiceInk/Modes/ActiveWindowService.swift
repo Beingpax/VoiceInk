@@ -61,7 +61,7 @@ class ActiveWindowService: ObservableObject {
             } catch is CancellationError {
                 return
             } catch {
-                self.logger.error("❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                self.logger.error("❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error, privacy: .public)")
             }
         }
     }

@@ -41,7 +41,7 @@ class WhisperTranscriptionService: TranscriptionService {
             do {
                 whisperContext = try await WhisperContext.createContext(path: modelURL.path)
             } catch {
-                logger.error("❌ Failed to load model: \(model.name, privacy: .public) - \(error.localizedDescription, privacy: .public)")
+                logger.error("❌ Failed to load model: \(model.name, privacy: .public) - \(error, privacy: .public)")
                 throw VoiceInkEngineError.modelLoadFailed
             }
         }

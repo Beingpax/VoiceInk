@@ -174,7 +174,7 @@ class StreamingTranscriptionService {
         } catch {
             commitSignal?.finish()
             commitSignal = nil
-            logger.error("Failed to send commit: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to send commit: \(error, privacy: .public)")
             state = .failed
             await cleanupStreaming()
             throw error
@@ -317,7 +317,7 @@ class StreamingTranscriptionService {
                     break
                 case .error(let error):
                     await MainActor.run {
-                        self.logger.error("Streaming event error: \(error.localizedDescription, privacy: .public)")
+                        self.logger.error("Streaming event error: \(error, privacy: .public)")
                     }
                 }
             }  

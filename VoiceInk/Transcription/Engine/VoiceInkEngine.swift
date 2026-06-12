@@ -91,7 +91,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
         do {
             try FileManager.default.createDirectory(at: recordingsDirectory, withIntermediateDirectories: true, attributes: nil)
         } catch {
-            logger.error("❌ Error creating recordings directory: \(error.localizedDescription, privacy: .public)")
+            logger.error("❌ Error creating recordings directory: \(error, privacy: .public)")
         }
     }
 
@@ -213,7 +213,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             guard let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
                                 transcriptionModelManager: self.transcriptionModelManager
                             ) else {
-                                NotificationManager.shared.showNotification(title: "No AI Model Selected", type: .error)
+                                NotificationManager.shared.showNotification(title: String(localized: "No AI Model Selected"), type: .error)
                                 await self.recorder.stopRecording()
                                 try? FileManager.default.removeItem(at: permanentURL)
                                 self.recordedFile = nil
@@ -275,7 +275,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                         do {
                                             try await self.whisperModelManager.loadModel(localWhisperModel)
                                         } catch {
-                                            self.logger.error("❌ Model loading failed: \(error.localizedDescription, privacy: .public)")
+                                            self.logger.error("❌ Model loading failed: \(error, privacy: .public)")
                                         }
                                     }
                                 } else if let fluidAudioModel = currentModel as? FluidAudioModel {
@@ -286,7 +286,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
                         } catch {
                             activeModeTask.cancel()
-                            self.logger.error("Recording failed to start: \(error.localizedDescription, privacy: .public)")
+                            self.logger.error("Recording failed to start: \(error, privacy: .public)")
                             await self.recorder.stopRecording()
                             self.cancelCurrentSession()
                             if let recordedFile = self.recordedFile {
@@ -297,7 +297,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             self.activeRecordingStartID = nil
                             self.clearActiveRecordingContext()
                             await self.cleanupResources()
-                            NotificationManager.shared.showNotification(title: "Recording failed to start", type: .error)
+                            NotificationManager.shared.showNotification(title: String(localized: "Recording failed to start"), type: .error)
                             await self.recorderUIManager?.dismissRecorderPanel()
                         }
                     }
@@ -337,7 +337,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     ) async {
         guard let transcriptionConfiguration = currentSessionTranscriptionConfiguration ??
             ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: transcriptionModelManager) else {
-            transcription.text = "Transcription Failed: No model selected"
+            transcription.text = String(localized: "Transcription Failed: No model selected")
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
             try? modelContext.save()
             recordingState = .idle
@@ -526,7 +526,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             try modelContext.save()
             NotificationCenter.default.post(name: .transcriptionCreated, object: transcription)
         } catch {
-            logger.error("Failed to save canceled recording: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to save canceled recording: \(error, privacy: .public)")
         }
     }
 

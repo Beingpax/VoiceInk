@@ -151,7 +151,7 @@ struct APIKeyManagementView: View {
                         }
                     } else {
                         HStack {
-                            Text("Server: \(ollamaBaseURL)")
+                            Text(String(format: String(localized: "Server: %@"), ollamaBaseURL))
                             Spacer()
                             Button("Edit") { isEditingURL = true }
                             Button(action: {
@@ -282,7 +282,7 @@ struct APIKeyManagementView: View {
                                 aiService.saveAPIKey(apiKey) { success, errorMessage in
                                     isVerifying = false
                                     if !success {
-                                        alertMessage = errorMessage ?? "Could not verify this API key. Check the key and try again."
+                                        alertMessage = errorMessage ?? String(localized: "Could not verify this API key. Check the key and try again.")
                                         showAlert = true
                                     }
                                     apiKey = ""

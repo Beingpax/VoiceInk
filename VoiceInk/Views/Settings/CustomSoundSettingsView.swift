@@ -46,7 +46,7 @@ struct CustomSoundSettingsView: View {
                 }
 
                 if isCustom || fileName != nil {
-                    Text("Custom: \(fileName ?? "Custom")").tag(SoundMenuSelection.custom)
+                    Text(String(format: String(localized: "Custom: %@"), fileName ?? String(localized: "Custom"))).tag(SoundMenuSelection.custom)
                 }
             }
             .labelsHidden()
@@ -119,8 +119,8 @@ struct CustomSoundSettingsView: View {
 
     private func selectSound(for type: CustomSoundManager.SoundType) {
         let panel = NSOpenPanel()
-        panel.title = "Choose \(type.rawValue.capitalized) Sound"
-        panel.message = "Select an audio file"
+        panel.title = String(format: String(localized: "Choose %@ Sound"), type.rawValue.capitalized)
+        panel.message = String(localized: "Select an audio file")
         panel.allowedContentTypes = [
             UTType.audio,
             UTType.mp3,

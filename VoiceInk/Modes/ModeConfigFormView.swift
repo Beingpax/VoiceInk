@@ -153,7 +153,7 @@ struct ModeConfigFormView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("Are you sure you want to delete '\(draft.name)'? This action cannot be undone.")
+            Text(String(format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."), draft.name))
         }
         .modeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
     }
@@ -393,7 +393,7 @@ struct ModeConfigFormView: View {
             let models = aiModelOptions(for: provider)
             if models.isEmpty {
                 LabeledContent("AI Model") {
-                    Text(provider == .openRouter ? "No models loaded" : "No models available")
+                    Text(provider == .openRouter ? LocalizedStringKey("No models loaded") : LocalizedStringKey("No models available"))
                         .foregroundColor(.secondary)
                         .italic()
                 }

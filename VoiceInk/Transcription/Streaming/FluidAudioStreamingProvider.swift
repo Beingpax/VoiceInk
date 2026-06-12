@@ -204,7 +204,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             }
 
         } catch {
-            logger.error("Transcription pass failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("Transcription pass failed: \(error, privacy: .public)")
             eventsContinuation?.yield(.error(error))
         }
     }
@@ -246,7 +246,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             guard !text.isEmpty else { return nil }
             return TextNormalizer.shared.normalizeSentence(text)
         } catch {
-            logger.error("Final transcription failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("Final transcription failed: \(error, privacy: .public)")
             return nil
         }
     }

@@ -157,7 +157,7 @@ private struct TrustPill: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.secondary)
 
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
                 .lineLimit(1)

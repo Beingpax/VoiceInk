@@ -76,14 +76,14 @@ final class OnboardingPermissionController {
         let permissionStatus = status(for: permission)
 
         if permissionStatus.isGranted {
-            return "Done"
+            return String(localized: "Done")
         }
 
         switch permission {
         case .microphone:
-            return permissionStatus.requiresSettings ? "Open Settings" : "Allow"
+            return permissionStatus.requiresSettings ? String(localized: "Open Settings") : String(localized: "Allow")
         case .accessibility, .screenRecording:
-            return "Allow"
+            return String(localized: "Allow")
         }
     }
 

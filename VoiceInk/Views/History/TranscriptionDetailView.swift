@@ -60,7 +60,7 @@ struct TranscriptionDetailView: View {
 }
 
 private struct MessageBubble: View {
-    let label: String
+    let label: LocalizedStringKey
     let text: String
     let isEnhanced: Bool
 

@@ -148,7 +148,7 @@ struct EditReplacementSheet: View {
 
                 for tokenPair in newTokensPairs {
                     if existingTokens.contains(tokenPair.lowercased) {
-                        alertMessage = "'\(tokenPair.original)' already exists in word replacements"
+                        alertMessage = String(format: String(localized: "'%@' already exists in word replacements"), tokenPair.original)
                         showAlert = true
                         return
                     }
@@ -164,7 +164,7 @@ struct EditReplacementSheet: View {
             try modelContext.save()
             dismiss()
         } catch {
-            alertMessage = "Failed to save changes: \(error.localizedDescription)"
+            alertMessage = String(format: String(localized: "Failed to save changes: %@"), error.localizedDescription)
             showAlert = true
         }
     }

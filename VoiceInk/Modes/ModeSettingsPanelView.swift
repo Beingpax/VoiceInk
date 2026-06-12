@@ -140,8 +140,8 @@ private struct ModeReorderRow: View {
                     .truncationMode(.tail)
 
                 HStack(spacing: 8) {
-                    ModeReorderMeta(icon: "app.fill", value: countText(config.allAppConfigs.count, singular: "App", plural: "Apps"))
-                    ModeReorderMeta(icon: "globe", value: countText(config.allURLConfigs.count, singular: "Website", plural: "Websites"))
+                    ModeReorderMeta(icon: "app.fill", value: countText(config.allAppConfigs.count, plural: "Apps"))
+                    ModeReorderMeta(icon: "globe", value: countText(config.allURLConfigs.count, plural: "Websites"))
                 }
             }
 
@@ -203,16 +203,16 @@ private struct ModeReorderRow: View {
         return AppTheme.Border.control.opacity(0.55)
     }
 
-    private func countText(_ count: Int, singular: String, plural: String) -> String {
+    private func countText(_ count: Int, plural: String) -> String {
         if count == 0 {
-            return "No \(plural)"
+            return plural == "Apps" ? String(localized: "No Apps") : String(localized: "No Websites")
         }
 
-        if count == 1 {
-            return "1 \(singular)"
+        if plural == "Apps" {
+            return String(localized: "\(count) Apps")
+        } else {
+            return String(localized: "\(count) Websites")
         }
-
-        return "\(count) \(plural)"
     }
 }
 
@@ -234,7 +234,7 @@ private struct ModeReorderMeta: View {
 }
 
 private struct ModeReorderBadge: View {
-    let title: String
+    let title: LocalizedStringKey
     var systemImage: String?
 
     var body: some View {

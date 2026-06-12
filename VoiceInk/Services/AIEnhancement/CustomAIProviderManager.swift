@@ -160,25 +160,25 @@ final class CustomAIProviderManager: ObservableObject {
         let trimmedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if trimmedName.isEmpty {
-            errors.append("Display name cannot be empty")
+            errors.append(String(localized: "Display name cannot be empty"))
         }
 
         if trimmedURL.isEmpty {
-            errors.append("Base URL cannot be empty")
+            errors.append(String(localized: "Base URL cannot be empty"))
         } else if URL(string: trimmedURL)?.host == nil {
-            errors.append("Base URL must be a valid URL")
+            errors.append(String(localized: "Base URL must be a valid URL"))
         }
 
         if trimmedModel.isEmpty {
-            errors.append("Model name cannot be empty")
+            errors.append(String(localized: "Model name cannot be empty"))
         }
 
         if providers.contains(where: { $0.name.caseInsensitiveCompare(trimmedName) == .orderedSame && $0.id != id }) {
-            errors.append("A custom enhancement model with this display name already exists")
+            errors.append(String(localized: "A custom enhancement model with this display name already exists"))
         }
 
         if providers.contains(where: { $0.modelName.caseInsensitiveCompare(trimmedModel) == .orderedSame && $0.id != id }) {
-            errors.append("A custom enhancement model with this model name already exists")
+            errors.append(String(localized: "A custom enhancement model with this model name already exists"))
         }
 
         return errors
@@ -189,7 +189,7 @@ final class CustomAIProviderManager: ObservableObject {
         do {
             providers = try JSONDecoder().decode([CustomAIProviderConfig].self, from: data)
         } catch {
-            logger.error("Failed to decode custom AI providers: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to decode custom AI providers: \(error, privacy: .public)")
             providers = []
         }
     }
@@ -200,7 +200,7 @@ final class CustomAIProviderManager: ObservableObject {
             defaults.set(data, forKey: providersKey)
             NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
         } catch {
-            logger.error("Failed to encode custom AI providers: \(error.localizedDescription, privacy: .public)")
+            logger.error("Failed to encode custom AI providers: \(error, privacy: .public)")
         }
     }
 

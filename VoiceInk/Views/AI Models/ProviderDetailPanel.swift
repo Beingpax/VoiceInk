@@ -157,7 +157,7 @@ struct ProviderDetailPanel: View {
                 removeAPIKey()
             }
         } message: {
-            Text("This will remove your \(descriptor.displayName) API key. You can add it again later.")
+            Text(String(format: String(localized: "This will remove your %@ API key. You can add it again later."), descriptor.displayName))
         }
     }
 
@@ -194,7 +194,7 @@ struct ProviderDetailPanel: View {
                         } else {
                             Image(systemName: "checkmark.seal")
                         }
-                        Text(isVerifying ? "Verifying" : "Verify")
+                        Text(isVerifying ? LocalizedStringKey("Verifying") : LocalizedStringKey("Verify"))
                     }
                     .font(.system(size: 12, weight: .medium))
                 }
@@ -210,7 +210,7 @@ struct ProviderDetailPanel: View {
                         Image(systemName: "link")
                             .font(.system(size: 11, weight: .semibold))
 
-                        Text("Get \(descriptor.displayName) API Key")
+                        Text(String(format: String(localized: "Get %@ API Key"), descriptor.displayName))
                             .font(.system(size: 12, weight: .medium))
 
                         Image(systemName: "arrow.up.right.square")
@@ -224,7 +224,7 @@ struct ProviderDetailPanel: View {
                     .background(neutralLinkButtonBackground)
                 }
                 .buttonStyle(.plain)
-                .help("Open \(descriptor.displayName) API key page")
+                .help(String(format: String(localized: "Open %@ API key page"), descriptor.displayName))
             }
         }
         .padding(12)
@@ -306,7 +306,7 @@ struct ProviderDetailPanel: View {
                                 } else {
                                     Image(systemName: "arrow.clockwise")
                                 }
-                                Text(isRefreshingOpenRouterModels ? "Refreshing" : "Refresh")
+                                Text(isRefreshingOpenRouterModels ? LocalizedStringKey("Refreshing") : LocalizedStringKey("Refresh"))
                             }
                             .font(.system(size: 12, weight: .medium))
                         }
@@ -350,10 +350,10 @@ struct ProviderDetailPanel: View {
 
     private func openRouterModelAvailabilityText(for count: Int) -> String {
         if count == 0 {
-            return "No models loaded."
+            return String(localized: "No models loaded.")
         }
 
-        return "\(count) \(count == 1 ? "model" : "models") available"
+        return String(localized: "\(count) models available")
     }
 
     private func modelRow(title: String, subtitle: String?, trailing: String?, systemImage: String) -> some View {
@@ -459,7 +459,7 @@ struct ProviderDetailPanel: View {
                     model: verificationModel(for: provider)
                 )
             } else {
-                result = (false, "Provider is not supported")
+                result = (false, String(localized: "Provider is not supported"))
             }
 
             await MainActor.run {
@@ -480,7 +480,7 @@ struct ProviderDetailPanel: View {
                     transcriptionModelManager.refreshAllAvailableModels()
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
-                    verificationMessage = "Could not verify this API key. Check the key and try again."
+                    verificationMessage = String(localized: "Could not verify this API key. Check the key and try again.")
                     verificationDetailMessage = result.errorMessage
                 }
             }

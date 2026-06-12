@@ -18,11 +18,11 @@ struct PermissionStepRow: View {
                 stepNumberView
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(descriptor.title)
+                    Text(LocalizedStringKey(descriptor.title))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(AppTheme.Text.primary)
 
-                    Text(descriptor.subtitle)
+                    Text(LocalizedStringKey(descriptor.subtitle))
                         .font(.system(size: 12))
                         .foregroundColor(AppTheme.Text.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -77,7 +77,7 @@ struct PermissionStepRow: View {
 
     private var actionButton: some View {
         Button(action: onAction) {
-            Text(actionTitle)
+            Text(LocalizedStringKey(actionTitle))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(AppTheme.Action.primaryForeground)
                 .frame(minWidth: 94)
@@ -92,7 +92,7 @@ struct PermissionStepRow: View {
     }
 
     private var statusBadge: some View {
-        Text(isLocked ? "Locked" : status.label)
+        Text(isLocked ? LocalizedStringKey("Locked") : LocalizedStringKey(status.label))
             .font(.system(size: 12, weight: .semibold))
             .foregroundColor(isLocked ? AppTheme.Text.muted : statusTone)
             .padding(.horizontal, 10)

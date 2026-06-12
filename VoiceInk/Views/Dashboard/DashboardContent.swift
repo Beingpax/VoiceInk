@@ -221,7 +221,7 @@ struct DashboardContent: View {
             }
         } catch is CancellationError {
         } catch {
-            logger.error("Error loading dashboard stats: \(error.localizedDescription, privacy: .public)")
+            logger.error("Error loading dashboard stats: \(error, privacy: .public)")
         }
     }
 
@@ -260,19 +260,19 @@ struct DashboardContent: View {
         switch licenseState {
         case .unlicensed:
             TrialMessageView(
-                message: "Activate a license to continue using VoiceInk.",
+                message: Text("Activate a license to continue using VoiceInk."),
                 type: .licenseRequired,
                 onAddLicenseKey: onAddLicenseKey
             )
         case .trial(let daysRemaining):
             TrialMessageView(
-                message: "You have \(daysRemaining) days left in your trial",
+                message: Text(String(localized: "You have \(daysRemaining) days left in your trial")),
                 type: daysRemaining <= 2 ? .warning : .info,
                 onAddLicenseKey: onAddLicenseKey
             )
         case .trialExpired:
             TrialMessageView(
-                message: "Your trial has expired. Upgrade to continue using VoiceInk",
+                message: Text("Your trial has expired. Upgrade to continue using VoiceInk"),
                 type: .expired,
                 onAddLicenseKey: onAddLicenseKey
             )
@@ -287,21 +287,16 @@ struct DashboardContent: View {
                 Spacer(minLength: 0)
 
                 if hasLoadedStatsSnapshot {
-                    (Text("You have saved ")
-                        .fontWeight(.bold)
-                        .foregroundColor(.white.opacity(0.85))
-                     +
-                     Text(formattedTimeSaved)
+                    let highlightedTime = Text(formattedTimeSaved)
                         .fontWeight(.black)
                         .font(.system(size: 36, design: .rounded))
-                        .foregroundStyle(.white)
-                     +
-                     Text(" with VoiceInk")
+                        .foregroundColor(.white)
+
+                    Text("You have saved \(highlightedTime) with VoiceInk")
                         .fontWeight(.bold)
                         .foregroundColor(.white.opacity(0.85))
-                    )
-                    .font(.system(size: 30))
-                    .multilineTextAlignment(.center)
+                        .font(.system(size: 30))
+                        .multilineTextAlignment(.center)
                 } else {
                     Text("VoiceInk Insights")
                         .font(.system(size: 32, weight: .black, design: .rounded))
@@ -395,7 +390,7 @@ struct DashboardContent: View {
     }
 
     @ViewBuilder
-    private func footerActionLabel(icon: String, title: String, color: Color) -> some View {
+    private func footerActionLabel(icon: String, title: LocalizedStringKey, color: Color) -> some View {
         HStack(alignment: .center, spacing: 8) {
             DashboardIconGlyph(systemName: icon, color: color, size: 13, frameSize: 16)
 
@@ -430,17 +425,15 @@ struct DashboardContent: View {
     
     private var heroSubtitle: String {
         guard hasLoadedStatsSnapshot else {
-            return "Your usage summary will appear here."
+            return String(localized: "Your usage summary will appear here.")
         }
 
         guard totalCount > 0 else {
-            return "Your VoiceInk journey starts with your first recording."
+            return String(localized: "Your VoiceInk journey starts with your first recording.")
         }
 
         let wordsText = Formatters.formattedNumber(totalWords)
-        let sessionText = totalCount == 1 ? "session" : "sessions"
-
-        return "Dictated \(wordsText) words across \(totalCount) \(sessionText)."
+        return String(localized: "Dictated \(wordsText) words across \(totalCount) sessions.")
     }
     
     private var heroGradient: LinearGradient {

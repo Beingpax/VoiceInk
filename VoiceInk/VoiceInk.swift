@@ -64,10 +64,10 @@ struct VoiceInkApp: App {
 
                 DispatchQueue.main.async {
                     let alert = NSAlert()
-                    alert.messageText = "Storage Warning"
-                    alert.informativeText = "VoiceInk couldn't access its storage location. Your transcriptions will not be saved between sessions."
+                    alert.messageText = String(localized: "Storage Warning")
+                    alert.informativeText = String(localized: "VoiceInk couldn't access its storage location. Your transcriptions will not be saved between sessions.")
                     alert.alertStyle = .warning
-                    alert.addButton(withTitle: "OK")
+                    alert.addButton(withTitle: String(localized: "OK"))
                     alert.runModal()
                 }
             } catch let memoryError {
@@ -372,10 +372,10 @@ struct VoiceInkApp: App {
         guard !AXIsProcessTrusted() else { return }
 
         NotificationManager.shared.showNotification(
-            title: "Accessibility permission is not provided",
+            title: String(localized: "Accessibility permission is not provided"),
             type: .warning,
             duration: 7.0,
-            actionButton: ("Open Settings", Self.openAccessibilitySettings)
+            actionButton: (String(localized: "Open Settings"), Self.openAccessibilitySettings)
         )
     }
 

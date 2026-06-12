@@ -169,7 +169,7 @@ struct CloudModelCardView: View {
                 .foregroundColor(Color(.labelColor))
             
             HStack(spacing: 8) {
-                SecureField("Enter your \(model.provider.rawValue) API key", text: $apiKey)
+                SecureField(String(format: String(localized: "Enter your %@ API key"), model.provider.rawValue), text: $apiKey)
                     .textFieldStyle(.roundedBorder)
                     .disabled(isVerifying)
                     .onChange(of: apiKey) { _, newValue in
@@ -191,7 +191,7 @@ struct CloudModelCardView: View {
                             Image(systemName: verificationStatus == .success ? "checkmark" : "checkmark.shield")
                                 .font(.system(size: 12, weight: .medium))
                         }
-                        Text(isVerifying ? "Verifying..." : "Verify")
+                        Text(isVerifying ? LocalizedStringKey("Verifying...") : LocalizedStringKey("Verify"))
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)
@@ -208,7 +208,7 @@ struct CloudModelCardView: View {
             
             if verificationStatus == .failure {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(verificationError ?? "Could not verify this API key. Check the key and try again.")
+                    Text(verificationError ?? String(localized: "Could not verify this API key. Check the key and try again."))
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(AppTheme.Status.error)
@@ -247,8 +247,8 @@ struct CloudModelCardView: View {
         guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
             isVerifying = false
             verificationStatus = .failure
-            verificationError = "Could not verify this API key. Check the key and try again."
-            verificationErrorDetail = "Unsupported provider"
+            verificationError = String(localized: "Could not verify this API key. Check the key and try again.")
+            verificationErrorDetail = String(localized: "Unsupported provider")
             return
         }
 
@@ -268,7 +268,7 @@ struct CloudModelCardView: View {
                     }
                 } else {
                     verificationStatus = .failure
-                    verificationError = "Could not verify this API key. Check the key and try again."
+                    verificationError = String(localized: "Could not verify this API key. Check the key and try again.")
                     verificationErrorDetail = result.errorMessage
                 }
             }

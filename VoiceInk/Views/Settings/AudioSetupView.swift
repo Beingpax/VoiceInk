@@ -252,9 +252,9 @@ struct AudioSetupView: View {
 
     private var systemDefaultSourceTitle: String {
         guard let name = audioDeviceManager.getSystemDefaultDeviceName() else {
-            return "System Default"
+            return String(localized: "System Default")
         }
-        return "System Default (\(name))"
+        return String(format: String(localized: "System Default (%@)"), name)
     }
 
     private func refreshMicrophones() {

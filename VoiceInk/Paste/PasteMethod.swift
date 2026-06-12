@@ -12,9 +12,9 @@ enum PasteMethod: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .standard:
-            return "Default"
+            return String(localized: "Default")
         case .appleScript:
-            return "AppleScript"
+            return String(localized: "AppleScript")
         }
     }
 

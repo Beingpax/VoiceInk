@@ -55,7 +55,7 @@ extension VoiceInkEngine {
             } catch {
                 let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 NotificationManager.shared.showNotification(
-                    title: "Assistant response was not saved: \(String(errorDescription.prefix(80)))",
+                    title: String(format: String(localized: "Assistant response was not saved: %@"), String(errorDescription.prefix(80))),
                     type: .warning
                 )
             }

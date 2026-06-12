@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TrialMessageView: View {
-    let message: String
+    let message: Text
     let type: MessageType
     var onAddLicenseKey: (() -> Void)? = nil
     
@@ -21,7 +21,7 @@ struct TrialMessageView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
-                Text(message)
+                message
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -65,7 +65,7 @@ struct TrialMessageView: View {
         AppTheme.Text.secondary
     }
     
-    private var title: String {
+    private var title: LocalizedStringKey {
         switch type {
         case .licenseRequired: return "License Required"
         case .warning: return "Trial Ending Soon"

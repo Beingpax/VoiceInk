@@ -126,9 +126,9 @@ struct ModeIconPickerView: View {
                             newEmojiText = cleaned
                         }
                         if !newEmojiText.isEmpty && emojiManager.allEmojis.contains(newEmojiText) {
-                            inputFeedbackMessage = "Emoji already exists."
+                            inputFeedbackMessage = String(localized: "Emoji already exists.")
                         } else if !newEmojiText.isEmpty && !newEmojiText.isValidEmoji {
-                            inputFeedbackMessage = "Invalid emoji."
+                            inputFeedbackMessage = String(localized: "Invalid emoji.")
                         }
                     }
                     .onSubmit(attemptAddCustomEmoji)
@@ -150,7 +150,7 @@ struct ModeIconPickerView: View {
             if !inputFeedbackMessage.isEmpty {
                 Text(inputFeedbackMessage)
                     .font(.caption)
-                    .foregroundColor(inputFeedbackMessage.contains("Invalid") || inputFeedbackMessage.contains("exists") ? AppTheme.Status.error : .secondary)
+                    .foregroundColor(AppTheme.Status.error)
             }
         }
         .padding(.horizontal)
@@ -160,15 +160,15 @@ struct ModeIconPickerView: View {
     private func attemptAddCustomEmoji() {
         let trimmedEmoji = newEmojiText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedEmoji.isEmpty else {
-            inputFeedbackMessage = "Emoji cannot be empty."
+            inputFeedbackMessage = String(localized: "Emoji cannot be empty.")
             return
         }
         guard trimmedEmoji.isValidEmoji else {
-            inputFeedbackMessage = "Invalid emoji."
+            inputFeedbackMessage = String(localized: "Invalid emoji.")
             return
         }
         guard !emojiManager.allEmojis.contains(trimmedEmoji) else {
-            inputFeedbackMessage = "Emoji already exists."
+            inputFeedbackMessage = String(localized: "Emoji already exists.")
             return
         }
 
@@ -179,7 +179,7 @@ struct ModeIconPickerView: View {
             newEmojiText = ""
             isPresented = false
         } else {
-            inputFeedbackMessage = "Could not add emoji."
+            inputFeedbackMessage = String(localized: "Could not add emoji.")
         }
     }
 

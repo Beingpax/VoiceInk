@@ -137,7 +137,7 @@ struct TranscriptionInfoPanel: View {
         return parts.joined(separator: "\n\n")
     }
 
-    private func metadataRow(icon: String, label: String, value: String) -> some View {
+    private func metadataRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))

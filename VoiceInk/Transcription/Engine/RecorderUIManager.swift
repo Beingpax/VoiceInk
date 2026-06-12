@@ -11,9 +11,9 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .notch:
-            return "Notch"
+            return String(localized: "Notch")
         case .mini:
-            return "Mini"
+            return String(localized: "Mini")
         }
     }
 

@@ -3,7 +3,7 @@ import SwiftUI
 /// A reusable info tip component that displays helpful information in a popover
 struct InfoTip: View {
     // Content configuration
-    var message: String
+    var message: LocalizedStringKey
     var learnMoreLink: URL?
 
     // Appearance customization
@@ -25,13 +25,14 @@ struct InfoTip: View {
             .popover(isPresented: $isShowingTip) {
                 VStack(alignment: .leading, spacing: 0) {
                     if let url = learnMoreLink {
-                        Text(message + " ")
+                        (
+                            Text(message)
+                                .foregroundColor(.secondary)
+                            + Text(" ")
+                            + Text("Learn more")
+                                .foregroundColor(AppTheme.Accent.primary)
+                        )
                             .font(.callout)
-                            .foregroundColor(.secondary)
-                        +
-                        Text("Learn more")
-                            .font(.callout)
-                            .foregroundColor(AppTheme.Accent.primary)
                     } else {
                         Text(message)
                             .font(.callout)
@@ -57,14 +58,26 @@ struct InfoTip: View {
 
 extension InfoTip {
     /// Creates an InfoTip with just a message
-    init(_ message: String) {
+    init(_ message: LocalizedStringKey) {
         self.message = message
         self.learnMoreLink = nil
     }
 
+    /// Creates an InfoTip with a dynamic string message
+    init(_ message: String) {
+        self.message = LocalizedStringKey(message)
+        self.learnMoreLink = nil
+    }
+
     /// Creates an InfoTip with a learn more link
-    init(_ message: String, learnMoreURL: String) {
+    init(_ message: LocalizedStringKey, learnMoreURL: String) {
         self.message = message
+        self.learnMoreLink = URL(string: learnMoreURL)
+    }
+
+    /// Creates an InfoTip with a dynamic string message and learn more link
+    init(_ message: String, learnMoreURL: String) {
+        self.message = LocalizedStringKey(message)
         self.learnMoreLink = URL(string: learnMoreURL)
     }
 }

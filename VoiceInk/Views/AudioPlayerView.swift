@@ -594,7 +594,7 @@ struct AudioPlayerView: View {
         guard let transcription = transcription else { return }
 
         guard let baseEnhancementConfiguration = currentEnhancementConfiguration else {
-            showErrorNotification("AI Enhancement is not enabled or configured")
+            showErrorNotification(String(localized: "AI Enhancement is not enabled or configured"))
             return
         }
 
@@ -619,12 +619,12 @@ struct AudioPlayerView: View {
                     try? modelContext.save()
 
                     isReEnhancing = false
-                    showSuccessFeedback(.reEnhanceSuccess, title: "Re-enhancement successful")
+                    showSuccessFeedback(.reEnhanceSuccess, title: String(localized: "Re-enhancement successful"))
                 }
             } catch {
                 await MainActor.run {
                     isReEnhancing = false
-                    showErrorNotification(error.localizedDescription.isEmpty ? "Re-enhancement failed" : error.localizedDescription)
+                    showErrorNotification(error.localizedDescription.isEmpty ? String(localized: "Re-enhancement failed") : error.localizedDescription)
                 }
             }
         }
@@ -632,7 +632,7 @@ struct AudioPlayerView: View {
 
     private func retranscribeAudio() {
         guard let selectedMode else {
-            showErrorNotification("No mode selected")
+            showErrorNotification(String(localized: "No mode selected"))
             return
         }
 
@@ -640,7 +640,7 @@ struct AudioPlayerView: View {
             mode: selectedMode,
             transcriptionModelManager: engine.transcriptionModelManager
         ) else {
-            showErrorNotification("No transcription model selected")
+            showErrorNotification(String(localized: "No transcription model selected"))
             return
         }
 
@@ -656,12 +656,12 @@ struct AudioPlayerView: View {
                 )
                 await MainActor.run {
                     isRetranscribing = false
-                    showSuccessFeedback(.retranscribeSuccess, title: "Retranscription successful")
+                    showSuccessFeedback(.retranscribeSuccess, title: String(localized: "Retranscription successful"))
                 }
             } catch {
                 await MainActor.run {
                     isRetranscribing = false
-                    showErrorNotification(error.localizedDescription.isEmpty ? "Retranscription failed" : error.localizedDescription)
+                    showErrorNotification(error.localizedDescription.isEmpty ? String(localized: "Retranscription failed") : error.localizedDescription)
                 }
             }
         }

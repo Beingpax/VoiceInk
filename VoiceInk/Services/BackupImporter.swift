@@ -8,7 +8,7 @@ enum BackupImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .saveFailed(let item, let error):
-            return "Failed to save imported \(item): \(error.localizedDescription)"
+            return String(format: String(localized: "Failed to save imported %@: %@"), item, error.localizedDescription)
         }
     }
 }

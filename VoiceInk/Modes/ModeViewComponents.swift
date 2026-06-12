@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct VoiceInkButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let action: () -> Void
     var isDisabled: Bool = false
     
@@ -149,12 +149,12 @@ struct ConfigurationRow: View {
     
     private var websiteText: String {
         if websiteCount == 0 { return "" }
-        return websiteCount == 1 ? "1 Website" : "\(websiteCount) Websites"
+        return String(localized: "\(websiteCount) Websites")
     }
-    
+
     private var appText: String {
         if appCount == 0 { return "" }
-        return appCount == 1 ? "1 App" : "\(appCount) Apps"
+        return String(localized: "\(appCount) Apps")
     }
     
     private var extraAppsCount: Int {

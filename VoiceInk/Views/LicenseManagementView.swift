@@ -195,7 +195,7 @@ struct LicenseManagementView: View {
     private var activeLicenseCard: some View {
         LicenseActiveSummaryCard(
             title: "VoiceInk Pro",
-            subtitle: "Version \(appVersion) (\(appBuild))",
+            subtitle: String(format: String(localized: "Version %@ (%@)"), appVersion, appBuild),
             licenseKey: licenseViewModel.licenseKey,
             didCopyLicenseKey: didCopyLicenseKey,
             onCopyLicenseKey: copyLicenseKey
@@ -247,13 +247,13 @@ struct LicenseManagementView: View {
     private var trialSummary: String {
         switch licenseViewModel.licenseState {
         case .unlicensed:
-            return "License required"
+            return String(localized: "License required")
         case .licensed:
-            return "Licensed"
+            return String(localized: "Licensed")
         case .trial(let daysRemaining):
-            return "\(daysRemaining) day\(daysRemaining == 1 ? "" : "s") left in trial"
+            return String(localized: "\(daysRemaining) days left in trial")
         case .trialExpired:
-            return "Trial ended"
+            return String(localized: "Trial ended")
         }
     }
 
@@ -528,7 +528,7 @@ private struct ReportFeedbackBottomPanel: View {
 }
 
 private struct ReportPanelButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let iconColor: Color
     let action: () -> Void
@@ -545,7 +545,7 @@ private struct ReportPanelButton: View {
 }
 
 private struct BenefitPill: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let tint: Color
 
@@ -596,7 +596,7 @@ private struct CopiedStatePill: View {
 }
 
 private struct ResourceButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     var tint: Color = AppTheme.Text.secondary
     var foreground: Color = .primary
@@ -615,14 +615,14 @@ private struct ResourceButton: View {
 }
 
 private struct LicenseActionButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let iconColor: Color
     var textColor: Color = .primary
     var fixedWidth: CGFloat?
     var fillsWidth = false
     var isLoading = false
-    var loadingTitle = "Loading"
+    var loadingTitle: LocalizedStringKey = "Loading"
     let action: () -> Void
 
     var body: some View {
@@ -670,7 +670,7 @@ private struct LicenseActionButtonStyle: ButtonStyle {
 }
 
 private struct LicenseActionLabel: View {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let iconColor: Color
     var textColor: Color = .primary
@@ -689,7 +689,7 @@ private struct LicenseActionLabel: View {
 }
 
 private struct ActivatingLicenseLabel: View {
-    var title = "Activating"
+    var title: LocalizedStringKey = "Activating"
 
     var body: some View {
         HStack(spacing: 7) {

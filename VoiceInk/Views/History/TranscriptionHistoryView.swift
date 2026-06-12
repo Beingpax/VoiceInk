@@ -113,7 +113,8 @@ struct TranscriptionHistoryView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) item\(selectedTranscriptions.count == 1 ? "" : "s")?")
+            let count = selectedTranscriptions.count
+            Text(String(localized: "This action cannot be undone. Are you sure you want to delete \(count) items?"))
         }
         .sidePanel(isPresented: .init(
             get: { isRightSidebarVisible },
@@ -375,7 +376,7 @@ struct TranscriptionHistoryView: View {
             Spacer()
 
             if !selectedTranscriptions.isEmpty {
-                Text("\(selectedTranscriptions.count) selected")
+                Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)
             }

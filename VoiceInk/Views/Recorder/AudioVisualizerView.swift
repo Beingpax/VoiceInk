@@ -75,7 +75,7 @@ struct ProcessingStatusDisplay: View {
     let mode: Mode
     let color: Color
 
-    private var label: String {
+    private var label: LocalizedStringKey {
         switch mode {
         case .transcribing: return "Transcribing"
         case .enhancing:    return "Enhancing"
