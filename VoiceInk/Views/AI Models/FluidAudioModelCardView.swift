@@ -40,6 +40,15 @@ struct FluidAudioModelCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
+            if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
+                Text("Experimental")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color(red: 0.96, green: 0.79, blue: 0.63)))
+            }
+
             Spacer()
         }
     }

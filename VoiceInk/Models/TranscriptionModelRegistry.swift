@@ -40,6 +40,17 @@ enum TranscriptionModelRegistry {
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
             ),
+            FluidAudioModel(
+                name: "parakeet-unified-0.6b",
+                displayName: "Parakeet Unified",
+                description: "English-only Parakeet model with native realtime transcription support",
+                size: "1.2 GB",
+                speed: 0.99,
+                accuracy: 0.97,
+                ramUsage: 1.0,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .fluidAudio)
+            ),
 
             // Local Models
             WhisperModel(

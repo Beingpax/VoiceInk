@@ -221,6 +221,10 @@ class StreamingTranscriptionService {
 
     private func createProvider(for model: any TranscriptionModel) -> StreamingTranscriptionProvider {
         if model.provider == .fluidAudio {
+            if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
+                return FluidAudioUnifiedStreamingProvider()
+            }
+
             guard let fluidAudioService else {
                 fatalError("FluidAudioTranscriptionService required for FluidAudio streaming. Ensure it is passed to StreamingTranscriptionService.")
             }
