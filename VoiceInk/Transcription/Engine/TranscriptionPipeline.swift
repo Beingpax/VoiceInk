@@ -25,6 +25,7 @@ class TranscriptionPipeline {
     private let modelContext: ModelContext
     private let serviceRegistry: TranscriptionServiceRegistry
     private let enhancementService: AIEnhancementService?
+    private let promptDetectionService = PromptDetectionService()
     private let delivery = TranscriptionDelivery()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionPipeline")
 
@@ -141,7 +142,17 @@ class TranscriptionPipeline {
             finalText = cleanedText
 
             if !assistant.isFollowUp {
-                let resolvedEnhancementConfiguration = enhancementConfiguration()
+                var resolvedEnhancementConfiguration = enhancementConfiguration()
+                var promptDetection: PromptDetectionService.Detection?
+
+                if let enhancementService,
+                   let currentConfiguration = resolvedEnhancementConfiguration,
+                   currentConfiguration.provider != nil,
+                   let detection = promptDetectionService.detectPrompt(in: text, prompts: enhancementService.allPrompts) {
+                    resolvedEnhancementConfiguration = currentConfiguration.replacingPrompt(detection.prompt)
+                    promptDetection = detection
+                }
+
                 let resolvedOutputConfiguration = outputConfiguration()
                 let shouldRespondInRecorder = resolvedOutputConfiguration.outputMode == .respond &&
                     resolvedEnhancementConfiguration?.isEnabled == true &&
@@ -156,7 +167,8 @@ class TranscriptionPipeline {
                 let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
                 let shouldSkipEnhancement = !shouldRespondInRecorder &&
                     isSkipShortEnhancementEnabled &&
-                    WordCounter.count(in: text) <= shortEnhancementWordThreshold
+                    WordCounter.count(in: text) <= shortEnhancementWordThreshold &&
+                    promptDetection == nil
 
                 if let enhancementService,
                    let resolvedEnhancementConfiguration,
@@ -166,14 +178,15 @@ class TranscriptionPipeline {
                     if shouldCancel() { await finishCanceledTranscription(); return }
 
                     onStateChange(.enhancing)
+                    let textForAI = promptDetection?.processedText ?? text
                     if shouldRespondInRecorder {
-                        await assistant.startResponse(cleanedText, resolvedEnhancementConfiguration)
+                        await assistant.startResponse(textForAI, resolvedEnhancementConfiguration)
                     }
 
                     do {
                         let contextSnapshot = await recordingContextSnapshot()
                         let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
-                            text,
+                            textForAI,
                             configuration: resolvedEnhancementConfiguration,
                             contextSnapshot: contextSnapshot
                         )
