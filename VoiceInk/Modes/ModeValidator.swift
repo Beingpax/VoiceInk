@@ -3,6 +3,7 @@ import SwiftUI
 
 enum ModeValidationError: Error, Identifiable {
     case emptyName
+    case emptyCustomCommand
     case duplicateName(String)
     case duplicateAppTrigger(String, String) // (app name, existing mode name)
     case duplicateWebsiteTrigger(String, String) // (website, existing mode name)
@@ -10,6 +11,7 @@ enum ModeValidationError: Error, Identifiable {
     var id: String {
         switch self {
         case .emptyName: return "emptyName"
+        case .emptyCustomCommand: return "emptyCustomCommand"
         case .duplicateName: return "duplicateName"
         case .duplicateAppTrigger: return "duplicateAppTrigger"
         case .duplicateWebsiteTrigger: return "duplicateWebsiteTrigger"
@@ -20,6 +22,8 @@ enum ModeValidationError: Error, Identifiable {
         switch self {
         case .emptyName:
             return String(localized: "Mode name cannot be empty.")
+        case .emptyCustomCommand:
+            return String(localized: "Custom command cannot be empty.")
         case .duplicateName(let name):
             return String(
                 format: String(localized: "A mode with the name '%@' already exists."),
@@ -53,6 +57,11 @@ struct ModeValidator {
 
         if config.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errors.append(.emptyName)
+        }
+
+        if config.outputMode == .customCommand,
+           config.customCommand?.trimmedCommand == nil {
+            errors.append(.emptyCustomCommand)
         }
 
         let isDuplicateName = modeManager.configurations.contains { existingConfig in

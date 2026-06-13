@@ -22,6 +22,7 @@ struct ModeConfigDraft {
     var selectedAIModel: String?
     var outputMode: ModeOutputMode
     var autoSendKey: AutoSendKey
+    var customCommand: String
     var isDefault: Bool
     var isTranscriptionFormattingExpanded: Bool
 
@@ -53,6 +54,7 @@ struct ModeConfigDraft {
             selectedAIModel = inheritedConfig?.selectedAIModel
             outputMode = .paste
             autoSendKey = .none
+            customCommand = inheritedConfig?.customCommand?.command ?? ""
             isDefault = false
             isTranscriptionFormattingExpanded = false
             sourceConfig = nil
@@ -80,6 +82,7 @@ struct ModeConfigDraft {
             selectedAIModel = latestConfig.selectedAIModel
             outputMode = latestConfig.outputMode
             autoSendKey = latestConfig.autoSendKey
+            customCommand = latestConfig.customCommand?.command ?? ""
             isDefault = latestConfig.isDefault
             isTranscriptionFormattingExpanded = false
             sourceConfig = latestConfig
@@ -156,6 +159,7 @@ struct ModeConfigDraft {
     func makeConfig(mode: ConfigurationMode) -> ModeConfig {
         let savedAutoSendKey: AutoSendKey = outputMode.usesPasteOptions ? autoSendKey : .none
         let savedIsDefault = outputMode.usesPasteOptions ? isDefault : false
+        let savedCustomCommand = makeCustomCommand()
 
         switch mode {
         case .add:
@@ -181,6 +185,7 @@ struct ModeConfigDraft {
                 selectedAIModel: selectedAIModel,
                 outputMode: outputMode,
                 autoSendKey: savedAutoSendKey,
+                customCommand: savedCustomCommand,
                 isDefault: savedIsDefault
             )
 
@@ -206,8 +211,14 @@ struct ModeConfigDraft {
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.outputMode = outputMode
             updatedConfig.autoSendKey = savedAutoSendKey
+            updatedConfig.customCommand = savedCustomCommand
             updatedConfig.isDefault = savedIsDefault
             return updatedConfig
         }
+    }
+
+    private func makeCustomCommand() -> ModeCustomCommand? {
+        let command = ModeCustomCommand(command: customCommand)
+        return command.trimmedCommand == nil ? nil : command
     }
 }

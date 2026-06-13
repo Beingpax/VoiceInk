@@ -140,7 +140,7 @@ struct ConfigurationRow: View {
         (selectedModel.map { $0 != "Default" } ?? false) ||
         (selectedLanguage.map { $0 != "Default" } ?? false) ||
         config.isAIEnhancementEnabled ||
-        config.outputMode == .respond ||
+        config.outputMode != .paste ||
         config.autoSendKey.isEnabled
     }
     
@@ -287,7 +287,7 @@ struct ConfigurationRow: View {
                         )
                     }
                     
-                    if config.outputMode == .respond {
+                    if config.outputMode != .paste {
                         HStack(spacing: 4) {
                             Image(systemName: config.outputMode.iconName)
                                 .font(.system(size: 10))
