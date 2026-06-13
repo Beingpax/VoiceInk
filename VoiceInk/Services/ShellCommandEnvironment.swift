@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 enum ShellCommandEnvironment {
@@ -93,19 +94,25 @@ enum ShellCommandEnvironment {
             return nil
         }
 
+        let stdoutBuffer = ShellCommandDataBuffer()
+        let drainGroup = DispatchGroup()
+        drain(stdoutPipe.fileHandleForReading, into: stdoutBuffer, group: drainGroup)
+        drain(stderrPipe.fileHandleForReading, into: nil, group: drainGroup)
+
         let waitResult = semaphore.wait(timeout: .now() + 3)
         if waitResult == .timedOut {
-            if process.isRunning {
-                process.terminate()
-            }
+            terminate(process, semaphore: semaphore)
+            _ = drainGroup.wait(timeout: .now() + 1)
             return nil
         }
 
         guard process.terminationStatus == 0 else {
+            _ = drainGroup.wait(timeout: .now() + 1)
             return nil
         }
 
-        let output = String(data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        _ = drainGroup.wait(timeout: .now() + 1)
+        let output = stdoutBuffer.stringValue()
         let startMarker = "__VOICEINK_PATH_START__"
         let endMarker = "__VOICEINK_PATH_END__"
 
@@ -118,5 +125,50 @@ enum ShellCommandEnvironment {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return pathSection.isEmpty ? nil : pathSection
+    }
+
+    private static func drain(_ handle: FileHandle, into buffer: ShellCommandDataBuffer?, group: DispatchGroup) {
+        group.enter()
+        DispatchQueue.global(qos: .utility).async {
+            defer {
+                try? handle.close()
+                group.leave()
+            }
+
+            let data = handle.readDataToEndOfFile()
+            buffer?.append(data)
+        }
+    }
+
+    private static func terminate(_ process: Process, semaphore: DispatchSemaphore) {
+        guard process.isRunning else { return }
+
+        process.terminate()
+        if semaphore.wait(timeout: .now() + 1) == .success {
+            return
+        }
+
+        guard process.isRunning else { return }
+        _ = kill(process.processIdentifier, SIGKILL)
+        _ = semaphore.wait(timeout: .now() + 1)
+    }
+}
+
+private final class ShellCommandDataBuffer {
+    private let lock = NSLock()
+    private var data = Data()
+
+    func append(_ newData: Data) {
+        guard !newData.isEmpty else { return }
+        lock.lock()
+        data.append(newData)
+        lock.unlock()
+    }
+
+    func stringValue() -> String {
+        lock.lock()
+        let value = data
+        lock.unlock()
+        return String(data: value, encoding: .utf8) ?? ""
     }
 }

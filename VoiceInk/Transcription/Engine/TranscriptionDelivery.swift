@@ -102,6 +102,9 @@ final class TranscriptionDelivery {
     }
 
     private func runCustomCommand(command: String, commandText: String) async {
+        let startTime = Date()
+        logger.notice("Custom command started")
+
         do {
             let result = try await CustomCommandDeliveryRunner.run(
                 command: command,
@@ -109,25 +112,39 @@ final class TranscriptionDelivery {
                 context: CustomCommandDeliveryContext(transcript: commandText)
             )
 
+            let duration = Date().timeIntervalSince(startTime)
+            let stdoutBytes = result.stdout.utf8.count
+            let stderrBytes = result.stderr.utf8.count
+
             if !result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                logger.debug("Custom command stdout: \(result.stdout, privacy: .public)")
+                logger.notice("Custom command stdout bytes=\(stdoutBytes, privacy: .public): \(result.stdout, privacy: .public)")
             }
 
             if !result.stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                logger.warning("Custom command stderr: \(result.stderr, privacy: .public)")
+                logger.notice(
+                    "Custom command succeeded with stderr duration=\(Self.formattedDuration(duration), privacy: .public)s stdoutBytes=\(stdoutBytes, privacy: .public) stderrBytes=\(stderrBytes, privacy: .public): \(result.stderr, privacy: .public)"
+                )
+            } else {
+                logger.notice(
+                    "Custom command succeeded duration=\(Self.formattedDuration(duration), privacy: .public)s stdoutBytes=\(stdoutBytes, privacy: .public) stderrBytes=\(stderrBytes, privacy: .public)"
+                )
             }
         } catch {
-            notifyCustomCommandFailure(error)
+            notifyCustomCommandFailure(error, duration: Date().timeIntervalSince(startTime))
         }
     }
 
-    private func notifyCustomCommandFailure(_ error: Error) {
+    private func notifyCustomCommandFailure(_ error: Error, duration: TimeInterval? = nil) {
         let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        logger.error("Custom command failed: \(message, privacy: .public)")
-        NotificationManager.shared.showNotification(
-            title: String(format: String(localized: "Custom command failed: %@"), String(message.prefix(120))),
-            type: .warning
-        )
+        if let duration {
+            logger.error("Custom command failed duration=\(Self.formattedDuration(duration), privacy: .public)s: \(message, privacy: .public)")
+        } else {
+            logger.error("Custom command failed: \(message, privacy: .public)")
+        }
+    }
+
+    private static func formattedDuration(_ duration: TimeInterval) -> String {
+        String(format: "%.3f", duration)
     }
 
     private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
