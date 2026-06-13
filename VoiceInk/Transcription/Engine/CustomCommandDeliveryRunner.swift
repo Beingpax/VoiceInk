@@ -94,9 +94,9 @@ enum CustomCommandDeliveryRunner {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
-        let outputBuffer = LockedDataBuffer()
-        let errorBuffer = LockedDataBuffer()
-        let outputDrainGroup = DispatchGroup()
+        let outputCollector = PipeOutputCollector(handle: outputPipe.fileHandleForReading)
+        let errorCollector = PipeOutputCollector(handle: errorPipe.fileHandleForReading)
+        let outputCollectors = [outputCollector, errorCollector]
         let inputWriteGroup = DispatchGroup()
 
         let semaphore = DispatchSemaphore(value: 0)
@@ -105,34 +105,32 @@ enum CustomCommandDeliveryRunner {
         do {
             try process.run()
         } catch {
+            try? inputPipe.fileHandleForWriting.close()
+            outputCollectors.forEach { $0.stop() }
             continuation.resume(throwing: CustomCommandDeliveryError.launchFailed(error.localizedDescription))
             return
         }
 
         let timeoutDeadline = DispatchTime.now() + timeout
-        startDraining(outputPipe.fileHandleForReading, into: outputBuffer, group: outputDrainGroup)
-        startDraining(errorPipe.fileHandleForReading, into: errorBuffer, group: outputDrainGroup)
         startWritingStandardInput(context.standardInput, to: inputPipe.fileHandleForWriting, group: inputWriteGroup)
 
         let waitResult = semaphore.wait(timeout: timeoutDeadline)
         if waitResult == .timedOut {
             terminate(process, semaphore: semaphore)
-            closePipeHandles(inputPipe: inputPipe, outputPipe: outputPipe, errorPipe: errorPipe)
-            _ = waitForGroup(outputDrainGroup, timeout: 2)
+            try? inputPipe.fileHandleForWriting.close()
+            _ = waitForCollectors(outputCollectors, timeout: 1)
+            outputCollectors.forEach { $0.stop() }
             _ = waitForGroup(inputWriteGroup, timeout: 1)
             continuation.resume(throwing: CustomCommandDeliveryError.timeout(seconds: timeout))
             return
         }
 
-        if !waitForGroup(outputDrainGroup, timeout: 5) {
-            logger.error("Custom command output drains did not finish before the grace period elapsed")
-            closePipeHandles(inputPipe: inputPipe, outputPipe: outputPipe, errorPipe: errorPipe)
-            _ = waitForGroup(outputDrainGroup, timeout: 1)
-        }
+        _ = waitForCollectors(outputCollectors, timeout: 2)
+        outputCollectors.forEach { $0.stop() }
         _ = waitForGroup(inputWriteGroup, timeout: 1)
 
-        let stdout = outputBuffer.stringValue()
-        let stderr = errorBuffer.stringValue()
+        let stdout = outputCollector.stringValue()
+        let stderr = errorCollector.stringValue()
 
         guard process.terminationStatus == 0 else {
             continuation.resume(
@@ -151,18 +149,6 @@ enum CustomCommandDeliveryRunner {
                 stderr: stderr
             )
         )
-    }
-
-    private static func startDraining(_ handle: FileHandle, into buffer: LockedDataBuffer, group: DispatchGroup) {
-        group.enter()
-        DispatchQueue.global(qos: .utility).async {
-            defer {
-                try? handle.close()
-                group.leave()
-            }
-
-            buffer.append(handle.readDataToEndOfFile())
-        }
     }
 
     private static func startWritingStandardInput(_ input: String, to handle: FileHandle, group: DispatchGroup) {
@@ -247,39 +233,106 @@ enum CustomCommandDeliveryRunner {
         process.arguments = ["-P", "\(parentPID)"]
 
         let outputPipe = Pipe()
-        let outputBuffer = LockedDataBuffer()
-        let outputDrainGroup = DispatchGroup()
         process.standardOutput = outputPipe
         process.standardError = Pipe()
+        let outputCollector = PipeOutputCollector(handle: outputPipe.fileHandleForReading)
 
         do {
             try process.run()
         } catch {
+            outputCollector.stop()
             return []
         }
 
-        startDraining(outputPipe.fileHandleForReading, into: outputBuffer, group: outputDrainGroup)
         process.waitUntilExit()
-        _ = waitForGroup(outputDrainGroup, timeout: 1)
+        _ = waitForCollectors([outputCollector], timeout: 0.5)
+        outputCollector.stop()
 
         guard process.terminationStatus == 0 else {
             return []
         }
 
-        let output = outputBuffer.stringValue()
+        let output = outputCollector.stringValue()
         return output
             .split(whereSeparator: \.isNewline)
             .compactMap { Int32(String($0).trimmingCharacters(in: .whitespacesAndNewlines)) }
     }
 
-    private static func closePipeHandles(inputPipe: Pipe, outputPipe: Pipe, errorPipe: Pipe) {
-        try? inputPipe.fileHandleForWriting.close()
-        try? outputPipe.fileHandleForReading.close()
-        try? errorPipe.fileHandleForReading.close()
-    }
-
     private static func waitForGroup(_ group: DispatchGroup, timeout: TimeInterval) -> Bool {
         group.wait(timeout: .now() + timeout) == .success
+    }
+
+    private static func waitForCollectors(_ collectors: [PipeOutputCollector], timeout: TimeInterval) -> Bool {
+        let deadline = DispatchTime.now() + timeout
+        return collectors.allSatisfy { $0.wait(until: deadline) }
+    }
+}
+
+private final class PipeOutputCollector {
+    private let handle: FileHandle
+    private let buffer = LockedDataBuffer()
+    private let drainTracker = PipeDrainTracker()
+    private let stopLock = NSLock()
+    private var stopped = false
+
+    init(handle: FileHandle) {
+        self.handle = handle
+        handle.readabilityHandler = { [weak self] handle in
+            self?.readAvailableData(from: handle)
+        }
+    }
+
+    func stop() {
+        stopLock.lock()
+        guard !stopped else {
+            stopLock.unlock()
+            return
+        }
+        stopped = true
+        stopLock.unlock()
+
+        handle.readabilityHandler = nil
+        drainTracker.finish()
+    }
+
+    func wait(until deadline: DispatchTime) -> Bool {
+        drainTracker.wait(until: deadline)
+    }
+
+    func stringValue() -> String {
+        buffer.stringValue()
+    }
+
+    private func readAvailableData(from handle: FileHandle) {
+        let data = handle.availableData
+        if data.isEmpty {
+            drainTracker.finish()
+        } else {
+            buffer.append(data)
+        }
+    }
+}
+
+private final class PipeDrainTracker {
+    private let lock = NSLock()
+    private let group = DispatchGroup()
+    private var didFinish = false
+
+    init() {
+        group.enter()
+    }
+
+    func finish() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        guard !didFinish else { return }
+        didFinish = true
+        group.leave()
+    }
+
+    func wait(until deadline: DispatchTime) -> Bool {
+        group.wait(timeout: deadline) == .success
     }
 }
 
