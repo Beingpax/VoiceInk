@@ -435,8 +435,18 @@ class AIEnhancementService: ObservableObject {
     }
 
     @discardableResult
-    func addPrompt(title: String, promptText: String, useSystemInstructions: Bool = true) -> CustomPrompt {
-        let newPrompt = CustomPrompt(title: title, promptText: promptText, useSystemInstructions: useSystemInstructions)
+    func addPrompt(
+        title: String,
+        promptText: String,
+        triggerWords: [String] = [],
+        useSystemInstructions: Bool = true
+    ) -> CustomPrompt {
+        let newPrompt = CustomPrompt(
+            title: title,
+            promptText: promptText,
+            triggerWords: triggerWords,
+            useSystemInstructions: useSystemInstructions
+        )
         customPrompts.append(newPrompt)
         return newPrompt
     }
