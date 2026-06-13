@@ -406,6 +406,13 @@ struct AssistantPanelView: View {
         }
     }
 
+    private var fullConversationText: String {
+        session.messages.map { msg in
+            let prefix = msg.role == .user ? "You" : "Assistant"
+            return "\(prefix): \(msg.content)"
+        }.joined(separator: "\n\n")
+    }
+
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
@@ -426,6 +433,12 @@ struct AssistantPanelView: View {
                     }
                 }
                 .padding(.vertical, 2)
+                .overlay(alignment: .topLeading) {
+                    if !session.messages.isEmpty {
+                        CopyIconButton(textToCopy: fullConversationText)
+                            .scaleEffect(0.72)
+                    }
+                }
             }
             .onChange(of: session.messages.count) {
                 scrollToBottom(proxy)
@@ -538,6 +551,13 @@ private struct AssistantMessageBubble: View {
                 .padding(.vertical, 7)
                 .background(isUser ? Color.white.opacity(0.16) : Color.white.opacity(0.08))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(alignment: .bottomTrailing) {
+                    if !isUser {
+                        CopyIconButton(textToCopy: message.content)
+                            .scaleEffect(0.72)
+                            .padding(0)
+                    }
+                }
                 .help(isUser ? message.content : "")
 
             if !isUser {

@@ -8,7 +8,7 @@ struct CopyIconButton: View {
         Button(action: copy) {
             Image(systemName: copied ? "checkmark" : "doc.on.doc")
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(copied ? AppTheme.Status.success : AppTheme.Selection.foreground)
+                .foregroundColor(copied ? AppTheme.Status.positive : AppTheme.Selection.foreground)
                 .frame(width: 28, height: 28)
                 .background(
                     RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
@@ -20,7 +20,6 @@ struct CopyIconButton: View {
                 )
         }
         .buttonStyle(.plain)
-        .help("Copy to clipboard")
     }
 
     private func copy() {
