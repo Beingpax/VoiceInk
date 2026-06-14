@@ -9,7 +9,7 @@ enum PCMAudioConverter {
         data.withUnsafeBytes { rawBuffer in
             let int16Samples = rawBuffer.bindMemory(to: Int16.self)
             for index in 0..<sampleCount {
-                samples[index] = Float(Int16(littleEndian: int16Samples[index])) / 32767.0
+                samples[index] = max(-1.0, min(Float(Int16(littleEndian: int16Samples[index])) / 32767.0, 1.0))
             }
         }
 

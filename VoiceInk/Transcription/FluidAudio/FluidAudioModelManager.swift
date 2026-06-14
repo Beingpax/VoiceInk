@@ -203,23 +203,28 @@ class FluidAudioModelManager: ObservableObject {
                     try await Self.optimizeParakeetUnifiedRealtimeModel()
                 }
 
-                try await DownloadUtils.downloadRepo(
-                    .parakeetUnified,
-                    to: Self.fluidAudioModelsRootDirectory(),
-                    variant: Self.parakeetUnifiedOfflineVariant,
-                    progressHandler: Self.stagedDownloadOnlyProgressHandler(
-                        from: 0.5,
-                        to: 1.0,
-                        forwarding: progressHandler
+                do {
+                    try await DownloadUtils.downloadRepo(
+                        .parakeetUnified,
+                        to: Self.fluidAudioModelsRootDirectory(),
+                        variant: Self.parakeetUnifiedOfflineVariant,
+                        progressHandler: Self.stagedDownloadOnlyProgressHandler(
+                            from: 0.5,
+                            to: 1.0,
+                            forwarding: progressHandler
+                        )
                     )
-                )
-                downloadStatuses[modelName] = FluidAudioDownloadStatus(
-                    fractionCompleted: 1.0,
-                    message: String(localized: "Optimizing model for your device"),
-                    isIndeterminate: true
-                )
-                try await Self.optimizeParakeetUnifiedBatchModel()
-                try await realtimeOptimization.value
+                    downloadStatuses[modelName] = FluidAudioDownloadStatus(
+                        fractionCompleted: 1.0,
+                        message: String(localized: "Optimizing model for your device"),
+                        isIndeterminate: true
+                    )
+                    try await Self.optimizeParakeetUnifiedBatchModel()
+                    try await realtimeOptimization.value
+                } catch {
+                    realtimeOptimization.cancel()
+                    throw error
+                }
             case .nemotron(let variant):
                 let modelDirectory = try await StreamingNemotronMultilingualAsrManager.downloadVariant(
                     languageCode: variant.downloadLanguageCode,

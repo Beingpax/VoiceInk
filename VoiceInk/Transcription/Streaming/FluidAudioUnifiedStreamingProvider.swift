@@ -39,8 +39,10 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
             throw StreamingTranscriptionError.notConnected
         }
 
+        guard !data.isEmpty else { return }
+
         guard let buffer = PCMAudioConverter.pcmBuffer(fromPCM16Data: data) else {
-            return
+            throw StreamingTranscriptionError.audioConversionFailed
         }
 
         try await manager.appendAudio(buffer)
