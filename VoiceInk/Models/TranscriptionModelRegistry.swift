@@ -40,6 +40,39 @@ enum TranscriptionModelRegistry {
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
             ),
+            FluidAudioModel(
+                name: "parakeet-unified-0.6b",
+                displayName: "Parakeet Unified",
+                description: "English-only Parakeet model with native realtime transcription support",
+                size: "1.2 GB",
+                speed: 0.99,
+                accuracy: 0.97,
+                ramUsage: 1.0,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .fluidAudio)
+            ),
+            FluidAudioModel(
+                name: "nemotron-latin-0.6b",
+                displayName: "Nemotron Latin",
+                description: "NVIDIA's Nemotron streaming model with Latin language support",
+                size: "620 MB",
+                speed: 0.99,
+                accuracy: 0.95,
+                ramUsage: 1.2,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.nemotronLatin
+            ),
+            FluidAudioModel(
+                name: "nemotron-multilingual-0.6b",
+                displayName: "Nemotron Multilingual",
+                description: "NVIDIA's Nemotron streaming model with multilingual support",
+                size: "672 MB",
+                speed: 0.99,
+                accuracy: 0.90,
+                ramUsage: 1.5,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.nemotronMultilingual
+            ),
 
             // Local Models
             WhisperModel(

@@ -18,6 +18,11 @@ struct FluidAudioModelCardView: View {
         fluidAudioModelManager.isFluidAudioModelDownloading(model)
     }
 
+    private var showsExperimentalBadge: Bool {
+        FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) ||
+            FluidAudioModelManager.isNemotronModel(named: model.name)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
@@ -39,6 +44,15 @@ struct FluidAudioModelCardView: View {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
+
+            if showsExperimentalBadge {
+                Text("Experimental")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color(red: 0.96, green: 0.79, blue: 0.63)))
+            }
 
             Spacer()
         }
@@ -81,6 +95,12 @@ struct FluidAudioModelCardView: View {
                         Text(status.message)
                             .lineLimit(1)
 
+                        if status.isIndeterminate {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.65)
+                        }
+
                         Spacer()
 
                         Text("\(Int(status.fractionCompleted * 100))%")
@@ -101,7 +121,7 @@ struct FluidAudioModelCardView: View {
 
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isDownloaded {
+            if isDownloaded && !isDownloading {
                 modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
                 Button(action: {
@@ -123,7 +143,7 @@ struct FluidAudioModelCardView: View {
                 .disabled(isDownloading)
             }
 
-            if isDownloaded {
+            if isDownloaded && !isDownloading {
                 Menu {
                     Button(action: {
                         fluidAudioModelManager.deleteFluidAudioModel(model)
