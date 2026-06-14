@@ -208,20 +208,9 @@ private struct OnboardingExperienceInstruction: View {
     }
 
     private var line: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 8) {
-                instructionText(prefix)
-                shortcutControl
-                instructionText(horizontalSuffix)
-            }
-
-            VStack(alignment: .center, spacing: 12) {
-                HStack(alignment: .center, spacing: 8) {
-                    instructionText(prefix)
-                    shortcutControl
-                }
-                instructionText(wrappedSuffix)
-            }
+        VStack(alignment: .center, spacing: 12) {
+            instructionText(hasShortcut ? step.configuredInstruction : "Choose a shortcut to get started.")
+            shortcutControl
         }
     }
 
@@ -237,29 +226,5 @@ private struct OnboardingExperienceInstruction: View {
             .font(.system(size: 15, weight: .medium))
             .foregroundColor(AppTheme.Text.primary)
             .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private var prefix: String {
-        guard hasShortcut else {
-            return "Choose"
-        }
-
-        return step.configuredInstructionPrefix
-    }
-
-    private var horizontalSuffix: String {
-        guard hasShortcut else {
-            return "to get started."
-        }
-
-        return step.configuredHorizontalInstructionSuffix
-    }
-
-    private var wrappedSuffix: String {
-        guard hasShortcut else {
-            return "to get started."
-        }
-
-        return step.configuredWrappedInstructionSuffix
     }
 }

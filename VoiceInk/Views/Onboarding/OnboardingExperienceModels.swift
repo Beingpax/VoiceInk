@@ -82,9 +82,7 @@ struct OnboardingExperienceStep: Identifiable {
     let initialFieldText: String
     let shortcutIntroTitle: String?
     let showsShortcutControl: Bool
-    let configuredInstructionPrefix: String
-    let configuredHorizontalInstructionSuffix: String
-    let configuredWrappedInstructionSuffix: String
+    let configuredInstruction: String
 
     var id: OnboardingExperienceKind { kind }
 
@@ -114,9 +112,7 @@ struct OnboardingExperienceStep: Identifiable {
         initialFieldText: String = "",
         shortcutIntroTitle: String? = nil,
         showsShortcutControl: Bool = true,
-        configuredInstructionPrefix: String = "Press",
-        configuredHorizontalInstructionSuffix: String = " and read the sample text, then press it again.",
-        configuredWrappedInstructionSuffix: String = "Read the sample text, then press it again."
+        configuredInstruction: String = "Press your shortcut, read the sample text, then press it again."
     ) {
         self.kind = kind
         self.starterModeKind = starterModeKind
@@ -135,9 +131,7 @@ struct OnboardingExperienceStep: Identifiable {
         self.initialFieldText = initialFieldText
         self.shortcutIntroTitle = shortcutIntroTitle
         self.showsShortcutControl = showsShortcutControl
-        self.configuredInstructionPrefix = configuredInstructionPrefix
-        self.configuredHorizontalInstructionSuffix = configuredHorizontalInstructionSuffix
-        self.configuredWrappedInstructionSuffix = configuredWrappedInstructionSuffix
+        self.configuredInstruction = configuredInstruction
     }
 
     func shortcutAction(modeTemplate: StarterModeTemplate) -> ShortcutAction {
@@ -210,9 +204,7 @@ enum OnboardingExperienceCatalog {
             sampleText: "Make it a checklist and add appropriate emoji for each item at the end.",
             fieldPlaceholder: "Text to rewrite will appear here.",
             initialFieldText: "For tomorrow's client update, I need to review the proposal, confirm the budget numbers, email the latest draft to the client, book the meeting room, prepare a short agenda, and share final notes with the team before the afternoon check-in.",
-            configuredInstructionPrefix: "Select all text, press",
-            configuredHorizontalInstructionSuffix: ", read the sample text aloud, then press it again.",
-            configuredWrappedInstructionSuffix: "Read the sample text aloud, then press it again."
+            configuredInstruction: "Select all text, press your shortcut, read the sample text aloud, then press it again."
         ),
         OnboardingExperienceStep(
             kind: .rewriteFormat,
@@ -228,9 +220,7 @@ enum OnboardingExperienceCatalog {
             initialFieldText: "म अहिले नेपालीमा बोलिरहेको छु, र म यो उपकरणलाई यसलाई अंग्रेजीमा अनुवाद गर्न भन्नेछु।",
             shortcutIntroTitle: "Let's try it once again.",
             showsShortcutControl: false,
-            configuredInstructionPrefix: "Select all text, press",
-            configuredHorizontalInstructionSuffix: ", read the sample text aloud, then press it again.",
-            configuredWrappedInstructionSuffix: "Read the sample text aloud, then press it again."
+            configuredInstruction: "Select all text, press your shortcut, read the sample text aloud, then press it again."
         ),
         OnboardingExperienceStep(
             kind: .respond,
@@ -245,8 +235,7 @@ enum OnboardingExperienceCatalog {
             sampleLabel: "Sample question",
             sampleText: "What is the capital city of the USA?",
             fieldPlaceholder: "",
-            configuredHorizontalInstructionSuffix: ", ask the question, then press it again.",
-            configuredWrappedInstructionSuffix: "Ask the question, then press it again."
+            configuredInstruction: "Press your shortcut, ask the question, then press it again."
         )
     ]
 }
