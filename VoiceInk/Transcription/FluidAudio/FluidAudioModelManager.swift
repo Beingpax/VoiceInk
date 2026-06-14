@@ -84,6 +84,10 @@ class FluidAudioModelManager: ObservableObject {
         NemotronVariant(modelName: modelName) != nil
     }
 
+    nonisolated static func requiresRealtime(named modelName: String) -> Bool {
+        isNemotronModel(named: modelName)
+    }
+
     nonisolated private static func modelKind(for modelName: String) -> FluidAudioModelKind {
         if let nemotronVariant = NemotronVariant(modelName: modelName) {
             return .nemotron(nemotronVariant)

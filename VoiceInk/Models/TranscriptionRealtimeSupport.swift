@@ -6,7 +6,11 @@ enum TranscriptionRealtimeSupport {
     }
 
     static func isRequired(for model: any TranscriptionModel) -> Bool {
-        CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly ?? false
+        if model.provider == .fluidAudio {
+            return FluidAudioModelManager.requiresRealtime(named: model.name)
+        }
+
+        return CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly ?? false
     }
 
     static func isEnabled(for model: any TranscriptionModel, modeValue: Bool? = nil) -> Bool {
