@@ -977,7 +977,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein benutzerdefiniertes Verbesserungsmodell mit diesem Anzeigenamen existiert bereits"
+            "value": "Ein eigenes Verbesserungsmodell mit diesem Anzeigenamen existiert bereits"
           }
         }
       }
@@ -987,7 +987,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein benutzerdefiniertes Verbesserungsmodell mit diesem Modellnamen existiert bereits"
+            "value": "Ein eigenes Verbesserungsmodell mit diesem Modellnamen existiert bereits"
           }
         }
       }
@@ -1077,7 +1077,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktivieren Sie eine Lizenz, um VoiceInk weiter zu verwenden."
+            "value": "Aktiviere eine Lizenz, um VoiceInk weiter zu verwenden."
           }
         }
       }
@@ -1087,7 +1087,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktivieren Sie einen vorhandenen Schlüssel, kaufen Sie eine Lizenz oder starten Sie eine 7-tägige kostenlose Testversion."
+            "value": "Aktiviere einen vorhandenen Schlüssel, kaufe eine Lizenz oder starte eine 7-tägige kostenlose Testversion."
           }
         }
       }
@@ -1158,7 +1158,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein benutzerdefiniertes, feinjustiertes Whisper-Modell für VoiceInk hinzufügen. Wählen Sie die heruntergeladene .bin-Datei aus."
+            "value": "Ein eigenes, feinjustiertes Whisper-Modell für VoiceInk hinzufügen. Wähle die heruntergeladene .bin-Datei aus."
           }
         }
       }
@@ -1199,7 +1199,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Emoji hinzufügen"
+            "value": "Eigenes Emoji hinzufügen"
           }
         }
       }
@@ -1209,7 +1209,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Verbesserungsmodell hinzufügen"
+            "value": "Eigenes Verbesserungsmodell hinzufügen"
           }
         }
       }
@@ -1230,7 +1230,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Transkriptionsmodell hinzufügen"
+            "value": "Eigenes Transkriptionsmodell hinzufügen"
           }
         }
       }
@@ -1240,7 +1240,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierte Modi für verschiedene Kontexte hinzufügen"
+            "value": "Eigene Modi für verschiedene Kontexte hinzufügen"
           }
         }
       }
@@ -1565,7 +1565,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "KI-Anbieter nicht konfiguriert. Bitte überprüfen Sie Ihren API-Schlüssel."
+            "value": "KI-Anbieter nicht konfiguriert. Bitte überprüfe deinen API-Schlüssel."
           }
         }
       }
@@ -1626,7 +1626,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erlauben Sie VoiceInk, app-übergreifend zu funktionieren."
+            "value": "Erlaube VoiceInk, in all deinen Apps zu funktionieren."
           }
         }
       }
@@ -1636,7 +1636,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut oder kontaktieren Sie den Support unter %@"
+            "value": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut oder kontaktiere den Support unter %@"
           }
         }
       }
@@ -1757,7 +1757,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der API-Schlüssel für diesen Dienst fehlt. Bitte konfigurieren Sie ihn in den Einstellungen."
+            "value": "Der API-Schlüssel für diesen Dienst fehlt. Bitte konfiguriere ihn in den Einstellungen."
           }
         }
       }
@@ -1787,7 +1787,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Speech kann bis zu 5 Sprachen reservieren. Wählen Sie eine Sprache zum Entfernen aus, bevor Sie die ausgewählte Sprache herunterladen."
+            "value": "Apple Speech kann bis zu 5 Sprachen reservieren. Wähle eine zum Entfernen aus, bevor du die neue Sprache herunterlädst."
           }
         }
       }
@@ -1797,7 +1797,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Speech kann bis zu 5 Sprachen reservieren. Verwalten Sie reservierte Sprachen in den Moduseinstellungen."
+            "value": "Apple Speech kann bis zu 5 Sprachen reservieren. Verwalte reservierte Sprachen in den Moduseinstellungen."
           }
         }
       }
@@ -1807,7 +1807,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Speech konnte die Sprachressourcen für %@ nicht reservieren. Verwalten Sie reservierte Apple-Speech-Sprachen in den Einstellungen."
+            "value": "Apple Speech konnte die Sprachressourcen für %@ nicht reservieren. Verwalte reservierte Apple-Speech-Sprachen in den Einstellungen."
           }
         }
       }
@@ -1908,7 +1908,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Möchten Sie das benutzerdefinierte Verbesserungsmodell '%@' wirklich löschen?"
+            "value": "Möchtest du das eigene Verbesserungsmodell „%@“ wirklich löschen?"
           }
         }
       }
@@ -1918,7 +1918,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Möchten Sie das benutzerdefinierte Modell '%@' wirklich löschen?"
+            "value": "Möchtest du das eigene Modell „%@“ wirklich löschen?"
           }
         }
       }
@@ -1928,7 +1928,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Möchten Sie das Modell '%@' wirklich löschen?"
+            "value": "Möchtest du das Modell „%@“ wirklich löschen?"
           }
         }
       }
@@ -2012,7 +2012,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Audiodatei ist %.1f Sekunden lang. Bitte verwenden Sie für Start- und Stopptöne eine Audiodatei, die %.0f Sekunden oder kürzer ist."
+            "value": "Die Audiodatei ist %.1f Sekunden lang. Bitte verwende für Start- und Stopptöne eine Audiodatei, die %.0f Sekunden oder kürzer ist."
           }
         }
       }
@@ -2374,7 +2374,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Überprüfen Sie das Standardmodell und versuchen Sie es erneut. Wenn das Problem weiterhin besteht, wählen Sie ein anderes Modell."
+            "value": "Überprüfe das Standardmodell und versuche es erneut. Wenn das Problem weiterhin besteht, probiere ein anderes Modell."
           }
         }
       }
@@ -2444,7 +2444,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie einen Speicherort für Ihre Einstellungen."
+            "value": "Wähle einen Speicherort für deine Einstellungen."
           }
         }
       }
@@ -2454,7 +2454,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie ein Einstellungs-Backup und dann aus, was importiert werden soll."
+            "value": "Wähle ein Einstellungs-Backup und dann, was importiert werden soll."
           }
         }
       }
@@ -2495,7 +2495,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie aus, was aus diesem Backup importiert werden soll."
+            "value": "Wähle aus, was aus diesem Backup importiert werden soll."
           }
         }
       }
@@ -2675,7 +2675,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Schließen Sie ein Mikrofon an oder erlauben Sie den Mikrofonzugriff und aktualisieren Sie dann."
+            "value": "Schließe ein Mikrofon an oder erlaube den Mikrofonzugriff und aktualisiere dann."
           }
         }
       }
@@ -2745,7 +2745,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steuern Sie, wie VoiceInk Ihre Transkriptionsdaten und Audioaufnahmen verwaltet."
+            "value": "Steuere, wie VoiceInk deine Transkriptionsdaten und Audioaufnahmen verwaltet."
           }
         }
       }
@@ -2856,7 +2856,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Server konnte nicht erreicht werden. Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+            "value": "Der Server konnte nicht erreicht werden. Bitte überprüfe deine Internetverbindung und versuche es erneut."
           }
         }
       }
@@ -2896,7 +2896,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dieser API-Schlüssel konnte nicht verifiziert werden. Überprüfen Sie den Schlüssel und versuchen Sie es erneut."
+            "value": "Dieser API-Schlüssel konnte nicht verifiziert werden. Überprüfe den Schlüssel und versuche es erneut."
           }
         }
       }
@@ -2916,7 +2916,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Erstellen Sie Ihren ersten Modus, um Ihren VoiceInk-Workflow basierend auf verwendeten Apps und Websites zu automatisieren"
+            "value": "Erstelle deinen ersten Modus, um deinen VoiceInk-Workflow basierend auf verwendeten Apps und Websites zu automatisieren"
           }
         }
       }
@@ -2937,7 +2937,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniert"
+            "value": "Eigene"
           }
         }
       }
@@ -2947,7 +2947,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl"
+            "value": "Eigener Befehl"
           }
         }
       }
@@ -2957,7 +2957,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl darf nicht leer sein."
+            "value": "Eigener Befehl darf nicht leer sein."
           }
         }
       }
@@ -2967,7 +2967,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl konnte nicht gestartet werden: %@"
+            "value": "Eigener Befehl konnte nicht gestartet werden: %@"
           }
         }
       }
@@ -2977,7 +2977,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl wurde mit Status %d beendet: %@"
+            "value": "Eigener Befehl wurde mit Status %d beendet: %@"
           }
         }
       }
@@ -2987,7 +2987,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl wurde mit Status %d beendet."
+            "value": "Eigener Befehl wurde mit Status %d beendet."
           }
         }
       }
@@ -2997,7 +2997,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl ist leer."
+            "value": "Eigener Befehl ist leer."
           }
         }
       }
@@ -3007,7 +3007,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierter Befehl hat nach %.0f Sekunden das Zeitlimit überschritten."
+            "value": "Eigener Befehl hat nach %.0f Sekunden das Zeitlimit überschritten."
           }
         }
       }
@@ -3018,7 +3018,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Gerät"
+            "value": "Eigenes Gerät"
           }
         }
       }
@@ -3028,7 +3028,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierte Verbesserungsmodelle"
+            "value": "Eigene Verbesserungsmodelle"
           }
         }
       }
@@ -3038,7 +3038,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierte Modelldefinitionen"
+            "value": "Eigene Modelldefinitionen"
           }
         }
       }
@@ -3048,7 +3048,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierte Prompts"
+            "value": "Eigene Prompts"
           }
         }
       }
@@ -3058,7 +3058,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierte Transkriptionsmodelle"
+            "value": "Eigene Transkriptionsmodelle"
           }
         }
       }
@@ -3068,7 +3068,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniert: %@"
+            "value": "Eigene: %@"
           }
         }
       }
@@ -3161,7 +3161,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Standard verwendet simulierte Cmd+V-Ereignisse. AppleScript kann helfen, wenn benutzerdefinierte Tastaturlayouts nicht korrekt einfügen."
+            "value": "Standard verwendet simulierte Cmd+V-Tastenereignisse. AppleScript kann helfen, wenn eigene Tastaturlayouts nicht korrekt einfügen."
           }
         }
       }
@@ -3231,7 +3231,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Verbesserungsmodell löschen"
+            "value": "Eigenes Verbesserungsmodell löschen"
           }
         }
       }
@@ -3241,7 +3241,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Modell löschen"
+            "value": "Eigenes Modell löschen"
           }
         }
       }
@@ -3775,7 +3775,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drücken Sie während der Aufnahme Option + 1-9, um schnell den Modus zu wechseln."
+            "value": "Drücke während der Aufnahme Option + 1-9, um schnell den Modus zu wechseln."
           }
         }
       }
@@ -3835,7 +3835,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Verbesserungsmodell bearbeiten"
+            "value": "Eigenes Verbesserungsmodell bearbeiten"
           }
         }
       }
@@ -3845,7 +3845,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Transkriptionsmodell bearbeiten"
+            "value": "Eigenes Transkriptionsmodell bearbeiten"
           }
         }
       }
@@ -4049,7 +4049,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Verbesserungsmodi und KI-Aktionen bleiben deaktiviert. Sie können dies später einrichten."
+            "value": "Verbesserungsmodi und KI-Aktionen bleiben deaktiviert. Du kannst dies später einrichten."
           }
         }
       }
@@ -4059,7 +4059,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Zeitüberschreitung bei der Verbesserungsanfrage. Überprüfen Sie Ihre Verbindung oder verlängern Sie die maximale Wartezeit."
+            "value": "Zeitüberschreitung bei der Verbesserungsanfrage. Überprüfe deine Verbindung oder verlängere die maximale Wartezeit."
           }
         }
       }
@@ -4151,7 +4151,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Geben Sie Ihren"
+            "value": "Gib deinen"
           }
         }
       }
@@ -4435,7 +4435,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ordner für benutzerdefinierte Töne konnte nicht erstellt werden"
+            "value": "Ordner für eigene Töne konnte nicht erstellt werden"
           }
         }
       }
@@ -4585,7 +4585,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefiniertes Verbesserungsmodell konnte nicht gespeichert werden"
+            "value": "Eigenes Verbesserungsmodell konnte nicht gespeichert werden"
           }
         }
       }
@@ -4838,7 +4838,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haben Sie einen Lizenzschlüssel?"
+            "value": "Hast du einen Lizenzschlüssel?"
           }
         }
       }
@@ -4848,7 +4848,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Haben Sie Feedback, einen Fehlerbericht oder ist etwas nicht stimmig? Senden Sie eine E-Mail mit Systeminformationen oder treten Sie dem Discord für eine Diskussion mit der Community bei. Jeder Bericht hilft dabei, VoiceInk zuverlässiger und einfacher nutzbar zu machen."
+            "value": "Hast du Feedback, einen Fehlerbericht oder stimmt etwas nicht? Sende eine E-Mail mit Systeminformationen oder tritt dem Discord bei. Jeder Bericht hilft, VoiceInk zuverlässiger und einfacher nutzbar zu machen."
           }
         }
       }
@@ -4988,7 +4988,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "WICHTIG: Falls Sie KI-Verbesserungsfunktionen verwendet haben, konfigurieren Sie bitte Ihre API-Schlüssel im Bereich KI-Modelle neu."
+            "value": "WICHTIG: Falls du KI-Verbesserungsfunktionen verwendet hast, konfiguriere bitte deine API-Schlüssel im Bereich KI-Modelle neu."
           }
         }
       }
@@ -5352,7 +5352,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lizenzschlüssel nicht gefunden. Bitte überprüfen Sie Ihren Schlüssel und versuchen Sie es erneut."
+            "value": "Lizenzschlüssel nicht gefunden. Bitte überprüfe deinen Schlüssel und versuche es erneut."
           }
         }
       }
@@ -5454,7 +5454,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Laden Sie eine Vorlage oder geben Sie einen Befehl ein, um die lokale CLI-Verbesserung zu aktivieren."
+            "value": "Lade eine Vorlage oder gib einen Befehl ein, um die lokale CLI-Verbesserung zu aktivieren."
           }
         }
       }
@@ -5575,7 +5575,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokaler CLI-Befehl ist nicht konfiguriert. Laden Sie eine Vorlage oder geben Sie zuerst einen Befehl ein."
+            "value": "Lokaler CLI-Befehl ist nicht konfiguriert. Lade eine Vorlage oder gib zuerst einen Befehl ein."
           }
         }
       }
@@ -5605,7 +5605,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lokaler CLI-Befehl wurde nicht gefunden. Verwenden Sie einen absoluten Pfad oder korrigieren Sie Ihren Shell-PATH. Details: %@"
+            "value": "Lokaler CLI-Befehl wurde nicht gefunden. Verwende einen absoluten Pfad oder korrigiere deinen Shell-PATH. Details: %@"
           }
         }
       }
@@ -5686,7 +5686,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Benutzerdefinierte Verbesserungsmodelle im Tab „Benutzerdefiniert“ verwalten."
+            "value": "Eigene Verbesserungsmodelle im Tab „Eigene“ verwalten."
           }
         }
       }
@@ -6040,7 +6040,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mein benutzerdefiniertes Modell"
+            "value": "Mein eigenes Modell"
           }
         }
       }
@@ -6100,7 +6100,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Netzwerkverbindung fehlgeschlagen. Überprüfen Sie Ihre Internetverbindung."
+            "value": "Netzwerkverbindung fehlgeschlagen. Überprüfe deine Internetverbindung."
           }
         }
       }
@@ -6190,7 +6190,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine benutzerdefinierten Verbesserungsmodelle"
+            "value": "Keine eigenen Verbesserungsmodelle"
           }
         }
       }
@@ -6200,7 +6200,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine benutzerdefinierten Transkriptionsmodelle"
+            "value": "Keine eigenen Transkriptionsmodelle"
           }
         }
       }
@@ -6480,7 +6480,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Keine Transkriptionsmodelle verfügbar. Bitte verbinden Sie sich mit einem Cloud-Dienst oder laden Sie im Tab „KI-Modelle“ ein lokales Modell herunter."
+            "value": "Keine Transkriptionsmodelle verfügbar. Verbinde dich mit einem Cloud-Dienst oder lade im Tab „KI-Modelle“ ein lokales Modell herunter."
           }
         }
       }
@@ -6490,7 +6490,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Für den benutzerdefinierten Befehl war kein Transkriptionstext verfügbar."
+            "value": "Für den eigenen Befehl war kein Transkriptionstext verfügbar."
           }
         }
       }
@@ -6655,7 +6655,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hinweis: Drücken Sie Option 1-9 während der Aufnahme, um manuell den Modus zu wechseln."
+            "value": "Hinweis: Drücke Option 1-9 während der Aufnahme, um manuell den Modus zu wechseln."
           }
         }
       }
@@ -7006,7 +7006,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie das Mikrofon aus, das VoiceInk für Aufnahmen verwenden soll."
+            "value": "Wähle das Mikrofon aus, das VoiceInk für Aufnahmen verwenden soll."
           }
         }
       }
@@ -7026,7 +7026,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bitte geben Sie einen Lizenzschlüssel ein"
+            "value": "Bitte gib einen Lizenzschlüssel ein"
           }
         }
       }
@@ -7036,7 +7036,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bitte beheben Sie die Validierungsfehler vor dem Speichern."
+            "value": "Bitte behebe die Validierungsfehler vor dem Speichern."
           }
         }
       }
@@ -7046,7 +7046,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Bitte starten Sie die Anwendung neu. Wenn das Problem weiterhin besteht, kontaktieren Sie den Support."
+            "value": "Bitte starte die Anwendung neu. Wenn das Problem weiterhin besteht, kontaktiere den Support."
           }
         }
       }
@@ -7322,7 +7322,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ratenlimit überschritten. Bitte versuchen Sie es später erneut."
+            "value": "Ratenlimit überschritten. Bitte versuche es später erneut."
           }
         }
       }
@@ -7372,7 +7372,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mehr über benutzerdefinierte lokale Modelle erfahren"
+            "value": "Mehr über eigene lokale Modelle erfahren"
           }
         }
       }
@@ -7976,7 +7976,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Überprüfen Sie, wie VoiceInk Ihre Daten handhabt, bevor Sie eine Lizenz auswählen."
+            "value": "Überprüfe, wie VoiceInk deine Daten handhabt, bevor du eine Lizenz auswählst."
           }
         }
       }
@@ -8017,7 +8017,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wird lokal mit Ihren Benutzerberechtigungen ausgeführt. Das finale Transkript wird über stdin gesendet und als VOICEINK_TRANSCRIPT bereitgestellt."
+            "value": "Wird lokal mit deinen Benutzerberechtigungen ausgeführt. Das finale Transkript wird über stdin gesendet und als VOICEINK_TRANSCRIPT bereitgestellt."
           }
         }
       }
@@ -8259,7 +8259,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie mindestens eine Kategorie zum Importieren aus."
+            "value": "Wähle mindestens eine Kategorie zum Importieren aus."
           }
         }
       }
@@ -8400,7 +8400,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Serverfehler (%d). Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support."
+            "value": "Serverfehler (%d). Bitte versuche es später erneut oder kontaktiere den Support."
           }
         }
       }
@@ -8452,7 +8452,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Legen Sie fest, wie lange auf eine Antwort des KI-Anbieters gewartet werden soll. Wenn innerhalb dieser Dauer keine Antwort eingeht, können Sie entweder sofort abbrechen und die ursprüngliche Transkription einfügen oder die Anfrage bis zu 3-mal wiederholen."
+            "value": "Lege fest, wie lange auf eine Antwort des KI-Anbieters gewartet werden soll. Wenn innerhalb dieser Dauer keine Antwort eingeht, kannst du entweder sofort abbrechen und die ursprüngliche Transkription einfügen oder die Anfrage bis zu 3-mal wiederholen."
           }
         }
       }
@@ -8492,7 +8492,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Teilen Sie VoiceInk in Ihren sozialen Netzwerken und schalten Sie sofort 30 % Rabatt auf VoiceInk Pro frei."
+            "value": "Teile VoiceInk in deinen sozialen Netzwerken und schalte sofort 30 % Rabatt auf VoiceInk Pro frei."
           }
         }
       }
@@ -8502,7 +8502,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Empfehlen Sie VoiceInk Freunden oder Ihrem Publikum und erhalten Sie 30 % für jede geworbene Person, die ein Upgrade durchführt."
+            "value": "Empfiehl VoiceInk Freunden oder deinem Publikum und erhalte 30 % für jede geworbene Person, die ein Upgrade durchführt."
           }
         }
       }
@@ -8824,7 +8824,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Starten Sie Ihre erste Aufnahme, um wertvolle Einblicke zu erhalten."
+            "value": "Starte deine erste Aufnahme, um wertvolle Einblicke zu erhalten."
           }
         }
       }
@@ -9075,7 +9075,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Danke, dass Sie VoiceInk verwenden"
+            "value": "Danke, dass du VoiceInk verwendest"
           }
         }
       }
@@ -9085,7 +9085,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Beim Server des KI-Anbieters ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut."
+            "value": "Beim Server des KI-Anbieters ist ein Fehler aufgetreten. Bitte versuche es später erneut."
           }
         }
       }
@@ -9165,7 +9165,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das heruntergeladene Core-ML-Modellarchiv ist möglicherweise beschädigt. Löschen Sie das Modell und laden Sie es erneut herunter. Prüfen Sie den verfügbaren Speicherplatz."
+            "value": "Das heruntergeladene Core-ML-Modellarchiv ist möglicherweise beschädigt. Lösche das Modell und lade es erneut herunter. Prüfe den verfügbaren Speicherplatz."
           }
         }
       }
@@ -9175,7 +9175,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die importierte Einstellungsdatei (Version %@) stammt aus einer anderen Version als Ihre Anwendung (Version %@). Der Import wird fortgesetzt, mögliche Inkompatibilitäten sind jedoch zu beachten."
+            "value": "Die importierte Einstellungsdatei (Version %@) stammt aus einer anderen Version als deine Anwendung (Version %@). Der Import wird fortgesetzt, mögliche Inkompatibilitäten sind jedoch zu beachten."
           }
         }
       }
@@ -9315,7 +9315,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dies kann durch ein Problem mit der Audioaufnahme oder durch unzureichende Systemressourcen auftreten. Bitte versuchen Sie es erneut oder starten Sie die App neu."
+            "value": "Dies kann durch ein Problem mit der Audioaufnahme oder durch unzureichende Systemressourcen auftreten. Bitte versuche es erneut oder starte die App neu."
           }
         }
       }
@@ -9346,7 +9346,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Lizenz wurde widerrufen oder deaktiviert. Bitte kontaktieren Sie den Support."
+            "value": "Diese Lizenz wurde widerrufen oder deaktiviert. Bitte kontaktiere den Support."
           }
         }
       }
@@ -9356,7 +9356,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese Lizenz hat ihr Gerätelimit erreicht. Besuchen Sie das Lizenzverwaltungsportal, um andere Geräte zu deaktivieren."
+            "value": "Diese Lizenz hat ihr Gerätelimit erreicht. Besuche das Lizenzverwaltungsportal, um andere Geräte zu deaktivieren."
           }
         }
       }
@@ -9366,7 +9366,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dieses Modell unterstützt mehrere Sprachen. Wählen Sie eine bestimmte Sprache oder die automatische Erkennung (falls verfügbar)."
+            "value": "Dieses Modell unterstützt mehrere Sprachen. Wähle eine bestimmte Sprache oder die automatische Erkennung (falls verfügbar)."
           }
         }
       }
@@ -9376,7 +9376,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dadurch wird die Lizenz von diesem Mac entfernt. Sie können sie später wieder aktivieren."
+            "value": "Dadurch wird die Lizenz von diesem Mac entfernt. Du kannst sie später wieder aktivieren."
           }
         }
       }
@@ -9437,7 +9437,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihr %@ API-Schlüssel wird entfernt. Sie können ihn später wieder hinzufügen."
+            "value": "Dein %@-API-Schlüssel wird entfernt. Du kannst ihn später wieder hinzufügen."
           }
         }
       }
@@ -9783,7 +9783,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Probieren Sie ein paar kurze Beispiele aus und sehen Sie, wie VoiceInk funktioniert, bevor Sie beginnen."
+            "value": "Probiere ein paar kurze Beispiele aus und sieh dir an, wie VoiceInk funktioniert."
           }
         }
       }
@@ -9793,7 +9793,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie ein anderes Modell aus oder laden Sie das aktuelle Modell erneut herunter."
+            "value": "Wähle ein anderes Modell aus oder lade das aktuelle Modell erneut herunter."
           }
         }
       }
@@ -9804,7 +9804,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aktivieren Sie diese Option, wenn Transkriptionen mit lokalen Modellen länger als erwartet dauern. Führt beim App-Start und Aufwachen im Hintergrund stille Transkriptionen aus, um die Optimierung anzustoßen."
+            "value": "Aktiviere diese Option, wenn Transkriptionen mit lokalen Modellen länger als erwartet dauern. Führt beim App-Start und Aufwachen im Hintergrund stille Transkriptionen aus, um die Optimierung anzustoßen."
           }
         }
       }
@@ -10170,7 +10170,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk erkennt automatisch, woran Sie arbeiten, und wählt Ihre bevorzugte Konfiguration aus. Sie können dies jederzeit konfigurieren, indem Sie Modi bearbeiten oder neue Modi erstellen."
+            "value": "VoiceInk erkennt automatisch, woran du arbeitest, und wählt deine bevorzugte Konfiguration aus. Du kannst dies jederzeit anpassen, indem du Modi bearbeitest oder neue erstellst."
           }
         }
       }
@@ -10190,7 +10190,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk konnte nicht auf den Speicherort zugreifen. Ihre Transkriptionen werden nicht zwischen Sitzungen gespeichert."
+            "value": "VoiceInk konnte nicht auf den Speicherort zugreifen. Deine Transkriptionen werden nicht zwischen Sitzungen gespeichert."
           }
         }
       }
@@ -10210,7 +10210,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk ist auch Open Source, sodass Sie jede Codezeile einsehen können."
+            "value": "VoiceInk ist auch Open Source, sodass du jede Codezeile einsehen kannst."
           }
         }
       }
@@ -10260,7 +10260,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk ist standardmäßig privat. Keine Daten verlassen Ihr Gerät, sofern Sie dem nicht zustimmen."
+            "value": "VoiceInk ist standardmäßig privat. Keine Daten verlassen dein Gerät, sofern du dem nicht zustimmst."
           }
         }
       }
@@ -10370,7 +10370,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk verwendet LLMs, um Transkripte zu verbessern und KI-Aktionen auszuführen. Richten Sie einen API-Schlüssel ein, bevor Sie fortfahren."
+            "value": "VoiceInk verwendet LLMs, um Transkripte zu verbessern und KI-Aktionen auszuführen. Richte einen API-Schlüssel ein, bevor du fortfährst."
           }
         }
       }
@@ -10380,7 +10380,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "VoiceInk verwendet Ihr Mikrofon, um Ihre Stimme aufzunehmen."
+            "value": "VoiceInk verwendet dein Mikrofon, um deine Stimme aufzunehmen."
           }
         }
       }
@@ -10502,7 +10502,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wortersetzungen werden nach der Transkription angewendet. Das Vokabular wird mit KI-Verbesserung verwendet, um Namen, Fachbegriffe und besondere Schreibweisen in Ihrer Transkription besser zu verstehen."
+            "value": "Wortersetzungen werden nach der Transkription angewendet. Das Vokabular wird mit KI-Verbesserung verwendet, um Namen, Fachbegriffe und besondere Schreibweisen in deiner Transkription besser zu verstehen."
           }
         }
       }
@@ -10575,7 +10575,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sie haben die Kontrolle"
+            "value": "Du hast die Kontrolle"
           }
         }
       }
@@ -10625,7 +10625,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sie haben %@ mit VoiceInk gespart"
+            "value": "Du hast %@ mit VoiceInk gespart"
           }
         }
       }
@@ -10645,7 +10645,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Daten müssen Ihr Gerät nie verlassen."
+            "value": "Deine Daten müssen dein Gerät nie verlassen."
           }
         }
       }
@@ -10666,7 +10666,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Einstellungen wurden erfolgreich in %@ exportiert."
+            "value": "Deine Einstellungen wurden erfolgreich in %@ exportiert."
           }
         }
       }
@@ -10676,7 +10676,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Transkriptionshistorie wird hier angezeigt"
+            "value": "Deine Transkriptionshistorie wird hier angezeigt"
           }
         }
       }
@@ -10686,7 +10686,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Testversion ist beendet. Upgraden Sie auf VoiceInk Pro unter %@"
+            "value": "Deine Testversion ist beendet. Upgrade auf VoiceInk Pro unter %@"
           }
         }
       }
@@ -10696,7 +10696,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Testversion ist abgelaufen. Upgraden Sie, um VoiceInk weiter zu verwenden."
+            "value": "Deine Testversion ist abgelaufen. Upgrade, um VoiceInk weiter zu verwenden."
           }
         }
       }
@@ -10706,7 +10706,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Nutzungsübersicht wird hier angezeigt."
+            "value": "Deine Nutzungsübersicht wird hier angezeigt."
           }
         }
       }
@@ -10716,7 +10716,7 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre VoiceInk-Reise beginnt mit der ersten Aufnahme."
+            "value": "Deine VoiceInk-Reise beginnt mit der ersten Aufnahme."
           }
         }
       }
