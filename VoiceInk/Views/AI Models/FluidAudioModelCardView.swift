@@ -18,6 +18,11 @@ struct FluidAudioModelCardView: View {
         fluidAudioModelManager.isFluidAudioModelDownloading(model)
     }
 
+    private var showsExperimentalBadge: Bool {
+        FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) ||
+            FluidAudioModelManager.isNemotronModel(named: model.name)
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
@@ -40,7 +45,7 @@ struct FluidAudioModelCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
 
-            if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
+            if showsExperimentalBadge {
                 Text("Experimental")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.black)
@@ -90,6 +95,12 @@ struct FluidAudioModelCardView: View {
                         Text(status.message)
                             .lineLimit(1)
 
+                        if status.isIndeterminate {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.65)
+                        }
+
                         Spacer()
 
                         Text("\(Int(status.fractionCompleted * 100))%")
@@ -110,7 +121,7 @@ struct FluidAudioModelCardView: View {
 
     private var actionSection: some View {
         HStack(spacing: 8) {
-            if isDownloaded {
+            if isDownloaded && !isDownloading {
                 modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
                 Button(action: {
@@ -132,7 +143,7 @@ struct FluidAudioModelCardView: View {
                 .disabled(isDownloading)
             }
 
-            if isDownloaded {
+            if isDownloaded && !isDownloading {
                 Menu {
                     Button(action: {
                         fluidAudioModelManager.deleteFluidAudioModel(model)

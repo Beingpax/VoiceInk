@@ -99,6 +99,12 @@ struct TranscriptionModelDownloadCard: View {
                 Text(status.message)
                     .lineLimit(1)
 
+                if status.isIndeterminate {
+                    ProgressView()
+                        .controlSize(.small)
+                        .scaleEffect(0.65)
+                }
+
                 Spacer()
 
                 Text("\(Int(status.fractionCompleted * 100))%")
