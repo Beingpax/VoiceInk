@@ -26,11 +26,17 @@ struct FlowLayout: Layout {
         var maxX: CGFloat = 0
 
         for subview in subviews {
-            let size = subview.sizeThatFits(ProposedViewSize(width: nil, height: nil))
-            let width = min(size.width, maxWidth)
-            let itemSize = CGSize(width: width, height: size.height)
+            let naturalSize = subview.sizeThatFits(.unspecified)
+            let itemSize: CGSize
 
-            if x > 0, x + width > maxWidth {
+            if maxWidth.isFinite, naturalSize.width > maxWidth {
+                let constrainedSize = subview.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+                itemSize = CGSize(width: maxWidth, height: constrainedSize.height)
+            } else {
+                itemSize = naturalSize
+            }
+
+            if x > 0, x + itemSize.width > maxWidth {
                 x = 0
                 y += rowHeight + spacing
                 rowHeight = 0
@@ -38,7 +44,7 @@ struct FlowLayout: Layout {
             positions.append(CGPoint(x: x, y: y))
             sizes.append(itemSize)
             rowHeight = max(rowHeight, itemSize.height)
-            x += width + spacing
+            x += itemSize.width + spacing
             maxX = max(maxX, x - spacing)
         }
 

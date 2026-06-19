@@ -239,15 +239,15 @@ struct TriggerPickerPopover: View {
         detail: String,
         action: @escaping () -> Void
     ) -> some View {
-        let isUnavailable = claimedBy != nil
+        let isUnavailable = claimedBy != nil && !isSelected
         let symbolName = isSelected ? "checkmark" : (isUnavailable ? "exclamationmark.triangle" : systemName)
 
-        Button(action: action) {
+        return Button(action: action) {
             HStack(spacing: 10) {
                 TriggerSymbol(systemName: symbolName)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    if let claimedBy {
+                    if isUnavailable, let claimedBy {
                         Text("Already used by \"\(claimedBy.name)\"")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
@@ -402,7 +402,7 @@ struct TriggerPickerPopover: View {
     }
 
     private func toggleTriggerWordCandidate() {
-        guard canOfferTriggerWord, triggerWordClaimedByOtherMode == nil else { return }
+        guard canOfferTriggerWord else { return }
         if isTriggerWordAlreadyAdded {
             triggerWords.removeAll { $0.localizedCaseInsensitiveCompare(query) == .orderedSame }
         } else {
@@ -417,7 +417,7 @@ struct TriggerPickerPopover: View {
     }
 
     private func toggleWebsiteCandidate() {
-        guard canOfferWebsite, websiteClaimedByOtherMode == nil else { return }
+        guard canOfferWebsite else { return }
         if isWebsiteAlreadyAdded {
             removeWebsite(websiteCandidate)
         } else {
