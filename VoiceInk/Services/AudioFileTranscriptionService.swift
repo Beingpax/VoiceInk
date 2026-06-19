@@ -68,12 +68,7 @@ class AudioTranscriptionService: ObservableObject {
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            logger.notice("✅ Word replacements applied")
-            let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
-                text,
-                punctuationMode: formattingConfiguration.punctuationCleanupMode,
-                shouldLowercase: formattingConfiguration.lowercaseTranscription
-            )
+            let cleanedText = text
 
             let audioAsset = AVURLAsset(url: url)
             let duration = CMTimeGetSeconds(try await audioAsset.load(.duration))

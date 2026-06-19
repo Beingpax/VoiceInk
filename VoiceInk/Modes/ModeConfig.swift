@@ -77,8 +77,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var isRealtimeTranscriptionEnabled: Bool = true
     var selectedLanguage: String?
     var isTextFormattingEnabled: Bool = false
-    var punctuationCleanupMode: PunctuationCleanupMode = .keep
-    var lowercaseTranscription: Bool = false
     var useClipboardContext: Bool
     var useSelectedTextContext: Bool
     var useScreenCapture: Bool
@@ -91,7 +89,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var isDefault: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled, selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled, punctuationCleanupMode, removePunctuation, lowercaseTranscription, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault
+        case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled, selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault
         case legacyEmoji = "emoji"
         case selectedWhisperModel
         case selectedTranscriptionModelName
@@ -101,8 +99,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
          urlConfigs: [URLConfig]? = nil, triggerGroups: [ModeTriggerGroup]? = nil, triggerWords: [String] = [],
          isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, isRealtimeTranscriptionEnabled: Bool = true, selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true, useScreenCapture: Bool = false,
-         isTextFormattingEnabled: Bool = false, punctuationCleanupMode: PunctuationCleanupMode = .keep, lowercaseTranscription: Bool = false,
-         selectedAIProvider: String? = nil, selectedAIModel: String? = nil, outputMode: ModeOutputMode = .paste, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil, isEnabled: Bool = true, isDefault: Bool = false) {
+         isTextFormattingEnabled: Bool = false, selectedAIProvider: String? = nil, selectedAIModel: String? = nil, outputMode: ModeOutputMode = .paste, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil, isEnabled: Bool = true, isDefault: Bool = false) {
         self.id = id
         self.name = name
         self.icon = icon
@@ -124,8 +121,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         self.isRealtimeTranscriptionEnabled = isRealtimeTranscriptionEnabled
         self.selectedLanguage = selectedLanguage ?? "en"
         self.isTextFormattingEnabled = isTextFormattingEnabled
-        self.punctuationCleanupMode = punctuationCleanupMode
-        self.lowercaseTranscription = lowercaseTranscription
         self.isEnabled = isEnabled
         self.isDefault = isDefault
     }
@@ -162,13 +157,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         isRealtimeTranscriptionEnabled = try container.decodeIfPresent(Bool.self, forKey: .isRealtimeTranscriptionEnabled) ?? true
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
         isTextFormattingEnabled = try container.decodeIfPresent(Bool.self, forKey: .isTextFormattingEnabled) ?? false
-        if let mode = try container.decodeIfPresent(PunctuationCleanupMode.self, forKey: .punctuationCleanupMode) {
-            punctuationCleanupMode = mode
-        } else {
-            let removePunctuation = try container.decodeIfPresent(Bool.self, forKey: .removePunctuation) ?? false
-            punctuationCleanupMode = removePunctuation ? .removeAll : .keep
-        }
-        lowercaseTranscription = try container.decodeIfPresent(Bool.self, forKey: .lowercaseTranscription) ?? false
         useClipboardContext = try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext) ?? UserDefaults.standard.bool(forKey: "useClipboardContext")
         if let decodedSelectedTextContext = try container.decodeIfPresent(Bool.self, forKey: .useSelectedTextContext) {
             useSelectedTextContext = decodedSelectedTextContext
@@ -217,9 +205,6 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         try container.encode(isRealtimeTranscriptionEnabled, forKey: .isRealtimeTranscriptionEnabled)
         try container.encodeIfPresent(selectedLanguage, forKey: .selectedLanguage)
         try container.encode(isTextFormattingEnabled, forKey: .isTextFormattingEnabled)
-        try container.encode(punctuationCleanupMode, forKey: .punctuationCleanupMode)
-        try container.encode(punctuationCleanupMode == .removeAll, forKey: .removePunctuation)
-        try container.encode(lowercaseTranscription, forKey: .lowercaseTranscription)
         try container.encode(useClipboardContext, forKey: .useClipboardContext)
         try container.encode(useSelectedTextContext, forKey: .useSelectedTextContext)
         try container.encode(useScreenCapture, forKey: .useScreenCapture)
