@@ -168,48 +168,56 @@ struct ConfigurationRow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                ZStack {
-                    ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 20 : 16)
-                }
-                .frame(width: 40, height: 40)
-                .background(
-                    AppCardBackground(isSelected: false, cornerRadius: AppTheme.Radius.pill)
-                )
-                
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(config.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    
-                    HStack(spacing: 12) {
-                        if appCount > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: "app.fill")
-                                    .font(.system(size: 10))
-                                Text(appText)
-                                    .font(.caption2)
-                            }
-                        }
-
-                        if websiteCount > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: "globe")
-                                    .font(.system(size: 10))
-                                Text(websiteText)
-                                    .font(.caption2)
-                            }
-                        }
+                HStack(spacing: 12) {
+                    ZStack {
+                        ModeIconView(icon: config.icon, size: config.icon.kind == .emoji ? 20 : 16)
                     }
-                    .padding(.top, 2)
-                    .foregroundColor(.secondary)
-                }
-                
-                Spacer()
+                    .frame(width: 40, height: 40)
+                    .background(
+                        AppCardBackground(isSelected: false, cornerRadius: AppTheme.Radius.pill)
+                    )
 
-                if config.isDefault {
-                    DefaultModeIndicator()
-                } else {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(config.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+
+                        HStack(spacing: 12) {
+                            if appCount > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "app.fill")
+                                        .font(.system(size: 10))
+                                    Text(appText)
+                                        .font(.caption2)
+                                }
+                            }
+
+                            if websiteCount > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "globe")
+                                        .font(.system(size: 10))
+                                    Text(websiteText)
+                                        .font(.caption2)
+                                }
+                            }
+                        }
+                        .padding(.top, 2)
+                        .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    if config.isDefault {
+                        DefaultModeIndicator()
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onEditConfig(config)
+                }
+
+                if !config.isDefault {
                     Toggle("", isOn: Binding(
                         get: { config.isEnabled },
                         set: { newValue in
@@ -249,7 +257,7 @@ struct ConfigurationRow: View {
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
-                    
+
                     if let language = selectedLanguage, language != "Default" {
                         HStack(spacing: 4) {
                             Image(systemName: "globe")
@@ -266,7 +274,7 @@ struct ConfigurationRow: View {
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
-                    
+
                     if config.isAIEnhancementEnabled,
                        config.selectedAIProvider != AIProvider.localCLI.rawValue,
                        let modelName = config.selectedAIModel,
@@ -286,7 +294,7 @@ struct ConfigurationRow: View {
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
                         )
                     }
-                    
+
                     if config.outputMode != .paste {
                         HStack(spacing: 4) {
                             Image(systemName: config.outputMode.iconName)
@@ -338,25 +346,11 @@ struct ConfigurationRow: View {
                     }
 
                     Spacer()
-
-                    Button {
-                        onEditConfig(config)
-                    } label: {
-                        Text("Edit")
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.Text.secondary)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(AppTheme.Surface.control))
-                            .overlay(
-                                Capsule()
-                                    .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help("Edit mode")
                 }
-                
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onEditConfig(config)
+                }
                 .padding(.vertical, 6)
                 .padding(.horizontal, 16)
                 .background(AppTheme.Surface.card)
@@ -378,13 +372,6 @@ struct ConfigurationRow: View {
         }
     }
     .opacity(config.isEnabled ? 1.0 : 0.70)
-    .contextMenu {
-        Button(action: {
-            onEditConfig(config)
-        }) {
-            Label("Edit", systemImage: "pencil")
-        }
-    }
     }
     
     private var isSelected: Bool {

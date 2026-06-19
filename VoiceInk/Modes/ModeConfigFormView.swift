@@ -192,10 +192,15 @@ struct ModeConfigFormView: View {
 
             languagePicker
 
-            Toggle(isOn: $draft.isTextFormattingEnabled) {
-                HStack(spacing: 4) {
-                    Text("Paragraph breaks")
-                    InfoTip("Apply intelligent text formatting to break large block of text into paragraphs.")
+            ExpandableSettingsRow(
+                title: "Transcription Formatting",
+                isExpanded: $draft.isTranscriptionFormattingExpanded
+            ) {
+                Toggle(isOn: $draft.isTextFormattingEnabled) {
+                    HStack(spacing: 4) {
+                        Text("Paragraph breaks")
+                        InfoTip("Apply intelligent text formatting to break large block of text into paragraphs.")
+                    }
                 }
             }
         }
