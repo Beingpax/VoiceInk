@@ -175,11 +175,7 @@ class AudioTranscriptionManager: ObservableObject {
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
-                text,
-                punctuationMode: formattingConfiguration.punctuationCleanupMode,
-                shouldLowercase: formattingConfiguration.lowercaseTranscription
-            )
+            let cleanedText = text
             try Task.checkCancellation()
 
             // Handle enhancement if enabled

@@ -23,8 +23,6 @@ enum AppDefaults {
             // Recording & Transcription
             "IsTextFormattingEnabled": true,
             "IsVADEnabled": true,
-            "RemovePunctuation": false,
-            "LowercaseTranscription": false,
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,
             "RecorderType": "mini",
@@ -52,7 +50,6 @@ enum AppDefaults {
 
         ])
 
-        PunctuationCleanupMode.migrateLegacyUserDefaultIfNeeded()
         PasteMethod.migrateLegacyUserDefaultIfNeeded()
     }
 }

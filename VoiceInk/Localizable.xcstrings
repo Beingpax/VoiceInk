@@ -8044,23 +8044,6 @@
         }
       }
     },
-    "Keep preserves punctuation as transcribed. Remove all strips punctuation marks from the transcribed text. Remove trailing period only removes a final period from the transcribed text.": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Behalten“ bewahrt die Zeichensetzung wie transkribiert. „Alle entfernen“ entfernt alle Satzzeichen. „Nur abschließenden Punkt“ entfernt nur den letzten Punkt des Textes."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「保留」会按转录原样保留标点。「全部移除」会移除转录文本中的所有标点符号。「移除句尾句号」仅会移除转录文本末尾的句号。"
-          }
-        }
-      }
-    },
     "Key verified": {
       "localizations": {
         "de": {
@@ -8835,18 +8818,18 @@
         }
       }
     },
-    "Lowercase output": {
+    "Lowercase and Paste": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ausgabe in Kleinbuchstaben"
+            "value": "In Kleinbuchstaben einfügen"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "小写输出"
+            "value": "转换为小写并粘贴"
           }
         }
       }
@@ -11350,22 +11333,6 @@
         }
       }
     },
-    "Punctuation": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zeichensetzung"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "标点符号"
-          }
-        }
-      }
-    },
     "Purchase License": {
       "extractionState": "manual",
       "localizations": {
@@ -11880,22 +11847,6 @@
         }
       }
     },
-    "Remove all": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle entfernen"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "全部移除"
-          }
-        }
-      }
-    },
     "Remove API key": {
       "localizations": {
         "de": {
@@ -12008,18 +11959,18 @@
         }
       }
     },
-    "Remove trailing period": {
+    "Remove Trailing Period and Paste": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Schlusspunkt entfernen"
+            "value": "Schlusspunkt entfernen und einfügen"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "移除末尾句号"
+            "value": "移除末尾句号并粘贴"
           }
         }
       }

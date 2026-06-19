@@ -138,11 +138,7 @@ class TranscriptionPipeline {
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
-            let cleanedText = TranscriptionOutputFilter.applyCleanupPreferences(
-                text,
-                punctuationMode: formattingConfiguration.punctuationCleanupMode,
-                shouldLowercase: formattingConfiguration.lowercaseTranscription
-            )
+            let cleanedText = text
 
             let actualDuration = await AudioFileMetadata.duration(for: audioURL)
 

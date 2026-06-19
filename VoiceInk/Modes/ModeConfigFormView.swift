@@ -192,36 +192,10 @@ struct ModeConfigFormView: View {
 
             languagePicker
 
-            ExpandableSettingsRow(
-                title: "Transcription Formatting",
-                isExpanded: $draft.isTranscriptionFormattingExpanded
-            ) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Toggle(isOn: $draft.isTextFormattingEnabled) {
-                        HStack(spacing: 4) {
-                            Text("Paragraph breaks")
-                            InfoTip("Apply intelligent text formatting to break large block of text into paragraphs.")
-                        }
-                    }
-
-                    Picker(selection: $draft.punctuationCleanupMode) {
-                        ForEach(PunctuationCleanupMode.allCases) { mode in
-                            Text(mode.displayName).tag(mode)
-                        }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Punctuation")
-                            InfoTip("Keep preserves punctuation as transcribed. Remove all strips punctuation marks from the transcribed text. Remove trailing period only removes a final period from the transcribed text.")
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    Toggle(isOn: $draft.lowercaseTranscription) {
-                        HStack(spacing: 4) {
-                            Text("Lowercase output")
-                            InfoTip("Convert transcription output to lowercase.")
-                        }
-                    }
+            Toggle(isOn: $draft.isTextFormattingEnabled) {
+                HStack(spacing: 4) {
+                    Text("Paragraph breaks")
+                    InfoTip("Apply intelligent text formatting to break large block of text into paragraphs.")
                 }
             }
         }

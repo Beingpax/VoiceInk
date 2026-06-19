@@ -14,8 +14,6 @@ struct ModeConfigDraft {
     var isRealtimeTranscriptionEnabled: Bool
     var selectedLanguage: String?
     var isTextFormattingEnabled: Bool
-    var punctuationCleanupMode: PunctuationCleanupMode
-    var lowercaseTranscription: Bool
     var useClipboardContext: Bool
     var useSelectedTextContext: Bool
     var useScreenCapture: Bool
@@ -47,8 +45,6 @@ struct ModeConfigDraft {
             isRealtimeTranscriptionEnabled = true
             selectedLanguage = inheritedConfig?.selectedLanguage
             isTextFormattingEnabled = true
-            punctuationCleanupMode = .keep
-            lowercaseTranscription = false
             useClipboardContext = false
             useSelectedTextContext = false
             useScreenCapture = true
@@ -76,8 +72,6 @@ struct ModeConfigDraft {
             isRealtimeTranscriptionEnabled = latestConfig.isRealtimeTranscriptionEnabled
             selectedLanguage = latestConfig.selectedLanguage
             isTextFormattingEnabled = latestConfig.isTextFormattingEnabled
-            punctuationCleanupMode = latestConfig.punctuationCleanupMode
-            lowercaseTranscription = latestConfig.lowercaseTranscription
             useClipboardContext = latestConfig.useClipboardContext
             useSelectedTextContext = latestConfig.useSelectedTextContext
             useScreenCapture = latestConfig.useScreenCapture
@@ -183,8 +177,6 @@ struct ModeConfigDraft {
                 useSelectedTextContext: useSelectedTextContext,
                 useScreenCapture: useScreenCapture,
                 isTextFormattingEnabled: isTextFormattingEnabled,
-                punctuationCleanupMode: punctuationCleanupMode,
-                lowercaseTranscription: lowercaseTranscription,
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 outputMode: outputMode,
@@ -207,8 +199,6 @@ struct ModeConfigDraft {
             updatedConfig.isRealtimeTranscriptionEnabled = isRealtimeTranscriptionEnabled
             updatedConfig.selectedLanguage = selectedLanguage
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
-            updatedConfig.punctuationCleanupMode = punctuationCleanupMode
-            updatedConfig.lowercaseTranscription = lowercaseTranscription
             updatedConfig.useClipboardContext = useClipboardContext
             updatedConfig.useSelectedTextContext = useSelectedTextContext
             updatedConfig.useScreenCapture = useScreenCapture

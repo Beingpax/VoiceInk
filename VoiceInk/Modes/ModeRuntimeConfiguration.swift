@@ -24,8 +24,6 @@ struct TranscriptionRuntimeConfiguration {
 struct TranscriptionFormattingConfiguration {
     let mode: ModeConfig?
     let isTextFormattingEnabled: Bool
-    let punctuationCleanupMode: PunctuationCleanupMode
-    let lowercaseTranscription: Bool
 }
 
 struct EnhancementRuntimeConfiguration {
@@ -92,9 +90,7 @@ enum ModeRuntimeResolver {
 
         return TranscriptionFormattingConfiguration(
             mode: mode,
-            isTextFormattingEnabled: mode?.isTextFormattingEnabled ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled"),
-            punctuationCleanupMode: mode?.punctuationCleanupMode ?? PunctuationCleanupMode.current(),
-            lowercaseTranscription: mode?.lowercaseTranscription ?? UserDefaults.standard.bool(forKey: "LowercaseTranscription")
+            isTextFormattingEnabled: mode?.isTextFormattingEnabled ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled")
         )
     }
 
