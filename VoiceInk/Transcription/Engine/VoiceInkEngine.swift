@@ -357,6 +357,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 ModeRuntimeResolver.transcriptionFormattingConfiguration()
             },
             session: session,
+            triggerWordModeSelection: { [weak self] text in
+                self?.selectTriggerWordModeIfNeeded(for: text)
+            },
             enhancementConfiguration: { [weak self] in
                 guard let self,
                       let enhancementService = self.enhancementService,
@@ -439,6 +442,15 @@ class VoiceInkEngine: NSObject, ObservableObject {
             (recordingState == .transcribing || recordingState == .enhancing || recordingState == .busy) {
             recordingState = .idle
         }
+    }
+
+    private func selectTriggerWordModeIfNeeded(for text: String) -> String? {
+        guard let (triggeredMode, processedText) = ModeManager.shared.getConfigurationForTriggerWord(text) else {
+            return nil
+        }
+
+        ModeManager.shared.setActiveConfiguration(triggeredMode)
+        return processedText
     }
 
     // MARK: - Cancellation

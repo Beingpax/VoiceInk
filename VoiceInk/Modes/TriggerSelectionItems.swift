@@ -78,14 +78,7 @@ struct TriggerAppChip: View {
         ZStack(alignment: .topTrailing) {
             TriggerAppIcon(bundleId: appConfig.bundleIdentifier, size: 30)
                 .padding(3)
-                .background {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(AppTheme.Surface.control)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
-                }
+                .background(AppCardBackground(cornerRadius: 8))
 
             TriggerRemoveButton(action: onRemove)
                 .offset(x: 5, y: -5)
@@ -100,33 +93,62 @@ struct TriggerWebsiteChip: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "globe")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.primary)
-                .frame(width: 20, height: 20)
-                .background(Circle().fill(AppTheme.Surface.card))
+        TriggerTextChip(
+            systemName: "globe",
+            title: urlConfig.url,
+            truncationMode: .middle,
+            removeHelp: "Remove website",
+            onRemove: onRemove
+        )
+    }
+}
 
-            Text(urlConfig.url)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.primary)
+struct TriggerWordChip: View {
+    let word: String
+    let onRemove: () -> Void
+
+    var body: some View {
+        TriggerTextChip(
+            systemName: "mic.fill",
+            title: word,
+            truncationMode: .tail,
+            removeHelp: "Remove trigger word",
+            onRemove: onRemove
+        )
+    }
+}
+
+private struct TriggerTextChip: View {
+    let systemName: String
+    let title: String
+    let truncationMode: Text.TruncationMode
+    let removeHelp: String
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemName)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            Text(title)
+                .font(.system(size: 12))
                 .lineLimit(1)
-                .truncationMode(.middle)
+                .truncationMode(truncationMode)
+                .frame(maxWidth: 100, alignment: .leading)
 
-            Spacer(minLength: 4)
-            TriggerRemoveButton(action: onRemove)
+            Button(action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 14, height: 14)
+            }
+            .buttonStyle(.plain)
+            .help(removeHelp)
         }
-        .padding(.leading, 7)
-        .padding(.trailing, 6)
-        .frame(height: 32)
-        .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(AppTheme.Surface.control)
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 8)
-                .strokeBorder(AppTheme.Border.control, lineWidth: 0.5)
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(AppCardBackground(cornerRadius: 7))
     }
 }
 

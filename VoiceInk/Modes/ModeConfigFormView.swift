@@ -131,6 +131,7 @@ struct ModeConfigFormView: View {
                 appConfigs: $draft.appConfigs,
                 websiteConfigs: $draft.websiteConfigs,
                 triggerGroups: $draft.triggerGroups,
+                triggerWords: $draft.triggerWords,
                 modeId: draft.id,
                 cleanURL: modeManager.cleanURL
             )

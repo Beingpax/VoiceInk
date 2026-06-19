@@ -4,6 +4,7 @@ struct ModeTriggerSection: View {
     @Binding var appConfigs: [AppConfig]
     @Binding var websiteConfigs: [URLConfig]
     @Binding var triggerGroups: [ModeTriggerGroup]
+    @Binding var triggerWords: [String]
     let modeId: UUID
     let cleanURL: (String) -> String
 
@@ -13,7 +14,7 @@ struct ModeTriggerSection: View {
     @State private var triggerSearchText = ""
 
     private var hasSelectedTriggers: Bool {
-        !triggerGroups.isEmpty || !appConfigs.isEmpty || !websiteConfigs.isEmpty
+        !triggerGroups.isEmpty || !appConfigs.isEmpty || !websiteConfigs.isEmpty || !triggerWords.isEmpty
     }
 
     var body: some View {
@@ -23,6 +24,7 @@ struct ModeTriggerSection: View {
                     appConfigs: $appConfigs,
                     websiteConfigs: $websiteConfigs,
                     triggerGroups: $triggerGroups,
+                    triggerWords: $triggerWords,
                     installedApps: modeWarmupStore.installedApps,
                     cleanURL: cleanURL,
                     loadInstalledAppsIfNeeded: modeWarmupStore.refreshInstalledApps
@@ -50,7 +52,7 @@ struct ModeTriggerSection: View {
         HStack {
             HStack(spacing: 4) {
                 Text("Triggers")
-                InfoTip("VoiceInk automatically switches to this mode when you use the apps or websites you add here.")
+                InfoTip("VoiceInk automatically switches to this mode based on the app or website you're using, or when you say a trigger word during recording.")
             }
 
             Spacer()
@@ -64,9 +66,11 @@ struct ModeTriggerSection: View {
                 TriggerPickerPopover(
                     installedApps: modeWarmupStore.installedApps,
                     isLoadingApps: modeWarmupStore.isLoadingInstalledApps,
+                    currentModeId: modeId,
                     appConfigs: $appConfigs,
                     websiteConfigs: $websiteConfigs,
                     triggerGroups: $triggerGroups,
+                    triggerWords: $triggerWords,
                     searchText: $triggerSearchText,
                     cleanURL: cleanURL
                 )

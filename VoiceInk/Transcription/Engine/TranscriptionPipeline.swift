@@ -25,7 +25,6 @@ class TranscriptionPipeline {
     private let modelContext: ModelContext
     private let serviceRegistry: TranscriptionServiceRegistry
     private let enhancementService: AIEnhancementService?
-    private let promptDetectionService = PromptDetectionService()
     private let delivery = TranscriptionDelivery()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionPipeline")
 
@@ -55,6 +54,7 @@ class TranscriptionPipeline {
         transcriptionConfiguration: TranscriptionRuntimeConfiguration,
         formattingConfiguration resolveFormattingConfiguration: @escaping () -> TranscriptionFormattingConfiguration,
         session: TranscriptionSession?,
+        triggerWordModeSelection: @escaping (String) -> String? = { _ in nil },
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
         recordingContextSnapshot: @escaping () async -> RecordingContextSnapshot? = { nil },
         outputConfiguration: @escaping () -> OutputRuntimeConfiguration,
@@ -117,7 +117,21 @@ class TranscriptionPipeline {
             if shouldCancel() { await finishCanceledTranscription(); return }
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if !assistant.isFollowUp,
+               let processedText = triggerWordModeSelection(text) {
+                text = processedText
+            }
+
             let formattingConfiguration = resolveFormattingConfiguration()
+            let resolvedEnhancementConfiguration = enhancementConfiguration()
+            let resolvedOutputConfiguration = outputConfiguration()
+            let modeMetadata = metadata(
+                for: formattingConfiguration.mode ??
+                    resolvedEnhancementConfiguration?.mode ??
+                    resolvedOutputConfiguration.mode ??
+                    transcriptionConfiguration.mode
+            )
 
             if formattingConfiguration.isTextFormattingEnabled {
                 text = ParagraphFormatter.format(text)
@@ -131,7 +145,6 @@ class TranscriptionPipeline {
             )
 
             let actualDuration = await AudioFileMetadata.duration(for: audioURL)
-            let modeMetadata = transcriptionConfiguration.metadata
 
             transcription.text = cleanedText
             transcription.duration = actualDuration
@@ -142,18 +155,6 @@ class TranscriptionPipeline {
             finalText = cleanedText
 
             if !assistant.isFollowUp {
-                var resolvedEnhancementConfiguration = enhancementConfiguration()
-                var promptDetection: PromptDetectionService.Detection?
-
-                if let enhancementService,
-                   let currentConfiguration = resolvedEnhancementConfiguration,
-                   currentConfiguration.provider != nil,
-                   let detection = promptDetectionService.detectPrompt(in: text, prompts: enhancementService.allPrompts) {
-                    resolvedEnhancementConfiguration = currentConfiguration.replacingPrompt(detection.prompt)
-                    promptDetection = detection
-                }
-
-                let resolvedOutputConfiguration = outputConfiguration()
                 let shouldRespondInRecorder = resolvedOutputConfiguration.outputMode == .respond &&
                     resolvedEnhancementConfiguration?.isEnabled == true &&
                     resolvedEnhancementConfiguration.map { configuration in
@@ -167,8 +168,7 @@ class TranscriptionPipeline {
                 let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
                 let shouldSkipEnhancement = !shouldRespondInRecorder &&
                     isSkipShortEnhancementEnabled &&
-                    WordCounter.count(in: text) <= shortEnhancementWordThreshold &&
-                    promptDetection == nil
+                    WordCounter.count(in: text) <= shortEnhancementWordThreshold
 
                 if let enhancementService,
                    let resolvedEnhancementConfiguration,
@@ -178,7 +178,7 @@ class TranscriptionPipeline {
                     if shouldCancel() { await finishCanceledTranscription(); return }
 
                     onStateChange(.enhancing)
-                    let textForAI = promptDetection?.processedText ?? text
+                    let textForAI = text
                     if shouldRespondInRecorder {
                         await assistant.startResponse(textForAI, resolvedEnhancementConfiguration)
                     }
@@ -280,5 +280,13 @@ class TranscriptionPipeline {
         )
 
         saveTranscriptionAndPostCompletion()
+    }
+
+    private func metadata(for mode: ModeConfig?) -> (name: String?, emoji: String?) {
+        guard let mode, mode.isEnabled else {
+            return (nil, nil)
+        }
+
+        return (mode.name, mode.icon.value)
     }
 }

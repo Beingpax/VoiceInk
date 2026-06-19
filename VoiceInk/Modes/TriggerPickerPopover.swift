@@ -3,9 +3,11 @@ import SwiftUI
 struct TriggerPickerPopover: View {
     let installedApps: [InstalledAppInfo]
     let isLoadingApps: Bool
+    let currentModeId: UUID
     @Binding var appConfigs: [AppConfig]
     @Binding var websiteConfigs: [URLConfig]
     @Binding var triggerGroups: [ModeTriggerGroup]
+    @Binding var triggerWords: [String]
     @Binding var searchText: String
     let cleanURL: (String) -> String
 
@@ -59,8 +61,38 @@ struct TriggerPickerPopover: View {
         isWebsiteLike(websiteCandidate)
     }
 
+    private var otherConfigurations: [ModeConfig] {
+        ModeManager.shared.configurations.filter { $0.id != currentModeId }
+    }
+
     private var isWebsiteAlreadyAdded: Bool {
         snapshot.websites.contains(websiteCandidate)
+    }
+
+    private var canOfferTriggerWord: Bool {
+        !query.isEmpty && !isWebsiteLike(websiteCandidate)
+    }
+
+    private var isTriggerWordAlreadyAdded: Bool {
+        triggerWords.contains { $0.localizedCaseInsensitiveCompare(query) == .orderedSame }
+    }
+
+    private var triggerWordClaimedByOtherMode: ModeConfig? {
+        otherConfigurations.first { mode in
+            mode.triggerWords.contains { $0.localizedCaseInsensitiveCompare(query) == .orderedSame }
+        }
+    }
+
+    private func appClaimedByOtherMode(_ bundleId: String) -> ModeConfig? {
+        otherConfigurations.first { mode in
+            mode.allAppConfigs.contains { $0.bundleIdentifier == bundleId }
+        }
+    }
+
+    private var websiteClaimedByOtherMode: ModeConfig? {
+        otherConfigurations.first { mode in
+            mode.allURLConfigs.contains { cleanURL($0.url) == websiteCandidate }
+        }
     }
 
     var body: some View {
@@ -76,6 +108,10 @@ struct TriggerPickerPopover: View {
 
                     if canOfferWebsite {
                         websiteCandidateRow
+                    }
+
+                    if canOfferTriggerWord {
+                        triggerWordCandidateRow
                     }
 
                     appList
@@ -97,11 +133,11 @@ struct TriggerPickerPopover: View {
                 .foregroundColor(.secondary)
                 .font(.system(size: 12))
 
-            TextField("Search apps or enter website...", text: $searchText)
+            TextField("Search apps, website, or trigger word...", text: $searchText)
                 .textFieldStyle(.plain)
                 .font(.system(size: 13))
                 .focused($isSearchFieldFocused)
-                .onSubmit(addWebsiteIfPossible)
+                .onSubmit(submitSearch)
 
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
@@ -179,22 +215,58 @@ struct TriggerPickerPopover: View {
     }
 
     private var websiteCandidateRow: some View {
-        Button(action: toggleWebsiteCandidate) {
+        let claimedBy = websiteClaimedByOtherMode
+
+        return triggerCandidateRow(
+            systemName: "globe",
+            isSelected: isWebsiteAlreadyAdded,
+            claimedBy: claimedBy,
+            unavailableMessage: "Each website can only belong to one mode",
+            addTitle: "Add website",
+            removeTitle: "Remove website",
+            detail: websiteCandidate,
+            action: toggleWebsiteCandidate
+        )
+    }
+
+    private func triggerCandidateRow(
+        systemName: String,
+        isSelected: Bool,
+        claimedBy: ModeConfig?,
+        unavailableMessage: String,
+        addTitle: LocalizedStringKey,
+        removeTitle: LocalizedStringKey,
+        detail: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        let isUnavailable = claimedBy != nil && !isSelected
+        let symbolName = isSelected ? "checkmark" : (isUnavailable ? "exclamationmark.triangle" : systemName)
+
+        return Button(action: action) {
             HStack(spacing: 10) {
-                TriggerSymbol(systemName: isWebsiteAlreadyAdded ? "checkmark" : "globe")
+                TriggerSymbol(systemName: symbolName)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(isWebsiteAlreadyAdded ? LocalizedStringKey("Remove website") : LocalizedStringKey("Add website"))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.primary)
-                    Text(websiteCandidate)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                    if isUnavailable, let claimedBy {
+                        Text("Already used by \"\(claimedBy.name)\"")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text(unavailableMessage)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(isSelected ? removeTitle : addTitle)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.primary)
+                        Text(detail)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer()
 
-                if !isWebsiteAlreadyAdded {
+                if !isSelected && !isUnavailable {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 14, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
@@ -207,10 +279,12 @@ struct TriggerPickerPopover: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(AppTheme.Surface.card))
         }
         .buttonStyle(.plain)
+        .disabled(isUnavailable)
     }
 
     private func appRow(_ app: InstalledAppInfo) -> some View {
         let isSelected = snapshot.appBundleIds.contains(app.bundleId)
+        let claimedBy = isSelected ? nil : appClaimedByOtherMode(app.bundleId)
 
         return Button {
             toggleApp(app)
@@ -221,10 +295,22 @@ struct TriggerPickerPopover: View {
                     .frame(width: 28, height: 28)
                     .cornerRadius(6)
 
-                Text(app.name)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
+                if let claimedBy {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(app.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                        Text("Used by \"\(claimedBy.name)\"")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text(app.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                }
 
                 Spacer()
 
@@ -240,6 +326,7 @@ struct TriggerPickerPopover: View {
             .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear))
         }
         .buttonStyle(.plain)
+        .disabled(claimedBy != nil)
     }
 
     private var emptyState: some View {
@@ -284,8 +371,47 @@ struct TriggerPickerPopover: View {
         triggerGroups.append(availableGroup)
     }
 
+    private var triggerWordCandidateRow: some View {
+        let claimedBy = triggerWordClaimedByOtherMode
+
+        return triggerCandidateRow(
+            systemName: "mic.fill",
+            isSelected: isTriggerWordAlreadyAdded,
+            claimedBy: claimedBy,
+            unavailableMessage: "Each trigger word can only belong to one mode",
+            addTitle: "Add trigger word",
+            removeTitle: "Remove trigger word",
+            detail: "Say \"\(query)\" to activate this mode",
+            action: toggleTriggerWordCandidate
+        )
+    }
+
+    private func submitSearch() {
+        if canOfferWebsite {
+            addWebsiteIfPossible()
+        } else if canOfferTriggerWord {
+            addTriggerWordIfPossible()
+        }
+    }
+
+    private func addTriggerWordIfPossible() {
+        guard canOfferTriggerWord, !isTriggerWordAlreadyAdded, triggerWordClaimedByOtherMode == nil else { return }
+        let normalized = ModeConfig.normalizedTriggerWords([query]).first ?? query
+        triggerWords.append(normalized)
+        searchText = ""
+    }
+
+    private func toggleTriggerWordCandidate() {
+        guard canOfferTriggerWord else { return }
+        if isTriggerWordAlreadyAdded {
+            triggerWords.removeAll { $0.localizedCaseInsensitiveCompare(query) == .orderedSame }
+        } else {
+            addTriggerWordIfPossible()
+        }
+    }
+
     private func addWebsiteIfPossible() {
-        guard canOfferWebsite, !isWebsiteAlreadyAdded else { return }
+        guard canOfferWebsite, !isWebsiteAlreadyAdded, websiteClaimedByOtherMode == nil else { return }
         websiteConfigs.append(URLConfig(url: websiteCandidate))
         searchText = ""
     }
