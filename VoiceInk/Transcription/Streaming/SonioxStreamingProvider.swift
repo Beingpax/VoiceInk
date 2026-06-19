@@ -36,7 +36,7 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "stt-rt-v4", language: language, customVocabulary: vocabulary)
+            try await client.connect(apiKey: apiKey, model: "stt-rt-v5", language: language, customVocabulary: vocabulary)
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
