@@ -7,6 +7,7 @@ struct ModeConfigDraft {
     var appConfigs: [AppConfig]
     var websiteConfigs: [URLConfig]
     var triggerGroups: [ModeTriggerGroup]
+    var triggerWords: [String]
     var isAIEnhancementEnabled: Bool
     var selectedPromptId: UUID?
     var selectedTranscriptionModelName: String?
@@ -39,6 +40,7 @@ struct ModeConfigDraft {
             appConfigs = []
             websiteConfigs = []
             triggerGroups = []
+            triggerWords = []
             isAIEnhancementEnabled = false
             selectedPromptId = inheritedConfig?.selectedPrompt.flatMap { UUID(uuidString: $0) }
             selectedTranscriptionModelName = inheritedConfig?.selectedTranscriptionModelName
@@ -67,6 +69,7 @@ struct ModeConfigDraft {
             appConfigs = latestConfig.appConfigs ?? []
             websiteConfigs = latestConfig.urlConfigs ?? []
             triggerGroups = latestConfig.triggerGroups ?? []
+            triggerWords = latestConfig.triggerWords
             isAIEnhancementEnabled = latestConfig.isAIEnhancementEnabled
             selectedPromptId = latestConfig.selectedPrompt.flatMap { UUID(uuidString: $0) }
             selectedTranscriptionModelName = latestConfig.selectedTranscriptionModelName
@@ -170,6 +173,7 @@ struct ModeConfigDraft {
                 appConfigs: appConfigs.isEmpty ? nil : appConfigs,
                 urlConfigs: websiteConfigs.isEmpty ? nil : websiteConfigs,
                 triggerGroups: triggerGroups.isEmpty ? nil : triggerGroups,
+                triggerWords: triggerWords,
                 isAIEnhancementEnabled: isAIEnhancementEnabled,
                 selectedPrompt: selectedPromptId?.uuidString,
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
@@ -196,6 +200,7 @@ struct ModeConfigDraft {
             updatedConfig.appConfigs = appConfigs.isEmpty ? nil : appConfigs
             updatedConfig.urlConfigs = websiteConfigs.isEmpty ? nil : websiteConfigs
             updatedConfig.triggerGroups = triggerGroups.isEmpty ? nil : triggerGroups
+            updatedConfig.triggerWords = ModeConfig.normalizedTriggerWords(triggerWords)
             updatedConfig.isAIEnhancementEnabled = isAIEnhancementEnabled
             updatedConfig.selectedPrompt = selectedPromptId?.uuidString
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName

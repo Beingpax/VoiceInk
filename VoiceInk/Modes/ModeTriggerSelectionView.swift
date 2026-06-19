@@ -4,6 +4,7 @@ struct ModeTriggerSelectionView: View {
     @Binding var appConfigs: [AppConfig]
     @Binding var websiteConfigs: [URLConfig]
     @Binding var triggerGroups: [ModeTriggerGroup]
+    @Binding var triggerWords: [String]
     let installedApps: [InstalledAppInfo]
     let cleanURL: (String) -> String
     let loadInstalledAppsIfNeeded: () -> Void
@@ -38,13 +39,20 @@ struct ModeTriggerSelectionView: View {
             }
 
             if !websiteConfigs.isEmpty {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 150, maximum: 240), spacing: 8)],
-                    spacing: 8
-                ) {
+                FlowLayout(spacing: 6) {
                     ForEach(websiteConfigs) { urlConfig in
                         TriggerWebsiteChip(urlConfig: urlConfig) {
                             websiteConfigs.removeAll { $0.id == urlConfig.id }
+                        }
+                    }
+                }
+            }
+
+            if !triggerWords.isEmpty {
+                FlowLayout(spacing: 6) {
+                    ForEach(triggerWords, id: \.self) { word in
+                        TriggerWordChip(word: word) {
+                            triggerWords.removeAll { $0 == word }
                         }
                     }
                 }
