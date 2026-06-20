@@ -19,6 +19,7 @@ class Recorder: NSObject, ObservableObject {
     /// Dedicated serial queue for hardware setup.
     private let audioSetupQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audioSetup", qos: .userInitiated)
     private var audioMuteTask: Task<Void, Never>?
+    private var mediaPauseTask: Task<Void, Never>?
     private var audioRestorationTask: Task<Void, Never>?
     private let smoothedValuesLock = NSLock()
     private var smoothedAverage: Float = 0
@@ -112,15 +113,6 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    func scheduleSystemMute(afterDelayNanoseconds delay: UInt64 = 250_000_000) {
-        audioMuteTask?.cancel()
-        audioMuteTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: delay)
-            guard !Task.isCancelled, let self else { return }
-            _ = await self.mediaController.muteSystemAudio()
-        }
-    }
-
     func startRecording(toOutputFile url: URL) async throws {
         deviceManager.isRecordingActive = true
 
@@ -141,6 +133,7 @@ class Recorder: NSObject, ObservableObject {
         audioRestorationTask?.cancel()
         audioRestorationTask = nil
         audioMeterUpdateTimer?.cancel()
+        muteSystemAudio()
 
         let coreAudioRecorder = recorder ?? CoreAudioRecorder()
         coreAudioRecorder.onAudioChunk = onAudioChunk
@@ -160,10 +153,7 @@ class Recorder: NSObject, ObservableObject {
             }
 
             startAudioMeterTimer()
-            Task { [weak self] in
-                guard let self else { return }
-                await self.playbackController.pauseMedia()
-            }
+            pauseMedia()
         } catch {
             logger.error("Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)")
             await stopRecording()
@@ -174,6 +164,8 @@ class Recorder: NSObject, ObservableObject {
     func stopRecording() async {
         audioMuteTask?.cancel()
         audioMuteTask = nil
+        mediaPauseTask?.cancel()
+        mediaPauseTask = nil
         audioMeterUpdateTimer?.cancel()
         audioMeterUpdateTimer = nil
 
@@ -195,11 +187,29 @@ class Recorder: NSObject, ObservableObject {
 
         audioMeter = AudioMeter(averagePower: 0, peakPower: 0)
 
+        audioRestorationTask?.cancel()
         audioRestorationTask = Task {
             await mediaController.unmuteSystemAudio()
             await playbackController.resumeMedia()
         }
         deviceManager.isRecordingActive = false
+    }
+
+    private func muteSystemAudio() {
+        audioMuteTask?.cancel()
+        audioMuteTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled, let self else { return }
+            _ = await self.mediaController.muteSystemAudio()
+        }
+    }
+
+    private func pauseMedia() {
+        mediaPauseTask?.cancel()
+        mediaPauseTask = Task { [weak self] in
+            guard let self else { return }
+            await self.playbackController.pauseMedia()
+        }
     }
 
     private func handleRecordingError(_ error: Error) async {
@@ -297,6 +307,8 @@ class Recorder: NSObject, ObservableObject {
     // MARK: - Cleanup
 
     deinit {
+        audioMuteTask?.cancel()
+        mediaPauseTask?.cancel()
         audioMeterUpdateTimer?.cancel()
         audioRestorationTask?.cancel()
         if let observer = deviceSwitchObserver {

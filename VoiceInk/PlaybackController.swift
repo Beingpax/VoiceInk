@@ -73,6 +73,7 @@ class PlaybackController: ObservableObject {
         originalMediaAppBundleId = bundleId
 
         try? await Task.sleep(nanoseconds: 50_000_000)
+        guard !Task.isCancelled else { return }
 
         mediaController.pause()
     }
@@ -147,5 +148,4 @@ class PlaybackController: ObservableObject {
         return runningApps.contains { $0.bundleIdentifier == bundleId }
     }
 }
-
 
