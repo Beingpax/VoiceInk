@@ -104,6 +104,7 @@ struct ConfigurationRow: View {
     let onEditConfig: (ModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
+    @State private var isHovering = false
     
     private let maxAppIconsToShow = 5
     
@@ -163,6 +164,27 @@ struct ConfigurationRow: View {
     
     private var visibleAppConfigs: [AppConfig] {
         return Array(config.allAppConfigs.prefix(maxAppIconsToShow))
+    }
+
+    private var editModeButton: some View {
+        Button {
+            onEditConfig(config)
+        } label: {
+            Text("Edit")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule()
+                    .fill(AppTheme.Surface.control))
+                .overlay(
+                    Capsule()
+                        .stroke(AppTheme.Border.control, lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+        .help("Edit mode")
+        .accessibilityLabel("Edit mode")
     }
     
     var body: some View {
@@ -346,6 +368,11 @@ struct ConfigurationRow: View {
                     }
 
                     Spacer()
+
+                    if isHovering {
+                        editModeButton
+                            .transition(.opacity)
+                    }
                 }
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -372,6 +399,11 @@ struct ConfigurationRow: View {
         }
     }
     .opacity(config.isEnabled ? 1.0 : 0.70)
+    .onHover { hovering in
+        withAnimation(.easeInOut(duration: 0.12)) {
+            isHovering = hovering
+        }
+    }
     }
     
     private var isSelected: Bool {
