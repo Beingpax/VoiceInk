@@ -61,7 +61,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private var renderBuffer: UnsafeMutablePointer<Float32>?
     private var renderBufferSize: UInt32 = 0
 
-    // Preserve WAV writes; realtime streaming is best-effort.
+    // Keep the render callback realtime-safe; processing is best-effort under sustained overload.
     private let audioProcessingQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audioProcessing", qos: .userInitiated)
     private let audioProcessingQueueKey = DispatchSpecificKey<Void>()
     private let maxFramesPerRender: UInt32 = 4096
@@ -73,6 +73,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private let audioProcessingScheduled = ManagedAtomic(false)
     private let recordingActive = ManagedAtomic(false)
     private let renderCallbacksInFlight = ManagedAtomic<UInt32>(0)
+    private let droppedInputBuffersBackpressure = ManagedAtomic<UInt64>(0)
+    private let droppedInputBuffersCapacity = ManagedAtomic<UInt64>(0)
 
     /// Called from the recorder processing queue with raw PCM data (16-bit, 16kHz, mono) for streaming.
     private let audioChunkLock = NSLock()
@@ -185,6 +187,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
 
         drainAudioProcessingQueue()
+        logDroppedInputBufferCounters(context: "stop")
 
         closeOutputFile()
         recordingURL = nil
@@ -226,6 +229,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
         waitForRenderCallbacksToFinish()
         drainAudioProcessingQueue()
+        logDroppedInputBufferCounters(context: "device-switch")
 
         // Step 2: Uninitialize to allow reconfiguration
         status = AudioUnitUninitialize(unit)
@@ -657,6 +661,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
             audioUnit = nil
         }
         drainAudioProcessingQueue()
+        logDroppedInputBufferCounters(context: "teardown")
         isAudioUnitInitialized = false
         freeBuffers()
     }
@@ -727,10 +732,10 @@ final class CoreAudioRecorder: @unchecked Sendable {
         let inputSampleRate = deviceFormat.mSampleRate
         let requiredSamples = inNumberFrames * channelCount
 
-        ensureCaptureCapacity(frameCount: inNumberFrames, channelCount: channelCount)
-
-        guard let renderBuf = renderBuffer, requiredSamples <= renderBufferSize else {
-            logger.fault("🎙️ Unable to capture audio buffer requiring \(requiredSamples, privacy: .public) samples; render capacity is \(self.renderBufferSize, privacy: .public)")
+        guard let renderBuf = renderBuffer,
+              requiredSamples <= renderBufferSize,
+              requiredSamples <= inputBufferCapacitySamples else {
+            droppedInputBuffersCapacity.wrappingIncrement(ordering: .relaxed)
             return noErr
         }
 
@@ -815,16 +820,15 @@ final class CoreAudioRecorder: @unchecked Sendable {
         let sampleCount = frameCount * channelCount
 
         guard sampleCount <= inputBufferCapacitySamples else {
-            logger.fault("🎙️ Unable to queue audio buffer requiring \(sampleCount, privacy: .public) samples; input capacity is \(self.inputBufferCapacitySamples, privacy: .public)")
+            droppedInputBuffersCapacity.wrappingIncrement(ordering: .relaxed)
             return
         }
 
-        var writeIndex = inputWriteIndex.load(ordering: .relaxed)
-        var readIndex = inputReadIndex.load(ordering: .acquiring)
-        while writeIndex - readIndex >= UInt64(inputBufferSlots.count) {
-            waitForInputBufferSlot()
-            writeIndex = inputWriteIndex.load(ordering: .relaxed)
-            readIndex = inputReadIndex.load(ordering: .acquiring)
+        let writeIndex = inputWriteIndex.load(ordering: .relaxed)
+        let readIndex = inputReadIndex.load(ordering: .acquiring)
+        guard writeIndex - readIndex < UInt64(inputBufferSlots.count) else {
+            droppedInputBuffersBackpressure.wrappingIncrement(ordering: .relaxed)
+            return
         }
 
         let slot = inputBufferSlots[Int(writeIndex % UInt64(inputBufferSlots.count))]
@@ -883,31 +887,6 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
     }
 
-    private func ensureCaptureCapacity(frameCount: UInt32, channelCount: UInt32) {
-        let requiredSamples = frameCount * channelCount
-        guard requiredSamples > renderBufferSize || requiredSamples > inputBufferCapacitySamples else {
-            return
-        }
-
-        drainAudioProcessingQueue()
-        allocateAudioBuffers(
-            maxFrames: max(frameCount, maxFramesPerRender),
-            channelCount: channelCount,
-            inputSampleRate: deviceFormat.mSampleRate,
-            resetQueuedAudio: false
-        )
-    }
-
-    private func waitForInputBufferSlot() {
-        if DispatchQueue.getSpecific(key: audioProcessingQueueKey) != nil {
-            processQueuedInputBuffers(maxBuffers: 1)
-        } else {
-            audioProcessingQueue.sync {
-                processQueuedInputBuffers(maxBuffers: 1)
-            }
-        }
-    }
-
     private func drainAudioProcessingQueue() {
         if DispatchQueue.getSpecific(key: audioProcessingQueueKey) != nil {
             processQueuedInputBuffers()
@@ -921,6 +900,15 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private func waitForRenderCallbacksToFinish() {
         while renderCallbacksInFlight.load(ordering: .acquiring) > 0 {
             Thread.sleep(forTimeInterval: 0.001)
+        }
+    }
+
+    private func logDroppedInputBufferCounters(context: String) {
+        let backpressureDrops = droppedInputBuffersBackpressure.exchange(0, ordering: .acquiringAndReleasing)
+        let capacityDrops = droppedInputBuffersCapacity.exchange(0, ordering: .acquiringAndReleasing)
+
+        if backpressureDrops > 0 || capacityDrops > 0 {
+            logger.warning("🎙️ Dropped input buffers context=\(context, privacy: .public) backpressure=\(backpressureDrops, privacy: .public) capacity=\(capacityDrops, privacy: .public)")
         }
     }
 
