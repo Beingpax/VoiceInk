@@ -8,7 +8,10 @@ private final class AudioChunkSource: @unchecked Sendable {
     private let continuation: AsyncStream<Data>.Continuation
 
     init() {
-        let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .unbounded)
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: Data.self,
+            bufferingPolicy: .bufferingOldest(2_048)
+        )
         self.stream = stream
         self.continuation = continuation
     }
@@ -17,8 +20,15 @@ private final class AudioChunkSource: @unchecked Sendable {
         continuation.finish()
     }
 
-    func send(_ data: Data) {
-        continuation.yield(data)
+    func send(_ data: Data) -> Bool {
+        switch continuation.yield(data) {
+        case .enqueued(_):
+            return true
+        case .dropped(_), .terminated:
+            return false
+        @unknown default:
+            return false
+        }
     }
 
     func finish() {
@@ -144,10 +154,10 @@ class StreamingTranscriptionService {
         logger.notice("Streaming connected model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s")
     }
 
-    /// Buffers an audio chunk for sending. Safe to call from the audio callback thread.
+    /// Buffers an audio chunk for sending. Safe to call from the recorder processing queue.
     nonisolated func sendAudioChunk(_ data: Data) {
         metrics.recordReceived(data.count)
-        chunkSource.send(data)
+        _ = chunkSource.send(data)
     }
 
     /// Stops streaming, commits remaining audio, and returns the final transcribed text.

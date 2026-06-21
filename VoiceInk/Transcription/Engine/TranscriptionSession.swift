@@ -126,9 +126,15 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                 return text
             } catch {
                 logger.error("❌ Streaming failed, falling back to batch: \(error, privacy: .public)")
+                startupTask?.cancel()
+                startupTask = nil
+                startupTaskID = nil
                 streamingService.cancel()
             }
         } else {
+            startupTask?.cancel()
+            startupTask = nil
+            startupTaskID = nil
             streamingService.cancel()
         }
 

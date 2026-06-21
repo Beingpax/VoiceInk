@@ -171,7 +171,6 @@ class Recorder: NSObject, ObservableObject {
 
         // Capture current recorder to stop it on the serial hardware queue.
         let currentRecorder = self.recorder
-        onAudioChunk = nil
 
         await withCheckedContinuation { continuation in
             audioSetupQueue.async {
@@ -179,6 +178,7 @@ class Recorder: NSObject, ObservableObject {
                 continuation.resume()
             }
         }
+        onAudioChunk = nil
 
         smoothedValuesLock.lock()
         smoothedAverage = 0

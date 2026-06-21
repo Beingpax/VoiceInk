@@ -5,6 +5,68 @@ import SwiftData
 import AppKit
 import os
 
+private final class RealtimeAudioChunkGate: @unchecked Sendable {
+    private struct State {
+        var bufferedChunks: [Data] = []
+        var callback: ((Data) -> Void)?
+        var isActive = false
+    }
+
+    private let maxBufferedChunks = 2_048
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    func receive(_ data: Data) {
+        let callback = state.withLock { state -> ((Data) -> Void)? in
+            guard state.isActive else {
+                if state.bufferedChunks.count < maxBufferedChunks {
+                    state.bufferedChunks.append(data)
+                }
+                return nil
+            }
+            return state.callback
+        }
+        callback?(data)
+    }
+
+    func activate(_ callback: @escaping (Data) -> Void) {
+        var chunksToSend = state.withLock { state -> [Data] in
+            state.callback = callback
+            state.isActive = false
+            let chunks = state.bufferedChunks
+            state.bufferedChunks.removeAll()
+            return chunks
+        }
+
+        while true {
+            for chunk in chunksToSend {
+                callback(chunk)
+            }
+
+            chunksToSend = state.withLock { state -> [Data] in
+                guard !state.bufferedChunks.isEmpty else {
+                    state.isActive = true
+                    return []
+                }
+                let chunks = state.bufferedChunks
+                state.bufferedChunks.removeAll()
+                return chunks
+            }
+
+            if chunksToSend.isEmpty {
+                return
+            }
+        }
+    }
+
+    func reset() {
+        state.withLock { state in
+            state.bufferedChunks.removeAll()
+            state.callback = nil
+            state.isActive = false
+        }
+    }
+}
+
 @MainActor
 class VoiceInkEngine: NSObject, ObservableObject {
     private enum RecordingUseCase {
@@ -172,10 +234,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
                             self.recordedFile = permanentURL
 
-                            let pendingChunks = OSAllocatedUnfairLock(initialState: [Data]())
-                            self.recorder.onAudioChunk = { data in
-                                pendingChunks.withLock { $0.append(data) }
-                            }
+                            let realtimeAudioGate = RealtimeAudioChunkGate()
+                            self.recorder.onAudioChunk = realtimeAudioGate.receive
 
                             self.recordingState = .starting
 
@@ -245,19 +305,16 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 )
 
                                 if let realCallback {
-                                    self.recorder.onAudioChunk = realCallback
-                                    let buffered = pendingChunks.withLock { chunks -> [Data] in
-                                        let result = chunks
-                                        chunks.removeAll()
-                                        return result
-                                    }
-                                    for chunk in buffered { realCallback(chunk) }
+                                    realtimeAudioGate.activate(realCallback)
+                                } else {
+                                    realtimeAudioGate.reset()
+                                    self.recorder.onAudioChunk = nil
                                 }
                             } else {
                                 self.currentSession = nil
                                 self.currentSessionTranscriptionConfiguration = nil
                                 self.recorder.onAudioChunk = nil
-                                pendingChunks.withLock { $0.removeAll() }
+                                realtimeAudioGate.reset()
                             }
 
                             Task { @MainActor [weak self] in
