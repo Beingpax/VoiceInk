@@ -103,7 +103,7 @@ struct FluidAudioModelCardView: View {
 
                         Spacer()
 
-                        Text("\(Int(status.fractionCompleted * 100))%")
+                        Text(status.fractionCompleted, format: .percent.precision(.fractionLength(0)))
                             .fontDesign(.monospaced)
                     }
                     .font(.system(size: 11, weight: .medium))
