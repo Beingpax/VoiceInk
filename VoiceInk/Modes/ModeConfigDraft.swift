@@ -149,13 +149,16 @@ struct ModeConfigDraft {
 
         if !outputMode.usesPasteOptions {
             autoSendKey = .none
+        }
+
+        if outputMode == .respond {
             isDefault = false
         }
     }
 
     func makeConfig(mode: ConfigurationMode) -> ModeConfig {
         let savedAutoSendKey: AutoSendKey = outputMode.usesPasteOptions ? autoSendKey : .none
-        let savedIsDefault = outputMode.usesPasteOptions ? isDefault : false
+        let savedIsDefault = outputMode == .respond ? false : isDefault
         let savedCustomCommand = makeCustomCommand()
 
         switch mode {

@@ -121,7 +121,7 @@ struct ModeConfigEditorView: View {
             return
         }
 
-        if draft.isDefault {
+        if config.isDefault {
             modeManager.setAsDefault(configId: config.id, skipSave: true)
         }
 

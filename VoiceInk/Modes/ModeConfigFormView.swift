@@ -520,14 +520,16 @@ struct ModeConfigFormView: View {
                 applyOutputRules()
             }
 
-            if draft.outputMode.usesPasteOptions {
+            if draft.outputMode != .respond {
                 Toggle(isOn: $draft.isDefault) {
                     HStack(spacing: 6) {
                         Text("Set as default")
                         InfoTip("Default mode is used when no specific app or website matches are found.")
                     }
                 }
+            }
 
+            if draft.outputMode.usesPasteOptions {
                 Picker(selection: $draft.autoSendKey) {
                     ForEach(AutoSendKey.allCases, id: \.self) { key in
                         Text(key.displayName).tag(key)
