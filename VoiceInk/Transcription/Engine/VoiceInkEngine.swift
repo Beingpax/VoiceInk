@@ -5,6 +5,82 @@ import SwiftData
 import AppKit
 import os
 
+private final class RealtimeAudioChunkGate: @unchecked Sendable {
+    private struct State {
+        var bufferedChunks: [Data] = []
+        var callback: ((Data) -> Void)?
+        var isActive = false
+        var droppedChunks = 0
+    }
+
+    private let maxBufferedChunks = 2_048
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    func receive(_ data: Data) {
+        let callback = state.withLock { state -> ((Data) -> Void)? in
+            guard state.isActive else {
+                if state.bufferedChunks.count < maxBufferedChunks {
+                    state.bufferedChunks.append(data)
+                } else {
+                    state.droppedChunks += 1
+                }
+                return nil
+            }
+            return state.callback
+        }
+        callback?(data)
+    }
+
+    func activate(_ callback: @escaping (Data) -> Void) -> Int {
+        let initialState = state.withLock { state -> (chunks: [Data], droppedChunks: Int) in
+            state.callback = callback
+            state.isActive = false
+            let chunks = state.bufferedChunks
+            let droppedChunks = state.droppedChunks
+            state.bufferedChunks.removeAll()
+            state.droppedChunks = 0
+            return (chunks, droppedChunks)
+        }
+        var chunksToSend = initialState.chunks
+        var droppedChunks = initialState.droppedChunks
+
+        while true {
+            for chunk in chunksToSend {
+                callback(chunk)
+            }
+
+            let nextState = state.withLock { state -> (chunks: [Data], droppedChunks: Int, finished: Bool) in
+                let droppedChunks = state.droppedChunks
+                state.droppedChunks = 0
+                guard !state.bufferedChunks.isEmpty else {
+                    state.isActive = true
+                    return ([], droppedChunks, true)
+                }
+                let chunks = state.bufferedChunks
+                state.bufferedChunks.removeAll()
+                return (chunks, droppedChunks, false)
+            }
+            droppedChunks += nextState.droppedChunks
+
+            if nextState.finished {
+                return droppedChunks
+            }
+            chunksToSend = nextState.chunks
+        }
+    }
+
+    func reset() -> Int {
+        state.withLock { state -> Int in
+            let droppedChunks = state.droppedChunks
+            state.bufferedChunks.removeAll()
+            state.callback = nil
+            state.isActive = false
+            state.droppedChunks = 0
+            return droppedChunks
+        }
+    }
+}
+
 @MainActor
 class VoiceInkEngine: NSObject, ObservableObject {
     private enum RecordingUseCase {
@@ -172,10 +248,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
                             self.recordedFile = permanentURL
 
-                            let pendingChunks = OSAllocatedUnfairLock(initialState: [Data]())
-                            self.recorder.onAudioChunk = { data in
-                                pendingChunks.withLock { $0.append(data) }
-                            }
+                            let realtimeAudioGate = RealtimeAudioChunkGate()
+                            self.recorder.onAudioChunk = realtimeAudioGate.receive
 
                             self.recordingState = .starting
 
@@ -245,19 +319,19 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 )
 
                                 if let realCallback {
-                                    self.recorder.onAudioChunk = realCallback
-                                    let buffered = pendingChunks.withLock { chunks -> [Data] in
-                                        let result = chunks
-                                        chunks.removeAll()
-                                        return result
+                                    let droppedStartupChunks = realtimeAudioGate.activate(realCallback)
+                                    if droppedStartupChunks > 0 {
+                                        self.logger.warning("Realtime startup audio gate dropped \(droppedStartupChunks, privacy: .public) chunks before streaming became active")
                                     }
-                                    for chunk in buffered { realCallback(chunk) }
+                                } else {
+                                    _ = realtimeAudioGate.reset()
+                                    self.recorder.onAudioChunk = nil
                                 }
                             } else {
                                 self.currentSession = nil
                                 self.currentSessionTranscriptionConfiguration = nil
                                 self.recorder.onAudioChunk = nil
-                                pendingChunks.withLock { $0.removeAll() }
+                                _ = realtimeAudioGate.reset()
                             }
 
                             Task { @MainActor [weak self] in

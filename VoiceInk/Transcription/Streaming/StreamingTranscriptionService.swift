@@ -8,7 +8,10 @@ private final class AudioChunkSource: @unchecked Sendable {
     private let continuation: AsyncStream<Data>.Continuation
 
     init() {
-        let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .unbounded)
+        let (stream, continuation) = AsyncStream.makeStream(
+            of: Data.self,
+            bufferingPolicy: .bufferingOldest(2_048)
+        )
         self.stream = stream
         self.continuation = continuation
     }
@@ -17,8 +20,15 @@ private final class AudioChunkSource: @unchecked Sendable {
         continuation.finish()
     }
 
-    func send(_ data: Data) {
-        continuation.yield(data)
+    func send(_ data: Data) -> Bool {
+        switch continuation.yield(data) {
+        case .enqueued(_):
+            return true
+        case .dropped(_), .terminated:
+            return false
+        @unknown default:
+            return false
+        }
     }
 
     func finish() {
@@ -32,6 +42,8 @@ private final class StreamingMetrics: @unchecked Sendable {
     private var receivedBytes = 0
     private var sentChunks = 0
     private var sentBytes = 0
+    private var droppedChunks = 0
+    private var droppedBytes = 0
 
     func reset() {
         lock.lock()
@@ -39,6 +51,8 @@ private final class StreamingMetrics: @unchecked Sendable {
         receivedBytes = 0
         sentChunks = 0
         sentBytes = 0
+        droppedChunks = 0
+        droppedBytes = 0
         lock.unlock()
     }
 
@@ -56,10 +70,24 @@ private final class StreamingMetrics: @unchecked Sendable {
         lock.unlock()
     }
 
-    func snapshot() -> (receivedChunks: Int, receivedBytes: Int, sentChunks: Int, sentBytes: Int) {
+    func recordDropped(_ byteCount: Int) {
+        lock.lock()
+        droppedChunks += 1
+        droppedBytes += byteCount
+        lock.unlock()
+    }
+
+    func snapshot() -> (
+        receivedChunks: Int,
+        receivedBytes: Int,
+        sentChunks: Int,
+        sentBytes: Int,
+        droppedChunks: Int,
+        droppedBytes: Int
+    ) {
         lock.lock()
         defer { lock.unlock() }
-        return (receivedChunks, receivedBytes, sentChunks, sentBytes)
+        return (receivedChunks, receivedBytes, sentChunks, sentBytes, droppedChunks, droppedBytes)
     }
 }
 
@@ -144,10 +172,12 @@ class StreamingTranscriptionService {
         logger.notice("Streaming connected model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s")
     }
 
-    /// Buffers an audio chunk for sending. Safe to call from the audio callback thread.
+    /// Buffers an audio chunk for sending. Safe to call from the recorder processing queue.
     nonisolated func sendAudioChunk(_ data: Data) {
         metrics.recordReceived(data.count)
-        chunkSource.send(data)
+        if !chunkSource.send(data) {
+            metrics.recordDropped(data.count)
+        }
     }
 
     /// Stops streaming, commits remaining audio, and returns the final transcribed text.
@@ -159,7 +189,7 @@ class StreamingTranscriptionService {
         state = .committing
         stopStartedAt = Date()
         let beforeDrain = metrics.snapshot()
-        logger.notice("Streaming stop requested receivedChunks=\(beforeDrain.receivedChunks, privacy: .public) sentChunks=\(beforeDrain.sentChunks, privacy: .public) receivedBytes=\(beforeDrain.receivedBytes, privacy: .public) sentBytes=\(beforeDrain.sentBytes, privacy: .public)")
+        logger.notice("Streaming stop requested receivedChunks=\(beforeDrain.receivedChunks, privacy: .public) sentChunks=\(beforeDrain.sentChunks, privacy: .public) droppedChunks=\(beforeDrain.droppedChunks, privacy: .public) receivedBytes=\(beforeDrain.receivedBytes, privacy: .public) sentBytes=\(beforeDrain.sentBytes, privacy: .public) droppedBytes=\(beforeDrain.droppedBytes, privacy: .public)")
 
         // Finish the chunk source so the send loop drains remaining chunks and exits naturally.
         await drainRemainingChunks()
@@ -269,7 +299,7 @@ class StreamingTranscriptionService {
         await sendTask?.value
         sendTask = nil
         let snapshot = metrics.snapshot()
-        logger.notice("Streaming drain finished elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s receivedChunks=\(snapshot.receivedChunks, privacy: .public) sentChunks=\(snapshot.sentChunks, privacy: .public) receivedBytes=\(snapshot.receivedBytes, privacy: .public) sentBytes=\(snapshot.sentBytes, privacy: .public)")
+        logger.notice("Streaming drain finished elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s receivedChunks=\(snapshot.receivedChunks, privacy: .public) sentChunks=\(snapshot.sentChunks, privacy: .public) droppedChunks=\(snapshot.droppedChunks, privacy: .public) receivedBytes=\(snapshot.receivedBytes, privacy: .public) sentBytes=\(snapshot.sentBytes, privacy: .public) droppedBytes=\(snapshot.droppedBytes, privacy: .public)")
     }
 
     /// Consumes transcription events throughout the session, accumulating committed segments.

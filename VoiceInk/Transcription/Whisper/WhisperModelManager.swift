@@ -445,7 +445,7 @@ struct DownloadProgressView: View {
 
                 Spacer()
 
-                Text("\(Int(totalProgress * 100))%")
+                Text(totalProgress, format: .percent.precision(.fractionLength(0)))
                     .fontDesign(.monospaced)
             }
                 .font(.system(size: 12, weight: .medium))

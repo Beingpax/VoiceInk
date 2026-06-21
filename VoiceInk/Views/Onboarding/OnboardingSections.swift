@@ -56,16 +56,16 @@ struct OnboardingProgressBadge: View {
     let currentStep: Int
     let totalSteps: Int
 
-    private var percent: Int {
+    private var progress: Double {
         guard totalSteps > 0 else { return 0 }
-        return Int((Double(currentStep) / Double(totalSteps) * 100).rounded())
+        return Double(currentStep) / Double(totalSteps)
     }
 
     var body: some View {
         SegmentedProgressRing(
             totalSegments: totalSteps,
             filledSegments: currentStep,
-            percent: percent
+            progress: progress
         )
     }
 }
@@ -238,7 +238,7 @@ struct OnboardingStepScreen<Content: View, BottomBar: View>: View {
 private struct SegmentedProgressRing: View {
     let totalSegments: Int
     let filledSegments: Int
-    let percent: Int
+    let progress: Double
 
     private let segmentGap: Double = 0.035
     private let lineWidth: CGFloat = 4
@@ -255,7 +255,7 @@ private struct SegmentedProgressRing: View {
                     .rotationEffect(.degrees(-90))
             }
 
-            Text("\(percent)%")
+            Text(progress, format: .percent.precision(.fractionLength(0)))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(AppTheme.Text.primary)
         }
