@@ -312,8 +312,8 @@ struct VoiceInkApp: App {
                         .environmentObject(fluidAudioModelManager)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
-                        .frame(width: 950)
-                        .frame(minHeight: 730)
+                        .frame(width: AppWindowLayout.width)
+                        .frame(minHeight: AppWindowLayout.minimumHeight)
                         .background(WindowAccessor { window in
                             WindowManager.shared.configureWindow(window)
                         })
@@ -322,7 +322,7 @@ struct VoiceInkApp: App {
             .confettiCelebrationPresenter()
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 950, height: 730)
+        .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
         .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) { }

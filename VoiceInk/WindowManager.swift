@@ -1,6 +1,11 @@
 import SwiftUI
 import AppKit
 
+enum AppWindowLayout {
+    static let width: CGFloat = 950
+    static let minimumHeight: CGFloat = 730
+}
+
 class WindowManager: NSObject {
     static let shared = WindowManager()
 
@@ -32,9 +37,11 @@ class WindowManager: NSObject {
         window.level = .normal
         window.isOpaque = false
         window.isMovableByWindowBackground = false
-        window.minSize = NSSize(width: 0, height: 0)
+        window.minSize = NSSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
+        window.maxSize = NSSize(width: AppWindowLayout.width, height: CGFloat.greatestFiniteMagnitude)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
+        enforceMainWindowFrame(on: window)
         registerMainWindowIfNeeded(window)
         window.orderFrontRegardless()
     }
@@ -85,6 +92,18 @@ class WindowManager: NSObject {
             window.center()
         }
         didApplyInitialPlacement = true
+    }
+
+    private func enforceMainWindowFrame(on window: NSWindow) {
+        let currentFrame = window.frame
+        let height = max(currentFrame.height, AppWindowLayout.minimumHeight)
+        let frame = NSRect(
+            x: currentFrame.midX - (AppWindowLayout.width / 2),
+            y: currentFrame.maxY - height,
+            width: AppWindowLayout.width,
+            height: height
+        )
+        window.setFrame(frame, display: true)
     }
     
     private func resolveMainWindow() -> NSWindow? {
