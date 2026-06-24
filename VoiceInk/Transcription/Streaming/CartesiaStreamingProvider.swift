@@ -2,12 +2,14 @@ import Foundation
 import SwiftData
 import LLMkit
 
-/// Cartesia Ink streaming provider wrapping `LLMkit.CartesiaStreamingClient`.
+/// Cartesia Ink 2 streaming provider wrapping `LLMkit.CartesiaStreamingClient`.
 final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
 
     private let client = LLMkit.CartesiaStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
+    private let finalizationLock = NSLock()
+    private var didRequestFinalization = false
     private let modelContext: ModelContext
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
@@ -24,16 +26,17 @@ final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
         eventsContinuation?.finish()
     }
 
-    func connect(model: any TranscriptionModel, language: String?) async throws {
+    func connect(model: any TranscriptionModel, language _: String?) async throws {
         guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "Cartesia"), !apiKey.isEmpty else {
             throw StreamingTranscriptionError.missingAPIKey
         }
 
         forwardingTask?.cancel()
+        setFinalizationRequested(false)
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: model.name, language: language, customVocabulary: [])
+            try await client.connect(apiKey: apiKey, model: model.name, language: nil, customVocabulary: [])
         } catch {
             forwardingTask?.cancel()
             forwardingTask = nil
@@ -50,6 +53,7 @@ final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
     }
 
     func commit() async throws {
+        setFinalizationRequested(true)
         do {
             try await client.commit()
         } catch {
@@ -69,6 +73,12 @@ final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
     private func startEventForwarding() {
         forwardingTask = Task { [weak self] in
             guard let self else { return }
+            defer {
+                if self.isFinalizationRequested {
+                    self.eventsContinuation?.yield(.committed(text: ""))
+                }
+                self.eventsContinuation?.finish()
+            }
             for await event in self.client.transcriptionEvents {
                 switch event {
                 case .sessionStarted:
@@ -82,6 +92,18 @@ final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
         }
+    }
+
+    private var isFinalizationRequested: Bool {
+        finalizationLock.lock()
+        defer { finalizationLock.unlock() }
+        return didRequestFinalization
+    }
+
+    private func setFinalizationRequested(_ value: Bool) {
+        finalizationLock.lock()
+        didRequestFinalization = value
+        finalizationLock.unlock()
     }
 
     private func mapError(_ error: Error) -> Error {
