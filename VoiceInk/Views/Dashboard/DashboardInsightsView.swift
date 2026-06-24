@@ -59,7 +59,7 @@ struct DashboardInsightsView: View {
                     action: onBack
                 )
 
-                Picker("", selection: $selectedPeriod) {
+                Picker("Insights period", selection: $selectedPeriod) {
                     ForEach(DashboardProductivityPeriod.allCases) { period in
                         Text(period.pickerTitle).tag(period)
                     }

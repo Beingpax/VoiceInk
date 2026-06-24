@@ -32,7 +32,10 @@ struct ModelPerformancePanel: View {
             Text("Model Performance")
                 .font(.headline.weight(.semibold))
             Spacer()
-            Picker("", selection: Binding(get: { filter }, set: { filterRaw = $0.modelPerformanceStorageValue })) {
+            Picker(
+                "Model performance period",
+                selection: Binding(get: { filter }, set: { filterRaw = $0.modelPerformanceStorageValue })
+            ) {
                 ForEach(DashboardProductivityPeriod.allCases) { f in
                     Text(f.pickerTitle).tag(f)
                 }

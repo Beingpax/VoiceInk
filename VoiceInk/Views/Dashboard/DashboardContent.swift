@@ -403,9 +403,7 @@ struct DashboardContent: View {
     private var heroSection: some View {
         DashboardHeroCard(
             isLocked: shouldShowLockedInsightsState,
-            headlinePrefix: momentumHeadlinePrefix,
-            highlightedValue: momentumHighlightedValue,
-            headlineSuffix: momentumHeadlineSuffix,
+            headline: momentumHeadline,
             subtext: momentumSubtext,
             actionTitle: insightsActionTitle,
             actionIcon: insightsActionIcon,
@@ -598,32 +596,16 @@ struct DashboardContent: View {
         return String(localized: "Your data is not ready yet. Keep the momentum going.")
     }
 
-    private var momentumHeadlinePrefix: String {
+    private var momentumHeadline: DashboardHeroHeadline {
         guard hasLoadedStatsSnapshot else {
-            return String(localized: "Calculating ")
+            return .calculatingProgress
         }
 
         guard statsSummary.totalCount > 0 else {
-            return String(localized: "Start recording to build ")
+            return .startRecordingProgress
         }
 
-        return String(localized: "You saved ")
-    }
-
-    private var momentumHighlightedValue: String {
-        guard hasLoadedStatsSnapshot, statsSummary.totalCount > 0 else {
-            return String(localized: "VoiceInk progress")
-        }
-
-        return formattedAllTimeSaved
-    }
-
-    private var momentumHeadlineSuffix: String {
-        guard hasLoadedStatsSnapshot, statsSummary.totalCount > 0 else {
-            return "."
-        }
-
-        return String(localized: " with VoiceInk.")
+        return .savedTime(formattedAllTimeSaved)
     }
 
     private var momentumSubtext: String {

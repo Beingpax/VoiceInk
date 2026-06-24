@@ -41,7 +41,6 @@ class WindowManager: NSObject {
         window.maxSize = NSSize(width: AppWindowLayout.width, height: CGFloat.greatestFiniteMagnitude)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
-        enforceMainWindowFrame(on: window)
         registerMainWindowIfNeeded(window)
         window.orderFrontRegardless()
     }
@@ -88,17 +87,25 @@ class WindowManager: NSObject {
     private func applyInitialPlacementIfNeeded(to window: NSWindow) {
         guard !didApplyInitialPlacement else { return }
         // Attempt to restore previous frame if one exists; otherwise fall back to a centered placement
-        if !window.setFrameUsingName(Self.mainWindowAutosaveName) {
+        if window.setFrameUsingName(Self.mainWindowAutosaveName) {
+            enforceMainWindowFrameIfNeeded(on: window, preserveRestoredOrigin: true)
+        } else {
+            enforceMainWindowFrameIfNeeded(on: window, preserveRestoredOrigin: false)
             window.center()
         }
         didApplyInitialPlacement = true
     }
 
-    private func enforceMainWindowFrame(on window: NSWindow) {
+    private func enforceMainWindowFrameIfNeeded(on window: NSWindow, preserveRestoredOrigin: Bool) {
         let currentFrame = window.frame
+        guard currentFrame.width != AppWindowLayout.width || currentFrame.height < AppWindowLayout.minimumHeight else {
+            return
+        }
+
         let height = max(currentFrame.height, AppWindowLayout.minimumHeight)
+        let x = preserveRestoredOrigin ? currentFrame.origin.x : currentFrame.midX - (AppWindowLayout.width / 2)
         let frame = NSRect(
-            x: currentFrame.midX - (AppWindowLayout.width / 2),
+            x: x,
             y: currentFrame.maxY - height,
             width: AppWindowLayout.width,
             height: height

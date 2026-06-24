@@ -1,10 +1,18 @@
+import Foundation
 import SwiftUI
 
+enum DashboardHeroHeadline {
+    case calculatingProgress
+    case startRecordingProgress
+    case savedTime(String)
+}
+
 struct DashboardHeroCard: View {
+    private static let headlineFont: Font = .system(size: 23, weight: .bold, design: .rounded)
+    private static let highlightedHeadlineFont: Font = .system(size: 30, weight: .black, design: .rounded)
+
     let isLocked: Bool
-    let headlinePrefix: String
-    let highlightedValue: String
-    let headlineSuffix: String
+    let headline: DashboardHeroHeadline
     let subtext: String
     let actionTitle: LocalizedStringKey
     let actionIcon: String
@@ -39,7 +47,7 @@ struct DashboardHeroCard: View {
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 18)
-        .frame(maxWidth: .infinity, minHeight: 160, maxHeight: 160, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 160, alignment: .leading)
         .background(DashboardImpactBackground(isLocked: isLocked))
         .clipShape(RoundedRectangle(cornerRadius: DashboardLayout.cardCornerRadius, style: .continuous))
     }
@@ -47,29 +55,44 @@ struct DashboardHeroCard: View {
     private var heroCopy: some View {
         VStack(alignment: .leading, spacing: 10) {
             headlineText
-                .lineLimit(2)
-                .minimumScaleFactor(0.82)
                 .frame(maxWidth: 720, alignment: .leading)
 
             Text(subtext)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(DashboardMomentumBackground.subtext)
-                .lineLimit(2)
-                .minimumScaleFactor(0.86)
                 .frame(maxWidth: 620, alignment: .leading)
         }
     }
 
     private var headlineText: Text {
-        Text(headlinePrefix)
-            .font(.system(size: 23, weight: .bold, design: .rounded))
-            .foregroundColor(DashboardMomentumBackground.headline) +
-        Text(highlightedValue)
-            .font(.system(size: 30, weight: .black, design: .rounded))
-            .foregroundColor(DashboardMomentumBackground.accent) +
-        Text(headlineSuffix)
-            .font(.system(size: 23, weight: .bold, design: .rounded))
-            .foregroundColor(DashboardMomentumBackground.headline)
+        Text(styledHeadline)
+    }
+
+    private var styledHeadline: AttributedString {
+        let highlightedValue: String
+        var text: AttributedString
+
+        switch headline {
+        case .calculatingProgress:
+            highlightedValue = String(localized: "VoiceInk progress")
+            text = AttributedString(localized: "Calculating \(highlightedValue).")
+        case .startRecordingProgress:
+            highlightedValue = String(localized: "VoiceInk progress")
+            text = AttributedString(localized: "Start recording to build \(highlightedValue).")
+        case .savedTime(let value):
+            highlightedValue = value
+            text = AttributedString(localized: "You have saved \(highlightedValue) with VoiceInk")
+        }
+
+        text.font = Self.headlineFont
+        text.foregroundColor = DashboardMomentumBackground.headline
+
+        if let highlightedRange = text.range(of: highlightedValue) {
+            text[highlightedRange].font = Self.highlightedHeadlineFont
+            text[highlightedRange].foregroundColor = DashboardMomentumBackground.accent
+        }
+
+        return text
     }
 
     private var lockedInsightsPrompt: some View {
@@ -87,8 +110,6 @@ struct DashboardHeroCard: View {
             Text("Continue using VoiceInk to unlock stats and insights.")
                 .font(.system(size: 26, weight: .black, design: .rounded))
                 .foregroundStyle(DashboardMomentumBackground.headline)
-                .lineLimit(2)
-                .minimumScaleFactor(0.74)
                 .frame(maxWidth: 540, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -106,6 +127,7 @@ private struct DashboardMomentumActionLabel: View {
     var body: some View {
         HStack(spacing: 9) {
             Text(title)
+                .lineLimit(2)
 
             Image(systemName: icon)
                 .font(.system(size: 13, weight: .semibold))
@@ -113,7 +135,7 @@ private struct DashboardMomentumActionLabel: View {
         .font(.system(size: 13, weight: .semibold))
         .foregroundStyle(foregroundColor)
         .padding(.horizontal, 18)
-        .frame(height: 40)
+        .frame(minHeight: 40)
         .background(backgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
         .overlay(

@@ -16,10 +16,17 @@ enum Formatters {
             return "\(value)"
         }
 
-        let divisor: Double = value >= 1_000_000 ? 1_000_000 : 1000
-        let suffix = value >= 1_000_000 ? "M" : "K"
+        var divisor: Double = value >= 1_000_000 ? 1_000_000 : 1000
+        var suffix = value >= 1_000_000 ? "M" : "K"
         let compactValue = Double(value) / divisor
-        let roundedValue = (compactValue * 10).rounded() / 10
+        var roundedValue = (compactValue * 10).rounded() / 10
+
+        if suffix == "K", roundedValue >= 1000 {
+            divisor = 1_000_000
+            suffix = "M"
+            roundedValue = ((Double(value) / divisor) * 10).rounded() / 10
+        }
+
         if roundedValue.truncatingRemainder(dividingBy: 1) == 0 {
             return "\(Int(roundedValue))\(suffix)"
         }
@@ -89,18 +96,21 @@ enum Formatters {
             return fallback
         }
 
-        if interval < 60 {
-            return String(format: "%.1f sec", interval)
+        let roundedTenths = Int((interval * 10).rounded())
+
+        if roundedTenths < 600 {
+            return String(format: "%.1f sec", Double(roundedTenths) / 10)
         }
 
-        if interval < 3600 {
-            let minutes = Int(interval / 60)
-            let seconds = interval.truncatingRemainder(dividingBy: 60)
+        if roundedTenths < 36_000 {
+            let minutes = roundedTenths / 600
+            let seconds = Double(roundedTenths % 600) / 10
             return "\(minutes)m \(String(format: "%.1f", seconds))s"
         }
 
-        let hours = Int(interval / 3600)
-        let minutes = Int(interval.truncatingRemainder(dividingBy: 3600) / 60)
+        let totalMinutes = roundedTenths / 600
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
         return "\(hours)h \(minutes)m"
     }
 }
