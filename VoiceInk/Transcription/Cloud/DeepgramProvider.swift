@@ -7,7 +7,8 @@ struct DeepgramProvider: CloudProvider {
     let providerKey: String = "Deepgram"
     let languageCodes: [String]? = [
         "ar", "be", "bg", "bn", "bs", "ca", "cs", "da", "de", "el",
-        "en", "es", "et", "fa", "fi", "fr", "he", "hi", "hr", "hu",
+        "en", "en-US", "en-AU", "en-GB", "en-IN", "en-NZ",
+        "es", "et", "fa", "fi", "fr", "he", "hi", "hr", "hu",
         "id", "it", "ja", "kn", "ko", "lt", "lv", "mk", "mr", "ms",
         "nl", "no", "pl", "pt", "ro", "ru", "sk", "sl", "sr", "sv",
         "ta", "te", "th", "tl", "tr", "uk", "ur", "vi", "zh"
