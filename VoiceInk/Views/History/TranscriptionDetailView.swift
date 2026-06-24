@@ -102,10 +102,7 @@ private struct MessageBubble: View {
                             )
                     }
                 }
-                .overlay(alignment: .bottomTrailing) {
-                    CopyIconButton(textToCopy: text)
-                        .padding(8)
-                }
+                .hoverCopyButton(textToCopy: text)
             }
 
             if !isEnhanced { Spacer(minLength: 60) }

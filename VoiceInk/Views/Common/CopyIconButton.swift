@@ -33,3 +33,47 @@ struct CopyIconButton: View {
         }
     }
 }
+
+extension View {
+    func hoverCopyButton(
+        textToCopy: String,
+        accessibilityLabel: LocalizedStringResource = "Copy",
+        alignment: Alignment = .bottomTrailing,
+        padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 8)
+    ) -> some View {
+        modifier(
+            HoverCopyButtonModifier(
+                textToCopy: textToCopy,
+                accessibilityLabel: accessibilityLabel,
+                alignment: alignment,
+                padding: padding
+            )
+        )
+    }
+}
+
+private struct HoverCopyButtonModifier: ViewModifier {
+    let textToCopy: String
+    let accessibilityLabel: LocalizedStringResource
+    let alignment: Alignment
+    let padding: EdgeInsets
+
+    @State private var isHovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .overlay(alignment: alignment) {
+                if isHovering {
+                    CopyIconButton(textToCopy: textToCopy, accessibilityLabel: accessibilityLabel)
+                        .padding(padding)
+                        .transition(.opacity)
+                }
+            }
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isHovering = hovering
+                }
+            }
+    }
+}

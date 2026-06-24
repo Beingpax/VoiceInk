@@ -550,10 +550,7 @@ private struct HistoryCardRow: View {
                 )
             }
             .frame(maxHeight: 350)
-            .overlay(alignment: .bottomTrailing) {
-                CopyIconButton(textToCopy: displayText)
-                    .padding(8)
-            }
+            .hoverCopyButton(textToCopy: displayText)
 
             if hasAudioFile, let urlString = transcription.audioFileURL,
                let url = URL(string: urlString) {

@@ -115,12 +115,13 @@ struct TranscriptionInfoPanel: View {
                     }
                 }
             } header: {
-                HStack {
-                    Text("AI Request")
-                    Spacer()
-                    CopyIconButton(textToCopy: fullRequestText)
-                }
+                Text("AI Request")
             }
+            .hoverCopyButton(
+                textToCopy: fullRequestText,
+                alignment: .topTrailing,
+                padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+            )
         }
     }
 
