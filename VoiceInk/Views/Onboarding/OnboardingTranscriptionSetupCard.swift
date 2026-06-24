@@ -334,7 +334,11 @@ struct OnboardingTranscriptionSetupCard: View {
 
     private func refreshVerificationState() {
         verificationSucceeded = isSelectedProviderConnected
-        verificationMessage = nil
+        verificationMessage = verificationSucceeded
+            ? selectedProvider.map {
+                String(format: String(localized: "%@ connection verified."), $0.providerKey)
+            }
+            : nil
         verificationDetailMessage = nil
 
         if verificationSucceeded {

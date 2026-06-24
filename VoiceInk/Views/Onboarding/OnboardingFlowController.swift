@@ -332,6 +332,8 @@ final class OnboardingFlowController {
     }
 
     func refreshTranscriptionSetupVerification() {
+        ensureDefaultOnboardingTranscriptionProvider()
+
         guard let provider = coordinator.selectedOnboardingTranscriptionProvider else {
             coordinator.isSelectedTranscriptionProviderVerified = false
             return

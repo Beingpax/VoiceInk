@@ -293,7 +293,7 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     var selectedOnboardingTranscriptionLanguage: String {
-        guard let model = selectedOnboardingTranscriptionModel else { return "en" }
+        guard let model = selectedOnboardingTranscriptionModel else { return "auto" }
         return TranscriptionLanguageSupport.validLanguageOrFallback("auto", for: model)
     }
 
