@@ -310,6 +310,7 @@ struct VoiceInkApp: App {
                 } else {
                     OnboardingView(hasCompletedOnboardingV2: $hasCompletedOnboardingV2)
                         .environmentObject(fluidAudioModelManager)
+                        .environmentObject(transcriptionModelManager)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
                         .frame(width: AppWindowLayout.width)

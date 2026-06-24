@@ -4,6 +4,7 @@ import AppKit
 struct OnboardingView: View {
     @Binding var hasCompletedOnboardingV2: Bool
     @EnvironmentObject var fluidAudioModelManager: FluidAudioModelManager
+    @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @EnvironmentObject var aiService: AIService
     @EnvironmentObject var enhancementService: AIEnhancementService
     @StateObject private var coordinator = OnboardingCoordinator()
@@ -14,6 +15,9 @@ struct OnboardingView: View {
     var body: some View {
         let isTranscriptionModelDownloaded = coordinator.isTranscriptionModelDownloaded(
             using: fluidAudioModelManager
+        )
+        let isTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(
+            isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
         )
 
         ZStack(alignment: .bottomLeading) {
@@ -50,24 +54,30 @@ struct OnboardingView: View {
                 case .model:
                     OnboardingModelScreen(
                         contentMaxWidth: contentMaxWidth,
-                        model: coordinator.requiredTranscriptionModel,
-                        isDownloaded: isTranscriptionModelDownloaded,
-                        isDownloading: coordinator.requiredTranscriptionModel.map {
+                        localModel: coordinator.requiredTranscriptionModel,
+                        setupKind: coordinator.transcriptionSetupKind,
+                        providerOptions: coordinator.onboardingTranscriptionProviderOptions,
+                        selectedProviderKey: coordinator.selectedOnboardingTranscriptionProviderKeyBinding(),
+                        isLocalDownloaded: isTranscriptionModelDownloaded,
+                        isLocalDownloading: coordinator.requiredTranscriptionModel.map {
                             fluidAudioModelManager.isFluidAudioModelDownloading($0)
                         } ?? false,
-                        downloadStatus: coordinator.requiredTranscriptionModel.flatMap {
+                        localDownloadStatus: coordinator.requiredTranscriptionModel.flatMap {
                             fluidAudioModelManager.downloadStatus(for: $0)
                         },
+                        isSetupReady: isTranscriptionSetupReady,
+                        onSelectSetupKind: coordinator.flow.selectOnboardingTranscriptionSetup,
                         onDownload: {
                             coordinator.flow.downloadTranscriptionModel(
                                 $0,
                                 modelManager: fluidAudioModelManager
                             )
                         },
+                        onVerificationChanged: coordinator.flow.refreshTranscriptionSetupVerification,
                         onBack: coordinator.flow.goToMicrophoneStep,
                         onContinue: {
                             coordinator.flow.goToAPIStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                isTranscriptionSetupReady: isTranscriptionSetupReady,
                                 aiService: aiService
                             )
                         }
@@ -81,21 +91,21 @@ struct OnboardingView: View {
                         selectedProvider: coordinator.selectedOnboardingProviderBinding(aiService: aiService),
                         isSelectedProviderVerified: coordinator.isSelectedAPIProviderVerified,
                         canContinue: coordinator.isReadyForExperience(
-                            isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                            isTranscriptionSetupReady: isTranscriptionSetupReady
                         ),
                         isShowingSkipWarning: $coordinator.isShowingSkipAPISetupWarning,
                         onVerificationChanged: coordinator.flow.refreshAPIVerification,
                         onBack: coordinator.flow.goBackToModelStep,
                         onContinue: {
                             coordinator.flow.goToExperienceStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                isTranscriptionSetupReady: isTranscriptionSetupReady,
                                 enhancementService: enhancementService
                             )
                         },
                         onRequestSkip: coordinator.flow.requestSkipAPISetup,
                         onConfirmSkip: {
                             coordinator.flow.skipAPISetupAndContinue(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                isTranscriptionSetupReady: isTranscriptionSetupReady,
                                 enhancementService: enhancementService
                             )
                         }
@@ -110,7 +120,7 @@ struct OnboardingView: View {
                         text: coordinator.currentExperienceText,
                         isLastStep: coordinator.isLastExperienceStep,
                         isReady: coordinator.isCurrentExperienceReady(
-                            isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                            isTranscriptionSetupReady: isTranscriptionSetupReady
                         ),
                         isComplete: coordinator.isCurrentExperienceComplete,
                         onBackFromIntro: {
@@ -122,7 +132,7 @@ struct OnboardingView: View {
                         },
                         onAdvance: {
                             coordinator.flow.advanceExperienceStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                isTranscriptionSetupReady: isTranscriptionSetupReady,
                                 enhancementService: enhancementService
                             )
                         },
@@ -152,13 +162,13 @@ struct OnboardingView: View {
                         contentMaxWidth: contentMaxWidth,
                         onBack: {
                             coordinator.flow.goToPreviousTrustStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                                isTranscriptionSetupReady: isTranscriptionSetupReady,
                                 enhancementService: enhancementService
                             )
                         },
                         onContinue: {
                             coordinator.flow.goToLicenseStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                                isTranscriptionSetupReady: isTranscriptionSetupReady
                             )
                         }
                     )
@@ -168,7 +178,7 @@ struct OnboardingView: View {
                         licenseViewModel: coordinator.licenseViewModel,
                         onBack: {
                             coordinator.flow.goToPreviousLicenseStep(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                                isTranscriptionSetupReady: isTranscriptionSetupReady
                             )
                         },
                         onPurchase: {
@@ -176,7 +186,7 @@ struct OnboardingView: View {
                         },
                         onStartTrial: {
                             coordinator.flow.startLicenseTrial(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                                isTranscriptionSetupReady: isTranscriptionSetupReady
                             ) {
                                 hasCompletedOnboardingV2 = true
                             }
@@ -184,7 +194,7 @@ struct OnboardingView: View {
                         onActivate: coordinator.flow.activateLicense,
                         onFinish: {
                             coordinator.flow.completeOnboarding(
-                                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+                                isTranscriptionSetupReady: isTranscriptionSetupReady
                             ) {
                                 hasCompletedOnboardingV2 = true
                             }
@@ -225,12 +235,17 @@ struct OnboardingView: View {
             Text("It is recommended that you complete the onboarding.")
         }
         .onAppear {
+            coordinator.flow.ensureDefaultOnboardingTranscriptionProvider()
+            coordinator.flow.refreshTranscriptionSetupVerification()
             coordinator.flow.ensureDefaultOnboardingProvider()
             coordinator.permissions.refreshPermissionStatuses()
             coordinator.flow.refreshAPIVerification()
             coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
+            let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(
+                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+            )
             coordinator.flow.reconcileStage(
-                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                isTranscriptionSetupReady: refreshedTranscriptionSetupReady,
                 enhancementService: enhancementService
             )
         }
@@ -239,13 +254,18 @@ struct OnboardingView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             coordinator.permissions.refreshPermissionStatuses()
+            coordinator.flow.refreshTranscriptionSetupVerification()
+            let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(
+                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded
+            )
             coordinator.flow.reconcileStage(
-                isTranscriptionModelDownloaded: isTranscriptionModelDownloaded,
+                isTranscriptionSetupReady: refreshedTranscriptionSetupReady,
                 enhancementService: enhancementService
             )
         }
         .onReceive(NotificationCenter.default.publisher(for: .aiProviderKeyChanged)) { _ in
             coordinator.flow.refreshAPIVerification()
+            coordinator.flow.refreshTranscriptionSetupVerification()
         }
         .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
             guard let action = notification.object as? ShortcutAction,

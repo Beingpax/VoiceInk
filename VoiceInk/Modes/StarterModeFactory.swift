@@ -2,12 +2,15 @@ import AppKit
 import Foundation
 
 enum StarterModeFactory {
-    static let transcriptionModelName = "parakeet-tdt-0.6b-v3"
+    static let defaultTranscriptionModelName = "parakeet-tdt-0.6b-v3"
 
     static func install(
         kinds: [StarterModeKind],
         provider: AIProvider,
         modelName: String?,
+        transcriptionModelName: String = defaultTranscriptionModelName,
+        isRealtimeTranscriptionEnabled: Bool = true,
+        selectedLanguage: String = "auto",
         installedApps: [InstalledAppInfo]? = nil
     ) {
         let manager = ModeManager.shared
@@ -23,6 +26,9 @@ enum StarterModeFactory {
                     from: $0,
                     provider: provider,
                     modelName: modelName,
+                    transcriptionModelName: transcriptionModelName,
+                    isRealtimeTranscriptionEnabled: isRealtimeTranscriptionEnabled,
+                    selectedLanguage: selectedLanguage,
                     installedApps: availableInstalledApps
                 )
             }
@@ -60,6 +66,9 @@ enum StarterModeFactory {
         from template: StarterModeTemplate,
         provider: AIProvider,
         modelName: String?,
+        transcriptionModelName: String,
+        isRealtimeTranscriptionEnabled: Bool,
+        selectedLanguage: String,
         installedApps: [InstalledAppInfo]
     ) -> ModeConfig {
         ModeConfig(
@@ -72,8 +81,8 @@ enum StarterModeFactory {
             isAIEnhancementEnabled: template.usesAIEnhancement,
             selectedPrompt: template.promptId?.uuidString,
             selectedTranscriptionModelName: transcriptionModelName,
-            isRealtimeTranscriptionEnabled: true,
-            selectedLanguage: "en",
+            isRealtimeTranscriptionEnabled: isRealtimeTranscriptionEnabled,
+            selectedLanguage: selectedLanguage,
             useClipboardContext: template.kind == .email,
             useSelectedTextContext: template.useSelectedTextContext,
             useScreenCapture: template.useScreenCapture,
