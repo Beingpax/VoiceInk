@@ -5,41 +5,15 @@ private func localizedSessionCount(_ count: Int) -> String {
     String(localized: "\(count) sessions")
 }
 
-// MARK: - Time filter
-
-enum TimeFilter: String, CaseIterable, Identifiable {
-    case last7Days  = "Last 7 Days"
-    case last30Days = "Last 30 Days"
-    case thisYear   = "This Year"
-    case allTime    = "All Time"
-
-    var id: String { rawValue }
-
-    var predicate: Predicate<SessionMetric>? {
-        let now = Date()
-        switch self {
-        case .allTime:
-            return nil
-        case .last7Days:
-            let start = now.addingTimeInterval(-7 * 24 * 3600)
-            return #Predicate<SessionMetric> { $0.timestamp >= start }
-        case .last30Days:
-            let start = now.addingTimeInterval(-30 * 24 * 3600)
-            return #Predicate<SessionMetric> { $0.timestamp >= start }
-        case .thisYear:
-            guard let start = Calendar.current.dateInterval(of: .year, for: now)?.start else { return nil }
-            return #Predicate<SessionMetric> { $0.timestamp >= start }
-        }
-    }
-}
-
 // MARK: - Panel shell (owns filter state)
 
 struct ModelPerformancePanel: View {
-    @AppStorage("modelPerfPanelFilter") private var filterRaw: String = TimeFilter.last7Days.rawValue
+    @AppStorage(DashboardProductivityPeriod.modelPerformanceStorageKey) private var filterRaw: String = DashboardProductivityPeriod.lastSevenDays.modelPerformanceStorageValue
     let onClose: () -> Void
 
-    private var filter: TimeFilter { TimeFilter(rawValue: filterRaw) ?? .last7Days }
+    private var filter: DashboardProductivityPeriod {
+        DashboardProductivityPeriod(modelPerformanceStorageValue: filterRaw)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -58,23 +32,25 @@ struct ModelPerformancePanel: View {
             Text("Model Performance")
                 .font(.headline.weight(.semibold))
             Spacer()
-            Picker("", selection: Binding(get: { filter }, set: { filterRaw = $0.rawValue })) {
-                ForEach(TimeFilter.allCases) { f in
-                    Text(LocalizedStringKey(f.rawValue)).tag(f)
+            Picker(
+                "Model performance period",
+                selection: Binding(get: { filter }, set: { filterRaw = $0.modelPerformanceStorageValue })
+            ) {
+                ForEach(DashboardProductivityPeriod.allCases) { f in
+                    Text(f.pickerTitle).tag(f)
                 }
             }
             .pickerStyle(.menu)
             .labelsHidden()
             .fixedSize()
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(AppTheme.Surface.card)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onClose
+            )
         }
     }
 }
@@ -84,8 +60,8 @@ struct ModelPerformancePanel: View {
 private struct ModelPerformancePanelContent: View {
     @Query private var metrics: [SessionMetric]
 
-    init(filter: TimeFilter) {
-        if let predicate = filter.predicate {
+    init(filter: DashboardProductivityPeriod) {
+        if let predicate = filter.sessionMetricPredicate {
             _metrics = Query(filter: predicate)
         } else {
             _metrics = Query()

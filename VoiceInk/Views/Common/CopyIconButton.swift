@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CopyIconButton: View {
     let textToCopy: String
+    var accessibilityLabel: LocalizedStringResource = "Copy"
     @State private var copied = false
 
     var body: some View {
@@ -20,6 +21,8 @@ struct CopyIconButton: View {
                 )
         }
         .buttonStyle(.plain)
+        .help(accessibilityLabel)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private func copy() {

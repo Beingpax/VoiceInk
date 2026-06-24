@@ -1,6 +1,11 @@
 import SwiftUI
 import AppKit
 
+enum AppWindowLayout {
+    static let width: CGFloat = 950
+    static let minimumHeight: CGFloat = 730
+}
+
 class WindowManager: NSObject {
     static let shared = WindowManager()
 
@@ -32,7 +37,8 @@ class WindowManager: NSObject {
         window.level = .normal
         window.isOpaque = false
         window.isMovableByWindowBackground = false
-        window.minSize = NSSize(width: 0, height: 0)
+        window.minSize = NSSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
+        window.maxSize = NSSize(width: AppWindowLayout.width, height: CGFloat.greatestFiniteMagnitude)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
         registerMainWindowIfNeeded(window)
@@ -81,10 +87,30 @@ class WindowManager: NSObject {
     private func applyInitialPlacementIfNeeded(to window: NSWindow) {
         guard !didApplyInitialPlacement else { return }
         // Attempt to restore previous frame if one exists; otherwise fall back to a centered placement
-        if !window.setFrameUsingName(Self.mainWindowAutosaveName) {
+        if window.setFrameUsingName(Self.mainWindowAutosaveName) {
+            enforceMainWindowFrameIfNeeded(on: window, preserveRestoredOrigin: true)
+        } else {
+            enforceMainWindowFrameIfNeeded(on: window, preserveRestoredOrigin: false)
             window.center()
         }
         didApplyInitialPlacement = true
+    }
+
+    private func enforceMainWindowFrameIfNeeded(on window: NSWindow, preserveRestoredOrigin: Bool) {
+        let currentFrame = window.frame
+        guard currentFrame.width != AppWindowLayout.width || currentFrame.height < AppWindowLayout.minimumHeight else {
+            return
+        }
+
+        let height = max(currentFrame.height, AppWindowLayout.minimumHeight)
+        let x = preserveRestoredOrigin ? currentFrame.origin.x : currentFrame.midX - (AppWindowLayout.width / 2)
+        let frame = NSRect(
+            x: x,
+            y: currentFrame.maxY - height,
+            width: AppWindowLayout.width,
+            height: height
+        )
+        window.setFrame(frame, display: true)
     }
     
     private func resolveMainWindow() -> NSWindow? {

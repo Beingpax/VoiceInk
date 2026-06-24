@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TrialMessageView: View {
-    let message: Text
+    var message: Text?
     let type: MessageType
     var onAddLicenseKey: (() -> Void)? = nil
     
@@ -21,9 +21,12 @@ struct TrialMessageView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
-                message
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+
+                if let message {
+                    message
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
