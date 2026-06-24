@@ -1,27 +1,8 @@
 import Foundation
 
 enum TranscriptionLanguageSupport {
-    private static let assemblyAIRealtimeLanguageCodes = ["en", "es", "de", "fr", "pt", "it"]
-
-    private static let assemblyAIBatchLanguageCodes = [
-        "en", "en_au", "en_uk", "en_us", "es", "fr", "de", "it", "pt", "nl",
-        "hi", "ja", "zh", "fi", "ko", "pl", "ru", "tr", "uk", "vi", "af",
-        "sq", "am", "ar", "hy", "as", "az", "ba", "eu", "be", "bn", "bs",
-        "br", "bg", "my", "ca", "hr", "cs", "da", "et", "fo", "gl", "ka",
-        "el", "gu", "ht", "ha", "haw", "he", "hu", "is", "id", "jw", "kn",
-        "kk", "km", "lo", "la", "lv", "ln", "lt", "lb", "mk", "mg", "ms",
-        "ml", "mt", "mi", "mr", "mn", "ne", "no", "nn", "oc", "pa", "ps",
-        "fa", "ro", "sa", "sr", "sn", "sd", "si", "sk", "sl", "so", "su",
-        "sw", "sv", "de_ch", "tl", "tg", "ta", "tt", "te", "th", "bo",
-        "tk", "ur", "uz", "cy", "yi", "yo"
-    ]
-
     static func languages(for model: any TranscriptionModel, realtimeEnabled: Bool? = nil) -> [String: String] {
-        if model.provider == .assemblyAI {
-            return assemblyAILanguages(usesRealtime: assemblyAIUsesRealtime(for: model, realtimeEnabled: realtimeEnabled))
-        }
-
-        return model.supportedLanguages
+        model.supportedLanguages
     }
 
     static func validLanguageOrFallback(_ language: String?, for model: any TranscriptionModel, realtimeEnabled: Bool? = nil) -> String {
@@ -48,20 +29,6 @@ enum TranscriptionLanguageSupport {
         }.first ?? "en"
     }
 
-    private static func assemblyAILanguages(usesRealtime: Bool) -> [String: String] {
-        let codes = usesRealtime ? assemblyAIRealtimeLanguageCodes : assemblyAIBatchLanguageCodes
-        var filtered = LanguageDictionary.all.filter { codes.contains($0.key) }
-        filtered["auto"] = "Auto-detect"
-        return filtered
-    }
-
-    private static func assemblyAIUsesRealtime(for model: any TranscriptionModel, realtimeEnabled: Bool?) -> Bool {
-        guard model.provider == .assemblyAI, model.supportsStreaming else {
-            return false
-        }
-
-        return TranscriptionRealtimeSupport.isEnabled(for: model, modeValue: realtimeEnabled)
-    }
 }
 
 enum LanguageDictionary {
@@ -88,9 +55,7 @@ enum LanguageDictionary {
             guard let codes = cloudProvider.languageCodes else {
                 return all
             }
-            var filtered = all.filter { codes.contains($0.key) }
-            if cloudProvider.includesAutoDetect { filtered["auto"] = "Auto-detect" }
-            return filtered
+            return forCodes(codes, includesAutoDetect: cloudProvider.includesAutoDetect)
         }
 
         switch provider {
@@ -113,6 +78,12 @@ enum LanguageDictionary {
         default:
             return all
         }
+    }
+
+    static func forCodes(_ codes: [String], includesAutoDetect: Bool = false) -> [String: String] {
+        var filtered = all.filter { codes.contains($0.key) }
+        if includesAutoDetect { filtered["auto"] = "Auto-detect" }
+        return filtered
     }
 
     static let nemotronLatin: [String: String] = [

@@ -77,7 +77,7 @@ enum AIProvider: String, CaseIterable {
         case .speechmatics:
             return "speechmatics-enhanced"
         case .assemblyAI:
-            return "universal-3-pro"
+            return "universal-3-5-pro"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
         case .localCLI:
@@ -149,7 +149,7 @@ enum AIProvider: String, CaseIterable {
         case .speechmatics:
             return ["speechmatics-enhanced"]
         case .assemblyAI:
-            return ["universal-3-pro"]
+            return ["universal-3-5-pro"]
         case .ollama:
             return []
         case .localCLI:
