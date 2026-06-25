@@ -14,13 +14,14 @@ class AudioCleanupManager {
     private init() {}
     
     /// Start the automatic cleanup process
-    func startAutomaticCleanup(modelContext: ModelContext) {
+    func startAutomaticCleanup(modelContext: ModelContext, runImmediately: Bool = true) {
         // Cancel any existing timer
         cleanupTimer?.invalidate()
 
-        // Perform initial cleanup
-        Task {
-            await performCleanup(modelContext: modelContext)
+        if runImmediately {
+            Task {
+                await performCleanup(modelContext: modelContext)
+            }
         }
 
         // Schedule regular cleanup

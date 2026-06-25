@@ -117,7 +117,22 @@ struct HistorySettingsPanel: View {
                 isAudioCleanupEnabled = false
                 AudioCleanupManager.shared.stopAutomaticCleanup()
             } else if isAudioCleanupEnabled {
-                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
+                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext, runImmediately: false)
+            }
+        }
+        .onChange(of: isAudioCleanupEnabled) { _, newValue in
+            guard !isTranscriptionCleanupEnabled else {
+                if newValue {
+                    isAudioCleanupEnabled = false
+                }
+                AudioCleanupManager.shared.stopAutomaticCleanup()
+                return
+            }
+
+            if newValue {
+                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext, runImmediately: false)
+            } else {
+                AudioCleanupManager.shared.stopAutomaticCleanup()
             }
         }
     }
