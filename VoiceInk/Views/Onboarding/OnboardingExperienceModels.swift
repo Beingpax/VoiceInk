@@ -156,7 +156,7 @@ enum OnboardingExperienceCatalog {
             requiresVerifiedAPIProvider: false,
             systemImage: "text.cursor",
             title: "Try a Simple Dictation",
-            subtitle: "Uses a local transcription model for ultra-fast dictation.",
+            subtitle: String(localized: "Uses your configured transcription model for fast dictation."),
             sampleLabel: "Sample text",
             sampleText: "Please send the calendar invite before lunch.",
             fieldPlaceholder: "Your dictated text will appear here."
@@ -171,7 +171,7 @@ enum OnboardingExperienceCatalog {
             ),
             systemImage: "sparkles",
             title: "Try Enhancement",
-            subtitle: "Combines local transcription with an LLM to create a polished version.",
+            subtitle: String(localized: "Combines transcription with an LLM to create a polished version."),
             sampleLabel: "Sample text",
             sampleText: "Um, tell the team we will meet on Thursday. Actually, no, Friday morning works better.",
             fieldPlaceholder: "Your enhanced message will appear here."

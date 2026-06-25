@@ -25,7 +25,7 @@ struct StarterModeTemplate: Identifiable {
     let isDefault: Bool
 
     var featureLabels: [String] {
-        var labels = ["Parakeet V3", "Realtime"]
+        var labels = ["Transcription", "Realtime"]
 
         if usesAIEnhancement {
             labels.append("AI")
@@ -50,8 +50,8 @@ enum StarterModeCatalog {
             id: UUID(uuidString: "10000000-0000-0000-0000-000000000001")!,
             name: "Dictation",
             icon: .symbol("mic.fill"),
-            description: "Fast local transcription with no AI enhancement.",
-            guidance: "Use this when you want the quickest possible voice-to-text result. It records with Parakeet V3 and pastes the transcript as-is.",
+            description: String(localized: "Fast transcription with no AI enhancement."),
+            guidance: String(localized: "Use this when you want the quickest possible voice-to-text result. It records with your configured transcription model and pastes the transcript as-is."),
             promptId: nil,
             outputMode: .paste,
             usesAIEnhancement: false,

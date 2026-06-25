@@ -34,6 +34,18 @@ final class OnboardingCoordinator: ObservableObject {
         }
     }
 
+    @Published var storedTranscriptionSetupKind: String {
+        didSet {
+            defaults.set(storedTranscriptionSetupKind, forKey: OnboardingStorageKeys.transcriptionSetupKind)
+        }
+    }
+
+    @Published var storedOnboardingTranscriptionProvider: String {
+        didSet {
+            defaults.set(storedOnboardingTranscriptionProvider, forKey: OnboardingStorageKeys.transcriptionProvider)
+        }
+    }
+
     @Published var hasSkippedAPISetup: Bool {
         didSet {
             defaults.set(hasSkippedAPISetup, forKey: OnboardingStorageKeys.skippedAPISetup)
@@ -41,6 +53,7 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     @Published var permissionStatuses: [OnboardingPermissionKind: OnboardingPermissionStatus] = [:]
+    @Published var isSelectedTranscriptionProviderVerified = false
     @Published var isSelectedAPIProviderVerified = false
     @Published var isShowingSkipAPISetupWarning = false
     @Published var hasExperienceModeShortcut = false
@@ -61,6 +74,12 @@ final class OnboardingCoordinator: ObservableObject {
         self.hasRequestedScreenRecording = defaults.bool(forKey: OnboardingStorageKeys.requestedScreenRecording)
         self.experienceStepIndex = defaults.integer(forKey: OnboardingStorageKeys.experienceIndex)
         self.storedOnboardingAIProvider = defaults.string(forKey: OnboardingStorageKeys.aiProvider) ?? AIProvider.groq.rawValue
+        self.storedTranscriptionSetupKind = defaults.string(
+            forKey: OnboardingStorageKeys.transcriptionSetupKind
+        ) ?? OnboardingTranscriptionSetupKind.local.rawValue
+        self.storedOnboardingTranscriptionProvider = defaults.string(
+            forKey: OnboardingStorageKeys.transcriptionProvider
+        ) ?? ""
         self.hasSkippedAPISetup = defaults.bool(forKey: OnboardingStorageKeys.skippedAPISetup)
     }
 
@@ -226,6 +245,64 @@ final class OnboardingCoordinator: ObservableObject {
         }
     }
 
+    var transcriptionSetupKind: OnboardingTranscriptionSetupKind {
+        OnboardingTranscriptionSetupKind(rawValue: storedTranscriptionSetupKind) ?? .local
+    }
+
+    var onboardingTranscriptionProviderOptions: [any CloudProvider] {
+        let preferredOrder = [
+            "AssemblyAI", "Cartesia", "Deepgram", "ElevenLabs", "Soniox",
+            "Speechmatics", "xAI", "Mistral", "Groq", "Gemini"
+        ]
+
+        return CloudProviderRegistry.allProviders.sorted { first, second in
+            let firstIndex = preferredOrder.firstIndex(of: first.providerKey) ?? Int.max
+            let secondIndex = preferredOrder.firstIndex(of: second.providerKey) ?? Int.max
+            if firstIndex != secondIndex { return firstIndex < secondIndex }
+            return first.providerKey < second.providerKey
+        }
+    }
+
+    var selectedOnboardingTranscriptionProvider: (any CloudProvider)? {
+        if let storedProvider = onboardingTranscriptionProviderOptions.first(where: {
+            $0.providerKey.caseInsensitiveCompare(storedOnboardingTranscriptionProvider) == .orderedSame
+        }) {
+            return storedProvider
+        }
+
+        return recommendedOnboardingTranscriptionProvider ?? onboardingTranscriptionProviderOptions.first
+    }
+
+    var selectedOnboardingTranscriptionModel: (any TranscriptionModel)? {
+        switch transcriptionSetupKind {
+        case .local:
+            return requiredTranscriptionModel
+        case .cloud:
+            guard let provider = selectedOnboardingTranscriptionProvider else { return nil }
+            return selectedTranscriptionModel(for: provider)
+        }
+    }
+
+    var selectedOnboardingTranscriptionModelName: String? {
+        selectedOnboardingTranscriptionModel?.name
+    }
+
+    var selectedOnboardingTranscriptionUsesRealtime: Bool {
+        guard let model = selectedOnboardingTranscriptionModel else { return true }
+        return TranscriptionRealtimeSupport.isEnabled(for: model)
+    }
+
+    var selectedOnboardingTranscriptionLanguage: String {
+        guard let model = selectedOnboardingTranscriptionModel else { return "auto" }
+        return TranscriptionLanguageSupport.validLanguageOrFallback("auto", for: model)
+    }
+
+    var recommendedOnboardingTranscriptionProvider: (any CloudProvider)? {
+        onboardingTranscriptionProviderOptions.first {
+            $0.providerKey.caseInsensitiveCompare("AssemblyAI") == .orderedSame
+        }
+    }
+
     var activeExperienceSteps: [OnboardingExperienceStep] {
         if hasSkippedAPISetup && !isSelectedAPIProviderVerified {
             return OnboardingExperienceCatalog.steps.filter { !$0.requiresVerifiedAPIProvider }
@@ -282,6 +359,21 @@ final class OnboardingCoordinator: ObservableObject {
             .first { $0.name == "parakeet-tdt-0.6b-v3" }
     }
 
+    func selectedOnboardingTranscriptionProviderKeyBinding() -> Binding<String> {
+        Binding(
+            get: { [weak self] in
+                self?.selectedOnboardingTranscriptionProvider?.providerKey ?? ""
+            },
+            set: { [weak self] providerKey in
+                self?.flow.selectOnboardingTranscriptionProvider(providerKey)
+            }
+        )
+    }
+
+    func selectedTranscriptionModel(for provider: any CloudProvider) -> CloudModel? {
+        provider.models.first(where: \.supportsStreaming) ?? provider.models.first
+    }
+
     func selectedOnboardingProviderBinding(aiService: AIService) -> Binding<AIProvider> {
         Binding(
             get: { [weak self] in
@@ -298,15 +390,25 @@ final class OnboardingCoordinator: ObservableObject {
         return modelManager.isFluidAudioModelDownloaded(requiredTranscriptionModel)
     }
 
-    func isReadyForExperience(isTranscriptionModelDownloaded: Bool) -> Bool {
+    func isTranscriptionSetupReady(isTranscriptionModelDownloaded: Bool) -> Bool {
+        switch transcriptionSetupKind {
+        case .local:
+            return isTranscriptionModelDownloaded
+        case .cloud:
+            guard selectedOnboardingTranscriptionModel != nil else { return false }
+            return isSelectedTranscriptionProviderVerified
+        }
+    }
+
+    func isReadyForExperience(isTranscriptionSetupReady: Bool) -> Bool {
         requiredPermissionsGranted &&
             hasSelectedOnboardingMicrophone &&
-            isTranscriptionModelDownloaded &&
+            isTranscriptionSetupReady &&
             (isSelectedAPIProviderVerified || hasSkippedAPISetup)
     }
 
-    func isCurrentExperienceReady(isTranscriptionModelDownloaded: Bool) -> Bool {
-        isReadyForExperience(isTranscriptionModelDownloaded: isTranscriptionModelDownloaded) &&
+    func isCurrentExperienceReady(isTranscriptionSetupReady: Bool) -> Bool {
+        isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) &&
             isExperienceModeInstalled &&
             hasExperienceModeShortcut
     }
@@ -319,6 +421,8 @@ enum OnboardingStorageKeys {
     static let requestedScreenRecording = "onboardingRequestedScreenRecording"
     static let experienceIndex = "onboardingExperienceIndex"
     static let aiProvider = "onboardingAIProvider"
+    static let transcriptionSetupKind = "onboardingTranscriptionSetupKind"
+    static let transcriptionProvider = "onboardingTranscriptionProvider"
     static let skippedAPISetup = "onboardingSkippedAPISetup"
 
     static let onboardingKeys = [
@@ -326,8 +430,26 @@ enum OnboardingStorageKeys {
         activePermission,
         requestedScreenRecording,
         aiProvider,
+        transcriptionSetupKind,
+        transcriptionProvider,
         skippedAPISetup,
         experienceIndex,
         "onboardingStarterModeIndex"
     ]
+}
+
+enum OnboardingTranscriptionSetupKind: String, CaseIterable, Identifiable {
+    case local
+    case cloud
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .local:
+            return "Local"
+        case .cloud:
+            return "Cloud"
+        }
+    }
 }

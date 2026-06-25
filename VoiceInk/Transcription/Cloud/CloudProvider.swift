@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-protocol CloudProvider {
+protocol CloudProvider: Sendable {
     var modelProvider: ModelProvider { get }
     var providerKey: String { get }
     var languageCodes: [String]? { get }
