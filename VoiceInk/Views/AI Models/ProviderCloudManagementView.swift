@@ -201,32 +201,29 @@ private struct ProviderListRow: View {
 
         let transcriptionCount = descriptor.transcriptionModels.count
         if transcriptionCount > 0 {
-            parts.append(
-                modelCountText(
-                    transcriptionCount,
-                    key: "%lld Transcription models"
-                )
-            )
+            parts.append(transcriptionModelCountText(transcriptionCount))
         }
 
         if let provider = descriptor.aiProvider {
             let enhancementCount = aiService.availableModels(for: provider).count
-            parts.append(
-                modelCountText(
-                    enhancementCount,
-                    key: "%lld Enhancement models"
-                )
-            )
+            parts.append(enhancementModelCountText(enhancementCount))
         }
 
         return parts.joined(separator: " · ")
     }
 
-    private func modelCountText(_ count: Int, key: String) -> String {
-        if key == "%lld Transcription models" {
-            return String(localized: "\(count) Transcription models")
-        }
-        return String(localized: "\(count) Enhancement models")
+    private func transcriptionModelCountText(_ count: Int) -> String {
+        String.localizedStringWithFormat(
+            NSLocalizedString("%lld Transcription models", comment: "Number of transcription models available for a provider."),
+            Int64(count)
+        )
+    }
+
+    private func enhancementModelCountText(_ count: Int) -> String {
+        String.localizedStringWithFormat(
+            NSLocalizedString("%lld Enhancement models", comment: "Number of enhancement models available for a provider."),
+            Int64(count)
+        )
     }
 
     var body: some View {
