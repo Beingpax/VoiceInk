@@ -220,14 +220,6 @@ struct SettingsView: View {
             }
 
             Section {
-                AudioCleanupSettingsView()
-            } header: {
-                Text("Privacy")
-            } footer: {
-                Text("Control how VoiceInk handles your transcription data and audio recordings.")
-            }
-
-            Section {
                 LabeledContent("Export Settings") {
                     Button("Export") {
                         ImportExportService.shared.exportSettings(

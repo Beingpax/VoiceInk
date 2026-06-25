@@ -283,8 +283,12 @@ struct VoiceInkApp: App {
 
                             showAccessibilityReminderIfNeeded()
 
-                            // Start the automatic audio cleanup process only if transcript cleanup is not enabled
-                            if !UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled") {
+                            // Run due audio-only cleanup and schedule future checks when transcript cleanup is not managing retention.
+                            if !UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled) &&
+                                UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled) {
+                                Task {
+                                    await audioCleanupManager.runAutomaticCleanupIfNeeded(modelContext: container.mainContext)
+                                }
                                 audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
                             }
 

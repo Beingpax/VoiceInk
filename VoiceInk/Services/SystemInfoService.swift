@@ -60,10 +60,10 @@ class SystemInfoService {
         Paste Method: \(PasteMethod.current().displayName)
 
         DATA CLEANUP SETTINGS:
-        Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: "IsTranscriptionCleanupEnabled"))
-        Transcription Retention: \(UserDefaults.standard.integer(forKey: "TranscriptionRetentionMinutes")) minutes
-        Auto-Delete Audio Files: \(UserDefaults.standard.bool(forKey: "IsAudioCleanupEnabled"))
-        Audio Retention Period: \(UserDefaults.standard.integer(forKey: "AudioRetentionPeriod")) days
+        Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled))
+        Transcription Retention: \(UserDefaults.standard.integer(forKey: CleanupSettingsKeys.transcriptionRetentionMinutes)) minutes
+        Auto-Delete Audio Files: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled))
+        Audio Retention Period: \(UserDefaults.standard.integer(forKey: CleanupSettingsKeys.audioRetentionPeriod)) days
 
         PERMISSIONS:
         Accessibility: \(getAccessibilityStatus())

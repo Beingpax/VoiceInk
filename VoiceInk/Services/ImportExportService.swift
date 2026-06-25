@@ -105,11 +105,6 @@ class ImportExportService {
     static let shared = ImportExportService()
     private let currentSettingsVersion: String
 
-    private let keyIsAudioCleanupEnabled = "IsAudioCleanupEnabled"
-    private let keyIsTranscriptionCleanupEnabled = "IsTranscriptionCleanupEnabled"
-    private let keyTranscriptionRetentionMinutes = "TranscriptionRetentionMinutes"
-    private let keyAudioRetentionPeriod = "AudioRetentionPeriod"
-
     private let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
 
     private init() {
@@ -166,10 +161,10 @@ class ImportExportService {
             launchAtLoginEnabled: LaunchAtLogin.isEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
             recorderType: recorderUIManager.recorderPanelStyle.rawValue,
-            isTranscriptionCleanupEnabled: UserDefaults.standard.bool(forKey: keyIsTranscriptionCleanupEnabled),
-            transcriptionRetentionMinutes: UserDefaults.standard.integer(forKey: keyTranscriptionRetentionMinutes),
-            isAudioCleanupEnabled: UserDefaults.standard.bool(forKey: keyIsAudioCleanupEnabled),
-            audioRetentionPeriod: UserDefaults.standard.integer(forKey: keyAudioRetentionPeriod),
+            isTranscriptionCleanupEnabled: UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled),
+            transcriptionRetentionMinutes: UserDefaults.standard.integer(forKey: CleanupSettingsKeys.transcriptionRetentionMinutes),
+            isAudioCleanupEnabled: UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled),
+            audioRetentionPeriod: UserDefaults.standard.integer(forKey: CleanupSettingsKeys.audioRetentionPeriod),
 
             isSystemMuteEnabled: mediaController.isSystemMuteEnabled,
             isPauseMediaEnabled: playbackController.isPauseMediaEnabled,
