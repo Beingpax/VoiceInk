@@ -154,6 +154,11 @@ enum BackupImporter {
             UserDefaults.standard.set(appearancePreference.rawValue, forKey: AppAppearancePreference.userDefaultsKey)
             appearancePreference.apply()
         }
+        if let rawLanguagePreference = general.appLanguagePreference {
+            let languagePreference = AppLanguagePreference.normalizedRawValue(rawLanguagePreference)
+            UserDefaults.standard.set(languagePreference, forKey: AppLanguagePreference.userDefaultsKey)
+            AppLanguagePreference.apply(rawValue: languagePreference)
+        }
 
         if let transcriptionCleanup = general.isTranscriptionCleanupEnabled {
             UserDefaults.standard.set(transcriptionCleanup, forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled)
