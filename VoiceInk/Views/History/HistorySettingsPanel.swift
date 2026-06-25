@@ -6,10 +6,10 @@ struct HistorySettingsPanel: View {
 
     let onClose: () -> Void
 
-    @AppStorage("IsTranscriptionCleanupEnabled") private var isTranscriptionCleanupEnabled = false
-    @AppStorage("TranscriptionRetentionMinutes") private var transcriptionRetentionMinutes = 24 * 60
-    @AppStorage("IsAudioCleanupEnabled") private var isAudioCleanupEnabled = false
-    @AppStorage("AudioRetentionPeriod") private var audioRetentionPeriod = 7
+    @AppStorage(CleanupSettingsKeys.isTranscriptionCleanupEnabled) private var isTranscriptionCleanupEnabled = false
+    @AppStorage(CleanupSettingsKeys.transcriptionRetentionMinutes) private var transcriptionRetentionMinutes = 24 * 60
+    @AppStorage(CleanupSettingsKeys.isAudioCleanupEnabled) private var isAudioCleanupEnabled = false
+    @AppStorage(CleanupSettingsKeys.audioRetentionPeriod) private var audioRetentionPeriod = 7
 
     @State private var isPerformingAudioCleanup = false
     @State private var isShowingAudioConfirmation = false
