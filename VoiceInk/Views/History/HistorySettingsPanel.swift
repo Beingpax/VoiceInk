@@ -117,7 +117,7 @@ struct HistorySettingsPanel: View {
                 isAudioCleanupEnabled = false
                 AudioCleanupManager.shared.stopAutomaticCleanup()
             } else if isAudioCleanupEnabled {
-                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext, runImmediately: false)
+                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
             }
         }
         .onChange(of: isAudioCleanupEnabled) { _, newValue in
@@ -130,7 +130,7 @@ struct HistorySettingsPanel: View {
             }
 
             if newValue {
-                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext, runImmediately: false)
+                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
             } else {
                 AudioCleanupManager.shared.stopAutomaticCleanup()
             }
