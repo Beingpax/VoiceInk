@@ -8,12 +8,12 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var displayName: String {
+    var displayName: LocalizedStringKey {
         switch self {
         case .notch:
-            return String(localized: "Notch")
+            "Notch"
         case .mini:
-            return String(localized: "Mini")
+            "Mini"
         }
     }
 

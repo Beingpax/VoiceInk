@@ -42,6 +42,8 @@ enum AppDefaults {
             CleanupSettingsKeys.audioRetentionPeriod: 7,
 
             // UI & Behavior
+            AppAppearance.userDefaultsKey: AppAppearance.system.rawValue,
+            AppLanguage.userDefaultsKey: AppLanguage.systemRawValue,
             "IsMenuBarOnly": false,
             // Shortcuts
             "isMiddleClickToggleEnabled": false,

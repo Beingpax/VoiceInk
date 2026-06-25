@@ -18,6 +18,8 @@ struct SettingsView: View {
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
+    @AppStorage(AppAppearance.userDefaultsKey) private var appAppearanceRawValue = AppAppearance.system.rawValue
+    @AppStorage(AppLanguage.userDefaultsKey) private var appLanguageRawValue = AppLanguage.systemRawValue
     @State private var showResetOnboardingAlert = false
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
     @State private var cancelRecordingShortcutRecorderResetID = 0
@@ -179,12 +181,27 @@ struct SettingsView: View {
             }
 
             Section("Interface") {
+                Picker("Appearance", selection: $appAppearanceRawValue) {
+                    ForEach(AppAppearance.allCases) { appearance in
+                        Text(appearance.displayName).tag(appearance.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Picker("Language", selection: $appLanguageRawValue) {
+                    Text("System").tag(AppLanguage.systemRawValue)
+                    ForEach(AppLanguage.availableOptions) { language in
+                        Text(language.displayName).tag(language.id)
+                    }
+                }
+                .pickerStyle(.menu)
+
                 Picker("Recorder Style", selection: $recorderUIManager.recorderPanelStyle) {
                     ForEach(RecorderPanelStyle.allCases) { style in
                         Text(style.displayName).tag(style)
                     }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
 
             }
 

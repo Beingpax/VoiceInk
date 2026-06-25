@@ -24,6 +24,8 @@ struct VoiceInkApp: App {
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
+    @AppStorage(AppAppearance.userDefaultsKey) private var appAppearanceRawValue = AppAppearance.system.rawValue
+    @AppStorage(AppLanguage.userDefaultsKey) private var appLanguageRawValue = AppLanguage.systemRawValue
     @State private var showMenuBarIcon = true
     @State private var didShowAccessibilityReminder = false
 
@@ -325,6 +327,8 @@ struct VoiceInkApp: App {
                 }
             }
             .confettiCelebrationPresenter()
+            .preferredColorScheme(AppAppearance.preferredColorScheme(for: appAppearanceRawValue))
+            .environment(\.locale, AppLanguage.locale(for: appLanguageRawValue))
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
@@ -349,6 +353,8 @@ struct VoiceInkApp: App {
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
+                .preferredColorScheme(AppAppearance.preferredColorScheme(for: appAppearanceRawValue))
+                .environment(\.locale, AppLanguage.locale(for: appLanguageRawValue))
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width
