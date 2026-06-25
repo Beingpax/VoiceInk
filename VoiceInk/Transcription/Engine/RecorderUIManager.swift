@@ -166,8 +166,30 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             switch engine.recordingState {
             case .recording:
                 await engine.toggleRecord(modeId: modeId)
-            case .starting, .transcribing, .enhancing:
+            case .starting:
+                // Pre-recording: nothing has been captured yet, so a re-press here genuinely
+                // means "abandon this not-yet-started session" — cancelling is correct.
                 await cancelRecording()
+            case .transcribing, .enhancing:
+                // Do NOT cancel an in-flight transcription/enhancement on a plain toggle press.
+                //
+                // Stopping a recording hands off to the async pipeline (transcribe → enhance →
+                // paste) while the recorder panel is still visible. Any extra record-hotkey
+                // event that arrives during that window — key-repeat, a quick re-press to begin
+                // the *next* dictation, or a modifier-combo interruption — used to re-enter here
+                // and fall straight into cancelRecording(). That tears down the active pipeline:
+                // the already-returned transcription is discarded and the panel hides with
+                // nothing pasted, and the in-flight upload Task is cancelled mid-flight. From the
+                // user's side it looks like "recorded fine, briefly said 'Transcribing', then the
+                // bar vanished and nothing appeared" — and rapid toggling could corrupt the
+                // recording state entirely.
+                //
+                // Once transcription has begun the work is already committed, so a toggle press
+                // should be a no-op — let it finish and paste. Explicit cancellation is still
+                // available via Esc / the close button (handleDismissRecorderPanelNotification
+                // and the panel's onCloseTapped both route to cancelRecording()), which remain
+                // the intended ways to abort an in-flight transcription.
+                return
             case .idle:
                 if engine.assistantSession.canSendFollowUp {
                     SoundManager.shared.playStartSound()
