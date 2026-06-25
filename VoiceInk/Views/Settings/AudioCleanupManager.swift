@@ -6,9 +6,10 @@ class AudioCleanupManager {
     static let shared = AudioCleanupManager()
 
     private var cleanupTimer: Timer?
-    
-    // Default cleanup settings
-    private let defaultRetentionDays = 7
+    private let keyIsAudioCleanupEnabled = "IsAudioCleanupEnabled"
+    private let keyIsTranscriptionCleanupEnabled = "IsTranscriptionCleanupEnabled"
+    private let keyAudioRetentionPeriod = "AudioRetentionPeriod"
+    private let keyLastAutomaticCleanupDate = "AudioCleanupLastAutomaticCleanupDate"
     private let cleanupCheckInterval: TimeInterval = 86400 // Check once per day (in seconds)
     
     private init() {}
@@ -21,9 +22,21 @@ class AudioCleanupManager {
         // Schedule regular cleanup
         cleanupTimer = Timer.scheduledTimer(withTimeInterval: cleanupCheckInterval, repeats: true) { [weak self] _ in
             Task { [weak self] in
-                await self?.performCleanup(modelContext: modelContext)
+                await self?.runAutomaticCleanupIfNeeded(modelContext: modelContext)
             }
         }
+    }
+
+    /// Run automatic cleanup once if it is due. This is safe to call on app/window appear.
+    func runAutomaticCleanupIfNeeded(modelContext: ModelContext) async {
+        guard UserDefaults.standard.bool(forKey: keyIsAudioCleanupEnabled),
+              !UserDefaults.standard.bool(forKey: keyIsTranscriptionCleanupEnabled),
+              shouldRunAutomaticCleanup() else {
+            return
+        }
+
+        await performCleanup(modelContext: modelContext)
+        UserDefaults.standard.set(Date(), forKey: keyLastAutomaticCleanupDate)
     }
     
     /// Stop the automatic cleanup process
@@ -35,7 +48,7 @@ class AudioCleanupManager {
     /// Get information about the files that would be cleaned up
     func getCleanupInfo(modelContext: ModelContext) async -> (fileCount: Int, totalSize: Int64, transcriptions: [Transcription]) {
         // Get retention period from UserDefaults
-        let effectiveRetentionDays = UserDefaults.standard.integer(forKey: "AudioRetentionPeriod")
+        let effectiveRetentionDays = UserDefaults.standard.integer(forKey: keyAudioRetentionPeriod)
 
         // Calculate the cutoff date
         let calendar = Calendar.current
@@ -84,10 +97,10 @@ class AudioCleanupManager {
     /// Perform the cleanup operation
     private func performCleanup(modelContext: ModelContext) async {
         // Get retention period from UserDefaults
-        let effectiveRetentionDays = UserDefaults.standard.integer(forKey: "AudioRetentionPeriod")
+        let effectiveRetentionDays = UserDefaults.standard.integer(forKey: keyAudioRetentionPeriod)
 
         // Check if automatic cleanup is enabled
-        let isCleanupEnabled = UserDefaults.standard.bool(forKey: "IsAudioCleanupEnabled")
+        let isCleanupEnabled = UserDefaults.standard.bool(forKey: keyIsAudioCleanupEnabled)
         guard isCleanupEnabled else { return }
 
         // Calculate the cutoff date
@@ -136,6 +149,14 @@ class AudioCleanupManager {
     /// Run cleanup manually - can be called from settings
     func runManualCleanup(modelContext: ModelContext) async {
         await performCleanup(modelContext: modelContext)
+    }
+
+    private func shouldRunAutomaticCleanup() -> Bool {
+        guard let lastCleanupDate = UserDefaults.standard.object(forKey: keyLastAutomaticCleanupDate) as? Date else {
+            return true
+        }
+
+        return Date().timeIntervalSince(lastCleanupDate) >= cleanupCheckInterval
     }
     
     /// Run cleanup on the specified transcriptions
