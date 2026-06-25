@@ -149,6 +149,11 @@ enum BackupImporter {
         if let recType = general.recorderType {
             recorderUIManager.recorderType = recType
         }
+        if let rawAppearancePreference = general.appAppearancePreference,
+           let appearancePreference = AppAppearancePreference(rawValue: rawAppearancePreference) {
+            UserDefaults.standard.set(appearancePreference.rawValue, forKey: AppAppearancePreference.userDefaultsKey)
+            appearancePreference.apply()
+        }
 
         if let transcriptionCleanup = general.isTranscriptionCleanupEnabled {
             UserDefaults.standard.set(transcriptionCleanup, forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled)

@@ -43,6 +43,7 @@ enum AppDefaults {
 
             // UI & Behavior
             "IsMenuBarOnly": false,
+            AppAppearancePreference.userDefaultsKey: AppAppearancePreference.system.rawValue,
             // Shortcuts
             "isMiddleClickToggleEnabled": false,
             "middleClickActivationDelay": 200,
