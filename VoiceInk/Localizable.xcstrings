@@ -430,6 +430,7 @@
       }
     },
     "%lld Enhancement models" : {
+      "comment" : "Number of enhancement models available for a provider.",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -723,6 +724,7 @@
       }
     },
     "%lld Transcription models" : {
+      "comment" : "Number of transcription models available for a provider.",
       "localizations" : {
         "de" : {
           "variations" : {
@@ -18443,6 +18445,22 @@
         }
       }
     },
+    "Your language change will take full effect after you quit and reopen VoiceInk." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sprachänderung wird vollständig wirksam, nachdem du VoiceInk beendet und erneut geöffnet hast."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "退出并重新打开 VoiceInk 后，语言更改才会完全生效。"
+          }
+        }
+      }
+    },
     "Your license key is verified. VoiceInk is ready to use on this Mac." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -18556,22 +18574,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "你的使用摘要将显示在这里。"
-          }
-        }
-      }
-    },
-    "Your language change will take full effect after you quit and reopen VoiceInk." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Sprachänderung wird vollständig wirksam, nachdem du VoiceInk beendet und erneut geöffnet hast."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "退出并重新打开 VoiceInk 后，语言更改才会完全生效。"
           }
         }
       }
