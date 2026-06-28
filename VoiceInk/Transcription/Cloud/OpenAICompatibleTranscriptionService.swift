@@ -1,6 +1,23 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
+    // Dedicated URLSession with EXTENDED timeouts instead of URLSession.shared.
+    //
+    // URLSession.shared uses the default 60s request timeout. Custom OpenAI-compatible
+    // endpoints (self-hosted Whisper, proxies that do their own upstream retries, etc.)
+    // can legitimately hold a multipart audio upload open for well over 60s on longer
+    // recordings — and tripping the 60s wall mid-request surfaces to the user as a flat
+    // "Request timed out" failure even though the server was still working. Giving slow
+    // endpoints a 180s per-request inactivity window plus a 300s total resource cap lets
+    // them finish without changing any success-path behaviour. Built once and reused so we
+    // don't allocate a session per transcription.
+    private let urlSession: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 180   // per-request inactivity window (was the default 60s)
+        configuration.timeoutIntervalForResource = 300  // total wall-clock cap for the whole upload + response
+        return URLSession(configuration: configuration)
+    }()
+
     func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String {
         guard let url = URL(string: model.apiEndpoint) else {
             throw NSError(domain: "CustomWhisperTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API endpoint URL"])
@@ -13,7 +30,7 @@ class OpenAICompatibleTranscriptionService {
         request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
 
         let body = try buildRequestBody(audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
-        let (data, response) = try await URLSession.shared.upload(for: request, from: body)
+        let (data, response) = try await urlSession.upload(for: request, from: body)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw CloudTranscriptionError.networkError(URLError(.badServerResponse))

@@ -114,7 +114,18 @@ class TranscriptionPipeline {
             text = TranscriptionOutputFilter.filter(text)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
-            if shouldCancel() { await finishCanceledTranscription(); return }
+            // A cancellation can race in AFTER the transcription network round-trip has
+            // already returned real text (e.g. a stray hotkey press, or a quick re-press to
+            // start the next dictation, lands while we were awaiting the result). Treating
+            // *any* late cancel as "discard" here silently throws away a perfectly good,
+            // already-completed transcription — the user spoke, the model returned text,
+            // and then nothing gets pasted. Only honour the cancel when there is genuinely
+            // nothing to deliver (empty text). If we have real text, the work is already
+            // done, so deliver it rather than discarding the user's words. The pre-transcribe
+            // gate above still short-circuits *before* any network cost when cancelled early.
+            if shouldCancel(), text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                await finishCanceledTranscription(); return
+            }
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -252,7 +263,14 @@ class TranscriptionPipeline {
             }
         }
 
-        if shouldCancel() {
+        // Final pre-delivery cancel gate. Same reasoning as the post-transcribe gate above:
+        // by this point the whole pipeline (transcribe → filter → enhance) has finished and
+        // `finalText` holds the result we're about to paste. A cancel that races in here used
+        // to discard that finished result, which is exactly the "transcribed fine but nothing
+        // got pasted" symptom. Only abandon delivery when there is no usable text; if we have
+        // real text, deliver it even if a late cancel arrived — the user's words are ready.
+        let hasDeliverableText = !(finalText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        if shouldCancel(), !hasDeliverableText {
             await finishCanceledTranscription()
             return
         }
