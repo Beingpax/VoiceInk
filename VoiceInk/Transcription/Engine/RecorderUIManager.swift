@@ -95,9 +95,24 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                             await self?.dismissRecorderPanel()
                         }
                     },
+                    // Cancel ("X") button → discard the active recording/transcription
+                    // with NO paste, then resume any paused media. cancelRecording()
+                    // is the existing clean teardown path (engine.cancelRecording →
+                    // recorder.stopRecording → resumeMedia) followed by dismiss.
+                    onCancelTapped: { [weak self] in
+                        Task { @MainActor in
+                            await self?.cancelRecording()
+                        }
+                    },
                     onAssistantFollowUp: { [weak engine] text in
                         Task { @MainActor in
                             await engine?.sendAssistantFollowUp(text)
+                        }
+                    },
+                    // Per-card cancel for a specific background transcribing session.
+                    onCancelSession: { [weak engine] id in
+                        Task { @MainActor in
+                            await engine?.cancelSession(id: id)
                         }
                     }
                 )
@@ -119,9 +134,23 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                             await self?.dismissRecorderPanel()
                         }
                     },
+                    // Cancel ("X") button → discard the active recording/transcription
+                    // with NO paste, then resume any paused media. Same clean teardown
+                    // path as the notch panel above.
+                    onCancelTapped: { [weak self] in
+                        Task { @MainActor in
+                            await self?.cancelRecording()
+                        }
+                    },
                     onAssistantFollowUp: { [weak engine] text in
                         Task { @MainActor in
                             await engine?.sendAssistantFollowUp(text)
+                        }
+                    },
+                    // Per-card cancel for a specific background transcribing session.
+                    onCancelSession: { [weak engine] id in
+                        Task { @MainActor in
+                            await engine?.cancelSession(id: id)
                         }
                     }
                 )
@@ -166,15 +195,59 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             switch engine.recordingState {
             case .recording:
                 await engine.toggleRecord(modeId: modeId)
-            case .starting, .transcribing, .enhancing:
+            case .starting:
+                // Pre-recording: a re-press here genuinely cancels a not-yet-started
+                // session, so cancelling is correct.
                 await cancelRecording()
+            case .transcribing, .enhancing:
+                // ═══════════════════════════════════════════════════════════════
+                // MULTI-SESSION TRANSITION (record-while-transcribing).
+                //
+                // OLD BEHAVIOUR: a toggle press while state == .transcribing/.enhancing
+                //   was IGNORED, because the stop AWAITED the whole pipeline INLINE on the
+                //   MainActor; a stray re-entrant toggle during that await would fall into
+                //   cancelRecording(), poison the active pipeline id, and discard an
+                //   already-returned result. So re-entrant toggles were ignored to protect
+                //   the in-flight pipeline.
+                //
+                // WHY THE GUARD IS NOW OBSOLETE:
+                //   Transcription no longer runs inline-awaited on the MainActor. STOP now
+                //   ENQUEUES the pipeline on the engine's SERIAL transcription queue (a
+                //   detached Task chain) and returns immediately. The MainActor is NOT held
+                //   during transcription, so the re-entrancy hazard that motivated the guard
+                //   is gone — a toggle press during a background transcription is safe.
+                //
+                // NEW BEHAVIOUR:
+                //   This branch is only reached if engine.recordingState is
+                //   .transcribing/.enhancing — and the DERIVED recordingState reflects the
+                //   ACTIVE recording session only, falling back to .idle when nothing is
+                //   recording. So once a session stops and goes to the background,
+                //   recordingState reads .idle and a toggle takes the .idle branch below to
+                //   START A NEW SESSION (the point of the feature). This branch therefore
+                //   only fires in the narrow window where a session's own live state is
+                //   transcribing AND it is still the active recording session
+                //   (effectively never, post-stop); we START A NEW SESSION rather than
+                //   ignoring — record-while-transcribing is desired and now race-free.
+                // ═══════════════════════════════════════════════════════════════
+                SoundManager.shared.playStartSound()
+                await engine.toggleRecord(modeId: modeId)
             case .idle:
+                // .idle now also covers "a previous session is transcribing in the
+                // background but none is actively recording" (derived state falls back to
+                // .idle so the record shortcut stays usable). If there are in-flight
+                // sessions OR the user is starting fresh, a toggle here STARTS a new
+                // recording — UNLESS the assistant is awaiting a follow-up, which takes
+                // precedence as before.
                 if engine.assistantSession.canSendFollowUp {
                     SoundManager.shared.playStartSound()
                     await engine.toggleRecord(
                         modeId: modeId,
                         isAssistantFollowUp: true
                     )
+                } else if !engine.sessions.isEmpty {
+                    // Background transcription(s) in flight → start ANOTHER recording.
+                    SoundManager.shared.playStartSound()
+                    await engine.toggleRecord(modeId: modeId)
                 } else {
                     await dismissRecorderPanel()
                 }
@@ -191,6 +264,29 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     func dismissRecorderPanel() async {
         guard let engine = engine else { return }
 
+        // ── MULTI-SESSION VISIBILITY GUARD ──
+        // The pipeline + delivery paths call dismiss when an individual job finishes. In the
+        // multi-session world the panel must STAY VISIBLE while ANY session is still in flight
+        // (recording or transcribing) OR the assistant is showing a response — otherwise a
+        // finishing background job would yank the bar out from under a still-active recording.
+        // We only actually hide when there's genuinely nothing left to show.
+        let hasSessions = !engine.sessions.isEmpty
+        let assistantVisible = engine.assistantSession.isVisible
+        if hasSessions || assistantVisible {
+            logger.info("dismissRecorderPanel: suppressed — sessions=\(engine.sessions.count, privacy: .public) assistantVisible=\(assistantVisible, privacy: .public) (keep bar visible)")
+            return
+        }
+
+        hideRecorderPanel()
+        isRecorderPanelVisible = false
+        engine.assistantSession.reset()
+    }
+
+    // Force-hide the panel regardless of in-flight sessions. Used by the explicit
+    // cancel/reset paths which have already torn the sessions down (or want to).
+    private func forceDismissRecorderPanel() async {
+        guard let engine = engine else { return }
+        logger.info("forceDismissRecorderPanel: hide bar unconditionally (state=\(String(describing: engine.recordingState), privacy: .public))")
         hideRecorderPanel()
         isRecorderPanelVisible = false
         engine.assistantSession.reset()
@@ -200,9 +296,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         guard let engine = engine else { return }
         logger.notice("Resetting recording state on launch")
         await engine.resetRecordingSession()
-        hideRecorderPanel()
-        isRecorderPanelVisible = false
-        engine.assistantSession.reset()
+        // resetRecordingSession() empties `sessions`, so the guarded dismiss would hide
+        // anyway, but force-hide to be unambiguous on launch.
+        await forceDismissRecorderPanel()
     }
 
     func cancelRecording() async {

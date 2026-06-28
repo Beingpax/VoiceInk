@@ -180,6 +180,60 @@ struct RecorderCloseButton: View {
     }
 }
 
+// MARK: - Cancel (Discard) Button
+//
+// A dedicated red "X" button that lives RIGHT NEXT TO the record/stop control in every
+// recorder panel — a one-tap way to ABORT a recording (or an in-flight transcription)
+// WITHOUT delivering/pasting any text. Distinct from the normal Stop control, which
+// finishes + transcribes + pastes.
+//
+// WHY a separate component (not the grey RecorderCloseButton):
+//   - RecorderCloseButton is grey + only shown for the assistant-idle "close" affordance.
+//     Reusing it would visually conflate "discard this recording" with "dismiss the
+//     assistant panel". This button is RED so it reads unambiguously as a destructive
+//     abort, and it's always adjacent to Stop while a recording/transcription is live.
+//
+// WIRING: the tap calls the `action` closure, which the panels route to
+// RecorderUIManager.cancelRecording() → VoiceInkEngine.cancelRecording(). That path:
+//   • aborts/poisons any in-flight transcription pipeline so its result is DISCARDED,
+//     never pasted (see requestRecordingCancellation / canceledPipelineTranscriptionIDs),
+//   • stops audio capture via recorder.stopRecording(), which is the SAME stop path
+//     normal Stop uses and therefore resumes paused Spotify/Music (playbackController
+//     .resumeMedia()) + unmutes system audio,
+//   • clears the partial transcript + recorded file, returns state to .idle,
+//   • then dismisses the recorder panel.
+// It is idempotent/safe if pressed when nothing is active (the engine's .idle/.busy
+// branch just resets state).
+struct RecorderCancelButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Circle()
+                    // Subtle red-tinted fill so the control is clearly an abort, but
+                    // not as loud as the solid-red recording indicator on the Stop button.
+                    .fill(AppTheme.Status.error.opacity(0.20))
+                    .overlay(
+                        Circle()
+                            .strokeBorder(AppTheme.Status.error.opacity(0.55), lineWidth: 0.6)
+                    )
+
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(AppTheme.Status.error)
+            }
+            // Match the 21pt hit-target sizing of the record/close buttons so it lines
+            // up cleanly beside Stop in both the mini bar and the notch pill.
+            .frame(width: 21, height: 21)
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help("Cancel recording (discard, no paste)")
+        .accessibilityLabel(Text("Cancel recording"))
+    }
+}
+
 // MARK: - Processing Indicator
 
 struct ProcessingIndicator: View {
