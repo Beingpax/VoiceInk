@@ -14,17 +14,28 @@ class MiniWindowManager {
         assistantSession: AssistantSession,
         onRecordButtonTapped: @escaping () -> Void,
         onCloseTapped: @escaping () -> Void,
-        onAssistantFollowUp: @escaping (String) -> Void
+        // onCancelTapped: fired by the red "X" → discard the recording/transcription
+        // (no paste) and resume paused media. Routed to RecorderUIManager.cancelRecording().
+        onCancelTapped: @escaping () -> Void,
+        onAssistantFollowUp: @escaping (String) -> Void,
+        // onCancelSession: per-card cancel for a SPECIFIC background transcribing session
+        // (record-while-transcribing stack). Routed to engine.cancelSession(id:).
+        onCancelSession: @escaping (UUID) -> Void
     ) {
         self.makeView = {
             AnyView(
-                MiniRecorderView(
-                    stateProvider: engine,
+                // Host the STACK container (one card per engine.sessions entry) rather than
+                // a single MiniRecorderView. The stack renders the active/base card with full
+                // controls and older transcribing cards piled upward.
+                MiniRecorderStackView(
+                    engine: engine,
                     recorder: recorder,
                     assistantSession: assistantSession,
                     onRecordButtonTapped: onRecordButtonTapped,
                     onCloseTapped: onCloseTapped,
-                    onAssistantFollowUp: onAssistantFollowUp
+                    onCancelTapped: onCancelTapped,
+                    onAssistantFollowUp: onAssistantFollowUp,
+                    onCancelSession: onCancelSession
                 )
             )
         }

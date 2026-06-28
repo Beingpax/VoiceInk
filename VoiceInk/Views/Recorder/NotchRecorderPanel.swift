@@ -64,6 +64,11 @@ class NotchRecorderPanel: KeyablePanel {
         let sideMargin: CGFloat = 10
         let totalWidth = notchWidth + (maxSideExpansion + sideMargin) * 2
 
+        // 430 already accommodates the assistant panel (320). It also comfortably fits the
+        // record-while-transcribing stack: the notch pill (~43) plus several "transcribing…"
+        // chips (~38 each incl. spacing) beneath it stay well under 430, so no enlargement is
+        // needed for the stacked-chip UI. (If the chip count ever grows past ~8 this would
+        // need bumping.)
         let maxContentHeight: CGFloat = 430
         let xPosition = screen.frame.midX - (totalWidth / 2)
         let yPosition = screen.frame.maxY - maxContentHeight

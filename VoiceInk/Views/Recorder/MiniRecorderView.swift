@@ -6,6 +6,9 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var assistantSession: AssistantSession
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
+    // Cancel ("X"): discard the active recording/transcription with NO paste + resume
+    // paused media. Routed up to RecorderUIManager.cancelRecording().
+    let onCancelTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
 
     // MARK: - Layout Constants
@@ -33,6 +36,20 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             !assistantSession.isBusy
     }
 
+    // The cancel ("X") button is reachable whenever there is something to abort:
+    // while RECORDING (discard the audio) AND while a transcription is IN-FLIGHT
+    // (.transcribing/.enhancing — abort delivery before it pastes) and during the
+    // brief .starting handshake. Hidden at .idle/.busy where there's nothing to
+    // cancel (the assistant close-button affordance covers idle dismissal instead).
+    private var shouldShowCancelButton: Bool {
+        switch stateProvider.recordingState {
+        case .starting, .recording, .transcribing, .enhancing:
+            return true
+        case .idle, .busy:
+            return false
+        }
+    }
+
     private var liveAssistantFollowUpText: String {
         guard stateProvider.recordingState == .recording else { return "" }
         return stateProvider.partialTranscript
@@ -40,17 +57,29 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     private var controlBar: some View {
         HStack(spacing: 0) {
-            Group {
-                if shouldShowCloseButton {
-                    RecorderCloseButton(action: onCloseTapped)
-                } else {
-                    RecorderRecordButton(
-                        recordingState: stateProvider.recordingState,
-                        action: onRecordButtonTapped
-                    )
+            HStack(spacing: 6) {
+                Group {
+                    if shouldShowCloseButton {
+                        RecorderCloseButton(action: onCloseTapped)
+                    } else {
+                        RecorderRecordButton(
+                            recordingState: stateProvider.recordingState,
+                            action: onRecordButtonTapped
+                        )
+                    }
+                }
+
+                // Cancel ("X") sits immediately to the RIGHT of the Stop/record control
+                // so an abort is one glance + one tap away from Stop. Only shown while a
+                // recording or in-flight transcription is cancellable (see
+                // shouldShowCancelButton); collapses out otherwise so idle bars are unchanged.
+                if shouldShowCancelButton {
+                    RecorderCancelButton(action: onCancelTapped)
+                        .transition(.opacity)
                 }
             }
             .padding(.leading, 10)
+            .animation(.easeInOut(duration: 0.2), value: shouldShowCancelButton)
 
             Spacer(minLength: 0)
 
