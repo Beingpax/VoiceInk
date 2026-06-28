@@ -142,7 +142,7 @@ class AIEnhancementService: ObservableObject {
             """
 
 
-            The following are important vocabulary words, proper nouns, and technical terms. When these words or similar-sounding words appear in the <USER_MESSAGE>, ensure they are spelled EXACTLY as shown below:
+            The following are custom vocabulary words, proper nouns, acronyms, and technical terms. Use them as spelling context, and when matching or similar-sounding terms appear, spell them EXACTLY as shown below:
             <CUSTOM_VOCABULARY>
             \(customVocabulary)
             </CUSTOM_VOCABULARY>
