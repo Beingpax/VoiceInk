@@ -124,8 +124,8 @@ struct ConfigurationRow: View {
     
     private var selectedLanguage: String? {
         if let langCode = config.selectedLanguage {
-            if langCode == "auto" { return "Auto" }
-            if langCode == "en" { return "English" }
+            if langCode == "auto" { return String(localized: "Auto") }
+            if langCode == "en" { return String(localized: "English") }
             
             if let modelName = config.selectedTranscriptionModelName,
                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),

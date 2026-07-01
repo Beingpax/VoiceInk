@@ -53,7 +53,7 @@ extension TranscriptionModel {
     }
 
     var language: String {
-        isMultilingualModel ? "Multilingual" : "English"
+        isMultilingualModel ? String(localized: "Multilingual") : String(localized: "English")
     }
 
     var supportsStreaming: Bool { false }

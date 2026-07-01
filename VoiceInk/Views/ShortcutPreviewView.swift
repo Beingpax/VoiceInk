@@ -16,7 +16,7 @@ struct ShortcutPreviewView: View {
                 }
             }
         } else {
-            KeyCapView(text: "Not Set")
+            KeyCapView(text: String(localized: "Not Set"))
                 .foregroundColor(.secondary)
         }
     }

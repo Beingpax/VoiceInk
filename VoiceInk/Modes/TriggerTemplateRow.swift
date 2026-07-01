@@ -65,7 +65,7 @@ struct TriggerTemplateRow: View {
             }
         }
         .buttonStyle(.plain)
-        .help(isAdded ? "Remove \(template.name) triggers" : group.summaryText)
+        .help(isAdded ? String(localized: "Remove \(template.name) triggers") : group.summaryText)
     }
 }
 

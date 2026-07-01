@@ -11,7 +11,7 @@ struct OnboardingExperienceIntroCard: View {
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(introText)
+                Text(LocalizedStringKey(introText))
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(AppTheme.Text.primary)
                     .fixedSize(horizontal: false, vertical: true)
