@@ -13,8 +13,8 @@ private final class BackupOptions: NSObject {
 
     override init() {
         self.view = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 188))
-        self.allButton = NSButton(radioButtonWithTitle: "All", target: nil, action: nil)
-        self.individualButton = NSButton(radioButtonWithTitle: "Individual categories", target: nil, action: nil)
+        self.allButton = NSButton(radioButtonWithTitle: String(localized: "All"), target: nil, action: nil)
+        self.individualButton = NSButton(radioButtonWithTitle: String(localized: "Individual categories"), target: nil, action: nil)
 
         var buttons: [BackupCategory: NSButton] = [:]
         for category in BackupCategory.allCases {
@@ -289,7 +289,7 @@ class ImportExportService {
         alert.alertStyle = .informational
         alert.accessoryView = accessory.view
         alert.addButton(withTitle: String(localized: "Import"))
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "Cancel"))
 
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else {

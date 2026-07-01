@@ -17,7 +17,7 @@ class CustomSoundManager: ObservableObject {
         var id: String { rawValue }
 
         var displayName: String {
-            "Sound \(number)"
+            String(localized: "Sound \(number)")
         }
 
         var fileExtension: String {

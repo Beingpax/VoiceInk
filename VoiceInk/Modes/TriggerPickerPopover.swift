@@ -233,7 +233,7 @@ struct TriggerPickerPopover: View {
         systemName: String,
         isSelected: Bool,
         claimedBy: ModeConfig?,
-        unavailableMessage: String,
+        unavailableMessage: LocalizedStringKey,
         addTitle: LocalizedStringKey,
         removeTitle: LocalizedStringKey,
         detail: String,

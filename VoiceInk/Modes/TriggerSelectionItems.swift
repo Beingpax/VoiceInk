@@ -122,7 +122,7 @@ private struct TriggerTextChip: View {
     let systemName: String
     let title: String
     let truncationMode: Text.TruncationMode
-    let removeHelp: String
+    let removeHelp: LocalizedStringKey
     let onRemove: () -> Void
 
     var body: some View {
