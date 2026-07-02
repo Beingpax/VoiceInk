@@ -53,7 +53,7 @@ struct ElevenLabsProvider: CloudProvider {
     }
 
     func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? {
-        ElevenLabsStreamingProvider()
+        ElevenLabsStreamingProvider(modelContext: modelContext)
     }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {

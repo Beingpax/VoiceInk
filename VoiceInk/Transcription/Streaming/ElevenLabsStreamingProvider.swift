@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import LLMkit
 
 /// ElevenLabs streaming provider wrapping `LLMkit.ElevenLabsStreamingClient`.
@@ -7,10 +8,12 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
     private let client = LLMkit.ElevenLabsStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
+    private let modelContext: ModelContext
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init() {
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -31,7 +34,12 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "scribe_v2_realtime", language: language)
+            try await client.connect(
+                apiKey: apiKey,
+                model: "scribe_v2_realtime",
+                language: language,
+                customVocabulary: getCustomDictionaryTerms()
+            )
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
@@ -81,6 +89,25 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
         }
+    }
+
+    private func getCustomDictionaryTerms() -> [String] {
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
+            return []
+        }
+        var seen = Set<String>()
+        var unique: [String] = []
+        for word in vocabularyWords {
+            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let key = trimmed.lowercased()
+            if !seen.contains(key) {
+                seen.insert(key)
+                unique.append(trimmed)
+            }
+        }
+        return unique
     }
 
     private func mapError(_ error: Error) -> Error {
