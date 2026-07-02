@@ -89,43 +89,61 @@ struct TranscriptionInfoPanel: View {
     private var aiRequestSection: some View {
         if transcription.aiRequestSystemMessage != nil || transcription.aiRequestUserMessage != nil {
             Section {
-                if let systemMsg = transcription.aiRequestSystemMessage, !systemMsg.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("System Prompt")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        Text(systemMsg)
-                            .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .lineSpacing(2)
-                            .textSelection(.enabled)
-                            .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 12) {
+                    if let systemMsg = transcription.aiRequestSystemMessage, !systemMsg.isEmpty {
+                        requestMessageBlock(title: "System Prompt", message: systemMsg)
                     }
-                }
 
-                if let userMsg = transcription.aiRequestUserMessage, !userMsg.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("User Message")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        Text(userMsg)
-                            .font(.system(size: 11, weight: .regular, design: .monospaced))
-                            .lineSpacing(2)
-                            .textSelection(.enabled)
-                            .foregroundColor(.primary)
+                    if let userMsg = transcription.aiRequestUserMessage, !userMsg.isEmpty {
+                        requestMessageBlock(title: "User Message", message: userMsg)
                     }
+
+                    aiRequestTokenEstimate
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .hoverCopyButton(
+                    textToCopy: fullRequestText,
+                    alignment: .topTrailing,
+                    padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+                )
             } header: {
                 Text("AI Request")
             }
-            .hoverCopyButton(
-                textToCopy: fullRequestText,
-                alignment: .topTrailing,
-                padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
-            )
         }
     }
 
     // MARK: - Helpers
+
+    private var aiRequestTokenEstimate: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "number")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+
+            Text("Around \(estimatedAIRequestTokenCount.formatted()) tokens")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .textSelection(.enabled)
+        }
+        .help("Token count is estimated from the request text.")
+    }
+
+    private var aiRequestMessages: [String] {
+        [
+            transcription.aiRequestSystemMessage,
+            transcription.aiRequestUserMessage
+        ]
+        .compactMap { message in
+            let trimmed = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return trimmed.isEmpty ? nil : trimmed
+        }
+    }
+
+    private var estimatedAIRequestTokenCount: Int {
+        let characterCount = aiRequestMessages.reduce(0) { $0 + $1.count }
+        guard characterCount > 0 else { return 0 }
+        return max(1, (characterCount + 3) / 4)
+    }
 
     private var fullRequestText: String {
         var parts: [String] = []
@@ -136,6 +154,19 @@ struct TranscriptionInfoPanel: View {
             parts.append("User Message:\n\(user)")
         }
         return parts.joined(separator: "\n\n")
+    }
+
+    private func requestMessageBlock(title: LocalizedStringKey, message: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+            Text(message)
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                .lineSpacing(2)
+                .textSelection(.enabled)
+                .foregroundColor(.primary)
+        }
     }
 
     private func metadataRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
