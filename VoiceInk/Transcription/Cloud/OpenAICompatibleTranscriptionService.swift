@@ -37,7 +37,6 @@ class OpenAICompatibleTranscriptionService {
         }
 
         let selectedLanguage = context.language ?? "auto"
-        let prompt = context.prompt ?? ""
         let crlf = "\r\n"
         var body = Data()
 
@@ -61,9 +60,6 @@ class OpenAICompatibleTranscriptionService {
 
         if selectedLanguage != "auto" && !selectedLanguage.isEmpty {
             field("language", selectedLanguage)
-        }
-        if !prompt.isEmpty {
-            field("prompt", prompt)
         }
 
         append("--\(boundary)--\(crlf)")

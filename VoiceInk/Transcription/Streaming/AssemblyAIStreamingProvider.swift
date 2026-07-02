@@ -37,7 +37,6 @@ final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                prompt: transcriptionPrompt(),
                 customVocabulary: getCustomDictionaryTerms()
             )
         } catch {
@@ -88,11 +87,6 @@ final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
         }
-    }
-
-    private func transcriptionPrompt() -> String? {
-        let prompt = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
-        return prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : prompt
     }
 
     private func getCustomDictionaryTerms() -> [String] {

@@ -65,7 +65,6 @@ class CloudTranscriptionService: TranscriptionService {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                prompt: transcriptionPrompt(from: context),
                 customVocabulary: getCustomDictionaryTerms()
             )
         } catch let error as CloudTranscriptionError {
@@ -96,11 +95,6 @@ class CloudTranscriptionService: TranscriptionService {
     private func selectedLanguage(from context: TranscriptionRequestContext) -> String? {
         let lang = context.language ?? "auto"
         return (lang == "auto" || lang.isEmpty) ? nil : lang
-    }
-
-    private func transcriptionPrompt(from context: TranscriptionRequestContext) -> String? {
-        let prompt = context.prompt ?? ""
-        return prompt.isEmpty ? nil : prompt
     }
 
     private func getCustomDictionaryTerms() -> [String] {
