@@ -13,7 +13,7 @@ struct CustomModelConnectionTester {
     /// 4xx "bad audio" answer still proves the endpoint and key are good.
     static func testTranscriptionEndpoint(endpoint: String, apiKey: String, modelName: String) async -> ConnectionTestResult {
         guard let url = URL(string: endpoint), url.scheme?.hasPrefix("http") == true else {
-            return .failure(String(localized: "API endpoint must be a valid URL"))
+            return .failure(message: String(localized: "API endpoint must be a valid URL"))
         }
 
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -37,7 +37,7 @@ struct CustomModelConnectionTester {
             let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
 
             guard let httpResponse = response as? HTTPURLResponse else {
-                return .failure(String(localized: "Unexpected response from the server"))
+                return .failure(message: String(localized: "Unexpected response from the server"))
             }
 
             switch httpResponse.statusCode {
@@ -45,15 +45,15 @@ struct CustomModelConnectionTester {
                 // Authenticated and routed; the junk audio being rejected is expected.
                 return .success(latencyMs: latencyMs)
             case 401, 403:
-                return .failure(String(localized: "Invalid API key"))
+                return .failure(message: String(localized: "Invalid API key"))
             case 404:
-                return .failure(String(localized: "Endpoint not found (HTTP 404) — check the API endpoint URL"))
+                return .failure(message: String(localized: "Endpoint not found (HTTP 404) — check the API endpoint URL"))
             default:
                 let message = Self.serverMessage(from: data)
-                return .failure(String(format: String(localized: "HTTP %lld: %@"), Int64(httpResponse.statusCode), message))
+                return .failure(message: String(format: String(localized: "HTTP %lld: %@"), Int64(httpResponse.statusCode), message))
             }
         } catch {
-            return .failure(error.localizedDescription)
+            return .failure(message: error.localizedDescription)
         }
     }
 
@@ -61,7 +61,7 @@ struct CustomModelConnectionTester {
     /// LLMkit performs when a custom enhancement model is added.
     static func testEnhancementEndpoint(baseURL: String, apiKey: String, modelName: String) async -> ConnectionTestResult {
         guard let url = URL(string: baseURL), url.scheme?.hasPrefix("http") == true else {
-            return .failure(String(localized: "Base URL must be a valid URL"))
+            return .failure(message: String(localized: "Base URL must be a valid URL"))
         }
 
         let start = Date()
@@ -71,7 +71,7 @@ struct CustomModelConnectionTester {
         if result.isValid {
             return .success(latencyMs: latencyMs)
         }
-        return .failure(result.errorMessage ?? String(localized: "Could not verify this API key"))
+        return .failure(message: result.errorMessage ?? String(localized: "Could not verify this API key"))
     }
 
     private static func serverMessage(from data: Data) -> String {
