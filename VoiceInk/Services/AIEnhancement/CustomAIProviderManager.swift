@@ -97,10 +97,18 @@ final class CustomAIProviderManager: ObservableObject {
         return true
     }
 
-    func updateProvider(_ provider: CustomAIProviderConfig) -> Bool {
+    func updateProvider(_ provider: CustomAIProviderConfig, apiKey: String? = nil) -> Bool {
         let normalizedProvider = provider.normalizedForStorage
         guard let index = providers.firstIndex(where: { $0.id == normalizedProvider.id }) else {
             return false
+        }
+
+        if let apiKey {
+            let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedKey.isEmpty,
+                  APIKeyManager.shared.saveCustomAIProviderAPIKey(trimmedKey, forProviderId: normalizedProvider.id) else {
+                return false
+            }
         }
 
         let previousModelName = providers[index].modelName

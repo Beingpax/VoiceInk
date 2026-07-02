@@ -200,9 +200,12 @@ struct CustomTranscriptionModelEditorPanel: View {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Custom Model"), text: $displayName)
                             CustomModelTextField(label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions", text: $apiEndpoint)
-                            if !isEditing {
-                                CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
-                            }
+                            CustomModelTextField(
+                                label: "API Key",
+                                placeholder: isEditing ? String(localized: "Leave blank to keep current key") : String(localized: "Paste API key"),
+                                text: $apiKey,
+                                isSecure: true
+                            )
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
                             CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
                         }
@@ -286,7 +289,11 @@ struct CustomTranscriptionModelEditorPanel: View {
                 isMultilingual: isMultilingual
             )
 
-            customModelManager.updateCustomModel(updatedModel)
+            guard customModelManager.updateCustomModel(updatedModel, apiKey: trimmedKey.isEmpty ? nil : trimmedKey) else {
+                validationErrors = [String(localized: "Failed to save API key securely")]
+                isSaving = false
+                return
+            }
         } else {
             let customModel = CustomCloudModel(
                 name: generatedName,
@@ -353,9 +360,12 @@ struct CustomEnhancementModelEditorPanel: View {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Enhancement Model"), text: $displayName)
                             CustomModelTextField(label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions", text: $baseURL)
-                            if !isEditing {
-                                CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
-                            }
+                            CustomModelTextField(
+                                label: "API Key",
+                                placeholder: isEditing ? String(localized: "Leave blank to keep current key") : String(localized: "Paste API key"),
+                                text: $apiKey,
+                                isSecure: true
+                            )
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-5.5", text: $modelName)
                         }
                     }
@@ -451,7 +461,7 @@ struct CustomEnhancementModelEditorPanel: View {
 
         if isEditing {
             isSaving = true
-            let didSave = manager.updateProvider(provider)
+            let didSave = manager.updateProvider(provider, apiKey: trimmedKey.isEmpty ? nil : trimmedKey)
             isSaving = false
 
             if didSave {
