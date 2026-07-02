@@ -768,7 +768,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 个转录模型"
+                  "value" : "%lld 个转写模型"
                 }
               }
             }
@@ -820,7 +820,7 @@
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld 条转录记录"
+                  "value" : "%lld 条转写记录"
                 }
               }
             }
@@ -1887,7 +1887,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在粘贴的转录输出末尾添加一个空格。"
+            "value" : "在粘贴的转写输出末尾添加一个空格。"
           }
         }
       }
@@ -1968,7 +1968,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加自定转录模型"
+            "value" : "添加自定转写模型"
           }
         }
       }
@@ -2209,7 +2209,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加转录模型"
+            "value" : "添加转写模型"
           }
         }
       }
@@ -2914,7 +2914,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未为流式转录配置 API 密钥"
+            "value" : "未为流式转写配置 API 密钥"
           }
         }
       }
@@ -3010,7 +3010,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apple Speech 未能完整返回转录结果。"
+            "value" : "Apple Speech 未能完整返回转写结果。"
           }
         }
       }
@@ -3455,7 +3455,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动删除转录历史记录"
+            "value" : "自动删除转写历史记录"
           }
         }
       }
@@ -3472,7 +3472,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动删除转录记录"
+            "value" : "自动删除转写记录"
           }
         }
       }
@@ -3505,7 +3505,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动删除音频录音，同时完整保留文字转录记录。"
+            "value" : "自动删除音频录音，同时完整保留文字转写记录。"
           }
         }
       }
@@ -3522,7 +3522,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "根据你设置的保留期限自动删除转录记录。"
+            "value" : "根据你设置的保留期限自动删除转写记录。"
           }
         }
       }
@@ -3556,7 +3556,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动从转录中移除已配置的填充词，例如「uh」「um」或「hmm」。如果未配置任何填充词，将跳过此清理。"
+            "value" : "自动从转写中移除已配置的填充词，例如「uh」「um」或「hmm」。如果未配置任何填充词，将跳过此清理。"
           }
         }
       }
@@ -3572,7 +3572,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当转录内容字数很少时，自动跳过 AI 润色。「是的」「谢谢」之类的简短用语或快速指令并不能从润色中获益。"
+            "value" : "当转写内容字数很少时，自动跳过 AI 润色。「是的」「谢谢」之类的简短用语或快速指令并不能从润色中获益。"
           }
         }
       }
@@ -3620,7 +3620,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "可用的转录模型"
+            "value" : "可用的转写模型"
           }
         }
       }
@@ -3880,7 +3880,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "取消转录"
+            "value" : "取消转写"
           }
         }
       }
@@ -4347,7 +4347,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将转录与 LLM 结合，生成润色后的版本。"
+            "value" : "将转写与 LLM 结合，生成润色后的版本。"
           }
         }
       }
@@ -4461,7 +4461,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "配置转录模型"
+            "value" : "配置转写模型"
           }
         }
       }
@@ -4676,7 +4676,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "控制 VoiceInk 如何处理你的转录数据和录音。"
+            "value" : "控制 VoiceInk 如何处理你的转写数据和录音。"
           }
         }
       }
@@ -4693,7 +4693,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将转录输出转换为小写。"
+            "value" : "将转写输出转换为小写。"
           }
         }
       }
@@ -4775,7 +4775,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拷贝上次转录"
+            "value" : "拷贝上次转写"
           }
         }
       }
@@ -4825,7 +4825,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "复制转录文本"
+            "value" : "复制转写文本"
           }
         }
       }
@@ -5211,7 +5211,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自定转录模型"
+            "value" : "自定转写模型"
           }
         }
       }
@@ -5558,7 +5558,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "删除旧录音，同时保留转录历史记录。"
+            "value" : "删除旧录音，同时保留转写历史记录。"
           }
         }
       }
@@ -5608,7 +5608,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在保留期后删除转录历史记录和相关音频文件。"
+            "value" : "在保留期后删除转写历史记录和相关音频文件。"
           }
         }
       }
@@ -6308,7 +6308,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "下载转录模型"
+            "value" : "下载转写模型"
           }
         }
       }
@@ -6615,7 +6615,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "编辑自定转录模型"
+            "value" : "编辑自定转写模型"
           }
         }
       }
@@ -7524,7 +7524,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法拷贝转录内容"
+            "value" : "无法拷贝转写内容"
           }
         }
       }
@@ -7732,7 +7732,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法载入转录模型。"
+            "value" : "无法载入转写模型。"
           }
         }
       }
@@ -7924,7 +7924,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无法转录该音频。"
+            "value" : "无法转写该音频。"
           }
         }
       }
@@ -7956,7 +7956,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在 Mac 上本地运行的快速多语言转录。"
+            "value" : "在 Mac 上本地运行的快速多语言转写。"
           }
         }
       }
@@ -7972,7 +7972,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "快速转录，不使用 AI 增强。"
+            "value" : "快速转写，不使用 AI 增强。"
           }
         }
       }
@@ -8072,7 +8072,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "查找最佳转录设置"
+            "value" : "查找最佳转写设置"
           }
         }
       }
@@ -8819,7 +8819,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "为 Apple 原生转录提供的模型类型无效。"
+            "value" : "为 Apple 原生转写提供的模型类型无效。"
           }
         }
       }
@@ -9126,7 +9126,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已拷贝上次转录"
+            "value" : "已拷贝上次转写"
           }
         }
       }
@@ -9838,7 +9838,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "管理模型"
+            "value" : "模型目录"
           }
         }
       }
@@ -9854,7 +9854,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "管理模式"
+            "value" : "转写模式"
           }
         }
       }
@@ -10310,7 +10310,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "还有更多转录模型可用"
+            "value" : "还有更多转写模型可用"
           }
         }
       }
@@ -10650,7 +10650,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无自定转录模型"
+            "value" : "无自定转写模型"
           }
         }
       }
@@ -11085,7 +11085,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无可用转录内容"
+            "value" : "无可用转写内容"
           }
         }
       }
@@ -11101,7 +11101,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未选择转录模型"
+            "value" : "未选择转写模型"
           }
         }
       }
@@ -11117,7 +11117,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有可用的转录模型。请在「AI 模型」标签页中连接云服务或下载本地模型。"
+            "value" : "没有可用的转写模型。请在「AI 模型」标签页中连接云服务或下载本地模型。"
           }
         }
       }
@@ -11133,7 +11133,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有可供自定命令使用的转录文本。"
+            "value" : "没有可供自定命令使用的转写文本。"
           }
         }
       }
@@ -11149,7 +11149,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "无转录记录"
+            "value" : "无转写记录"
           }
         }
       }
@@ -11165,7 +11165,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "暂无转录记录"
+            "value" : "暂无转写记录"
           }
         }
       }
@@ -11311,7 +11311,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未连接到流式转录服务"
+            "value" : "未连接到流式转写服务"
           }
         }
       }
@@ -11881,7 +11881,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粘贴上次转录（已润色）"
+            "value" : "粘贴上次转写（已润色）"
           }
         }
       }
@@ -11897,7 +11897,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粘贴上次转录"
+            "value" : "粘贴上次转写"
           }
         }
       }
@@ -11913,7 +11913,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粘贴上次转录（已润色）"
+            "value" : "粘贴上次转写（已润色）"
           }
         }
       }
@@ -11929,7 +11929,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "粘贴上次转录（原始）"
+            "value" : "粘贴上次转写（原始）"
           }
         }
       }
@@ -12664,7 +12664,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "最近转录"
+            "value" : "最近转写"
           }
         }
       }
@@ -13571,7 +13571,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新转录此音频"
+            "value" : "重新转写此音频"
           }
         }
       }
@@ -13587,7 +13587,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新转录失败"
+            "value" : "重新转写失败"
           }
         }
       }
@@ -13603,7 +13603,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重新转录成功"
+            "value" : "重新转写成功"
           }
         }
       }
@@ -13651,7 +13651,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "重试上次转录"
+            "value" : "重试上次转写"
           }
         }
       }
@@ -13749,7 +13749,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "以你的用户权限在本地运行。最终转录文本通过 stdin 传入，并以 VOICEINK_TRANSCRIPT 形式提供。"
+            "value" : "以你的用户权限在本地运行。最终转写文本通过 stdin 传入，并以 VOICEINK_TRANSCRIPT 形式提供。"
           }
         }
       }
@@ -13877,7 +13877,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "存储转录内容"
+            "value" : "存储转写内容"
           }
         }
       }
@@ -13959,7 +13959,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜索转录记录"
+            "value" : "搜索转写记录"
           }
         }
       }
@@ -13975,7 +13975,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "搜索转录记录…"
+            "value" : "搜索转写记录…"
           }
         }
       }
@@ -14040,7 +14040,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "选择一条转录记录以查看详情"
+            "value" : "选择一条转写记录以查看详情"
           }
         }
       }
@@ -14481,7 +14481,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "设置等待 AI 提供商响应的时长。如果在该时长内未收到响应，你可以选择立即失败并粘贴原始转录内容，或重试请求（最多 3 次）。"
+            "value" : "设置等待 AI 提供商响应的时长。如果在该时长内未收到响应，你可以选择立即失败并粘贴原始转写内容，或重试请求（最多 3 次）。"
           }
         }
       }
@@ -14821,7 +14821,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "跳过简短转录"
+            "value" : "跳过简短转写"
           }
         }
       }
@@ -14982,7 +14982,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "启动或停止 VoiceInk 录音器，以进行语音转录。"
+            "value" : "启动或停止 VoiceInk 录音器，以进行语音转写。"
           }
         }
       }
@@ -15048,7 +15048,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "开始转录"
+            "value" : "开始转写"
           }
         }
       }
@@ -15193,7 +15193,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "流式转录在等待最终结果时超时"
+            "value" : "流式转写在等待最终结果时超时"
           }
         }
       }
@@ -15258,7 +15258,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "支持任何使用与 OpenAI 转录相同 API 格式的提供商。"
+            "value" : "支持任何使用与 OpenAI 转写相同 API 格式的提供商。"
           }
         }
       }
@@ -15614,7 +15614,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "找不到要转录的音频文件。"
+            "value" : "找不到要转写的音频文件。"
           }
         }
       }
@@ -15646,7 +15646,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "核心转录引擎运行失败。"
+            "value" : "核心转写引擎运行失败。"
           }
         }
       }
@@ -15826,7 +15826,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录语言由模型自动检测。"
+            "value" : "转写语言由模型自动检测。"
           }
         }
       }
@@ -15977,7 +15977,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这是针对英语优化的模型，仅支持英语转录。"
+            "value" : "这是针对英语优化的模型，仅支持英语转写。"
           }
         }
       }
@@ -16328,7 +16328,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录记录总数"
+            "value" : "转写记录总数"
           }
         }
       }
@@ -16344,7 +16344,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录"
+            "value" : "转写"
           }
         }
       }
@@ -16360,7 +16360,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在转录"
+            "value" : "正在转写"
           }
         }
       }
@@ -16376,7 +16376,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在转录录音"
+            "value" : "正在转写录音"
           }
         }
       }
@@ -16393,7 +16393,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "正在转录…"
+            "value" : "正在转写…"
           }
         }
       }
@@ -16409,7 +16409,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录记录清理"
+            "value" : "转写记录清理"
           }
         }
       }
@@ -16427,7 +16427,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "来自 %@ 的转录"
+            "value" : "来自 %@ 的转写"
           }
         }
       }
@@ -16445,7 +16445,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录历史记录"
+            "value" : "转写历史记录"
           }
         }
       }
@@ -16461,7 +16461,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录"
+            "value" : "转写"
           }
         }
       }
@@ -16477,7 +16477,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用 SpeechAnalyzer 转录失败。"
+            "value" : "使用 SpeechAnalyzer 转写失败。"
           }
         }
       }
@@ -16493,7 +16493,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录失败：%@"
+            "value" : "转写失败：%@"
           }
         }
       }
@@ -16509,7 +16509,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录失败：未选择模型"
+            "value" : "转写失败：未选择模型"
           }
         }
       }
@@ -16525,7 +16525,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录格式"
+            "value" : "转写格式"
           }
         }
       }
@@ -16541,7 +16541,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录语言"
+            "value" : "转写语言"
           }
         }
       }
@@ -16559,7 +16559,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录模型"
+            "value" : "转写模型"
           }
         }
       }
@@ -16575,7 +16575,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录模型"
+            "value" : "转写模型"
           }
         }
       }
@@ -16591,7 +16591,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录模型"
+            "value" : "转写模型"
           }
         }
       }
@@ -16607,7 +16607,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录用时"
+            "value" : "转写用时"
           }
         }
       }
@@ -16623,7 +16623,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录已取消"
+            "value" : "转写已取消"
           }
         }
       }
@@ -16785,7 +16785,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果本地模型转录耗时超出预期，请开启此选项。App 在启动和唤醒时会静默运行后台转录，以触发优化。"
+            "value" : "如果本地模型转写耗时超出预期，请开启此选项。App 在启动和唤醒时会静默运行后台转写，以触发优化。"
           }
         }
       }
@@ -16935,7 +16935,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在本地使用 NVIDIA 的 Parakeet 模型，或连接云端转录提供商。"
+            "value" : "在本地使用 NVIDIA 的 Parakeet 模型，或连接云端转写提供商。"
           }
         }
       }
@@ -16984,7 +16984,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当你想尽快将语音转换为文本时使用此模式。它会使用你配置的转录模型录音，并按原样粘贴转录内容。"
+            "value" : "当你想尽快将语音转换为文本时使用此模式。它会使用你配置的转写模型录音，并按原样粘贴转写内容。"
           }
         }
       }
@@ -17051,7 +17051,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用你配置的转录模型进行快速听写。"
+            "value" : "使用你配置的转写模型进行快速听写。"
           }
         }
       }
@@ -17333,7 +17333,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "查看转录与润色模型的性能"
+            "value" : "查看转写与润色模型的性能"
           }
         }
       }
@@ -17530,7 +17530,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VoiceInk 无法访问其存储位置。你的转录记录将无法跨会话存储。"
+            "value" : "VoiceInk 无法访问其存储位置。你的转写记录将无法跨会话存储。"
           }
         }
       }
@@ -17724,7 +17724,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VoiceInk 会读取屏幕上的可见内容，以提高转录的准确性。"
+            "value" : "VoiceInk 会读取屏幕上的可见内容，以提高转写的准确性。"
           }
         }
       }
@@ -17805,7 +17805,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VoiceInk 会临时使用剪贴板来粘贴转录内容。打开后，它会在所选延迟后恢复你之前的剪贴板内容。关闭后，粘贴的转录内容会保留在剪贴板中。"
+            "value" : "VoiceInk 会临时使用剪贴板来粘贴转写内容。打开后，它会在所选延迟后恢复你之前的剪贴板内容。关闭后，粘贴的转写内容会保留在剪贴板中。"
           }
         }
       }
@@ -17821,7 +17821,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VoiceInk 使用辅助功能将转录内容直接输入到任何 App 中。"
+            "value" : "VoiceInk 使用辅助功能将转写内容直接输入到任何 App 中。"
           }
         }
       }
@@ -17837,7 +17837,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VoiceInk 使用大语言模型润色转录记录并执行 AI 操作。请先设置 API 密钥再继续。"
+            "value" : "VoiceInk 使用大语言模型润色转写记录并执行 AI 操作。请先设置 API 密钥再继续。"
           }
         }
       }
@@ -17887,7 +17887,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "VoiceInk 将下载 NVIDIA 的 Parakeet 模型，以设置快速的本地转录。"
+            "value" : "VoiceInk 将下载 NVIDIA 的 Parakeet 模型，以设置快速的本地转写。"
           }
         }
       }
@@ -18087,7 +18087,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "词语替换会在转录之后运行，用于替换听错的词语、短语、缩写或模板文本。"
+            "value" : "词语替换会在转写之后运行，用于替换听错的词语、短语、缩写或模板文本。"
           }
         }
       }
@@ -18103,7 +18103,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "词语替换会在转录完成后运行。词汇则与 AI 润色配合使用，以便更好地理解转录记录中的人名、技术术语和特殊拼写。"
+            "value" : "词语替换会在转写完成后运行。词汇则与 AI 润色配合使用，以便更好地理解转写记录中的人名、技术术语和特殊拼写。"
           }
         }
       }
@@ -18531,7 +18531,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "你的转录记录将显示在这里"
+            "value" : "你的转写记录将显示在这里"
           }
         }
       }
@@ -18634,6 +18634,316 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "YouTube 视频与指南"
+          }
+        }
+      }
+    },
+    "Imported" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已导入"
+          }
+        }
+      }
+    },
+    "Built in" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "内置"
+          }
+        }
+      }
+    },
+    "Multilingual" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "多语言"
+          }
+        }
+      }
+    },
+    "English" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英语"
+          }
+        }
+      }
+    },
+    "Auto" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动"
+          }
+        }
+      }
+    },
+    "Not Set" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未设置"
+          }
+        }
+      }
+    },
+    "All" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全部"
+          }
+        }
+      }
+    },
+    "Individual categories" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "单独类别"
+          }
+        }
+      }
+    },
+    "Custom Models" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义模型"
+          }
+        }
+      }
+    },
+    "Sound %lld" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "声音 %lld"
+          }
+        }
+      }
+    },
+    "Each website can only belong to one mode" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每个网站只能属于一个模式"
+          }
+        }
+      }
+    },
+    "Each trigger word can only belong to one mode" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每个触发词只能属于一个模式"
+          }
+        }
+      }
+    },
+    "Remove %@ triggers" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "移除 %@ 触发词"
+          }
+        }
+      }
+    },
+    "Try a Simple Dictation" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试试简单听写"
+          }
+        }
+      }
+    },
+    "Try Enhancement" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试试润色"
+          }
+        }
+      }
+    },
+    "Write an Email" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "写一封邮件"
+          }
+        }
+      }
+    },
+    "Try Rewrite" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "试试改写"
+          }
+        }
+      }
+    },
+    "Ask a Quick Question" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问个小问题"
+          }
+        }
+      }
+    },
+    "Turn your spoken note into a clean email draft with VoiceInk." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用 VoiceInk 把你的口述整理成整洁的邮件草稿。"
+          }
+        }
+      }
+    },
+    "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选中屏幕上的文字，告诉 VoiceInk 你想怎么改，它就会替你改写。"
+          }
+        }
+      }
+    },
+    "Ask quick questions and VoiceInk will serve you the answers." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "问一些简单的问题，VoiceInk 会为你解答。"
+          }
+        }
+      }
+    },
+    "Sample text" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "示例文本"
+          }
+        }
+      }
+    },
+    "Sample question" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "示例问题"
+          }
+        }
+      }
+    },
+    "Read this" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "读这段"
+          }
+        }
+      }
+    },
+    "Your dictated text will appear here." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "你听写的文字会显示在这里。"
+          }
+        }
+      }
+    },
+    "Your enhanced message will appear here." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "润色后的内容会显示在这里。"
+          }
+        }
+      }
+    },
+    "Your formatted email will appear here." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "整理好的邮件会显示在这里。"
+          }
+        }
+      }
+    },
+    "Text to rewrite will appear here." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "待改写的文字会显示在这里。"
+          }
+        }
+      }
+    },
+    "Let's try it once again." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "我们再试一次。"
+          }
+        }
+      }
+    },
+    "Next" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一步"
+          }
+        }
+      }
+    },
+    "Keyboard shortcut:" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "键盘快捷键："
           }
         }
       }

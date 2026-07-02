@@ -221,7 +221,7 @@ struct SettingsView: View {
             Section("General") {
                 Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
 
-                LaunchAtLogin.Toggle("Launch at Login")
+                LaunchAtLogin.Toggle(String(localized: "Launch at Login"))
 
                 Toggle("Auto-check Updates", isOn: Binding(
                     get: { updaterViewModel.automaticallyChecksForUpdates },

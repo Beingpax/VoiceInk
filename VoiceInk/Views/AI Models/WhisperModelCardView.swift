@@ -111,7 +111,7 @@ struct WhisperModelCardView: View {
             } else {
                 Button(action: downloadAction) {
                     HStack(spacing: 4) {
-                        Text(isDownloading ? "Downloading..." : "Download")
+                        Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
                             .font(.system(size: 12, weight: .medium))
                         Image(systemName: "arrow.down.circle")
                             .font(.system(size: 12, weight: .medium))
@@ -244,7 +244,7 @@ func performanceColor(value: Double) -> Color {
     }
 }
 
-func modelStatusPill(_ text: String, systemImage: String) -> some View {
+func modelStatusPill(_ text: LocalizedStringKey, systemImage: String) -> some View {
     Label(text, systemImage: systemImage)
         .font(.system(size: 11, weight: .medium))
         .foregroundColor(Color(.secondaryLabelColor))

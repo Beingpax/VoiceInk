@@ -317,7 +317,7 @@ struct APIKeyManagementView: View {
     }
 
     private func providerTitle(_ provider: AIProvider) -> String {
-        provider == .custom ? "Custom Models" : provider.rawValue
+        provider == .custom ? String(localized: "Custom Models") : provider.rawValue
     }
 
     private func syncSelectedProviderAvailability() {

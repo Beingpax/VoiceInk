@@ -125,7 +125,7 @@ struct FillerWordsSettingsSection: View {
         }
 
         guard fillerWordManager.addWord(trimmed) else {
-            errorMessage = "This filler word already exists."
+            errorMessage = String(localized: "This filler word already exists.")
             return
         }
 
