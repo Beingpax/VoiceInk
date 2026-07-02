@@ -7,6 +7,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
+    @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
 
     // MARK: - Layout Constants
 
@@ -19,7 +20,8 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // true when live transcript is streaming in during recording
     private var hasLiveTranscript: Bool {
-        stateProvider.recordingState == .recording
+        showLiveTranscript
+            && stateProvider.recordingState == .recording
             && !stateProvider.partialTranscript.isEmpty
     }
 
@@ -34,7 +36,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var liveAssistantFollowUpText: String {
-        guard stateProvider.recordingState == .recording else { return "" }
+        guard showLiveTranscript, stateProvider.recordingState == .recording else { return "" }
         return stateProvider.partialTranscript
     }
 

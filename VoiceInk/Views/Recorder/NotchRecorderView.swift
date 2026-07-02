@@ -7,6 +7,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
+    @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
 
     // MARK: - Display State
 
@@ -24,7 +25,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
         switch stateProvider.recordingState {
         case .recording:
-            let shouldShowLive = !stateProvider.partialTranscript.isEmpty
+            let shouldShowLive = showLiveTranscript && !stateProvider.partialTranscript.isEmpty
             return shouldShowLive ? .liveText : .active
         case .transcribing, .enhancing:
             return .active
@@ -103,7 +104,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var liveAssistantFollowUpText: String {
-        guard stateProvider.recordingState == .recording else { return "" }
+        guard showLiveTranscript, stateProvider.recordingState == .recording else { return "" }
         return stateProvider.partialTranscript
     }
 

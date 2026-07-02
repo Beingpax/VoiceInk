@@ -9425,6 +9425,22 @@
         }
       }
     },
+    "Live Text Display" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Text-Anzeige"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "实时文本显示"
+          }
+        }
+      }
+    },
     "Load a template or enter a command to enable Local CLI enhancement." : {
       "localizations" : {
         "de" : {
@@ -14693,6 +14709,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "在 Finder 中显示"
+          }
+        }
+      }
+    },
+    "Shows live text while recording with realtime models." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt Live-Text während der Aufnahme mit Echtzeitmodellen an."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用实时模型录音时显示实时文本。"
           }
         }
       }

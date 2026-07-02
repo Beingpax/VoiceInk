@@ -8,6 +8,10 @@ enum CleanupSettingsKeys {
     static let lastAutomaticAudioCleanupDate = "AudioCleanupLastAutomaticCleanupDate"
 }
 
+enum RecorderDisplaySettingsKeys {
+    static let showLiveTranscript = "ShowLiveTranscript"
+}
+
 enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -34,6 +38,7 @@ enum AppDefaults {
             "SelectedLanguage": "en",
             "AppendTrailingSpace": true,
             "RecorderType": "mini",
+            RecorderDisplaySettingsKeys.showLiveTranscript: true,
 
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,

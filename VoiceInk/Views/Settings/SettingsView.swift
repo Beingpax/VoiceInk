@@ -20,6 +20,7 @@ struct SettingsView: View {
     @AppStorage(PasteMethod.userDefaultsKey) private var pasteMethodRawValue = PasteMethod.standard.rawValue
     @AppStorage(AppAppearancePreference.userDefaultsKey) private var appAppearancePreference = AppAppearancePreference.system
     @AppStorage(AppLanguagePreference.userDefaultsKey) private var appLanguagePreference = AppLanguagePreference.systemValue
+    @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
     @State private var showResetOnboardingAlert = false
     @State private var showLanguageRestartAlert = false
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
@@ -216,6 +217,12 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
+                Toggle(isOn: $showLiveTranscript) {
+                    HStack(spacing: 4) {
+                        Text("Live Text Display")
+                        InfoTip("Shows live text while recording with realtime models.")
+                    }
+                }
             }
 
             Section("General") {
