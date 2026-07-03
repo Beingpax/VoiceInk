@@ -2,7 +2,7 @@ import Foundation
 import LLMkit
 
 enum ConnectionTestResult {
-    case success(latencyMs: Int)
+    case success
     case failure(message: String)
 }
 
@@ -31,10 +31,8 @@ struct CustomModelConnectionTester {
         let session = URLSession(configuration: .ephemeral)
         defer { session.finishTasksAndInvalidate() }
 
-        let start = Date()
         do {
             let (data, response) = try await session.upload(for: request, from: body)
-            let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
 
             guard let httpResponse = response as? HTTPURLResponse else {
                 return .failure(message: String(localized: "Unexpected response from the server"))
@@ -43,7 +41,7 @@ struct CustomModelConnectionTester {
             switch httpResponse.statusCode {
             case 200, 400, 415, 422:
                 // Authenticated and routed; the junk audio being rejected is expected.
-                return .success(latencyMs: latencyMs)
+                return .success
             case 401, 403:
                 return .failure(message: String(localized: "Invalid API key"))
             case 404:
@@ -64,12 +62,10 @@ struct CustomModelConnectionTester {
             return .failure(message: String(localized: "Base URL must use HTTPS (plain HTTP is allowed only for localhost)"))
         }
 
-        let start = Date()
         let result = await OpenAILLMClient.verifyAPIKey(baseURL: url, apiKey: apiKey, model: modelName)
-        let latencyMs = Int(Date().timeIntervalSince(start) * 1000)
 
         if result.isValid {
-            return .success(latencyMs: latencyMs)
+            return .success
         }
         return .failure(message: result.errorMessage ?? String(localized: "Could not verify this API key"))
     }
