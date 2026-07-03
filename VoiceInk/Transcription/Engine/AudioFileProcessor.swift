@@ -220,12 +220,14 @@ class AudioProcessor {
 
         guard
             format.mFormatID == kAudioFormatLinearPCM,
-            format.mSampleRate == AudioFormat.targetSampleRate,
+            abs(format.mSampleRate - AudioFormat.targetSampleRate) < 1.0,
             format.mChannelsPerFrame == AudioFormat.targetChannels,
             format.mBitsPerChannel == 32,
             isFloat,
             !isBigEndian,
-            !isNonInterleaved
+            // Interleaving only changes the byte layout for multi-channel
+            // audio; mono is identical either way, so don't reject it.
+            format.mChannelsPerFrame == 1 || !isNonInterleaved
         else {
             throw AudioProcessingError.conversionFailed
         }
