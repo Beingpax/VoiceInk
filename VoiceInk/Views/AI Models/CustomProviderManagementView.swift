@@ -186,6 +186,7 @@ struct CustomTranscriptionModelEditorPanel: View {
     @State private var validationErrors: [String] = []
     @State private var isSaving = false
     @State private var connectionTest: ConnectionTestState = .idle
+    @State private var connectionTestTask: Task<Void, Never>?
 
     private var isEditing: Bool {
         editingModel != nil
@@ -197,18 +198,26 @@ struct CustomTranscriptionModelEditorPanel: View {
         !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private func resetConnectionTest() {
+        connectionTestTask?.cancel()
+        connectionTestTask = nil
+        connectionTest = .idle
+    }
+
     private func runConnectionTest() {
+        connectionTestTask?.cancel()
         connectionTest = .testing
         let endpoint = apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let model = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        Task {
+        connectionTestTask = Task {
             let result = await CustomModelConnectionTester.testTranscriptionEndpoint(
                 endpoint: endpoint,
                 apiKey: key,
                 modelName: model
             )
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 connectionTest = ConnectionTestState(result: result)
             }
@@ -249,9 +258,9 @@ struct CustomTranscriptionModelEditorPanel: View {
         .onChange(of: editingModel?.id) { _, _ in
             loadModel()
         }
-        .onChange(of: apiEndpoint) { _, _ in connectionTest = .idle }
-        .onChange(of: apiKey) { _, _ in connectionTest = .idle }
-        .onChange(of: modelName) { _, _ in connectionTest = .idle }
+        .onChange(of: apiEndpoint) { _, _ in resetConnectionTest() }
+        .onChange(of: apiKey) { _, _ in resetConnectionTest() }
+        .onChange(of: modelName) { _, _ in resetConnectionTest() }
     }
 
     private var canSave: Bool {
@@ -278,7 +287,7 @@ struct CustomTranscriptionModelEditorPanel: View {
 
         validationErrors = []
         isSaving = false
-        connectionTest = .idle
+        resetConnectionTest()
     }
 
     private func saveModel() {
@@ -368,6 +377,7 @@ struct CustomEnhancementModelEditorPanel: View {
     @State private var isSaving = false
     @State private var isVerifying = false
     @State private var connectionTest: ConnectionTestState = .idle
+    @State private var connectionTestTask: Task<Void, Never>?
 
     private var isEditing: Bool {
         editingProvider != nil
@@ -379,18 +389,26 @@ struct CustomEnhancementModelEditorPanel: View {
         !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private func resetConnectionTest() {
+        connectionTestTask?.cancel()
+        connectionTestTask = nil
+        connectionTest = .idle
+    }
+
     private func runConnectionTest() {
+        connectionTestTask?.cancel()
         connectionTest = .testing
         let url = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         let model = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        Task {
+        connectionTestTask = Task {
             let result = await CustomModelConnectionTester.testEnhancementEndpoint(
                 baseURL: url,
                 apiKey: key,
                 modelName: model
             )
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 connectionTest = ConnectionTestState(result: result)
             }
@@ -434,9 +452,9 @@ struct CustomEnhancementModelEditorPanel: View {
         .onChange(of: editingProvider?.id) { _, _ in
             loadProvider()
         }
-        .onChange(of: baseURL) { _, _ in connectionTest = .idle }
-        .onChange(of: apiKey) { _, _ in connectionTest = .idle }
-        .onChange(of: modelName) { _, _ in connectionTest = .idle }
+        .onChange(of: baseURL) { _, _ in resetConnectionTest() }
+        .onChange(of: apiKey) { _, _ in resetConnectionTest() }
+        .onChange(of: modelName) { _, _ in resetConnectionTest() }
     }
 
     private var canSave: Bool {
@@ -462,7 +480,7 @@ struct CustomEnhancementModelEditorPanel: View {
         errorMessage = nil
         isSaving = false
         isVerifying = false
-        connectionTest = .idle
+        resetConnectionTest()
     }
 
     private var primaryButtonTitle: LocalizedStringKey {

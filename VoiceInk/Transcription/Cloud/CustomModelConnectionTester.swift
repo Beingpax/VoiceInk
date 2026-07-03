@@ -12,8 +12,8 @@ struct CustomModelConnectionTester {
     /// upload. The server authenticates before validating the audio, so a
     /// 4xx "bad audio" answer still proves the endpoint and key are good.
     static func testTranscriptionEndpoint(endpoint: String, apiKey: String, modelName: String) async -> ConnectionTestResult {
-        guard let url = URL(string: endpoint), url.scheme?.hasPrefix("http") == true else {
-            return .failure(message: String(localized: "API endpoint must be a valid URL"))
+        guard let url = URL(string: endpoint), isAllowedScheme(url) else {
+            return .failure(message: String(localized: "Endpoint must use HTTPS (plain HTTP is allowed only for localhost)"))
         }
 
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -60,8 +60,8 @@ struct CustomModelConnectionTester {
     /// Verifies an OpenAI-compatible chat endpoint using the same request
     /// LLMkit performs when a custom enhancement model is added.
     static func testEnhancementEndpoint(baseURL: String, apiKey: String, modelName: String) async -> ConnectionTestResult {
-        guard let url = URL(string: baseURL), url.scheme?.hasPrefix("http") == true else {
-            return .failure(message: String(localized: "Base URL must be a valid URL"))
+        guard let url = URL(string: baseURL), isAllowedScheme(url) else {
+            return .failure(message: String(localized: "Base URL must use HTTPS (plain HTTP is allowed only for localhost)"))
         }
 
         let start = Date()
@@ -72,6 +72,20 @@ struct CustomModelConnectionTester {
             return .success(latencyMs: latencyMs)
         }
         return .failure(message: result.errorMessage ?? String(localized: "Could not verify this API key"))
+    }
+
+    /// HTTPS everywhere; plain HTTP only toward loopback, matching the app's
+    /// existing local-server use cases (e.g. Ollama at http://localhost:11434).
+    private static func isAllowedScheme(_ url: URL) -> Bool {
+        switch url.scheme?.lowercased() {
+        case "https":
+            return true
+        case "http":
+            let host = url.host?.lowercased() ?? ""
+            return host == "localhost" || host == "127.0.0.1" || host == "::1"
+        default:
+            return false
+        }
     }
 
     private static func serverMessage(from data: Data) -> String {
