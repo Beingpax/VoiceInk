@@ -39,11 +39,21 @@ class CustomCloudModelManager: ObservableObject {
         APIKeyManager.shared.deleteCustomModelAPIKey(forModelId: id)
     }
 
-    func updateCustomModel(_ updatedModel: CustomCloudModel) {
+    @discardableResult
+    func updateCustomModel(_ updatedModel: CustomCloudModel, apiKey: String? = nil) -> Bool {
+        if let apiKey {
+            let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedKey.isEmpty,
+                  APIKeyManager.shared.saveCustomModelAPIKey(trimmedKey, forModelId: updatedModel.id) else {
+                return false
+            }
+        }
+
         if let index = customModels.firstIndex(where: { $0.id == updatedModel.id }) {
             customModels[index] = updatedModel
             saveCustomModels()
         }
+        return true
     }
     
     // MARK: - Persistence

@@ -185,9 +185,43 @@ struct CustomTranscriptionModelEditorPanel: View {
     @State private var isMultilingual = true
     @State private var validationErrors: [String] = []
     @State private var isSaving = false
+    @State private var connectionTest: ConnectionTestState = .idle
+    @State private var connectionTestTask: Task<Void, Never>?
 
     private var isEditing: Bool {
         editingModel != nil
+    }
+
+    private var canTestConnection: Bool {
+        !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func resetConnectionTest() {
+        connectionTestTask?.cancel()
+        connectionTestTask = nil
+        connectionTest = .idle
+    }
+
+    private func runConnectionTest() {
+        connectionTestTask?.cancel()
+        connectionTest = .testing
+        let endpoint = apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        connectionTestTask = Task {
+            let result = await CustomModelConnectionTester.testTranscriptionEndpoint(
+                endpoint: endpoint,
+                apiKey: key,
+                modelName: model
+            )
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                connectionTest = ConnectionTestState(result: result)
+            }
+        }
     }
 
     var body: some View {
@@ -200,11 +234,10 @@ struct CustomTranscriptionModelEditorPanel: View {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Custom Model"), text: $displayName)
                             CustomModelTextField(label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions", text: $apiEndpoint)
-                            if !isEditing {
-                                CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
-                            }
+                            CustomModelSecretField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey)
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
                             CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
+                            ConnectionTestRow(state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
                         }
                     }
 
@@ -225,20 +258,23 @@ struct CustomTranscriptionModelEditorPanel: View {
         .onChange(of: editingModel?.id) { _, _ in
             loadModel()
         }
+        .onChange(of: apiEndpoint) { _, _ in resetConnectionTest() }
+        .onChange(of: apiKey) { _, _ in resetConnectionTest() }
+        .onChange(of: modelName) { _, _ in resetConnectionTest() }
     }
 
     private var canSave: Bool {
         !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        (isEditing || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func loadModel() {
         if let editingModel {
             displayName = editingModel.displayName
             apiEndpoint = editingModel.apiEndpoint
-            apiKey = ""
+            apiKey = APIKeyManager.shared.getCustomModelAPIKey(forModelId: editingModel.id) ?? ""
             modelName = editingModel.modelName
             isMultilingual = editingModel.isMultilingualModel
         } else {
@@ -251,6 +287,7 @@ struct CustomTranscriptionModelEditorPanel: View {
 
         validationErrors = []
         isSaving = false
+        resetConnectionTest()
     }
 
     private func saveModel() {
@@ -268,7 +305,7 @@ struct CustomTranscriptionModelEditorPanel: View {
             excludingId: editingModel?.id
         )
 
-        if !isEditing && trimmedKey.isEmpty {
+        if trimmedKey.isEmpty {
             validationErrors.append(String(localized: "API key cannot be empty"))
         }
 
@@ -286,7 +323,11 @@ struct CustomTranscriptionModelEditorPanel: View {
                 isMultilingual: isMultilingual
             )
 
-            customModelManager.updateCustomModel(updatedModel)
+            guard customModelManager.updateCustomModel(updatedModel, apiKey: trimmedKey) else {
+                validationErrors = [String(localized: "Failed to save API key securely")]
+                isSaving = false
+                return
+            }
         } else {
             let customModel = CustomCloudModel(
                 name: generatedName,
@@ -335,9 +376,43 @@ struct CustomEnhancementModelEditorPanel: View {
     @State private var errorMessage: String?
     @State private var isSaving = false
     @State private var isVerifying = false
+    @State private var connectionTest: ConnectionTestState = .idle
+    @State private var connectionTestTask: Task<Void, Never>?
 
     private var isEditing: Bool {
         editingProvider != nil
+    }
+
+    private var canTestConnection: Bool {
+        !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func resetConnectionTest() {
+        connectionTestTask?.cancel()
+        connectionTestTask = nil
+        connectionTest = .idle
+    }
+
+    private func runConnectionTest() {
+        connectionTestTask?.cancel()
+        connectionTest = .testing
+        let url = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let model = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        connectionTestTask = Task {
+            let result = await CustomModelConnectionTester.testEnhancementEndpoint(
+                baseURL: url,
+                apiKey: key,
+                modelName: model
+            )
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                connectionTest = ConnectionTestState(result: result)
+            }
+        }
     }
 
     var body: some View {
@@ -353,10 +428,9 @@ struct CustomEnhancementModelEditorPanel: View {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Enhancement Model"), text: $displayName)
                             CustomModelTextField(label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions", text: $baseURL)
-                            if !isEditing {
-                                CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
-                            }
+                            CustomModelSecretField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey)
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-5.5", text: $modelName)
+                            ConnectionTestRow(state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
                         }
                     }
 
@@ -378,20 +452,23 @@ struct CustomEnhancementModelEditorPanel: View {
         .onChange(of: editingProvider?.id) { _, _ in
             loadProvider()
         }
+        .onChange(of: baseURL) { _, _ in resetConnectionTest() }
+        .onChange(of: apiKey) { _, _ in resetConnectionTest() }
+        .onChange(of: modelName) { _, _ in resetConnectionTest() }
     }
 
     private var canSave: Bool {
         !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        (isEditing || !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func loadProvider() {
         if let editingProvider {
             displayName = editingProvider.name
             baseURL = editingProvider.baseURL
-            apiKey = ""
+            apiKey = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: editingProvider.id) ?? ""
             modelName = editingProvider.modelName
         } else {
             displayName = ""
@@ -403,6 +480,7 @@ struct CustomEnhancementModelEditorPanel: View {
         errorMessage = nil
         isSaving = false
         isVerifying = false
+        resetConnectionTest()
     }
 
     private var primaryButtonTitle: LocalizedStringKey {
@@ -430,7 +508,7 @@ struct CustomEnhancementModelEditorPanel: View {
             excluding: editingProvider?.id
         )
 
-        if !isEditing && trimmedKey.isEmpty {
+        if trimmedKey.isEmpty {
             validationErrors.append(String(localized: "API key cannot be empty"))
         }
 
@@ -451,7 +529,7 @@ struct CustomEnhancementModelEditorPanel: View {
 
         if isEditing {
             isSaving = true
-            let didSave = manager.updateProvider(provider)
+            let didSave = manager.updateProvider(provider, apiKey: trimmedKey)
             isSaving = false
 
             if didSave {
@@ -551,6 +629,120 @@ private struct CustomModelTextField: View {
             .textFieldStyle(.roundedBorder)
             .font(.system(size: 12))
             .frame(maxWidth: CustomModelEditorMetrics.fieldMaxWidth, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private enum ConnectionTestState: Equatable {
+    case idle
+    case testing
+    case success(latencyMs: Int)
+    case failure(message: String)
+
+    init(result: ConnectionTestResult) {
+        switch result {
+        case .success(let latencyMs):
+            self = .success(latencyMs: latencyMs)
+        case .failure(let message):
+            self = .failure(message: message)
+        }
+    }
+
+    var isTesting: Bool {
+        self == .testing
+    }
+}
+
+private struct CustomModelSecretField: View {
+    let label: LocalizedStringKey
+    let placeholder: String
+    @Binding var text: String
+    @State private var isRevealed = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
+
+            HStack(spacing: 6) {
+                Group {
+                    if isRevealed {
+                        TextField("", text: $text, prompt: Text(verbatim: placeholder))
+                    } else {
+                        SecureField(placeholder, text: $text)
+                    }
+                }
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+
+                Button {
+                    isRevealed.toggle()
+                } label: {
+                    Image(systemName: isRevealed ? "eye.slash" : "eye")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.borderless)
+                .help(isRevealed ? String(localized: "Hide API key") : String(localized: "Show API key"))
+
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 11))
+                }
+                .buttonStyle(.borderless)
+                .disabled(text.isEmpty)
+                .help(String(localized: "Copy API key"))
+            }
+            .frame(maxWidth: CustomModelEditorMetrics.fieldMaxWidth, alignment: .trailing)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ConnectionTestRow: View {
+    let state: ConnectionTestState
+    let isDisabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(action: action) {
+                HStack(spacing: 5) {
+                    Image(systemName: "wifi")
+                        .font(.system(size: 11))
+                    Text("Test Connection")
+                        .font(.system(size: 12))
+                }
+            }
+            .disabled(isDisabled || state.isTesting)
+
+            switch state {
+            case .idle:
+                EmptyView()
+            case .testing:
+                ProgressView()
+                    .controlSize(.small)
+                Text("Testing…")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            case .success(let latencyMs):
+                Label(String(format: String(localized: "Connected (%lldms)"), Int64(latencyMs)), systemImage: "checkmark.circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.green)
+            case .failure(let message):
+                Label(message, systemImage: "exclamationmark.circle")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
