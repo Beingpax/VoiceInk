@@ -163,11 +163,14 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
-        let migrationTask = SessionMetricMigrationService.shared.runIfNeeded(modelContainer: resolvedContainer)
+        let statsMigrationTask = SessionMetricMigrationService.shared.runStatsMigrationIfNeeded(modelContainer: resolvedContainer)
         let mainContext = resolvedContainer.mainContext
-        Task {
-            await migrationTask?.value
+        Task { @MainActor in
+            await statsMigrationTask?.value
             TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
+
+            let tokenBackfillTask = SessionMetricMigrationService.shared.runEnhancementTokenBackfillIfNeeded(modelContainer: resolvedContainer)
+            await tokenBackfillTask?.value
         }
     }
 

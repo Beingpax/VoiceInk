@@ -20,15 +20,15 @@ struct DashboardContent: View {
     @State private var statsSummary: DashboardStatsSummary = .empty
     @State private var hasLoadedStatsSnapshot: Bool = false
     @State private var dashboardStatsTask: Task<Void, Never>?
-    @State private var isModelStatsPanelPresented = false
+    @State private var isModelPerformancePanelPresented = false
+    @State private var isModelUsagePanelPresented = false
     @State private var isInsightsViewPresented = false
-    @State private var selectedProductivityPeriod: DashboardProductivityPeriod = .lastSevenDays
+    @State private var selectedInsightPeriod: DashboardInsightPeriod = .lastSevenDays
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
     @AppStorage("dashboardDisplayName") private var dashboardDisplayName: String = ""
-    @AppStorage(DashboardProductivityPeriod.modelPerformanceStorageKey) private var modelPerformanceFilterRaw: String = DashboardProductivityPeriod.lastSevenDays.modelPerformanceStorageValue
     @FocusState private var isNameFieldFocused: Bool
     @Query(Self.recentTranscriptionsDescriptor()) private var recentTranscriptionCandidates: [Transcription]
 
@@ -95,9 +95,14 @@ struct DashboardContent: View {
         .onDisappear {
             dashboardStatsTask?.cancel()
         }
-        .sidePanel(isPresented: $isModelStatsPanelPresented) {
-            ModelPerformancePanel {
-                isModelStatsPanelPresented = false
+        .sidePanel(isPresented: $isModelPerformancePanelPresented) {
+            ModelPerformancePanel(selectedPeriod: $selectedInsightPeriod) {
+                isModelPerformancePanelPresented = false
+            }
+        }
+        .sidePanel(isPresented: $isModelUsagePanelPresented) {
+            ModelUsagePanel(selectedPeriod: $selectedInsightPeriod) {
+                isModelUsagePanelPresented = false
             }
         }
     }
@@ -162,19 +167,23 @@ struct DashboardContent: View {
     }
 
     private var selectedProductivityPoints: [DashboardProductivityPoint] {
-        statsSummary.productivity(for: selectedProductivityPeriod)
+        statsSummary.productivity(for: selectedInsightPeriod)
     }
 
-    private var selectedModelUsage: [DashboardModelUsageSummary] {
-        statsSummary.modelUsage(for: selectedProductivityPeriod)
+    private var selectedModelPerformance: [ModelPerformanceSummary] {
+        statsSummary.modelPerformance(for: selectedInsightPeriod)
+    }
+
+    private var selectedModelUsage: ModelUsageSummary {
+        statsSummary.modelUsage(for: selectedInsightPeriod)
     }
 
     private var selectedPeakHours: DashboardPeakHoursSummary {
-        statsSummary.peakHours(for: selectedProductivityPeriod)
+        statsSummary.peakHours(for: selectedInsightPeriod)
     }
 
     private var selectedTotals: DashboardMetricTotals {
-        statsSummary.totals(for: selectedProductivityPeriod)
+        statsSummary.totals(for: selectedInsightPeriod)
     }
 
     private var selectedTimeSavedSummary: DashboardTimeSavedSummary {
@@ -195,8 +204,7 @@ struct DashboardContent: View {
 
     private var canViewPeakHours: Bool {
         hasLoadedStatsSnapshot &&
-            selectedTotals.duration >= Self.peakHoursUnlockDuration &&
-            selectedPeakHours.hasData
+            statsSummary.totalDuration >= Self.peakHoursUnlockDuration
     }
 
     private var shouldLockPeakHours: Bool {
@@ -330,8 +338,11 @@ struct DashboardContent: View {
     }
 
     private func openModelPerformancePanel() {
-        modelPerformanceFilterRaw = selectedProductivityPeriod.modelPerformanceStorageValue
-        isModelStatsPanelPresented = true
+        isModelPerformancePanelPresented = true
+    }
+
+    private func openModelUsagePanel() {
+        isModelUsagePanelPresented = true
     }
 
     private func loadDashboardStatsEfficiently() async {
@@ -389,13 +400,15 @@ struct DashboardContent: View {
 
     private var dashboardInsightsView: some View {
         DashboardInsightsView(
-            selectedPeriod: $selectedProductivityPeriod,
+            selectedPeriod: $selectedInsightPeriod,
             productivityPoints: selectedProductivityPoints,
             peakHoursSummary: selectedPeakHours,
             isPeakHoursLocked: shouldLockPeakHours,
             timeSavedSummary: selectedTimeSavedSummary,
-            modelUsageSummaries: selectedModelUsage,
+            modelUsage: selectedModelUsage,
+            modelPerformanceSummaries: selectedModelPerformance,
             onBack: { isInsightsViewPresented = false },
+            onViewModelUsage: openModelUsagePanel,
             onViewModelPerformance: openModelPerformancePanel
         )
     }

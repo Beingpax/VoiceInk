@@ -1,19 +1,9 @@
 import SwiftUI
 import SwiftData
 
-private func localizedSessionCount(_ count: Int) -> String {
-    String(localized: "\(count) sessions")
-}
-
-// MARK: - Panel shell (owns filter state)
-
 struct ModelPerformancePanel: View {
-    @AppStorage(DashboardProductivityPeriod.modelPerformanceStorageKey) private var filterRaw: String = DashboardProductivityPeriod.lastSevenDays.modelPerformanceStorageValue
+    @Binding var selectedPeriod: DashboardInsightPeriod
     let onClose: () -> Void
-
-    private var filter: DashboardProductivityPeriod {
-        DashboardProductivityPeriod(modelPerformanceStorageValue: filterRaw)
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,26 +13,27 @@ struct ModelPerformancePanel: View {
                 .overlay(Divider().opacity(0.5), alignment: .bottom)
                 .zIndex(1)
 
-            ModelPerformancePanelContent(filter: filter)
+            ZStack(alignment: .bottomTrailing) {
+                ModelPerformancePanelContent(filter: selectedPeriod)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                recommendedModelsOverlay
+            }
         }
     }
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("Model Performance")
+            Text("AI Model Performance")
                 .font(.headline.weight(.semibold))
+
             Spacer()
-            Picker(
-                "Model performance period",
-                selection: Binding(get: { filter }, set: { filterRaw = $0.modelPerformanceStorageValue })
-            ) {
-                ForEach(DashboardProductivityPeriod.allCases) { f in
-                    Text(f.pickerTitle).tag(f)
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
+
+            InsightPeriodPicker(
+                title: "AI model performance period",
+                selection: $selectedPeriod
+            )
+
             AppIconButton(
                 systemName: "xmark",
                 help: "Close",
@@ -53,14 +44,27 @@ struct ModelPerformancePanel: View {
             )
         }
     }
-}
 
-// MARK: - Content (owns @Query, reacts to filter)
+    private var recommendedModelsOverlay: some View {
+        Button(action: ModelLinks.openRecommendedModels) {
+            ModelActionLabel(
+                title: "Recommended Models",
+                icon: "sparkles",
+                isPrimary: true
+            )
+        }
+        .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: true)
+        .help(String(localized: "Open recommended AI models"))
+        .padding(.trailing, 20)
+        .padding(.bottom, 16)
+    }
+}
 
 private struct ModelPerformancePanelContent: View {
     @Query private var metrics: [SessionMetric]
 
-    init(filter: DashboardProductivityPeriod) {
+    init(filter: DashboardInsightPeriod) {
         if let predicate = filter.sessionMetricPredicate {
             _metrics = Query(filter: predicate)
         } else {
@@ -68,10 +72,10 @@ private struct ModelPerformancePanelContent: View {
         }
     }
 
-    private var modelStats: [ModelPerformanceStat] {
+    private func makeTranscriptionRows() -> [ModelPerformanceDetailRowData] {
         var accumulators: [String: ModelPerformanceAccumulator] = [:]
         for metric in metrics {
-            guard let name = metric.transcriptionModelName,
+            guard let name = sanitizedModelPerformanceName(metric.transcriptionModelName),
                   let processingDuration = metric.transcriptionDuration,
                   processingDuration > 0 else { continue }
             accumulators[name, default: ModelPerformanceAccumulator()].add(
@@ -79,41 +83,72 @@ private struct ModelPerformancePanelContent: View {
                 processingDuration: processingDuration
             )
         }
-        return accumulators.map { name, acc in acc.stat(named: name) }
-            .sorted { $0.avgProcessingTime < $1.avgProcessingTime }
+
+        return accumulators
+            .map { name, accumulator in
+                let stat = accumulator.stat(named: name)
+                return ModelPerformanceDetailRowData(
+                    name: stat.name,
+                    kind: .transcription,
+                    averageProcessingTime: stat.avgProcessingTime,
+                    averageLatencyText: Formatters.formattedPreciseDuration(stat.avgProcessingTime, fallback: "-"),
+                    detail: stat.speedFactor > 0 ? String(format: String(localized: "%.1fx realtime"), stat.speedFactor) : nil
+                )
+            }
+            .sortedForPerformanceDetails()
     }
 
-    private var enhancementStats: [EnhancementStat] {
+    private func makeEnhancementRows() -> [ModelPerformanceDetailRowData] {
         var accumulators: [String: EnhancementAccumulator] = [:]
         for metric in metrics {
-            guard let name = metric.aiEnhancementModelName,
-                  let duration = metric.enhancementDuration,
-                  duration > 0 else { continue }
-            accumulators[name, default: EnhancementAccumulator()].add(duration: duration)
+            guard let name = sanitizedModelPerformanceName(metric.aiEnhancementModelName),
+                  let processingDuration = metric.enhancementDuration,
+                  processingDuration > 0 else { continue }
+            accumulators[name, default: EnhancementAccumulator()].add(processingDuration: processingDuration)
         }
-        return accumulators.map { name, acc in acc.stat(named: name) }
-            .sorted { $0.avgDuration < $1.avgDuration }
+
+        return accumulators
+            .map { name, accumulator in
+                let stat = accumulator.stat(named: name)
+                return ModelPerformanceDetailRowData(
+                    name: stat.name,
+                    kind: .enhancement,
+                    averageProcessingTime: stat.avgProcessingTime,
+                    averageLatencyText: Formatters.formattedPreciseDuration(stat.avgProcessingTime, fallback: "-"),
+                    detail: nil
+                )
+            }
+            .sortedForPerformanceDetails()
     }
 
-    private let gridColumns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
-
     var body: some View {
-        if modelStats.isEmpty && enhancementStats.isEmpty {
+        let transcriptionRows = makeTranscriptionRows()
+        let enhancementRows = makeEnhancementRows()
+
+        if transcriptionRows.isEmpty && enhancementRows.isEmpty {
             emptyState
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if !modelStats.isEmpty {
-                        modelsSection
-                    }
-                    if !enhancementStats.isEmpty {
-                        enhancementSection
-                    }
+                VStack(alignment: .leading, spacing: 24) {
+                    ModelPerformanceDetailSection(
+                        title: "Transcription Models",
+                        valueTitle: "Avg. latency",
+                        emptyTitle: "No transcription timings",
+                        emptyIcon: "timer",
+                        rows: transcriptionRows
+                    )
+
+                    ModelPerformanceDetailSection(
+                        title: "Enhancement Models",
+                        valueTitle: "Avg. latency",
+                        emptyTitle: "No enhancement timings",
+                        emptyIcon: "sparkles",
+                        rows: enhancementRows
+                    )
                 }
-                .padding(16)
+                .padding(.horizontal, 18)
+                .padding(.top, 18)
+                .padding(.bottom, 86)
             }
         }
     }
@@ -123,152 +158,121 @@ private struct ModelPerformancePanelContent: View {
             Image(systemName: "chart.bar.xaxis")
                 .font(.system(size: 32, weight: .light))
                 .foregroundColor(.secondary)
-            Text("No data for this period")
+
+            Text("No model performance for this period")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
 
-    // MARK: - Models grid
+private struct ModelPerformanceDetailSection: View {
+    let title: LocalizedStringKey
+    let valueTitle: LocalizedStringKey
+    let emptyTitle: LocalizedStringKey
+    let emptyIcon: String
+    let rows: [ModelPerformanceDetailRowData]
 
-    private var modelsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("Transcription Models")
-            LazyVGrid(columns: gridColumns, spacing: 12) {
-                ForEach(modelStats) { stat in
-                    modelTile(stat)
-                }
-            }
-        }
-    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-    private func modelTile(_ stat: ModelPerformanceStat) -> some View {
-        VStack(spacing: 10) {
-            VStack(spacing: 2) {
-                Text(stat.name)
-                    .font(.system(size: 12, weight: .semibold))
+                Text(valueTitle)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.secondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Text(localizedSessionCount(stat.sessionCount))
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
             }
-            .frame(maxWidth: .infinity)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.primary)
+            .lineLimit(1)
 
-            VStack(spacing: 3) {
-                Text(String(format: "%.1fx", stat.speedFactor))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(AppTheme.Data.enhancement)
-                Text(stat.speedFactor >= 1.0 ? LocalizedStringKey("Faster than Real-time") : LocalizedStringKey("Slower than Real-time"))
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-
-            Divider().padding(.horizontal, 8)
-
-            HStack(spacing: 0) {
-                VStack(spacing: 2) {
-                    Text(formatDuration(stat.avgAudioDuration))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(AppTheme.Data.transcript)
-                    Text("Avg. Audio")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-
-                Rectangle()
-                    .fill(AppTheme.Border.control)
-                    .frame(width: 1, height: 24)
-
-                VStack(spacing: 2) {
-                    Text(String(format: "%.2fs", stat.avgProcessingTime))
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                        .foregroundColor(AppTheme.Data.audio)
-                    Text("Avg. Processing")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(14)
-        .background(MetricTintBackground(color: AppTheme.Data.enhancement))
-        .cornerRadius(12)
-    }
-
-    // MARK: - Enhancement Models
-
-    private var enhancementSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("Enhancement Models")
-            LazyVGrid(columns: gridColumns, spacing: 12) {
-                ForEach(enhancementStats) { stat in
-                    enhancementTile(stat)
+            if rows.isEmpty {
+                InsightEmptyState(title: emptyTitle, icon: emptyIcon)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(rows) { row in
+                        ModelPerformanceDetailRow(row: row)
+                    }
                 }
             }
         }
-    }
-
-    private func enhancementTile(_ stat: EnhancementStat) -> some View {
-        VStack(spacing: 10) {
-            VStack(spacing: 2) {
-                Text(stat.name)
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Text(localizedSessionCount(stat.sessionCount))
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-
-            VStack(spacing: 3) {
-                Text(String(format: "%.2fs", stat.avgDuration))
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(AppTheme.Data.transcript)
-                Text("Avg. Enhancement Time")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(14)
-        .background(MetricTintBackground(color: AppTheme.Data.transcript))
-        .cornerRadius(12)
-    }
-
-    // MARK: - Helpers
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(.secondary)
-            .textCase(.uppercase)
-            .tracking(0.5)
-    }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.minute, .second]
-        formatter.unitsStyle = .abbreviated
-        return formatter.string(from: duration) ?? "0s"
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
-// MARK: - Data models
+private struct ModelPerformanceDetailRow: View {
+    let row: ModelPerformanceDetailRowData
 
-struct ModelPerformanceStat: Identifiable {
-    var id: String { name }
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            ModelProviderIcon(modelName: row.name, kind: row.kind, size: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .truncationMode(.tail)
+
+                if let detail = row.detail {
+                    HStack(spacing: 6) {
+                        Text(detail)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(AppTheme.Text.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(row.averageLatencyText)
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(width: 96, alignment: .trailing)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(AppCardBackground(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(row.name)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        if let detail = row.detail {
+            return String(localized: "\(row.kindTitle), \(row.averageLatencyText), \(detail)")
+        }
+
+        return String(localized: "\(row.kindTitle), \(row.averageLatencyText)")
+    }
+}
+
+private struct ModelPerformanceDetailRowData: Identifiable {
+    var id: String { "\(kind.rawValue)-\(name)" }
     let name: String
-    let sessionCount: Int
-    let totalProcessingTime: TimeInterval
+    let kind: ModelInsightKind
+    let averageProcessingTime: TimeInterval
+    let averageLatencyText: String
+    let detail: String?
+
+    var kindTitle: String {
+        kind == .transcription ? String(localized: "Transcription") : String(localized: "Enhancement")
+    }
+}
+
+private struct ModelPerformanceStat {
+    let name: String
     let avgProcessingTime: TimeInterval
-    let avgAudioDuration: TimeInterval
     let speedFactor: Double
 }
 
-struct ModelPerformanceAccumulator {
+private struct ModelPerformanceAccumulator {
     var sessionCount = 0
     var totalProcessingTime: TimeInterval = 0
     var totalAudioDuration: TimeInterval = 0
@@ -284,37 +288,52 @@ struct ModelPerformanceAccumulator {
         let speedFactor = totalProcessingTime > 0 ? totalAudioDuration / totalProcessingTime : 0
         return ModelPerformanceStat(
             name: name,
-            sessionCount: sessionCount,
-            totalProcessingTime: totalProcessingTime,
             avgProcessingTime: totalProcessingTime / Double(safeCount),
-            avgAudioDuration: totalAudioDuration / Double(safeCount),
             speedFactor: speedFactor
         )
     }
 }
 
-struct EnhancementStat: Identifiable {
-    var id: String { name }
+private struct EnhancementStat {
     let name: String
-    let sessionCount: Int
-    let avgDuration: TimeInterval
+    let avgProcessingTime: TimeInterval
 }
 
-struct EnhancementAccumulator {
+private struct EnhancementAccumulator {
     var sessionCount = 0
-    var totalDuration: TimeInterval = 0
+    var totalProcessingDuration: TimeInterval = 0
 
-    mutating func add(duration: TimeInterval) {
+    mutating func add(processingDuration: TimeInterval) {
         sessionCount += 1
-        totalDuration += duration
+        totalProcessingDuration += processingDuration
     }
 
     func stat(named name: String) -> EnhancementStat {
         let safeCount = max(sessionCount, 1)
         return EnhancementStat(
             name: name,
-            sessionCount: sessionCount,
-            avgDuration: totalDuration / Double(safeCount)
+            avgProcessingTime: totalProcessingDuration / Double(safeCount)
         )
     }
+}
+
+private extension Array where Element == ModelPerformanceDetailRowData {
+    func sortedForPerformanceDetails() -> [ModelPerformanceDetailRowData] {
+        sorted { lhs, rhs in
+            if lhs.averageProcessingTime != rhs.averageProcessingTime {
+                return lhs.averageProcessingTime < rhs.averageProcessingTime
+            }
+
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+}
+
+private func sanitizedModelPerformanceName(_ name: String?) -> String? {
+    guard let name else {
+        return nil
+    }
+
+    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
 }

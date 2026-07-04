@@ -1,13 +1,15 @@
 import SwiftUI
 
 struct DashboardInsightsView: View {
-    @Binding var selectedPeriod: DashboardProductivityPeriod
+    @Binding var selectedPeriod: DashboardInsightPeriod
     let productivityPoints: [DashboardProductivityPoint]
     let peakHoursSummary: DashboardPeakHoursSummary
     let isPeakHoursLocked: Bool
     let timeSavedSummary: DashboardTimeSavedSummary
-    let modelUsageSummaries: [DashboardModelUsageSummary]
+    let modelUsage: ModelUsageSummary
+    let modelPerformanceSummaries: [ModelPerformanceSummary]
     let onBack: () -> Void
+    let onViewModelUsage: () -> Void
     let onViewModelPerformance: () -> Void
 
     var body: some View {
@@ -27,8 +29,13 @@ struct DashboardInsightsView: View {
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
 
-            DashboardModelUsageCard(
-                summaries: modelUsageSummaries,
+            ModelUsageCard(
+                summary: modelUsage,
+                onViewMore: onViewModelUsage
+            )
+
+            ModelPerformanceCard(
+                summaries: modelPerformanceSummaries,
                 onViewMore: onViewModelPerformance
             )
         }
@@ -59,14 +66,10 @@ struct DashboardInsightsView: View {
                     action: onBack
                 )
 
-                Picker("Insights period", selection: $selectedPeriod) {
-                    ForEach(DashboardProductivityPeriod.allCases) { period in
-                        Text(period.pickerTitle).tag(period)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .fixedSize()
+                InsightPeriodPicker(
+                    title: "Insights period",
+                    selection: $selectedPeriod
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

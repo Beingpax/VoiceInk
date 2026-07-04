@@ -3,7 +3,7 @@ import SwiftUI
 struct DashboardProductivityCard: View {
     private static let cornerRadius: CGFloat = 16
 
-    @Binding var period: DashboardProductivityPeriod
+    @Binding var period: DashboardInsightPeriod
     let points: [DashboardProductivityPoint]
 
     var body: some View {
@@ -28,7 +28,7 @@ struct DashboardProductivityCard: View {
 }
 
 private struct DashboardProductivityChart: View {
-    let period: DashboardProductivityPeriod
+    let period: DashboardInsightPeriod
     let points: [DashboardProductivityPoint]
 
     private var axisMaximum: Int {
@@ -95,7 +95,7 @@ private struct DashboardProductivityScale: View {
 }
 
 private struct DashboardProductivityPlot: View {
-    let period: DashboardProductivityPeriod
+    let period: DashboardInsightPeriod
     let points: [DashboardProductivityPoint]
     let axisMaximum: Int
 
@@ -120,23 +120,55 @@ private struct DashboardProductivityPlot: View {
                     }
                     .frame(height: plotHeight, alignment: .bottom)
 
-                    HStack(alignment: .top, spacing: points.count > 14 ? 3 : 14) {
-                        ForEach(points.indices, id: \.self) { index in
-                            Text(xAxisLabel(for: points[index], at: index))
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(AppTheme.Text.secondary)
-                                .lineLimit(1)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
+                    xAxisLabels
                     .frame(height: labelHeight, alignment: .top)
                 }
             }
         }
     }
 
+    @ViewBuilder
+    private var xAxisLabels: some View {
+        if period == .today {
+            HStack {
+                axisLabel("12 AM")
+                Spacer(minLength: 0)
+                axisLabel("6 AM")
+                Spacer(minLength: 0)
+                axisLabel("12 PM")
+                Spacer(minLength: 0)
+                axisLabel("6 PM")
+                Spacer(minLength: 0)
+                axisLabel("12 AM")
+            }
+        } else {
+            HStack(alignment: .top, spacing: points.count > 14 ? 3 : 14) {
+                ForEach(points.indices, id: \.self) { index in
+                    axisLabel(xAxisLabel(for: points[index], at: index))
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private func axisLabel(_ label: LocalizedStringKey) -> some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .lineLimit(1)
+    }
+
+    private func axisLabel(_ label: String) -> some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .lineLimit(1)
+    }
+
     private func xAxisLabel(for point: DashboardProductivityPoint, at index: Int) -> String {
         switch period {
+        case .today:
+            return ""
         case .allTime:
             return monthlyAxisLabel(for: point, at: index)
         case .lastSevenDays, .lastThirtyDays, .thisYear:
