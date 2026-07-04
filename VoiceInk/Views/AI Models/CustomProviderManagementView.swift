@@ -1,6 +1,4 @@
 import SwiftUI
-import AppKit
-import LLMkit
 
 struct CustomProviderManagementView: View {
     @ObservedObject var customModelManager: CustomCloudModelManager
@@ -234,12 +232,14 @@ struct CustomTranscriptionModelEditorPanel: View {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Custom Model"), text: $displayName)
                             CustomModelTextField(label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions", text: $apiEndpoint)
-                            CustomModelSecretField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey)
+                            CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
                             CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
                             ConnectionTestRow(state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
                         }
                     }
+
+                    ConnectionTestResultBox(state: connectionTest)
 
                     if !validationErrors.isEmpty {
                         CustomModelErrorBox(messages: validationErrors)
@@ -375,7 +375,6 @@ struct CustomEnhancementModelEditorPanel: View {
     @State private var modelName = ""
     @State private var errorMessage: String?
     @State private var isSaving = false
-    @State private var isVerifying = false
     @State private var connectionTest: ConnectionTestState = .idle
     @State private var connectionTestTask: Task<Void, Never>?
 
@@ -428,11 +427,13 @@ struct CustomEnhancementModelEditorPanel: View {
                         VStack(spacing: 10) {
                             CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Enhancement Model"), text: $displayName)
                             CustomModelTextField(label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions", text: $baseURL)
-                            CustomModelSecretField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey)
+                            CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-5.5", text: $modelName)
                             ConnectionTestRow(state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
                         }
                     }
+
+                    ConnectionTestResultBox(state: connectionTest)
 
                     if let errorMessage {
                         CustomModelErrorBox(messages: [errorMessage])
@@ -443,7 +444,7 @@ struct CustomEnhancementModelEditorPanel: View {
 
             CustomModelEditorFooter(
                 primaryTitle: primaryButtonTitle,
-                isPrimaryDisabled: !canSave || isSaving || isVerifying,
+                isPrimaryDisabled: !canSave || isSaving,
                 onCancel: onClose,
                 onPrimary: saveProvider
             )
@@ -479,15 +480,10 @@ struct CustomEnhancementModelEditorPanel: View {
 
         errorMessage = nil
         isSaving = false
-        isVerifying = false
         resetConnectionTest()
     }
 
     private var primaryButtonTitle: LocalizedStringKey {
-        if isVerifying {
-            return "Verifying"
-        }
-
         if isSaving {
             return "Saving"
         }
@@ -540,38 +536,14 @@ struct CustomEnhancementModelEditorPanel: View {
             return
         }
 
-        guard let verificationURL = URL(string: trimmedURL) else {
-            errorMessage = String(localized: "Base URL must be a valid URL")
-            return
-        }
+        isSaving = true
+        let didSave = manager.addProvider(provider, apiKey: trimmedKey)
+        isSaving = false
 
-        isVerifying = true
-
-        Task {
-            let result = await OpenAILLMClient.verifyAPIKey(
-                baseURL: verificationURL,
-                apiKey: trimmedKey,
-                model: trimmedModelName
-            )
-
-            await MainActor.run {
-                isVerifying = false
-
-                guard result.isValid else {
-                    errorMessage = result.errorMessage ?? String(localized: "Could not verify this API key")
-                    return
-                }
-
-                isSaving = true
-                let didSave = manager.addProvider(provider, apiKey: trimmedKey)
-                isSaving = false
-
-                if didSave {
-                    onSave()
-                } else {
-                    errorMessage = String(localized: "Failed to save API key securely")
-                }
-            }
+        if didSave {
+            onSave()
+        } else {
+            errorMessage = String(localized: "Failed to save API key securely")
         }
     }
 }
@@ -637,13 +609,13 @@ private struct CustomModelTextField: View {
 private enum ConnectionTestState: Equatable {
     case idle
     case testing
-    case success(latencyMs: Int)
+    case success
     case failure(message: String)
 
     init(result: ConnectionTestResult) {
         switch result {
-        case .success(let latencyMs):
-            self = .success(latencyMs: latencyMs)
+        case .success:
+            self = .success
         case .failure(let message):
             self = .failure(message: message)
         }
@@ -654,97 +626,69 @@ private enum ConnectionTestState: Equatable {
     }
 }
 
-private struct CustomModelSecretField: View {
-    let label: LocalizedStringKey
-    let placeholder: String
-    @Binding var text: String
-    @State private var isRevealed = false
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
-
-            HStack(spacing: 6) {
-                Group {
-                    if isRevealed {
-                        TextField("", text: $text, prompt: Text(verbatim: placeholder))
-                    } else {
-                        SecureField(placeholder, text: $text)
-                    }
-                }
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12))
-
-                Button {
-                    isRevealed.toggle()
-                } label: {
-                    Image(systemName: isRevealed ? "eye.slash" : "eye")
-                        .font(.system(size: 11))
-                }
-                .buttonStyle(.borderless)
-                .help(isRevealed ? String(localized: "Hide API key") : String(localized: "Show API key"))
-
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text, forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                        .font(.system(size: 11))
-                }
-                .buttonStyle(.borderless)
-                .disabled(text.isEmpty)
-                .help(String(localized: "Copy API key"))
-            }
-            .frame(maxWidth: CustomModelEditorMetrics.fieldMaxWidth, alignment: .trailing)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 private struct ConnectionTestRow: View {
     let state: ConnectionTestState
     let isDisabled: Bool
     let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
+            Text("Connection")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .frame(width: CustomModelEditorMetrics.labelWidth, alignment: .leading)
+
             Button(action: action) {
                 HStack(spacing: 5) {
                     Image(systemName: "wifi")
                         .font(.system(size: 11))
-                    Text("Test Connection")
+                    Text("Test")
                         .font(.system(size: 12))
                 }
             }
             .disabled(isDisabled || state.isTesting)
 
-            switch state {
-            case .idle:
-                EmptyView()
-            case .testing:
-                ProgressView()
-                    .controlSize(.small)
-                Text("Testing…")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            case .success(let latencyMs):
-                Label(String(format: String(localized: "Connected (%lldms)"), Int64(latencyMs)), systemImage: "checkmark.circle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.green)
-            case .failure(let message):
-                Label(message, systemImage: "exclamationmark.circle")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
-                    .lineLimit(2)
-            }
+            inlineStatus
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var inlineStatus: some View {
+        switch state {
+        case .idle, .failure:
+            EmptyView()
+        case .testing:
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Testing…")
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(AppTheme.Text.secondary)
+        case .success:
+            Label("Test successful", systemImage: "checkmark.circle")
+                .font(.system(size: 12))
+                .foregroundStyle(AppTheme.Status.positive)
+                .lineLimit(1)
+        }
+    }
+}
+
+private struct ConnectionTestResultBox: View {
+    let state: ConnectionTestState
+
+    @ViewBuilder
+    var body: some View {
+        switch state {
+        case .idle, .testing, .success:
+            EmptyView()
+        case .failure(let message):
+            CustomModelErrorBox(messages: [message])
+        }
     }
 }
 
