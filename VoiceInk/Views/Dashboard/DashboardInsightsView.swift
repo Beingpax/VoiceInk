@@ -1,38 +1,60 @@
 import SwiftUI
 
 struct DashboardInsightsView: View {
-    @Binding var selectedPeriod: DashboardProductivityPeriod
+    @Binding var selectedPeriod: DashboardInsightPeriod
     let productivityPoints: [DashboardProductivityPoint]
     let peakHoursSummary: DashboardPeakHoursSummary
     let isPeakHoursLocked: Bool
     let timeSavedSummary: DashboardTimeSavedSummary
-    let modelUsageSummaries: [DashboardModelUsageSummary]
+    let modelUsage: ModelUsageSummary
+    let modelPerformanceSummaries: [ModelPerformanceSummary]
+    let updatedAtText: String
+    let isRefreshingStats: Bool
     let onBack: () -> Void
+    let onRefreshStats: () -> Void
+    let onViewModelUsage: () -> Void
     let onViewModelPerformance: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             header
 
-            DashboardProductivityCard(
-                period: $selectedPeriod,
-                points: productivityPoints
+            DashboardProductivitySummaryStrip(
+                summary: timeSavedSummary
             )
 
-            HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
-                DashboardPeakHoursCard(summary: peakHoursSummary, isLocked: isPeakHoursLocked)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            DashboardProductivityCard(
+                period: $selectedPeriod,
+                points: productivityPoints,
+                updatedAtText: updatedAtText,
+                isRefreshingStats: isRefreshingStats,
+                onRefreshStats: onRefreshStats
+            )
 
-                DashboardTimeSavedCard(summary: timeSavedSummary)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
+            insightSummaryCards
 
-            DashboardModelUsageCard(
-                summaries: modelUsageSummaries,
+            ModelUsageCard(
+                summary: modelUsage,
+                onViewMore: onViewModelUsage
+            )
+
+            ModelPerformanceCard(
+                summaries: modelPerformanceSummaries,
                 onViewMore: onViewModelPerformance
             )
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var insightSummaryCards: some View {
+        HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
+            DashboardPeakHoursCard(summary: peakHoursSummary, isLocked: isPeakHoursLocked)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+
+            DashboardTimeSavedCard(summary: timeSavedSummary, period: selectedPeriod)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .frame(height: 196)
     }
 
     private var header: some View {
@@ -59,14 +81,10 @@ struct DashboardInsightsView: View {
                     action: onBack
                 )
 
-                Picker("Insights period", selection: $selectedPeriod) {
-                    ForEach(DashboardProductivityPeriod.allCases) { period in
-                        Text(period.pickerTitle).tag(period)
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .fixedSize()
+                InsightPeriodPicker(
+                    title: "Insights period",
+                    selection: $selectedPeriod
+                )
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

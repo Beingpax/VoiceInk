@@ -37,6 +37,7 @@ enum SessionMetricRecorder {
         }
 
         let enhancementDuration = transcription.enhancementDuration.flatMap { $0 > 0 ? $0 : nil }
+        let enhancementTokenEstimate = EnhancementTokenEstimate.estimate(from: transcription)
 
         let metric = SessionMetric(
             transcriptionId: transcription.id,
@@ -49,7 +50,8 @@ enum SessionMetricRecorder {
             speedFactor: speedFactor,
             modeName: transcription.modeName,
             aiEnhancementModelName: transcription.aiEnhancementModelName,
-            enhancementDuration: enhancementDuration
+            enhancementDuration: enhancementDuration,
+            enhancementEstimatedTokenCount: enhancementTokenEstimate?.tokenCount
         )
 
         modelContext.insert(metric)

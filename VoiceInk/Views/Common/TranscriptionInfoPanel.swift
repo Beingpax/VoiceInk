@@ -128,21 +128,13 @@ struct TranscriptionInfoPanel: View {
         .help("Token count is estimated from the request text.")
     }
 
-    private var aiRequestMessages: [String] {
-        [
-            transcription.aiRequestSystemMessage,
-            transcription.aiRequestUserMessage
-        ]
-        .compactMap { message in
-            let trimmed = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return trimmed.isEmpty ? nil : trimmed
-        }
-    }
-
     private var estimatedAIRequestTokenCount: Int {
-        let characterCount = aiRequestMessages.reduce(0) { $0 + $1.count }
-        guard characterCount > 0 else { return 0 }
-        return max(1, (characterCount + 3) / 4)
+        EstimatedTokenCounter.count(
+            in: [
+                transcription.aiRequestSystemMessage,
+                transcription.aiRequestUserMessage
+            ]
+        ) ?? 0
     }
 
     private var fullRequestText: String {

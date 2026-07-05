@@ -58,6 +58,17 @@ enum Formatters {
         return "\(minutes)m"
     }
 
+    static func formattedSavedTime(_ interval: TimeInterval) -> String {
+        let totalMinutes = max(0, Int((interval / 60).rounded()))
+        let hours = totalMinutes / 60
+
+        guard hours >= 1000 else {
+            return formattedCompactHoursAndMinutes(interval)
+        }
+
+        return "\(formattedCompactNumber(hours)) \(String(localized: "hours"))"
+    }
+
     static func roundedChartMaximum(for value: Int) -> Int {
         guard value > 0 else {
             return 1000

@@ -16,6 +16,7 @@ final class SessionMetric {
     var modeName: String?
     var aiEnhancementModelName: String?
     var enhancementDuration: TimeInterval?
+    var enhancementEstimatedTokenCount: Int?
 
     init(
         transcriptionId: UUID,
@@ -28,7 +29,8 @@ final class SessionMetric {
         speedFactor: Double?,
         modeName: String?,
         aiEnhancementModelName: String?,
-        enhancementDuration: TimeInterval?
+        enhancementDuration: TimeInterval?,
+        enhancementEstimatedTokenCount: Int? = nil
     ) {
         self.id = UUID()
         self.transcriptionId = transcriptionId
@@ -42,5 +44,6 @@ final class SessionMetric {
         self.modeName = modeName
         self.aiEnhancementModelName = aiEnhancementModelName
         self.enhancementDuration = enhancementDuration
+        self.enhancementEstimatedTokenCount = enhancementEstimatedTokenCount
     }
 }

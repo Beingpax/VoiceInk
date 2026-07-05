@@ -1,9 +1,6 @@
 import SwiftUI
 
 struct DashboardPeakHoursCard: View {
-    private static let cornerRadius: CGFloat = 16
-    private static let cardHeight: CGFloat = 196
-
     let summary: DashboardPeakHoursSummary
     var isLocked = false
 
@@ -36,8 +33,8 @@ struct DashboardPeakHoursCard: View {
         }
         .fixedSize(horizontal: false, vertical: true)
         .padding(18)
-        .frame(maxWidth: .infinity, minHeight: Self.cardHeight, maxHeight: Self.cardHeight, alignment: .topLeading)
-        .background(AppCardBackground(cornerRadius: Self.cornerRadius))
+        .frame(maxWidth: .infinity, minHeight: 196, maxHeight: 196, alignment: .topLeading)
+        .background(DashboardInsightCardBackground(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Peak dictation hours")
         .accessibilityValue(accessibilityValue)
@@ -53,11 +50,17 @@ struct DashboardPeakHoursCard: View {
 
             Spacer(minLength: 0)
 
-            Text(canShowPattern ? windowText : "--")
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
+            HStack(spacing: 5) {
+                Image(systemName: "clock")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.78))
+
+                Text(canShowPattern ? windowText : "--")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
         }
     }
 
@@ -67,11 +70,11 @@ struct DashboardPeakHoursCard: View {
 
     private var accessibilityValue: String {
         if isLocked {
-            return "Continue using VoiceInk to unlock peak hours."
+            return String(localized: "Continue using VoiceInk to unlock peak hours.")
         }
 
         guard summary.hasData else {
-            return "No hourly pattern yet."
+            return String(localized: "No hourly pattern yet.")
         }
 
         return windowText
@@ -98,7 +101,11 @@ struct DashboardPeakHoursCard: View {
     }
 
     private func formattedHourRange(from startHour: Int, to endHour: Int) -> String {
-        return "\(formattedHour(startHour)) to \(formattedHour(endHour))"
+        String(
+            format: String(localized: "%@ to %@"),
+            formattedHour(startHour),
+            formattedHour(endHour)
+        )
     }
 
     private func formattedHour(_ hour: Int) -> String {
@@ -135,16 +142,22 @@ private struct DashboardPeakHoursHistogram: View {
 
                     HStack(alignment: .bottom, spacing: 4) {
                         ForEach(points) { point in
-                            Capsule(style: .continuous)
-                                .fill(barStyle(for: point))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: barHeight(for: point, in: geometry.size))
-                                .shadow(
-                                    color: isPeakHour(point.hour) && hasData ? peakTint.opacity(0.18) : Color.clear,
-                                    radius: 4,
-                                    y: 1
-                                )
-                                .accessibilityHidden(true)
+                            ZStack(alignment: .bottom) {
+                                Capsule(style: .continuous)
+                                    .fill(AppTheme.Border.subtle.opacity(hasData ? 0.13 : 0.08))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                                Capsule(style: .continuous)
+                                    .fill(barStyle(for: point))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: barHeight(for: point, in: geometry.size))
+                                    .shadow(
+                                        color: isPeakHour(point.hour) && hasData ? peakTint.opacity(0.22) : Color.clear,
+                                        radius: 5,
+                                        y: 1
+                                    )
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                         }
                     }
                     .frame(maxHeight: .infinity, alignment: .bottom)
@@ -175,7 +188,7 @@ private struct DashboardPeakHoursHistogram: View {
     }
 
     private func barStyle(for point: DashboardHourlyActivityPoint) -> AnyShapeStyle {
-        let opacity = gradientOpacity(for: point.hour)
+        let opacity = barOpacity(for: point)
 
         return AnyShapeStyle(
             LinearGradient(
@@ -191,11 +204,11 @@ private struct DashboardPeakHoursHistogram: View {
 
     private func barHeight(for point: DashboardHourlyActivityPoint, in size: CGSize) -> CGFloat {
         guard hasData, maxWords > 0, point.wordCount > 0 else {
-            return 5
+            return 3
         }
 
-        let normalized = min(max(CGFloat(point.wordCount) / CGFloat(maxWords), 0), 1)
-        return max(8, normalized * max(size.height - 10, 1))
+        let availableHeight = max(size.height - 10, 1)
+        return max(4, availableHeight * (0.40 + (emphasizedActivity(for: point) * 0.60)))
     }
 
     private func axisLabel(_ label: LocalizedStringKey) -> some View {
@@ -212,28 +225,58 @@ private struct DashboardPeakHoursHistogram: View {
         return hour == firstHour || hour == secondHour
     }
 
-    private func gradientOpacity(for hour: Int) -> CGFloat {
+    private func barOpacity(for point: DashboardHourlyActivityPoint) -> CGFloat {
         guard hasData else {
             return 0.10
         }
 
-        let firstHour = normalizedHour(peakStartHour)
-        let secondHour = normalizedHour(peakStartHour + 1)
-        let distance = min(circularDistance(from: hour, to: firstHour), circularDistance(from: hour, to: secondHour))
-        let falloff = max(0, 1 - CGFloat(distance) / 7)
-        let hasActivity = (points.first { normalizedHour($0.hour) == normalizedHour(hour) }?.wordCount ?? 0) > 0
-        let base: CGFloat = hasActivity ? 0.16 : 0.07
-
-        if distance == 0 {
-            return 0.88
+        guard point.wordCount > 0, maxWords > 0 else {
+            return 0.10
         }
 
-        return base + CGFloat(pow(Double(falloff), 2.0)) * 0.52
+        let normalized = emphasizedActivity(for: point)
+        let peakBoost: CGFloat = isPeakHour(point.hour) ? 0.16 : 0
+
+        return min(0.92, 0.22 + (normalized * 0.50) + peakBoost)
     }
 
-    private func circularDistance(from hour: Int, to targetHour: Int) -> Int {
-        let rawDistance = abs(normalizedHour(hour) - normalizedHour(targetHour))
-        return min(rawDistance, 24 - rawDistance)
+    private func emphasizedActivity(for point: DashboardHourlyActivityPoint) -> CGFloat {
+        CGFloat(pow(Double(relativeActivity(for: point)), 0.82))
+    }
+
+    private func relativeActivity(for point: DashboardHourlyActivityPoint) -> CGFloat {
+        let wordScore = relativeScore(
+            value: CGFloat(point.wordCount),
+            values: points.map { CGFloat($0.wordCount) }
+        )
+
+        let activeDayScore = relativeScore(
+            value: CGFloat(point.activeDayCount),
+            values: points.map { CGFloat($0.activeDayCount) }
+        )
+        let audioDurationScore = relativeScore(
+            value: CGFloat(point.audioDuration),
+            values: points.map { CGFloat($0.audioDuration) }
+        )
+
+        return (wordScore * 0.64) + (activeDayScore * 0.20) + (audioDurationScore * 0.16)
+    }
+
+    private func relativeScore(value: CGFloat, values: [CGFloat]) -> CGFloat {
+        let activeValues = values.filter { $0 > 0 }
+        guard
+            value > 0,
+            let minValue = activeValues.min(),
+            let maxValue = activeValues.max()
+        else {
+            return 0
+        }
+
+        guard maxValue > minValue else {
+            return 0.5
+        }
+
+        return min(max((value - minValue) / (maxValue - minValue), 0), 1)
     }
 
     private func normalizedHour(_ hour: Int) -> Int {

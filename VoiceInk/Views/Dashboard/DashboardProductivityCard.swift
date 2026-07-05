@@ -1,10 +1,11 @@
 import SwiftUI
 
 struct DashboardProductivityCard: View {
-    private static let cornerRadius: CGFloat = 16
-
-    @Binding var period: DashboardProductivityPeriod
+    @Binding var period: DashboardInsightPeriod
     let points: [DashboardProductivityPoint]
+    let updatedAtText: String
+    let isRefreshingStats: Bool
+    let onRefreshStats: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -16,6 +17,22 @@ struct DashboardProductivityCard: View {
                     .minimumScaleFactor(0.84)
 
                 Spacer(minLength: 12)
+
+                HStack(spacing: 8) {
+                    Text(statusText)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(AppTheme.Text.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.86)
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut(duration: 0.18), value: isRefreshingStats)
+
+                    DashboardStatsRefreshButton(
+                        isRefreshing: isRefreshingStats,
+                        action: onRefreshStats
+                    )
+                }
+                .frame(maxWidth: 260, alignment: .trailing)
             }
 
             DashboardProductivityChart(period: period, points: points)
@@ -23,12 +40,114 @@ struct DashboardProductivityCard: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: Self.cornerRadius))
+        .background(DashboardInsightCardBackground(cornerRadius: 16))
+    }
+
+    private var statusText: String {
+        isRefreshingStats ? String(localized: "Updating") : updatedAtText
+    }
+}
+
+struct DashboardProductivitySummaryStrip: View {
+    let summary: DashboardTimeSavedSummary
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            metricCell(
+                title: "Time saved",
+                value: summary.hasData ? Formatters.formattedSavedTime(summary.timeSaved) : "--",
+                systemName: "clock"
+            )
+            metricCell(
+                title: "Words dictated",
+                value: summary.hasData ? Formatters.formattedCompactNumber(summary.wordCount) : "--",
+                systemName: "list.bullet.rectangle"
+            )
+            metricCell(
+                title: "Sessions",
+                value: summary.hasData ? Formatters.formattedCompactNumber(summary.sessionCount) : "--",
+                systemName: "mic"
+            )
+        }
+    }
+
+    private func metricCell(title: LocalizedStringKey, value: String, systemName: String) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(AppTheme.Surface.controlActive.opacity(0.72))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(AppTheme.Border.subtle.opacity(0.80), lineWidth: 1)
+                    )
+
+                Image(systemName: systemName)
+                    .font(.system(size: 17, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.86))
+            }
+            .frame(width: 44, height: 44)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+
+                Text(value)
+                    .font(.system(size: 23, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.Text.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.66)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(minWidth: 132, maxWidth: .infinity, minHeight: 86, alignment: .leading)
+        .background(DashboardInsightCardBackground(cornerRadius: 16))
+    }
+}
+
+private struct DashboardStatsRefreshButton: View {
+    let isRefreshing: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                if isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(AppTheme.Accent.primary)
+                        .transition(.opacity)
+                } else {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppTheme.Text.primary.opacity(0.72))
+                        .transition(.opacity)
+                }
+            }
+            .frame(width: 34, height: 34)
+            .background(AppCardBackground(cornerRadius: 17))
+            .animation(.easeInOut(duration: 0.18), value: isRefreshing)
+        }
+        .buttonStyle(.plain)
+        .disabled(isRefreshing)
+        .help(refreshHelp)
+        .accessibilityLabel(Text(refreshHelp))
+    }
+
+    private var refreshHelp: String {
+        isRefreshing ? String(localized: "Refreshing stats") : String(localized: "Refresh stats")
     }
 }
 
 private struct DashboardProductivityChart: View {
-    let period: DashboardProductivityPeriod
+    let period: DashboardInsightPeriod
     let points: [DashboardProductivityPoint]
 
     private var axisMaximum: Int {
@@ -62,7 +181,7 @@ private struct DashboardProductivityChart: View {
                 axisMaximum: axisMaximum
             )
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Dictated words chart")
         .accessibilityValue("\(Formatters.formattedNumber(points.reduce(0) { $0 + $1.words })) words")
     }
@@ -95,7 +214,7 @@ private struct DashboardProductivityScale: View {
 }
 
 private struct DashboardProductivityPlot: View {
-    let period: DashboardProductivityPeriod
+    let period: DashboardInsightPeriod
     let points: [DashboardProductivityPoint]
     let axisMaximum: Int
 
@@ -120,23 +239,55 @@ private struct DashboardProductivityPlot: View {
                     }
                     .frame(height: plotHeight, alignment: .bottom)
 
-                    HStack(alignment: .top, spacing: points.count > 14 ? 3 : 14) {
-                        ForEach(points.indices, id: \.self) { index in
-                            Text(xAxisLabel(for: points[index], at: index))
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(AppTheme.Text.secondary)
-                                .lineLimit(1)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
+                    xAxisLabels
                     .frame(height: labelHeight, alignment: .top)
                 }
             }
         }
     }
 
+    @ViewBuilder
+    private var xAxisLabels: some View {
+        if period == .today {
+            HStack {
+                axisLabel("12 AM")
+                Spacer(minLength: 0)
+                axisLabel("6 AM")
+                Spacer(minLength: 0)
+                axisLabel("12 PM")
+                Spacer(minLength: 0)
+                axisLabel("6 PM")
+                Spacer(minLength: 0)
+                axisLabel("12 AM")
+            }
+        } else {
+            HStack(alignment: .top, spacing: points.count > 14 ? 3 : 14) {
+                ForEach(points.indices, id: \.self) { index in
+                    axisLabel(xAxisLabel(for: points[index], at: index))
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private func axisLabel(_ label: LocalizedStringKey) -> some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .lineLimit(1)
+    }
+
+    private func axisLabel(_ label: String) -> some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .lineLimit(1)
+    }
+
     private func xAxisLabel(for point: DashboardProductivityPoint, at index: Int) -> String {
         switch period {
+        case .today:
+            return ""
         case .allTime:
             return monthlyAxisLabel(for: point, at: index)
         case .lastSevenDays, .lastThirtyDays, .thisYear:
@@ -220,7 +371,5 @@ private struct DashboardProductivityBar: View {
             .frame(height: barHeight)
             .frame(maxWidth: .infinity, alignment: .bottom)
             .shadow(color: AppTheme.Accent.primary.opacity(point.words > 0 ? 0.12 : 0), radius: 5, y: 2)
-            .accessibilityLabel(point.accessibilityLabel)
-            .accessibilityValue("\(Formatters.formattedNumber(point.words)) words")
     }
 }
