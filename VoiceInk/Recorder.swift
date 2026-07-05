@@ -18,6 +18,7 @@ class Recorder: NSObject, ObservableObject {
     private let audioMeterQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audiometer", qos: .userInteractive)
     /// Dedicated serial queue for hardware setup.
     private let audioSetupQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audioSetup", qos: .userInitiated)
+    private let recordingAudioActionDelayNanoseconds: UInt64 = 220_000_000
     private var audioMuteTask: Task<Void, Never>?
     private var mediaPauseTask: Task<Void, Never>?
     private var audioRestorationTask: Task<Void, Never>?
@@ -133,6 +134,7 @@ class Recorder: NSObject, ObservableObject {
         audioRestorationTask?.cancel()
         audioRestorationTask = nil
         audioMeterUpdateTimer?.cancel()
+        pauseMedia()
         muteSystemAudio()
 
         let coreAudioRecorder = recorder ?? CoreAudioRecorder()
@@ -153,7 +155,6 @@ class Recorder: NSObject, ObservableObject {
             }
 
             startAudioMeterTimer()
-            pauseMedia()
         } catch {
             logger.error("Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)")
             await stopRecording()
@@ -198,8 +199,9 @@ class Recorder: NSObject, ObservableObject {
     private func muteSystemAudio() {
         audioMuteTask?.cancel()
         audioMuteTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 220_000_000)
-            guard !Task.isCancelled, let self else { return }
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: self.recordingAudioActionDelayNanoseconds)
+            guard !Task.isCancelled else { return }
             _ = await self.mediaController.muteSystemAudio()
         }
     }
