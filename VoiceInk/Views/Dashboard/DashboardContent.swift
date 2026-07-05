@@ -13,22 +13,28 @@ struct DashboardContent: View {
     private static let displayNameHorizontalPadding: CGFloat = 8
     private static let insightsUnlockDuration: TimeInterval = 30 * 60
     private static let peakHoursUnlockDuration: TimeInterval = 30 * 60
+    // Above this count, skip live auto-refresh (full reload is expensive); tab reopen still refreshes.
+    private static let automaticStatsRefreshMetricLimit = 2_000
+    private static let statsRefreshDebounceNanoseconds: UInt64 = 750_000_000
     let modelContext: ModelContext
     let licenseState: LicenseViewModel.LicenseState
     let onAddLicenseKey: () -> Void
 
     @State private var statsSummary: DashboardStatsSummary = .empty
     @State private var hasLoadedStatsSnapshot: Bool = false
+    @State private var statsSnapshotGeneratedAt: Date?
+    @State private var isDashboardStatsRefreshing = false
     @State private var dashboardStatsTask: Task<Void, Never>?
-    @State private var isModelStatsPanelPresented = false
+    @State private var dashboardStatsLoadGeneration = 0
+    @State private var isModelPerformancePanelPresented = false
+    @State private var isModelUsagePanelPresented = false
     @State private var isInsightsViewPresented = false
-    @State private var selectedProductivityPeriod: DashboardProductivityPeriod = .lastSevenDays
+    @State private var selectedInsightPeriod: DashboardInsightPeriod = .lastSevenDays
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
     @AppStorage("dashboardDisplayName") private var dashboardDisplayName: String = ""
-    @AppStorage(DashboardProductivityPeriod.modelPerformanceStorageKey) private var modelPerformanceFilterRaw: String = DashboardProductivityPeriod.lastSevenDays.modelPerformanceStorageValue
     @FocusState private var isNameFieldFocused: Bool
     @Query(Self.recentTranscriptionsDescriptor()) private var recentTranscriptionCandidates: [Transcription]
 
@@ -50,8 +56,10 @@ struct DashboardContent: View {
         self.onAddLicenseKey = onAddLicenseKey
 
         let cachedSummary = DashboardStatsCache.shared.currentSummary()
+        let cachedMetadata = DashboardStatsCache.shared.currentMetadata()
         _statsSummary = State(initialValue: cachedSummary ?? .empty)
         _hasLoadedStatsSnapshot = State(initialValue: cachedSummary != nil)
+        _statsSnapshotGeneratedAt = State(initialValue: cachedMetadata?.generatedAt)
     }
 
     var body: some View {
@@ -80,24 +88,39 @@ struct DashboardContent: View {
             }
         }
         .task {
-            await loadDashboardStatsEfficiently()
+            await scheduleDashboardStatsRefresh(allowSkipWhenFresh: hasLoadedStatsSnapshot)
         }
         .onAppear(perform: refreshAccessibilityStatus)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             refreshAccessibilityStatus()
         }
         .onReceive(NotificationCenter.default.publisher(for: .sessionMetricsDidChange)) { _ in
-            dashboardStatsTask?.cancel()
-            dashboardStatsTask = Task {
-                await loadDashboardStatsEfficiently()
+            DashboardStatsCache.shared.markStale()
+
+            if shouldRefreshStatsAfterMetricChange {
+                scheduleDashboardStatsRefresh(debounce: true, allowSkipWhenFresh: false)
             }
         }
         .onDisappear {
             dashboardStatsTask?.cancel()
+            dashboardStatsTask = nil
+            dashboardStatsLoadGeneration += 1
+            isDashboardStatsRefreshing = false
         }
-        .sidePanel(isPresented: $isModelStatsPanelPresented) {
-            ModelPerformancePanel {
-                isModelStatsPanelPresented = false
+        .sidePanel(isPresented: $isModelPerformancePanelPresented) {
+            ModelPerformancePanel(
+                selectedPeriod: $selectedInsightPeriod,
+                summaries: selectedModelPerformance
+            ) {
+                isModelPerformancePanelPresented = false
+            }
+        }
+        .sidePanel(isPresented: $isModelUsagePanelPresented) {
+            ModelUsagePanel(
+                selectedPeriod: $selectedInsightPeriod,
+                summary: selectedModelUsage
+            ) {
+                isModelUsagePanelPresented = false
             }
         }
     }
@@ -162,19 +185,23 @@ struct DashboardContent: View {
     }
 
     private var selectedProductivityPoints: [DashboardProductivityPoint] {
-        statsSummary.productivity(for: selectedProductivityPeriod)
+        statsSummary.productivity(for: selectedInsightPeriod)
     }
 
-    private var selectedModelUsage: [DashboardModelUsageSummary] {
-        statsSummary.modelUsage(for: selectedProductivityPeriod)
+    private var selectedModelPerformance: [ModelPerformanceSummary] {
+        statsSummary.modelPerformance(for: selectedInsightPeriod)
+    }
+
+    private var selectedModelUsage: ModelUsageSummary {
+        statsSummary.modelUsage(for: selectedInsightPeriod)
     }
 
     private var selectedPeakHours: DashboardPeakHoursSummary {
-        statsSummary.peakHours(for: selectedProductivityPeriod)
+        statsSummary.peakHours(for: selectedInsightPeriod)
     }
 
     private var selectedTotals: DashboardMetricTotals {
-        statsSummary.totals(for: selectedProductivityPeriod)
+        statsSummary.totals(for: selectedInsightPeriod)
     }
 
     private var selectedTimeSavedSummary: DashboardTimeSavedSummary {
@@ -183,6 +210,15 @@ struct DashboardContent: View {
             wordCount: selectedTotals.words,
             sessionCount: selectedTotals.count
         )
+    }
+
+    private var statsUpdatedAtText: String {
+        guard let statsSnapshotGeneratedAt else {
+            return String(localized: "Stats not updated yet")
+        }
+
+        let formattedDate = statsSnapshotGeneratedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute())
+        return String(format: String(localized: "Updated at %@"), formattedDate)
     }
 
     private var canViewInsights: Bool {
@@ -201,6 +237,10 @@ struct DashboardContent: View {
 
     private var shouldLockPeakHours: Bool {
         hasLoadedStatsSnapshot && !canViewPeakHours
+    }
+
+    private var shouldRefreshStatsAfterMetricChange: Bool {
+        !hasLoadedStatsSnapshot || statsSummary.totalCount < Self.automaticStatsRefreshMetricLimit
     }
 
     private var insightsActionTitle: LocalizedStringKey {
@@ -330,32 +370,113 @@ struct DashboardContent: View {
     }
 
     private func openModelPerformancePanel() {
-        modelPerformanceFilterRaw = selectedProductivityPeriod.modelPerformanceStorageValue
-        isModelStatsPanelPresented = true
+        isModelPerformancePanelPresented = true
     }
 
-    private func loadDashboardStatsEfficiently() async {
+    private func openModelUsagePanel() {
+        isModelUsagePanelPresented = true
+    }
+
+    @MainActor
+    private func refreshDashboardStats() {
+        scheduleDashboardStatsRefresh(allowSkipWhenFresh: false)
+    }
+
+    @MainActor
+    private func scheduleDashboardStatsRefresh(
+        debounce: Bool = false,
+        allowSkipWhenFresh: Bool = false
+    ) {
+        dashboardStatsTask?.cancel()
+        dashboardStatsLoadGeneration += 1
+
+        let generation = dashboardStatsLoadGeneration
+        let modelContainer = modelContext.container
+
+        dashboardStatsTask = Task {
+            if debounce {
+                try? await Task.sleep(nanoseconds: Self.statsRefreshDebounceNanoseconds)
+                guard !Task.isCancelled else {
+                    return
+                }
+            }
+
+            await loadDashboardStatsEfficiently(
+                from: modelContainer,
+                generation: generation,
+                allowSkipWhenFresh: allowSkipWhenFresh
+            )
+        }
+    }
+
+    private func loadDashboardStatsEfficiently(
+        from modelContainer: ModelContainer,
+        generation: Int,
+        allowSkipWhenFresh: Bool
+    ) async {
         do {
-            let summary = try await DashboardStatsLoader.load(from: modelContext.container)
+            if allowSkipWhenFresh {
+                let shouldRefreshAutomatically = SessionMetricMigrationService.shared.isRunning ||
+                    DashboardStatsCache.shared.shouldRefreshSnapshotAutomatically()
+
+                guard shouldRefreshAutomatically else {
+                    return
+                }
+            }
+
+            let shouldStartRefresh = await MainActor.run {
+                guard generation == dashboardStatsLoadGeneration else {
+                    return false
+                }
+
+                self.isDashboardStatsRefreshing = true
+                return true
+            }
+
+            guard shouldStartRefresh else {
+                return
+            }
+
+            let summary = try await DashboardStatsLoader.load(from: modelContainer)
 
             guard !Task.isCancelled else {
+                await finishDashboardStatsRefresh(generation: generation)
                 return
             }
 
             let shouldAcceptSummary = summary.totalCount > 0 || !SessionMetricMigrationService.shared.isRunning
 
             await MainActor.run {
+                guard generation == dashboardStatsLoadGeneration else {
+                    return
+                }
+
+                self.isDashboardStatsRefreshing = false
+
                 guard shouldAcceptSummary else {
                     return
                 }
 
                 self.statsSummary = summary
-                DashboardStatsCache.shared.update(summary)
+                let metadata = DashboardStatsCache.shared.update(summary)
+                self.statsSnapshotGeneratedAt = metadata.generatedAt
                 self.hasLoadedStatsSnapshot = true
             }
         } catch is CancellationError {
+            await finishDashboardStatsRefresh(generation: generation)
         } catch {
+            await finishDashboardStatsRefresh(generation: generation)
             logger.error("Error loading dashboard stats: \(error, privacy: .public)")
+        }
+    }
+
+    private func finishDashboardStatsRefresh(generation: Int) async {
+        await MainActor.run {
+            guard generation == dashboardStatsLoadGeneration else {
+                return
+            }
+
+            self.isDashboardStatsRefreshing = false
         }
     }
 
@@ -389,13 +510,18 @@ struct DashboardContent: View {
 
     private var dashboardInsightsView: some View {
         DashboardInsightsView(
-            selectedPeriod: $selectedProductivityPeriod,
+            selectedPeriod: $selectedInsightPeriod,
             productivityPoints: selectedProductivityPoints,
             peakHoursSummary: selectedPeakHours,
             isPeakHoursLocked: shouldLockPeakHours,
             timeSavedSummary: selectedTimeSavedSummary,
-            modelUsageSummaries: selectedModelUsage,
+            modelUsage: selectedModelUsage,
+            modelPerformanceSummaries: selectedModelPerformance,
+            updatedAtText: statsUpdatedAtText,
+            isRefreshingStats: isDashboardStatsRefreshing,
             onBack: { isInsightsViewPresented = false },
+            onRefreshStats: refreshDashboardStats,
+            onViewModelUsage: openModelUsagePanel,
             onViewModelPerformance: openModelPerformancePanel
         )
     }
@@ -627,7 +753,7 @@ struct DashboardContent: View {
     }
 
     private var formattedAllTimeSaved: String {
-        Formatters.formattedCompactHoursAndMinutes(allTimeSaved)
+        Formatters.formattedSavedTime(allTimeSaved)
     }
 
     private var formattedAllTimeWords: String {
