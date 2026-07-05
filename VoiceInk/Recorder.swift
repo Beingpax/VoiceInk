@@ -198,7 +198,7 @@ class Recorder: NSObject, ObservableObject {
     private func muteSystemAudio() {
         audioMuteTask?.cancel()
         audioMuteTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 150_000_000)
+            try? await Task.sleep(nanoseconds: 220_000_000)
             guard !Task.isCancelled, let self else { return }
             _ = await self.mediaController.muteSystemAudio()
         }
