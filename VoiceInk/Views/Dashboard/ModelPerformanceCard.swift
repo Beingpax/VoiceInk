@@ -5,19 +5,17 @@ struct ModelPerformanceCard: View {
     let onViewMore: () -> Void
 
     private var transcriptionRows: [ModelPreviewRow] {
-        Array(
-            summaries
-                .filter { $0.kind == .transcription }
-                .map(Self.previewRow)
-                .sortedByUsagePriority()
-                .prefix(3)
-        )
+        previewRows(for: .transcription)
     }
 
     private var enhancementRows: [ModelPreviewRow] {
+        previewRows(for: .enhancement)
+    }
+
+    private func previewRows(for kind: ModelInsightKind) -> [ModelPreviewRow] {
         Array(
             summaries
-                .filter { $0.kind == .enhancement }
+                .filter { $0.kind == kind }
                 .map(Self.previewRow)
                 .sortedByUsagePriority()
                 .prefix(3)

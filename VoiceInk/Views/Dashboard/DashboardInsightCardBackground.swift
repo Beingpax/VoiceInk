@@ -35,7 +35,7 @@ struct DashboardInsightCardBackground: View {
                 )
 
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .stroke(
+                .strokeBorder(
                     LinearGradient(
                         stops: [
                             .init(color: Color.white.opacity(0.20), location: 0),
