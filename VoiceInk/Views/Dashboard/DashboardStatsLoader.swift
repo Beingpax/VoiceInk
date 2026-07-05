@@ -494,12 +494,9 @@ enum DashboardStatsLoader {
 
         if let modelName = sanitizedModelName(metric.aiEnhancementModelName) {
             let tokens = max(metric.enhancementEstimatedTokenCount ?? 0, 0)
-
-            if tokens > 0 {
-                enhancementTokenUsage[modelName, default: EnhancementTokenUsageAccumulator()].add(
-                    tokens: tokens
-                )
-            }
+            enhancementTokenUsage[modelName, default: EnhancementTokenUsageAccumulator()].add(
+                tokens: tokens
+            )
         }
     }
 

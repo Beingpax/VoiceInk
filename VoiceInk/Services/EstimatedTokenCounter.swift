@@ -26,6 +26,8 @@ struct EnhancementTokenEstimate: Equatable, Sendable {
     let tokenCount: Int
 
     static func estimate(from transcription: Transcription) -> EnhancementTokenEstimate? {
+        guard hasEnhancementEvidence(transcription) else { return nil }
+
         if let tokenCount = EstimatedTokenCounter.count(
             in: [
                 transcription.aiRequestSystemMessage,
@@ -36,8 +38,7 @@ struct EnhancementTokenEstimate: Equatable, Sendable {
             return EnhancementTokenEstimate(tokenCount: tokenCount)
         }
 
-        guard hasEnhancementEvidence(transcription),
-              let fallbackTokenCount = EstimatedTokenCounter.count(in: transcription.text) else {
+        guard let fallbackTokenCount = EstimatedTokenCounter.count(in: transcription.text) else {
             return nil
         }
 

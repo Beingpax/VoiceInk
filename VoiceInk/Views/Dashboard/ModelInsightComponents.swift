@@ -132,6 +132,181 @@ struct InsightEmptyState: View {
     }
 }
 
+struct ModelPreviewCardHeader: View {
+    let title: LocalizedStringKey
+    var infoTip: LocalizedStringKey?
+    let viewMoreHelp: String
+    let onViewMore: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(title)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.84)
+
+            if let infoTip {
+                InfoTip(infoTip)
+                    .help(Text(infoTip))
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onViewMore) {
+                ModelDetailActionLabel(title: "View details")
+            }
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: true)
+            .help(viewMoreHelp)
+        }
+    }
+}
+
+struct ModelPreviewRow: Identifiable {
+    var id: String { "\(kind.rawValue)-\(name)" }
+    let name: String
+    let kind: ModelInsightKind
+    let value: String
+    let sessionCount: Int
+
+    var kindTitle: String {
+        kind == .transcription ? String(localized: "Transcription") : String(localized: "Enhancement")
+    }
+}
+
+extension Array where Element == ModelPreviewRow {
+    func sortedByUsagePriority() -> [ModelPreviewRow] {
+        sorted { lhs, rhs in
+            if lhs.sessionCount != rhs.sessionCount {
+                return lhs.sessionCount > rhs.sessionCount
+            }
+
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
+    }
+}
+
+struct ModelPreviewColumnsRow: View {
+    let leftTitle: LocalizedStringKey
+    let leftValueTitle: LocalizedStringKey
+    let leftEmptyTitle: LocalizedStringKey
+    let leftEmptyIcon: String
+    let leftRows: [ModelPreviewRow]
+
+    let rightTitle: LocalizedStringKey
+    let rightValueTitle: LocalizedStringKey
+    let rightEmptyTitle: LocalizedStringKey
+    let rightEmptyIcon: String
+    let rightRows: [ModelPreviewRow]
+
+    let overallEmptyTitle: LocalizedStringKey
+    let overallEmptyIcon: String
+    var valueColumnWidth: CGFloat = 80
+
+    var body: some View {
+        if leftRows.isEmpty && rightRows.isEmpty {
+            InsightEmptyState(title: overallEmptyTitle, icon: overallEmptyIcon)
+        } else {
+            HStack(alignment: .top, spacing: 18) {
+                ModelPreviewColumn(
+                    title: leftTitle,
+                    valueTitle: leftValueTitle,
+                    emptyTitle: leftEmptyTitle,
+                    emptyIcon: leftEmptyIcon,
+                    rows: leftRows,
+                    valueColumnWidth: valueColumnWidth
+                )
+
+                Divider()
+                    .opacity(0.45)
+
+                ModelPreviewColumn(
+                    title: rightTitle,
+                    valueTitle: rightValueTitle,
+                    emptyTitle: rightEmptyTitle,
+                    emptyIcon: rightEmptyIcon,
+                    rows: rightRows,
+                    valueColumnWidth: valueColumnWidth
+                )
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+private struct ModelPreviewColumn: View {
+    let title: LocalizedStringKey
+    let valueTitle: LocalizedStringKey
+    let emptyTitle: LocalizedStringKey
+    let emptyIcon: String
+    let rows: [ModelPreviewRow]
+    let valueColumnWidth: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(valueTitle)
+                    .frame(width: valueColumnWidth, alignment: .trailing)
+                    .padding(.trailing, 4)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(AppTheme.Text.secondary)
+            .lineLimit(1)
+
+            if rows.isEmpty {
+                InsightEmptyState(title: emptyTitle, icon: emptyIcon)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(rows) { row in
+                        ModelPreviewRowView(row: row, valueColumnWidth: valueColumnWidth)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+}
+
+private struct ModelPreviewRowView: View {
+    let row: ModelPreviewRow
+    let valueColumnWidth: CGFloat
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            ModelProviderIcon(modelName: row.name, kind: row.kind, size: 22)
+
+            Text(row.name)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(row.value)
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .foregroundStyle(AppTheme.Text.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+                .frame(width: valueColumnWidth, alignment: .trailing)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .background(AppCardBackground(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(row.name)
+        .accessibilityValue(accessibilityValue)
+    }
+
+    private var accessibilityValue: String {
+        String(localized: "\(row.kindTitle), \(row.value)")
+    }
+}
+
 struct ModelProviderIcon: View {
     let modelName: String
     let kind: ModelInsightKind

@@ -13,6 +13,7 @@ struct DashboardContent: View {
     private static let displayNameHorizontalPadding: CGFloat = 8
     private static let insightsUnlockDuration: TimeInterval = 30 * 60
     private static let peakHoursUnlockDuration: TimeInterval = 30 * 60
+    // Above this count, skip live auto-refresh (full reload is expensive); tab reopen still refreshes.
     private static let automaticStatsRefreshMetricLimit = 2_000
     private static let statsRefreshDebounceNanoseconds: UInt64 = 750_000_000
     let modelContext: ModelContext
@@ -230,7 +231,8 @@ struct DashboardContent: View {
 
     private var canViewPeakHours: Bool {
         hasLoadedStatsSnapshot &&
-            statsSummary.totalDuration >= Self.peakHoursUnlockDuration
+            selectedTotals.duration >= Self.peakHoursUnlockDuration &&
+            selectedPeakHours.hasData
     }
 
     private var shouldLockPeakHours: Bool {

@@ -12895,17 +12895,6 @@
         }
       }
     },
-    "Read this" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "读这段"
-          }
-        }
-      }
-    },
     "Real-time" : {
       "localizations" : {
         "de" : {
