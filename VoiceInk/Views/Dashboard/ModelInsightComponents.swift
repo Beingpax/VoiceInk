@@ -388,6 +388,15 @@ private struct ModelProviderIdentity {
             return identity(for: provider)
         }
 
+        if isSavedOpenRouterModel(trimmedName) {
+            return identity(for: .openRouter)
+        }
+
+        if matchingProviders.isEmpty,
+           isOpenRouterModelIdentifier(trimmedName) {
+            return identity(for: .openRouter)
+        }
+
         if matchingProviders.isEmpty,
            let provider = inferredEnhancementProvider(from: trimmedName) {
             return identity(for: provider)
@@ -497,6 +506,22 @@ private struct ModelProviderIdentity {
         return provider.availableModels.contains { availableModel in
             namesMatch(availableModel, modelName)
         }
+    }
+
+    private static func isSavedOpenRouterModel(_ modelName: String) -> Bool {
+        guard let models = UserDefaults.standard.array(forKey: "openRouterModels") as? [String] else {
+            return false
+        }
+
+        return models.contains { namesMatch($0, modelName) }
+    }
+
+    private static func isOpenRouterModelIdentifier(_ modelName: String) -> Bool {
+        let components = modelName.split(separator: "/", omittingEmptySubsequences: false)
+        return components.count == 2 &&
+            components.allSatisfy {
+                !String($0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
     }
 
     private static func inferredEnhancementProvider(from modelName: String) -> AIProvider? {

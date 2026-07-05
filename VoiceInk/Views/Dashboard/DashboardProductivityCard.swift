@@ -174,6 +174,7 @@ private struct DashboardProductivityChart: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             DashboardProductivityScale(labels: axisLabels)
+                .accessibilityHidden(true)
 
             DashboardProductivityPlot(
                 period: period,
@@ -181,9 +182,16 @@ private struct DashboardProductivityChart: View {
                 axisMaximum: axisMaximum
             )
         }
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Dictated words chart")
-        .accessibilityValue("\(Formatters.formattedNumber(points.reduce(0) { $0 + $1.words })) words")
+        .accessibilityValue(totalWordsAccessibilityValue)
+    }
+
+    private var totalWordsAccessibilityValue: String {
+        String(
+            format: String(localized: "%@ words"),
+            Formatters.formattedNumber(points.reduce(0) { $0 + $1.words })
+        )
     }
 }
 
@@ -218,6 +226,16 @@ private struct DashboardProductivityPlot: View {
     let points: [DashboardProductivityPoint]
     let axisMaximum: Int
 
+    private static let todayAxisHourOffsets = [0, 6, 12, 18, 24]
+
+    private var hourFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.calendar = DashboardPeriodWindows.dashboardCalendar()
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("j")
+        return formatter
+    }
+
     var body: some View {
         GeometryReader { geometry in
             let labelHeight: CGFloat = 30
@@ -240,7 +258,8 @@ private struct DashboardProductivityPlot: View {
                     .frame(height: plotHeight, alignment: .bottom)
 
                     xAxisLabels
-                    .frame(height: labelHeight, alignment: .top)
+                        .accessibilityHidden(true)
+                        .frame(height: labelHeight, alignment: .top)
                 }
             }
         }
@@ -250,15 +269,13 @@ private struct DashboardProductivityPlot: View {
     private var xAxisLabels: some View {
         if period == .today {
             HStack {
-                axisLabel("12 AM")
-                Spacer(minLength: 0)
-                axisLabel("6 AM")
-                Spacer(minLength: 0)
-                axisLabel("12 PM")
-                Spacer(minLength: 0)
-                axisLabel("6 PM")
-                Spacer(minLength: 0)
-                axisLabel("12 AM")
+                ForEach(todayAxisLabels.indices, id: \.self) { index in
+                    axisLabel(todayAxisLabels[index])
+
+                    if index < todayAxisLabels.count - 1 {
+                        Spacer(minLength: 0)
+                    }
+                }
             }
         } else {
             HStack(alignment: .top, spacing: points.count > 14 ? 3 : 14) {
@@ -270,18 +287,26 @@ private struct DashboardProductivityPlot: View {
         }
     }
 
-    private func axisLabel(_ label: LocalizedStringKey) -> some View {
+    private func axisLabel(_ label: String) -> some View {
         Text(label)
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(AppTheme.Text.secondary)
             .lineLimit(1)
     }
 
-    private func axisLabel(_ label: String) -> some View {
-        Text(label)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(AppTheme.Text.secondary)
-            .lineLimit(1)
+    private var todayAxisLabels: [String] {
+        guard let firstDate = points.first?.date else {
+            return []
+        }
+
+        let calendar = DashboardPeriodWindows.dashboardCalendar()
+        let formatter = hourFormatter
+
+        return Self.todayAxisHourOffsets.compactMap { offset in
+            calendar.date(byAdding: .hour, value: offset, to: firstDate).map {
+                formatter.string(from: $0)
+            }
+        }
     }
 
     private func xAxisLabel(for point: DashboardProductivityPoint, at index: Int) -> String {
@@ -371,5 +396,15 @@ private struct DashboardProductivityBar: View {
             .frame(height: barHeight)
             .frame(maxWidth: .infinity, alignment: .bottom)
             .shadow(color: AppTheme.Accent.primary.opacity(point.words > 0 ? 0.12 : 0), radius: 5, y: 2)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(point.accessibilityLabel)
+            .accessibilityValue(wordsAccessibilityValue)
+    }
+
+    private var wordsAccessibilityValue: String {
+        String(
+            format: String(localized: "%@ words"),
+            Formatters.formattedNumber(point.words)
+        )
     }
 }

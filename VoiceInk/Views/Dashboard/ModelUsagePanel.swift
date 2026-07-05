@@ -65,9 +65,6 @@ private struct ModelUsagePanelContent: View {
     let summary: ModelUsageSummary
 
     var body: some View {
-        let transcriptionModels = summary.transcriptionModels.sortedForDurationUsage()
-        let enhancementModels = summary.enhancementModels.sortedForTokenUsage()
-
         if summary.hasData {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -77,7 +74,7 @@ private struct ModelUsagePanelContent: View {
                         emptyTitle: "No audio duration",
                         emptyIcon: "waveform",
                         tint: AppTheme.Status.infoStrong,
-                        rows: transcriptionModels.map { summary in
+                        rows: summary.transcriptionModels.map { summary in
                             ModelUsageDistributionRowData(
                                 name: summary.name,
                                 kind: .transcription,
@@ -93,7 +90,7 @@ private struct ModelUsagePanelContent: View {
                         emptyTitle: "No token estimates",
                         emptyIcon: "number",
                         tint: AppTheme.Status.positive,
-                        rows: enhancementModels.map { summary in
+                        rows: summary.enhancementModels.map { summary in
                             ModelUsageDistributionRowData(
                                 name: summary.name,
                                 kind: .enhancement,
@@ -270,29 +267,5 @@ private struct ModelUsageShareBar: View {
             }
         }
         .frame(height: 5)
-    }
-}
-
-private extension Array where Element == TranscriptionModelUsage {
-    func sortedForDurationUsage() -> [TranscriptionModelUsage] {
-        sorted { lhs, rhs in
-            if lhs.totalAudioDuration != rhs.totalAudioDuration {
-                return lhs.totalAudioDuration > rhs.totalAudioDuration
-            }
-
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-        }
-    }
-}
-
-private extension Array where Element == EnhancementTokenUsage {
-    func sortedForTokenUsage() -> [EnhancementTokenUsage] {
-        sorted { lhs, rhs in
-            if lhs.estimatedTokens != rhs.estimatedTokens {
-                return lhs.estimatedTokens > rhs.estimatedTokens
-            }
-
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-        }
     }
 }
