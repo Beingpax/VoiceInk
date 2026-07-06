@@ -305,7 +305,7 @@ struct InlineHistoryView: View {
         case .info:
             infoPanelContent
         case .analysis:
-            PerformanceAnalysisPanelView(
+            HistoryAnalysisPanelView(
                 transcriptions: Array(selectedTranscriptions),
                 onClose: {
                     closePanel()

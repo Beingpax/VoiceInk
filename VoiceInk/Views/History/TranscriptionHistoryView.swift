@@ -130,7 +130,7 @@ struct TranscriptionHistoryView: View {
                 if !newValue { closeAnalysisPanel() }
             }
         )) {
-            PerformanceAnalysisPanelView(
+            HistoryAnalysisPanelView(
                 transcriptions: Array(selectedTranscriptions),
                 onClose: closeAnalysisPanel
             )
