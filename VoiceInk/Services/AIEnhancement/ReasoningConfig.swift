@@ -1,11 +1,7 @@
 import Foundation
 
 struct ReasoningConfig {
-    // Gemini 2.5 Flash models support "none" to turn off thinking.
-    static let geminiNoneReasoningModels: Set<String> = [
-        "gemini-2.5-flash",
-        "gemini-2.5-flash-lite"
-    ]
+    static let geminiNoneReasoningModels: Set<String> = []
 
     // Gemini 3.1 Pro maps "minimal" to "low"; send "low" directly.
     static let geminiLowReasoningModels: Set<String> = [
@@ -15,8 +11,6 @@ struct ReasoningConfig {
     // These Gemini models only go down to "minimal".
     static let geminiMinimalReasoningModels: Set<String> = [
         "gemini-3.5-flash",
-        "gemini-2.5-pro",
-        "gemini-3-flash-preview",
         "gemini-3.1-flash-lite"
     ]
 
@@ -25,8 +19,7 @@ struct ReasoningConfig {
         "gpt-5.5",
         "gpt-5.4",
         "gpt-5.4-mini",
-        "gpt-5.4-nano",
-        "gpt-5"
+        "gpt-5.4-nano"
     ]
 
     // Cerebras GPT-OSS has no true "none"; use lowest effort.
@@ -45,11 +38,6 @@ struct ReasoningConfig {
         "zai-glm-4.7"
     ]
 
-    // Groq Qwen uses "none" to disable thinking.
-    static let groqQwenReasoningModels: Set<String> = [
-        "qwen/qwen3-32b"
-    ]
-
     static func getReasoningParameter(for provider: AIProvider, modelName: String) -> String? {
         switch provider {
         case .gemini:
@@ -63,7 +51,6 @@ struct ReasoningConfig {
             else if cerebrasNoneReasoningModels.contains(modelName) { return "none" }
         case .groq:
             if groqGPTOSSMinimumReasoningModels.contains(modelName) { return "low" }
-            else if groqQwenReasoningModels.contains(modelName) { return "none" }
         default:
             return nil
         }

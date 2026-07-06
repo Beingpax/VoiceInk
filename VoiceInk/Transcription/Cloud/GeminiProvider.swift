@@ -10,22 +10,22 @@ struct GeminiProvider: CloudProvider {
 
     var models: [CloudModel] {[
         CloudModel(
-            name: "gemini-2.5-pro",
-            displayName: "Gemini 2.5 Pro",
-            description: "Google's advanced model with high-quality transcription capabilities",
+            name: "gemini-3.5-flash",
+            displayName: "Gemini 3.5 Flash",
+            description: "Google's current fast model for high-quality transcription",
             provider: .gemini,
-            speed: 0.7,
-            accuracy: 0.97,
+            speed: 0.92,
+            accuracy: 0.96,
             isMultilingual: true,
             supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
         ),
         CloudModel(
-            name: "gemini-2.5-flash",
-            displayName: "Gemini 2.5 Flash",
-            description: "Google's optimized model for low-latency transcription",
+            name: "gemini-3.1-flash-lite",
+            displayName: "Gemini 3.1 Flash-Lite",
+            description: "Google's efficient model for lightweight transcription tasks",
             provider: .gemini,
-            speed: 0.9,
-            accuracy: 0.95,
+            speed: 0.95,
+            accuracy: 0.94,
             isMultilingual: true,
             supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
         ),
@@ -36,16 +36,6 @@ struct GeminiProvider: CloudProvider {
             provider: .gemini,
             speed: 0.75,
             accuracy: 0.97,
-            isMultilingual: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
-        ),
-        CloudModel(
-            name: "gemini-3-flash-preview",
-            displayName: "Gemini 3 Flash",
-            description: "Google's newest fast model combining intelligence with superior speed",
-            provider: .gemini,
-            speed: 0.92,
-            accuracy: 0.95,
             isMultilingual: true,
             supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .gemini)
         )
