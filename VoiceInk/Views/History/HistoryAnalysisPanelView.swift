@@ -158,7 +158,7 @@ private struct HistoryPerformanceAccumulator {
             name: name,
             kind: kind,
             averageProcessingDuration: averageProcessingDuration,
-            averageLatencyText: HistoryPerformanceFormatters.preciseDuration(averageProcessingDuration),
+            averageLatencyText: Formatters.formattedPreciseDuration(averageProcessingDuration),
             detail: speedFactor.map { String(format: String(localized: "%.1fx realtime"), $0) }
         )
     }
@@ -308,30 +308,5 @@ private struct HistoryPerformanceEmptyRow: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, minHeight: 58, alignment: .topLeading)
-    }
-}
-
-private enum HistoryPerformanceFormatters {
-    static func preciseDuration(_ interval: TimeInterval) -> String {
-        guard interval > 0 else {
-            return "-"
-        }
-
-        let roundedTenths = Int((interval * 10).rounded())
-
-        if roundedTenths < 600 {
-            return String(format: "%.1f sec", Double(roundedTenths) / 10)
-        }
-
-        if roundedTenths < 36_000 {
-            let minutes = roundedTenths / 600
-            let seconds = Double(roundedTenths % 600) / 10
-            return "\(minutes)m \(String(format: "%.1f", seconds))s"
-        }
-
-        let totalSeconds = Int(interval.rounded())
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        return "\(hours)h \(minutes)m"
     }
 }
