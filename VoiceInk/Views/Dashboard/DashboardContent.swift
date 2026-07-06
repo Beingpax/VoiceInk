@@ -109,7 +109,6 @@ struct DashboardContent: View {
         }
         .sidePanel(isPresented: $isModelPerformancePanelPresented) {
             ModelPerformancePanel(
-                selectedPeriod: $selectedInsightPeriod,
                 summaries: selectedModelPerformance
             ) {
                 isModelPerformancePanelPresented = false
@@ -117,7 +116,6 @@ struct DashboardContent: View {
         }
         .sidePanel(isPresented: $isModelUsagePanelPresented) {
             ModelUsagePanel(
-                selectedPeriod: $selectedInsightPeriod,
                 summary: selectedModelUsage
             ) {
                 isModelUsagePanelPresented = false

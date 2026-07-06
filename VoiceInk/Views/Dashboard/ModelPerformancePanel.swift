@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ModelPerformancePanel: View {
-    @Binding var selectedPeriod: DashboardInsightPeriod
     let summaries: [ModelPerformanceSummary]
     let onClose: () -> Void
 
@@ -28,11 +27,6 @@ struct ModelPerformancePanel: View {
                 .font(.headline.weight(.semibold))
 
             Spacer()
-
-            InsightPeriodPicker(
-                title: "AI model performance period",
-                selection: $selectedPeriod
-            )
 
             AppIconButton(
                 systemName: "xmark",
