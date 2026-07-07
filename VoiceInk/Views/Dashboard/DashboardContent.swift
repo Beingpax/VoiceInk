@@ -29,7 +29,7 @@ struct DashboardContent: View {
     @State private var isModelPerformancePanelPresented = false
     @State private var isModelUsagePanelPresented = false
     @State private var isInsightsViewPresented = false
-    @State private var selectedInsightPeriod: DashboardInsightPeriod = .lastSevenDays
+    @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false

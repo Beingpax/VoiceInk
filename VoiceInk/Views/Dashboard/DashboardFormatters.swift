@@ -38,6 +38,15 @@ enum Formatters {
         value >= 1000 ? formattedCompactNumber(value) : "\(value)"
     }
 
+    static func localizedHourFormatter(calendar: Calendar) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.locale = .current
+        formatter.setLocalizedDateFormatFromTemplate("j")
+        return formatter
+    }
+
     static func formattedCompactHoursAndMinutes(_ interval: TimeInterval) -> String {
         let totalMinutes = max(0, Int((interval / 60).rounded()))
         let hours = totalMinutes / 60
