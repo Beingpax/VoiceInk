@@ -526,7 +526,7 @@ private struct DashboardProductivityTrendLayer: View {
     let yAxisUpperBound: Int
     let horizontalSlotCount: Int
 
-    private let lineTint = Color(nsColor: .systemBlue)
+    private let lineTint = AppTheme.Accent.strong
 
     private var hasVisibleData: Bool {
         points.contains { $0.words > 0 }
