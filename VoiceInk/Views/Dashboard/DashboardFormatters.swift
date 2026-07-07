@@ -41,6 +41,7 @@ enum Formatters {
     static func localizedHourFormatter(calendar: Calendar) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
         formatter.locale = .current
         formatter.setLocalizedDateFormatFromTemplate("j")
         return formatter
