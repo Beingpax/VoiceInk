@@ -330,6 +330,12 @@ private struct DashboardProductivityPlotArea: View {
                     .frame(height: labelHeight, alignment: .top)
             }
         }
+        .accessibilityChildren {
+            ForEach(visiblePoints) { point in
+                Text(point.accessibilityLabel)
+                    .accessibilityValue(wordsAccessibilityValue(for: point.words))
+            }
+        }
     }
 
     @ViewBuilder
@@ -414,6 +420,13 @@ private struct DashboardProductivityPlotArea: View {
 
         return ""
     }
+
+    private func wordsAccessibilityValue(for wordCount: Int) -> String {
+        String(
+            format: String(localized: "%@ words"),
+            Formatters.formattedNumber(wordCount)
+        )
+    }
 }
 
 private struct DashboardProductivityEmptyHint: View {
@@ -493,10 +506,7 @@ private struct DashboardProductivityTodayAxisLabels: View {
         }
 
         let calendar = DashboardPeriodWindows.dashboardCalendar()
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.locale = .current
-        formatter.dateFormat = "h a"
+        let formatter = Formatters.localizedHourFormatter(calendar: calendar)
 
         return Self.hourOffsets.compactMap { offset in
             guard let date = calendar.date(byAdding: .hour, value: offset, to: firstDate) else {

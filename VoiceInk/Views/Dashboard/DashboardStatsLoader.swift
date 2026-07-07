@@ -348,15 +348,8 @@ enum DashboardStatsLoader {
         calendar: Calendar
     ) -> [DashboardProductivityPoint] {
         let todayStart = calendar.startOfDay(for: now)
-        let labelFormatter = DateFormatter()
-        labelFormatter.calendar = calendar
-        labelFormatter.locale = .current
-        labelFormatter.dateFormat = "h a"
-
-        let accessibilityFormatter = DateFormatter()
-        accessibilityFormatter.calendar = calendar
-        accessibilityFormatter.locale = .current
-        accessibilityFormatter.dateFormat = "h a"
+        let labelFormatter = Formatters.localizedHourFormatter(calendar: calendar)
+        let accessibilityFormatter = Formatters.localizedHourFormatter(calendar: calendar)
 
         return (0..<24).compactMap { offset in
             guard let date = calendar.date(byAdding: .hour, value: offset, to: todayStart) else {
