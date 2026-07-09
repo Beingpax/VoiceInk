@@ -14,6 +14,8 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
     }
 
     func showHistoryWindow(modelContainer: ModelContainer, engine: VoiceInkEngine) {
+        AppPresentationPolicy.activateForUserFacingWindow(reason: "HistoryWindow")
+
         if let existingWindow = historyWindow {
             if existingWindow.isMiniaturized {
                 existingWindow.deminiaturize(nil)
@@ -77,6 +79,6 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
               window.identifier == windowIdentifier else { return }
-        NSApplication.shared.activate(ignoringOtherApps: true)
+        AppPresentationPolicy.activateForUserFacingWindow(reason: "HistoryWindowDidBecomeKey")
     }
 }

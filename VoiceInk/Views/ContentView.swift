@@ -15,14 +15,30 @@ enum ViewType: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+final class MainWindowNavigation: ObservableObject {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MenuBarWindowFlow")
+
+    @Published var selectedView: ViewType = .dashboard
+
+    func navigate(to destination: String) {
+        guard let viewType = ViewType.allCases.first(where: { $0.rawValue == destination }) else {
+            logger.error("🧭 Ignored unknown main-window navigation destination. destination=\(destination, privacy: .public); selectedView=\(self.selectedView.rawValue, privacy: .public)")
+            return
+        }
+
+        logger.notice("🧭 Main-window navigation updated. destination=\(destination, privacy: .public); selectedBefore=\(self.selectedView.rawValue, privacy: .public); selectedAfter=\(viewType.rawValue, privacy: .public)")
+        selectedView = viewType
+    }
+}
+
 struct ContentView: View {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
-    @State private var selectedView: ViewType = .dashboard
+    @EnvironmentObject private var navigation: MainWindowNavigation
 
     var body: some View {
         HStack(spacing: 0) {
-            AppSidebar(selectedView: $selectedView)
+            AppSidebar(selectedView: $navigation.selectedView)
 
             detailContent
         }
@@ -35,17 +51,16 @@ struct ContentView: View {
             logger.notice("ContentView disappeared")
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToDestination)) { notification in
-            if let destination = notification.userInfo?["destination"] as? String,
-               let viewType = ViewType.allCases.first(where: { $0.rawValue == destination }) {
+            if let destination = notification.userInfo?["destination"] as? String {
                 logger.notice("navigateToDestination received: \(destination, privacy: .public)")
-                selectedView = viewType
+                navigation.navigate(to: destination)
             }
         }
     }
 
     @ViewBuilder
     private var detailContent: some View {
-        detailView(for: selectedView)
+        detailView(for: navigation.selectedView)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(detailBackground)
     }

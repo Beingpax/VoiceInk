@@ -19,6 +19,7 @@ struct VoiceInkApp: App {
     @StateObject private var recordingShortcutManager: RecordingShortcutManager
     @StateObject private var updaterViewModel: UpdaterViewModel
     @StateObject private var menuBarManager: MenuBarManager
+    @StateObject private var mainWindowNavigation = MainWindowNavigation()
     @StateObject private var aiService = AIService()
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var activeWindowService = ActiveWindowService.shared
@@ -266,7 +267,7 @@ struct VoiceInkApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        Window("VoiceInk", id: AppWindowID.main) {
             Group {
                 if hasCompletedOnboardingV2 {
                     ContentView()
@@ -278,6 +279,7 @@ struct VoiceInkApp: App {
                         .environmentObject(recordingShortcutManager)
                         .environmentObject(updaterViewModel)
                         .environmentObject(menuBarManager)
+                        .environmentObject(mainWindowNavigation)
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
                         .modelContainer(container)
@@ -299,6 +301,7 @@ struct VoiceInkApp: App {
 
                             // Process any pending open-file request now that the main ContentView is ready.
                             if let pendingURL = appDelegate.pendingOpenFileURL {
+                                Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MenuBarWindowFlow").notice("🧭 Processing pending media URL after main ContentView appeared. urlLastPath=\(pendingURL.lastPathComponent, privacy: .private(mask: .hash))")
                                 NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                     NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
@@ -351,6 +354,7 @@ struct VoiceInkApp: App {
                 .environmentObject(recorderUIManager)
                 .environmentObject(recordingShortcutManager)
                 .environmentObject(menuBarManager)
+                .environmentObject(mainWindowNavigation)
                 .environmentObject(updaterViewModel)
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
@@ -363,6 +367,7 @@ struct VoiceInkApp: App {
             }(NSImage(named: "menuBarIcon")!)
 
             Image(nsImage: image)
+                .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
         }
         .menuBarExtraStyle(.menu)
 
@@ -393,6 +398,34 @@ struct VoiceInkApp: App {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
             NSWorkspace.shared.open(url)
         }
+    }
+}
+
+private struct MainWindowRequestBridge: View {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MenuBarWindowFlow")
+
+    @Environment(\.openWindow) private var openWindow
+    let menuBarManager: MenuBarManager
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onReceive(NotificationCenter.default.publisher(for: .showMainWindowRequested)) { _ in
+                let existingWindow = WindowManager.shared.currentMainWindow()
+                logger.notice("🧭 SwiftUI main-window request bridge received request. hasExistingMainWindow=\((existingWindow != nil), privacy: .public); menuBarOnly=\(self.menuBarManager.isMenuBarOnly, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+
+                if existingWindow == nil {
+                    menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgeCreateMainWindow")
+                    WindowManager.shared.prepareForUserRequestedMainWindow()
+                    openWindow(id: AppWindowID.main)
+                    logger.notice("🧭 SwiftUI bridge requested main window creation via openWindow.")
+                } else {
+                    menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgePresentMainWindow")
+                    openWindow(id: AppWindowID.main)
+                    WindowManager.shared.showMainWindow()
+                    logger.notice("🧭 SwiftUI bridge requested existing main window presentation.")
+                }
+            }
     }
 }
 
@@ -436,15 +469,31 @@ struct CheckForUpdatesView: View {
 struct WindowAccessor: NSViewRepresentable {
     let callback: (NSWindow) -> Void
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        DispatchQueue.main.async {
-            if let window = view.window {
-                callback(window)
-            }
-        }
+        notifyWindowIfNeeded(for: view, context: context)
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        notifyWindowIfNeeded(for: nsView, context: context)
+    }
+
+    private func notifyWindowIfNeeded(for view: NSView, context: Context) {
+        DispatchQueue.main.async {
+            if let window = view.window,
+               context.coordinator.window !== window {
+                context.coordinator.window = window
+                callback(window)
+            }
+        }
+    }
+
+    final class Coordinator {
+        weak var window: NSWindow?
+    }
 }
