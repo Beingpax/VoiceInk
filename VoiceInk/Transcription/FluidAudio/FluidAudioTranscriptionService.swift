@@ -61,7 +61,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         await cleanupLoadedManagers()
 
         let manager = UnifiedAsrManager(encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision)
-        try await manager.loadModels()
+        try await manager.loadModels(from: FluidAudioModelManager.parakeetUnifiedCacheDirectory())
         self.unifiedAsrManager = manager
     }
 
@@ -90,9 +90,17 @@ class FluidAudioTranscriptionService: TranscriptionService {
         }
 
         let task = Task {
-            try await AsrModels.downloadAndLoad(
+            let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
+            guard AsrModels.modelsExist(at: cacheDirectory, version: version) else {
+                throw AsrModelsError.loadingFailed(
+                    "Parakeet model files are incomplete. Download the model from AI Models."
+                )
+            }
+            return try await AsrModels.load(
+                from: cacheDirectory,
                 configuration: nil,
-                version: version
+                version: version,
+                encoderPrecision: .int8
             )
         }
         loadingTask = (version, task)

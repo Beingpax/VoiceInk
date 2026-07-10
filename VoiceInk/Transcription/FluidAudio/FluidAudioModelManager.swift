@@ -20,6 +20,7 @@ class FluidAudioModelManager: ObservableObject {
     @Published private var downloadStatuses: [String: FluidAudioDownloadStatus] = [:]
     @Published private var modelStateRevision = 0
     private var activeDownloadIDs: [String: UUID] = [:]
+    private var activeNetworkProgressIDs: [String: UUID] = [:]
 
     var onModelDeleted: ((String) -> Void)?
     var onModelsChanged: (() -> Void)?
@@ -47,13 +48,28 @@ class FluidAudioModelManager: ObservableObject {
     }
 
     nonisolated static let parakeetUnifiedPrecision: UnifiedEncoderPrecision = .int8
+    // FluidAudio's best-WER streaming tier: 1.12s latency versus 2.08s for the default.
+    nonisolated static let parakeetUnifiedStreamingConfig = UnifiedConfig(
+        leftFrames: 70,
+        chunkFrames: 7,
+        rightFrames: 7
+    )
     nonisolated private static var parakeetUnifiedStreamingVariant: String? {
         parakeetUnifiedPrecision == .fp16 ? "fp16" : nil
     }
     nonisolated private static var parakeetUnifiedOfflineVariant: String {
         parakeetUnifiedPrecision == .fp16 ? "offline-fp16" : "offline"
     }
-    nonisolated private static let nemotronChunkMs = 560
+    // FluidAudio recommends 1120ms+ for stable punctuation in long sessions.
+    nonisolated private static let nemotronChunkMs = 1120
+    nonisolated private static let legacyNemotronChunkMs = 560
+
+    nonisolated private static var parakeetUnifiedStreamingEncoderFile: String {
+        ModelNames.ParakeetUnified.streamingEncoderFile(
+            precision: parakeetUnifiedPrecision,
+            contextSuffix: parakeetUnifiedStreamingConfig.contextSuffix
+        )
+    }
 
     private enum NemotronVariant {
         case latin
@@ -175,6 +191,7 @@ class FluidAudioModelManager: ObservableObject {
         let modelName = model.name
         let downloadID = UUID()
         activeDownloadIDs[modelName] = downloadID
+        activeNetworkProgressIDs[modelName] = downloadID
         downloadStatuses[modelName] = FluidAudioDownloadStatus(
             fractionCompleted: 0.0,
             message: "Preparing FluidAudio download..."
@@ -184,7 +201,7 @@ class FluidAudioModelManager: ObservableObject {
             onModelsChanged?()
         }
 
-        let progressHandler: DownloadUtils.ProgressHandler = { [weak self] progress in
+        let progressHandler: ProgressHandler = { [weak self] progress in
             Task { @MainActor [weak self] in
                 self?.updateDownloadProgress(progress, for: modelName, downloadID: downloadID)
             }
@@ -193,53 +210,24 @@ class FluidAudioModelManager: ObservableObject {
         do {
             switch Self.modelKind(for: modelName) {
             case .parakeetUnified:
-                try await DownloadUtils.downloadRepo(
+                try await ModelHub.download(
                     .parakeetUnified,
                     to: Self.fluidAudioModelsRootDirectory(),
-                    variant: Self.parakeetUnifiedStreamingVariant,
-                    progressHandler: Self.stagedDownloadOnlyProgressHandler(
-                        from: 0.0,
-                        to: 0.5,
-                        forwarding: progressHandler
-                    )
+                    variant: Self.parakeetUnifiedOfflineVariant,
+                    additionalModelNames: [Self.parakeetUnifiedStreamingEncoderFile],
+                    progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
                 )
-                let realtimeOptimization = Task.detached(priority: .utility) {
-                    try await Self.optimizeParakeetUnifiedRealtimeModel()
-                }
-
-                do {
-                    try await DownloadUtils.downloadRepo(
-                        .parakeetUnified,
-                        to: Self.fluidAudioModelsRootDirectory(),
-                        variant: Self.parakeetUnifiedOfflineVariant,
-                        progressHandler: Self.stagedDownloadOnlyProgressHandler(
-                            from: 0.5,
-                            to: 1.0,
-                            forwarding: progressHandler
-                        )
-                    )
-                    downloadStatuses[modelName] = FluidAudioDownloadStatus(
-                        fractionCompleted: 1.0,
-                        message: String(localized: "Optimizing model for your device"),
-                        isIndeterminate: true
-                    )
-                    try await Self.optimizeParakeetUnifiedBatchModel()
-                    try await realtimeOptimization.value
-                } catch {
-                    realtimeOptimization.cancel()
-                    throw error
-                }
+                beginModelPreparation(for: modelName, downloadID: downloadID)
+                try await Self.optimizeParakeetUnifiedRealtimeModel()
+                try await Self.optimizeParakeetUnifiedBatchModel()
+                Self.removeLegacyParakeetUnifiedStreamingEncoder()
             case .nemotron(let variant):
                 let modelDirectory = try await StreamingNemotronMultilingualAsrManager.downloadVariant(
                     languageCode: variant.downloadLanguageCode,
                     chunkMs: Self.nemotronChunkMs,
                     progressHandler: progressHandler
                 )
-                downloadStatuses[modelName] = FluidAudioDownloadStatus(
-                    fractionCompleted: 1.0,
-                    message: String(localized: "Optimizing model for your device"),
-                    isIndeterminate: true
-                )
+                beginModelPreparation(for: modelName, downloadID: downloadID)
                 let manager = StreamingNemotronMultilingualAsrManager()
                 do {
                     try await manager.loadModels(from: modelDirectory)
@@ -248,10 +236,22 @@ class FluidAudioModelManager: ObservableObject {
                     throw error
                 }
                 await manager.cleanup()
+                Self.removeLegacyNemotronCache(for: variant)
             case .parakeet(let version):
-                _ = try await AsrModels.downloadAndLoad(
+                let repo = Self.parakeetRepo(for: version)
+                let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
+                try await ModelHub.download(
+                    repo,
+                    to: cacheDirectory.deletingLastPathComponent(),
+                    variant: version == .v3 ? ParakeetEncoderPrecision.int8.rawValue : nil,
+                    additionalModelNames: [ModelNames.ASR.vocabularyFile],
+                    progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
+                )
+                beginModelPreparation(for: modelName, downloadID: downloadID)
+                _ = try await AsrModels.load(
+                    from: cacheDirectory,
                     version: version,
-                    progressHandler: progressHandler
+                    encoderPrecision: .int8
                 )
             }
             modelStateRevision += 1
@@ -261,7 +261,10 @@ class FluidAudioModelManager: ObservableObject {
     }
 
     nonisolated private static func optimizeParakeetUnifiedRealtimeModel() async throws {
-        let streamingManager = StreamingUnifiedAsrManager(encoderPrecision: parakeetUnifiedPrecision)
+        let streamingManager = StreamingUnifiedAsrManager(
+            config: parakeetUnifiedStreamingConfig,
+            encoderPrecision: parakeetUnifiedPrecision
+        )
         do {
             try await streamingManager.loadModels(from: parakeetUnifiedCacheDirectory())
         } catch {
@@ -280,6 +283,44 @@ class FluidAudioModelManager: ObservableObject {
             throw error
         }
         await batchManager.cleanup()
+    }
+
+    nonisolated private static func parakeetRepo(for version: AsrModelVersion) -> Repo {
+        switch version {
+        case .v2:
+            return .parakeetV2
+        case .v3:
+            return .parakeetV3
+        case .tdtCtc110m:
+            return .parakeetTdtCtc110m
+        case .tdtJa:
+            return .parakeetJa
+        }
+    }
+
+    nonisolated private static func removeLegacyParakeetUnifiedStreamingEncoder() {
+        let legacyEncoderFile = ModelNames.ParakeetUnified.streamingEncoderFile(
+            precision: parakeetUnifiedPrecision,
+            contextSuffix: "70_13_13"
+        )
+        guard legacyEncoderFile != parakeetUnifiedStreamingEncoderFile else { return }
+
+        try? FileManager.default.removeItem(
+            at: parakeetUnifiedCacheDirectory().appendingPathComponent(legacyEncoderFile)
+        )
+    }
+
+    nonisolated private static func removeLegacyNemotronCache(for variant: NemotronVariant) {
+        guard legacyNemotronChunkMs != nemotronChunkMs else { return }
+
+        let languageDirectory = StreamingNemotronMultilingualAsrManager.languageDirectory(
+            for: variant.downloadLanguageCode
+        )
+        let legacyDirectory = fluidAudioModelsRootDirectory()
+            .appendingPathComponent(Repo.nemotronMultilingual.folderName, isDirectory: true)
+            .appendingPathComponent(languageDirectory, isDirectory: true)
+            .appendingPathComponent("\(legacyNemotronChunkMs)ms", isDirectory: true)
+        try? FileManager.default.removeItem(at: legacyDirectory)
     }
 
     // MARK: - Delete
@@ -334,13 +375,13 @@ class FluidAudioModelManager: ObservableObject {
     nonisolated private static var parakeetUnifiedRequiredFiles: Set<String> {
         ModelNames.ParakeetUnified.requiredModels(variant: parakeetUnifiedStreamingVariant)
             .union(ModelNames.ParakeetUnified.requiredModels(variant: parakeetUnifiedOfflineVariant))
+            .union([parakeetUnifiedStreamingEncoderFile])
     }
 
     nonisolated private static func nemotronRequiredFilesExist(in directory: URL) -> Bool {
         let requiredFiles = [
             ModelNames.NemotronMultilingualStreaming.metadata,
             ModelNames.NemotronMultilingualStreaming.tokenizer,
-            ModelNames.NemotronMultilingualStreaming.preprocessorFile,
             ModelNames.NemotronMultilingualStreaming.encoderFile,
         ]
 
@@ -365,15 +406,13 @@ class FluidAudioModelManager: ObservableObject {
         return hasFusedDecoder || hasBareDecoderAndJoint
     }
 
-    nonisolated private static func parakeetUnifiedCacheDirectory() -> URL {
+    nonisolated static func parakeetUnifiedCacheDirectory() -> URL {
         fluidAudioModelsRootDirectory()
             .appendingPathComponent(Repo.parakeetUnified.folderName, isDirectory: true)
     }
 
     // Mirrors FluidAudio's Unified managers because they do not expose a public
-    // cache directory helper. Keep this in sync with FluidAudio/Sources/FluidAudio/
-    // ASR/Parakeet/Unified/StreamingUnifiedAsrManager.swift:124 and
-    // ASR/Parakeet/Unified/UnifiedAsrManager.swift:142.
+    // cache-directory helper. Keep this in sync with the Unified manager sources.
     nonisolated private static func fluidAudioModelsRootDirectory() -> URL {
         let fileManager = FileManager.default
         if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -387,38 +426,55 @@ class FluidAudioModelManager: ObservableObject {
             .appendingPathComponent("Models", isDirectory: true)
     }
 
-    nonisolated private static func stagedDownloadOnlyProgressHandler(
-        from start: Double,
-        to end: Double,
-        forwarding progressHandler: DownloadUtils.ProgressHandler?
-    ) -> DownloadUtils.ProgressHandler {
+    nonisolated private static func downloadOnlyProgressHandler(
+        forwarding progressHandler: ProgressHandler?
+    ) -> ProgressHandler {
         { progress in
-            let clampedProgress = min(max(progress.fractionCompleted * 2.0, 0.0), 1.0)
-            let mappedProgress = start + ((end - start) * clampedProgress)
-            progressHandler?(DownloadUtils.DownloadProgress(
-                fractionCompleted: mappedProgress,
+            // ModelHub.download is download-only, but FluidAudio reserves its
+            // 0.5...1.0 range for a caller-owned Core ML load phase. VoiceInk
+            // presents network transfer as its own complete, byte-weighted phase.
+            let downloadFraction = min(max(progress.fractionCompleted * 2.0, 0.0), 1.0)
+            progressHandler?(DownloadProgress(
+                fractionCompleted: downloadFraction,
                 phase: progress.phase
             ))
         }
     }
 
+    private func beginModelPreparation(for modelName: String, downloadID: UUID) {
+        guard activeDownloadIDs[modelName] == downloadID else { return }
+        activeNetworkProgressIDs[modelName] = nil
+        downloadStatuses[modelName] = FluidAudioDownloadStatus(
+            fractionCompleted: 1.0,
+            message: String(localized: "Optimizing model for your device"),
+            isIndeterminate: true
+        )
+    }
+
     private func clearDownloadStatus(for modelName: String, downloadID: UUID) {
         guard activeDownloadIDs[modelName] == downloadID else { return }
         activeDownloadIDs[modelName] = nil
+        activeNetworkProgressIDs[modelName] = nil
         downloadStatuses[modelName] = nil
     }
 
-    private func updateDownloadProgress(_ progress: DownloadUtils.DownloadProgress, for modelName: String, downloadID: UUID) {
-        guard activeDownloadIDs[modelName] == downloadID else { return }
+    private func updateDownloadProgress(_ progress: DownloadProgress, for modelName: String, downloadID: UUID) {
+        guard activeDownloadIDs[modelName] == downloadID,
+              activeNetworkProgressIDs[modelName] == downloadID
+        else { return }
+
+        let reportedFraction = min(max(progress.fractionCompleted, 0.0), 1.0)
+        let currentFraction = downloadStatuses[modelName]?.fractionCompleted ?? 0.0
+        guard reportedFraction >= currentFraction else { return }
 
         downloadStatuses[modelName] = FluidAudioDownloadStatus(
-            fractionCompleted: min(max(progress.fractionCompleted, 0.0), 1.0),
+            fractionCompleted: reportedFraction,
             message: FluidAudioModelManager.statusMessage(for: progress),
             isIndeterminate: Self.isIndeterminatePhase(progress.phase)
         )
     }
 
-    private static func isIndeterminatePhase(_ phase: DownloadUtils.DownloadPhase) -> Bool {
+    private static func isIndeterminatePhase(_ phase: DownloadPhase) -> Bool {
         if case .compiling(let modelName) = phase {
             return modelName.isEmpty
         }
@@ -426,7 +482,7 @@ class FluidAudioModelManager: ObservableObject {
         return false
     }
 
-    private static func statusMessage(for progress: DownloadUtils.DownloadProgress) -> String {
+    private static func statusMessage(for progress: DownloadProgress) -> String {
         switch progress.phase {
         case .listing:
             return String(localized: "Listing files from repository...")
