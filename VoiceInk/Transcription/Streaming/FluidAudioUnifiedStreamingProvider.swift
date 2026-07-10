@@ -22,13 +22,14 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
 
     func connect(model: any TranscriptionModel, language: String?) async throws {
         let manager = StreamingUnifiedAsrManager(
+            config: FluidAudioModelManager.parakeetUnifiedStreamingConfig,
             encoderPrecision: FluidAudioModelManager.parakeetUnifiedPrecision
         )
         let continuation = eventsContinuation
         await manager.setPartialTranscriptCallback { partial in
             continuation?.yield(.partial(text: partial))
         }
-        try await manager.loadModels()
+        try await manager.loadModels(from: FluidAudioModelManager.parakeetUnifiedCacheDirectory())
         self.manager = manager
         eventsContinuation?.yield(.sessionStarted)
         logger.notice("Parakeet Unified streaming started for \(model.displayName, privacy: .public)")
