@@ -9,8 +9,7 @@ class MenuBarManager: ObservableObject {
     @Published var isMenuBarOnly: Bool {
         didSet {
             UserDefaults.standard.set(isMenuBarOnly, forKey: "IsMenuBarOnly")
-            logger.notice("🧭 Menu-bar-only preference changed. newValue=\(self.isMenuBarOnly, privacy: .public); activationPolicyBefore=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
-            applyActivationPolicy()
+            applyActivationPolicy(logPreferenceChange: true)
         }
     }
 
@@ -60,9 +59,15 @@ class MenuBarManager: ObservableObject {
         isMenuBarOnly.toggle()
     }
     
-    func applyActivationPolicy() {
+    func applyActivationPolicy(logPreferenceChange: Bool = false) {
+        let changedPreferenceValue = isMenuBarOnly
+
         let applyPolicy = { [weak self] in
             guard let self else { return }
+            if logPreferenceChange {
+                self.logger.notice("🧭 Menu-bar-only preference changed. newValue=\(changedPreferenceValue, privacy: .public); activationPolicyBefore=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+            }
+
             let didSet = NSApplication.shared.setActivationPolicy(self.configuredActivationPolicy)
             self.logger.notice("🧭 Applied menu-bar activation policy. isMenuBarOnly=\(self.isMenuBarOnly, privacy: .public); desiredPolicy=\(WindowDiagnostics.activationPolicyDescription(self.configuredActivationPolicy), privacy: .public); success=\(didSet, privacy: .public); activationPolicyAfter=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public)")
 
