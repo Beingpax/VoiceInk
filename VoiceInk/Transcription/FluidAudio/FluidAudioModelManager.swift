@@ -48,7 +48,6 @@ class FluidAudioModelManager: ObservableObject {
     }
 
     nonisolated static let parakeetUnifiedPrecision: UnifiedEncoderPrecision = .int8
-    // FluidAudio's best-WER streaming tier: 1.12s latency versus 2.08s for the default.
     nonisolated static let parakeetUnifiedStreamingConfig = UnifiedConfig(
         leftFrames: 70,
         chunkFrames: 7,
@@ -60,9 +59,7 @@ class FluidAudioModelManager: ObservableObject {
     nonisolated private static var parakeetUnifiedOfflineVariant: String {
         parakeetUnifiedPrecision == .fp16 ? "offline-fp16" : "offline"
     }
-    // FluidAudio recommends 1120ms+ for stable punctuation in long sessions.
     nonisolated private static let nemotronChunkMs = 1120
-    nonisolated private static let legacyNemotronChunkMs = 560
 
     nonisolated private static var parakeetUnifiedStreamingEncoderFile: String {
         ModelNames.ParakeetUnified.streamingEncoderFile(
@@ -220,7 +217,6 @@ class FluidAudioModelManager: ObservableObject {
                 beginModelPreparation(for: modelName, downloadID: downloadID)
                 try await Self.optimizeParakeetUnifiedRealtimeModel()
                 try await Self.optimizeParakeetUnifiedBatchModel()
-                Self.removeLegacyParakeetUnifiedStreamingEncoder()
             case .nemotron(let variant):
                 let modelDirectory = try await StreamingNemotronMultilingualAsrManager.downloadVariant(
                     languageCode: variant.downloadLanguageCode,
@@ -236,9 +232,10 @@ class FluidAudioModelManager: ObservableObject {
                     throw error
                 }
                 await manager.cleanup()
-                Self.removeLegacyNemotronCache(for: variant)
             case .parakeet(let version):
-                let repo = Self.parakeetRepo(for: version)
+                guard let repo = Self.parakeetRepo(for: version) else {
+                    throw AsrModelsError.loadingFailed("Unsupported Parakeet model version.")
+                }
                 let cacheDirectory = AsrModels.defaultCacheDirectory(for: version)
                 try await ModelHub.download(
                     repo,
@@ -285,42 +282,15 @@ class FluidAudioModelManager: ObservableObject {
         await batchManager.cleanup()
     }
 
-    nonisolated private static func parakeetRepo(for version: AsrModelVersion) -> Repo {
+    nonisolated private static func parakeetRepo(for version: AsrModelVersion) -> Repo? {
         switch version {
         case .v2:
             return .parakeetV2
         case .v3:
             return .parakeetV3
-        case .tdtCtc110m:
-            return .parakeetTdtCtc110m
-        case .tdtJa:
-            return .parakeetJa
+        default:
+            return nil
         }
-    }
-
-    nonisolated private static func removeLegacyParakeetUnifiedStreamingEncoder() {
-        let legacyEncoderFile = ModelNames.ParakeetUnified.streamingEncoderFile(
-            precision: parakeetUnifiedPrecision,
-            contextSuffix: "70_13_13"
-        )
-        guard legacyEncoderFile != parakeetUnifiedStreamingEncoderFile else { return }
-
-        try? FileManager.default.removeItem(
-            at: parakeetUnifiedCacheDirectory().appendingPathComponent(legacyEncoderFile)
-        )
-    }
-
-    nonisolated private static func removeLegacyNemotronCache(for variant: NemotronVariant) {
-        guard legacyNemotronChunkMs != nemotronChunkMs else { return }
-
-        let languageDirectory = StreamingNemotronMultilingualAsrManager.languageDirectory(
-            for: variant.downloadLanguageCode
-        )
-        let legacyDirectory = fluidAudioModelsRootDirectory()
-            .appendingPathComponent(Repo.nemotronMultilingual.folderName, isDirectory: true)
-            .appendingPathComponent(languageDirectory, isDirectory: true)
-            .appendingPathComponent("\(legacyNemotronChunkMs)ms", isDirectory: true)
-        try? FileManager.default.removeItem(at: legacyDirectory)
     }
 
     // MARK: - Delete
@@ -411,8 +381,7 @@ class FluidAudioModelManager: ObservableObject {
             .appendingPathComponent(Repo.parakeetUnified.folderName, isDirectory: true)
     }
 
-    // Mirrors FluidAudio's Unified managers because they do not expose a public
-    // cache-directory helper. Keep this in sync with the Unified manager sources.
+    // Matches the cache root used by FluidAudio's Unified managers.
     nonisolated private static func fluidAudioModelsRootDirectory() -> URL {
         let fileManager = FileManager.default
         if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -430,9 +399,7 @@ class FluidAudioModelManager: ObservableObject {
         forwarding progressHandler: ProgressHandler?
     ) -> ProgressHandler {
         { progress in
-            // ModelHub.download is download-only, but FluidAudio reserves its
-            // 0.5...1.0 range for a caller-owned Core ML load phase. VoiceInk
-            // presents network transfer as its own complete, byte-weighted phase.
+            // ModelHub reports downloads in 0...0.5, so expose the network phase as 0...1.
             let downloadFraction = min(max(progress.fractionCompleted * 2.0, 0.0), 1.0)
             progressHandler?(DownloadProgress(
                 fractionCompleted: downloadFraction,
