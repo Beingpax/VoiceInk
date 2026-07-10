@@ -6,6 +6,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var assistantSession: AssistantSession
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
+    // Cancel ("X"): discard the active recording/transcription with NO paste + resume
+    // paused media. Routed up to RecorderUIManager.cancelRecording().
+    let onCancelTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
 
@@ -103,6 +106,18 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             !assistantSession.isBusy
     }
 
+    // Cancel ("X") visibility — mirrors the mini panel: reachable while RECORDING
+    // (discard audio) and while a transcription is IN-FLIGHT (.transcribing/.enhancing,
+    // abort before paste) plus the brief .starting handshake. Hidden at .idle/.busy.
+    private var shouldShowCancelButton: Bool {
+        switch stateProvider.recordingState {
+        case .starting, .recording, .transcribing, .enhancing:
+            return true
+        case .idle, .busy:
+            return false
+        }
+    }
+
     private var liveAssistantFollowUpText: String {
         guard showLiveTranscript, stateProvider.recordingState == .recording else { return "" }
         return stateProvider.partialTranscript
@@ -159,9 +174,20 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
                         action: onRecordButtonTapped
                     )
                 }
+
+                // Cancel ("X") immediately to the right of the Stop/record control so an
+                // abort is one tap from Stop. Only while a recording/transcription is
+                // cancellable (see shouldShowCancelButton); collapses out at idle/busy so
+                // the notch pill's normal layout is unchanged.
+                if shouldShowCancelButton {
+                    RecorderCancelButton(action: onCancelTapped)
+                        .transition(.opacity)
+                }
+
                 RecorderModeButton(buttonSize: 20, padding: EdgeInsets())
                 Spacer(minLength: 0)
             }
+            .animation(.easeInOut(duration: 0.2), value: shouldShowCancelButton)
             .padding(.leading, sideEdgePadding)
             .frame(width: sideExpansion)
             .frame(maxWidth: .infinity, alignment: .leading)
