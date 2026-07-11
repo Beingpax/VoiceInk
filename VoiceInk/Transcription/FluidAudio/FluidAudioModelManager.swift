@@ -113,14 +113,12 @@ class FluidAudioModelManager: ObservableObject {
         return .parakeet(asrVersion(for: modelName))
     }
 
-    nonisolated static func nemotronLanguageHint(from languageCode: String?) -> String? {
-        guard let languageCode else { return nil }
-
-        let trimmed = languageCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
+    nonisolated static func nemotronLanguageHint(from languageCode: String?) -> String {
+        let trimmed = languageCode?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return "auto" }
 
         let dashed = trimmed.replacingOccurrences(of: "_", with: "-")
-        return dashed.lowercased() == "auto" ? nil : dashed
+        return dashed.lowercased() == "auto" ? "auto" : dashed
     }
 
     nonisolated static func nemotronCacheDirectory(for modelName: String) -> URL {

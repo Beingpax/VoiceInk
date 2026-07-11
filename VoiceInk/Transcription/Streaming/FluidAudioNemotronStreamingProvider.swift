@@ -33,7 +33,8 @@ final class FluidAudioNemotronStreamingProvider: StreamingTranscriptionProvider 
             language,
             for: model
         )
-        await manager.setLanguage(FluidAudioModelManager.nemotronLanguageHint(from: compatibleLanguage))
+        let languageHint = FluidAudioModelManager.nemotronLanguageHint(from: compatibleLanguage)
+        await manager.setLanguage(languageHint)
 
         self.manager = manager
         eventsContinuation?.yield(.sessionStarted)

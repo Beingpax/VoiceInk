@@ -156,14 +156,13 @@ class FluidAudioTranscriptionService: TranscriptionService {
                 throw ASRError.notInitialized
             }
 
-            await nemotronAsrManager.reset()
             let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(
                 context.language,
                 for: model
             )
-            await nemotronAsrManager.setLanguage(
-                FluidAudioModelManager.nemotronLanguageHint(from: compatibleLanguage)
-            )
+            let languageHint = FluidAudioModelManager.nemotronLanguageHint(from: compatibleLanguage)
+            await nemotronAsrManager.setLanguage(languageHint)
+            await nemotronAsrManager.reset()
 
             var speechAudio = try await preparedSpeechAudio(from: audioURL, usesVAD: true)
             let trailingSilenceSamples = 16_000
