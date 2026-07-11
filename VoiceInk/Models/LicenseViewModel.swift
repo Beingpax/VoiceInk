@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import os
 
 @MainActor
@@ -26,9 +26,9 @@ class LicenseViewModel: ObservableObject {
 
     init() {
         #if LOCAL_BUILD
-        licenseState = .licensed
+            licenseState = .licensed
         #else
-        loadLicenseState()
+            loadLicenseState()
         #endif
     }
 
@@ -93,7 +93,7 @@ class LicenseViewModel: ObservableObject {
             licenseState = .trial(daysRemaining: trialPeriodDays - daysSinceTrialStart)
         }
     }
-    
+
     var canUseApp: Bool {
         switch licenseState {
         case .licensed, .trial:
@@ -114,13 +114,13 @@ class LicenseViewModel: ObservableObject {
             return nil
         }
     }
-    
+
     func openPurchaseLink() {
         if let url = URL(string: "https://tryvoiceink.com/buy") {
             NSWorkspace.shared.open(url)
         }
     }
-    
+
     func validateLicense() async {
         let normalizedLicenseKey = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -129,28 +129,31 @@ class LicenseViewModel: ObservableObject {
             validationMessage = String(localized: "Please enter a license key")
             return
         }
-        
+
         licenseKey = normalizedLicenseKey
         isValidating = true
         validationSuccess = false
         validationMessage = nil
-        
+
         do {
             // First, check if the license is valid and if it requires activation
             let licenseCheck = try await polarService.checkLicenseRequiresActivation(normalizedLicenseKey)
-            
+
             if !licenseCheck.isValid {
                 validationSuccess = false
-                validationMessage = String(localized: "This license has been revoked or disabled. Please contact support.")
+                validationMessage = String(
+                    localized: "This license has been revoked or disabled. Please contact support.")
                 isValidating = false
                 return
             }
-            
+
             // Handle based on whether activation is required
             if licenseCheck.requiresActivation {
                 // If we already have an activation ID, try to validate with it first
                 if let existingActivationId = licenseManager.activationId {
-                    let isValid = (try? await polarService.validateLicenseKeyWithActivation(normalizedLicenseKey, activationId: existingActivationId)) ?? false
+                    let isValid =
+                        (try? await polarService.validateLicenseKeyWithActivation(
+                            normalizedLicenseKey, activationId: existingActivationId)) ?? false
                     if isValid {
                         let limit = licenseCheck.activationsLimit ?? userDefaults.activationsLimit
                         licenseManager.licenseKey = normalizedLicenseKey
@@ -188,7 +191,7 @@ class LicenseViewModel: ObservableObject {
                 isValidating = false
                 return
             }
-            
+
             // Update the license state for activated license
             completeSuccessfulValidation(message: String(localized: "License activated successfully!"))
 
@@ -197,7 +200,10 @@ class LicenseViewModel: ObservableObject {
             validationMessage = String(localized: "License key not found. Please double-check your key and try again.")
         } catch LicenseError.activationLimitReached {
             validationSuccess = false
-            validationMessage = String(localized: "This license has reached its device limit. Visit the License Management Portal to deactivate other devices.")
+            validationMessage = String(
+                localized:
+                    "This license has reached its device limit. Visit the License Management Portal to deactivate other devices."
+            )
         } catch LicenseError.serverError(let code) {
             validationSuccess = false
             validationMessage = String(
@@ -207,7 +213,8 @@ class LicenseViewModel: ObservableObject {
         } catch let urlError as URLError {
             validationSuccess = false
             logger.error("🔑 License network error: \(urlError, privacy: .public)")
-            validationMessage = String(localized: "Could not reach the server. Please check your internet connection and try again.")
+            validationMessage = String(
+                localized: "Could not reach the server. Please check your internet connection and try again.")
         } catch {
             validationSuccess = false
             logger.error("🔑 Unexpected license error: \(error, privacy: .public)")
@@ -216,7 +223,7 @@ class LicenseViewModel: ObservableObject {
                 "support@tryvoiceink.com"
             )
         }
-        
+
         isValidating = false
     }
 
@@ -231,7 +238,7 @@ class LicenseViewModel: ObservableObject {
     private func requestLicenseCelebration() {
         NotificationCenter.default.post(name: .licenseCelebrationRequested, object: nil)
     }
-    
+
     func removeLicense() {
         // Remove only the license credentials. Trial history stays intact.
         licenseManager.removeStoredLicense()
@@ -248,7 +255,6 @@ class LicenseViewModel: ObservableObject {
         NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
     }
 }
-
 
 // UserDefaults extension for non-sensitive license settings
 extension UserDefaults {

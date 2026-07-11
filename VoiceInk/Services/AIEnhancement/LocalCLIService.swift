@@ -24,7 +24,8 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
         case .claude:
             return "claude -p \"$VOICEINK_FULL_PROMPT\""
         case .codex:
-            return "TMPFILE=$(mktemp) && codex exec --skip-git-repo-check --output-last-message \"$TMPFILE\" \"$VOICEINK_FULL_PROMPT\" > /dev/null 2>&1 && cat \"$TMPFILE\" && rm \"$TMPFILE\""
+            return
+                "TMPFILE=$(mktemp) && codex exec --skip-git-repo-check --output-last-message \"$TMPFILE\" \"$VOICEINK_FULL_PROMPT\" > /dev/null 2>&1 && cat \"$TMPFILE\" && rm \"$TMPFILE\""
         case .copilot:
             return "copilot -p \"$VOICEINK_FULL_PROMPT\" -s --no-ask-user --available-tools=__none__ 2>/dev/null"
         }
@@ -169,12 +170,14 @@ final class LocalCLIService {
                 let stderr = Self.cleanOutput(String(data: stderrData, encoding: .utf8) ?? "")
 
                 if process.terminationStatus != 0 {
-                    let looksLikeCommandNotFound = process.terminationStatus == 127 ||
-                        stderr.lowercased().contains("command not found")
+                    let looksLikeCommandNotFound =
+                        process.terminationStatus == 127 || stderr.lowercased().contains("command not found")
                     if looksLikeCommandNotFound {
-                        continuation.resume(throwing: LocalCLIError.commandNotFound(stderr.isEmpty ? commandTemplate : stderr))
+                        continuation.resume(
+                            throwing: LocalCLIError.commandNotFound(stderr.isEmpty ? commandTemplate : stderr))
                     } else {
-                        continuation.resume(throwing: LocalCLIError.nonZeroExit(status: Int(process.terminationStatus), stderr: stderr))
+                        continuation.resume(
+                            throwing: LocalCLIError.nonZeroExit(status: Int(process.terminationStatus), stderr: stderr))
                     }
                     return
                 }
@@ -207,14 +210,19 @@ enum LocalCLIError: Error, LocalizedError {
         case .commandNotConfigured:
             return String(localized: "Local CLI command is not configured. Load a template or enter a command first.")
         case .commandNotFound(let details):
-            return String(format: String(localized: "Local CLI command was not found. Use an absolute path or fix your shell PATH. Details: %@"), details)
+            return String(
+                format: String(
+                    localized:
+                        "Local CLI command was not found. Use an absolute path or fix your shell PATH. Details: %@"),
+                details)
         case .timeout(let seconds):
             return String(format: String(localized: "Local CLI command timed out after %lld seconds."), Int64(seconds))
         case .nonZeroExit(let status, let stderr):
             if stderr.isEmpty {
                 return String(format: String(localized: "Local CLI command failed with exit code %lld."), Int64(status))
             }
-            return String(format: String(localized: "Local CLI command failed with exit code %lld: %@"), Int64(status), stderr)
+            return String(
+                format: String(localized: "Local CLI command failed with exit code %lld: %@"), Int64(status), stderr)
         case .emptyOutput:
             return String(localized: "Local CLI command returned empty output.")
         case .executionFailed(let message):

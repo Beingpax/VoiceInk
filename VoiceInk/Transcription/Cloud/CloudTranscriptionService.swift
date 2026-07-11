@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 enum CloudTranscriptionError: Error, LocalizedError {
     case unsupportedProvider
@@ -23,7 +23,9 @@ enum CloudTranscriptionError: Error, LocalizedError {
         case .audioFileNotFound:
             return String(localized: "The audio file to transcribe could not be found.")
         case .apiRequestFailed(let statusCode, let message):
-            return String(format: String(localized: "The API request failed with status code %lld: %@"), Int64(statusCode), message)
+            return String(
+                format: String(localized: "The API request failed with status code %lld: %@"), Int64(statusCode),
+                message)
         case .networkError(let error):
             return String(format: String(localized: "A network error occurred: %@"), error.localizedDescription)
         case .noTranscriptionReturned:
@@ -42,7 +44,9 @@ class CloudTranscriptionService: TranscriptionService {
         self.modelContext = modelContext
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
+        -> String
+    {
         let audioData = try loadAudioData(from: audioURL)
         let fileName = audioURL.lastPathComponent
         let language = selectedLanguage(from: context)
@@ -52,7 +56,8 @@ class CloudTranscriptionService: TranscriptionService {
                 guard let customModel = model as? CustomCloudModel else {
                     throw CloudTranscriptionError.unsupportedProvider
                 }
-                return try await openAICompatibleService.transcribe(audioURL: audioURL, model: customModel, context: context)
+                return try await openAICompatibleService.transcribe(
+                    audioURL: audioURL, model: customModel, context: context)
             }
 
             guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {

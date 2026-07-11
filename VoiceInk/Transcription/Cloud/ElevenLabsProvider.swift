@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 struct ElevenLabsProvider: CloudProvider {
     let modelProvider: ModelProvider = .elevenLabs
@@ -14,35 +14,39 @@ struct ElevenLabsProvider: CloudProvider {
         "mi", "mk", "ml", "mn", "mr", "ms", "mt", "my", "ne", "nl",
         "no", "or", "pa", "pl", "ps", "pt", "ro", "ru", "sd", "sk",
         "sl", "sn", "so", "sr", "sv", "sw", "ta", "tg", "te", "th",
-        "tr", "uk", "ur", "uz", "vi", "wo", "xh", "yo", "yue", "zh", "zu"
+        "tr", "uk", "ur", "uz", "vi", "wo", "xh", "yo", "yue", "zh", "zu",
     ]
     let includesAutoDetect: Bool = true
 
-    var models: [CloudModel] {[
-        CloudModel(
-            name: "scribe_v1",
-            displayName: "Scribe v1",
-            description: "ElevenLabs' Scribe model for fast & accurate transcription",
-            provider: .elevenLabs,
-            speed: 0.7,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
-        ),
-        CloudModel(
-            name: "scribe_v2",
-            displayName: "Scribe V2",
-            description: "ElevenLabs' Scribe V2 model for the most accurate transcription",
-            provider: .elevenLabs,
-            speed: 0.99,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportsStreaming: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
-        )
-    ]}
+    var models: [CloudModel] {
+        [
+            CloudModel(
+                name: "scribe_v1",
+                displayName: "Scribe v1",
+                description: "ElevenLabs' Scribe model for fast & accurate transcription",
+                provider: .elevenLabs,
+                speed: 0.7,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
+            ),
+            CloudModel(
+                name: "scribe_v2",
+                displayName: "Scribe V2",
+                description: "ElevenLabs' Scribe V2 model for the most accurate transcription",
+                provider: .elevenLabs,
+                speed: 0.99,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
+            ),
+        ]
+    }
 
-    func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]) async throws -> String {
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
         return try await ElevenLabsClient.transcribe(
             audioData: audioData,
             fileName: fileName,

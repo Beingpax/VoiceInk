@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ProviderBrandIcon: View {
     let descriptor: ProviderDescriptor

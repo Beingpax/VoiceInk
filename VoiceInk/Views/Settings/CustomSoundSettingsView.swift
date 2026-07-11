@@ -46,7 +46,8 @@ struct CustomSoundSettingsView: View {
                 }
 
                 if isCustom || fileName != nil {
-                    Text(String(format: String(localized: "Custom: %@"), fileName ?? String(localized: "Custom"))).tag(SoundMenuSelection.custom)
+                    Text(String(format: String(localized: "Custom: %@"), fileName ?? String(localized: "Custom"))).tag(
+                        SoundMenuSelection.custom)
                 }
             }
             .labelsHidden()
@@ -125,7 +126,7 @@ struct CustomSoundSettingsView: View {
             UTType.audio,
             UTType.mp3,
             UTType.wav,
-            UTType.aiff
+            UTType.aiff,
         ]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false

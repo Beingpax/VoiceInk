@@ -16,4 +16,4 @@ struct ProBadge: View {
 
 #Preview {
     ProBadge()
-} 
+}

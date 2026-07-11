@@ -17,9 +17,8 @@ final class DashboardStatsSnapshotStore: @unchecked Sendable {
         let timeZoneIdentifier: String
 
         var matchesCurrentEnvironment: Bool {
-            version == DashboardStatsSnapshotStore.currentVersion &&
-                localeIdentifier == Locale.current.identifier &&
-                timeZoneIdentifier == TimeZone.current.identifier
+            version == DashboardStatsSnapshotStore.currentVersion && localeIdentifier == Locale.current.identifier
+                && timeZoneIdentifier == TimeZone.current.identifier
         }
 
         func wasGeneratedInCurrentDashboardDay(
@@ -41,14 +40,18 @@ final class DashboardStatsSnapshotStore: @unchecked Sendable {
     private let fileManager: FileManager
     private let userDefaults: UserDefaults
     private let snapshotURL: URL
-    private let saveQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.dashboardStatsSnapshotStore", qos: .utility)
+    private let saveQueue = DispatchQueue(
+        label: "com.prakashjoshipax.voiceink.dashboardStatsSnapshotStore", qos: .utility)
 
     private init(fileManager: FileManager = .default, userDefaults: UserDefaults = .standard) {
         self.fileManager = fileManager
         self.userDefaults = userDefaults
-        let appSupportRoot = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ??
-            fileManager.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
-        let appSupportURL = appSupportRoot
+        let appSupportRoot =
+            fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.homeDirectoryForCurrentUser.appendingPathComponent(
+                "Library/Application Support", isDirectory: true)
+        let appSupportURL =
+            appSupportRoot
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
         self.snapshotURL = appSupportURL.appendingPathComponent("dashboard-stats-snapshot.json")
     }

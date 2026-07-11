@@ -263,7 +263,8 @@ struct RecorderModeButton: View {
     var body: some View {
         RecorderToggleButton(
             isEnabled: !modeManager.enabledConfigurations.isEmpty,
-            icon: modeManager.enabledConfigurations.isEmpty ? "square.grid.2x2" : (modeManager.currentEffectiveConfiguration?.icon.value ?? "square.grid.2x2"),
+            icon: modeManager.enabledConfigurations.isEmpty
+                ? "square.grid.2x2" : (modeManager.currentEffectiveConfiguration?.icon.value ?? "square.grid.2x2"),
             disabled: modeManager.enabledConfigurations.isEmpty
         ) {
             isPopoverPresented.toggle()
@@ -321,7 +322,7 @@ struct LiveTranscriptView: View {
                     stops: [
                         .init(color: .clear, location: 0.0),
                         .init(color: .black, location: 0.18),
-                        .init(color: .black, location: 1.0)
+                        .init(color: .black, location: 1.0),
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -491,13 +492,11 @@ struct AssistantPanelView: View {
     }
 
     private var shouldShowLiveFollowUpText: Bool {
-        draftMessage.isEmpty &&
-            !liveFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        draftMessage.isEmpty && !liveFollowUpText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var canSendDraft: Bool {
-        session.canSendFollowUp &&
-            !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        session.canSendFollowUp && !draftMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func sendDraftMessage() {
@@ -547,18 +546,18 @@ private struct AssistantMessageBubble: View {
                 foregroundColor: .white.opacity(isUser ? 0.92 : 0.86),
                 alignment: .leading
             )
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(isUser ? Color.white.opacity(0.16) : Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(alignment: .bottomTrailing) {
-                    if !isUser {
-                        CopyIconButton(textToCopy: message.content)
-                            .scaleEffect(0.72)
-                            .padding(0)
-                    }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(isUser ? Color.white.opacity(0.16) : Color.white.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(alignment: .bottomTrailing) {
+                if !isUser {
+                    CopyIconButton(textToCopy: message.content)
+                        .scaleEffect(0.72)
+                        .padding(0)
                 }
-                .help(isUser ? message.content : "")
+            }
+            .help(isUser ? message.content : "")
 
             if !isUser {
                 Spacer(minLength: 36)

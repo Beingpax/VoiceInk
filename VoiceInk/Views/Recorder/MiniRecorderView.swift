@@ -30,9 +30,7 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var shouldShowCloseButton: Bool {
-        hasAssistantResponse &&
-            stateProvider.recordingState == .idle &&
-            !assistantSession.isBusy
+        hasAssistantResponse && stateProvider.recordingState == .idle && !assistantSession.isBusy
     }
 
     private var liveAssistantFollowUpText: String {
@@ -97,7 +95,11 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         }
         .frame(width: hasAssistantResponse ? assistantWidth : (hasLiveTranscript ? expandedWidth : compactWidth))
         .background(Color.black)
-        .clipShape(RoundedRectangle(cornerRadius: hasLiveTranscript || hasAssistantResponse ? expandedCornerRadius : compactCornerRadius, style: .continuous))
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: hasLiveTranscript || hasAssistantResponse ? expandedCornerRadius : compactCornerRadius,
+                style: .continuous)
+        )
         .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
         .animation(.easeInOut(duration: 0.3), value: hasAssistantResponse)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)

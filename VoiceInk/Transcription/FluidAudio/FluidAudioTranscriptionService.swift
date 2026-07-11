@@ -1,5 +1,5 @@
-import Foundation
 import FluidAudio
+import Foundation
 import os.log
 
 class FluidAudioTranscriptionService: TranscriptionService {
@@ -136,7 +136,9 @@ class FluidAudioTranscriptionService: TranscriptionService {
         try await ensureModelsLoaded(for: version(for: model))
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
+        -> String
+    {
         if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
             try await ensureUnifiedModelsLoaded()
             guard let unifiedAsrManager else {

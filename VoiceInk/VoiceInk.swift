@@ -1,10 +1,10 @@
-import SwiftUI
-import SwiftData
-import Sparkle
-import AppKit
-import OSLog
 import AppIntents
+import AppKit
 import FluidAudio
+import OSLog
+import Sparkle
+import SwiftData
+import SwiftUI
 
 @main
 struct VoiceInkApp: App {
@@ -52,7 +52,7 @@ struct VoiceInkApp: App {
             Transcription.self,
             VocabularyWord.self,
             WordReplacement.self,
-            SessionMetric.self
+            SessionMetric.self,
         ])
         let resolvedContainer: ModelContainer
 
@@ -68,7 +68,10 @@ struct VoiceInkApp: App {
                 DispatchQueue.main.async {
                     let alert = NSAlert()
                     alert.messageText = String(localized: "Storage Warning")
-                    alert.informativeText = String(localized: "VoiceInk couldn't access its storage location. Your transcriptions will not be saved between sessions.")
+                    alert.informativeText = String(
+                        localized:
+                            "VoiceInk couldn't access its storage location. Your transcriptions will not be saved between sessions."
+                    )
                     alert.alertStyle = .warning
                     alert.addButton(withTitle: String(localized: "OK"))
                     alert.runModal()
@@ -76,8 +79,12 @@ struct VoiceInkApp: App {
             } catch let memoryError {
                 let persistentDetail = Self.fullErrorDescription(persistentError)
                 let memoryDetail = Self.fullErrorDescription(memoryError)
-                logger.critical("❌ All ModelContainer init attempts failed.\nPersistent:\n\(persistentDetail, privacy: .public)\nIn-memory:\n\(memoryDetail, privacy: .public)")
-                fatalError("VoiceInk failed to initialize storage.\nPersistent:\n\(persistentDetail)\nIn-memory:\n\(memoryDetail)")
+                logger.critical(
+                    "❌ All ModelContainer init attempts failed.\nPersistent:\n\(persistentDetail, privacy: .public)\nIn-memory:\n\(memoryDetail, privacy: .public)"
+                )
+                fatalError(
+                    "VoiceInk failed to initialize storage.\nPersistent:\n\(persistentDetail)\nIn-memory:\n\(memoryDetail)"
+                )
             }
         }
 
@@ -164,13 +171,15 @@ struct VoiceInkApp: App {
 
         AppShortcuts.updateAppShortcutParameters()
 
-        let statsMigrationTask = SessionMetricMigrationService.shared.runStatsMigrationIfNeeded(modelContainer: resolvedContainer)
+        let statsMigrationTask = SessionMetricMigrationService.shared.runStatsMigrationIfNeeded(
+            modelContainer: resolvedContainer)
         let mainContext = resolvedContainer.mainContext
         Task { @MainActor in
             await statsMigrationTask?.value
             TranscriptionAutoCleanupService.shared.startMonitoring(modelContext: mainContext)
 
-            let tokenBackfillTask = SessionMetricMigrationService.shared.runEnhancementTokenBackfillIfNeeded(modelContainer: resolvedContainer)
+            let tokenBackfillTask = SessionMetricMigrationService.shared.runEnhancementTokenBackfillIfNeeded(
+                modelContainer: resolvedContainer)
             await tokenBackfillTask?.value
         }
     }
@@ -221,9 +230,10 @@ struct VoiceInkApp: App {
 
         let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
         #if LOCAL_BUILD
-        let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .none
+            let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .none
         #else
-        let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .private("iCloud.com.prakashjoshipax.VoiceInk")
+            let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .private(
+                "iCloud.com.prakashjoshipax.VoiceInk")
         #endif
         let dictionaryConfig = ModelConfiguration(
             "dictionary",
@@ -243,7 +253,8 @@ struct VoiceInkApp: App {
         do {
             return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
         } catch {
-            logger.error("❌ Failed to create persistent ModelContainer:\n\(Self.fullErrorDescription(error), privacy: .public)")
+            logger.error(
+                "❌ Failed to create persistent ModelContainer:\n\(Self.fullErrorDescription(error), privacy: .public)")
             throw error
         }
     }
@@ -261,7 +272,8 @@ struct VoiceInkApp: App {
         do {
             return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
         } catch {
-            logger.error("❌ Failed to create in-memory ModelContainer:\n\(Self.fullErrorDescription(error), privacy: .public)")
+            logger.error(
+                "❌ Failed to create in-memory ModelContainer:\n\(Self.fullErrorDescription(error), privacy: .public)")
             throw error
         }
     }
@@ -291,27 +303,36 @@ struct VoiceInkApp: App {
                             showAccessibilityReminderIfNeeded()
 
                             // Run due audio-only cleanup and schedule future checks when transcript cleanup is not managing retention.
-                            if !UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled) &&
-                                UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled) {
+                            if !UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled)
+                                && UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled)
+                            {
                                 Task {
-                                    await audioCleanupManager.runAutomaticCleanupIfNeeded(modelContext: container.mainContext)
+                                    await audioCleanupManager.runAutomaticCleanupIfNeeded(
+                                        modelContext: container.mainContext)
                                 }
                                 audioCleanupManager.startAutomaticCleanup(modelContext: container.mainContext)
                             }
 
                             // Process any pending open-file request now that the main ContentView is ready.
                             if let pendingURL = appDelegate.pendingOpenFileURL {
-                                Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MenuBarWindowFlow").notice("🧭 Processing pending media URL after main ContentView appeared. urlLastPath=\(pendingURL.lastPathComponent, privacy: .private(mask: .hash))")
-                                NotificationCenter.default.post(name: .navigateToDestination, object: nil, userInfo: ["destination": "Transcribe Audio"])
+                                Logger(subsystem: "com.prakashjoshipax.voiceink", category: "MenuBarWindowFlow").notice(
+                                    "🧭 Processing pending media URL after main ContentView appeared. urlLastPath=\(pendingURL.lastPathComponent, privacy: .private(mask: .hash))"
+                                )
+                                NotificationCenter.default.post(
+                                    name: .navigateToDestination, object: nil,
+                                    userInfo: ["destination": "Transcribe Audio"])
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                    NotificationCenter.default.post(name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
+                                    NotificationCenter.default.post(
+                                        name: .openFileForTranscription, object: nil, userInfo: ["url": pendingURL])
                                 }
                                 appDelegate.pendingOpenFileURL = nil
                             }
                         }
-                        .background(WindowAccessor { window in
-                            WindowManager.shared.configureWindow(window)
-                        })
+                        .background(
+                            WindowAccessor { window in
+                                WindowManager.shared.configureWindow(window)
+                            }
+                        )
                         .onDisappear {
                             AnnouncementsService.shared.stop()
                             whisperModelManager.unloadModel()
@@ -327,9 +348,10 @@ struct VoiceInkApp: App {
                         .environmentObject(enhancementService)
                         .frame(width: AppWindowLayout.width)
                         .frame(minHeight: AppWindowLayout.minimumHeight)
-                        .background(WindowAccessor { window in
-                            WindowManager.shared.configureWindow(window)
-                        })
+                        .background(
+                            WindowAccessor { window in
+                                WindowManager.shared.configureWindow(window)
+                            })
                 }
             }
             .confettiCelebrationPresenter()
@@ -338,7 +360,7 @@ struct VoiceInkApp: App {
         .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
         .windowResizability(.contentSize)
         .commands {
-            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .newItem) {}
 
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updaterViewModel: updaterViewModel)
@@ -372,11 +394,11 @@ struct VoiceInkApp: App {
         .menuBarExtraStyle(.menu)
 
         #if DEBUG
-        WindowGroup("Debug") {
-            Button("Toggle Menu Bar Only") {
-                menuBarManager.isMenuBarOnly.toggle()
+            WindowGroup("Debug") {
+                Button("Toggle Menu Bar Only") {
+                    menuBarManager.isMenuBarOnly.toggle()
+                }
             }
-        }
         #endif
     }
 
@@ -412,7 +434,9 @@ private struct MainWindowRequestBridge: View {
             .frame(width: 0, height: 0)
             .onReceive(NotificationCenter.default.publisher(for: .showMainWindowRequested)) { _ in
                 let existingWindow = WindowManager.shared.currentMainWindow()
-                logger.notice("🧭 SwiftUI main-window request bridge received request. hasExistingMainWindow=\((existingWindow != nil), privacy: .public); menuBarOnly=\(self.menuBarManager.isMenuBarOnly, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+                logger.notice(
+                    "🧭 SwiftUI main-window request bridge received request. hasExistingMainWindow=\((existingWindow != nil), privacy: .public); menuBarOnly=\(self.menuBarManager.isMenuBarOnly, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+                )
 
                 if existingWindow == nil {
                     menuBarManager.activateForPresentedWindow(reason: "SwiftUIBridgeCreateMainWindow")
@@ -436,7 +460,8 @@ class UpdaterViewModel: ObservableObject {
     @Published var automaticallyChecksForUpdates = false
 
     init() {
-        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
         automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
@@ -486,7 +511,8 @@ struct WindowAccessor: NSViewRepresentable {
     private func notifyWindowIfNeeded(for view: NSView, context: Context) {
         DispatchQueue.main.async {
             if let window = view.window,
-               context.coordinator.window !== window {
+                context.coordinator.window !== window
+            {
                 context.coordinator.window = window
                 callback(window)
             }

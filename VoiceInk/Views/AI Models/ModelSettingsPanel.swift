@@ -97,7 +97,8 @@ private struct EnhancementModelSettingsView: View {
                     isExpanded: $isShortEnhancementExpanded,
                     isEnabled: $isSkipShortEnhancementEnabled,
                     label: "Skip short transcriptions",
-                    infoMessage: "Automatically skip AI enhancement when the transcription has very few words. Short phrases like \"yes\", \"thank you\", or quick commands don't benefit from enhancement."
+                    infoMessage:
+                        "Automatically skip AI enhancement when the transcription has very few words. Short phrases like \"yes\", \"thank you\", or quick commands don't benefit from enhancement."
                 ) {
                     Picker("Minimum words", selection: $shortEnhancementWordThreshold) {
                         ForEach(1...15, id: \.self) { count in
@@ -126,7 +127,9 @@ private struct EnhancementModelSettingsView: View {
             } header: {
                 HStack(spacing: 4) {
                     Text("Request Timeout")
-                    InfoTip("Set how long to wait for the AI provider to respond. If no response is received within this duration, you can either fail immediately and paste the original transcription, or retry the request up to 3 attempts.")
+                    InfoTip(
+                        "Set how long to wait for the AI provider to respond. If no response is received within this duration, you can either fail immediately and paste the original transcription, or retry the request up to 3 attempts."
+                    )
                 }
             }
         }
@@ -162,7 +165,9 @@ private struct AdvancedModelSettingsSection: View {
             Toggle(isOn: $prewarmModelOnWake) {
                 HStack(spacing: 4) {
                     Text("Prewarm model (Experimental)")
-                    InfoTip("Turn this on if transcriptions with local models are taking longer than expected. Runs silent background transcription on app launch and wake to trigger optimization.")
+                    InfoTip(
+                        "Turn this on if transcriptions with local models are taking longer than expected. Runs silent background transcription on app launch and wake to trigger optimization."
+                    )
                 }
             }
             .toggleStyle(.switch)

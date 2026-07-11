@@ -114,12 +114,16 @@ class TranscriptionPipeline {
             text = TranscriptionOutputFilter.filter(text)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
-            if shouldCancel() { await finishCanceledTranscription(); return }
+            if shouldCancel() {
+                await finishCanceledTranscription()
+                return
+            }
 
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
             if !assistant.isFollowUp,
-               let processedText = triggerWordModeSelection(text) {
+                let processedText = triggerWordModeSelection(text)
+            {
                 text = processedText
             }
 
@@ -127,10 +131,8 @@ class TranscriptionPipeline {
             let resolvedEnhancementConfiguration = enhancementConfiguration()
             let resolvedOutputConfiguration = outputConfiguration()
             let modeMetadata = metadata(
-                for: formattingConfiguration.mode ??
-                    resolvedEnhancementConfiguration?.mode ??
-                    resolvedOutputConfiguration.mode ??
-                    transcriptionConfiguration.mode
+                for: formattingConfiguration.mode ?? resolvedEnhancementConfiguration?.mode
+                    ?? resolvedOutputConfiguration.mode ?? transcriptionConfiguration.mode
             )
 
             if formattingConfiguration.isTextFormattingEnabled {
@@ -151,9 +153,10 @@ class TranscriptionPipeline {
             finalText = cleanedText
 
             if !assistant.isFollowUp {
-                let shouldRespondInRecorder = resolvedOutputConfiguration.outputMode == .respond &&
-                    resolvedEnhancementConfiguration?.isEnabled == true &&
-                    resolvedEnhancementConfiguration.map { configuration in
+                let shouldRespondInRecorder =
+                    resolvedOutputConfiguration.outputMode == .respond
+                    && resolvedEnhancementConfiguration?.isEnabled == true
+                    && resolvedEnhancementConfiguration.map { configuration in
                         enhancementService?.isConfigured(for: configuration) == true
                     } == true
                 outputForDelivery = resolvedOutputConfiguration
@@ -162,16 +165,20 @@ class TranscriptionPipeline {
                 let isSkipShortEnhancementEnabled = UserDefaults.standard.bool(forKey: "SkipShortEnhancement")
                 let savedThreshold = UserDefaults.standard.integer(forKey: "ShortEnhancementWordThreshold")
                 let shortEnhancementWordThreshold = savedThreshold > 0 ? savedThreshold : 3
-                let shouldSkipEnhancement = !shouldRespondInRecorder &&
-                    isSkipShortEnhancementEnabled &&
-                    WordCounter.count(in: text) <= shortEnhancementWordThreshold
+                let shouldSkipEnhancement =
+                    !shouldRespondInRecorder && isSkipShortEnhancementEnabled
+                    && WordCounter.count(in: text) <= shortEnhancementWordThreshold
 
                 if let enhancementService,
-                   let resolvedEnhancementConfiguration,
-                   resolvedEnhancementConfiguration.isEnabled,
-                   enhancementService.isConfigured(for: resolvedEnhancementConfiguration),
-                   !shouldSkipEnhancement {
-                    if shouldCancel() { await finishCanceledTranscription(); return }
+                    let resolvedEnhancementConfiguration,
+                    resolvedEnhancementConfiguration.isEnabled,
+                    enhancementService.isConfigured(for: resolvedEnhancementConfiguration),
+                    !shouldSkipEnhancement
+                {
+                    if shouldCancel() {
+                        await finishCanceledTranscription()
+                        return
+                    }
 
                     onStateChange(.enhancing)
                     let textForAI = text
@@ -187,15 +194,19 @@ class TranscriptionPipeline {
                             contextSnapshot: contextSnapshot
                         )
                         transcription.enhancedText = enhancedText
-                        transcription.aiEnhancementModelName = resolvedEnhancementConfiguration.modelName ?? resolvedEnhancementConfiguration.provider?.defaultModel
+                        transcription.aiEnhancementModelName =
+                            resolvedEnhancementConfiguration.modelName
+                            ?? resolvedEnhancementConfiguration.provider?.defaultModel
                         transcription.promptName = promptName
                         transcription.enhancementDuration = enhancementDuration
                         transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
                         transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
                         finalText = enhancedText
                     } catch {
-                        let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                        transcription.enhancedText = String(format: String(localized: "Enhancement failed: %@"), errorDescription)
+                        let errorDescription =
+                            (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                        transcription.enhancedText = String(
+                            format: String(localized: "Enhancement failed: %@"), errorDescription)
                         responseError = errorDescription
                         let shortReason = String(errorDescription.prefix(80))
                         await MainActor.run {
@@ -204,7 +215,10 @@ class TranscriptionPipeline {
                                 type: .warning
                             )
                         }
-                        if shouldCancel() { await finishCanceledTranscription(); return }
+                        if shouldCancel() {
+                            await finishCanceledTranscription()
+                            return
+                        }
                     }
                 }
             }
@@ -214,7 +228,8 @@ class TranscriptionPipeline {
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
 
             if let nativeAppleError = error as? NativeAppleTranscriptionService.ServiceError,
-               nativeAppleError.shouldShowNotification {
+                nativeAppleError.shouldShowNotification
+            {
                 await MainActor.run {
                     NotificationManager.shared.showNotification(
                         title: errorDescription,

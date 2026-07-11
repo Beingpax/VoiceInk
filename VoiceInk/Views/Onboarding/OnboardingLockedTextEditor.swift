@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct OnboardingLockedTextEditor: NSViewRepresentable {
     @Binding var text: String
@@ -62,7 +62,8 @@ struct OnboardingLockedTextEditor: NSViewRepresentable {
         if isFocused.wrappedValue, isEnabled {
             DispatchQueue.main.async {
                 guard let window = scrollView.window,
-                      window.firstResponder !== textView else {
+                    window.firstResponder !== textView
+                else {
                     return
                 }
 
@@ -71,7 +72,8 @@ struct OnboardingLockedTextEditor: NSViewRepresentable {
         } else if !isFocused.wrappedValue {
             DispatchQueue.main.async {
                 guard let window = scrollView.window,
-                      window.firstResponder === textView else {
+                    window.firstResponder === textView
+                else {
                     return
                 }
 

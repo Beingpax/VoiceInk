@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 @MainActor
 final class WhisperModelWarmupCoordinator: ObservableObject {
@@ -15,7 +15,8 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
 
     func scheduleWarmup(for model: WhisperModel, whisperModelManager: WhisperModelManager) {
         guard shouldWarmup(modelName: model.name),
-              !warmingModels.contains(model.name) else {
+            !warmingModels.contains(model.name)
+        else {
             return
         }
 
@@ -26,7 +27,8 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
                 try await runWarmup(for: model, whisperModelManager: whisperModelManager)
             } catch {
                 await MainActor.run {
-                    whisperModelManager.logger.error("❌ Warmup failed for \(model.name, privacy: .public): \(error, privacy: .public)")
+                    whisperModelManager.logger.error(
+                        "❌ Warmup failed for \(model.name, privacy: .public): \(error, privacy: .public)")
                 }
             }
 
@@ -50,7 +52,7 @@ final class WhisperModelWarmupCoordinator: ObservableObject {
         let candidates: [URL?] = [
             bundle.url(forResource: "sound7", withExtension: "wav", subdirectory: "Resources/Sounds"),
             bundle.url(forResource: "sound7", withExtension: "wav", subdirectory: "Sounds"),
-            bundle.url(forResource: "sound7", withExtension: "wav")
+            bundle.url(forResource: "sound7", withExtension: "wav"),
         ]
 
         for candidate in candidates {

@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import OSLog
+import SwiftData
 
 @MainActor
 final class SessionMetricMigrationService {
@@ -54,7 +54,8 @@ final class SessionMetricMigrationService {
                 }
 
                 UserDefaults.standard.set(true, forKey: completionKey)
-                logger.notice("Completed stats migration with \(insertedCount, privacy: .public) inserted session metric(s)")
+                logger.notice(
+                    "Completed stats migration with \(insertedCount, privacy: .public) inserted session metric(s)")
             } catch {
                 logger.error("Stats migration failed: \(error, privacy: .public)")
             }
@@ -68,7 +69,9 @@ final class SessionMetricMigrationService {
 
     @discardableResult
     func runEnhancementTokenBackfillIfNeeded(modelContainer: ModelContainer) -> Task<Void, Never>? {
-        guard !UserDefaults.standard.bool(forKey: tokenBackfillCompletionKey), !isTokenBackfillRunning else { return nil }
+        guard !UserDefaults.standard.bool(forKey: tokenBackfillCompletionKey), !isTokenBackfillRunning else {
+            return nil
+        }
         isTokenBackfillRunning = true
 
         let logger = self.logger
@@ -98,10 +101,11 @@ final class SessionMetricMigrationService {
                     var batchUpdatedCount = 0
                     for metric in metrics {
                         guard Self.hasEnhancementModel(metric.aiEnhancementModelName),
-                              let transcription = try Self.completedTranscription(
-                                  for: metric.transcriptionId,
-                                  in: backgroundContext
-                              ) else {
+                            let transcription = try Self.completedTranscription(
+                                for: metric.transcriptionId,
+                                in: backgroundContext
+                            )
+                        else {
                             continue
                         }
 
@@ -119,7 +123,9 @@ final class SessionMetricMigrationService {
                 }
 
                 UserDefaults.standard.set(true, forKey: tokenBackfillCompletionKey)
-                logger.notice("Completed enhancement token backfill with \(updatedCount, privacy: .public) updated session metric(s)")
+                logger.notice(
+                    "Completed enhancement token backfill with \(updatedCount, privacy: .public) updated session metric(s)"
+                )
             } catch {
                 logger.error("Enhancement token backfill failed: \(error, privacy: .public)")
             }
@@ -196,8 +202,9 @@ final class SessionMetricMigrationService {
 
     nonisolated private static func textForCounting(from transcription: Transcription) -> String {
         if let enhancedText = transcription.enhancedText,
-           transcription.enhancementDuration != nil,
-           !enhancedText.isEmpty {
+            transcription.enhancementDuration != nil,
+            !enhancedText.isEmpty
+        {
             return enhancedText
         }
 

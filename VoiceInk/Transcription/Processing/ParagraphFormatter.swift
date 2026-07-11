@@ -8,11 +8,11 @@ struct ParagraphFormatter {
         let MIN_WORDS_FOR_SIGNIFICANT_SENTENCE = 4
 
         var finalFormattedText = ""
-        
+
         // Attempt to detect the language of the input text
         let detectedLanguage = NLLanguageRecognizer.dominantLanguage(for: text)
-        let tokenizerLanguage = detectedLanguage ?? .english // Fallback to English if detection fails
-        
+        let tokenizerLanguage = detectedLanguage ?? .english  // Fallback to English if detection fails
+
         let sentenceTokenizer = NLTokenizer(unit: .sentence)
         sentenceTokenizer.string = text
         sentenceTokenizer.setLanguage(tokenizerLanguage)
@@ -38,7 +38,7 @@ struct ParagraphFormatter {
             // Build a tentative chunk based on TARGET_WORD_COUNT
             for i in processedSentenceGlobalIndex..<allSentencesFromInput.count {
                 let sentence = allSentencesFromInput[i]
-                
+
                 let wordTokenizer = NLTokenizer(unit: .word)
                 wordTokenizer.string = sentence
                 wordTokenizer.setLanguage(tokenizerLanguage)
@@ -47,32 +47,34 @@ struct ParagraphFormatter {
                     wordsInSentence += 1
                     return true
                 }
-                
+
                 currentChunkTentativeSentences.append(sentence)
                 currentChunkWordCount += wordsInSentence
-                
+
                 if wordsInSentence >= MIN_WORDS_FOR_SIGNIFICANT_SENTENCE {
                     currentChunkSignificantSentenceCount += 1
                 }
-                
+
                 if currentChunkWordCount >= TARGET_WORD_COUNT {
-                    break // Word target met for this tentative chunk
+                    break  // Word target met for this tentative chunk
                 }
             }
-            
+
             // Now, apply MAX_SENTENCES_PER_CHUNK rule based on significant sentences
             var sentencesForThisFinalChunk = [String]()
             if currentChunkSignificantSentenceCount > MAX_SENTENCES_PER_CHUNK {
                 var significantSentencesCountedInTrim = 0
                 for sentenceInTentativeChunk in currentChunkTentativeSentences {
                     sentencesForThisFinalChunk.append(sentenceInTentativeChunk)
-                    
+
                     // Re-check if this sentence was significant to count towards the cap
                     let wordTokenizerForTrimCheck = NLTokenizer(unit: .word)
                     wordTokenizerForTrimCheck.string = sentenceInTentativeChunk
                     wordTokenizerForTrimCheck.setLanguage(tokenizerLanguage)
                     var wordsInCurrentSentenceForTrim = 0
-                    wordTokenizerForTrimCheck.enumerateTokens(in: sentenceInTentativeChunk.startIndex..<sentenceInTentativeChunk.endIndex) { _, _ in
+                    wordTokenizerForTrimCheck.enumerateTokens(
+                        in: sentenceInTentativeChunk.startIndex..<sentenceInTentativeChunk.endIndex
+                    ) { _, _ in
                         wordsInCurrentSentenceForTrim += 1
                         return true
                     }
@@ -80,7 +82,7 @@ struct ParagraphFormatter {
                     if wordsInCurrentSentenceForTrim >= MIN_WORDS_FOR_SIGNIFICANT_SENTENCE {
                         significantSentencesCountedInTrim += 1
                         if significantSentencesCountedInTrim >= MAX_SENTENCES_PER_CHUNK {
-                            break // Reached the cap of significant sentences for this chunk
+                            break  // Reached the cap of significant sentences for this chunk
                         }
                     }
                 }
@@ -90,34 +92,36 @@ struct ParagraphFormatter {
 
             if !sentencesForThisFinalChunk.isEmpty {
                 let segmentStringToAppend = sentencesForThisFinalChunk.joined(separator: " ")
-                
+
                 if !finalFormattedText.isEmpty {
                     finalFormattedText += "\n\n"
                 }
                 finalFormattedText += segmentStringToAppend
-                
+
                 processedSentenceGlobalIndex += sentencesForThisFinalChunk.count
             } else {
                 // Safeguard: if no sentences ended up in the final chunk (e.g. all input was processed)
                 // or if currentChunkTentativeSentences was empty (should be caught by outer loop condition)
                 // This ensures we don't loop infinitely if something unexpected happens.
-                if processedSentenceGlobalIndex >= allSentencesFromInput.count && currentChunkTentativeSentences.isEmpty {
-                     break // All input processed
+                if processedSentenceGlobalIndex >= allSentencesFromInput.count && currentChunkTentativeSentences.isEmpty
+                {
+                    break  // All input processed
                 } else if sentencesForThisFinalChunk.isEmpty && !currentChunkTentativeSentences.isEmpty {
                     // This implies currentChunkTentativeSentences had items but trimming resulted in zero items for final chunk
                     // which is unlikely with the logic, but as a safety, advance by what was considered.
-                    processedSentenceGlobalIndex += currentChunkTentativeSentences.count 
-                } else if sentencesForThisFinalChunk.isEmpty && currentChunkTentativeSentences.isEmpty && processedSentenceGlobalIndex < allSentencesFromInput.count {
-                     // No sentences in tentative, means loop above didn't run, implies processedSentenceGlobalIndex needs to catch up or something is wrong
-                    processedSentenceGlobalIndex = allSentencesFromInput.count // Mark as processed to exit
-                    break;
-                }
-                 else if sentencesForThisFinalChunk.isEmpty { // General catch-all if empty for other reasons
+                    processedSentenceGlobalIndex += currentChunkTentativeSentences.count
+                } else if sentencesForThisFinalChunk.isEmpty && currentChunkTentativeSentences.isEmpty
+                    && processedSentenceGlobalIndex < allSentencesFromInput.count
+                {
+                    // No sentences in tentative, means loop above didn't run, implies processedSentenceGlobalIndex needs to catch up or something is wrong
+                    processedSentenceGlobalIndex = allSentencesFromInput.count  // Mark as processed to exit
+                    break
+                } else if sentencesForThisFinalChunk.isEmpty {  // General catch-all if empty for other reasons
                     break
                 }
             }
         }
-        
+
         return finalFormattedText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-} 
+}

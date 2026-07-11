@@ -1,5 +1,5 @@
-import SwiftUI
 import MarkdownUI
+import SwiftUI
 
 struct MarkdownContentView: View {
     let text: String

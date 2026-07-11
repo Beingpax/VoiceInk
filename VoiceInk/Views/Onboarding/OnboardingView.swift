@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct OnboardingView: View {
     @Binding var hasCompletedOnboardingV2: Bool
@@ -43,14 +43,14 @@ struct OnboardingView: View {
                         onRecheck: coordinator.permissions.refreshPermissionStatuses,
                         onContinue: coordinator.flow.goToMicrophoneStep
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .microphone:
                     OnboardingMicrophoneScreen(
                         contentMaxWidth: contentMaxWidth,
                         onBack: coordinator.flow.goToPermissionsStep,
                         onContinue: coordinator.flow.goToModelStep
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .model:
                     OnboardingModelScreen(
                         contentMaxWidth: contentMaxWidth,
@@ -82,7 +82,7 @@ struct OnboardingView: View {
                             )
                         }
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .api:
                     OnboardingAPIScreen(
                         aiService: aiService,
@@ -110,7 +110,7 @@ struct OnboardingView: View {
                             )
                         }
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .experience:
                     OnboardingExperienceScreen(
                         step: coordinator.experienceStep,
@@ -141,7 +141,7 @@ struct OnboardingView: View {
                         },
                         onAppear: coordinator.flow.activateExperienceModeForDemo
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .contextAwareness:
                     OnboardingContextAwarenessScreen(
                         contentMaxWidth: contentMaxWidth,
@@ -156,7 +156,7 @@ struct OnboardingView: View {
                             )
                         }
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .trust:
                     OnboardingTrustScreen(
                         contentMaxWidth: contentMaxWidth,
@@ -172,7 +172,7 @@ struct OnboardingView: View {
                             )
                         }
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 case .license:
                     OnboardingLicenseScreen(
                         licenseViewModel: coordinator.licenseViewModel,
@@ -200,7 +200,7 @@ struct OnboardingView: View {
                             }
                         }
                     )
-                        .transition(.opacity)
+                    .transition(.opacity)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -225,7 +225,7 @@ struct OnboardingView: View {
         .animation(.easeInOut(duration: 0.22), value: coordinator.stage)
         .animation(.easeInOut(duration: 0.18), value: shouldShowSkipOnboardingButton)
         .alert("Skip onboarding?", isPresented: $isShowingSkipOnboardingConfirmation) {
-            Button("Continue", role: .cancel) { }
+            Button("Continue", role: .cancel) {}
             Button("Skip Onboarding", role: .destructive) {
                 coordinator.flow.skipOnboarding {
                     hasCompletedOnboardingV2 = true
@@ -269,7 +269,8 @@ struct OnboardingView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
             guard let action = notification.object as? ShortcutAction,
-                  action == coordinator.experienceShortcutAction else {
+                action == coordinator.experienceShortcutAction
+            else {
                 return
             }
 

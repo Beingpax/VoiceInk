@@ -30,7 +30,8 @@ protocol TranscriptionService {
     ///   - model: The `TranscriptionModel` to use for transcription. This provides context about the provider (local, OpenAI, etc.).
     /// - Returns: The transcribed text as a `String`.
     /// - Throws: An error if the transcription fails.
-    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
+        -> String
 }
 
 extension TranscriptionService {

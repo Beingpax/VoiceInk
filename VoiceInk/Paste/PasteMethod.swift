@@ -20,7 +20,8 @@ enum PasteMethod: String, CaseIterable, Identifiable {
 
     static func current(in defaults: UserDefaults = .standard) -> PasteMethod {
         if let rawValue = defaults.string(forKey: userDefaultsKey),
-           let method = PasteMethod(rawValue: rawValue) {
+            let method = PasteMethod(rawValue: rawValue)
+        {
             return method
         }
 
@@ -34,7 +35,8 @@ enum PasteMethod: String, CaseIterable, Identifiable {
 
     static func migrateLegacyUserDefaultIfNeeded(in defaults: UserDefaults = .standard) {
         if let rawValue = defaults.string(forKey: userDefaultsKey),
-           PasteMethod(rawValue: rawValue) != nil {
+            PasteMethod(rawValue: rawValue) != nil
+        {
             return
         }
 

@@ -323,7 +323,9 @@ struct TriggerPickerPopover: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
-            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear))
+            .background(
+                RoundedRectangle(cornerRadius: 8).fill(
+                    isSelected ? Color(nsColor: .unemphasizedSelectedContentBackgroundColor) : Color.clear))
         }
         .buttonStyle(.plain)
         .disabled(claimedBy != nil)
@@ -452,8 +454,9 @@ struct TriggerPickerPopover: View {
 
     private func isWebsiteLike(_ value: String) -> Bool {
         guard !value.isEmpty,
-              value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
-              value.rangeOfCharacter(from: .alphanumerics) != nil else {
+            value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+            value.rangeOfCharacter(from: .alphanumerics) != nil
+        else {
             return false
         }
 

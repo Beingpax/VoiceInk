@@ -1,5 +1,5 @@
-import OSLog
 import Foundation
+import OSLog
 import SwiftData
 
 enum DictionaryService {
@@ -15,7 +15,8 @@ enum DictionaryService {
         existing: [VocabularyWord],
         context: ModelContext
     ) -> String? {
-        let parts = input
+        let parts =
+            input
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -103,11 +104,15 @@ enum DictionaryService {
 
         do {
             try context.save()
-            logger.notice("Removed exact dictionary duplicates from \(source, privacy: .public): \(deletedVocabularyCount, privacy: .public) vocabulary, \(deletedReplacementCount, privacy: .public) word replacement")
+            logger.notice(
+                "Removed exact dictionary duplicates from \(source, privacy: .public): \(deletedVocabularyCount, privacy: .public) vocabulary, \(deletedReplacementCount, privacy: .public) word replacement"
+            )
             return true
         } catch {
             context.rollback()
-            logger.error("Failed to remove exact dictionary duplicates from \(source, privacy: .public): \(error, privacy: .public)")
+            logger.error(
+                "Failed to remove exact dictionary duplicates from \(source, privacy: .public): \(error, privacy: .public)"
+            )
             return false
         }
     }
@@ -123,7 +128,8 @@ enum DictionaryService {
         existing: [WordReplacement],
         context: ModelContext
     ) -> String? {
-        let tokens = original
+        let tokens =
+            original
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }

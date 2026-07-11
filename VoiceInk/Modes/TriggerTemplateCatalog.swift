@@ -15,12 +15,14 @@ struct TriggerTemplate: Identifiable, Equatable {
     ) -> ModeTriggerGroup {
         let installedAppsByBundleId = Dictionary(uniqueKeysWithValues: installedApps.map { ($0.bundleId, $0) })
         let appConfigs = apps.compactMap { app -> AppConfig? in
-            guard let installedApp = installedApp(
-                matching: app,
-                installedApps: installedApps,
-                installedAppsByBundleId: installedAppsByBundleId,
-                existingAppBundleIds: existingAppBundleIds
-            ) else { return nil }
+            guard
+                let installedApp = installedApp(
+                    matching: app,
+                    installedApps: installedApps,
+                    installedAppsByBundleId: installedAppsByBundleId,
+                    existingAppBundleIds: existingAppBundleIds
+                )
+            else { return nil }
             return AppConfig(bundleIdentifier: installedApp.bundleId, appName: installedApp.name)
         }
 
@@ -45,7 +47,8 @@ struct TriggerTemplate: Identifiable, Equatable {
         existingAppBundleIds: Set<String>
     ) -> InstalledAppInfo? {
         if let installedApp = installedAppsByBundleId[app.bundleIdentifier],
-           !existingAppBundleIds.contains(installedApp.bundleId) {
+            !existingAppBundleIds.contains(installedApp.bundleId)
+        {
             return installedApp
         }
 
@@ -53,8 +56,8 @@ struct TriggerTemplate: Identifiable, Equatable {
         guard !appNames.isEmpty else { return nil }
 
         return installedApps.first { installedApp in
-            appNames.contains(normalizedAppName(installedApp.name)) &&
-                !existingAppBundleIds.contains(installedApp.bundleId)
+            appNames.contains(normalizedAppName(installedApp.name))
+                && !existingAppBundleIds.contains(installedApp.bundleId)
         }
     }
 
@@ -96,9 +99,12 @@ enum TriggerTemplateCatalog {
                 .init(bundleIdentifier: "com.microsoft.VSCode", names: ["Visual Studio Code", "Code"]),
                 .init(bundleIdentifier: "com.jetbrains.intellij", names: ["IntelliJ IDEA"]),
                 .init(bundleIdentifier: "com.jetbrains.WebStorm", names: ["WebStorm"]),
-                .init(bundleIdentifier: "com.jetbrains.pycharm", names: ["PyCharm"])
+                .init(bundleIdentifier: "com.jetbrains.pycharm", names: ["PyCharm"]),
             ],
-            websites: ["chatgpt.com", "chat.openai.com", "claude.ai", "perplexity.ai", "gemini.google.com", "copilot.microsoft.com", "grok.com"]
+            websites: [
+                "chatgpt.com", "chat.openai.com", "claude.ai", "perplexity.ai", "gemini.google.com",
+                "copilot.microsoft.com", "grok.com",
+            ]
         ),
         TriggerTemplate(
             id: "email",
@@ -121,9 +127,13 @@ enum TriggerTemplateCatalog {
                 .init(bundleIdentifier: "com.superhuman.mail", names: ["Superhuman"]),
                 .init(bundleIdentifier: "com.missiveapp.desktop", names: ["Missive"]),
                 .init(bundleIdentifier: "com.edisonmail.desktop", names: ["Edison Mail"]),
-                .init(bundleIdentifier: "com.polymail.mac", names: ["Polymail"])
+                .init(bundleIdentifier: "com.polymail.mac", names: ["Polymail"]),
             ],
-            websites: ["mail.google.com", "gmail.com", "outlook.live.com", "outlook.office.com", "icloud.com/mail", "mail.proton.me", "app.superhuman.com", "app.shortwave.com", "hey.com", "fastmail.com", "missiveapp.com"]
+            websites: [
+                "mail.google.com", "gmail.com", "outlook.live.com", "outlook.office.com", "icloud.com/mail",
+                "mail.proton.me", "app.superhuman.com", "app.shortwave.com", "hey.com", "fastmail.com",
+                "missiveapp.com",
+            ]
         ),
         TriggerTemplate(
             id: "chat",
@@ -143,9 +153,13 @@ enum TriggerTemplateCatalog {
                 .init(bundleIdentifier: "jp.naver.line.mac", names: ["LINE"]),
                 .init(bundleIdentifier: "com.tencent.xinWeChat", names: ["WeChat"]),
                 .init(bundleIdentifier: "im.riot.app", names: ["Element"]),
-                .init(bundleIdentifier: "com.automattic.beeper.desktop", names: ["Beeper"])
+                .init(bundleIdentifier: "com.automattic.beeper.desktop", names: ["Beeper"]),
             ],
-            websites: ["slack.com", "discord.com", "teams.microsoft.com", "web.whatsapp.com", "web.telegram.org", "messenger.com", "messages.google.com", "chat.google.com", "app.element.io", "web.wechat.com", "line.me"]
+            websites: [
+                "slack.com", "discord.com", "teams.microsoft.com", "web.whatsapp.com", "web.telegram.org",
+                "messenger.com", "messages.google.com", "chat.google.com", "app.element.io", "web.wechat.com",
+                "line.me",
+            ]
         ),
         TriggerTemplate(
             id: "writing",
@@ -164,9 +178,12 @@ enum TriggerTemplateCatalog {
                 .init(bundleIdentifier: "pro.writer.mac", names: ["iA Writer"]),
                 .init(bundleIdentifier: "com.agiletortoise.Drafts-OSX", names: ["Drafts"]),
                 .init(bundleIdentifier: "com.getupnote.desktop", names: ["UpNote"]),
-                .init(bundleIdentifier: "com.literatureandlatte.scrivener3", names: ["Scrivener"])
+                .init(bundleIdentifier: "com.literatureandlatte.scrivener3", names: ["Scrivener"]),
             ],
-            websites: ["docs.google.com", "notion.so", "medium.com", "dropbox.com/paper", "craft.do", "bear.app", "ulysses.app"]
-        )
+            websites: [
+                "docs.google.com", "notion.so", "medium.com", "dropbox.com/paper", "craft.do", "bear.app",
+                "ulysses.app",
+            ]
+        ),
     ]
 }

@@ -32,7 +32,7 @@ struct EnhancementTokenEstimate: Equatable, Sendable {
             in: [
                 transcription.aiRequestSystemMessage,
                 transcription.aiRequestUserMessage,
-                transcription.enhancedText
+                transcription.enhancedText,
             ]
         ) {
             return EnhancementTokenEstimate(tokenCount: tokenCount)
@@ -47,12 +47,14 @@ struct EnhancementTokenEstimate: Equatable, Sendable {
 
     private static func hasEnhancementEvidence(_ transcription: Transcription) -> Bool {
         if let modelName = transcription.aiEnhancementModelName?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !modelName.isEmpty {
+            !modelName.isEmpty
+        {
             return true
         }
 
         if let enhancementDuration = transcription.enhancementDuration,
-           enhancementDuration > 0 {
+            enhancementDuration > 0
+        {
             return true
         }
 

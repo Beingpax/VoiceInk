@@ -59,7 +59,7 @@ struct ModeIcon: Codable, Equatable, Hashable {
         "star.hexagon.fill",
         "tray.full.fill",
         "tree.fill",
-        "wallet.bifold.fill"
+        "wallet.bifold.fill",
     ]
 
     var legacyEmojiValue: String? {

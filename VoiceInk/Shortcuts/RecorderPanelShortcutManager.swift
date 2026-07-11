@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import Carbon.HIToolbox
+import Foundation
 
 @MainActor
 final class RecorderPanelShortcutManager: ObservableObject {
@@ -8,12 +8,12 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
     private let visibleRecorderMonitor = ShortcutMonitor()
-    
+
     // Double-tap Escape handling
     private var firstEscapePressTime: Date? = nil
     private let escapeDoublePressThreshold: TimeInterval = 1.5
     private var escapeTimeoutTask: Task<Void, Never>?
-    
+
     init(recorderUIManager: RecorderUIManager) {
         self.recorderUIManager = recorderUIManager
         setupShortcutChangeObserver()
@@ -61,7 +61,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
         escapeTimeoutTask?.cancel()
         escapeTimeoutTask = nil
     }
-    
+
     private func refreshVisibleShortcuts() {
         guard recorderUIManager.isRecorderPanelVisible else {
             visibleRecorderMonitor.stop()
@@ -116,7 +116,8 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
         let now = Date()
         if let firstTime = firstEscapePressTime,
-           now.timeIntervalSince(firstTime) <= escapeDoublePressThreshold {
+            now.timeIntervalSince(firstTime) <= escapeDoublePressThreshold
+        {
             resetEscapeState()
             await recorderUIManager.cancelRecording()
             return
@@ -170,6 +171,6 @@ final class RecorderPanelShortcutManager: ObservableObject {
         UInt16(kVK_ANSI_7),
         UInt16(kVK_ANSI_8),
         UInt16(kVK_ANSI_9),
-        UInt16(kVK_ANSI_0)
+        UInt16(kVK_ANSI_0),
     ]
 }

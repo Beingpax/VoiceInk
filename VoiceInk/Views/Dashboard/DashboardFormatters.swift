@@ -102,7 +102,9 @@ enum Formatters {
         return Int(step * magnitude)
     }
 
-    static func formattedDuration(_ interval: TimeInterval, style: DateComponentsFormatter.UnitsStyle, fallback: String = "-") -> String {
+    static func formattedDuration(
+        _ interval: TimeInterval, style: DateComponentsFormatter.UnitsStyle, fallback: String = "-"
+    ) -> String {
         guard interval > 0 else { return fallback }
         let formatter = DateComponentsFormatter()
         formatter.maximumUnitCount = 2

@@ -82,11 +82,15 @@ enum OnboardingStage: String, CaseIterable {
         case .model:
             return String(localized: "Use NVIDIA's Parakeet model locally, or connect a cloud transcription provider.")
         case .api:
-            return String(localized: "VoiceInk uses LLMs to enhance transcripts and perform AI actions. Set up an API key before continuing.")
+            return String(
+                localized:
+                    "VoiceInk uses LLMs to enhance transcripts and perform AI actions. Set up an API key before continuing."
+            )
         case .experience:
             return String(localized: "Try a few short samples and see how VoiceInk works before you start.")
         case .contextAwareness:
-            return String(localized: "VoiceInk can select the right mode from the app you are using and the rules you configure.")
+            return String(
+                localized: "VoiceInk can select the right mode from the app you are using and the rules you configure.")
         case .trust:
             return String(localized: "VoiceInk is private by default. No data leaves your device unless you opt in.")
         case .license:
@@ -131,7 +135,8 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
         case .screenRecording:
             return OnboardingPermissionDescriptor(
                 title: String(localized: "Screen Recording"),
-                subtitle: String(localized: "VoiceInk reads visible screen content to improve the accuracy of transcripts.")
+                subtitle: String(
+                    localized: "VoiceInk reads visible screen content to improve the accuracy of transcripts.")
             )
         }
     }

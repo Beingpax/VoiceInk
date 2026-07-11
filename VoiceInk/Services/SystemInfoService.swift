@@ -1,6 +1,6 @@
-import Foundation
-import AppKit
 import AVFoundation
+import AppKit
+import Foundation
 
 class SystemInfoService {
     static let shared = SystemInfoService()
@@ -9,67 +9,67 @@ class SystemInfoService {
 
     func getSystemInfoString() -> String {
         let info = """
-        === VOICEINK SYSTEM INFORMATION ===
-        Generated: \(Self.englishTimestamp())
+            === VOICEINK SYSTEM INFORMATION ===
+            Generated: \(Self.englishTimestamp())
 
-        APP INFORMATION:
-        App Version: \(getAppVersion())
-        Build Version: \(getBuildVersion())
-        License Status: \(getLicenseStatus())
+            APP INFORMATION:
+            App Version: \(getAppVersion())
+            Build Version: \(getBuildVersion())
+            License Status: \(getLicenseStatus())
 
-        OPERATING SYSTEM:
-        macOS Version: \(ProcessInfo.processInfo.operatingSystemVersionString)
+            OPERATING SYSTEM:
+            macOS Version: \(ProcessInfo.processInfo.operatingSystemVersionString)
 
-        HARDWARE INFORMATION:
-        Device Model: \(getMacModel())
-        CPU: \(getCPUInfo())
-        Memory: \(getMemoryInfo())
-        Architecture: \(getArchitecture())
+            HARDWARE INFORMATION:
+            Device Model: \(getMacModel())
+            CPU: \(getCPUInfo())
+            Memory: \(getMemoryInfo())
+            Architecture: \(getArchitecture())
 
-        AUDIO SETTINGS:
-        Input Mode: \(getAudioInputMode())
-        Current Audio Device: \(getCurrentAudioDevice())
-        Available Audio Devices: \(getAvailableAudioDevices())
+            AUDIO SETTINGS:
+            Input Mode: \(getAudioInputMode())
+            Current Audio Device: \(getCurrentAudioDevice())
+            Available Audio Devices: \(getAvailableAudioDevices())
 
-        HOTKEY SETTINGS:
-        Primary Shortcut: \(getPrimaryShortcut())
-        Secondary Shortcut: \(getSecondaryShortcut())
-        Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
-        Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
+            HOTKEY SETTINGS:
+            Primary Shortcut: \(getPrimaryShortcut())
+            Secondary Shortcut: \(getSecondaryShortcut())
+            Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
+            Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
-        TRANSCRIPTION SETTINGS:
-        Selected Model: \(getCurrentTranscriptionModel())
-        Selected Language: \(getCurrentLanguage())
-        AI Enhancement: \(getAIEnhancementStatus())
-        AI Provider: \(getAIProvider())
-        AI Model: \(getAIModel())
+            TRANSCRIPTION SETTINGS:
+            Selected Model: \(getCurrentTranscriptionModel())
+            Selected Language: \(getCurrentLanguage())
+            AI Enhancement: \(getAIEnhancementStatus())
+            AI Provider: \(getAIProvider())
+            AI Model: \(getAIModel())
 
-        UI SETTINGS:
-        Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
-        Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "mini")
+            UI SETTINGS:
+            Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
+            Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "mini")
 
-        RECORDING FEEDBACK:
-        Sound Feedback: \(CustomSoundManager.shared.hasAnyRecordingSoundEnabled)
-        Pause Media While Recording: \(UserDefaults.standard.bool(forKey: "isPauseMediaEnabled"))
-        Mute Audio While Recording: \(UserDefaults.standard.bool(forKey: "isSystemMuteEnabled"))
-        Audio Resumption Delay: \(UserDefaults.standard.double(forKey: "audioResumptionDelay"))s
+            RECORDING FEEDBACK:
+            Sound Feedback: \(CustomSoundManager.shared.hasAnyRecordingSoundEnabled)
+            Pause Media While Recording: \(UserDefaults.standard.bool(forKey: "isPauseMediaEnabled"))
+            Mute Audio While Recording: \(UserDefaults.standard.bool(forKey: "isSystemMuteEnabled"))
+            Audio Resumption Delay: \(UserDefaults.standard.double(forKey: "audioResumptionDelay"))s
 
-        CLIPBOARD & PASTE SETTINGS:
-        Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
-        Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
-        Paste Method: \(PasteMethod.current().displayName)
+            CLIPBOARD & PASTE SETTINGS:
+            Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
+            Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
+            Paste Method: \(PasteMethod.current().displayName)
 
-        DATA CLEANUP SETTINGS:
-        Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled))
-        Transcription Retention: \(UserDefaults.standard.integer(forKey: CleanupSettingsKeys.transcriptionRetentionMinutes)) minutes
-        Auto-Delete Audio Files: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled))
-        Audio Retention Period: \(UserDefaults.standard.integer(forKey: CleanupSettingsKeys.audioRetentionPeriod)) days
+            DATA CLEANUP SETTINGS:
+            Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled))
+            Transcription Retention: \(UserDefaults.standard.integer(forKey: CleanupSettingsKeys.transcriptionRetentionMinutes)) minutes
+            Auto-Delete Audio Files: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isAudioCleanupEnabled))
+            Audio Retention Period: \(UserDefaults.standard.integer(forKey: CleanupSettingsKeys.audioRetentionPeriod)) days
 
-        PERMISSIONS:
-        Accessibility: \(getAccessibilityStatus())
-        Screen Recording: \(getScreenRecordingStatus())
-        Microphone: \(getMicrophoneStatus())
-        """
+            PERMISSIONS:
+            Accessibility: \(getAccessibilityStatus())
+            Screen Recording: \(getScreenRecordingStatus())
+            Microphone: \(getMicrophoneStatus())
+            """
 
         return info
     }
@@ -117,7 +117,8 @@ class SystemInfoService {
 
     private func getAudioInputMode() -> String {
         if let mode = UserDefaults.standard.audioInputModeRawValue,
-           let audioMode = AudioInputMode(rawValue: mode) {
+            let audioMode = AudioInputMode(rawValue: mode)
+        {
             switch audioMode {
             case .systemDefault:
                 return "System Default"
@@ -208,7 +209,9 @@ class SystemInfoService {
 
         // Check for existing license key and activation
         if licenseManager.licenseKey != nil {
-            if licenseManager.activationId != nil || !UserDefaults.standard.bool(forKey: "VoiceInkLicenseRequiresActivation") {
+            if licenseManager.activationId != nil
+                || !UserDefaults.standard.bool(forKey: "VoiceInkLicenseRequiresActivation")
+            {
                 return "Licensed (Pro)"
             }
         }

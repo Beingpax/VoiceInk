@@ -132,7 +132,7 @@ struct TranscriptionInfoPanel: View {
         EstimatedTokenCounter.count(
             in: [
                 transcription.aiRequestSystemMessage,
-                transcription.aiRequestUserMessage
+                transcription.aiRequestUserMessage,
             ]
         ) ?? 0
     }

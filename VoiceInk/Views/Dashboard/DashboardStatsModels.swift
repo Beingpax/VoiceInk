@@ -104,7 +104,8 @@ struct DashboardPeriodWindows {
         let recentSevenDayStart = calendar.date(byAdding: .day, value: -6, to: todayStart) ?? todayStart
         let recentThirtyDayStart = calendar.date(byAdding: .day, value: -29, to: todayStart) ?? todayStart
         let thisYearStart = calendar.dateInterval(of: .year, for: now)?.start ?? now
-        let previousSevenDayStart = calendar.date(byAdding: .day, value: -7, to: recentSevenDayStart) ?? recentSevenDayStart
+        let previousSevenDayStart =
+            calendar.date(byAdding: .day, value: -7, to: recentSevenDayStart) ?? recentSevenDayStart
 
         self.thisYearStart = thisYearStart
         self.todayInterval = DateInterval(start: todayStart, end: now)
@@ -425,7 +426,7 @@ enum DashboardProgressBenchmark {
         Milestone(title: "The Great Gatsby", wordCount: 47_094),
         Milestone(title: "Homer's Iliad", wordCount: 114_715),
         Milestone(title: "Homer's Odyssey", wordCount: 121_365),
-        Milestone(title: "Homer's Iliad and Odyssey", wordCount: 236_080)
+        Milestone(title: "Homer's Iliad and Odyssey", wordCount: 236_080),
     ]
 
     static func equivalence(for words: Int) -> Equivalence {

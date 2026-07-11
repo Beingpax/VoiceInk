@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 struct SpeechmaticsProvider: CloudProvider {
     let modelProvider: ModelProvider = .speechmatics
@@ -11,25 +11,30 @@ struct SpeechmaticsProvider: CloudProvider {
         "hu", "id", "it", "ja", "ko", "lv", "lt", "ms", "mt", "mr",
         "mn", "no", "fa", "pl", "pt", "ro", "ru", "sk", "sl", "es",
         "sw", "sv", "tl", "ta", "th", "tr", "uk", "ur", "vi", "cy",
-        "zh"
+        "zh",
     ]
     let includesAutoDetect: Bool = true
 
-    var models: [CloudModel] {[
-        CloudModel(
-            name: "speechmatics-enhanced",
-            displayName: "Speechmatics",
-            description: "Speechmatics enhanced accuracy transcription with real-time streaming and 50+ language support",
-            provider: .speechmatics,
-            speed: 0.99,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportsStreaming: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .speechmatics)
-        )
-    ]}
+    var models: [CloudModel] {
+        [
+            CloudModel(
+                name: "speechmatics-enhanced",
+                displayName: "Speechmatics",
+                description:
+                    "Speechmatics enhanced accuracy transcription with real-time streaming and 50+ language support",
+                provider: .speechmatics,
+                speed: 0.99,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .speechmatics)
+            )
+        ]
+    }
 
-    func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]) async throws -> String {
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
         return try await SpeechmaticsClient.transcribe(
             audioData: audioData,
             fileName: fileName,

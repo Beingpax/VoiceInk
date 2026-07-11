@@ -4,19 +4,19 @@ struct PromptEditorView: View {
     enum Mode {
         case add
         case edit(CustomPrompt)
-        
+
         static func == (lhs: Mode, rhs: Mode) -> Bool {
             switch (lhs, rhs) {
             case (.add, .add):
                 return true
-            case let (.edit(prompt1), .edit(prompt2)):
+            case (.edit(let prompt1), .edit(let prompt2)):
                 return prompt1.id == prompt2.id
             default:
                 return false
             }
         }
     }
-    
+
     let mode: Mode
     @EnvironmentObject private var enhancementService: AIEnhancementService
     let onDismiss: () -> Void
@@ -43,10 +43,10 @@ struct PromptEditorView: View {
     }
 
     private var isSaveDisabled: Bool {
-        return title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-            promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
+
     init(
         mode: Mode,
         onDismiss: @escaping () -> Void,
@@ -68,7 +68,7 @@ struct PromptEditorView: View {
             _useSystemInstructions = State(initialValue: prompt.useSystemInstructions)
         }
     }
-    
+
     private func dismissPanel() {
         onDismiss()
     }
@@ -99,9 +99,12 @@ struct PromptEditorView: View {
             Button("Delete", role: .destructive) {
                 deletePrompt()
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String(format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."), title))
+            Text(
+                String(
+                    format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."),
+                    title))
         }
     }
 
@@ -137,7 +140,9 @@ struct PromptEditorView: View {
             Toggle(isOn: $useSystemInstructions) {
                 HStack(spacing: 4) {
                     Text("Use System Template")
-                    InfoTip("If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users).")
+                    InfoTip(
+                        "If enabled, your instructions are combined with a general-purpose template to improve transcription quality.\n\nDisable for full control over the AI's system prompt (for advanced users)."
+                    )
                 }
             }
             .toggleStyle(.switch)

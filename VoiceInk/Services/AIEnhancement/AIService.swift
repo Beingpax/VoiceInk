@@ -17,8 +17,7 @@ enum AIProvider: String, CaseIterable {
     case ollama = "Ollama"
     case localCLI = "Local CLI"
     case custom = "Custom"
-    
-    
+
     var baseURL: String {
         switch self {
         case .cerebras:
@@ -53,7 +52,7 @@ enum AIProvider: String, CaseIterable {
             return UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? ""
         }
     }
-    
+
     var defaultModel: String {
         switch self {
         case .cerebras:
@@ -88,31 +87,31 @@ enum AIProvider: String, CaseIterable {
             return "openai/gpt-oss-120b"
         }
     }
-    
+
     var availableModels: [String] {
         switch self {
         case .cerebras:
             return [
                 "gpt-oss-120b",
                 "gemma-4-31b",
-                "zai-glm-4.7"
+                "zai-glm-4.7",
             ]
         case .groq:
             return [
                 "openai/gpt-oss-120b",
-                "openai/gpt-oss-20b"
+                "openai/gpt-oss-20b",
             ]
         case .gemini:
             return [
                 "gemini-3.5-flash",
                 "gemini-3.1-pro-preview",
-                "gemini-3.1-flash-lite"
+                "gemini-3.1-flash-lite",
             ]
         case .anthropic:
             return [
                 "claude-haiku-4-5",
                 "claude-sonnet-5",
-                "claude-sonnet-4-6"
+                "claude-sonnet-4-6",
             ]
         case .openAI:
             return [
@@ -122,13 +121,13 @@ enum AIProvider: String, CaseIterable {
                 "gpt-5.4-nano",
                 "gpt-4.1",
                 "gpt-4.1-mini",
-                "gpt-4.1-nano"
+                "gpt-4.1-nano",
             ]
         case .mistral:
             return [
                 "mistral-large-latest",
                 "mistral-medium-latest",
-                "mistral-small-latest"
+                "mistral-small-latest",
             ]
         case .elevenLabs:
             return ["scribe_v1", "scribe_v2"]
@@ -150,7 +149,7 @@ enum AIProvider: String, CaseIterable {
             return []
         }
     }
-    
+
     var requiresAPIKey: Bool {
         switch self {
         case .ollama, .localCLI:
@@ -211,16 +210,16 @@ class AIService: ObservableObject {
             NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
         }
     }
-    
+
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
     private lazy var localCLIService = LocalCLIService()
     private var apiKeyChangeObserver: NSObjectProtocol?
-    
+
     @Published private var openRouterModels: [String] = []
     @Published private(set) var isOllamaRefreshing = false
-    
+
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
             guard provider.supportsEnhancement else {
@@ -239,11 +238,12 @@ class AIService: ObservableObject {
             return false
         }
     }
-    
+
     var currentModel: String {
         if let selectedModel = selectedModels[selectedProvider],
-           !selectedModel.isEmpty,
-           (selectedProvider == .ollama && !selectedModel.isEmpty) || availableModels.contains(selectedModel) {
+            !selectedModel.isEmpty,
+            (selectedProvider == .ollama && !selectedModel.isEmpty) || availableModels.contains(selectedModel)
+        {
             return selectedModel
         }
         return selectedProvider.defaultModel
@@ -255,7 +255,7 @@ class AIService: ObservableObject {
         }
         return provider.defaultModel
     }
-    
+
     var availableModels: [String] {
         availableModels(for: selectedProvider)
     }
@@ -282,14 +282,15 @@ class AIService: ObservableObject {
         }
         return provider.availableModels
     }
-    
+
     init() {
         if userDefaults.string(forKey: "selectedAIProvider") == "GROQ" {
             userDefaults.set("Groq", forKey: "selectedAIProvider")
         }
 
         if let savedProvider = userDefaults.string(forKey: "selectedAIProvider"),
-           let provider = AIProvider(rawValue: savedProvider) {
+            let provider = AIProvider(rawValue: savedProvider)
+        {
             self.selectedProvider = provider
         } else {
             self.selectedProvider = .gemini
@@ -348,7 +349,7 @@ class AIService: ObservableObject {
             isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
         }
     }
-    
+
     private func loadSavedModelSelections() {
         for provider in AIProvider.allCases {
             let key = "\(provider.rawValue)SelectedModel"
@@ -357,17 +358,17 @@ class AIService: ObservableObject {
             }
         }
     }
-    
+
     private func loadSavedOpenRouterModels() {
         if let savedModels = userDefaults.array(forKey: "openRouterModels") as? [String] {
             openRouterModels = savedModels
         }
     }
-    
+
     private func saveOpenRouterModels() {
         userDefaults.set(openRouterModels, forKey: "openRouterModels")
     }
-    
+
     func selectModel(_ model: String) {
         selectModel(model, for: selectedProvider)
     }
@@ -392,7 +393,7 @@ class AIService: ObservableObject {
         objectWillChange.send()
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
-    
+
     func saveAPIKey(_ key: String, completion: @escaping (Bool, String?) -> Void) {
         guard selectedProvider.requiresAPIKey else {
             completion(true, nil)
@@ -414,7 +415,7 @@ class AIService: ObservableObject {
             }
         }
     }
-    
+
     func verifyAPIKey(_ key: String, completion: @escaping (Bool, String?) -> Void) {
         guard selectedProvider.requiresAPIKey else {
             completion(true, nil)
@@ -433,7 +434,9 @@ class AIService: ObservableObject {
         }
     }
 
-    func verifyAPIKey(_ key: String, for provider: AIProvider, model: String? = nil) async -> (isValid: Bool, errorMessage: String?) {
+    func verifyAPIKey(_ key: String, for provider: AIProvider, model: String? = nil) async -> (
+        isValid: Bool, errorMessage: String?
+    ) {
         guard provider.requiresAPIKey else {
             return (true, nil)
         }
@@ -473,7 +476,7 @@ class AIService: ObservableObject {
 
         return result
     }
-    
+
     func clearAPIKey() {
         guard selectedProvider.requiresAPIKey else { return }
 
@@ -482,7 +485,7 @@ class AIService: ObservableObject {
         APIKeyManager.shared.deleteAPIKey(forProvider: selectedProvider.rawValue)
         NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
     }
-    
+
     func checkOllamaConnection(completion: @escaping (Bool) -> Void) {
         Task { [weak self] in
             guard let self = self else { return }
@@ -492,7 +495,7 @@ class AIService: ObservableObject {
             }
         }
     }
-    
+
     func fetchOllamaModels() async -> [OllamaModel] {
         let result = await refreshOllamaAvailability()
         return result.models
@@ -539,7 +542,8 @@ class AIService: ObservableObject {
         }
 
         if let localAIError = error as? LocalAIError,
-           let errorDescription = localAIError.errorDescription {
+            let errorDescription = localAIError.errorDescription
+        {
             return errorDescription
         }
 
@@ -576,8 +580,10 @@ class AIService: ObservableObject {
             return error.localizedDescription
         }
     }
-    
-    func enhanceWithOllama(text: String, systemPrompt: String, model: String? = nil, timeout: TimeInterval = 30) async throws -> String {
+
+    func enhanceWithOllama(text: String, systemPrompt: String, model: String? = nil, timeout: TimeInterval = 30)
+        async throws -> String
+    {
         try await ollamaService.enhance(text, withSystemPrompt: systemPrompt, model: model, timeout: timeout)
     }
 
@@ -585,7 +591,7 @@ class AIService: ObservableObject {
         ollamaService.baseURL = newURL
         userDefaults.set(newURL, forKey: "ollamaBaseURL")
     }
-    
+
     func updateSelectedOllamaModel(_ modelName: String) {
         ollamaService.selectedModel = modelName
         userDefaults.set(modelName, forKey: "ollamaSelectedModel")
@@ -617,14 +623,16 @@ class AIService: ObservableObject {
         objectWillChange.send()
         NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
-    
+
     func fetchOpenRouterModels() async {
         do {
             let models = try await OpenRouterClient.fetchModels()
             await MainActor.run {
                 self.openRouterModels = models
                 self.saveOpenRouterModels()
-                if self.selectedProvider == .openRouter && self.currentModel == self.selectedProvider.defaultModel && !models.isEmpty {
+                if self.selectedProvider == .openRouter && self.currentModel == self.selectedProvider.defaultModel
+                    && !models.isEmpty
+                {
                     self.selectModel(models.first!)
                 }
                 self.objectWillChange.send()

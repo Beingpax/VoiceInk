@@ -1,6 +1,6 @@
-import SwiftUI
-import SwiftData
 import Foundation
+import SwiftData
+import SwiftUI
 import os
 
 struct DashboardContent: View {
@@ -174,8 +174,9 @@ struct DashboardContent: View {
             return false
         }
 
-        if transcription.transcriptionStatus == TranscriptionStatus.failed.rawValue ||
-            transcription.transcriptionStatus == TranscriptionStatus.canceled.rawValue {
+        if transcription.transcriptionStatus == TranscriptionStatus.failed.rawValue
+            || transcription.transcriptionStatus == TranscriptionStatus.canceled.rawValue
+        {
             return false
         }
 
@@ -228,9 +229,7 @@ struct DashboardContent: View {
     }
 
     private var canViewPeakHours: Bool {
-        hasLoadedStatsSnapshot &&
-            selectedTotals.duration >= Self.peakHoursUnlockDuration &&
-            selectedPeakHours.hasData
+        hasLoadedStatsSnapshot && selectedTotals.duration >= Self.peakHoursUnlockDuration && selectedPeakHours.hasData
     }
 
     private var shouldLockPeakHours: Bool {
@@ -414,8 +413,9 @@ struct DashboardContent: View {
     ) async {
         do {
             if allowSkipWhenFresh {
-                let shouldRefreshAutomatically = SessionMetricMigrationService.shared.isRunning ||
-                    DashboardStatsCache.shared.shouldRefreshSnapshotAutomatically()
+                let shouldRefreshAutomatically =
+                    SessionMetricMigrationService.shared.isRunning
+                    || DashboardStatsCache.shared.shouldRefreshSnapshotAutomatically()
 
                 guard shouldRefreshAutomatically else {
                     return
@@ -596,7 +596,9 @@ struct DashboardContent: View {
     private var displayNameFieldWidth: CGFloat {
         let name = isEditingDisplayName ? displayNameDraft : defaultedDisplayName
         let measuredWidth = (name as NSString).size(
-            withAttributes: [.font: NSFont.systemFont(ofSize: Self.displayNameFontSize, weight: Self.displayNameFontWeight)]
+            withAttributes: [
+                .font: NSFont.systemFont(ofSize: Self.displayNameFontSize, weight: Self.displayNameFontWeight)
+            ]
         ).width
         return min(
             max(measuredWidth + (Self.displayNameHorizontalPadding * 2) + 6, Self.displayNameMinWidth),
@@ -645,18 +647,21 @@ struct DashboardContent: View {
         let fullName = sanitizedSystemName(NSFullUserName())
 
         if let fullName,
-           let givenName = PersonNameComponentsFormatter().personNameComponents(from: fullName)?.givenName,
-           !givenName.isEmpty {
+            let givenName = PersonNameComponentsFormatter().personNameComponents(from: fullName)?.givenName,
+            !givenName.isEmpty
+        {
             return givenName
         }
 
         if let fullName,
-           let firstName = fullName.split(whereSeparator: \.isWhitespace).first {
+            let firstName = fullName.split(whereSeparator: \.isWhitespace).first
+        {
             return String(firstName)
         }
 
         if let shortName = sanitizedSystemName(NSUserName()) {
-            return shortName
+            return
+                shortName
                 .split(separator: ".")
                 .first
                 .map(String.init) ?? shortName
@@ -765,7 +770,9 @@ struct DashboardContent: View {
         case .matched(let title):
             return String(localized: "Dictated \(formattedAllTimeWords), equivalent to \(title).")
         case .repeated(let title, let count):
-            return String(localized: "Dictated \(formattedAllTimeWords), equivalent to \(title) \(formattedBenchmarkMultiple(count)).")
+            return String(
+                localized:
+                    "Dictated \(formattedAllTimeWords), equivalent to \(title) \(formattedBenchmarkMultiple(count)).")
         case .remaining(let words, let title):
             guard words > 0, !title.isEmpty else {
                 return String(localized: "Dictated \(formattedAllTimeWords).")
@@ -828,7 +835,7 @@ private struct DashboardAccessibilityReminder: View {
 private struct DashboardAmbientBackground: View {
     var body: some View {
         Color.clear
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }

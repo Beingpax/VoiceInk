@@ -1,6 +1,6 @@
-import Foundation
-import FluidAudio
 import AppKit
+import FluidAudio
+import Foundation
 import os
 
 struct FluidAudioDownloadStatus {
@@ -139,10 +139,10 @@ class FluidAudioModelManager: ObservableObject {
 
     nonisolated static func languageHint(from languageCode: String?, for modelName: String) -> Language? {
         guard !isParakeetUnifiedModel(named: modelName),
-              !isNemotronModel(named: modelName),
-              asrVersion(for: modelName) == .v3,
-              let languageCode,
-              languageCode != "auto"
+            !isNemotronModel(named: modelName),
+            asrVersion(for: modelName) == .v3,
+            let languageCode,
+            languageCode != "auto"
         else { return nil }
 
         return Language(rawValue: languageCode)
@@ -385,7 +385,8 @@ class FluidAudioModelManager: ObservableObject {
     nonisolated private static func fluidAudioModelsRootDirectory() -> URL {
         let fileManager = FileManager.default
         if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            return appSupport
+            return
+                appSupport
                 .appendingPathComponent("FluidAudio", isDirectory: true)
                 .appendingPathComponent("Models", isDirectory: true)
         }
@@ -401,10 +402,11 @@ class FluidAudioModelManager: ObservableObject {
         { progress in
             // ModelHub reports downloads in 0...0.5, so expose the network phase as 0...1.
             let downloadFraction = min(max(progress.fractionCompleted * 2.0, 0.0), 1.0)
-            progressHandler?(DownloadProgress(
-                fractionCompleted: downloadFraction,
-                phase: progress.phase
-            ))
+            progressHandler?(
+                DownloadProgress(
+                    fractionCompleted: downloadFraction,
+                    phase: progress.phase
+                ))
         }
     }
 
@@ -427,7 +429,7 @@ class FluidAudioModelManager: ObservableObject {
 
     private func updateDownloadProgress(_ progress: DownloadProgress, for modelName: String, downloadID: UUID) {
         guard activeDownloadIDs[modelName] == downloadID,
-              activeNetworkProgressIDs[modelName] == downloadID
+            activeNetworkProgressIDs[modelName] == downloadID
         else { return }
 
         let reportedFraction = min(max(progress.fractionCompleted, 0.0), 1.0)
@@ -457,7 +459,9 @@ class FluidAudioModelManager: ObservableObject {
             guard totalFiles > 0 else {
                 return String(localized: "Checking cached models...")
             }
-            return String(format: String(localized: "Downloading model files: %lld/%lld"), Int64(completedFiles), Int64(totalFiles))
+            return String(
+                format: String(localized: "Downloading model files: %lld/%lld"), Int64(completedFiles),
+                Int64(totalFiles))
         case .compiling(let modelName):
             guard !modelName.isEmpty else {
                 return String(localized: "Finalizing models...")

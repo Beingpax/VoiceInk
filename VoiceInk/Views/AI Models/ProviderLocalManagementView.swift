@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct LocalEnhancementProviderManagementView: View {
     @EnvironmentObject private var aiService: AIService

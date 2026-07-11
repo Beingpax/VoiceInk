@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 
 struct RecordingContextSnapshot {
     var capturedAt = Date()
@@ -50,7 +50,7 @@ enum RecordingContextCaptureService {
                 let screenText = await screenCaptureService.captureAndExtractText()
                 guard !Task.isCancelled else { return }
                 store.updateScreenText(screenText)
-            }
+            },
         ]
     }
 }

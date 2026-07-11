@@ -1,8 +1,8 @@
-import Foundation
 import AppKit
-import Vision
-import ScreenCaptureKit
 import ApplicationServices
+import Foundation
+import ScreenCaptureKit
+import Vision
 
 @MainActor
 class ScreenCaptureService: ObservableObject {
@@ -48,12 +48,16 @@ class ScreenCaptureService: ObservableObject {
         let currentPID = ProcessInfo.processInfo.processIdentifier
         let focusedWindowHint = makeFocusedWindowHint(excluding: currentPID)
 
-        guard let contextText = await Self.withTimeout(seconds: Self.captureTimeout, operation: {
-            await Self.captureAndExtractWindowText(
-                focusedWindowHint: focusedWindowHint,
-                currentPID: currentPID
-            )
-        }) else {
+        guard
+            let contextText = await Self.withTimeout(
+                seconds: Self.captureTimeout,
+                operation: {
+                    await Self.captureAndExtractWindowText(
+                        focusedWindowHint: focusedWindowHint,
+                        currentPID: currentPID
+                    )
+                })
+        else {
             return nil
         }
 
@@ -63,7 +67,8 @@ class ScreenCaptureService: ObservableObject {
 
     private func makeFocusedWindowHint(excluding currentPID: pid_t) -> FocusedWindowHint? {
         guard let frontmostPID = NSWorkspace.shared.frontmostApplication?.processIdentifier,
-              frontmostPID != currentPID else {
+            frontmostPID != currentPID
+        else {
             return nil
         }
 
@@ -76,7 +81,8 @@ class ScreenCaptureService: ObservableObject {
                 focusedTitle = normalized(copyStringAttribute(kAXTitleAttribute, from: focusedWindow))
 
                 if let position = copyCGPointAttribute(kAXPositionAttribute, from: focusedWindow),
-                   let size = copyCGSizeAttribute(kAXSizeAttribute, from: focusedWindow) {
+                    let size = copyCGSizeAttribute(kAXSizeAttribute, from: focusedWindow)
+                {
                     focusedFrame = CGRect(origin: position, size: size)
                 }
             }
@@ -96,11 +102,13 @@ class ScreenCaptureService: ObservableObject {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
 
-            guard let window = findActiveWindow(
-                in: content.windows,
-                focusedWindowHint: focusedWindowHint,
-                currentPID: currentPID
-            ) else {
+            guard
+                let window = findActiveWindow(
+                    in: content.windows,
+                    focusedWindowHint: focusedWindowHint,
+                    currentPID: currentPID
+                )
+            else {
                 return nil
             }
 
@@ -114,13 +122,14 @@ class ScreenCaptureService: ObservableObject {
             configuration.width = max(1, Int(window.frame.width * captureScale))
             configuration.height = max(1, Int(window.frame.height * captureScale))
 
-            let cgImage = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+            let cgImage = try await SCScreenshotManager.captureImage(
+                contentFilter: filter, configuration: configuration)
 
             var contextText = """
-            Active Window: \(title)
-            Application: \(appName)
+                Active Window: \(title)
+                Application: \(appName)
 
-            """
+                """
 
             let extractedText = extractText(from: cgImage)
             if let extractedText, !extractedText.isEmpty {
@@ -146,11 +155,8 @@ class ScreenCaptureService: ObservableObject {
                 return false
             }
 
-            return processID != currentPID &&
-                window.windowLayer == 0 &&
-                window.isOnScreen &&
-                window.frame.width > 0 &&
-                window.frame.height > 0
+            return processID != currentPID && window.windowLayer == 0 && window.isOnScreen && window.frame.width > 0
+                && window.frame.height > 0
         }
 
         guard let focusedWindowHint else {
@@ -166,13 +172,15 @@ class ScreenCaptureService: ObservableObject {
         }
 
         if let focusedFrame = focusedWindowHint.frame,
-           let closestWindow = closestFrameMatch(to: focusedFrame, in: appWindows),
-           frameDistance(closestWindow.frame, focusedFrame) <= focusedWindowFrameTolerance {
+            let closestWindow = closestFrameMatch(to: focusedFrame, in: appWindows),
+            frameDistance(closestWindow.frame, focusedFrame) <= focusedWindowFrameTolerance
+        {
             return closestWindow
         }
 
         if let focusedTitle = focusedWindowHint.title,
-           let titledWindow = appWindows.first(where: { normalized($0.title) == focusedTitle }) {
+            let titledWindow = appWindows.first(where: { normalized($0.title) == focusedTitle })
+        {
             return titledWindow
         }
 
@@ -186,10 +194,8 @@ class ScreenCaptureService: ObservableObject {
     }
 
     private nonisolated static func frameDistance(_ first: CGRect, _ second: CGRect) -> CGFloat {
-        abs(first.origin.x - second.origin.x) +
-            abs(first.origin.y - second.origin.y) +
-            abs(first.size.width - second.size.width) +
-            abs(first.size.height - second.size.height)
+        abs(first.origin.x - second.origin.x) + abs(first.origin.y - second.origin.y)
+            + abs(first.size.width - second.size.width) + abs(first.size.height - second.size.height)
     }
 
     private nonisolated static func captureScale(for size: CGSize) -> CGFloat {
@@ -214,7 +220,8 @@ class ScreenCaptureService: ObservableObject {
             guard let observations = request.results else {
                 return nil
             }
-            let text = observations
+            let text =
+                observations
                 .compactMap { $0.topCandidates(1).first?.string }
                 .joined(separator: "\n")
             return text.isEmpty ? nil : text
@@ -246,8 +253,9 @@ class ScreenCaptureService: ObservableObject {
     private func copyAXElementAttribute(_ attribute: String, from element: AXUIElement) -> AXUIElement? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
-              let value,
-              CFGetTypeID(value) == AXUIElementGetTypeID() else {
+            let value,
+            CFGetTypeID(value) == AXUIElementGetTypeID()
+        else {
             return nil
         }
 
@@ -266,9 +274,10 @@ class ScreenCaptureService: ObservableObject {
     private func copyCGPointAttribute(_ attribute: String, from element: AXUIElement) -> CGPoint? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
-              let value,
-              CFGetTypeID(value) == AXValueGetTypeID(),
-              AXValueGetType(value as! AXValue) == .cgPoint else {
+            let value,
+            CFGetTypeID(value) == AXValueGetTypeID(),
+            AXValueGetType(value as! AXValue) == .cgPoint
+        else {
             return nil
         }
 
@@ -284,9 +293,10 @@ class ScreenCaptureService: ObservableObject {
     private func copyCGSizeAttribute(_ attribute: String, from element: AXUIElement) -> CGSize? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
-              let value,
-              CFGetTypeID(value) == AXValueGetTypeID(),
-              AXValueGetType(value as! AXValue) == .cgSize else {
+            let value,
+            CFGetTypeID(value) == AXValueGetTypeID(),
+            AXValueGetType(value as! AXValue) == .cgSize
+        else {
             return nil
         }
 

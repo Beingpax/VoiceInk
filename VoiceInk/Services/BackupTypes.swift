@@ -120,12 +120,17 @@ struct BackupFile: Codable {
     let customCloudModels: [CustomModelBackup]?
 
     private enum CodingKeys: String, CodingKey {
-        case version, customPrompts, modeConfigs, modeShortcuts, vocabularyWords, wordReplacements, generalSettings, customEmojis, customCloudModels
+        case version, customPrompts, modeConfigs, modeShortcuts, vocabularyWords, wordReplacements, generalSettings,
+            customEmojis, customCloudModels
         case legacyModeConfigs = "powerModeConfigs"
         case legacyModeShortcuts = "powerModeShortcuts"
     }
 
-    init(version: String, customPrompts: [CustomPrompt], modeConfigs: [ModeConfig], modeShortcuts: [String: ShortcutBackup]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?, generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?) {
+    init(
+        version: String, customPrompts: [CustomPrompt], modeConfigs: [ModeConfig],
+        modeShortcuts: [String: ShortcutBackup]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?,
+        generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?
+    ) {
         self.version = version
         self.customPrompts = customPrompts
         self.modeConfigs = modeConfigs
@@ -141,10 +146,12 @@ struct BackupFile: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         version = try container.decodeIfPresent(String.self, forKey: .version) ?? "0.0.0"
         customPrompts = try container.decodeIfPresent([CustomPrompt].self, forKey: .customPrompts) ?? []
-        modeConfigs = try container.decodeIfPresent([ModeConfig].self, forKey: .modeConfigs)
+        modeConfigs =
+            try container.decodeIfPresent([ModeConfig].self, forKey: .modeConfigs)
             ?? container.decodeIfPresent([ModeConfig].self, forKey: .legacyModeConfigs)
             ?? []
-        modeShortcuts = try container.decodeIfPresent([String: ShortcutBackup].self, forKey: .modeShortcuts)
+        modeShortcuts =
+            try container.decodeIfPresent([String: ShortcutBackup].self, forKey: .modeShortcuts)
             ?? container.decodeIfPresent([String: ShortcutBackup].self, forKey: .legacyModeShortcuts)
         vocabularyWords = try container.decodeIfPresent([WordBackup].self, forKey: .vocabularyWords)
         wordReplacements = try container.decodeIfPresent([String: String].self, forKey: .wordReplacements)

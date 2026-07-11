@@ -36,7 +36,7 @@ struct OnboardingAPIScreen: View {
             )
         }
         .alert("Skip API setup?", isPresented: $isShowingSkipWarning) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Skip API setup", role: .destructive) {
                 onConfirmSkip()
             }

@@ -23,7 +23,7 @@ final class APIKeyManager {
         "cartesia": "cartesiaAPIKey",
         "openai": "openAIAPIKey",
         "anthropic": "anthropicAPIKey",
-        "openrouter": "openRouterAPIKey"
+        "openrouter": "openRouterAPIKey",
     ]
 
     private init() {}
@@ -36,7 +36,9 @@ final class APIKeyManager {
         let keyIdentifier = keychainIdentifier(forProvider: provider)
         let success = keychain.save(key, forKey: keyIdentifier)
         if success {
-            logger.info("Saved API key for provider: \(provider, privacy: .public) with key: \(keyIdentifier, privacy: .public)")
+            logger.info(
+                "Saved API key for provider: \(provider, privacy: .public) with key: \(keyIdentifier, privacy: .public)"
+            )
         }
         return success
     }

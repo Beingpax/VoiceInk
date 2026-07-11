@@ -1,6 +1,6 @@
-import SwiftUI
-import SwiftData
 import AppKit
+import SwiftData
+import SwiftUI
 
 class HistoryWindowController: NSObject, NSWindowDelegate {
     static let shared = HistoryWindowController()
@@ -71,14 +71,16 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
-              window.identifier == windowIdentifier else { return }
+            window.identifier == windowIdentifier
+        else { return }
 
         historyWindow = nil
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow,
-              window.identifier == windowIdentifier else { return }
+            window.identifier == windowIdentifier
+        else { return }
         AppPresentationPolicy.activateForUserFacingWindow(reason: "HistoryWindowDidBecomeKey")
     }
 }

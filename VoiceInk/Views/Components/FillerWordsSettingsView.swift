@@ -61,7 +61,9 @@ struct FillerWordsSettingsSection: View {
             HStack {
                 HStack(spacing: 4) {
                     Text("Remove Filler Words")
-                    InfoTip("Automatically remove configured filler words like 'uh', 'um', or 'hmm' from transcriptions. If no filler words are configured, this cleanup is skipped.")
+                    InfoTip(
+                        "Automatically remove configured filler words like 'uh', 'um', or 'hmm' from transcriptions. If no filler words are configured, this cleanup is skipped."
+                    )
                 }
 
                 Spacer()

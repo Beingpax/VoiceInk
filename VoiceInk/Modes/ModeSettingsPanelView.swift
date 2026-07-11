@@ -8,7 +8,6 @@ struct ModeSettingsPanelView: View {
     @AppStorage("ModeTipDismissed")
     private var isTipDismissed = false
 
-
     private let contentInset: CGFloat = 20
 
     var body: some View {
@@ -39,7 +38,7 @@ struct ModeSettingsPanelView: View {
                 Text("Reorder Modes")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
-                + Text(" (drag to reorder)")
+                    + Text(" (drag to reorder)")
                     .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
                 Spacer()
@@ -169,7 +168,9 @@ private struct ModeReorderRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .strokeBorder(rowBorder, lineWidth: isTargeted ? 1.5 : 1)
         }
-        .shadow(color: Color.black.opacity(isDragged ? 0.10 : 0.03), radius: isDragged ? 10 : 2, x: 0, y: isDragged ? 5 : 1)
+        .shadow(
+            color: Color.black.opacity(isDragged ? 0.10 : 0.03), radius: isDragged ? 10 : 2, x: 0, y: isDragged ? 5 : 1
+        )
         .scaleEffect(isDragged ? 0.985 : 1)
         .opacity(isDragged ? 0.55 : 1)
         .animation(.smooth(duration: 0.16), value: isDragged)
@@ -293,9 +294,10 @@ private struct ModeReorderDropDelegate: DropDelegate {
 
     func dropEntered(info: DropInfo) {
         guard let draggedConfigID,
-              draggedConfigID != item.id,
-              let fromIndex = modeManager.configurations.firstIndex(where: { $0.id == draggedConfigID }),
-              let toIndex = modeManager.configurations.firstIndex(where: { $0.id == item.id }) else {
+            draggedConfigID != item.id,
+            let fromIndex = modeManager.configurations.firstIndex(where: { $0.id == draggedConfigID }),
+            let toIndex = modeManager.configurations.firstIndex(where: { $0.id == item.id })
+        else {
             return
         }
 

@@ -41,9 +41,8 @@ struct OnboardingPermissionsScreen: View {
                     status: status(permission),
                     isActive: !isComplete && activePermission == permission,
                     isLocked: isLocked(permission),
-                    showsRestartHint: permission == .screenRecording &&
-                        hasRequestedScreenRecording &&
-                        !status(.screenRecording).isGranted,
+                    showsRestartHint: permission == .screenRecording && hasRequestedScreenRecording
+                        && !status(.screenRecording).isGranted,
                     actionTitle: actionTitle(permission),
                     onSelect: {
                         guard !isLocked(permission) else { return }

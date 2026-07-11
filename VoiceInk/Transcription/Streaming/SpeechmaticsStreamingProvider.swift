@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 /// Speechmatics streaming provider wrapping `LLMkit.SpeechmaticsStreamingClient`.
 final class SpeechmaticsStreamingProvider: StreamingTranscriptionProvider {
@@ -37,7 +37,8 @@ final class SpeechmaticsStreamingProvider: StreamingTranscriptionProvider {
 
         do {
             let operatingPoint = model.name.contains("standard") ? "standard" : "enhanced"
-            try await client.connect(apiKey: apiKey, model: operatingPoint, language: language, customVocabulary: vocabulary)
+            try await client.connect(
+                apiKey: apiKey, model: operatingPoint, language: language, customVocabulary: vocabulary)
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()

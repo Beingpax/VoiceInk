@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 /// Cartesia Ink 2 streaming provider wrapping `LLMkit.CartesiaStreamingClient`.
 final class CartesiaStreamingProvider: StreamingTranscriptionProvider {

@@ -1,5 +1,5 @@
-import SwiftUI
 import LLMkit
+import SwiftUI
 
 struct APIKeyManagementView: View {
     @EnvironmentObject private var aiService: AIService
@@ -8,9 +8,11 @@ struct APIKeyManagementView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var isVerifying = false
-    @State private var ollamaBaseURL: String = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+    @State private var ollamaBaseURL: String =
+        UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
     @State private var ollamaModels: [OllamaModel] = []
-    @State private var selectedOllamaModel: String = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+    @State private var selectedOllamaModel: String =
+        UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var isCheckingOllama = false
     @State private var isEditingURL = false
     @State private var localCLICommandTemplate: String = ""
@@ -26,7 +28,7 @@ struct APIKeyManagementView: View {
             return true
         }
     }
-    
+
     var body: some View {
         Section("AI Provider Integration") {
             HStack {
@@ -37,7 +39,7 @@ struct APIKeyManagementView: View {
                 }
                 .pickerStyle(.automatic)
                 .tint(AppTheme.Status.infoStrong)
-                
+
                 if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
                     Spacer()
                     Circle()
@@ -104,10 +106,13 @@ struct APIKeyManagementView: View {
                         }
                     } else {
                         HStack {
-                            Picker("Model", selection: Binding(
-                                get: { aiService.currentModel },
-                                set: { aiService.selectModel($0) }
-                            )) {
+                            Picker(
+                                "Model",
+                                selection: Binding(
+                                    get: { aiService.currentModel },
+                                    set: { aiService.selectModel($0) }
+                                )
+                            ) {
                                 ForEach(aiService.availableModels, id: \.self) { model in
                                     Text(model).tag(model)
                                 }
@@ -124,13 +129,15 @@ struct APIKeyManagementView: View {
                             }
                         }
                     }
-                    
-                } else if !aiService.availableModels.isEmpty &&
-                            aiService.selectedProvider != .ollama {
-                    Picker("Model", selection: Binding(
-                        get: { aiService.currentModel },
-                        set: { aiService.selectModel($0) }
-                    )) {
+
+                } else if !aiService.availableModels.isEmpty && aiService.selectedProvider != .ollama {
+                    Picker(
+                        "Model",
+                        selection: Binding(
+                            get: { aiService.currentModel },
+                            set: { aiService.selectModel($0) }
+                        )
+                    ) {
                         ForEach(aiService.availableModels, id: \.self) { model in
                             Text(model).tag(model)
                         }
@@ -142,7 +149,7 @@ struct APIKeyManagementView: View {
                         HStack {
                             TextField("Base URL", text: $ollamaBaseURL)
                                 .textFieldStyle(.roundedBorder)
-                            
+
                             Button("Save") {
                                 aiService.updateOllamaBaseURL(ollamaBaseURL)
                                 checkOllamaConnection()
@@ -230,9 +237,11 @@ struct APIKeyManagementView: View {
                         aiService.updateLocalCLITimeoutSeconds(newValue)
                     }
 
-                    Text("Environment variables available: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk also writes VOICEINK_FULL_PROMPT to stdin for every command.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Text(
+                        "Environment variables available: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk also writes VOICEINK_FULL_PROMPT to stdin for every command."
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
 
                     if !aiService.isAPIKeyValid {
                         Text("Load a template or enter a command to enable Local CLI enhancement.")
@@ -282,7 +291,11 @@ struct APIKeyManagementView: View {
                                 aiService.saveAPIKey(apiKey) { success, errorMessage in
                                     isVerifying = false
                                     if !success {
-                                        alertMessage = errorMessage ?? String(localized: "Could not verify this API key. Check the key and try again.")
+                                        alertMessage =
+                                            errorMessage
+                                            ?? String(
+                                                localized: "Could not verify this API key. Check the key and try again."
+                                            )
                                         showAlert = true
                                     }
                                     apiKey = ""
@@ -302,7 +315,7 @@ struct APIKeyManagementView: View {
             }
         }
         .alert("Error", isPresented: $showAlert) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(alertMessage)
         }
@@ -322,7 +335,8 @@ struct APIKeyManagementView: View {
 
     private func syncSelectedProviderAvailability() {
         guard !providerOptions.contains(aiService.selectedProvider),
-              let fallbackProvider = providerOptions.first else {
+            let fallbackProvider = providerOptions.first
+        else {
             return
         }
 
@@ -348,7 +362,7 @@ struct APIKeyManagementView: View {
             isSyncingLocalCLIState = false
         }
     }
-    
+
     private func checkOllamaConnection(showError: Bool = true) {
         isCheckingOllama = true
         Task { @MainActor in
@@ -363,7 +377,7 @@ struct APIKeyManagementView: View {
             }
         }
     }
-    
+
     private func getAPIKeyURL() -> URL? {
         switch aiService.selectedProvider {
         case .groq: return URL(string: "https://console.groq.com/keys")

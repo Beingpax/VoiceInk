@@ -6,16 +6,17 @@ struct AIEnhancementOutputFilter {
         let patterns = [
             #"(?s)<thinking>(.*?)</thinking>"#,
             #"(?s)<think>(.*?)</think>"#,
-            #"(?s)<reasoning>(.*?)</reasoning>"#
+            #"(?s)<reasoning>(.*?)</reasoning>"#,
         ]
 
         for pattern in patterns {
             if let regex = try? NSRegularExpression(pattern: pattern) {
                 let range = NSRange(processedText.startIndex..., in: processedText)
-                processedText = regex.stringByReplacingMatches(in: processedText, options: [], range: range, withTemplate: "")
+                processedText = regex.stringByReplacingMatches(
+                    in: processedText, options: [], range: range, withTemplate: "")
             }
         }
-        
+
         return processedText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-} 
+}

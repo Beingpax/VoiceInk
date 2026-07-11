@@ -68,7 +68,8 @@ class TranscriptionModelManager: ObservableObject {
 
     func loadCurrentTranscriptionModel() {
         if let savedModelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel"),
-           let savedModel = allAvailableModels.first(where: { $0.name == savedModelName }) {
+            let savedModel = allAvailableModels.first(where: { $0.name == savedModelName })
+        {
             guard isAvailableOnCurrentOS(savedModel) else {
                 UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
                 currentTranscriptionModel = nil
@@ -130,7 +131,8 @@ class TranscriptionModelManager: ObservableObject {
         allAvailableModels = models
 
         if let currentName = currentModelName,
-           let updatedModel = allAvailableModels.first(where: { $0.name == currentName }) {
+            let updatedModel = allAvailableModels.first(where: { $0.name == currentName })
+        {
             setDefaultTranscriptionModel(updatedModel)
         }
     }

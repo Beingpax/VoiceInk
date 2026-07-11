@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 /// ElevenLabs streaming provider wrapping `LLMkit.ElevenLabsStreamingClient`.
 final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {

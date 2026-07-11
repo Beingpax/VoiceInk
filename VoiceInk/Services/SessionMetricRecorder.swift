@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import OSLog
+import SwiftData
 
 enum SessionMetricRecorder {
     private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "SessionMetricRecorder")
@@ -61,8 +61,9 @@ enum SessionMetricRecorder {
 
     private static func finalTextForCounting(from transcription: Transcription) -> String {
         if let enhancedText = transcription.enhancedText,
-           transcription.enhancementDuration != nil,
-           !enhancedText.isEmpty {
+            transcription.enhancementDuration != nil,
+            !enhancedText.isEmpty
+        {
             return enhancedText
         }
 

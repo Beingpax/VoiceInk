@@ -108,9 +108,9 @@ final class ModeFormWarmupStore: ObservableObject {
         enhancementService: AIEnhancementService,
         transcriptionModelManager: TranscriptionModelManager
     ) {
-        let dependenciesChanged = self.aiService !== aiService ||
-            self.enhancementService !== enhancementService ||
-            self.transcriptionModelManager !== transcriptionModelManager
+        let dependenciesChanged =
+            self.aiService !== aiService || self.enhancementService !== enhancementService
+            || self.transcriptionModelManager !== transcriptionModelManager
 
         self.aiService = aiService
         self.enhancementService = enhancementService
@@ -128,8 +128,9 @@ final class ModeFormWarmupStore: ObservableObject {
 
     func refreshSnapshot() {
         guard let aiService,
-              let enhancementService,
-              let transcriptionModelManager else { return }
+            let enhancementService,
+            let transcriptionModelManager
+        else { return }
 
         snapshot = ModeFormWarmupSnapshot(
             aiService: aiService,
@@ -203,7 +204,7 @@ final class ModeFormWarmupStore: ObservableObject {
 
         let notificationNames: [Notification.Name] = [
             .AppSettingsDidChange,
-            .aiProviderKeyChanged
+            .aiProviderKeyChanged,
         ]
 
         notificationObservers = notificationNames.map { name in

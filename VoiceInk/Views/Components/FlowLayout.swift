@@ -17,7 +17,9 @@ struct FlowLayout: Layout {
         }
     }
 
-    private func computeLayout(maxWidth: CGFloat, subviews: Subviews) -> (size: CGSize, positions: [CGPoint], sizes: [CGSize]) {
+    private func computeLayout(maxWidth: CGFloat, subviews: Subviews) -> (
+        size: CGSize, positions: [CGPoint], sizes: [CGSize]
+    ) {
         var positions: [CGPoint] = []
         var sizes: [CGSize] = []
         var x: CGFloat = 0

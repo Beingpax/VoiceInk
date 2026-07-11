@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 struct SonioxProvider: CloudProvider {
     let modelProvider: ModelProvider = .soniox
@@ -11,25 +11,29 @@ struct SonioxProvider: CloudProvider {
         "de", "el", "gu", "he", "hi", "hu", "id", "it", "ja", "kn",
         "kk", "ko", "lv", "lt", "mk", "ms", "ml", "mr", "no", "fa",
         "pl", "pt", "pa", "ro", "ru", "sr", "sk", "sl", "es", "sw",
-        "sv", "tl", "ta", "te", "th", "tr", "uk", "ur", "vi", "cy"
+        "sv", "tl", "ta", "te", "th", "tr", "uk", "ur", "vi", "cy",
     ]
     let includesAutoDetect: Bool = true
 
-    var models: [CloudModel] {[
-        CloudModel(
-            name: "stt-async-v5",
-            displayName: "Soniox V5",
-            description: "Soniox transcription model v5 with improved accuracy and structured data formatting",
-            provider: .soniox,
-            speed: 0.99,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportsStreaming: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .soniox)
-        )
-    ]}
+    var models: [CloudModel] {
+        [
+            CloudModel(
+                name: "stt-async-v5",
+                displayName: "Soniox V5",
+                description: "Soniox transcription model v5 with improved accuracy and structured data formatting",
+                provider: .soniox,
+                speed: 0.99,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .soniox)
+            )
+        ]
+    }
 
-    func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]) async throws -> String {
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
         return try await SonioxClient.transcribe(
             audioData: audioData,
             fileName: fileName,

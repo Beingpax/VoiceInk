@@ -15,7 +15,8 @@ enum StarterModeFactory {
     ) {
         let manager = ModeManager.shared
         let requestedKinds = Set(kinds)
-        let availableInstalledApps = requestedKinds.contains(.email)
+        let availableInstalledApps =
+            requestedKinds.contains(.email)
             ? (installedApps ?? InstalledApps.load())
             : []
 
@@ -101,7 +102,8 @@ enum StarterModeFactory {
         installedApps: [InstalledAppInfo]
     ) -> [ModeTriggerGroup]? {
         guard kind == .email,
-              let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == "email" }) else {
+            let emailTemplate = TriggerTemplateCatalog.templates.first(where: { $0.id == "email" })
+        else {
             return nil
         }
 

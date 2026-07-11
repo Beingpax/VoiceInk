@@ -81,7 +81,8 @@ enum ModeRuntimeResolver {
             mode: mode,
             model: model,
             language: language,
-            isRealtimeEnabled: TranscriptionRealtimeSupport.isEnabled(for: model, modeValue: mode?.isRealtimeTranscriptionEnabled)
+            isRealtimeEnabled: TranscriptionRealtimeSupport.isEnabled(
+                for: model, modeValue: mode?.isRealtimeTranscriptionEnabled)
         )
     }
 
@@ -90,7 +91,8 @@ enum ModeRuntimeResolver {
 
         return TranscriptionFormattingConfiguration(
             mode: mode,
-            isTextFormattingEnabled: mode?.isTextFormattingEnabled ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled")
+            isTextFormattingEnabled: mode?.isTextFormattingEnabled
+                ?? UserDefaults.standard.bool(forKey: "IsTextFormattingEnabled")
         )
     }
 
@@ -142,7 +144,8 @@ enum ModeRuntimeResolver {
         transcriptionModelManager: TranscriptionModelManager
     ) -> (any TranscriptionModel)? {
         if let modelName,
-           let model = transcriptionModelManager.usableModels.first(where: { $0.name == modelName }) {
+            let model = transcriptionModelManager.usableModels.first(where: { $0.name == modelName })
+        {
             return model
         }
 
@@ -154,7 +157,8 @@ enum ModeRuntimeResolver {
         enhancementService: AIEnhancementService
     ) -> CustomPrompt? {
         guard let promptId,
-              let uuid = UUID(uuidString: promptId) else {
+            let uuid = UUID(uuidString: promptId)
+        else {
             return nil
         }
 
@@ -166,8 +170,9 @@ enum ModeRuntimeResolver {
         aiService: AIService
     ) -> AIProvider? {
         if let providerName,
-           let provider = AIProvider(rawValue: providerName),
-           aiService.connectedProviders.contains(provider) {
+            let provider = AIProvider(rawValue: providerName),
+            aiService.connectedProviders.contains(provider)
+        {
             return provider
         }
 
@@ -187,8 +192,9 @@ enum ModeRuntimeResolver {
 
         let models = aiService.availableModels(for: provider)
         if let configuredModelName,
-           !configuredModelName.isEmpty,
-           (models.isEmpty || models.contains(configuredModelName)) {
+            !configuredModelName.isEmpty,
+            (models.isEmpty || models.contains(configuredModelName))
+        {
             return configuredModelName
         }
 

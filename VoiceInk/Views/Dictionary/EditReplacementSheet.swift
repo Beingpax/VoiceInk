@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // Edit existing word replacement entry
 struct EditReplacementSheet: View {
@@ -92,7 +92,7 @@ struct EditReplacementSheet: View {
                 }
                 TextField("Enter word or phrase to replace (use commas for multiple)", text: $originalWord)
                     .textFieldStyle(.roundedBorder)
-                
+
             }
             .padding(.horizontal)
 
@@ -124,7 +124,8 @@ struct EditReplacementSheet: View {
     private func saveChanges() {
         let newOriginal = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
         let newReplacement = replacementWord
-        let tokens = newOriginal
+        let tokens =
+            newOriginal
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -148,7 +149,8 @@ struct EditReplacementSheet: View {
 
                 for tokenPair in newTokensPairs {
                     if existingTokens.contains(tokenPair.lowercased) {
-                        alertMessage = String(format: String(localized: "'%@' already exists in word replacements"), tokenPair.original)
+                        alertMessage = String(
+                            format: String(localized: "'%@' already exists in word replacements"), tokenPair.original)
                         showAlert = true
                         return
                     }

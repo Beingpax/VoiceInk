@@ -1,7 +1,7 @@
-import Foundation
 import ApplicationServices
-import os
+import Foundation
 import SelectedTextKit
+import os
 
 @MainActor
 final class SelectedTextService {
@@ -10,7 +10,7 @@ final class SelectedTextService {
     private static let selectedTextStrategies: [TextStrategy] = [
         .accessibility,
         .menuAction,
-        .appleScript
+        .appleScript,
     ]
 
     static func fetchSelectedText() async -> String? {

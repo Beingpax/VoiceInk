@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 /// Deepgram streaming provider wrapping `LLMkit.DeepgramStreamingClient`.
 final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
@@ -36,7 +36,8 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: model.name, language: language, customVocabulary: vocabulary)
+            try await client.connect(
+                apiKey: apiKey, model: model.name, language: language, customVocabulary: vocabulary)
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()

@@ -19,10 +19,12 @@ struct TimedWord {
     }
 
     private static func normalize(_ text: String) -> String {
-        String(text.lowercased()
-            .replacingOccurrences(of: "-", with: " ")
-            .filter { $0.isLetter || $0.isNumber || $0.isWhitespace })
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        String(
+            text.lowercased()
+                .replacingOccurrences(of: "-", with: " ")
+                .filter { $0.isLetter || $0.isNumber || $0.isWhitespace }
+        )
+        .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -154,14 +156,16 @@ final class WordAgreementEngine {
 
             if token.hasPrefix("▁") || token.hasPrefix(" ") {
                 if !currentText.isEmpty {
-                    let avgConfidence = currentConfidences.isEmpty ? 1.0 :
-                        currentConfidences.reduce(0, +) / Float(currentConfidences.count)
-                    words.append(TimedWord(
-                        text: currentText,
-                        startTime: wordStart + timeOffset,
-                        endTime: wordEnd + timeOffset,
-                        confidence: avgConfidence
-                    ))
+                    let avgConfidence =
+                        currentConfidences.isEmpty
+                        ? 1.0 : currentConfidences.reduce(0, +) / Float(currentConfidences.count)
+                    words.append(
+                        TimedWord(
+                            text: currentText,
+                            startTime: wordStart + timeOffset,
+                            endTime: wordEnd + timeOffset,
+                            confidence: avgConfidence
+                        ))
                 }
                 let stripped = token.trimmingCharacters(in: .whitespaces)
                     .replacingOccurrences(of: "▁", with: "")
@@ -180,14 +184,15 @@ final class WordAgreementEngine {
         }
 
         if !currentText.isEmpty {
-            let avgConfidence = currentConfidences.isEmpty ? 1.0 :
-                currentConfidences.reduce(0, +) / Float(currentConfidences.count)
-            words.append(TimedWord(
-                text: currentText,
-                startTime: wordStart + timeOffset,
-                endTime: wordEnd + timeOffset,
-                confidence: avgConfidence
-            ))
+            let avgConfidence =
+                currentConfidences.isEmpty ? 1.0 : currentConfidences.reduce(0, +) / Float(currentConfidences.count)
+            words.append(
+                TimedWord(
+                    text: currentText,
+                    startTime: wordStart + timeOffset,
+                    endTime: wordEnd + timeOffset,
+                    confidence: avgConfidence
+                ))
         }
 
         return words

@@ -49,8 +49,9 @@ struct ModeConfigFormView: View {
         }
 
         guard let selectedProvider,
-              selectedProvider.supportsEnhancement,
-              aiProviderOptions.contains(selectedProvider) else { return nil }
+            selectedProvider.supportsEnhancement,
+            aiProviderOptions.contains(selectedProvider)
+        else { return nil }
 
         return selectedProvider
     }
@@ -152,9 +153,12 @@ struct ModeConfigFormView: View {
                     onDelete()
                 }
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String(format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."), draft.name))
+            Text(
+                String(
+                    format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."),
+                    draft.name))
         }
         .modeValidationAlert(errors: validationErrors, isPresented: $showValidationAlert)
     }
@@ -162,8 +166,10 @@ struct ModeConfigFormView: View {
     private var transcriptionSection: some View {
         Section("Transcription") {
             if warmupSnapshot.usableTranscriptionModels.isEmpty {
-                Text("No transcription models available. Please connect to a cloud service or download a local model in the AI Models tab.")
-                    .foregroundColor(.secondary)
+                Text(
+                    "No transcription models available. Please connect to a cloud service or download a local model in the AI Models tab."
+                )
+                .foregroundColor(.secondary)
             } else {
                 let modelBinding = Binding<String?>(
                     get: { draft.selectedTranscriptionModelName },
@@ -177,7 +183,8 @@ struct ModeConfigFormView: View {
                 }
                 .onChange(of: draft.selectedTranscriptionModelName) { _, newModelName in
                     if let modelName = newModelName,
-                       let model = warmupSnapshot.transcriptionModel(named: modelName) {
+                        let model = warmupSnapshot.transcriptionModel(named: modelName)
+                    {
                         draft.isRealtimeTranscriptionEnabled = TranscriptionRealtimeSupport.isAvailable(for: model)
                         if model.provider == .gemini {
                             draft.selectedLanguage = "auto"
@@ -209,7 +216,8 @@ struct ModeConfigFormView: View {
     @ViewBuilder
     private var realtimeToggle: some View {
         if let model = selectedTranscriptionModel,
-           TranscriptionRealtimeSupport.isAvailable(for: model) {
+            TranscriptionRealtimeSupport.isAvailable(for: model)
+        {
             Toggle("Real-time", isOn: $draft.isRealtimeTranscriptionEnabled)
                 .disabled(TranscriptionRealtimeSupport.isRequired(for: model))
                 .onAppear {
@@ -234,8 +242,9 @@ struct ModeConfigFormView: View {
                 draft.selectedLanguage = "auto"
             }
         } else if let selectedModel = effectiveModelName,
-                  let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-                  modelInfo.isMultilingualModel {
+            let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
+            modelInfo.isMultilingualModel
+        {
             let languageBinding = Binding<String?>(
                 get: { effectiveLanguage(for: modelInfo) },
                 set: { draft.selectedLanguage = $0 }
@@ -260,11 +269,13 @@ struct ModeConfigFormView: View {
                 }
 
                 Picker("", selection: languageBinding) {
-                    ForEach(availableLanguages(for: modelInfo).sorted(by: {
-                        if $0.key == "auto" { return true }
-                        if $1.key == "auto" { return false }
-                        return $0.value < $1.value
-                    }), id: \.key) { key, value in
+                    ForEach(
+                        availableLanguages(for: modelInfo).sorted(by: {
+                            if $0.key == "auto" { return true }
+                            if $1.key == "auto" { return false }
+                            return $0.value < $1.value
+                        }), id: \.key
+                    ) { key, value in
                         Text(value).tag(key as String?)
                     }
                 }
@@ -274,8 +285,9 @@ struct ModeConfigFormView: View {
                 draft.selectedLanguage = effectiveLanguage(for: modelInfo)
             }
         } else if let selectedModel = effectiveModelName,
-                  let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-                  !modelInfo.isMultilingualModel {
+            let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
+            !modelInfo.isMultilingualModel
+        {
             EmptyView()
                 .onAppear {
                     if draft.selectedLanguage == nil {
@@ -295,8 +307,9 @@ struct ModeConfigFormView: View {
                             draft.selectedAIModel = nil
                         }
                         if draft.selectedAIModel == nil,
-                           let provider = configuredSelectedAIProvider,
-                           provider != .localCLI {
+                            let provider = configuredSelectedAIProvider,
+                            provider != .localCLI
+                        {
                             draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                         }
                         if draft.selectedPromptId == nil {
@@ -373,9 +386,12 @@ struct ModeConfigFormView: View {
             let models = aiModelOptions(for: provider)
             if models.isEmpty {
                 LabeledContent("AI Model") {
-                    Text(provider == .openRouter ? LocalizedStringKey("No models loaded") : LocalizedStringKey("No models available"))
-                        .foregroundColor(.secondary)
-                        .italic()
+                    Text(
+                        provider == .openRouter
+                            ? LocalizedStringKey("No models loaded") : LocalizedStringKey("No models available")
+                    )
+                    .foregroundColor(.secondary)
+                    .italic()
                 }
             } else {
                 let modelBinding = Binding<String>(
@@ -408,8 +424,9 @@ struct ModeConfigFormView: View {
         var models = warmupSnapshot.availableModels(for: provider)
 
         if let selectedModel = draft.selectedAIModel,
-           !selectedModel.isEmpty,
-           !models.contains(selectedModel) {
+            !selectedModel.isEmpty,
+            !models.contains(selectedModel)
+        {
             models.insert(selectedModel, at: 0)
         }
 
@@ -499,9 +516,7 @@ struct ModeConfigFormView: View {
     }
 
     private var canRespond: Bool {
-        draft.isAIEnhancementEnabled &&
-            selectedPrompt != nil &&
-            configuredSelectedAIProvider != nil
+        draft.isAIEnhancementEnabled && selectedPrompt != nil && configuredSelectedAIProvider != nil
     }
 
     private func applyOutputRules() {
@@ -537,7 +552,9 @@ struct ModeConfigFormView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Text("Auto Send")
-                        InfoTip("Automatically presses a key combination after pasting text. Useful for chat applications or forms that use different send shortcuts.")
+                        InfoTip(
+                            "Automatically presses a key combination after pasting text. Useful for chat applications or forms that use different send shortcuts."
+                        )
                     }
                 }
             }
@@ -552,7 +569,10 @@ struct ModeConfigFormView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Text("Command")
-                InfoTip(LocalizedStringKey("Runs locally with your user permissions. The final transcript is sent on stdin and exposed as VOICEINK_TRANSCRIPT."))
+                InfoTip(
+                    LocalizedStringKey(
+                        "Runs locally with your user permissions. The final transcript is sent on stdin and exposed as VOICEINK_TRANSCRIPT."
+                    ))
                 Spacer()
                 Menu {
                     ForEach(CustomCommandTemplate.allCases) { template in
@@ -617,7 +637,7 @@ struct ModeConfigFormView: View {
 
     private func languageSelectionDisabled() -> Bool {
         guard let selectedModelName = effectiveModelName,
-              let model = warmupSnapshot.transcriptionModel(named: selectedModelName)
+            let model = warmupSnapshot.transcriptionModel(named: selectedModelName)
         else { return false }
         return model.provider == .gemini
     }

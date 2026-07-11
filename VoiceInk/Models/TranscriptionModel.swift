@@ -39,7 +39,7 @@ protocol TranscriptionModel: Identifiable, Hashable {
     var displayName: String { get }
     var description: String { get }
     var provider: ModelProvider { get }
-    
+
     // Language capabilities
     var isMultilingualModel: Bool { get }
     var supportedLanguages: [String: String] { get }
@@ -87,7 +87,10 @@ struct FluidAudioModel: TranscriptionModel {
     }
     let supportedLanguages: [String: String]
 
-    init(name: String, displayName: String, description: String, size: String, speed: Double, accuracy: Double, ramUsage: Double, supportsStreaming: Bool = false, supportedLanguages: [String: String]) {
+    init(
+        name: String, displayName: String, description: String, size: String, speed: Double, accuracy: Double,
+        ramUsage: Double, supportsStreaming: Bool = false, supportedLanguages: [String: String]
+    ) {
         self.name = name
         self.displayName = displayName
         self.description = description
@@ -113,7 +116,11 @@ struct CloudModel: TranscriptionModel {
     let supportsStreaming: Bool
     let supportedLanguages: [String: String]
 
-    init(id: UUID = UUID(), name: String, displayName: String, description: String, provider: ModelProvider, speed: Double, accuracy: Double, isMultilingual: Bool, supportsStreaming: Bool = false, supportedLanguages: [String: String]) {
+    init(
+        id: UUID = UUID(), name: String, displayName: String, description: String, provider: ModelProvider,
+        speed: Double, accuracy: Double, isMultilingual: Bool, supportsStreaming: Bool = false,
+        supportedLanguages: [String: String]
+    ) {
         self.id = id
         self.name = name
         self.displayName = displayName
@@ -144,7 +151,10 @@ struct CustomCloudModel: TranscriptionModel, Codable {
         APIKeyManager.shared.getCustomModelAPIKey(forModelId: id) ?? ""
     }
 
-    init(id: UUID = UUID(), name: String, displayName: String, description: String, apiEndpoint: String, modelName: String, isMultilingual: Bool = true, supportedLanguages: [String: String]? = nil) {
+    init(
+        id: UUID = UUID(), name: String, displayName: String, description: String, apiEndpoint: String,
+        modelName: String, isMultilingual: Bool = true, supportedLanguages: [String: String]? = nil
+    ) {
         self.id = id
         self.name = name
         self.displayName = displayName
@@ -188,7 +198,7 @@ struct CustomCloudModel: TranscriptionModel, Codable {
         try container.encode(isMultilingualModel, forKey: .isMultilingualModel)
         try container.encode(supportedLanguages, forKey: .supportedLanguages)
     }
-} 
+}
 
 struct WhisperModel: TranscriptionModel {
     let id = UUID()
@@ -213,9 +223,9 @@ struct WhisperModel: TranscriptionModel {
     var isMultilingualModel: Bool {
         supportedLanguages.count > 1
     }
-} 
+}
 
-// User-imported local models 
+// User-imported local models
 struct ImportedWhisperModel: TranscriptionModel {
     let id = UUID()
     let name: String

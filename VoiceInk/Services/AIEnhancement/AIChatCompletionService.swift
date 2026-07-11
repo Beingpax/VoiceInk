@@ -22,8 +22,10 @@ extension AIService {
                 timeout: timeout
             )
         case .custom:
-            guard let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: resolvedModel),
-                  let baseURL = URL(string: customConfiguration.baseURL) else {
+            guard
+                let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: resolvedModel),
+                let baseURL = URL(string: customConfiguration.baseURL)
+            else {
                 throw EnhancementError.notConfigured
             }
             result = try await OpenAILLMClient.chatCompletion(
@@ -78,7 +80,8 @@ extension AIService {
 
     private func chatAPIKey(for provider: AIProvider, modelName: String) throws -> String {
         if provider == .custom {
-            guard let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: modelName) else {
+            guard let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: modelName)
+            else {
                 throw EnhancementError.notConfigured
             }
             return customConfiguration.apiKey
@@ -104,17 +107,17 @@ extension AIService {
                 label = "other"
             }
             return """
-            <message role="\(label)">
-            \(message.content)
-            </message>
-            """
+                <message role="\(label)">
+                \(message.content)
+                </message>
+                """
         }
         .joined(separator: "\n\n")
 
         return """
-        <conversation>
-        \(formattedMessages)
-        </conversation>
-        """
+            <conversation>
+            \(formattedMessages)
+            </conversation>
+            """
     }
 }

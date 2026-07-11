@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 /// Soniox streaming provider wrapping `LLMkit.SonioxStreamingClient`.
 final class SonioxStreamingProvider: StreamingTranscriptionProvider {
@@ -36,7 +36,8 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "stt-rt-v5", language: language, customVocabulary: vocabulary)
+            try await client.connect(
+                apiKey: apiKey, model: "stt-rt-v5", language: language, customVocabulary: vocabulary)
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()

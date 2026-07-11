@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 class CustomVocabularyService {
     static let shared = CustomVocabularyService()

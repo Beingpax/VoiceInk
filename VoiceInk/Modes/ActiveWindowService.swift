@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import os
 
 class ActiveWindowService: ObservableObject {
@@ -21,21 +21,24 @@ class ActiveWindowService: ObservableObject {
         shouldApply: @escaping @MainActor () -> Bool = { true }
     ) -> Task<Void, Never> {
         if let modeId = modeId,
-           let config = ModeManager.shared.getConfiguration(with: modeId) {
+            let config = ModeManager.shared.getConfiguration(with: modeId)
+        {
             guard shouldApply() else { return Task {} }
             ModeManager.shared.setActiveConfiguration(config)
             return Task {}
         }
 
         guard let frontmostApp = NSWorkspace.shared.frontmostApplication,
-              let bundleIdentifier = frontmostApp.bundleIdentifier else {
+            let bundleIdentifier = frontmostApp.bundleIdentifier
+        else {
             return Task {}
         }
 
         guard shouldApply() else { return Task {} }
         currentApplication = frontmostApp
 
-        let quickConfig = ModeManager.shared.getConfigurationForApp(bundleIdentifier)
+        let quickConfig =
+            ModeManager.shared.getConfigurationForApp(bundleIdentifier)
             ?? ModeManager.shared.getDefaultConfiguration()
 
         if let quickConfig {
@@ -53,7 +56,8 @@ class ActiveWindowService: ObservableObject {
                 let currentURL = try await self.browserURLService.getCurrentURL(from: browserType)
                 await MainActor.run {
                     guard shouldApply(),
-                          let config = ModeManager.shared.getConfigurationForURL(currentURL) else {
+                        let config = ModeManager.shared.getConfigurationForURL(currentURL)
+                    else {
                         return
                     }
                     ModeManager.shared.setActiveConfiguration(config)
@@ -61,7 +65,8 @@ class ActiveWindowService: ObservableObject {
             } catch is CancellationError {
                 return
             } catch {
-                self.logger.error("❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error, privacy: .public)")
+                self.logger.error(
+                    "❌ Failed to get URL from \(browserType.displayName, privacy: .public): \(error, privacy: .public)")
             }
         }
     }
@@ -72,4 +77,4 @@ class ActiveWindowService: ObservableObject {
         }
         await task.value
     }
-} 
+}

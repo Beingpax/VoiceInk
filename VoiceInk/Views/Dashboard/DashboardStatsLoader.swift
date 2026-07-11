@@ -59,21 +59,28 @@ enum DashboardStatsLoader {
             let now = windows.now
             let calendar = windows.calendar
             var todayProductivity = Self.hourlyProductivityPoints(now: now, calendar: calendar)
-            var lastSevenDayProductivity = Self.productivityPoints(dayCount: 7, now: now, calendar: calendar, labelStyle: .weekday)
-            var lastThirtyDayProductivity = Self.productivityPoints(dayCount: 30, now: now, calendar: calendar, labelStyle: .dayOfMonth)
-            var thisYearProductivity = Self.monthlyProductivityPoints(from: windows.thisYearStart, through: now, calendar: calendar)
-            let todayHourIndices = Dictionary(uniqueKeysWithValues: todayProductivity.enumerated().map { index, point in
-                (startOfHour(for: point.date, calendar: calendar), index)
-            })
-            let sevenDayIndices = Dictionary(uniqueKeysWithValues: lastSevenDayProductivity.enumerated().map { index, point in
-                (calendar.startOfDay(for: point.date), index)
-            })
-            let thirtyDayIndices = Dictionary(uniqueKeysWithValues: lastThirtyDayProductivity.enumerated().map { index, point in
-                (calendar.startOfDay(for: point.date), index)
-            })
-            let thisYearMonthIndices = Dictionary(uniqueKeysWithValues: thisYearProductivity.enumerated().map { index, point in
-                (startOfMonth(for: point.date, calendar: calendar), index)
-            })
+            var lastSevenDayProductivity = Self.productivityPoints(
+                dayCount: 7, now: now, calendar: calendar, labelStyle: .weekday)
+            var lastThirtyDayProductivity = Self.productivityPoints(
+                dayCount: 30, now: now, calendar: calendar, labelStyle: .dayOfMonth)
+            var thisYearProductivity = Self.monthlyProductivityPoints(
+                from: windows.thisYearStart, through: now, calendar: calendar)
+            let todayHourIndices = Dictionary(
+                uniqueKeysWithValues: todayProductivity.enumerated().map { index, point in
+                    (startOfHour(for: point.date, calendar: calendar), index)
+                })
+            let sevenDayIndices = Dictionary(
+                uniqueKeysWithValues: lastSevenDayProductivity.enumerated().map { index, point in
+                    (calendar.startOfDay(for: point.date), index)
+                })
+            let thirtyDayIndices = Dictionary(
+                uniqueKeysWithValues: lastThirtyDayProductivity.enumerated().map { index, point in
+                    (calendar.startOfDay(for: point.date), index)
+                })
+            let thisYearMonthIndices = Dictionary(
+                uniqueKeysWithValues: thisYearProductivity.enumerated().map { index, point in
+                    (startOfMonth(for: point.date, calendar: calendar), index)
+                })
             var offset = 0
 
             while offset < count {
@@ -144,7 +151,8 @@ enum DashboardStatsLoader {
                             thisYearProductivity[thisYearIndex].words += metric.wordCount
                         }
                     }
-                    allTimeMonthWords[startOfMonth(for: metric.timestamp, calendar: calendar), default: 0] += metric.wordCount
+                    allTimeMonthWords[startOfMonth(for: metric.timestamp, calendar: calendar), default: 0] +=
+                        metric.wordCount
 
                     let metricHour = calendar.component(.hour, from: metric.timestamp)
 
@@ -370,7 +378,8 @@ enum DashboardStatsLoader {
         calendar: Calendar,
         labelStyle: DashboardProductivityLabelStyle
     ) -> [DashboardProductivityPoint] {
-        guard let startDate = calendar.date(byAdding: .day, value: -(dayCount - 1), to: calendar.startOfDay(for: now)) else {
+        guard let startDate = calendar.date(byAdding: .day, value: -(dayCount - 1), to: calendar.startOfDay(for: now))
+        else {
             return []
         }
 
@@ -408,8 +417,7 @@ enum DashboardStatsLoader {
             accumulator.summary(kind: .enhancement, name: name)
         }
 
-        return transcriptionSummaries.sortedForPerformanceDisplay() +
-            enhancementSummaries.sortedForPerformanceDisplay()
+        return transcriptionSummaries.sortedForPerformanceDisplay() + enhancementSummaries.sortedForPerformanceDisplay()
     }
 
     private static func addModelPerformance(
@@ -418,8 +426,9 @@ enum DashboardStatsLoader {
         enhancementPerformance: inout [String: ModelPerformanceAccumulator]
     ) {
         if let modelName = sanitizedModelName(metric.transcriptionModelName),
-           let transcriptionDuration = metric.transcriptionDuration,
-           transcriptionDuration > 0 {
+            let transcriptionDuration = metric.transcriptionDuration,
+            transcriptionDuration > 0
+        {
             transcriptionPerformance[modelName, default: ModelPerformanceAccumulator()].add(
                 processingDuration: transcriptionDuration,
                 audioDuration: metric.audioDuration
@@ -427,8 +436,9 @@ enum DashboardStatsLoader {
         }
 
         if let modelName = sanitizedModelName(metric.aiEnhancementModelName),
-           let enhancementDuration = metric.enhancementDuration,
-           enhancementDuration > 0 {
+            let enhancementDuration = metric.enhancementDuration,
+            enhancementDuration > 0
+        {
             enhancementPerformance[modelName, default: ModelPerformanceAccumulator()].add(
                 processingDuration: enhancementDuration
             )
@@ -439,7 +449,8 @@ enum DashboardStatsLoader {
         transcriptionAudio: [String: TranscriptionAudioUsageAccumulator],
         enhancementTokens: [String: EnhancementTokenUsageAccumulator]
     ) -> ModelUsageSummary {
-        let transcriptionSummaries = transcriptionAudio
+        let transcriptionSummaries =
+            transcriptionAudio
             .map { name, accumulator in accumulator.summary(name: name) }
             .sorted { lhs, rhs in
                 if lhs.totalAudioDuration != rhs.totalAudioDuration {
@@ -453,7 +464,8 @@ enum DashboardStatsLoader {
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
 
-        let enhancementSummaries = enhancementTokens
+        let enhancementSummaries =
+            enhancementTokens
             .map { name, accumulator in accumulator.summary(name: name) }
             .sorted { lhs, rhs in
                 if lhs.estimatedTokens != rhs.estimatedTokens {
@@ -479,7 +491,8 @@ enum DashboardStatsLoader {
         enhancementTokenUsage: inout [String: EnhancementTokenUsageAccumulator]
     ) {
         if let modelName = sanitizedModelName(metric.transcriptionModelName),
-           metric.audioDuration > 0 {
+            metric.audioDuration > 0
+        {
             transcriptionAudioUsage[modelName, default: TranscriptionAudioUsageAccumulator()].add(
                 audioDuration: metric.audioDuration
             )
@@ -506,7 +519,9 @@ enum DashboardStatsLoader {
         )
     }
 
-    private static func peakHoursSummary(from peakHours: [Int: DashboardPeakHourAccumulator]) -> DashboardPeakHoursSummary {
+    private static func peakHoursSummary(from peakHours: [Int: DashboardPeakHourAccumulator])
+        -> DashboardPeakHoursSummary
+    {
         let hourlyActivity = (0..<24).map { hour in
             peakHours[hour, default: DashboardPeakHourAccumulator()].point(hour: hour)
         }
@@ -521,8 +536,9 @@ enum DashboardStatsLoader {
             let windowWordCount = first.wordCount + second.wordCount
             let windowSessionCount = first.sessionCount + second.sessionCount
 
-            if windowWordCount > bestWordCount ||
-                (windowWordCount == bestWordCount && windowSessionCount > bestSessionCount) {
+            if windowWordCount > bestWordCount
+                || (windowWordCount == bestWordCount && windowSessionCount > bestSessionCount)
+            {
                 bestStartHour = startHour
                 bestWordCount = windowWordCount
                 bestSessionCount = windowSessionCount
@@ -576,7 +592,8 @@ private struct ModelPerformanceAccumulator {
             name: name,
             sessionCount: sessionCount,
             averageProcessingDuration: sessionCount > 0 ? totalProcessingDuration / Double(sessionCount) : nil,
-            averageSpeedFactor: totalProcessingDuration > 0 && totalAudioDuration > 0 ? totalAudioDuration / totalProcessingDuration : nil
+            averageSpeedFactor: totalProcessingDuration > 0 && totalAudioDuration > 0
+                ? totalAudioDuration / totalProcessingDuration : nil
         )
     }
 }

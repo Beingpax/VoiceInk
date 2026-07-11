@@ -48,13 +48,15 @@ private struct OnboardingContextAwarenessContent: View {
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("VoiceInk automatically understands what you are working with and selects your preferred setup. You can always configure this by editing or creating new modes.")
-                        .font(.system(size: 15))
-                        .foregroundColor(AppTheme.Text.secondary)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 620)
+                    Text(
+                        "VoiceInk automatically understands what you are working with and selects your preferred setup. You can always configure this by editing or creating new modes."
+                    )
+                    .font(.system(size: 15))
+                    .foregroundColor(AppTheme.Text.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 620)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -87,7 +89,8 @@ private struct ContextAwarenessCenterSlot: View {
             .frame(maxWidth: 560)
             .frame(height: 250)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("VoiceInk modes include Dictation, Enhance, Email, Assistant, Rewrite, Ask, Summarize, and Translate.")
+            .accessibilityLabel(
+                "VoiceInk modes include Dictation, Enhance, Email, Assistant, Rewrite, Ask, Summarize, and Translate.")
     }
 }
 
@@ -100,7 +103,7 @@ private struct ContextAwarenessModeVisual: View {
         ContextAwarenessModePill.Model(systemImage: "globe", title: "Translate", angle: 90),
         ContextAwarenessModePill.Model(systemImage: "text.alignleft", title: "Summarize", angle: 135),
         ContextAwarenessModePill.Model(systemImage: "quote.bubble.fill", title: "Rewrite", angle: 180),
-        ContextAwarenessModePill.Model(systemImage: "wand.and.stars", title: "Assistant", angle: -135)
+        ContextAwarenessModePill.Model(systemImage: "wand.and.stars", title: "Assistant", angle: -135),
     ]
 
     var body: some View {
@@ -198,7 +201,7 @@ private struct ContextAwarenessModeHub: View {
                             Color.white.opacity(0.72),
                             AppTheme.Sidebar.modes.opacity(0.86),
                             Color.white.opacity(0.54),
-                            AppTheme.Border.subtle.opacity(0.20)
+                            AppTheme.Border.subtle.opacity(0.20),
                         ],
                         center: .center,
                         angle: borderRotation

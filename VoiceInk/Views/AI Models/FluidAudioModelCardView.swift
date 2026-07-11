@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
@@ -19,8 +19,8 @@ struct FluidAudioModelCardView: View {
     }
 
     private var showsExperimentalBadge: Bool {
-        FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) ||
-            FluidAudioModelManager.isNemotronModel(named: model.name)
+        FluidAudioModelManager.isParakeetUnifiedModel(named: model.name)
+            || FluidAudioModelManager.isNemotronModel(named: model.name)
     }
 
     var body: some View {

@@ -25,13 +25,11 @@ struct InfoTip: View {
             .popover(isPresented: $isShowingTip) {
                 VStack(alignment: .leading, spacing: 0) {
                     if let url = learnMoreLink {
-                        (
-                            Text(message)
-                                .foregroundColor(.secondary)
+                        (Text(message)
+                            .foregroundColor(.secondary)
                             + Text(" ")
                             + Text("Learn more")
-                                .foregroundColor(AppTheme.Accent.primary)
-                        )
+                            .foregroundColor(AppTheme.Accent.primary))
                             .font(.callout)
                     } else {
                         Text(message)

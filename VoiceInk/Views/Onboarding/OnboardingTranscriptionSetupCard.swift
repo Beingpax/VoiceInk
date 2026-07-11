@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct OnboardingTranscriptionSetupCard: View {
     let localModel: FluidAudioModel?
@@ -334,7 +334,8 @@ struct OnboardingTranscriptionSetupCard: View {
 
     private func refreshVerificationState() {
         verificationSucceeded = isSelectedProviderConnected
-        verificationMessage = verificationSucceeded
+        verificationMessage =
+            verificationSucceeded
             ? selectedProvider.map {
                 String(format: String(localized: "%@ connection verified."), $0.providerKey)
             }
@@ -381,7 +382,8 @@ struct OnboardingTranscriptionSetupCard: View {
                 if result.isValid {
                     guard APIKeyManager.shared.saveAPIKey(key, forProvider: providerKey) else {
                         verificationSucceeded = false
-                        verificationMessage = String(localized: "The key worked, but VoiceInk could not save it securely.")
+                        verificationMessage = String(
+                            localized: "The key worked, but VoiceInk could not save it securely.")
                         verificationDetailMessage = nil
                         onVerificationChanged()
                         return
@@ -393,7 +395,8 @@ struct OnboardingTranscriptionSetupCard: View {
                     verificationDetailMessage = nil
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
-                    verificationMessage = String(localized: "Could not verify this API key. Check the key and try again.")
+                    verificationMessage = String(
+                        localized: "Could not verify this API key. Check the key and try again.")
                     verificationDetailMessage = result.errorMessage
                 }
 
@@ -420,7 +423,7 @@ private struct TranscriptionProviderSelectionCard: View {
         LazyVGrid(
             columns: [
                 GridItem(.flexible(), spacing: 8),
-                GridItem(.flexible(), spacing: 8)
+                GridItem(.flexible(), spacing: 8),
             ],
             alignment: .leading,
             spacing: 8

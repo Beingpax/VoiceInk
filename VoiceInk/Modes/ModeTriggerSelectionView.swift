@@ -61,14 +61,16 @@ struct ModeTriggerSelectionView: View {
     }
 
     private func reservedAppBundleIds(excluding groupId: UUID) -> Set<String> {
-        let groupedApps = triggerGroups
+        let groupedApps =
+            triggerGroups
             .filter { $0.id != groupId }
             .flatMap { $0.appConfigs.map(\.bundleIdentifier) }
         return Set(appConfigs.map(\.bundleIdentifier) + groupedApps)
     }
 
     private func reservedWebsites(excluding groupId: UUID) -> Set<String> {
-        let groupedWebsites = triggerGroups
+        let groupedWebsites =
+            triggerGroups
             .filter { $0.id != groupId }
             .flatMap { $0.urlConfigs.map { cleanURL($0.url) } }
         return Set(websiteConfigs.map { cleanURL($0.url) } + groupedWebsites)

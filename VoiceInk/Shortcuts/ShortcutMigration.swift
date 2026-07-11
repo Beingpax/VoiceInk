@@ -93,13 +93,15 @@ enum ShortcutMigration {
         let legacyKey = legacyRecordingShortcutModeKey(for: action)
 
         if let storedValue = nonEmptyString(forKey: userDefaultsKey),
-           let mode = RecordingShortcutManager.Mode(rawValue: storedValue) {
+            let mode = RecordingShortcutManager.Mode(rawValue: storedValue)
+        {
             UserDefaults.standard.removeObject(forKey: legacyKey)
             return mode
         }
 
         if let legacyValue = nonEmptyString(forKey: legacyKey),
-           let mode = RecordingShortcutManager.Mode(rawValue: legacyValue) {
+            let mode = RecordingShortcutManager.Mode(rawValue: legacyValue)
+        {
             UserDefaults.standard.set(mode.rawValue, forKey: userDefaultsKey)
             UserDefaults.standard.removeObject(forKey: legacyKey)
             return mode
@@ -127,7 +129,8 @@ enum ShortcutMigration {
         }
 
         if let shortcut = legacyPresetShortcut(for: storedValue),
-           !isRecordingShortcutAction(action) {
+            !isRecordingShortcutAction(action)
+        {
             ShortcutStore.setShortcut(shortcut, for: action)
             saveShortcutSelection(.custom, forKey: userDefaultsKey, removing: legacyKey)
             return .custom

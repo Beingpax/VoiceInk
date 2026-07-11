@@ -5,9 +5,14 @@ struct TriggerSnapshot {
     let websites: Set<String>
     let templateIds: Set<String>
 
-    init(appConfigs: [AppConfig], websiteConfigs: [URLConfig], triggerGroups: [ModeTriggerGroup], cleanURL: (String) -> String) {
-        appBundleIds = Set(appConfigs.map(\.bundleIdentifier) + triggerGroups.flatMap { $0.appConfigs.map(\.bundleIdentifier) })
-        websites = Set(websiteConfigs.map { cleanURL($0.url) } + triggerGroups.flatMap { $0.urlConfigs.map { cleanURL($0.url) } })
+    init(
+        appConfigs: [AppConfig], websiteConfigs: [URLConfig], triggerGroups: [ModeTriggerGroup],
+        cleanURL: (String) -> String
+    ) {
+        appBundleIds = Set(
+            appConfigs.map(\.bundleIdentifier) + triggerGroups.flatMap { $0.appConfigs.map(\.bundleIdentifier) })
+        websites = Set(
+            websiteConfigs.map { cleanURL($0.url) } + triggerGroups.flatMap { $0.urlConfigs.map { cleanURL($0.url) } })
         templateIds = Set(triggerGroups.compactMap(\.templateId))
     }
 }

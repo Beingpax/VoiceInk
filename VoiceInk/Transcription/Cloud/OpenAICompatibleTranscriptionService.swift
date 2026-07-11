@@ -1,9 +1,12 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
-    func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String {
+    func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String
+    {
         guard let url = URL(string: model.apiEndpoint) else {
-            throw NSError(domain: "CustomWhisperTranscriptionService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid API endpoint URL"])
+            throw NSError(
+                domain: "CustomWhisperTranscriptionService", code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid API endpoint URL"])
         }
 
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -12,7 +15,8 @@ class OpenAICompatibleTranscriptionService {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
 
-        let body = try buildRequestBody(audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
+        let body = try buildRequestBody(
+            audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
         // Ephemeral session per request: the shared session persists Alt-Svc and upgrades
         // new connections to HTTP/3, but QUIC bulk uploads blackhole behind VPNs that drop
         // full-size UDP datagrams (e.g. GlobalProtect), timing out large audio uploads.
@@ -36,7 +40,9 @@ class OpenAICompatibleTranscriptionService {
         }
     }
 
-    private func buildRequestBody(audioURL: URL, modelName: String, boundary: String, context: TranscriptionRequestContext) throws -> Data {
+    private func buildRequestBody(
+        audioURL: URL, modelName: String, boundary: String, context: TranscriptionRequestContext
+    ) throws -> Data {
         guard let audioData = try? Data(contentsOf: audioURL) else {
             throw CloudTranscriptionError.audioFileNotFound
         }

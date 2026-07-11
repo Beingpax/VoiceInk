@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 struct MistralProvider: CloudProvider {
     let modelProvider: ModelProvider = .mistral
@@ -8,21 +8,25 @@ struct MistralProvider: CloudProvider {
     let languageCodes: [String]? = ["ar", "de", "en", "es", "fr", "hi", "it", "ja", "ko", "nl", "pt", "ru", "zh"]
     let includesAutoDetect: Bool = true
 
-    var models: [CloudModel] {[
-        CloudModel(
-            name: "voxtral-mini-latest",
-            displayName: "Voxtral",
-            description: "Mistral's Voxtral model for fast and accurate transcription",
-            provider: .mistral,
-            speed: 0.99,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportsStreaming: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .mistral)
-        )
-    ]}
+    var models: [CloudModel] {
+        [
+            CloudModel(
+                name: "voxtral-mini-latest",
+                displayName: "Voxtral",
+                description: "Mistral's Voxtral model for fast and accurate transcription",
+                provider: .mistral,
+                speed: 0.99,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .mistral)
+            )
+        ]
+    }
 
-    func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]) async throws -> String {
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
         return try await MistralTranscriptionClient.transcribe(
             audioData: audioData,
             fileName: fileName,

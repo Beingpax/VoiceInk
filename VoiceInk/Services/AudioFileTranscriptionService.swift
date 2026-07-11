@@ -1,7 +1,7 @@
-import Foundation
-import SwiftUI
 import AVFoundation
+import Foundation
 import SwiftData
+import SwiftUI
 import os
 
 @MainActor
@@ -24,24 +24,31 @@ class AudioTranscriptionService: ObservableObject {
     init(modelContext: ModelContext, engine: VoiceInkEngine) {
         self.modelContext = modelContext
         self.enhancementService = engine.enhancementService
-        self.serviceRegistry = TranscriptionServiceRegistry(modelProvider: engine.whisperModelManager, modelsDirectory: engine.whisperModelManager.modelsDirectory, modelContext: modelContext)
+        self.serviceRegistry = TranscriptionServiceRegistry(
+            modelProvider: engine.whisperModelManager, modelsDirectory: engine.whisperModelManager.modelsDirectory,
+            modelContext: modelContext)
     }
 
-    init(modelContext: ModelContext, serviceRegistry: TranscriptionServiceRegistry, enhancementService: AIEnhancementService?) {
+    init(
+        modelContext: ModelContext, serviceRegistry: TranscriptionServiceRegistry,
+        enhancementService: AIEnhancementService?
+    ) {
         self.modelContext = modelContext
         self.enhancementService = enhancementService
         self.serviceRegistry = serviceRegistry
     }
-    
-    func retranscribeAudio(from url: URL, using model: any TranscriptionModel, mode: ModeConfig? = nil) async throws -> Transcription {
+
+    func retranscribeAudio(from url: URL, using model: any TranscriptionModel, mode: ModeConfig? = nil) async throws
+        -> Transcription
+    {
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw TranscriptionError.noAudioFile
         }
-        
+
         await MainActor.run {
             isTranscribing = true
         }
-        
+
         do {
             let mode = mode ?? ModeManager.shared.currentEffectiveConfiguration
             let language = TranscriptionLanguageSupport.validLanguageOrFallback(
@@ -72,13 +79,15 @@ class AudioTranscriptionService: ObservableObject {
 
             let audioAsset = AVURLAsset(url: url)
             let duration = CMTimeGetSeconds(try await audioAsset.load(.duration))
-            let recordingsDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("com.prakashjoshipax.VoiceInk")
-                .appendingPathComponent("Recordings")
-            
+            let recordingsDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[
+                0
+            ]
+            .appendingPathComponent("com.prakashjoshipax.VoiceInk")
+            .appendingPathComponent("Recordings")
+
             let fileName = "retranscribed_\(UUID().uuidString).wav"
             let permanentURL = recordingsDirectory.appendingPathComponent(fileName)
-            
+
             do {
                 try FileManager.default.copyItem(at: url, to: permanentURL)
             } catch {
@@ -86,11 +95,12 @@ class AudioTranscriptionService: ObservableObject {
                 isTranscribing = false
                 throw error
             }
-            
+
             let permanentURLString = permanentURL.absoluteString
 
             let originalText = cleanedText
-            let enhancementConfiguration = enhancementService
+            let enhancementConfiguration =
+                enhancementService
                 .flatMap { service in
                     service.getAIService().map { aiService in
                         ModeRuntimeResolver.currentEnhancementConfiguration(
@@ -103,9 +113,10 @@ class AudioTranscriptionService: ObservableObject {
 
             // Apply AI enhancement if enabled
             if let enhancementService = enhancementService,
-               let enhancementConfiguration,
-               enhancementConfiguration.isEnabled,
-               enhancementService.isConfigured(for: enhancementConfiguration) {
+                let enhancementConfiguration,
+                enhancementConfiguration.isEnabled,
+                enhancementService.isConfigured(for: enhancementConfiguration)
+            {
                 do {
                     let (enhancedText, enhancementDuration, promptName) = try await enhancementService.enhance(
                         text,
@@ -117,7 +128,8 @@ class AudioTranscriptionService: ObservableObject {
                         enhancedText: enhancedText,
                         audioFileURL: permanentURLString,
                         transcriptionModelName: model.displayName,
-                        aiEnhancementModelName: enhancementConfiguration.modelName ?? enhancementConfiguration.provider?.defaultModel,
+                        aiEnhancementModelName: enhancementConfiguration.modelName
+                            ?? enhancementConfiguration.provider?.defaultModel,
                         promptName: promptName,
                         transcriptionDuration: transcriptionDuration,
                         enhancementDuration: enhancementDuration,

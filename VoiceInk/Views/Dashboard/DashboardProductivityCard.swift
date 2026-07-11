@@ -217,7 +217,7 @@ private struct DashboardProductivityChart: View {
             yAxisUpperBound * 3 / 4,
             yAxisUpperBound / 2,
             yAxisUpperBound / 4,
-            0
+            0,
         ]
         .reduce(into: []) { labels, value in
             if !labels.contains(value) {
@@ -561,7 +561,7 @@ private struct DashboardProductivityTrendLayer: View {
                                     colors: [
                                         lineTint.opacity(0.30),
                                         lineTint.opacity(0.10),
-                                        lineTint.opacity(0.015)
+                                        lineTint.opacity(0.015),
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -614,7 +614,8 @@ private struct DashboardProductivityTrendLayer: View {
         let denominator = max(slotCount - 1, 1)
 
         return points.enumerated().map { index, point in
-            let x = slotCount == 1
+            let x =
+                slotCount == 1
                 ? size.width / 2
                 : size.width * CGFloat(index) / CGFloat(denominator)
             let progress = min(max(CGFloat(point.words) / CGFloat(maximum), 0), 1)
@@ -624,7 +625,9 @@ private struct DashboardProductivityTrendLayer: View {
         }
     }
 
-    private static func guideAnchors(for indices: [Int], in renderedPoints: [CGPoint]) -> [DashboardProductivityGuideAnchor] {
+    private static func guideAnchors(for indices: [Int], in renderedPoints: [CGPoint])
+        -> [DashboardProductivityGuideAnchor]
+    {
         indices.compactMap { index in
             guard renderedPoints.indices.contains(index) else {
                 return nil
@@ -854,7 +857,7 @@ private struct DashboardProductivityXAxisGuide: View {
                         tint.opacity(0.00),
                         tint.opacity(0.10),
                         tint.opacity(0.04),
-                        tint.opacity(0.00)
+                        tint.opacity(0.00),
                     ],
                     startPoint: .top,
                     endPoint: .bottom

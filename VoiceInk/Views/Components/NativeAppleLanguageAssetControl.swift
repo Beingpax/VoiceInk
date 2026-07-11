@@ -135,9 +135,13 @@ struct NativeAppleLanguageAssetControl: View {
             return String(localized: "Apple Speech language downloads are not available on this system.")
         case .reservationLimitReached:
             if allowsReservationReplacement {
-                return String(localized: "Apple Speech can reserve up to 5 languages. Choose one to remove before downloading the selected language.")
+                return String(
+                    localized:
+                        "Apple Speech can reserve up to 5 languages. Choose one to remove before downloading the selected language."
+                )
             }
-            return String(localized: "Apple Speech can reserve up to 5 languages. Manage reserved languages in Mode settings.")
+            return String(
+                localized: "Apple Speech can reserve up to 5 languages. Manage reserved languages in Mode settings.")
         case .failed(let message):
             return String(
                 format: String(localized: "Apple Speech language download failed: %@"),
@@ -146,7 +150,6 @@ struct NativeAppleLanguageAssetControl: View {
         }
     }
 
-
     private var reservationLimitPopover: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
@@ -154,10 +157,13 @@ struct NativeAppleLanguageAssetControl: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
 
-                Text(String(format: String(localized: "Remove one reserved language to download %@."), selectedLanguageName))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    String(
+                        format: String(localized: "Remove one reserved language to download %@."), selectedLanguageName)
+                )
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             let reservedLocaleIdentifiers = reservationLimitLocaleIdentifiers
@@ -196,7 +202,10 @@ struct NativeAppleLanguageAssetControl: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(String(format: String(localized: "Remove %@ from reserved Apple Speech languages."), languageDisplayName(for: identifier)))
+        .help(
+            String(
+                format: String(localized: "Remove %@ from reserved Apple Speech languages."),
+                languageDisplayName(for: identifier)))
     }
 
     private var reservationLimitLocaleIdentifiers: [String] {

@@ -12,7 +12,8 @@ enum OnboardingV2Migration {
         defaults.removeObject(forKey: legacyCompletedKey)
 
         guard !defaults.bool(forKey: completedKey),
-              !defaults.bool(forKey: preparedKey) else {
+            !defaults.bool(forKey: preparedKey)
+        else {
             return
         }
 
@@ -53,9 +54,10 @@ enum OnboardingV2Migration {
             return []
         }
 
-        return Set(objects.compactMap { object in
-            (object["id"] as? String).flatMap(UUID.init(uuidString:))
-        })
+        return Set(
+            objects.compactMap { object in
+                (object["id"] as? String).flatMap(UUID.init(uuidString:))
+            })
     }
 
     private static func removeLegacyPowerModeShortcutStorage(for id: UUID, defaults: UserDefaults) {

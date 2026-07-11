@@ -107,7 +107,9 @@ struct ModelActionLabel: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(isPrimary ? AppTheme.Accent.border.opacity(0.45) : AppTheme.Border.subtle.opacity(0.65), lineWidth: 1)
+                .stroke(
+                    isPrimary ? AppTheme.Accent.border.opacity(0.45) : AppTheme.Border.subtle.opacity(0.65),
+                    lineWidth: 1)
         )
         .shadow(color: Color.clear, radius: 0)
     }
@@ -349,8 +351,9 @@ private struct ModelProviderIdentity {
             return identity(for: model.provider)
         }
 
-        if trimmedName.localizedCaseInsensitiveContains("parakeet") ||
-            trimmedName.localizedCaseInsensitiveContains("nemotron") {
+        if trimmedName.localizedCaseInsensitiveContains("parakeet")
+            || trimmedName.localizedCaseInsensitiveContains("nemotron")
+        {
             return identity(for: .fluidAudio)
         }
 
@@ -358,14 +361,16 @@ private struct ModelProviderIdentity {
             return identity(for: .nativeApple)
         }
 
-        if trimmedName.localizedCaseInsensitiveContains("whisper") ||
-            trimmedName.localizedCaseInsensitiveContains("large") ||
-            trimmedName.localizedCaseInsensitiveContains("base") ||
-            trimmedName.localizedCaseInsensitiveContains("tiny") {
+        if trimmedName.localizedCaseInsensitiveContains("whisper")
+            || trimmedName.localizedCaseInsensitiveContains("large")
+            || trimmedName.localizedCaseInsensitiveContains("base")
+            || trimmedName.localizedCaseInsensitiveContains("tiny")
+        {
             return identity(for: .whisper)
         }
 
-        return unknownIdentity(providerName: String(localized: "Transcription Model"), fallbackSystemImage: "captions.bubble.fill")
+        return unknownIdentity(
+            providerName: String(localized: "Transcription Model"), fallbackSystemImage: "captions.bubble.fill")
     }
 
     private static func resolveEnhancement(_ modelName: String) -> ModelProviderIdentity {
@@ -384,7 +389,8 @@ private struct ModelProviderIdentity {
         }
 
         if matchingProviders.count == 1,
-           let provider = matchingProviders.first {
+            let provider = matchingProviders.first
+        {
             return identity(for: provider)
         }
 
@@ -393,12 +399,14 @@ private struct ModelProviderIdentity {
         }
 
         if matchingProviders.isEmpty,
-           isOpenRouterModelIdentifier(trimmedName) {
+            isOpenRouterModelIdentifier(trimmedName)
+        {
             return identity(for: .openRouter)
         }
 
         if matchingProviders.isEmpty,
-           let provider = inferredEnhancementProvider(from: trimmedName) {
+            let provider = inferredEnhancementProvider(from: trimmedName)
+        {
             return identity(for: provider)
         }
 
@@ -518,8 +526,8 @@ private struct ModelProviderIdentity {
 
     private static func isOpenRouterModelIdentifier(_ modelName: String) -> Bool {
         let components = modelName.split(separator: "/", omittingEmptySubsequences: false)
-        return components.count == 2 &&
-            components.allSatisfy {
+        return components.count == 2
+            && components.allSatisfy {
                 !String($0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             }
     }

@@ -44,10 +44,11 @@ struct Shortcut: Codable, Equatable {
         self.kind = kind
         self.keyCode = keyCode
         let keyCodeForNormalization = kind == .key ? keyCode : nil
-        self.modifierFlagsRawValue = Self.normalizedModifierFlags(
-            modifierFlags,
-            forKeyCode: keyCodeForNormalization
-        ).rawValue
+        self.modifierFlagsRawValue =
+            Self.normalizedModifierFlags(
+                modifierFlags,
+                forKeyCode: keyCodeForNormalization
+            ).rawValue
     }
 
     static func key(keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags) -> Self {
@@ -75,18 +76,18 @@ struct Shortcut: Codable, Equatable {
     }
 
     func conflicts(with other: Shortcut) -> Bool {
-        kind == other.kind &&
-            keyCode == other.keyCode &&
-            modifierFlags == other.modifierFlags
+        kind == other.kind && keyCode == other.keyCode && modifierFlags == other.modifierFlags
     }
 
-    func matchesKeyEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags) -> Bool {
-        kind == .key &&
-            keyCode == eventKeyCode &&
-            modifierFlags == Self.normalizedModifierFlags(eventModifierFlags, forKeyCode: eventKeyCode)
+    func matchesKeyEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags) -> Bool
+    {
+        kind == .key && keyCode == eventKeyCode
+            && modifierFlags == Self.normalizedModifierFlags(eventModifierFlags, forKeyCode: eventKeyCode)
     }
 
-    func matchesModifierEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags) -> Bool {
+    func matchesModifierEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags)
+        -> Bool
+    {
         guard kind == .modifierOnly else {
             return false
         }
@@ -100,7 +101,9 @@ struct Shortcut: Codable, Equatable {
         return keyCode == eventKeyCode && normalizedFlags == modifierFlags
     }
 
-    func shouldReleaseModifierEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags) -> Bool {
+    func shouldReleaseModifierEvent(
+        keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags
+    ) -> Bool {
         guard kind == .modifierOnly else {
             return false
         }
@@ -135,7 +138,9 @@ struct Shortcut: Codable, Equatable {
         return keyCode
     }
 
-    static func normalizedModifierFlags(_ flags: NSEvent.ModifierFlags, forKeyCode keyCode: UInt16?) -> NSEvent.ModifierFlags {
+    static func normalizedModifierFlags(_ flags: NSEvent.ModifierFlags, forKeyCode keyCode: UInt16?)
+        -> NSEvent.ModifierFlags
+    {
         var normalizedFlags = flags.shortcutNormalized
 
         if let keyCode, isFunctionKeyCode(keyCode) {
@@ -158,7 +163,7 @@ struct Shortcut: Codable, Equatable {
         UInt16(kVK_RightOption),
         UInt16(kVK_Command),
         UInt16(kVK_RightCommand),
-        UInt16(kVK_Function)
+        UInt16(kVK_Function),
     ]
 
     private static let functionKeyCodes: Set<UInt16> = [
@@ -181,7 +186,7 @@ struct Shortcut: Codable, Equatable {
         UInt16(kVK_F17),
         UInt16(kVK_F18),
         UInt16(kVK_F19),
-        UInt16(kVK_F20)
+        UInt16(kVK_F20),
     ]
 
     private static func sideSpecificModifierName(for keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> String? {
@@ -227,7 +232,8 @@ struct Shortcut: Codable, Equatable {
 
     private static func characterForCurrentKeyboardLayout(keyCode: UInt16) -> String? {
         guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-              let layoutDataRef = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else {
+            let layoutDataRef = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+        else {
             return nil
         }
 
@@ -314,7 +320,7 @@ struct Shortcut: Codable, Equatable {
         UInt16(kVK_ANSI_Quote): "'",
         UInt16(kVK_ANSI_Comma): ",",
         UInt16(kVK_ANSI_Period): ".",
-        UInt16(kVK_ANSI_Slash): "/"
+        UInt16(kVK_ANSI_Slash): "/",
     ]
 
     private static let specialKeyNames: [UInt16: String] = [
@@ -368,7 +374,7 @@ struct Shortcut: Codable, Equatable {
         UInt16(kVK_ANSI_KeypadMinus): "Keypad -",
         UInt16(kVK_ANSI_KeypadPlus): "Keypad +",
         UInt16(kVK_ANSI_KeypadEnter): "Keypad Enter",
-        UInt16(kVK_ANSI_KeypadEquals): "Keypad ="
+        UInt16(kVK_ANSI_KeypadEquals): "Keypad =",
     ]
 }
 
@@ -411,7 +417,7 @@ private extension NSEvent.ModifierFlags {
             .option,
             .shift,
             .command,
-            .function
+            .function,
         ].filter { contains($0) }.count
     }
 

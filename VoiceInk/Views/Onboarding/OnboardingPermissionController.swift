@@ -39,8 +39,9 @@ final class OnboardingPermissionController {
 
     func reconcileActivePermission(with statuses: [OnboardingPermissionKind: OnboardingPermissionStatus]) {
         if let storedPermission = OnboardingPermissionKind(rawValue: coordinator.storedActivePermission),
-           !isLocked(storedPermission, statuses: statuses),
-           !storedPermission.isRequired || !(statuses[storedPermission] ?? diagnose(storedPermission)).isGranted {
+            !isLocked(storedPermission, statuses: statuses),
+            !storedPermission.isRequired || !(statuses[storedPermission] ?? diagnose(storedPermission)).isGranted
+        {
             return
         }
 

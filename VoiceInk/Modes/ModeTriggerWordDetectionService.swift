@@ -19,7 +19,8 @@ enum ModeTriggerWordDetectionService {
             for (wordIndex, word) in config.triggerWords.enumerated() {
                 let trimmed = word.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty else { continue }
-                candidates.append(Candidate(mode: config, triggerWord: trimmed, modeIndex: modeIndex, wordIndex: wordIndex))
+                candidates.append(
+                    Candidate(mode: config, triggerWord: trimmed, modeIndex: modeIndex, wordIndex: wordIndex))
             }
         }
 
@@ -51,7 +52,8 @@ enum ModeTriggerWordDetectionService {
     private static func stripLeading(from text: String, triggerWord: String) -> String? {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let range = trimmedText.range(of: triggerWord, options: .caseInsensitive),
-              range.lowerBound == trimmedText.startIndex else { return nil }
+            range.lowerBound == trimmedText.startIndex
+        else { return nil }
         let end = range.upperBound
         if end < trimmedText.endIndex {
             let next = trimmedText[end]
@@ -70,7 +72,8 @@ enum ModeTriggerWordDetectionService {
         let punctuation = CharacterSet(charactersIn: ",.!?;:")
         while let scalar = trimmedText.unicodeScalars.last, punctuation.contains(scalar) { trimmedText.removeLast() }
         guard let range = trimmedText.range(of: triggerWord, options: [.caseInsensitive, .backwards]),
-              range.upperBound == trimmedText.endIndex else { return nil }
+            range.upperBound == trimmedText.endIndex
+        else { return nil }
         let start = range.lowerBound
         if start > trimmedText.startIndex {
             let prev = trimmedText[trimmedText.index(before: start)]

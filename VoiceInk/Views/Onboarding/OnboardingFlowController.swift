@@ -19,7 +19,8 @@ final class OnboardingFlowController {
 
     func goToModelStep() {
         guard coordinator.requiredPermissionsGranted,
-              coordinator.hasSelectedOnboardingMicrophone else { return }
+            coordinator.hasSelectedOnboardingMicrophone
+        else { return }
         coordinator.storedStage = OnboardingStage.model.rawValue
     }
 
@@ -28,8 +29,9 @@ final class OnboardingFlowController {
         aiService: AIService
     ) {
         guard coordinator.requiredPermissionsGranted,
-              coordinator.hasSelectedOnboardingMicrophone,
-              isTranscriptionSetupReady else { return }
+            coordinator.hasSelectedOnboardingMicrophone,
+            isTranscriptionSetupReady
+        else { return }
         ensureDefaultOnboardingProvider()
         selectOnboardingProvider(coordinator.selectedOnboardingProvider, aiService: aiService)
         coordinator.storedStage = OnboardingStage.api.rawValue
@@ -60,7 +62,8 @@ final class OnboardingFlowController {
 
     func goToContextAwarenessStep(isTranscriptionSetupReady: Bool) {
         guard coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady),
-              coordinator.shouldShowContextAwarenessAfterCurrentExperience else {
+            coordinator.shouldShowContextAwarenessAfterCurrentExperience
+        else {
             return
         }
 
@@ -219,34 +222,36 @@ final class OnboardingFlowController {
             goToPermissionsStep()
         }
 
-        if coordinator.stage == .model &&
-            (!coordinator.requiredPermissionsGranted || !coordinator.hasSelectedOnboardingMicrophone) {
+        if coordinator.stage == .model
+            && (!coordinator.requiredPermissionsGranted || !coordinator.hasSelectedOnboardingMicrophone)
+        {
             goToFirstIncompleteSetupStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
         }
 
-        if coordinator.stage == .api &&
-            (!coordinator.requiredPermissionsGranted ||
-             !coordinator.hasSelectedOnboardingMicrophone ||
-             !isTranscriptionSetupReady) {
+        if coordinator.stage == .api
+            && (!coordinator.requiredPermissionsGranted || !coordinator.hasSelectedOnboardingMicrophone
+                || !isTranscriptionSetupReady)
+        {
             goToFirstIncompleteSetupStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
         }
 
-        if (coordinator.stage == .experience ||
-            coordinator.stage == .contextAwareness ||
-            coordinator.stage == .trust ||
-            coordinator.stage == .license) &&
-            !coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) {
+        if (coordinator.stage == .experience || coordinator.stage == .contextAwareness || coordinator.stage == .trust
+            || coordinator.stage == .license)
+            && !coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady)
+        {
             goToFirstIncompleteSetupStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
         }
 
-        if coordinator.stage == .experience &&
-            coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) &&
-            !coordinator.isExperienceModeInstalled {
+        if coordinator.stage == .experience
+            && coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady)
+            && !coordinator.isExperienceModeInstalled
+        {
             installCurrentExperienceMode(enhancementService: enhancementService)
         }
 
-        if coordinator.stage == .contextAwareness &&
-            coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) {
+        if coordinator.stage == .contextAwareness
+            && coordinator.isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady)
+        {
             activateCleanTranscriptionMode()
         }
     }
@@ -268,9 +273,10 @@ final class OnboardingFlowController {
         modelManager: FluidAudioModelManager
     ) {
         guard coordinator.requiredPermissionsGranted,
-              coordinator.hasSelectedOnboardingMicrophone,
-              !modelManager.isFluidAudioModelDownloaded(model),
-              !modelManager.isFluidAudioModelDownloading(model) else {
+            coordinator.hasSelectedOnboardingMicrophone,
+            !modelManager.isFluidAudioModelDownloaded(model),
+            !modelManager.isFluidAudioModelDownloading(model)
+        else {
             return
         }
 
@@ -302,8 +308,10 @@ final class OnboardingFlowController {
         isTranscriptionSetupReady: Bool,
         onComplete: () -> Void
     ) {
-        guard coordinator.stage == .license ||
-                coordinator.isCurrentExperienceReady(isTranscriptionSetupReady: isTranscriptionSetupReady) else {
+        guard
+            coordinator.stage == .license
+                || coordinator.isCurrentExperienceReady(isTranscriptionSetupReady: isTranscriptionSetupReady)
+        else {
             return
         }
 
@@ -363,9 +371,11 @@ final class OnboardingFlowController {
     }
 
     func selectOnboardingTranscriptionProvider(_ providerKey: String) {
-        guard coordinator.onboardingTranscriptionProviderOptions.contains(where: {
-            $0.providerKey.caseInsensitiveCompare(providerKey) == .orderedSame
-        }) else { return }
+        guard
+            coordinator.onboardingTranscriptionProviderOptions.contains(where: {
+                $0.providerKey.caseInsensitiveCompare(providerKey) == .orderedSame
+            })
+        else { return }
 
         coordinator.storedOnboardingTranscriptionProvider = providerKey
         refreshTranscriptionSetupVerification()
@@ -373,11 +383,13 @@ final class OnboardingFlowController {
 
     func ensureDefaultOnboardingProvider() {
         if let storedProvider = AIProvider(rawValue: coordinator.storedOnboardingAIProvider),
-           coordinator.onboardingProviderOptions.contains(storedProvider) {
+            coordinator.onboardingProviderOptions.contains(storedProvider)
+        {
             return
         }
 
-        let defaultProvider: AIProvider = coordinator.onboardingProviderOptions.contains(.groq)
+        let defaultProvider: AIProvider =
+            coordinator.onboardingProviderOptions.contains(.groq)
             ? .groq
             : coordinator.onboardingProviderOptions.first ?? .groq
         coordinator.storedOnboardingAIProvider = defaultProvider.rawValue
@@ -450,16 +462,16 @@ final class OnboardingFlowController {
         )
 
         coordinator.isExperienceModeInstalled =
-            StarterModeFactory.isInstalled(kind: coordinator.experienceModeTemplate.kind) &&
-            hasRequiredPrompts
+            StarterModeFactory.isInstalled(kind: coordinator.experienceModeTemplate.kind) && hasRequiredPrompts
         coordinator.hasExperienceModeShortcut = ShortcutStore.shortcut(for: coordinator.experienceShortcutAction) != nil
     }
 
     func clearExperienceShortcutForIntroIfNeeded() {
         guard coordinator.stage == .experience,
-              coordinator.isExperienceInIntroPhase,
-              coordinator.experienceStep.shouldClearShortcutOnIntro,
-              !coordinator.clearedExperienceShortcutActions.contains(coordinator.experienceShortcutAction) else {
+            coordinator.isExperienceInIntroPhase,
+            coordinator.experienceStep.shouldClearShortcutOnIntro,
+            !coordinator.clearedExperienceShortcutActions.contains(coordinator.experienceShortcutAction)
+        else {
             return
         }
 
@@ -471,7 +483,8 @@ final class OnboardingFlowController {
 
     func activateExperienceModeForDemo() {
         guard coordinator.stage == .experience,
-              let config = ModeManager.shared.getConfiguration(with: coordinator.experienceModeTemplate.id) else {
+            let config = ModeManager.shared.getConfiguration(with: coordinator.experienceModeTemplate.id)
+        else {
             return
         }
 
@@ -481,7 +494,8 @@ final class OnboardingFlowController {
 
     func activateCleanTranscriptionMode() {
         guard let cleanTemplate = StarterModeCatalog.templates.first(where: { $0.kind == .clean }),
-              let cleanConfig = ModeManager.shared.getConfiguration(with: cleanTemplate.id) else {
+            let cleanConfig = ModeManager.shared.getConfiguration(with: cleanTemplate.id)
+        else {
             return
         }
 
@@ -495,8 +509,9 @@ final class OnboardingFlowController {
 
     private func setDefaultStarterMode(_ kind: StarterModeKind) {
         guard let template = StarterModeCatalog.templates.first(where: { $0.kind == kind }),
-              ModeManager.shared.getConfiguration(with: template.id) != nil,
-              ModeManager.shared.getDefaultConfiguration()?.id != template.id else {
+            ModeManager.shared.getConfiguration(with: template.id) != nil,
+            ModeManager.shared.getDefaultConfiguration()?.id != template.id
+        else {
             return
         }
 

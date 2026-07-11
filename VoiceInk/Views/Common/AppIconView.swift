@@ -7,7 +7,7 @@ struct AppIconView: View {
                 .fill(AppTheme.Accent.fill)
                 .frame(width: 160, height: 160)
                 .blur(radius: 30)
-            
+
             if let image = NSImage(named: "AppIcon") {
                 Image(nsImage: image)
                     .resizable()

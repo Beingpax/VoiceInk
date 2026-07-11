@@ -14,7 +14,8 @@ final class LogExporter {
     private init() {
         var loadedDates: [Date] = []
         if let data = UserDefaults.standard.data(forKey: sessionsKey),
-           let dates = try? JSONDecoder().decode([Date].self, from: data) {
+            let dates = try? JSONDecoder().decode([Date].self, from: data)
+        {
             loadedDates = dates
         }
 
@@ -137,7 +138,9 @@ final class LogExporter {
         let fileName = "VoiceInk_Logs_\(timestamp).log"
 
         guard let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first else {
-            throw NSError(domain: "LogExporter", code: 1, userInfo: [NSLocalizedDescriptionKey: "Downloads directory unavailable"])
+            throw NSError(
+                domain: "LogExporter", code: 1, userInfo: [NSLocalizedDescriptionKey: "Downloads directory unavailable"]
+            )
         }
 
         let fileURL = downloadsURL.appendingPathComponent(fileName)

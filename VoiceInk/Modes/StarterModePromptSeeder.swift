@@ -39,7 +39,8 @@ enum StarterModePromptSeeder {
 
         return kinds.compactMap { kind in
             guard let promptId = StarterModeCatalog.templates.first(where: { $0.kind == kind })?.promptId,
-                  !seenPromptIds.contains(promptId) else {
+                !seenPromptIds.contains(promptId)
+            else {
                 return nil
             }
 

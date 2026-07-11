@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 struct XAIProvider: CloudProvider {
     let modelProvider: ModelProvider = .xai
@@ -8,25 +8,29 @@ struct XAIProvider: CloudProvider {
     let languageCodes: [String]? = [
         "ar", "cs", "da", "nl", "en", "fil", "fr", "de", "hi", "id",
         "it", "ja", "ko", "mk", "ms", "fa", "pl", "pt", "ro", "ru",
-        "es", "sv", "th", "tr", "vi"
+        "es", "sv", "th", "tr", "vi",
     ]
     let includesAutoDetect: Bool = true
 
-    var models: [CloudModel] {[
-        CloudModel(
-            name: "grok-stt",
-            displayName: "Grok",
-            description: "xAI's Grok speech-to-text with real-time streaming and batch transcription",
-            provider: .xai,
-            speed: 0.99,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportsStreaming: true,
-            supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .xai)
-        )
-    ]}
+    var models: [CloudModel] {
+        [
+            CloudModel(
+                name: "grok-stt",
+                displayName: "Grok",
+                description: "xAI's Grok speech-to-text with real-time streaming and batch transcription",
+                provider: .xai,
+                speed: 0.99,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .xai)
+            )
+        ]
+    }
 
-    func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]) async throws -> String {
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
         return try await XAIClient.transcribe(
             audioData: audioData,
             fileName: fileName,

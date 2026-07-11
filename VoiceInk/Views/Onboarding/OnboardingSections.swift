@@ -129,7 +129,9 @@ struct OnboardingBottomBar: View {
         Button(action: onPrimary) {
             Text(LocalizedStringKey(primaryTitle))
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(isPrimaryEnabled ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
+                .foregroundColor(
+                    isPrimaryEnabled ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground
+                )
                 .padding(.horizontal, Metrics.primaryButtonHorizontalPadding)
                 .frame(minWidth: Metrics.controlButtonWidth, minHeight: Metrics.buttonHeight)
                 .background(

@@ -32,8 +32,9 @@ final class LicenseManager {
     private(set) var trialStartDate: Date? {
         get {
             guard let data = keychain.getData(forKey: trialStartDateIdentifier, syncable: false),
-                  let timestamp = String(data: data, encoding: .utf8),
-                  let timeInterval = Double(timestamp) else {
+                let timestamp = String(data: data, encoding: .utf8),
+                let timeInterval = Double(timestamp)
+            else {
                 return nil
             }
             return Date(timeIntervalSince1970: timeInterval)

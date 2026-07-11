@@ -1,10 +1,10 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Native Apple Model Card View
 struct NativeAppleModelCardView: View {
     let model: NativeAppleModel
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
             // Main Content
@@ -14,24 +14,24 @@ struct NativeAppleModelCardView: View {
                 descriptionSection
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            
+
             // Action Controls
             actionSection
         }
         .padding(16)
         .background(AppMaterialCardBackground())
     }
-    
+
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(model.displayName)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color(.labelColor))
-            
+
             Spacer()
         }
     }
-    
+
     private var metadataSection: some View {
         HStack(spacing: 12) {
             // Native Apple
@@ -39,19 +39,19 @@ struct NativeAppleModelCardView: View {
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
-            
+
             // Language
             Label(model.language, systemImage: "globe")
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
-            
+
             // On-Device
             Label("On-Device", systemImage: "checkmark.shield")
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
-            
+
             // Requires macOS 26+
             Label("macOS 26+", systemImage: "macbook")
                 .font(.system(size: 11))
@@ -60,7 +60,7 @@ struct NativeAppleModelCardView: View {
         }
         .lineLimit(1)
     }
-    
+
     private var descriptionSection: some View {
         Text(model.description)
             .font(.system(size: 11))
@@ -69,10 +69,10 @@ struct NativeAppleModelCardView: View {
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 4)
     }
-    
+
     private var actionSection: some View {
         HStack(spacing: 8) {
             modelStatusPill("Built in", systemImage: "checkmark.circle")
         }
     }
-} 
+}

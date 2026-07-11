@@ -1,5 +1,5 @@
-import Foundation
 import CoreAudio
+import Foundation
 
 final class MediaController: ObservableObject {
 

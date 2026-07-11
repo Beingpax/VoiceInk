@@ -104,8 +104,9 @@ private struct HistoryPerformanceAnalysis {
 
         for transcription in transcriptions {
             if let modelName = Self.modelName(transcription.transcriptionModelName),
-               let duration = transcription.transcriptionDuration,
-               duration > 0 {
+                let duration = transcription.transcriptionDuration,
+                duration > 0
+            {
                 transcriptionStats[modelName, default: HistoryPerformanceAccumulator()].add(
                     processingDuration: duration,
                     audioDuration: transcription.duration
@@ -113,8 +114,9 @@ private struct HistoryPerformanceAnalysis {
             }
 
             if let modelName = Self.modelName(transcription.aiEnhancementModelName),
-               let duration = transcription.enhancementDuration,
-               duration > 0 {
+                let duration = transcription.enhancementDuration,
+                duration > 0
+            {
                 enhancementStats[modelName, default: HistoryPerformanceAccumulator()].add(
                     processingDuration: duration
                 )
@@ -152,7 +154,8 @@ private struct HistoryPerformanceAccumulator {
 
     func row(kind: HistoryPerformanceKind, name: String) -> HistoryPerformanceRowData {
         let averageProcessingDuration = sessionCount > 0 ? totalProcessingDuration / Double(sessionCount) : 0
-        let speedFactor = totalProcessingDuration > 0 && totalAudioDuration > 0 ? totalAudioDuration / totalProcessingDuration : nil
+        let speedFactor =
+            totalProcessingDuration > 0 && totalAudioDuration > 0 ? totalAudioDuration / totalProcessingDuration : nil
 
         return HistoryPerformanceRowData(
             name: name,

@@ -5,7 +5,7 @@ enum TranscriptionModelRegistry {
     static var models: [any TranscriptionModel] {
         return predefinedModels + CustomCloudModelManager.shared.customModels
     }
-    
+
     private static let predefinedModels: [any TranscriptionModel] = {
         let nonCloudModels: [any TranscriptionModel] = [
             // Native Apple Model
@@ -154,7 +154,7 @@ enum TranscriptionModelRegistry {
                 speed: 0.75,
                 accuracy: 0.94,
                 ramUsage: 1.0
-            )
+            ),
         ]
 
         let cloudModels: [any TranscriptionModel] = CloudProviderRegistry.allProviders.flatMap { $0.models }

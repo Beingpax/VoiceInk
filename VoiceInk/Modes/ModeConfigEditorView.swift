@@ -105,8 +105,9 @@ struct ModeConfigEditorView: View {
         draft.ensurePromptSelection(firstPromptId: snapshot.firstPromptId)
 
         if let selectedModelName = draft.selectedTranscriptionModelName,
-           let model = snapshot.transcriptionModel(named: selectedModelName),
-           model.provider != .gemini {
+            let model = snapshot.transcriptionModel(named: selectedModelName),
+            model.provider != .gemini
+        {
             draft.useCompatibleLanguage(for: model)
         }
     }

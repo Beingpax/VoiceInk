@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import Carbon
+import Foundation
 import os
 
 class CursorPaster {
@@ -50,11 +50,13 @@ class CursorPaster {
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
         let sessionID = UUID().uuidString
 
-        guard ClipboardManager.setClipboard(
-            text,
-            transient: shouldRestoreClipboard,
-            sessionID: shouldRestoreClipboard ? sessionID : nil
-        ) else {
+        guard
+            ClipboardManager.setClipboard(
+                text,
+                transient: shouldRestoreClipboard,
+                sessionID: shouldRestoreClipboard ? sessionID : nil
+            )
+        else {
             logger.error("Failed to prepare clipboard for paste")
             return .commandNotPosted
         }
@@ -107,7 +109,8 @@ class CursorPaster {
 
         Task { @MainActor in
             await wait(delay)
-            guard pasteboardStillOwnedByPasteSession(pasteboard, expectedText: expectedText, sessionID: sessionID) else {
+            guard pasteboardStillOwnedByPasteSession(pasteboard, expectedText: expectedText, sessionID: sessionID)
+            else {
                 return
             }
             pasteboard.clearContents()
@@ -122,8 +125,8 @@ class CursorPaster {
         expectedText: String,
         sessionID: String
     ) -> Bool {
-        pasteboard.string(forType: .string) == expectedText &&
-            pasteboard.string(forType: ClipboardManager.pasteSessionType) == sessionID
+        pasteboard.string(forType: .string) == expectedText
+            && pasteboard.string(forType: ClipboardManager.pasteSessionType) == sessionID
     }
 
     private static func pasteboardItems(from snapshot: ClipboardSnapshot) -> [NSPasteboardItem] {
@@ -147,8 +150,10 @@ class CursorPaster {
         return script
     }
 
-    private static let pasteScriptKeystroke = makeScript("tell application \"System Events\" to keystroke \"v\" using command down")
-    private static let pasteScriptKeyCode   = makeScript("tell application \"System Events\" to key code 9 using command down")
+    private static let pasteScriptKeystroke = makeScript(
+        "tell application \"System Events\" to keystroke \"v\" using command down")
+    private static let pasteScriptKeyCode = makeScript(
+        "tell application \"System Events\" to key code 9 using command down")
 
     @MainActor
     private static var layoutSwitchesToQWERTYOnCommand: Bool {
@@ -185,16 +190,17 @@ class CursorPaster {
         let source = CGEventSource(stateID: .privateState)
 
         guard let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true),
-              let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
-              let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false),
-              let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false) else {
+            let vDown = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: true),
+            let vUp = CGEvent(keyboardEventSource: source, virtualKey: 0x09, keyDown: false),
+            let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false)
+        else {
             logger.error("Failed to create Cmd+V keyboard events")
             return .commandNotPosted
         }
 
         cmdDown.flags = .maskCommand
-        vDown.flags   = .maskCommand
-        vUp.flags     = .maskCommand
+        vDown.flags = .maskCommand
+        vUp.flags = .maskCommand
 
         cmdDown.post(tap: .cghidEventTap)
         await wait(pasteShortcutEventDelay)
@@ -221,17 +227,17 @@ class CursorPaster {
 
         let source = CGEventSource(stateID: .privateState)
         let enterDown = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: true)
-        let enterUp   = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: false)
+        let enterUp = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: false)
 
         switch key {
         case .none: return
         case .enter: break
         case .shiftEnter:
             enterDown?.flags = .maskShift
-            enterUp?.flags   = .maskShift
+            enterUp?.flags = .maskShift
         case .commandEnter:
             enterDown?.flags = .maskCommand
-            enterUp?.flags   = .maskCommand
+            enterUp?.flags = .maskCommand
         }
 
         enterDown?.post(tap: .cghidEventTap)

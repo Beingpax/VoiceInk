@@ -191,9 +191,9 @@ struct CustomTranscriptionModelEditorPanel: View {
     }
 
     private var canTestConnection: Bool {
-        !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func resetConnectionTest() {
@@ -230,12 +230,20 @@ struct CustomTranscriptionModelEditorPanel: View {
                 VStack(alignment: .leading, spacing: 18) {
                     CustomModelEditorSection(title: "Details") {
                         VStack(spacing: 10) {
-                            CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Custom Model"), text: $displayName)
-                            CustomModelTextField(label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions", text: $apiEndpoint)
-                            CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
-                            CustomModelTextField(label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
+                            CustomModelTextField(
+                                label: "Display Name", placeholder: String(localized: "My Custom Model"),
+                                text: $displayName)
+                            CustomModelTextField(
+                                label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions",
+                                text: $apiEndpoint)
+                            CustomModelTextField(
+                                label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey,
+                                isSecure: true)
+                            CustomModelTextField(
+                                label: "Model Name", placeholder: "gpt-4o-mini-transcribe", text: $modelName)
                             CustomModelToggleRow(title: "Multilingual Model", isOn: $isMultilingual)
-                            ConnectionTestRow(state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
+                            ConnectionTestRow(
+                                state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
                         }
                     }
 
@@ -264,10 +272,10 @@ struct CustomTranscriptionModelEditorPanel: View {
     }
 
     private var canSave: Bool {
-        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !apiEndpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func loadModel() {
@@ -353,7 +361,9 @@ struct CustomTranscriptionModelEditorPanel: View {
         CustomModelEditorHeader(title: title, onClose: onClose)
     }
 
-    private func editorFooter(primaryTitle: LocalizedStringKey, isPrimaryDisabled: Bool, primaryAction: @escaping () -> Void) -> some View {
+    private func editorFooter(
+        primaryTitle: LocalizedStringKey, isPrimaryDisabled: Bool, primaryAction: @escaping () -> Void
+    ) -> some View {
         CustomModelEditorFooter(
             primaryTitle: primaryTitle,
             isPrimaryDisabled: isPrimaryDisabled,
@@ -383,9 +393,9 @@ struct CustomEnhancementModelEditorPanel: View {
     }
 
     private var canTestConnection: Bool {
-        !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func resetConnectionTest() {
@@ -425,11 +435,18 @@ struct CustomEnhancementModelEditorPanel: View {
                 VStack(alignment: .leading, spacing: 18) {
                     CustomModelEditorSection(title: "Details") {
                         VStack(spacing: 10) {
-                            CustomModelTextField(label: "Display Name", placeholder: String(localized: "My Enhancement Model"), text: $displayName)
-                            CustomModelTextField(label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions", text: $baseURL)
-                            CustomModelTextField(label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey, isSecure: true)
+                            CustomModelTextField(
+                                label: "Display Name", placeholder: String(localized: "My Enhancement Model"),
+                                text: $displayName)
+                            CustomModelTextField(
+                                label: "Base URL", placeholder: "https://api.openai.com/v1/chat/completions",
+                                text: $baseURL)
+                            CustomModelTextField(
+                                label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey,
+                                isSecure: true)
                             CustomModelTextField(label: "Model Name", placeholder: "gpt-5.5", text: $modelName)
-                            ConnectionTestRow(state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
+                            ConnectionTestRow(
+                                state: connectionTest, isDisabled: !canTestConnection, action: runConnectionTest)
                         }
                     }
 
@@ -459,10 +476,10 @@ struct CustomEnhancementModelEditorPanel: View {
     }
 
     private var canSave: Bool {
-        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !modelName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func loadProvider() {
@@ -783,116 +800,118 @@ private struct CustomModelEditorFooter: View {
 }
 
 #if DEBUG
-private enum CustomModelsPreviewPanel {
-    case transcription
-    case enhancement
-}
+    private enum CustomModelsPreviewPanel {
+        case transcription
+        case enhancement
+    }
 
-private struct CustomModelsSidePanelPreview: View {
-    @State private var activePanel: CustomModelsPreviewPanel? = .transcription
+    private struct CustomModelsSidePanelPreview: View {
+        @State private var activePanel: CustomModelsPreviewPanel? = .transcription
 
-    private var isPanelOpen: Binding<Bool> {
-        Binding(
-            get: { activePanel != nil },
-            set: { if !$0 { activePanel = nil } }
+        private var isPanelOpen: Binding<Bool> {
+            Binding(
+                get: { activePanel != nil },
+                set: { if !$0 { activePanel = nil } }
+            )
+        }
+
+        var body: some View {
+            VStack(spacing: 0) {
+                AppScreenHeader(title: "Model Catalog") {
+                    AppIconButton(systemName: "plus.circle.fill", help: "Add custom model") {
+                        activePanel = .transcription
+                    }
+                }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        customSectionHeader(
+                            title: "Custom Transcription Models",
+                            subtitle: "Supports any provider that uses the same API format as OpenAI transcription.",
+                            action: { activePanel = .transcription }
+                        )
+
+                        CustomModelCardView(
+                            model: Self.sampleTranscriptionModel,
+                            deleteAction: {},
+                            editAction: { _ in activePanel = .transcription }
+                        )
+
+                        customSectionHeader(
+                            title: "Custom Enhancement Models",
+                            subtitle: "Supports any provider that uses the same API format as OpenAI chat completion.",
+                            action: { activePanel = .enhancement }
+                        )
+
+                        CustomEnhancementModelRow(
+                            provider: Self.sampleEnhancementProvider,
+                            onEdit: { activePanel = .enhancement },
+                            onDelete: {}
+                        )
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            }
+            .frame(width: 920, height: 640)
+            .background(AppTheme.Surface.window)
+            .sidePanel(isPresented: isPanelOpen) {
+                panelContent
+            }
+        }
+
+        @ViewBuilder
+        private var panelContent: some View {
+            switch activePanel {
+            case .transcription:
+                CustomTranscriptionModelEditorPanel(
+                    editingModel: Self.sampleTranscriptionModel,
+                    customModelManager: .shared,
+                    onClose: { activePanel = nil },
+                    onSave: { activePanel = nil }
+                )
+            case .enhancement:
+                CustomEnhancementModelEditorPanel(
+                    editingProvider: Self.sampleEnhancementProvider,
+                    manager: .shared,
+                    onClose: { activePanel = nil },
+                    onSave: { activePanel = nil }
+                )
+            case nil:
+                EmptyView()
+            }
+        }
+
+        private func customSectionHeader(
+            title: LocalizedStringKey, subtitle: LocalizedStringKey, action: @escaping () -> Void
+        ) -> some View {
+            HStack(alignment: .top, spacing: 12) {
+                ProviderSectionHeader(title: title, subtitle: subtitle)
+
+                Spacer()
+
+                AddIconButton(helpText: "Add model", action: action)
+            }
+        }
+
+        private static let sampleTranscriptionModel = CustomCloudModel(
+            name: "acme-transcribe",
+            displayName: "Acme Transcribe",
+            description: "OpenAI-compatible transcription endpoint for previewing custom model cards.",
+            apiEndpoint: "https://api.example.com/v1/audio/transcriptions",
+            modelName: "acme-transcribe-large",
+            isMultilingual: true
+        )
+
+        private static let sampleEnhancementProvider = CustomAIProviderConfig(
+            name: "Acme Enhance",
+            baseURL: "https://api.example.com/v1/chat/completions",
+            models: ["acme-enhance-pro"],
+            selectedModel: "acme-enhance-pro"
         )
     }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            AppScreenHeader(title: "Model Catalog") {
-                AppIconButton(systemName: "plus.circle.fill", help: "Add custom model") {
-                    activePanel = .transcription
-                }
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    customSectionHeader(
-                        title: "Custom Transcription Models",
-                        subtitle: "Supports any provider that uses the same API format as OpenAI transcription.",
-                        action: { activePanel = .transcription }
-                    )
-
-                    CustomModelCardView(
-                        model: Self.sampleTranscriptionModel,
-                        deleteAction: {},
-                        editAction: { _ in activePanel = .transcription }
-                    )
-
-                    customSectionHeader(
-                        title: "Custom Enhancement Models",
-                        subtitle: "Supports any provider that uses the same API format as OpenAI chat completion.",
-                        action: { activePanel = .enhancement }
-                    )
-
-                    CustomEnhancementModelRow(
-                        provider: Self.sampleEnhancementProvider,
-                        onEdit: { activePanel = .enhancement },
-                        onDelete: {}
-                    )
-                }
-                .padding(24)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-        }
-        .frame(width: 920, height: 640)
-        .background(AppTheme.Surface.window)
-        .sidePanel(isPresented: isPanelOpen) {
-            panelContent
-        }
+    #Preview("Custom AI Models - Side Panel") {
+        CustomModelsSidePanelPreview()
     }
-
-    @ViewBuilder
-    private var panelContent: some View {
-        switch activePanel {
-        case .transcription:
-            CustomTranscriptionModelEditorPanel(
-                editingModel: Self.sampleTranscriptionModel,
-                customModelManager: .shared,
-                onClose: { activePanel = nil },
-                onSave: { activePanel = nil }
-            )
-        case .enhancement:
-            CustomEnhancementModelEditorPanel(
-                editingProvider: Self.sampleEnhancementProvider,
-                manager: .shared,
-                onClose: { activePanel = nil },
-                onSave: { activePanel = nil }
-            )
-        case nil:
-            EmptyView()
-        }
-    }
-
-    private func customSectionHeader(title: LocalizedStringKey, subtitle: LocalizedStringKey, action: @escaping () -> Void) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ProviderSectionHeader(title: title, subtitle: subtitle)
-
-            Spacer()
-
-            AddIconButton(helpText: "Add model", action: action)
-        }
-    }
-
-    private static let sampleTranscriptionModel = CustomCloudModel(
-        name: "acme-transcribe",
-        displayName: "Acme Transcribe",
-        description: "OpenAI-compatible transcription endpoint for previewing custom model cards.",
-        apiEndpoint: "https://api.example.com/v1/audio/transcriptions",
-        modelName: "acme-transcribe-large",
-        isMultilingual: true
-    )
-
-    private static let sampleEnhancementProvider = CustomAIProviderConfig(
-        name: "Acme Enhance",
-        baseURL: "https://api.example.com/v1/chat/completions",
-        models: ["acme-enhance-pro"],
-        selectedModel: "acme-enhance-pro"
-    )
-}
-
-#Preview("Custom AI Models - Side Panel") {
-    CustomModelsSidePanelPreview()
-}
 #endif

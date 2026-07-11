@@ -5,19 +5,21 @@ typealias InstalledAppInfo = (url: URL, name: String, bundleId: String, icon: NS
 
 enum InstalledApps {
     static func load() -> [InstalledAppInfo] {
-        let appDirectories = FileManager.default.urls(for: .applicationDirectory, in: .userDomainMask) +
-            FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask) +
-            FileManager.default.urls(for: .applicationDirectory, in: .systemDomainMask)
+        let appDirectories =
+            FileManager.default.urls(for: .applicationDirectory, in: .userDomainMask)
+            + FileManager.default.urls(for: .applicationDirectory, in: .localDomainMask)
+            + FileManager.default.urls(for: .applicationDirectory, in: .systemDomainMask)
 
         var appURLs: [URL] = []
 
         func scanDirectory(_ baseURL: URL, depth: Int = 0) {
             guard depth < 5,
-                  let enumerator = FileManager.default.enumerator(
+                let enumerator = FileManager.default.enumerator(
                     at: baseURL,
                     includingPropertiesForKeys: [.isApplicationKey, .isDirectoryKey, .isSymbolicLinkKey],
                     options: [.skipsHiddenFiles]
-                  ) else { return }
+                )
+            else { return }
 
             for item in enumerator {
                 guard let url = item as? URL else { continue }
@@ -31,8 +33,9 @@ enum InstalledApps {
 
                 var isDirectory: ObjCBool = false
                 if url != resolvedURL,
-                   FileManager.default.fileExists(atPath: resolvedURL.path, isDirectory: &isDirectory),
-                   isDirectory.boolValue {
+                    FileManager.default.fileExists(atPath: resolvedURL.path, isDirectory: &isDirectory),
+                    isDirectory.boolValue
+                {
                     enumerator.skipDescendants()
                     scanDirectory(resolvedURL, depth: depth + 1)
                 }
@@ -45,9 +48,10 @@ enum InstalledApps {
 
         let apps: [InstalledAppInfo] = appURLs.compactMap { url in
             guard let bundle = Bundle(url: url),
-                  let bundleId = bundle.bundleIdentifier,
-                  let name = (bundle.infoDictionary?["CFBundleName"] as? String) ??
-                    (bundle.infoDictionary?["CFBundleDisplayName"] as? String) else {
+                let bundleId = bundle.bundleIdentifier,
+                let name = (bundle.infoDictionary?["CFBundleName"] as? String)
+                    ?? (bundle.infoDictionary?["CFBundleDisplayName"] as? String)
+            else {
                 return nil
             }
 

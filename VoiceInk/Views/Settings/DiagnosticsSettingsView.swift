@@ -33,7 +33,7 @@ struct DiagnosticsSettingsView: View {
             }
         }
         .alert("Export Failed", isPresented: $showLogExportError) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(logExportError)
         }

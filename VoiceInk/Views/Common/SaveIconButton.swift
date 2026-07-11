@@ -47,7 +47,8 @@ struct SaveIconButton: View {
     }
 
     private func generateFileName() -> String {
-        let cleanedText = textToSave
+        let cleanedText =
+            textToSave
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
@@ -70,11 +71,11 @@ struct SaveIconButton: View {
     private func formatAsMarkdown(_ text: String) -> String {
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short)
         return """
-        # Transcription
+            # Transcription
 
-        **Date:** \(timestamp)
+            **Date:** \(timestamp)
 
-        \(text)
-        """
+            \(text)
+            """
     }
 }

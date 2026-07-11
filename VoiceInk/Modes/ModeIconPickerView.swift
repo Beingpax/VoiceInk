@@ -65,7 +65,7 @@ struct ModeIconPickerView: View {
                             icon: .symbol(symbol),
                             isSelected: selectedIcon == .symbol(symbol),
                             isRemovable: false,
-                            removeAction: { }
+                            removeAction: {}
                         ) {
                             selectedIcon = .symbol(symbol)
                             inputFeedbackMessage = ""
@@ -137,7 +137,8 @@ struct ModeIconPickerView: View {
                     attemptAddCustomEmoji()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(newEmojiText.isEmpty || !newEmojiText.isValidEmoji || emojiManager.allEmojis.contains(newEmojiText))
+                .disabled(
+                    newEmojiText.isEmpty || !newEmojiText.isValidEmoji || emojiManager.allEmojis.contains(newEmojiText))
 
                 Button("Cancel") {
                     isAddingCustomEmoji = false
@@ -191,7 +192,8 @@ struct ModeIconPickerView: View {
         guard canRemoveEmoji(emoji) else { return }
 
         if emojiManager.removeCustomEmoji(emoji),
-           selectedIcon == .emoji(emoji) {
+            selectedIcon == .emoji(emoji)
+        {
             selectedIcon = .defaultIcon
         }
     }
@@ -215,7 +217,9 @@ private struct ModeIconButton: View {
                     )
                     .overlay(
                         Circle()
-                            .strokeBorder(isSelected ? AppTheme.Accent.primary : Color.gray.opacity(0.25), lineWidth: isSelected ? 2 : 1)
+                            .strokeBorder(
+                                isSelected ? AppTheme.Accent.primary : Color.gray.opacity(0.25),
+                                lineWidth: isSelected ? 2 : 1)
                     )
             }
             .buttonStyle(.plain)
@@ -276,13 +280,13 @@ extension String {
 }
 
 #if DEBUG
-struct ModeIconPickerView_Previews: PreviewProvider {
-    static var previews: some View {
-        ModeIconPickerView(
-            selectedIcon: .constant(.defaultIcon),
-            isPresented: .constant(true)
-        )
-        .environmentObject(EmojiManager.shared)
+    struct ModeIconPickerView_Previews: PreviewProvider {
+        static var previews: some View {
+            ModeIconPickerView(
+                selectedIcon: .constant(.defaultIcon),
+                isPresented: .constant(true)
+            )
+            .environmentObject(EmojiManager.shared)
+        }
     }
-}
 #endif

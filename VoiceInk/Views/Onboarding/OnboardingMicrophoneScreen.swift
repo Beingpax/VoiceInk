@@ -175,19 +175,22 @@ struct OnboardingMicrophoneScreen: View {
         guard selectedDevice == nil else { return }
 
         if let savedDeviceID = audioDeviceManager.selectedDeviceID,
-           let savedDevice = devices.first(where: { $0.id == savedDeviceID }) {
+            let savedDevice = devices.first(where: { $0.id == savedDeviceID })
+        {
             selectedDeviceUID = savedDevice.uid
             return
         }
 
         if let savedDeviceUID = UserDefaults.standard.selectedAudioDeviceUID,
-           let savedDevice = devices.first(where: { $0.uid == savedDeviceUID }) {
+            let savedDevice = devices.first(where: { $0.uid == savedDeviceUID })
+        {
             selectedDeviceUID = savedDevice.uid
             return
         }
 
         if let defaultDeviceID = audioDeviceManager.getSystemDefaultDevice(),
-           let defaultDevice = devices.first(where: { $0.id == defaultDeviceID }) {
+            let defaultDevice = devices.first(where: { $0.id == defaultDeviceID })
+        {
             selectedDeviceUID = defaultDevice.uid
             return
         }

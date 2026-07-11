@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 import UniformTypeIdentifiers
 
 struct AudioTranscribeView: View {
@@ -146,8 +146,8 @@ struct AudioTranscribeView: View {
         HStack(spacing: 10) {
             let count = transcriptionManager.queue.count
             Text(String(localized: "\(count) files"))
-            .font(.subheadline)
-            .foregroundColor(.secondary)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
 
             Button {
                 selectFiles()
@@ -361,7 +361,7 @@ struct AudioTranscribeView: View {
             UTType.audio.identifier,
             UTType.movie.identifier,
             UTType.data.identifier,
-            "public.file-url"
+            "public.file-url",
         ]
 
         for provider in providers {
@@ -381,7 +381,8 @@ struct AudioTranscribeView: View {
                             if let url = URL(dataRepresentation: data, relativeTo: nil) {
                                 fileURL = url
                             } else if let urlString = String(data: data, encoding: .utf8),
-                                      let url = URL(string: urlString) {
+                                let url = URL(string: urlString)
+                            {
                                 fileURL = url
                             }
                         } else if let urlString = item as? String {

@@ -5,7 +5,9 @@ enum TranscriptionLanguageSupport {
         model.supportedLanguages
     }
 
-    static func validLanguageOrFallback(_ language: String?, for model: any TranscriptionModel, realtimeEnabled: Bool? = nil) -> String {
+    static func validLanguageOrFallback(
+        _ language: String?, for model: any TranscriptionModel, realtimeEnabled: Bool? = nil
+    ) -> String {
         let languages = languages(for: model, realtimeEnabled: realtimeEnabled)
 
         if let language, languages[language] != nil {
@@ -43,7 +45,7 @@ enum LanguageDictionary {
         "my", "ne", "nl", "nn", "no", "oc", "pa", "pl", "ps", "pt",
         "ro", "ru", "sa", "sd", "si", "sk", "sl", "sn", "so", "sq",
         "sr", "su", "sv", "sw", "ta", "te", "tg", "th", "tk", "tl",
-        "tr", "tt", "uk", "ur", "uz", "vi", "yi", "yo", "yue", "zh"
+        "tr", "tt", "uk", "ur", "uz", "vi", "yi", "yo", "yue", "zh",
     ]
 
     static func forProvider(isMultilingual: Bool, provider: ModelProvider = .whisper) -> [String: String] {
@@ -69,7 +71,7 @@ enum LanguageDictionary {
             let codes = [
                 "bg", "cs", "da", "de", "el", "en", "es", "et", "fi", "fr",
                 "hr", "hu", "it", "lt", "lv", "mt", "nl", "pl", "pt", "ro",
-                "ru", "sk", "sl", "sv", "uk"
+                "ru", "sk", "sl", "sv", "uk",
             ]
             var filtered = all.filter { codes.contains($0.key) }
             filtered["auto"] = "Auto-detect"
@@ -164,7 +166,7 @@ enum LanguageDictionary {
         "yue-CN": "Cantonese (China mainland)",
         "zh-CN": "Chinese (China mainland)",
         "zh-HK": "Chinese (Hong Kong)",
-        "zh-TW": "Chinese (Taiwan)"
+        "zh-TW": "Chinese (Taiwan)",
     ]
 
     static let all: [String: String] = [
@@ -286,6 +288,6 @@ enum LanguageDictionary {
         "yo": "Yoruba",
         "yue": "Cantonese",
         "zh": "Chinese",
-        "zu": "Zulu"
+        "zu": "Zulu",
     ]
 }

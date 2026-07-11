@@ -98,7 +98,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                     self.streamingService.cancel()
                     return
                 }
-                self.logger.notice("Streaming session connected model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s")
+                self.logger.notice(
+                    "Streaming session connected model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s"
+                )
             } catch is CancellationError {
                 self.streamingService.cancel()
             } catch {
@@ -122,7 +124,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                 let start = Date()
                 logger.notice("Streaming stop/transcribe started model=\(model.displayName, privacy: .public)")
                 let text = try await streamingService.stopAndGetFinalText()
-                logger.notice("Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)")
+                logger.notice(
+                    "Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
+                )
                 return text
             } catch {
                 logger.error("❌ Streaming failed, falling back to batch: \(error, privacy: .public)")
@@ -139,9 +143,13 @@ final class StreamingTranscriptionSession: TranscriptionSession {
         }
 
         let fallbackStart = Date()
-        logger.notice("Using batch fallback for \(model.displayName, privacy: .public) file=\(audioURL.lastPathComponent, privacy: .public)")
+        logger.notice(
+            "Using batch fallback for \(model.displayName, privacy: .public) file=\(audioURL.lastPathComponent, privacy: .public)"
+        )
         let text = try await fallbackService.transcribe(audioURL: audioURL, model: model, context: context)
-        logger.notice("Batch fallback completed elapsed=\(Date().timeIntervalSince(fallbackStart), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)")
+        logger.notice(
+            "Batch fallback completed elapsed=\(Date().timeIntervalSince(fallbackStart), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
+        )
         return text
     }
 

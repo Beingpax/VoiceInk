@@ -23,7 +23,8 @@ extension ModeManager {
             var changedConfig = false
 
             if config.selectedTranscriptionModelName == nil {
-                config.selectedTranscriptionModelName = UserDefaults.standard.string(forKey: "CurrentTranscriptionModel")
+                config.selectedTranscriptionModelName = UserDefaults.standard.string(
+                    forKey: "CurrentTranscriptionModel")
                 changedConfig = true
             }
 
@@ -38,7 +39,8 @@ extension ModeManager {
             }
 
             if config.selectedAIModel == nil,
-               let provider = config.selectedAIProvider {
+                let provider = config.selectedAIProvider
+            {
                 config.selectedAIModel = UserDefaults.standard.string(forKey: "\(provider)SelectedModel")
                 changedConfig = true
             }
@@ -68,14 +70,16 @@ extension ModeManager {
             let newShortcutKey = ShortcutAction.mode(config.id).userDefaultsKey
 
             if defaults.object(forKey: newShortcutKey) == nil,
-               let oldShortcutData = defaults.data(forKey: oldShortcutKey) {
+                let oldShortcutData = defaults.data(forKey: oldShortcutKey)
+            {
                 defaults.set(oldShortcutData, forKey: newShortcutKey)
             }
 
             let oldClearedKey = "\(oldShortcutKey)_cleared"
             let newClearedKey = "\(newShortcutKey)_cleared"
             if defaults.object(forKey: newClearedKey) == nil,
-               defaults.object(forKey: oldClearedKey) != nil {
+                defaults.object(forKey: oldClearedKey) != nil
+            {
                 defaults.set(defaults.bool(forKey: oldClearedKey), forKey: newClearedKey)
             }
         }

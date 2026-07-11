@@ -46,7 +46,8 @@ private struct DashboardTranscriptCardRow: View {
 
     private var displayText: String {
         if let enhancedText = transcription.enhancedText,
-           Self.isUsableEnhancedText(enhancedText) {
+            Self.isUsableEnhancedText(enhancedText)
+        {
             return enhancedText
         }
 
@@ -59,7 +60,8 @@ private struct DashboardTranscriptCardRow: View {
 
     private var modeIcon: ModeIcon {
         guard let iconValue = transcription.modeEmoji?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !iconValue.isEmpty else {
+            !iconValue.isEmpty
+        else {
             return .symbol("doc.text")
         }
 
@@ -143,7 +145,8 @@ private struct DashboardTranscriptCardRow: View {
     }
 
     private static func isLikelySymbolName(_ value: String) -> Bool {
-        let symbolNameCharacters = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._")
+        let symbolNameCharacters = CharacterSet(
+            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._")
 
         return value.unicodeScalars.allSatisfy { scalar in
             symbolNameCharacters.contains(scalar)

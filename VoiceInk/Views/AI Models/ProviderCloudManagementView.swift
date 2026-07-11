@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct CloudProviderManagementView: View {
     let selectedProviderID: String?
@@ -13,7 +13,7 @@ struct CloudProviderManagementView: View {
             .gemini,
             .groq,
             .mistral,
-            .cerebras
+            .cerebras,
         ]
 
         var descriptors = enhancementProviders.map { aiProvider in
@@ -43,7 +43,7 @@ struct CloudProviderManagementView: View {
 
         let preferredOrder = [
             "Groq", "Cerebras", "Gemini", "OpenAI", "OpenRouter", "Anthropic", "Mistral",
-            "Deepgram", "ElevenLabs", "Soniox", "Speechmatics", "AssemblyAI", "xAI", "Cartesia"
+            "Deepgram", "ElevenLabs", "Soniox", "Speechmatics", "AssemblyAI", "xAI", "Cartesia",
         ]
 
         return descriptors.sorted { first, second in
@@ -214,14 +214,16 @@ private struct ProviderListRow: View {
 
     private func transcriptionModelCountText(_ count: Int) -> String {
         String.localizedStringWithFormat(
-            NSLocalizedString("%lld Transcription models", comment: "Number of transcription models available for a provider."),
+            NSLocalizedString(
+                "%lld Transcription models", comment: "Number of transcription models available for a provider."),
             Int64(count)
         )
     }
 
     private func enhancementModelCountText(_ count: Int) -> String {
         String.localizedStringWithFormat(
-            NSLocalizedString("%lld Enhancement models", comment: "Number of enhancement models available for a provider."),
+            NSLocalizedString(
+                "%lld Enhancement models", comment: "Number of enhancement models available for a provider."),
             Int64(count)
         )
     }

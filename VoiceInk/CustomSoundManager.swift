@@ -1,5 +1,5 @@
-import Foundation
 import AVFoundation
+import Foundation
 import SwiftUI
 
 class CustomSoundManager: ObservableObject {
@@ -30,8 +30,8 @@ class CustomSoundManager: ObservableObject {
         }
 
         var bundleURL: URL? {
-            Bundle.main.url(forResource: rawValue, withExtension: fileExtension) ??
-                Bundle.main.url(forResource: rawValue, withExtension: fileExtension, subdirectory: "Sounds")
+            Bundle.main.url(forResource: rawValue, withExtension: fileExtension)
+                ?? Bundle.main.url(forResource: rawValue, withExtension: fileExtension, subdirectory: "Sounds")
         }
 
         private var number: Int {
@@ -176,7 +176,8 @@ class CustomSoundManager: ObservableObject {
 
     private static func savedBuiltInSound(for type: SoundType) -> BuiltInSound {
         if let rawValue = UserDefaults.standard.string(forKey: type.builtInSoundKey),
-           let sound = BuiltInSound(rawValue: rawValue) {
+            let sound = BuiltInSound(rawValue: rawValue)
+        {
             return sound
         }
 
@@ -184,7 +185,8 @@ class CustomSoundManager: ObservableObject {
     }
 
     private func customSoundsDirectory() -> URL? {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        else {
             return nil
         }
         return appSupport.appendingPathComponent("VoiceInk/CustomSounds")
@@ -200,7 +202,8 @@ class CustomSoundManager: ObservableObject {
 
     func getCustomSoundURL(for type: SoundType) -> URL? {
         guard case .custom(let filename) = soundSelection(for: type),
-              let directory = customSoundsDirectory() else {
+            let directory = customSoundsDirectory()
+        else {
             return nil
         }
         return directory.appendingPathComponent(filename)
@@ -406,7 +409,11 @@ enum CustomSoundError: LocalizedError {
         case .invalidAudioFile:
             return String(localized: "Invalid audio file format")
         case .durationTooLong(let duration, let maxDuration):
-            return String(format: String(localized: "Audio file is %.1f seconds long. Please use an audio file that is %.0f seconds or shorter for start and stop sounds."), duration, maxDuration)
+            return String(
+                format: String(
+                    localized:
+                        "Audio file is %.1f seconds long. Please use an audio file that is %.0f seconds or shorter for start and stop sounds."
+                ), duration, maxDuration)
         case .directoryCreationFailed:
             return String(localized: "Failed to create custom sounds directory")
         case .fileCopyFailed:

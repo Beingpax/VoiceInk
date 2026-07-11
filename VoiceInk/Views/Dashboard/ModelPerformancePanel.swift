@@ -66,7 +66,8 @@ private struct ModelPerformancePanelContent: View {
                     name: summary.name,
                     kind: .transcription,
                     averageProcessingTime: summary.averageProcessingDuration ?? 0,
-                    averageLatencyText: Formatters.formattedPreciseDuration(summary.averageProcessingDuration ?? 0, fallback: "-"),
+                    averageLatencyText: Formatters.formattedPreciseDuration(
+                        summary.averageProcessingDuration ?? 0, fallback: "-"),
                     detail: summary.averageSpeedFactor.flatMap { speedFactor in
                         speedFactor > 0 ? String(format: String(localized: "%.1fx realtime"), speedFactor) : nil
                     }
@@ -83,7 +84,8 @@ private struct ModelPerformancePanelContent: View {
                     name: summary.name,
                     kind: .enhancement,
                     averageProcessingTime: summary.averageProcessingDuration ?? 0,
-                    averageLatencyText: Formatters.formattedPreciseDuration(summary.averageProcessingDuration ?? 0, fallback: "-"),
+                    averageLatencyText: Formatters.formattedPreciseDuration(
+                        summary.averageProcessingDuration ?? 0, fallback: "-"),
                     detail: nil
                 )
             }

@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 import UniformTypeIdentifiers
 
 enum ModelFilter: String, CaseIterable, Identifiable {
@@ -101,10 +101,12 @@ struct ModelManagementView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 600, minHeight: 500)
-        .sidePanel(isPresented: .init(
-            get: { isPanelOpen },
-            set: { if !$0 { closePanel() } }
-        )) {
+        .sidePanel(
+            isPresented: .init(
+                get: { isPanelOpen },
+                set: { if !$0 { closePanel() } }
+            )
+        ) {
             modelPanelContent
         }
         .alert(isPresented: $isShowingDeleteAlert) {
@@ -175,8 +177,8 @@ struct ModelManagementView: View {
                     selectedProviderID: selectedCloudProviderID,
                     onSelectProvider: openCloudProviderPanel
                 )
-                    .environmentObject(aiService)
-                    .environmentObject(transcriptionModelManager)
+                .environmentObject(aiService)
+                .environmentObject(transcriptionModelManager)
             case .custom:
                 CustomProviderManagementView(
                     customModelManager: customModelManager,
@@ -241,9 +243,10 @@ struct ModelManagementView: View {
     private var localModelsSection: some View {
         VStack(spacing: 12) {
             ForEach(localModels, id: \.id) { model in
-                let isWarming = (model as? WhisperModel).map { whisperModel in
-                    warmupCoordinator.isWarming(modelNamed: whisperModel.name)
-                } ?? false
+                let isWarming =
+                    (model as? WhisperModel).map { whisperModel in
+                        warmupCoordinator.isWarming(modelNamed: whisperModel.name)
+                    } ?? false
 
                 ModelCardView(
                     model: model,

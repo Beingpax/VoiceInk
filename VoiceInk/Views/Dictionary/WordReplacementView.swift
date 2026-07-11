@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 enum SortMode: String {
     case originalAsc = "originalAsc"
@@ -26,7 +26,8 @@ struct WordReplacementView: View {
 
     init() {
         if let savedSort = UserDefaults.standard.string(forKey: "wordReplacementSortMode"),
-           let mode = SortMode(rawValue: savedSort) {
+            let mode = SortMode(rawValue: savedSort)
+        {
             _sortMode = State(initialValue: mode)
         }
     }
@@ -34,16 +35,24 @@ struct WordReplacementView: View {
     private var sortedReplacements: [WordReplacement] {
         switch sortMode {
         case .originalAsc:
-            return wordReplacements.sorted { $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedAscending }
+            return wordReplacements.sorted {
+                $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedAscending
+            }
         case .originalDesc:
-            return wordReplacements.sorted { $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedDescending }
+            return wordReplacements.sorted {
+                $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedDescending
+            }
         case .replacementAsc:
-            return wordReplacements.sorted { $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedAscending }
+            return wordReplacements.sorted {
+                $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedAscending
+            }
         case .replacementDesc:
-            return wordReplacements.sorted { $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedDescending }
+            return wordReplacements.sorted {
+                $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedDescending
+            }
         }
     }
-    
+
     private func toggleSort(for column: SortColumn) {
         switch column {
         case .original:
@@ -57,7 +66,7 @@ struct WordReplacementView: View {
     private var shouldShowAddButton: Bool {
         !originalWord.isEmpty || !replacementWord.isEmpty
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
@@ -179,7 +188,9 @@ struct WordReplacementView: View {
     private func addReplacement() {
         let original = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
         let replacement = replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let error = DictionaryService.addWordReplacement(original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext) {
+        if let error = DictionaryService.addWordReplacement(
+            original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext)
+        {
             alertMessage = error
             showAlert = true
             return
@@ -196,7 +207,8 @@ struct WordReplacementView: View {
         } catch {
             // Rollback the delete to restore UI consistency
             modelContext.rollback()
-            alertMessage = String(format: String(localized: "Failed to remove replacement: %@"), error.localizedDescription)
+            alertMessage = String(
+                format: String(localized: "Failed to remove replacement: %@"), error.localizedDescription)
             showAlert = true
         }
     }
@@ -360,4 +372,4 @@ struct ReplacementRow: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 4)
     }
-} 
+}

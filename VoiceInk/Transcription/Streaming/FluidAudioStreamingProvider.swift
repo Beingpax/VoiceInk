@@ -68,7 +68,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
     func sendAudioChunk(_ data: Data) async throws {
         let samples = PCMAudioConverter.float32Samples(fromPCM16Data: data)
         bufferLock.lock()
-        audioBuffer.append(contentsOf: samples) 
+        audioBuffer.append(contentsOf: samples)
         bufferLock.unlock()
     }
 
@@ -108,9 +108,10 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         transcriptionTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
-                    try await Task.sleep(nanoseconds: UInt64(
-                        (self?.config.transcribeIntervalSeconds ?? 1.0) * 1_000_000_000
-                    ))
+                    try await Task.sleep(
+                        nanoseconds: UInt64(
+                            (self?.config.transcribeIntervalSeconds ?? 1.0) * 1_000_000_000
+                        ))
                 } catch {
                     break
                 }
@@ -135,7 +136,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         defer { isTranscribing = false }
 
         // Seek to the start of the first unconfirmed word so it isn't clipped.
-        let seekTime = agreementEngine.hypothesisStartTime > 0
+        let seekTime =
+            agreementEngine.hypothesisStartTime > 0
             ? agreementEngine.hypothesisStartTime
             : agreementEngine.confirmedEndTime
         let seekSample = max(0, Int(seekTime * sampleRate))
@@ -179,7 +181,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             let words = WordAgreementEngine.mergeTokensToWords(tokenTimings, timeOffset: timeOffset)
             guard !words.isEmpty else { return }
 
-            let agreementResult = agreementEngine.processTranscriptionResult(words: words, resultConfidence: result.confidence)
+            let agreementResult = agreementEngine.processTranscriptionResult(
+                words: words, resultConfidence: result.confidence)
 
             if !agreementResult.newlyConfirmedText.isEmpty {
                 let normalizedConfirmed = TextNormalizer.shared.normalizeSentence(agreementResult.newlyConfirmedText)
@@ -213,7 +216,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
     private func transcribeRemainingAudio() async -> String? {
         guard let asrManager else { return nil }
 
-        let seekTime = agreementEngine.hypothesisStartTime > 0
+        let seekTime =
+            agreementEngine.hypothesisStartTime > 0
             ? agreementEngine.hypothesisStartTime
             : agreementEngine.confirmedEndTime
         let seekSample = max(0, Int(seekTime * sampleRate))

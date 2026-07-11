@@ -39,7 +39,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var notchWidth: CGFloat {
         guard let screen = NSScreen.main else { return 180 }
         if let left = screen.auxiliaryTopLeftArea?.width,
-           let right = screen.auxiliaryTopRightArea?.width {
+            let right = screen.auxiliaryTopRightArea?.width
+        {
             return screen.frame.width - left - right
         }
         return 180
@@ -67,8 +68,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var pillWidth: CGFloat {
         switch displayState {
         case .collapsed: return notchWidth
-        case .active:    return notchWidth + recordingSideExpansion * 2
-        case .liveText:  return notchWidth + transcriptSideExpansion * 2
+        case .active: return notchWidth + recordingSideExpansion * 2
+        case .liveText: return notchWidth + transcriptSideExpansion * 2
         case .assistant: return notchWidth + assistantSideExpansion * 2
         }
     }
@@ -76,8 +77,8 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var pillHeight: CGFloat {
         switch displayState {
         case .collapsed: return 0
-        case .active:    return mainRowHeight
-        case .liveText:  return mainRowHeight + transcriptPanelHeight
+        case .active: return mainRowHeight
+        case .liveText: return mainRowHeight + transcriptPanelHeight
         case .assistant: return mainRowHeight + assistantPanelHeight
         }
     }
@@ -98,9 +99,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var shouldShowCloseButton: Bool {
-        displayState == .assistant &&
-            stateProvider.recordingState == .idle &&
-            !assistantSession.isBusy
+        displayState == .assistant && stateProvider.recordingState == .idle && !assistantSession.isBusy
     }
 
     private var liveAssistantFollowUpText: String {

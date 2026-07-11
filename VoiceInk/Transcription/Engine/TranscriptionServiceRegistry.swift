@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import SwiftData
+import SwiftUI
 import os
 
 @MainActor
@@ -37,14 +37,20 @@ class TranscriptionServiceRegistry {
         }
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext = .currentDefaults) async throws -> String {
+    func transcribe(
+        audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext = .currentDefaults
+    ) async throws -> String {
         let service = service(for: model.provider)
-        logger.debug("Transcribing with \(model.displayName, privacy: .public) using \(String(describing: type(of: service)), privacy: .public)")
+        logger.debug(
+            "Transcribing with \(model.displayName, privacy: .public) using \(String(describing: type(of: service)), privacy: .public)"
+        )
         return try await service.transcribe(audioURL: audioURL, model: model, context: context.scoped(to: model))
     }
 
     /// Creates a streaming or file-based session for the resolved transcription configuration.
-    func createSession(for configuration: TranscriptionRuntimeConfiguration, onPartialTranscript: ((String) -> Void)? = nil) -> TranscriptionSession {
+    func createSession(
+        for configuration: TranscriptionRuntimeConfiguration, onPartialTranscript: ((String) -> Void)? = nil
+    ) -> TranscriptionSession {
         let model = configuration.model
 
         if shouldUseRealtimeTranscription(for: configuration) {

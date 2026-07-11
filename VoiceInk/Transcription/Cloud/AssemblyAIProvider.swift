@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 struct AssemblyAIProvider: CloudProvider {
     let modelProvider: ModelProvider = .assemblyAI
@@ -8,32 +8,36 @@ struct AssemblyAIProvider: CloudProvider {
     let languageCodes: [String]? = Languages.universal35Codes
     let includesAutoDetect: Bool = true
 
-    var models: [CloudModel] {[
-        CloudModel(
-            name: "universal-3-5-pro",
-            displayName: "Universal-3.5 Pro",
-            description: "Highest-accuracy multilingual transcription with realtime support.",
-            provider: .assemblyAI,
-            speed: 0.94,
-            accuracy: 0.98,
-            isMultilingual: true,
-            supportsStreaming: true,
-            supportedLanguages: Languages.universal35
-        ),
-        CloudModel(
-            name: "universal-2",
-            displayName: "Universal-2",
-            description: "Balanced multilingual transcription with 90+ language support.",
-            provider: .assemblyAI,
-            speed: 0.90,
-            accuracy: 0.92,
-            isMultilingual: true,
-            supportsStreaming: false,
-            supportedLanguages: Languages.universal2
-        )
-    ]}
+    var models: [CloudModel] {
+        [
+            CloudModel(
+                name: "universal-3-5-pro",
+                displayName: "Universal-3.5 Pro",
+                description: "Highest-accuracy multilingual transcription with realtime support.",
+                provider: .assemblyAI,
+                speed: 0.94,
+                accuracy: 0.98,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: Languages.universal35
+            ),
+            CloudModel(
+                name: "universal-2",
+                displayName: "Universal-2",
+                description: "Balanced multilingual transcription with 90+ language support.",
+                provider: .assemblyAI,
+                speed: 0.90,
+                accuracy: 0.92,
+                isMultilingual: true,
+                supportsStreaming: false,
+                supportedLanguages: Languages.universal2
+            ),
+        ]
+    }
 
-    func transcribe(audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]) async throws -> String {
+    func transcribe(
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+    ) async throws -> String {
         return try await AssemblyAIClient.transcribe(
             audioData: audioData,
             fileName: fileName,
@@ -55,7 +59,7 @@ struct AssemblyAIProvider: CloudProvider {
     private enum Languages {
         static let universal35Codes = [
             "en", "es", "fr", "de", "it", "pt", "ar", "da", "nl",
-            "he", "hi", "ja", "zh", "vi", "fi", "no", "sv", "tr"
+            "he", "hi", "ja", "zh", "vi", "fi", "no", "sv", "tr",
         ]
 
         private static let universal2Codes = [
@@ -68,7 +72,7 @@ struct AssemblyAIProvider: CloudProvider {
             "ml", "mt", "mi", "mr", "mn", "ne", "no", "nn", "oc", "pa", "ps",
             "fa", "ro", "sa", "sr", "sn", "sd", "si", "sk", "sl", "so", "su",
             "sw", "sv", "tl", "tg", "ta", "tt", "te", "th", "bo",
-            "tk", "ur", "uz", "cy", "yi", "yo"
+            "tk", "ur", "uz", "cy", "yi", "yo",
         ]
 
         static let universal35 = LanguageDictionary.forCodes(universal35Codes, includesAutoDetect: true)

@@ -91,11 +91,12 @@ extension View {
         dismissOnExitCommand: Bool = true,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        modifier(SidePanel(
-            isPresented: isPresented,
-            panelWidth: width,
-            dismissOnExitCommand: dismissOnExitCommand,
-            panelContent: content
-        ))
+        modifier(
+            SidePanel(
+                isPresented: isPresented,
+                panelWidth: width,
+                dismissOnExitCommand: dismissOnExitCommand,
+                panelContent: content
+            ))
     }
 }

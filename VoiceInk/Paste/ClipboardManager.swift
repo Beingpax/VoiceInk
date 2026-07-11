@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ClipboardManager {
     static let pasteSessionType = NSPasteboard.PasteboardType("com.VoiceInk.PasteSession")
@@ -46,7 +46,7 @@ struct ClipboardManager {
 
 struct ClipboardMessageModifier: ViewModifier {
     @Binding var message: String
-    
+
     func body(content: Content) -> some View {
         content
             .overlay(

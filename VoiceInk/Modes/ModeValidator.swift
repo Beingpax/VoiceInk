@@ -5,8 +5,8 @@ enum ModeValidationError: Error, Identifiable {
     case emptyName
     case emptyCustomCommand
     case duplicateName(String)
-    case duplicateAppTrigger(String, String) // (app name, existing mode name)
-    case duplicateWebsiteTrigger(String, String) // (website, existing mode name)
+    case duplicateAppTrigger(String, String)  // (app name, existing mode name)
+    case duplicateWebsiteTrigger(String, String)  // (website, existing mode name)
 
     var id: String {
         switch self {
@@ -60,7 +60,8 @@ struct ModeValidator {
         }
 
         if config.outputMode == .customCommand,
-           config.customCommand?.trimmedCommand == nil {
+            config.customCommand?.trimmedCommand == nil
+        {
             errors.append(.emptyCustomCommand)
         }
 

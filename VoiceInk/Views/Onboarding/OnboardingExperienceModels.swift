@@ -189,7 +189,8 @@ enum OnboardingExperienceCatalog {
             title: "Write an Email",
             subtitle: "Turn your spoken note into a clean email draft with VoiceInk.",
             sampleLabel: "Sample text",
-            sampleText: "Hi Morgan, um, I wanted to follow up on the proposal we discussed yesterday. I talked to Julie about it, and, like, like, she said you can call her at 555-0194 if you need the latest numbers. Thanks, Alex.",
+            sampleText:
+                "Hi Morgan, um, I wanted to follow up on the proposal we discussed yesterday. I talked to Julie about it, and, like, like, she said you can call her at 555-0194 if you need the latest numbers. Thanks, Alex.",
             fieldPlaceholder: "Your formatted email will appear here."
         ),
         OnboardingExperienceStep(
@@ -199,12 +200,15 @@ enum OnboardingExperienceCatalog {
             shortcutBehavior: .starterMode(clearsOnIntro: true),
             systemImage: "quote.bubble.fill",
             title: "Try Rewrite",
-            subtitle: "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you.",
+            subtitle:
+                "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you.",
             sampleLabel: "Sample text",
             sampleText: "Make it a checklist and add appropriate emoji for each item at the end.",
             fieldPlaceholder: "Text to rewrite will appear here.",
-            initialFieldText: "For tomorrow's client update, I need to review the proposal, confirm the budget numbers, email the latest draft to the client, book the meeting room, prepare a short agenda, and share final notes with the team before the afternoon check-in.",
-            configuredInstruction: "Select all text, press your shortcut, read the sample text aloud, then press it again."
+            initialFieldText:
+                "For tomorrow's client update, I need to review the proposal, confirm the budget numbers, email the latest draft to the client, book the meeting room, prepare a short agenda, and share final notes with the team before the afternoon check-in.",
+            configuredInstruction:
+                "Select all text, press your shortcut, read the sample text aloud, then press it again."
         ),
         OnboardingExperienceStep(
             kind: .rewriteFormat,
@@ -213,14 +217,16 @@ enum OnboardingExperienceCatalog {
             shortcutBehavior: .starterMode(clearsOnIntro: false),
             systemImage: "quote.bubble.fill",
             title: "Try Rewrite",
-            subtitle: "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you.",
+            subtitle:
+                "Select the text on the screen, tell VoiceInk the changes you want, and VoiceInk will rewrite the text for you.",
             sampleLabel: "Sample text",
             sampleText: "Translate this into English.",
             fieldPlaceholder: "Text to rewrite will appear here.",
             initialFieldText: "म अहिले नेपालीमा बोलिरहेको छु, र म यो उपकरणलाई यसलाई अंग्रेजीमा अनुवाद गर्न भन्नेछु।",
             shortcutIntroTitle: "Let's try it once again.",
             showsShortcutControl: false,
-            configuredInstruction: "Select all text, press your shortcut, read the sample text aloud, then press it again."
+            configuredInstruction:
+                "Select all text, press your shortcut, read the sample text aloud, then press it again."
         ),
         OnboardingExperienceStep(
             kind: .respond,
@@ -236,6 +242,6 @@ enum OnboardingExperienceCatalog {
             sampleText: "What is the capital city of the USA?",
             fieldPlaceholder: "",
             configuredInstruction: "Press your shortcut, ask the question, then press it again."
-        )
+        ),
     ]
 }

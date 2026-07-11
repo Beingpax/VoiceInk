@@ -40,7 +40,7 @@ class ModeShortcutManager {
             object: nil
         )
     }
-    
+
     deinit {
         NotificationCenter.default.removeObserver(self)
         if let shortcutChangeObserver {
@@ -58,7 +58,8 @@ class ModeShortcutManager {
     }
 
     private func refreshModeShortcuts() {
-        let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) { result, config in
+        let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) {
+            result, config in
             let action = ShortcutAction.mode(config.id)
             if let shortcut = ShortcutStore.shortcut(for: action) {
                 result[action] = shortcut
@@ -71,7 +72,8 @@ class ModeShortcutManager {
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self,
-                          let modeId = self.modeId(for: action) else {
+                        let modeId = self.modeId(for: action)
+                    else {
                         return
                     }
 
@@ -86,7 +88,8 @@ class ModeShortcutManager {
             onKeyUp: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self,
-                          case .mode(let modeId) = action else {
+                        case .mode(let modeId) = action
+                    else {
                         return
                     }
 
@@ -109,9 +112,10 @@ class ModeShortcutManager {
 
     private func modeId(for action: ShortcutAction) -> UUID? {
         guard case .mode(let modeId) = action,
-              let config = ModeManager.shared.getConfiguration(with: modeId),
-              config.isEnabled,
-              ShortcutStore.shortcut(for: .mode(config.id)) != nil else {
+            let config = ModeManager.shared.getConfiguration(with: modeId),
+            config.isEnabled,
+            ShortcutStore.shortcut(for: .mode(config.id)) != nil
+        else {
             return nil
         }
 

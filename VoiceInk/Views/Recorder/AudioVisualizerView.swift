@@ -36,7 +36,7 @@ struct AudioVisualizer: View {
         guard isActive else { return minHeight }
 
         let time = date.timeIntervalSince1970
-        let amplitude = max(0, min(1, pow(audioMeter.averagePower, 0.7))) // boosted for visibility
+        let amplitude = max(0, min(1, pow(audioMeter.averagePower, 0.7)))  // boosted for visibility
         let wave = sin(time * 8 + phases[index]) * 0.5 + 0.5
         let centerDistance = abs(Double(index) - Double(barCount) / 2) / Double(barCount / 2)
         let centerBoost = 1.0 - (centerDistance * 0.4)
@@ -78,14 +78,14 @@ struct ProcessingStatusDisplay: View {
     private var label: LocalizedStringKey {
         switch mode {
         case .transcribing: return "Transcribing"
-        case .enhancing:    return "Enhancing"
+        case .enhancing: return "Enhancing"
         }
     }
 
     private var animationSpeed: Double {
         switch mode {
         case .transcribing: return 0.18
-        case .enhancing:    return 0.22
+        case .enhancing: return 0.22
         }
     }
 
@@ -99,6 +99,6 @@ struct ProcessingStatusDisplay: View {
 
             ProgressAnimation(color: color, animationSpeed: animationSpeed)
         }
-        .frame(height: 28) // matches AudioVisualizer maxHeight to prevent layout shift
+        .frame(height: 28)  // matches AudioVisualizer maxHeight to prevent layout shift
     }
 }

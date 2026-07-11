@@ -93,7 +93,7 @@ enum ShortcutAction: Hashable {
         .pasteLastEnhancement,
         .retryLastTranscription,
         .openHistoryWindow,
-        .quickAddToDictionary
+        .quickAddToDictionary,
     ]
 
     static let recorderPanelStoredActions: [Self] = [
@@ -108,7 +108,7 @@ enum ShortcutAction: Hashable {
         .retryLastTranscription,
         .cancelRecorder,
         .openHistoryWindow,
-        .quickAddToDictionary
+        .quickAddToDictionary,
     ]
 
     private static func displayNumber(forRecorderPanelIndex index: Int) -> String {

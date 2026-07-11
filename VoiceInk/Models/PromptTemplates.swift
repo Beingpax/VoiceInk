@@ -5,7 +5,7 @@ struct TemplatePrompt: Identifiable {
     let title: String
     let promptText: String
     let useSystemInstructions: Bool
-    
+
     func toCustomPrompt(id: UUID = UUID()) -> CustomPrompt {
         CustomPrompt(
             id: id,
@@ -30,7 +30,7 @@ enum PromptTemplates {
     static var seedPrompts: [CustomPrompt] {
         all.map { $0.toCustomPrompt(id: $0.id) }
     }
-    
+
     static func createTemplatePrompts() -> [TemplatePrompt] {
         [
             TemplatePrompt(
@@ -60,7 +60,7 @@ enum PromptTemplates {
                     """,
                 useSystemInstructions: true
             ),
-            
+
             TemplatePrompt(
                 id: emailPromptId,
                 title: "Email",
@@ -138,7 +138,7 @@ enum PromptTemplates {
                     Return only the answer.
                     """,
                 useSystemInstructions: false
-            )
+            ),
         ]
     }
 }

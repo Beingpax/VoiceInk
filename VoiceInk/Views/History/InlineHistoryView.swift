@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct InlineHistoryView: View {
     @Environment(\.modelContext) private var modelContext
@@ -19,7 +19,8 @@ struct InlineHistoryView: View {
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
 
-    @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator: [Transcription]
+    @Query(Self.createLatestTranscriptionIndicatorDescriptor()) private var latestTranscriptionIndicator:
+        [Transcription]
 
     private static func createLatestTranscriptionIndicatorDescriptor() -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>(
@@ -37,9 +38,9 @@ struct InlineHistoryView: View {
         if let timestamp = timestamp {
             if !searchText.isEmpty {
                 descriptor.predicate = #Predicate<Transcription> { transcription in
-                    (transcription.text.localizedStandardContains(searchText) ||
-                    (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)) &&
-                    transcription.timestamp < timestamp
+                    (transcription.text.localizedStandardContains(searchText)
+                        || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false))
+                        && transcription.timestamp < timestamp
                 }
             } else {
                 descriptor.predicate = #Predicate<Transcription> { transcription in
@@ -48,8 +49,8 @@ struct InlineHistoryView: View {
             }
         } else if !searchText.isEmpty {
             descriptor.predicate = #Predicate<Transcription> { transcription in
-                transcription.text.localizedStandardContains(searchText) ||
-                (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
+                transcription.text.localizedStandardContains(searchText)
+                    || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
             }
         }
 
@@ -97,12 +98,14 @@ struct InlineHistoryView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .sidePanel(isPresented: .init(
-            get: { isPanelPresented },
-            set: { newValue in
-                if !newValue { closePanel() }
-            }
-        )) {
+        .sidePanel(
+            isPresented: .init(
+                get: { isPanelPresented },
+                set: { newValue in
+                    if !newValue { closePanel() }
+                }
+            )
+        ) {
             panelContent
         }
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
@@ -111,7 +114,11 @@ struct InlineHistoryView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(String(localized: "This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) items?"))
+            Text(
+                String(
+                    localized:
+                        "This action cannot be undone. Are you sure you want to delete \(selectedTranscriptions.count) items?"
+                ))
         }
         .onAppear {
             isViewCurrentlyVisible = true
@@ -385,8 +392,9 @@ struct InlineHistoryView: View {
 
     private func performDeletion(for transcription: Transcription) {
         if let urlString = transcription.audioFileURL,
-           let url = URL(string: urlString),
-           FileManager.default.fileExists(atPath: url.path) {
+            let url = URL(string: urlString),
+            FileManager.default.fileExists(atPath: url.path)
+        {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
@@ -430,8 +438,8 @@ struct InlineHistoryView: View {
 
             if !searchText.isEmpty {
                 allDescriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.text.localizedStandardContains(searchText) ||
-                    (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
+                    transcription.text.localizedStandardContains(searchText)
+                        || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
                 }
             }
 
@@ -483,8 +491,9 @@ private struct HistoryCardRow: View {
 
     private var hasAudioFile: Bool {
         if let urlString = transcription.audioFileURL,
-           let url = URL(string: urlString),
-           FileManager.default.fileExists(atPath: url.path) {
+            let url = URL(string: urlString),
+            FileManager.default.fileExists(atPath: url.path)
+        {
             return true
         }
         return false
@@ -493,10 +502,13 @@ private struct HistoryCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
-                Toggle("", isOn: Binding(
-                    get: { isChecked },
-                    set: { _ in onToggleCheck() }
-                ))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { isChecked },
+                        set: { _ in onToggleCheck() }
+                    )
+                )
                 .toggleStyle(CircularCheckboxStyle())
                 .labelsHidden()
 
@@ -571,7 +583,8 @@ private struct HistoryCardRow: View {
             .hoverCopyButton(textToCopy: displayText)
 
             if hasAudioFile, let urlString = transcription.audioFileURL,
-               let url = URL(string: urlString) {
+                let url = URL(string: urlString)
+            {
                 Divider()
                 AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
                     .padding(.vertical, 4)

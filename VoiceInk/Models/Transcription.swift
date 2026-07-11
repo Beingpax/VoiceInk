@@ -31,20 +31,22 @@ final class Transcription {
     var modeEmoji: String?
     var transcriptionStatus: String?
 
-    init(text: String,
-         duration: TimeInterval,
-         enhancedText: String? = nil,
-         audioFileURL: String? = nil,
-         transcriptionModelName: String? = nil,
-         aiEnhancementModelName: String? = nil,
-         promptName: String? = nil,
-         transcriptionDuration: TimeInterval? = nil,
-         enhancementDuration: TimeInterval? = nil,
-         aiRequestSystemMessage: String? = nil,
-         aiRequestUserMessage: String? = nil,
-         modeName: String? = nil,
-         modeEmoji: String? = nil,
-         transcriptionStatus: TranscriptionStatus = .pending) {
+    init(
+        text: String,
+        duration: TimeInterval,
+        enhancedText: String? = nil,
+        audioFileURL: String? = nil,
+        transcriptionModelName: String? = nil,
+        aiEnhancementModelName: String? = nil,
+        promptName: String? = nil,
+        transcriptionDuration: TimeInterval? = nil,
+        enhancementDuration: TimeInterval? = nil,
+        aiRequestSystemMessage: String? = nil,
+        aiRequestUserMessage: String? = nil,
+        modeName: String? = nil,
+        modeEmoji: String? = nil,
+        transcriptionStatus: TranscriptionStatus = .pending
+    ) {
         self.id = UUID()
         self.text = text
         self.enhancedText = enhancedText

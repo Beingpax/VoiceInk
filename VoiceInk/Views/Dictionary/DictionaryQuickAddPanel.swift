@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // MARK: - Manager
 
@@ -84,7 +84,7 @@ class DictionaryQuickAddPanel: NSPanel {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 { // Escape
+        if event.keyCode == 53 {  // Escape
             manager?.hide()
         } else {
             super.keyDown(with: event)
@@ -281,11 +281,14 @@ struct DictionaryQuickAddView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(width: 56, alignment: .trailing)
-                TextField("", text: $replacementInput, prompt: Text("e.g. support@tryvoiceink.com").foregroundColor(.secondary))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 14))
-                    .focused($focusedField, equals: .replacement)
-                    .onSubmit { submitReplacement() }
+                TextField(
+                    "", text: $replacementInput,
+                    prompt: Text("e.g. support@tryvoiceink.com").foregroundColor(.secondary)
+                )
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 14))
+                .focused($focusedField, equals: .replacement)
+                .onSubmit { submitReplacement() }
             }
         }
         .padding(.horizontal, 14)
@@ -321,7 +324,9 @@ struct DictionaryQuickAddView: View {
     private func submitVocabulary() {
         let input = wordInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
-        if let error = DictionaryService.addVocabularyWords(input, existing: Array(vocabularyWords), context: modelContext) {
+        if let error = DictionaryService.addVocabularyWords(
+            input, existing: Array(vocabularyWords), context: modelContext)
+        {
             errorMessage = error
             return
         }
@@ -332,7 +337,9 @@ struct DictionaryQuickAddView: View {
         let original = originalInput.trimmingCharacters(in: .whitespacesAndNewlines)
         let replacement = replacementInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !original.isEmpty, !replacement.isEmpty else { return }
-        if let error = DictionaryService.addWordReplacement(original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext) {
+        if let error = DictionaryService.addWordReplacement(
+            original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext)
+        {
             errorMessage = error
             return
         }

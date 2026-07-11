@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 enum VocabularySortMode: String {
     case wordAsc = "wordAsc"
@@ -16,7 +16,8 @@ struct VocabularyView: View {
 
     init() {
         if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
-           let mode = VocabularySortMode(rawValue: savedSort) {
+            let mode = VocabularySortMode(rawValue: savedSort)
+        {
             _sortMode = State(initialValue: mode)
         }
     }
@@ -93,11 +94,13 @@ struct VocabularyView: View {
             Text(alertMessage)
         }
     }
-    
+
     private func addWords() {
         let input = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
-        if let error = DictionaryService.addVocabularyWords(input, existing: Array(vocabularyWords), context: modelContext) {
+        if let error = DictionaryService.addVocabularyWords(
+            input, existing: Array(vocabularyWords), context: modelContext)
+        {
             alertMessage = error
             showAlert = true
             return
@@ -157,4 +160,4 @@ struct VocabularyWordView: View {
         }
         .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
     }
-} 
+}

@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct AIProviderVerificationCard: View {
     @ObservedObject var aiService: AIService
@@ -235,7 +235,8 @@ struct AIProviderVerificationCard: View {
 
     private func refreshVerificationState() {
         verificationSucceeded = isSelectedProviderConnected
-        verificationMessage = verificationSucceeded
+        verificationMessage =
+            verificationSucceeded
             ? String(format: String(localized: "%@ connection verified."), selectedProvider.rawValue)
             : nil
         verificationDetailMessage = nil
@@ -281,7 +282,8 @@ struct AIProviderVerificationCard: View {
                 if result.isValid {
                     guard APIKeyManager.shared.saveAPIKey(key, forProvider: provider.rawValue) else {
                         verificationSucceeded = false
-                        verificationMessage = String(localized: "The key worked, but VoiceInk could not save it securely.")
+                        verificationMessage = String(
+                            localized: "The key worked, but VoiceInk could not save it securely.")
                         verificationDetailMessage = nil
                         onVerificationChanged()
                         return
@@ -292,11 +294,13 @@ struct AIProviderVerificationCard: View {
                     aiService.apiKey = key
                     aiService.isAPIKeyValid = true
                     apiKey = ""
-                    verificationMessage = String(format: String(localized: "%@ connection verified."), provider.rawValue)
+                    verificationMessage = String(
+                        format: String(localized: "%@ connection verified."), provider.rawValue)
                     verificationDetailMessage = nil
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
-                    verificationMessage = String(localized: "Could not verify this API key. Check the key and try again.")
+                    verificationMessage = String(
+                        localized: "Could not verify this API key. Check the key and try again.")
                     verificationDetailMessage = result.errorMessage
                 }
 
@@ -315,7 +319,7 @@ private struct AIProviderSelectionCard: View {
             LazyVGrid(
                 columns: [
                     GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
+                    GridItem(.flexible(), spacing: 8),
                 ],
                 alignment: .leading,
                 spacing: 8

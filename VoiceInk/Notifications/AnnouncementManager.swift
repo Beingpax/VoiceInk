@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 final class AnnouncementManager {
     static let shared = AnnouncementManager()
@@ -63,13 +63,15 @@ final class AnnouncementManager {
     func dismiss() {
         guard let panel = panel else { return }
         self.panel = nil
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-            panel.animator().alphaValue = 0
-        }, completionHandler: {
-            panel.close()
-        })
+        NSAnimationContext.runAnimationGroup(
+            { context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                panel.animator().alphaValue = 0
+            },
+            completionHandler: {
+                panel.close()
+            })
     }
 
     @MainActor
@@ -84,5 +86,3 @@ final class AnnouncementManager {
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 }
-
-

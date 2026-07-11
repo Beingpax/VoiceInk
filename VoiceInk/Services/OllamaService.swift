@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import LLMkit
+import SwiftUI
 
 class OllamaService: ObservableObject {
     static let defaultBaseURL = "http://localhost:11434"
@@ -75,7 +75,9 @@ class OllamaService: ObservableObject {
         }
     }
 
-    func enhance(_ text: String, withSystemPrompt systemPrompt: String? = nil, model: String? = nil, timeout: TimeInterval = 30) async throws -> String {
+    func enhance(
+        _ text: String, withSystemPrompt systemPrompt: String? = nil, model: String? = nil, timeout: TimeInterval = 30
+    ) async throws -> String {
         guard let systemPrompt = systemPrompt else {
             throw LocalAIError.invalidRequest
         }

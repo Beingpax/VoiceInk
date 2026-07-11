@@ -1,5 +1,5 @@
-import Foundation
 @preconcurrency import AVFoundation
+import Foundation
 import os
 
 final class SoundPlaybackEngine: @unchecked Sendable {

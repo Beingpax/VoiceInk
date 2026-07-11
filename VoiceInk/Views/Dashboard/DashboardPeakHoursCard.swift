@@ -194,7 +194,7 @@ private struct DashboardPeakHoursHistogram: View {
             LinearGradient(
                 colors: [
                     peakTintSoft.opacity(opacity),
-                    peakTint.opacity(opacity * 0.94)
+                    peakTint.opacity(opacity * 0.94),
                 ],
                 startPoint: .top,
                 endPoint: .bottom

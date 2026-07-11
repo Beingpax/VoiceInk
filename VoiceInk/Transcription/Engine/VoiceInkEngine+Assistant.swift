@@ -5,8 +5,9 @@ extension VoiceInkEngine {
     func sendAssistantFollowUp(_ text: String, transcription: Transcription? = nil) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
-              let assistantChat,
-              let provider = assistantSession.provider else {
+            let assistantChat,
+            let provider = assistantSession.provider
+        else {
             return
         }
 
@@ -26,7 +27,8 @@ extension VoiceInkEngine {
             )
 
             guard assistantSession.hasMessage(id: userMessage.id),
-                  assistantSession.provider == provider else {
+                assistantSession.provider == provider
+            else {
                 return
             }
 
@@ -55,13 +57,16 @@ extension VoiceInkEngine {
             } catch {
                 let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 NotificationManager.shared.showNotification(
-                    title: String(format: String(localized: "Assistant response was not saved: %@"), String(errorDescription.prefix(80))),
+                    title: String(
+                        format: String(localized: "Assistant response was not saved: %@"),
+                        String(errorDescription.prefix(80))),
                     type: .warning
                 )
             }
         } catch {
             guard assistantSession.hasMessage(id: userMessage.id),
-                  assistantSession.provider == provider else {
+                assistantSession.provider == provider
+            else {
                 return
             }
             let errorDescription = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

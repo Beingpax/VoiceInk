@@ -34,7 +34,8 @@ final class TranscriptionDelivery {
         }
 
         if request.output.outputMode == .respond,
-           request.responseConfig != nil || request.responseError != nil {
+            request.responseConfig != nil || request.responseError != nil
+        {
             await deliverResponse(request, actions: actions)
             return
         }
@@ -55,7 +56,8 @@ final class TranscriptionDelivery {
         SoundManager.shared.playStopSound()
 
         guard let text = item.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !text.isEmpty else {
+            !text.isEmpty
+        else {
             return
         }
 
@@ -69,7 +71,8 @@ final class TranscriptionDelivery {
         if let responseError = item.responseError {
             await actions.failResponse("Enhancement failed: \(responseError)")
         } else if let text = item.text,
-                  item.responseConfig != nil {
+            item.responseConfig != nil
+        {
             await actions.showResponse(text, item.transcription.aiRequestSystemMessage)
         } else {
             await actions.failResponse("No response was generated.")
@@ -85,7 +88,8 @@ final class TranscriptionDelivery {
         }
 
         guard let customCommand = item.output.customCommand,
-              let command = customCommand.trimmedCommand else {
+            let command = customCommand.trimmedCommand
+        else {
             notifyCustomCommandFailure(CustomCommandDeliveryError.commandNotConfigured)
             SoundManager.shared.playStopSound()
             await actions.dismiss()
@@ -117,7 +121,8 @@ final class TranscriptionDelivery {
             let stderrBytes = result.stderr.utf8.count
 
             if !result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                logger.notice("Custom command stdout bytes=\(stdoutBytes, privacy: .public): \(result.stdout, privacy: .public)")
+                logger.notice(
+                    "Custom command stdout bytes=\(stdoutBytes, privacy: .public): \(result.stdout, privacy: .public)")
             }
 
             if !result.stderr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -137,7 +142,9 @@ final class TranscriptionDelivery {
     private func notifyCustomCommandFailure(_ error: Error, duration: TimeInterval? = nil) {
         let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         if let duration {
-            logger.error("Custom command failed duration=\(Self.formattedDuration(duration), privacy: .public)s: \(message, privacy: .public)")
+            logger.error(
+                "Custom command failed duration=\(Self.formattedDuration(duration), privacy: .public)s: \(message, privacy: .public)"
+            )
         } else {
             logger.error("Custom command failed: \(message, privacy: .public)")
         }

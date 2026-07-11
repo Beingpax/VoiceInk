@@ -1,6 +1,6 @@
-import SwiftUI
 import AppKit
 import OSLog
+import SwiftUI
 
 enum AppWindowLayout {
     static let width: CGFloat = 950
@@ -28,7 +28,8 @@ enum WindowDiagnostics {
     static func windowDescription(_ window: NSWindow) -> String {
         let identifier = window.identifier?.rawValue ?? "nil"
         let title = window.title.isEmpty ? "<empty>" : window.title
-        return "id=\(identifier), title=\(title), visible=\(window.isVisible), key=\(window.isKeyWindow), main=\(window.isMainWindow), miniaturized=\(window.isMiniaturized), level=\(window.level.rawValue), styleMask=\(window.styleMask.rawValue)"
+        return
+            "id=\(identifier), title=\(title), visible=\(window.isVisible), key=\(window.isKeyWindow), main=\(window.isMainWindow), miniaturized=\(window.isMiniaturized), level=\(window.level.rawValue), styleMask=\(window.styleMask.rawValue)"
     }
 
     static func windowSnapshot() -> String {
@@ -37,7 +38,8 @@ enum WindowDiagnostics {
             return "windows=0"
         }
 
-        let descriptions = windows
+        let descriptions =
+            windows
             .enumerated()
             .map { index, window in
                 "#\(index){\(windowDescription(window))}"
@@ -54,7 +56,8 @@ enum WindowDiagnostics {
             return "visibleUserWindows=0"
         }
 
-        let descriptions = windows
+        let descriptions =
+            windows
             .enumerated()
             .map { index, window in
                 "#\(index){\(windowDescription(window))}"
@@ -70,9 +73,7 @@ enum WindowDiagnostics {
                 return false
             }
 
-            return window.isVisible &&
-                window.level == .normal &&
-                window.styleMask.contains(.titled)
+            return window.isVisible && window.level == .normal && window.styleMask.contains(.titled)
         }
     }
 }
@@ -85,7 +86,9 @@ enum AppPresentationPolicy {
         let didSet = NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
 
-        Self.logger.notice("🧭 Activated app for user-facing window. reason=\(reason, privacy: .public); menuBarOnlyPreference=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); activationPolicyBefore=\(WindowDiagnostics.activationPolicyDescription(beforePolicy), privacy: .public); setPolicySuccess=\(didSet, privacy: .public); activationPolicyAfter=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+        Self.logger.notice(
+            "🧭 Activated app for user-facing window. reason=\(reason, privacy: .public); menuBarOnlyPreference=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); activationPolicyBefore=\(WindowDiagnostics.activationPolicyDescription(beforePolicy), privacy: .public); setPolicySuccess=\(didSet, privacy: .public); activationPolicyAfter=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+        )
     }
 
     static func restoreAccessoryIfNeededAfterUserFacingWindowClosed(reason: String) {
@@ -95,19 +98,25 @@ enum AppPresentationPolicy {
             let visibleUserWindows = WindowDiagnostics.visibleUserFacingWindowSnapshot()
 
             guard menuBarOnly else {
-                Self.logger.notice("🧭 Skipped restoring accessory activation policy because menu-bar-only preference is disabled. reason=\(reason, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); \(visibleUserWindows, privacy: .public)")
+                Self.logger.notice(
+                    "🧭 Skipped restoring accessory activation policy because menu-bar-only preference is disabled. reason=\(reason, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); \(visibleUserWindows, privacy: .public)"
+                )
                 return
             }
 
             guard !hasVisibleUserWindows else {
-                Self.logger.notice("🧭 Skipped restoring accessory activation policy because another user-facing window is still visible. reason=\(reason, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); \(visibleUserWindows, privacy: .public)")
+                Self.logger.notice(
+                    "🧭 Skipped restoring accessory activation policy because another user-facing window is still visible. reason=\(reason, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); \(visibleUserWindows, privacy: .public)"
+                )
                 return
             }
 
             let beforePolicy = NSApplication.shared.activationPolicy()
             let didSet = NSApplication.shared.setActivationPolicy(.accessory)
             NSApplication.shared.deactivate()
-            Self.logger.notice("🧭 Restored accessory activation policy after closing user-facing windows. reason=\(reason, privacy: .public); activationPolicyBefore=\(WindowDiagnostics.activationPolicyDescription(beforePolicy), privacy: .public); setPolicySuccess=\(didSet, privacy: .public); activationPolicyAfter=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+            Self.logger.notice(
+                "🧭 Restored accessory activation policy after closing user-facing windows. reason=\(reason, privacy: .public); activationPolicyBefore=\(WindowDiagnostics.activationPolicyDescription(beforePolicy), privacy: .public); setPolicySuccess=\(didSet, privacy: .public); activationPolicyAfter=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+            )
         }
     }
 }
@@ -131,27 +140,39 @@ class WindowManager: NSObject {
         guard !shouldShowNextConfiguredMainWindow else { return }
 
         shouldShowNextConfiguredMainWindow = true
-        logger.notice("🧭 Prepared next configured main window for user-requested presentation. menuBarOnly=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+        logger.notice(
+            "🧭 Prepared next configured main window for user-requested presentation. menuBarOnly=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+        )
     }
-    
+
     func configureWindow(_ window: NSWindow) {
         let hadPendingPresentation = shouldShowNextConfiguredMainWindow
-        logger.notice("🧭 Configuring main window. pendingUserPresentation=\(hadPendingPresentation, privacy: .public); menuBarOnly=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); incoming=\(WindowDiagnostics.windowDescription(window), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+        logger.notice(
+            "🧭 Configuring main window. pendingUserPresentation=\(hadPendingPresentation, privacy: .public); menuBarOnly=\(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"), privacy: .public); incoming=\(WindowDiagnostics.windowDescription(window), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+        )
 
-        if let existingWindow = NSApplication.shared.windows.first(where: { $0.identifier == Self.mainWindowIdentifier && $0 != window }) {
+        if let existingWindow = NSApplication.shared.windows.first(where: {
+            $0.identifier == Self.mainWindowIdentifier && $0 != window
+        }) {
             window.close()
             if shouldShowNextConfiguredMainWindow {
-                logger.notice("🧭 Duplicate main window arrived while presentation was pending; presenting existing main window. existing=\(WindowDiagnostics.windowDescription(existingWindow), privacy: .public)")
+                logger.notice(
+                    "🧭 Duplicate main window arrived while presentation was pending; presenting existing main window. existing=\(WindowDiagnostics.windowDescription(existingWindow), privacy: .public)"
+                )
                 presentMainWindow(existingWindow)
                 shouldShowNextConfiguredMainWindow = false
             } else {
-                logger.notice("🧭 Duplicate main window arrived without pending presentation; reusing existing main window. existing=\(WindowDiagnostics.windowDescription(existingWindow), privacy: .public)")
+                logger.notice(
+                    "🧭 Duplicate main window arrived without pending presentation; reusing existing main window. existing=\(WindowDiagnostics.windowDescription(existingWindow), privacy: .public)"
+                )
                 existingWindow.makeKeyAndOrderFront(nil)
             }
             return
         }
-        
-        let requiredStyleMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+
+        let requiredStyleMask: NSWindow.StyleMask = [
+            .titled, .closable, .miniaturizable, .resizable, .fullSizeContentView,
+        ]
         window.styleMask.formUnion(requiredStyleMask)
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
@@ -170,26 +191,35 @@ class WindowManager: NSObject {
 
         if shouldShowNextConfiguredMainWindow {
             shouldShowNextConfiguredMainWindow = false
-            logger.notice("🧭 Presenting newly configured main window for user request. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+            logger.notice(
+                "🧭 Presenting newly configured main window for user request. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)"
+            )
             presentMainWindow(window)
         } else if UserDefaults.standard.bool(forKey: "IsMenuBarOnly") {
-            logger.notice("🧭 Ordering out newly configured main window because menu-bar-only mode is enabled and no user presentation is pending. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+            logger.notice(
+                "🧭 Ordering out newly configured main window because menu-bar-only mode is enabled and no user presentation is pending. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)"
+            )
             window.orderOut(nil)
         } else {
-            logger.notice("🧭 Configured main window without pending presentation. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+            logger.notice(
+                "🧭 Configured main window without pending presentation. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)"
+            )
         }
     }
-    
+
     func registerMainWindow(_ window: NSWindow) {
         mainWindow = window
         window.identifier = Self.mainWindowIdentifier
         window.delegate = self
-        logger.notice("🧭 Registered main window. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+        logger.notice(
+            "🧭 Registered main window. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
     }
-    
+
     @discardableResult
     func showMainWindow() -> NSWindow? {
-        logger.notice("🧭 Show main window requested. storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); pendingUserPresentation=\(self.shouldShowNextConfiguredMainWindow, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+        logger.notice(
+            "🧭 Show main window requested. storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); pendingUserPresentation=\(self.shouldShowNextConfiguredMainWindow, privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+        )
 
         guard let window = resolveMainWindow() else {
             logger.error("🧭 Show main window could not resolve a native window.")
@@ -203,9 +233,11 @@ class WindowManager: NSObject {
         presentMainWindow(window)
         return window
     }
-    
+
     func hideMainWindow() {
-        logger.notice("🧭 Hide main window requested. storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+        logger.notice(
+            "🧭 Hide main window requested. storedMainWindow=\(self.mainWindow.map(WindowDiagnostics.windowDescription) ?? "nil", privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+        )
 
         guard let window = resolveMainWindow() else {
             logger.notice("🧭 Hide main window skipped because no native main window is registered yet.")
@@ -213,19 +245,20 @@ class WindowManager: NSObject {
         }
 
         window.orderOut(nil)
-        logger.notice("🧭 Main window ordered out. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+        logger.notice(
+            "🧭 Main window ordered out. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
     }
-    
+
     func currentMainWindow() -> NSWindow? {
         resolveMainWindow()
     }
-    
+
     private func registerMainWindowIfNeeded(_ window: NSWindow) {
         if window.identifier == nil || window.identifier != Self.mainWindowIdentifier {
             registerMainWindow(window)
         }
     }
-    
+
     private func applyInitialPlacementIfNeeded(to window: NSWindow) {
         guard !didApplyInitialPlacement else { return }
         // Attempt to restore previous frame if one exists; otherwise fall back to a centered placement
@@ -254,7 +287,7 @@ class WindowManager: NSObject {
         )
         window.setFrame(frame, display: true)
     }
-    
+
     private func resolveMainWindow() -> NSWindow? {
         if let window = mainWindow {
             return window
@@ -263,7 +296,9 @@ class WindowManager: NSObject {
         if let window = NSApplication.shared.windows.first(where: { $0.identifier == Self.mainWindowIdentifier }) {
             mainWindow = window
             window.delegate = self
-            logger.notice("🧭 Recovered main window by identifier. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+            logger.notice(
+                "🧭 Recovered main window by identifier. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)"
+            )
             return window
         }
 
@@ -283,10 +318,14 @@ class WindowManager: NSObject {
         if !window.isKeyWindow {
             window.orderFrontRegardless()
         }
-        logger.notice("🧭 Presented main window. window=\(WindowDiagnostics.windowDescription(window), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public)")
+        logger.notice(
+            "🧭 Presented main window. window=\(WindowDiagnostics.windowDescription(window), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public)"
+        )
         DispatchQueue.main.async { [weak self, weak window] in
             guard let self, let window else { return }
-            self.logger.notice("🧭 Confirmed main window presentation after runloop. window=\(WindowDiagnostics.windowDescription(window), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)")
+            self.logger.notice(
+                "🧭 Confirmed main window presentation after runloop. window=\(WindowDiagnostics.windowDescription(window), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
+            )
         }
     }
 }
@@ -295,7 +334,9 @@ extension WindowManager: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
         if window.identifier == Self.mainWindowIdentifier {
-            logger.notice("🧭 Main window will close; clearing stored reference. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)")
+            logger.notice(
+                "🧭 Main window will close; clearing stored reference. window=\(WindowDiagnostics.windowDescription(window), privacy: .public)"
+            )
             mainWindow = nil
             didApplyInitialPlacement = false
         }

@@ -89,17 +89,26 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var isDefault: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled, selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault
+        case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled,
+            selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled,
+            useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel,
+            outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault
         case legacyEmoji = "emoji"
         case selectedWhisperModel
         case selectedTranscriptionModelName
     }
 
-    init(id: UUID = UUID(), name: String, icon: ModeIcon = .defaultIcon, appConfigs: [AppConfig]? = nil,
-         urlConfigs: [URLConfig]? = nil, triggerGroups: [ModeTriggerGroup]? = nil, triggerWords: [String] = [],
-         isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
-         selectedTranscriptionModelName: String? = nil, isRealtimeTranscriptionEnabled: Bool = true, selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true, useScreenCapture: Bool = false,
-         isTextFormattingEnabled: Bool = false, selectedAIProvider: String? = nil, selectedAIModel: String? = nil, outputMode: ModeOutputMode = .paste, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil, isEnabled: Bool = true, isDefault: Bool = false) {
+    init(
+        id: UUID = UUID(), name: String, icon: ModeIcon = .defaultIcon, appConfigs: [AppConfig]? = nil,
+        urlConfigs: [URLConfig]? = nil, triggerGroups: [ModeTriggerGroup]? = nil, triggerWords: [String] = [],
+        isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
+        selectedTranscriptionModelName: String? = nil, isRealtimeTranscriptionEnabled: Bool = true,
+        selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true,
+        useScreenCapture: Bool = false,
+        isTextFormattingEnabled: Bool = false, selectedAIProvider: String? = nil, selectedAIModel: String? = nil,
+        outputMode: ModeOutputMode = .paste, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil,
+        isEnabled: Bool = true, isDefault: Bool = false
+    ) {
         self.id = id
         self.name = name
         self.icon = icon
@@ -143,7 +152,8 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         if let decodedIcon = try container.decodeIfPresent(ModeIcon.self, forKey: .icon) {
             icon = decodedIcon
         } else if let legacyEmoji = try container.decodeIfPresent(String.self, forKey: .legacyEmoji),
-                  !legacyEmoji.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            !legacyEmoji.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
             icon = .emoji(legacyEmoji)
         } else {
             icon = .defaultIcon
@@ -151,13 +161,17 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         appConfigs = try container.decodeIfPresent([AppConfig].self, forKey: .appConfigs)
         urlConfigs = try container.decodeIfPresent([URLConfig].self, forKey: .urlConfigs)
         triggerGroups = try container.decodeIfPresent([ModeTriggerGroup].self, forKey: .triggerGroups)
-        triggerWords = Self.normalizedTriggerWords(try container.decodeIfPresent([String].self, forKey: .triggerWords) ?? [])
+        triggerWords = Self.normalizedTriggerWords(
+            try container.decodeIfPresent([String].self, forKey: .triggerWords) ?? [])
         isAIEnhancementEnabled = try container.decode(Bool.self, forKey: .isAIEnhancementEnabled)
         selectedPrompt = try container.decodeIfPresent(String.self, forKey: .selectedPrompt)
-        isRealtimeTranscriptionEnabled = try container.decodeIfPresent(Bool.self, forKey: .isRealtimeTranscriptionEnabled) ?? true
+        isRealtimeTranscriptionEnabled =
+            try container.decodeIfPresent(Bool.self, forKey: .isRealtimeTranscriptionEnabled) ?? true
         selectedLanguage = try container.decodeIfPresent(String.self, forKey: .selectedLanguage)
         isTextFormattingEnabled = try container.decodeIfPresent(Bool.self, forKey: .isTextFormattingEnabled) ?? false
-        useClipboardContext = try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext) ?? UserDefaults.standard.bool(forKey: "useClipboardContext")
+        useClipboardContext =
+            try container.decodeIfPresent(Bool.self, forKey: .useClipboardContext)
+            ?? UserDefaults.standard.bool(forKey: "useClipboardContext")
         if let decodedSelectedTextContext = try container.decodeIfPresent(Bool.self, forKey: .useSelectedTextContext) {
             useSelectedTextContext = decodedSelectedTextContext
         } else if UserDefaults.standard.object(forKey: "useSelectedTextContext") == nil {
@@ -165,14 +179,17 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         } else {
             useSelectedTextContext = UserDefaults.standard.bool(forKey: "useSelectedTextContext")
         }
-        useScreenCapture = try container.decodeIfPresent(Bool.self, forKey: .useScreenCapture) ?? UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
+        useScreenCapture =
+            try container.decodeIfPresent(Bool.self, forKey: .useScreenCapture)
+            ?? UserDefaults.standard.bool(forKey: "useScreenCaptureContext")
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         outputMode = try container.decodeIfPresent(ModeOutputMode.self, forKey: .outputMode) ?? .paste
         customCommand = try container.decodeIfPresent(ModeCustomCommand.self, forKey: .customCommand)
         // Migrate from old isAutoSendEnabled bool to new autoSendKey enum
         if let rawValue = try container.decodeIfPresent(String.self, forKey: .autoSendKey),
-           let newKey = AutoSendKey(rawValue: rawValue) {
+            let newKey = AutoSendKey(rawValue: rawValue)
+        {
             autoSendKey = newKey
         } else if let oldBool = try container.decodeIfPresent(Bool.self, forKey: .isAutoSendEnabled), oldBool {
             autoSendKey = .enter
@@ -217,8 +234,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         try container.encode(isEnabled, forKey: .isEnabled)
         try container.encode(isDefault, forKey: .isDefault)
     }
-    
-    
+
     static func == (lhs: ModeConfig, rhs: ModeConfig) -> Bool {
         lhs.id == rhs.id
     }
@@ -228,13 +244,13 @@ struct AppConfig: Codable, Identifiable, Equatable {
     let id: UUID
     var bundleIdentifier: String
     var appName: String
-    
+
     init(id: UUID = UUID(), bundleIdentifier: String, appName: String) {
         self.id = id
         self.bundleIdentifier = bundleIdentifier
         self.appName = appName
     }
-    
+
     static func == (lhs: AppConfig, rhs: AppConfig) -> Bool {
         lhs.id == rhs.id
     }
@@ -243,12 +259,12 @@ struct AppConfig: Codable, Identifiable, Equatable {
 struct URLConfig: Codable, Identifiable, Equatable {
     let id: UUID
     var url: String
-    
+
     init(id: UUID = UUID(), url: String) {
         self.id = id
         self.url = url
     }
-    
+
     static func == (lhs: URLConfig, rhs: URLConfig) -> Bool {
         lhs.id == rhs.id
     }
@@ -266,7 +282,8 @@ class ModeManager: ObservableObject {
         loadConfigurations()
 
         if let activeConfigIdString = UserDefaults.standard.string(forKey: activeConfigIdKey),
-           let activeConfigId = UUID(uuidString: activeConfigIdString) {
+            let activeConfigId = UUID(uuidString: activeConfigIdString)
+        {
             activeConfiguration = configurations.first { $0.id == activeConfigId }
         } else {
             activeConfiguration = nil
@@ -275,7 +292,8 @@ class ModeManager: ObservableObject {
 
     private func loadConfigurations() {
         if let data = migratedModeConfigurationData(for: configKey),
-           let configs = try? JSONDecoder().decode([ModeConfig].self, from: data) {
+            let configs = try? JSONDecoder().decode([ModeConfig].self, from: data)
+        {
             configurations = configs
             migrateLoadedModeConfigurationsIfNeeded()
         }
@@ -333,7 +351,7 @@ class ModeManager: ObservableObject {
 
     func getConfigurationForURL(_ url: String) -> ModeConfig? {
         let cleanedURL = cleanURL(url)
-        
+
         for config in configurations.filter({ $0.isEnabled }) {
             for urlConfig in config.allURLConfigs {
                 let configURL = cleanURL(urlConfig.url)
@@ -345,7 +363,7 @@ class ModeManager: ObservableObject {
         }
         return nil
     }
-    
+
     func getConfigurationForApp(_ bundleId: String) -> ModeConfig? {
         for config in configurations.filter({ $0.isEnabled }) {
             if config.allAppConfigs.contains(where: { $0.bundleIdentifier == bundleId }) {
@@ -354,25 +372,26 @@ class ModeManager: ObservableObject {
         }
         return nil
     }
-    
+
     func getDefaultConfiguration() -> ModeConfig? {
         return configurations.first { $0.isEnabled && $0.isDefault }
     }
 
     var currentEffectiveConfiguration: ModeConfig? {
         if let activeConfiguration,
-           let latestActive = configurations.first(where: { $0.id == activeConfiguration.id }),
-           latestActive.isEnabled {
+            let latestActive = configurations.first(where: { $0.id == activeConfiguration.id }),
+            latestActive.isEnabled
+        {
             return latestActive
         }
 
         return getDefaultConfiguration()
     }
-    
+
     func hasDefaultConfiguration() -> Bool {
         return configurations.contains { $0.isDefault }
     }
-    
+
     func setAsDefault(configId: UUID, skipSave: Bool = false) {
         for index in configurations.indices {
             configurations[index].isDefault = false
@@ -386,7 +405,7 @@ class ModeManager: ObservableObject {
             saveConfigurations()
         }
     }
-    
+
     func enableConfiguration(with id: UUID) {
         if let index = configurations.firstIndex(where: { $0.id == id }) {
             let previousEnabledConfigIds = enabledConfigurationIds
@@ -395,7 +414,7 @@ class ModeManager: ObservableObject {
             postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
         }
     }
-    
+
     func disableConfiguration(with id: UUID) {
         if let index = configurations.firstIndex(where: { $0.id == id }) {
             let previousEnabledConfigIds = enabledConfigurationIds
@@ -404,14 +423,15 @@ class ModeManager: ObservableObject {
             postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
         }
     }
-    
+
     var enabledConfigurations: [ModeConfig] {
         return configurations.filter { $0.isEnabled }
     }
 
     func resolvedEnabledConfiguration(preferredId: UUID?) -> ModeConfig? {
         if let preferredId,
-           let configuration = enabledConfigurations.first(where: { $0.id == preferredId }) {
+            let configuration = enabledConfigurations.first(where: { $0.id == preferredId })
+        {
             return configuration
         }
 
@@ -467,10 +487,12 @@ class ModeManager: ObservableObject {
     }
 
     func getConfigurationForTriggerWord(_ text: String) -> (mode: ModeConfig, processedText: String)? {
-        guard let detection = ModeTriggerWordDetectionService.detect(
-            in: text,
-            configurations: configurations.filter { $0.isEnabled }
-        ) else { return nil }
+        guard
+            let detection = ModeTriggerWordDetectionService.detect(
+                in: text,
+                configurations: configurations.filter { $0.isEnabled }
+            )
+        else { return nil }
         return (detection.mode, detection.processedText)
     }
 
@@ -484,7 +506,8 @@ class ModeManager: ObservableObject {
 
     func setActiveConfiguration(_ config: ModeConfig?) {
         if let config,
-           let latestConfig = configurations.first(where: { $0.id == config.id }) {
+            let latestConfig = configurations.first(where: { $0.id == config.id })
+        {
             activeConfiguration = latestConfig
         } else {
             activeConfiguration = config
@@ -514,4 +537,4 @@ class ModeManager: ObservableObject {
     func isEmojiInUse(_ emoji: String) -> Bool {
         return configurations.contains { $0.icon == .emoji(emoji) }
     }
-} 
+}

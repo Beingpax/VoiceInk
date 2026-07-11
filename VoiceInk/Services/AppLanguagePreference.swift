@@ -16,9 +16,10 @@ enum AppLanguagePreference {
     static var availableOptions: [Option] {
         return [
             Option(id: systemValue, displayName: String(localized: "System"))
-        ] + availableLanguageIdentifiers.map { identifier in
-            Option(id: identifier, displayName: displayName(for: identifier))
-        }
+        ]
+            + availableLanguageIdentifiers.map { identifier in
+                Option(id: identifier, displayName: displayName(for: identifier))
+            }
     }
 
     static var storedRawValue: String {
@@ -56,7 +57,8 @@ enum AppLanguagePreference {
 
         let discoveredIdentifiers = Set(bundledLanguageIdentifiers + localizedBundleIdentifiers)
         let bundledIdentifiers = bundledLanguageIdentifiers.filter { discoveredIdentifiers.contains($0) }
-        let additionalIdentifiers = discoveredIdentifiers
+        let additionalIdentifiers =
+            discoveredIdentifiers
             .subtracting(bundledLanguageIdentifiers)
             .sorted { displayName(for: $0) < displayName(for: $1) }
 

@@ -30,7 +30,8 @@ enum ShortcutStore {
         }
 
         if let shortcut,
-           let data = try? JSONEncoder().encode(shortcut) {
+            let data = try? JSONEncoder().encode(shortcut)
+        {
             UserDefaults.standard.set(data, forKey: action.userDefaultsKey)
             UserDefaults.standard.removeObject(forKey: clearedUserDefaultsKey(for: action))
             ShortcutMigration.removeLegacyCustomRecordingShortcut(for: action)
@@ -54,8 +55,9 @@ enum ShortcutStore {
         replacingCleared: Bool = false
     ) {
         guard action.isStored,
-              rawShortcut(for: action) == nil,
-              replacingCleared || !isShortcutCleared(for: action) else {
+            rawShortcut(for: action) == nil,
+            replacingCleared || !isShortcutCleared(for: action)
+        else {
             return
         }
 

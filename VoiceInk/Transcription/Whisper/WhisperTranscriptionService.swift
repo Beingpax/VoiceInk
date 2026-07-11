@@ -1,5 +1,5 @@
-import Foundation
 import AVFoundation
+import Foundation
 import os
 
 class WhisperTranscriptionService: TranscriptionService {
@@ -14,7 +14,9 @@ class WhisperTranscriptionService: TranscriptionService {
         self.modelProvider = modelProvider
     }
 
-    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws -> String {
+    func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
+        -> String
+    {
         guard model.provider == .whisper else {
             throw VoiceInkEngineError.modelLoadFailed
         }
@@ -23,9 +25,10 @@ class WhisperTranscriptionService: TranscriptionService {
 
         // Check if the required model is already loaded in the model provider
         if let provider = modelProvider,
-           await provider.isModelLoaded,
-           let loadedContext = await provider.whisperContext,
-           await provider.loadedWhisperModel?.name == model.name {
+            await provider.isModelLoaded,
+            let loadedContext = await provider.whisperContext,
+            await provider.loadedWhisperModel?.name == model.name
+        {
 
             logger.notice("Using already loaded model: \(model.name, privacy: .public)")
             whisperContext = loadedContext

@@ -44,13 +44,16 @@ enum CustomCommandDeliveryError: Error, LocalizedError {
             if details.isEmpty {
                 return String(format: String(localized: "Custom command exited with status %d."), status)
             }
-            return String(format: String(localized: "Custom command exited with status %d: %@"), status, String(details.prefix(300)))
+            return String(
+                format: String(localized: "Custom command exited with status %d: %@"), status,
+                String(details.prefix(300)))
         }
     }
 }
 
 enum CustomCommandDeliveryRunner {
-    private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CustomCommandDeliveryRunner")
+    private static let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink", category: "CustomCommandDeliveryRunner")
 
     static func run(
         command: String,
@@ -160,7 +163,8 @@ enum CustomCommandDeliveryRunner {
             }
 
             guard let inputData = input.data(using: .utf8),
-                  !inputData.isEmpty else {
+                !inputData.isEmpty
+            else {
                 return
             }
 
@@ -185,8 +189,10 @@ enum CustomCommandDeliveryRunner {
         }
 
         if !didExitAfterTerminate,
-           semaphore.wait(timeout: .now() + 1) == .timedOut {
-            logger.error("Custom command process \(process.processIdentifier, privacy: .public) did not exit after SIGKILL")
+            semaphore.wait(timeout: .now() + 1) == .timedOut
+        {
+            logger.error(
+                "Custom command process \(process.processIdentifier, privacy: .public) did not exit after SIGKILL")
         }
     }
 
@@ -197,7 +203,9 @@ enum CustomCommandDeliveryRunner {
     private static func signalTargets(_ pids: [pid_t], signal: Int32) {
         for pid in pids {
             if kill(pid, signal) != 0 && errno != ESRCH {
-                logger.error("Failed to signal custom command process \(pid, privacy: .public): errno \(errno, privacy: .public)")
+                logger.error(
+                    "Failed to signal custom command process \(pid, privacy: .public): errno \(errno, privacy: .public)"
+                )
             }
         }
     }
@@ -253,7 +261,8 @@ enum CustomCommandDeliveryRunner {
         }
 
         let output = outputCollector.stringValue()
-        return output
+        return
+            output
             .split(whereSeparator: \.isNewline)
             .compactMap { Int32(String($0).trimmingCharacters(in: .whitespacesAndNewlines)) }
     }

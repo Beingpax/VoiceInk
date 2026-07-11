@@ -55,7 +55,7 @@ struct LicenseManagementView: View {
             Button("Deactivate License", role: .destructive) {
                 licenseViewModel.removeLicense()
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes the license from this Mac. You can activate it again later.")
         }
@@ -140,7 +140,8 @@ struct LicenseManagementView: View {
             HStack(spacing: 10) {
                 BenefitPill(title: "Lifetime access", systemImage: "infinity", tint: neutralIconColor)
                 BenefitPill(title: "Free updates", systemImage: "arrow.down.circle.fill", tint: neutralIconColor)
-                BenefitPill(title: "Priority support", systemImage: "bubble.left.and.bubble.right.fill", tint: neutralIconColor)
+                BenefitPill(
+                    title: "Priority support", systemImage: "bubble.left.and.bubble.right.fill", tint: neutralIconColor)
             }
 
             LicenseActionButton(
@@ -201,7 +202,9 @@ struct LicenseManagementView: View {
             onCopyLicenseKey: copyLicenseKey
         ) {
             HStack(spacing: 10) {
-                ResourceButton(title: "Manage License", systemImage: "person.crop.circle.badge.checkmark", tint: neutralIconColor) {
+                ResourceButton(
+                    title: "Manage License", systemImage: "person.crop.circle.badge.checkmark", tint: neutralIconColor
+                ) {
                     openLicensePortal()
                 }
 
@@ -236,7 +239,7 @@ struct LicenseManagementView: View {
         LazyVGrid(
             columns: [
                 GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10)
+                GridItem(.flexible(), spacing: 10),
             ],
             alignment: .leading,
             spacing: 10
@@ -535,12 +538,14 @@ private struct ReportFeedbackBottomPanel: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("Have feedback, a bug report, or something that feels off? Send a note with system information by email, or join Discord for community discussion. Every report helps make VoiceInk more reliable and easier to use.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 540)
+                    Text(
+                        "Have feedback, a bug report, or something that feels off? Send a note with system information by email, or join Discord for community discussion. Every report helps make VoiceInk more reliable and easier to use."
+                    )
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: 540)
                 }
 
                 Text("REACH OUT")

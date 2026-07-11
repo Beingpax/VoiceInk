@@ -278,8 +278,9 @@ final class ShortcutRecorderModel: ObservableObject {
         let modifiers = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: keyCode)
 
         if modifiers.isEmpty,
-           Shortcut.isFunctionKeyCode(keyCode),
-           Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil).contains(.function) {
+            Shortcut.isFunctionKeyCode(keyCode),
+            Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil).contains(.function)
+        {
             return true
         }
 

@@ -9,8 +9,8 @@ struct OnboardingLicenseSetupCard: View {
     let onActivate: () -> Void
 
     private var canActivateLicense: Bool {
-        !licenseViewModel.licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-            !licenseViewModel.isValidating
+        !licenseViewModel.licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !licenseViewModel.isValidating
     }
 
     var body: some View {
@@ -219,7 +219,9 @@ private struct OnboardingLicensePrimaryButton: View {
             .frame(height: 44)
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isEnabled ? AppTheme.Surface.controlActive.opacity(0.88) : AppTheme.Surface.control.opacity(0.64))
+                    .fill(
+                        isEnabled
+                            ? AppTheme.Surface.controlActive.opacity(0.88) : AppTheme.Surface.control.opacity(0.64))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)

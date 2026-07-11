@@ -9,10 +9,13 @@ struct TranscriptionListItem: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Toggle("", isOn: Binding(
-                get: { isChecked },
-                set: { _ in onToggleCheck() }
-            ))
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { isChecked },
+                    set: { _ in onToggleCheck() }
+                )
+            )
             .toggleStyle(CircularCheckboxStyle())
             .labelsHidden()
 

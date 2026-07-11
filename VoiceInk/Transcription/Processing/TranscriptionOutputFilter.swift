@@ -2,9 +2,9 @@ import Foundation
 
 struct TranscriptionOutputFilter {
     private static let hallucinationPatterns = [
-        #"\[.*?\]"#,     // []
-        #"\(.*?\)"#,     // ()
-        #"\{.*?\}"#      // {}
+        #"\[.*?\]"#,  // []
+        #"\(.*?\)"#,  // ()
+        #"\{.*?\}"#,  // {}
     ]
 
     static func filter(_ text: String) -> String {
@@ -21,7 +21,8 @@ struct TranscriptionOutputFilter {
         for pattern in hallucinationPatterns {
             if let regex = try? NSRegularExpression(pattern: pattern) {
                 let range = NSRange(filteredText.startIndex..., in: filteredText)
-                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
+                filteredText = regex.stringByReplacingMatches(
+                    in: filteredText, options: [], range: range, withTemplate: "")
             }
         }
 
@@ -30,7 +31,8 @@ struct TranscriptionOutputFilter {
             let pattern = "\\b\(NSRegularExpression.escapedPattern(for: fillerWord))\\b[,.]?"
             if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
                 let range = NSRange(filteredText.startIndex..., in: filteredText)
-                filteredText = regex.stringByReplacingMatches(in: filteredText, options: [], range: range, withTemplate: "")
+                filteredText = regex.stringByReplacingMatches(
+                    in: filteredText, options: [], range: range, withTemplate: "")
             }
         }
 
@@ -40,4 +42,4 @@ struct TranscriptionOutputFilter {
 
         return filteredText
     }
-} 
+}

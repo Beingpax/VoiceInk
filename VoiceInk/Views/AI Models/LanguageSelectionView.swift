@@ -2,8 +2,8 @@ import SwiftUI
 
 // Define a display mode for flexible usage
 enum LanguageDisplayMode {
-    case full // For settings page with descriptions
-    case menuItem // For menu bar with compact layout
+    case full  // For settings page with descriptions
+    case menuItem  // For menu bar with compact layout
 }
 
 struct LanguageSelectionView: View {
@@ -48,7 +48,7 @@ struct LanguageSelectionView: View {
 
     private func availableLanguagesForCurrentModel() -> [String: String] {
         guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
-            return ["en": "English"] // Default to English if no model found
+            return ["en": "English"]  // Default to English if no model found
         }
         return TranscriptionLanguageSupport.languages(for: currentModel)
     }
@@ -104,14 +104,13 @@ struct LanguageSelectionView: View {
             languageSelectionSection
         }
     }
-    
+
     private var languageSelectionSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Transcription Language")
                 .font(.headline)
 
-            if transcriptionModelManager.currentTranscriptionModel != nil
-            {
+            if transcriptionModelManager.currentTranscriptionModel != nil {
                 if languageSelectionDisabled() {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Language: Autodetected")

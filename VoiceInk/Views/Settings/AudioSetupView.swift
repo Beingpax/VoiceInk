@@ -298,7 +298,7 @@ struct AudioSetupView: View {
     private func movePrioritizedDeviceUp(_ device: PrioritizedDevice) {
         var devices = prioritizedDevicesInDisplayOrder
         guard let currentIndex = devices.firstIndex(where: { $0.id == device.id }),
-              currentIndex > 0
+            currentIndex > 0
         else { return }
 
         devices.swapAt(currentIndex, currentIndex - 1)
@@ -308,7 +308,7 @@ struct AudioSetupView: View {
     private func movePrioritizedDeviceDown(_ device: PrioritizedDevice) {
         var devices = prioritizedDevicesInDisplayOrder
         guard let currentIndex = devices.firstIndex(where: { $0.id == device.id }),
-              currentIndex < devices.count - 1
+            currentIndex < devices.count - 1
         else { return }
 
         devices.swapAt(currentIndex, currentIndex + 1)

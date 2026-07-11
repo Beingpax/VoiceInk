@@ -60,14 +60,16 @@ final class CustomAIProviderManager: ObservableObject {
         providers.reduce(into: [String]()) { result, provider in
             let modelName = provider.modelName
             guard !modelName.isEmpty,
-                  hasAPIKey(for: provider),
-                  !result.contains(modelName) else { return }
+                hasAPIKey(for: provider),
+                !result.contains(modelName)
+            else { return }
             result.append(modelName)
         }
     }
 
     var defaultModelName: String {
-        let savedModel = defaults.string(forKey: "customProviderModel")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let savedModel =
+            defaults.string(forKey: "customProviderModel")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let configuredModelNames = availableModelNames
         if !savedModel.isEmpty, configuredModelNames.contains(savedModel) {
             return savedModel
@@ -87,7 +89,8 @@ final class CustomAIProviderManager: ObservableObject {
         let normalizedProvider = provider.normalizedForStorage
         let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedKey.isEmpty,
-              APIKeyManager.shared.saveCustomAIProviderAPIKey(trimmedKey, forProviderId: normalizedProvider.id) else {
+            APIKeyManager.shared.saveCustomAIProviderAPIKey(trimmedKey, forProviderId: normalizedProvider.id)
+        else {
             return false
         }
 
@@ -106,7 +109,8 @@ final class CustomAIProviderManager: ObservableObject {
         if let apiKey {
             let trimmedKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedKey.isEmpty,
-                  APIKeyManager.shared.saveCustomAIProviderAPIKey(trimmedKey, forProviderId: normalizedProvider.id) else {
+                APIKeyManager.shared.saveCustomAIProviderAPIKey(trimmedKey, forProviderId: normalizedProvider.id)
+            else {
                 return false
             }
         }
@@ -153,8 +157,9 @@ final class CustomAIProviderManager: ObservableObject {
 
     func requestConfiguration(forModel modelName: String) -> (baseURL: String, apiKey: String, modelName: String)? {
         guard let provider = provider(forModel: modelName),
-              let apiKey = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id),
-              !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            let apiKey = APIKeyManager.shared.getCustomAIProviderAPIKey(forProviderId: provider.id),
+            !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
             return nil
         }
 
@@ -185,7 +190,9 @@ final class CustomAIProviderManager: ObservableObject {
             errors.append(String(localized: "A custom enhancement model with this display name already exists"))
         }
 
-        if providers.contains(where: { $0.modelName.caseInsensitiveCompare(trimmedModel) == .orderedSame && $0.id != id }) {
+        if providers.contains(where: {
+            $0.modelName.caseInsensitiveCompare(trimmedModel) == .orderedSame && $0.id != id
+        }) {
             errors.append(String(localized: "A custom enhancement model with this model name already exists"))
         }
 
@@ -222,10 +229,11 @@ final class CustomAIProviderManager: ObservableObject {
 
     private func migrateLegacyCustomProviderIfNeeded() {
         guard providers.isEmpty,
-              let baseURL = defaults.string(forKey: "customProviderBaseURL"),
-              !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              let model = defaults.string(forKey: "customProviderModel"),
-              !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            let baseURL = defaults.string(forKey: "customProviderBaseURL"),
+            !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            let model = defaults.string(forKey: "customProviderModel"),
+            !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
             return
         }
 

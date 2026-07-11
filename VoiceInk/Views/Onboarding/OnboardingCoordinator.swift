@@ -70,16 +70,21 @@ final class OnboardingCoordinator: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.storedStage = defaults.string(forKey: OnboardingStorageKeys.stage) ?? OnboardingStage.permissions.rawValue
-        self.storedActivePermission = defaults.string(forKey: OnboardingStorageKeys.activePermission) ?? OnboardingPermissionKind.microphone.rawValue
+        self.storedActivePermission =
+            defaults.string(forKey: OnboardingStorageKeys.activePermission)
+            ?? OnboardingPermissionKind.microphone.rawValue
         self.hasRequestedScreenRecording = defaults.bool(forKey: OnboardingStorageKeys.requestedScreenRecording)
         self.experienceStepIndex = defaults.integer(forKey: OnboardingStorageKeys.experienceIndex)
-        self.storedOnboardingAIProvider = defaults.string(forKey: OnboardingStorageKeys.aiProvider) ?? AIProvider.groq.rawValue
-        self.storedTranscriptionSetupKind = defaults.string(
-            forKey: OnboardingStorageKeys.transcriptionSetupKind
-        ) ?? OnboardingTranscriptionSetupKind.local.rawValue
-        self.storedOnboardingTranscriptionProvider = defaults.string(
-            forKey: OnboardingStorageKeys.transcriptionProvider
-        ) ?? ""
+        self.storedOnboardingAIProvider =
+            defaults.string(forKey: OnboardingStorageKeys.aiProvider) ?? AIProvider.groq.rawValue
+        self.storedTranscriptionSetupKind =
+            defaults.string(
+                forKey: OnboardingStorageKeys.transcriptionSetupKind
+            ) ?? OnboardingTranscriptionSetupKind.local.rawValue
+        self.storedOnboardingTranscriptionProvider =
+            defaults.string(
+                forKey: OnboardingStorageKeys.transcriptionProvider
+            ) ?? ""
         self.hasSkippedAPISetup = defaults.bool(forKey: OnboardingStorageKeys.skippedAPISetup)
     }
 
@@ -108,8 +113,7 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     var hasSelectedOnboardingMicrophone: Bool {
-        defaults.audioInputModeRawValue == AudioInputMode.custom.rawValue &&
-            defaults.selectedAudioDeviceUID != nil
+        defaults.audioInputModeRawValue == AudioInputMode.custom.rawValue && defaults.selectedAudioDeviceUID != nil
     }
 
     var currentStepNumber: Int {
@@ -145,7 +149,8 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     var experienceModeTemplate: StarterModeTemplate {
-        StarterModeCatalog.templates.first { $0.kind == experienceStep.starterModeKind } ?? StarterModeCatalog.templates[0]
+        StarterModeCatalog.templates.first { $0.kind == experienceStep.starterModeKind }
+            ?? StarterModeCatalog.templates[0]
     }
 
     var normalizedExperienceStepIndex: Int {
@@ -168,8 +173,7 @@ final class OnboardingCoordinator: ObservableObject {
 
     var shouldShowContextAwarenessAfterCurrentExperience: Bool {
         let nextIndex = normalizedExperienceStepIndex + 1
-        return experienceStep.showsContextAwarenessAfterCompletion &&
-            activeExperienceSteps.indices.contains(nextIndex)
+        return experienceStep.showsContextAwarenessAfterCompletion && activeExperienceSteps.indices.contains(nextIndex)
     }
 
     var shouldShowContextAwarenessBeforeCurrentExperience: Bool {
@@ -224,13 +228,11 @@ final class OnboardingCoordinator: ObservableObject {
             .openAI,
             .openRouter,
             .anthropic,
-            .mistral
+            .mistral,
         ]
 
         let supportedProviders = AIProvider.allCases.filter { provider in
-            provider.supportsEnhancement &&
-                provider.requiresAPIKey &&
-                provider != .custom
+            provider.supportsEnhancement && provider.requiresAPIKey && provider != .custom
         }
 
         return supportedProviders.sorted { first, second in
@@ -252,7 +254,7 @@ final class OnboardingCoordinator: ObservableObject {
     var onboardingTranscriptionProviderOptions: [any CloudProvider] {
         let preferredOrder = [
             "AssemblyAI", "Cartesia", "Deepgram", "ElevenLabs", "Soniox",
-            "Speechmatics", "xAI", "Mistral", "Groq", "Gemini"
+            "Speechmatics", "xAI", "Mistral", "Groq", "Gemini",
         ]
 
         return CloudProviderRegistry.allProviders.sorted { first, second in
@@ -315,7 +317,8 @@ final class OnboardingCoordinator: ObservableObject {
         activeExperienceSteps.indices.compactMap { index in
             let nextIndex = index + 1
             guard activeExperienceSteps[index].showsContextAwarenessAfterCompletion,
-                  activeExperienceSteps.indices.contains(nextIndex) else {
+                activeExperienceSteps.indices.contains(nextIndex)
+            else {
                 return nil
             }
 
@@ -342,7 +345,8 @@ final class OnboardingCoordinator: ObservableObject {
 
     var selectedOnboardingProvider: AIProvider {
         if let storedProvider = AIProvider(rawValue: storedOnboardingAIProvider),
-           onboardingProviderOptions.contains(storedProvider) {
+            onboardingProviderOptions.contains(storedProvider)
+        {
             return storedProvider
         }
 
@@ -401,16 +405,13 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     func isReadyForExperience(isTranscriptionSetupReady: Bool) -> Bool {
-        requiredPermissionsGranted &&
-            hasSelectedOnboardingMicrophone &&
-            isTranscriptionSetupReady &&
-            (isSelectedAPIProviderVerified || hasSkippedAPISetup)
+        requiredPermissionsGranted && hasSelectedOnboardingMicrophone && isTranscriptionSetupReady
+            && (isSelectedAPIProviderVerified || hasSkippedAPISetup)
     }
 
     func isCurrentExperienceReady(isTranscriptionSetupReady: Bool) -> Bool {
-        isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) &&
-            isExperienceModeInstalled &&
-            hasExperienceModeShortcut
+        isReadyForExperience(isTranscriptionSetupReady: isTranscriptionSetupReady) && isExperienceModeInstalled
+            && hasExperienceModeShortcut
     }
 
 }
@@ -434,7 +435,7 @@ enum OnboardingStorageKeys {
         transcriptionProvider,
         skippedAPISetup,
         experienceIndex,
-        "onboardingStarterModeIndex"
+        "onboardingStarterModeIndex",
     ]
 }
 

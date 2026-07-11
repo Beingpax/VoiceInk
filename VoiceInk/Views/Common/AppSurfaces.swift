@@ -54,7 +54,7 @@ struct MetricTintBackground: View {
                 LinearGradient(
                     gradient: Gradient(stops: [
                         .init(color: color.opacity(0.15), location: 0),
-                        .init(color: AppTheme.Surface.window.opacity(0.1), location: 0.6)
+                        .init(color: AppTheme.Surface.window.opacity(0.1), location: 0.6),
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -66,7 +66,7 @@ struct MetricTintBackground: View {
                         LinearGradient(
                             gradient: Gradient(colors: [
                                 AppTheme.Border.subtle,
-                                AppTheme.Border.subtle.opacity(0.4)
+                                AppTheme.Border.subtle.opacity(0.4),
                             ]),
                             startPoint: .top,
                             endPoint: .bottom

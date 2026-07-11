@@ -1,5 +1,5 @@
-import SwiftUI
 import OSLog
+import SwiftUI
 
 enum ViewType: String, CaseIterable, Identifiable {
     case dashboard = "Dashboard"
@@ -22,11 +22,15 @@ final class MainWindowNavigation: ObservableObject {
 
     func navigate(to destination: String) {
         guard let viewType = ViewType.allCases.first(where: { $0.rawValue == destination }) else {
-            logger.error("🧭 Ignored unknown main-window navigation destination. destination=\(destination, privacy: .public); selectedView=\(self.selectedView.rawValue, privacy: .public)")
+            logger.error(
+                "🧭 Ignored unknown main-window navigation destination. destination=\(destination, privacy: .public); selectedView=\(self.selectedView.rawValue, privacy: .public)"
+            )
             return
         }
 
-        logger.notice("🧭 Main-window navigation updated. destination=\(destination, privacy: .public); selectedBefore=\(self.selectedView.rawValue, privacy: .public); selectedAfter=\(viewType.rawValue, privacy: .public)")
+        logger.notice(
+            "🧭 Main-window navigation updated. destination=\(destination, privacy: .public); selectedBefore=\(self.selectedView.rawValue, privacy: .public); selectedAfter=\(viewType.rawValue, privacy: .public)"
+        )
         selectedView = viewType
     }
 }
@@ -61,8 +65,8 @@ struct ContentView: View {
     @ViewBuilder
     private var detailContent: some View {
         detailView(for: navigation.selectedView)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(detailBackground)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(detailBackground)
     }
 
     private var detailBackground: some View {
@@ -77,7 +81,7 @@ struct ContentView: View {
         }
         .ignoresSafeArea(.container, edges: .top)
     }
-    
+
     @ViewBuilder
     private func detailView(for viewType: ViewType) -> some View {
         switch viewType {

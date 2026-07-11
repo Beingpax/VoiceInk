@@ -4,7 +4,7 @@ struct VoiceInkButton: View {
     let title: LocalizedStringKey
     let action: () -> Void
     var isDisabled: Bool = false
-    
+
     var body: some View {
         Button(action: action) {
             Text(title)
@@ -24,21 +24,21 @@ struct VoiceInkButton: View {
 
 struct ModeEmptyStateView: View {
     let action: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "bolt.circle.fill")
                 .font(.system(size: 48))
                 .foregroundColor(.secondary)
-            
+
             Text("No Modes")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             Text("Add customized modes for different contexts")
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             VoiceInkButton(
                 title: "Add New Mode",
                 action: action
@@ -53,7 +53,7 @@ struct ModeConfigurationsGrid: View {
     @ObservedObject var modeManager: ModeManager
     let onEditConfig: (ModeConfig) -> Void
     @EnvironmentObject var enhancementService: AIEnhancementService
-    
+
     var body: some View {
         LazyVStack(spacing: 12) {
             ForEach($modeManager.configurations) { $config in
@@ -105,31 +105,35 @@ struct ConfigurationRow: View {
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @State private var isHovering = false
-    
+
     private let maxAppIconsToShow = 5
-    
+
     private var selectedPrompt: CustomPrompt? {
         guard let promptId = config.selectedPrompt,
-              let uuid = UUID(uuidString: promptId) else { return nil }
+            let uuid = UUID(uuidString: promptId)
+        else { return nil }
         return enhancementService.allPrompts.first { $0.id == uuid }
     }
-    
+
     private var selectedModel: String? {
         if let modelName = config.selectedTranscriptionModelName,
-           let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }) {
+            let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName })
+        {
             return model.displayName
         }
         return "Default"
     }
-    
+
     private var selectedLanguage: String? {
         if let langCode = config.selectedLanguage {
             if langCode == "auto" { return String(localized: "Auto") }
             if langCode == "en" { return String(localized: "English") }
-            
+
             if let modelName = config.selectedTranscriptionModelName,
-               let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),
-               let langName = TranscriptionLanguageSupport.languages(for: model, realtimeEnabled: config.isRealtimeTranscriptionEnabled)[langCode] {
+                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),
+                let langName = TranscriptionLanguageSupport.languages(
+                    for: model, realtimeEnabled: config.isRealtimeTranscriptionEnabled)[langCode]
+            {
                 return langName
             }
             return langCode.uppercased()
@@ -138,16 +142,13 @@ struct ConfigurationRow: View {
     }
 
     private var hasVisibleMetadata: Bool {
-        (selectedModel.map { $0 != "Default" } ?? false) ||
-        (selectedLanguage.map { $0 != "Default" } ?? false) ||
-        config.isAIEnhancementEnabled ||
-        config.outputMode != .paste ||
-        config.autoSendKey.isEnabled
+        (selectedModel.map { $0 != "Default" } ?? false) || (selectedLanguage.map { $0 != "Default" } ?? false)
+            || config.isAIEnhancementEnabled || config.outputMode != .paste || config.autoSendKey.isEnabled
     }
-    
+
     private var appCount: Int { return config.allAppConfigs.count }
     private var websiteCount: Int { return config.allURLConfigs.count }
-    
+
     private var websiteText: String {
         if websiteCount == 0 { return "" }
         return String(localized: "\(websiteCount) Websites")
@@ -157,11 +158,11 @@ struct ConfigurationRow: View {
         if appCount == 0 { return "" }
         return String(localized: "\(appCount) Apps")
     }
-    
+
     private var extraAppsCount: Int {
         return max(0, appCount - maxAppIconsToShow)
     }
-    
+
     private var visibleAppConfigs: [AppConfig] {
         return Array(config.allAppConfigs.prefix(maxAppIconsToShow))
     }
@@ -175,8 +176,10 @@ struct ConfigurationRow: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(Capsule()
-                    .fill(AppTheme.Surface.control))
+                .background(
+                    Capsule()
+                        .fill(AppTheme.Surface.control)
+                )
                 .overlay(
                     Capsule()
                         .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -186,7 +189,7 @@ struct ConfigurationRow: View {
         .help("Edit mode")
         .accessibilityLabel("Edit mode")
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
@@ -240,28 +243,31 @@ struct ConfigurationRow: View {
                 }
 
                 if !config.isDefault {
-                    Toggle("", isOn: Binding(
-                        get: { config.isEnabled },
-                        set: { newValue in
-                            if newValue {
-                                modeManager.enableConfiguration(with: config.id)
-                            } else {
-                                modeManager.disableConfiguration(with: config.id)
+                    Toggle(
+                        "",
+                        isOn: Binding(
+                            get: { config.isEnabled },
+                            set: { newValue in
+                                if newValue {
+                                    modeManager.enableConfiguration(with: config.id)
+                                } else {
+                                    modeManager.disableConfiguration(with: config.id)
+                                }
                             }
-                        }
-                    ))
-                        .toggleStyle(SwitchToggleStyle(tint: AppTheme.Accent.primary))
-                        .labelsHidden()
+                        )
+                    )
+                    .toggleStyle(SwitchToggleStyle(tint: AppTheme.Accent.primary))
+                    .labelsHidden()
                 }
             }
             .padding(.vertical, 12)
             .padding(.horizontal, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AppMaterialCardBackground.fill)
-            
+
             if hasVisibleMetadata {
                 Divider()
-                
+
                 HStack(spacing: 8) {
                     if let model = selectedModel, model != "Default" {
                         HStack(spacing: 4) {
@@ -272,8 +278,10 @@ struct ConfigurationRow: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule()
-                            .fill(AppTheme.Surface.control))
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Surface.control)
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -289,8 +297,10 @@ struct ConfigurationRow: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule()
-                            .fill(AppTheme.Surface.control))
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Surface.control)
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -298,9 +308,10 @@ struct ConfigurationRow: View {
                     }
 
                     if config.isAIEnhancementEnabled,
-                       config.selectedAIProvider != AIProvider.localCLI.rawValue,
-                       let modelName = config.selectedAIModel,
-                       !modelName.isEmpty {
+                        config.selectedAIProvider != AIProvider.localCLI.rawValue,
+                        let modelName = config.selectedAIModel,
+                        !modelName.isEmpty
+                    {
                         HStack(spacing: 4) {
                             Image(systemName: "cpu")
                                 .font(.system(size: 10))
@@ -309,8 +320,10 @@ struct ConfigurationRow: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule()
-                            .fill(AppTheme.Surface.control))
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Surface.control)
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -326,8 +339,10 @@ struct ConfigurationRow: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule()
-                            .fill(AppTheme.Surface.control))
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Surface.control)
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -343,8 +358,10 @@ struct ConfigurationRow: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule()
-                            .fill(AppTheme.Surface.control))
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Surface.control)
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -359,8 +376,10 @@ struct ConfigurationRow: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule()
-                            .fill(AppTheme.Surface.control))
+                        .background(
+                            Capsule()
+                                .fill(AppTheme.Surface.control)
+                        )
                         .overlay(
                             Capsule()
                                 .stroke(AppTheme.Border.control, lineWidth: 0.5)
@@ -382,30 +401,30 @@ struct ConfigurationRow: View {
                 .padding(.horizontal, 16)
                 .background(AppTheme.Surface.card)
             }
-    }
-    .clipShape(RoundedRectangle(cornerRadius: 16))
-    .background {
-        if !hasVisibleMetadata {
-            AppMaterialCardBackground(isSelected: isEditing, cornerRadius: 16)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .background {
+            if !hasVisibleMetadata {
+                AppMaterialCardBackground(isSelected: isEditing, cornerRadius: 16)
+            }
+        }
+        .overlay {
+            if hasVisibleMetadata {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        AppMaterialCardBackground.border(for: isEditing),
+                        lineWidth: AppMaterialCardBackground.lineWidth(for: isEditing)
+                    )
+            }
+        }
+        .opacity(config.isEnabled ? 1.0 : 0.70)
+        .onHover { hovering in
+            withAnimation(.easeInOut(duration: 0.12)) {
+                isHovering = hovering
+            }
         }
     }
-    .overlay {
-        if hasVisibleMetadata {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(
-                    AppMaterialCardBackground.border(for: isEditing),
-                    lineWidth: AppMaterialCardBackground.lineWidth(for: isEditing)
-                )
-        }
-    }
-    .opacity(config.isEnabled ? 1.0 : 0.70)
-    .onHover { hovering in
-        withAnimation(.easeInOut(duration: 0.12)) {
-            isHovering = hovering
-        }
-    }
-    }
-    
+
     private var isSelected: Bool {
         return isEditing
     }
@@ -413,7 +432,7 @@ struct ConfigurationRow: View {
 
 struct ModeAppIcon: View {
     let bundleId: String
-    
+
     var body: some View {
         if let icon = TriggerAppIconCache.shared.icon(for: bundleId) {
             Image(nsImage: icon)
@@ -433,7 +452,7 @@ struct AppGridItem: View {
     let app: (url: URL, name: String, bundleId: String, icon: NSImage)
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {

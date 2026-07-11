@@ -13,35 +13,38 @@ struct EnhancementPromptPopover: View {
     private var isEnhancementEnabled: Bool {
         currentMode?.isAIEnhancementEnabled == true
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Enhancement Toggle at the top
             HStack(spacing: 8) {
-                Toggle("AI Enhancement", isOn: Binding(
-                    get: { isEnhancementEnabled },
-                    set: { newValue in
-                        modeManager.updateCurrentEffectiveConfiguration { config in
-                            config.isAIEnhancementEnabled = newValue
-                            if newValue, config.selectedPrompt == nil {
-                                config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
+                Toggle(
+                    "AI Enhancement",
+                    isOn: Binding(
+                        get: { isEnhancementEnabled },
+                        set: { newValue in
+                            modeManager.updateCurrentEffectiveConfiguration { config in
+                                config.isAIEnhancementEnabled = newValue
+                                if newValue, config.selectedPrompt == nil {
+                                    config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
+                                }
                             }
+                            refreshSelectedPrompt()
                         }
-                        refreshSelectedPrompt()
-                    }
-                ))
-                    .foregroundColor(.white.opacity(0.9))
-                    .font(.headline)
-                    .lineLimit(1)
-                
+                    )
+                )
+                .foregroundColor(.white.opacity(0.9))
+                .font(.headline)
+                .lineLimit(1)
+
                 Spacer()
             }
             .padding(.horizontal)
             .padding(.top, 8)
-            
+
             Divider()
                 .background(Color.white.opacity(0.1))
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
                     // Available Enhancement Prompts
@@ -91,7 +94,7 @@ struct EnhancementPromptRow: View {
     let isSelected: Bool
     let isDisabled: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {

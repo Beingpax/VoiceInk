@@ -6,8 +6,9 @@ struct TranscriptionDetailView: View {
 
     private var hasAudioFile: Bool {
         if let urlString = transcription.audioFileURL,
-           let url = URL(string: urlString),
-           FileManager.default.fileExists(atPath: url.path) {
+            let url = URL(string: urlString),
+            FileManager.default.fileExists(atPath: url.path)
+        {
             return true
         }
         return false
@@ -35,7 +36,8 @@ struct TranscriptionDetailView: View {
             }
 
             if hasAudioFile, let urlString = transcription.audioFileURL,
-               let url = URL(string: urlString) {
+                let url = URL(string: urlString)
+            {
                 VStack(spacing: 0) {
                     Divider()
 
@@ -81,8 +83,8 @@ private struct MessageBubble: View {
                         foregroundColor: AppTheme.Text.primary,
                         alignment: isEnhanced ? .leading : .trailing
                     )
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
                 }
                 .frame(maxHeight: 350)
                 .background {

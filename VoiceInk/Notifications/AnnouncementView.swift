@@ -71,7 +71,7 @@ struct AnnouncementView: View {
                         LinearGradient(
                             colors: [
                                 Color.black.opacity(0.95),
-                                Color(red: 0.15, green: 0.15, blue: 0.15).opacity(0.9)
+                                Color(red: 0.15, green: 0.15, blue: 0.15).opacity(0.9),
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -88,7 +88,3 @@ struct AnnouncementView: View {
         )
     }
 }
-
-
- 
-

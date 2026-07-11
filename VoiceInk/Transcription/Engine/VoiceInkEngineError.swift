@@ -31,11 +31,18 @@ extension VoiceInkEngineError: LocalizedError {
         case .modelLoadFailed:
             return String(localized: "Try selecting a different model or redownloading the current model.")
         case .transcriptionFailed:
-            return String(localized: "Check the default model try again. If the problem persists, try a different model.")
+            return String(
+                localized: "Check the default model try again. If the problem persists, try a different model.")
         case .whisperCoreFailed:
-            return String(localized: "This can happen due to an issue with the audio recording or insufficient system resources. Please try again, or restart the app.")
+            return String(
+                localized:
+                    "This can happen due to an issue with the audio recording or insufficient system resources. Please try again, or restart the app."
+            )
         case .unzipFailed:
-            return String(localized: "The downloaded Core ML model archive might be corrupted. Try deleting the model and downloading it again. Check available disk space.")
+            return String(
+                localized:
+                    "The downloaded Core ML model archive might be corrupted. Try deleting the model and downloading it again. Check available disk space."
+            )
         case .unknownError:
             return String(localized: "Please restart the application. If the problem persists, contact support.")
         }

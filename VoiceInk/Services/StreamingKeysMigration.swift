@@ -7,10 +7,13 @@ enum StreamingKeysMigration {
         guard !defaults.bool(forKey: "streaming-keys-migrated") else { return }
 
         let legacyStreamingMappings: [(old: String, new: [String])] = [
-            ("parakeet-streaming-enabled", [
-                "streaming-enabled-parakeet-tdt-0.6b-v2",
-                "streaming-enabled-parakeet-tdt-0.6b-v3",
-            ]),
+            (
+                "parakeet-streaming-enabled",
+                [
+                    "streaming-enabled-parakeet-tdt-0.6b-v2",
+                    "streaming-enabled-parakeet-tdt-0.6b-v3",
+                ]
+            )
         ]
 
         for mapping in legacyStreamingMappings {
@@ -29,7 +32,8 @@ enum StreamingKeysMigration {
         ]
 
         if let savedModel = defaults.string(forKey: "CurrentTranscriptionModel"),
-           let replacement = removedModelMappings[savedModel] {
+            let replacement = removedModelMappings[savedModel]
+        {
             defaults.set(replacement, forKey: "CurrentTranscriptionModel")
         }
 
@@ -39,11 +43,13 @@ enum StreamingKeysMigration {
         // Uses JSONSerialization so the migration stays independent of the ModeConfig struct shape.
         for modeKey in ["modeConfigurationsV2", "powerModeConfigurationsV2"] {
             if let data = defaults.data(forKey: modeKey),
-               var configs = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] {
+                var configs = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]]
+            {
                 var changed = false
                 for index in configs.indices {
                     guard let savedModel = configs[index]["selectedTranscriptionModelName"] as? String,
-                          let replacement = removedModelMappings[savedModel] else { continue }
+                        let replacement = removedModelMappings[savedModel]
+                    else { continue }
                     configs[index]["selectedTranscriptionModelName"] = replacement
                     changed = true
                 }

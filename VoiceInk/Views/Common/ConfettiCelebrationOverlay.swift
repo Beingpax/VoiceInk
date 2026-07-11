@@ -73,14 +73,12 @@ struct ConfettiCelebrationOverlay: View {
         guard time >= 0, time <= Metrics.duration else { return }
 
         let progressTime = CGFloat(time)
-        let x = origin.x +
-            particle.startJitter.width +
-            particle.velocity.width * progressTime +
-            CGFloat(sin((time * particle.wobbleSpeed) + particle.phase)) * particle.wobble
-        let y = origin.y +
-            particle.startJitter.height +
-            particle.velocity.height * progressTime +
-            0.5 * particle.gravity * progressTime * progressTime
+        let x =
+            origin.x + particle.startJitter.width + particle.velocity.width * progressTime + CGFloat(
+                sin((time * particle.wobbleSpeed) + particle.phase)) * particle.wobble
+        let y =
+            origin.y + particle.startJitter.height + particle.velocity.height * progressTime + 0.5 * particle.gravity
+            * progressTime * progressTime
 
         let fadeIn = min(time / 0.06, 1)
         let fadeOut = max(0, 1 - max(0, time - particle.fadeStart) / particle.fadeDuration)
@@ -246,7 +244,8 @@ private struct ConfettiCelebrationParticle {
 
         self.color = Self.palette[id % Self.palette.count]
         self.shape = ConfettiCelebrationShape(rawValue: id % ConfettiCelebrationShape.allCases.count) ?? .ribbon
-        self.size = shape == .circle
+        self.size =
+            shape == .circle
             ? CGSize(width: width, height: width)
             : CGSize(width: width, height: height)
         self.delay = random.range(0, 0.24)
@@ -277,7 +276,7 @@ private struct ConfettiCelebrationParticle {
         AppTheme.Status.warningStrong,
         Color(nsColor: .systemOrange),
         Color(nsColor: .systemPink),
-        Color.primary.opacity(0.72)
+        Color.primary.opacity(0.72),
     ]
 }
 

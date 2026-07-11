@@ -21,10 +21,10 @@ struct ModePopover: View {
                 .foregroundColor(.white.opacity(0.9))
                 .padding(.horizontal)
                 .padding(.top, 8)
-            
+
             Divider()
                 .background(Color.white.opacity(0.1))
-            
+
             ScrollView {
                 let enabledConfigs = modeManager.enabledConfigurations
                 VStack(alignment: .leading, spacing: 4) {
@@ -72,7 +72,7 @@ struct ModeRow: View {
     let config: ModeConfig
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -100,4 +100,4 @@ struct ModeRow: View {
         .background(isSelected ? Color.white.opacity(0.1) : Color.clear)
         .cornerRadius(4)
     }
-} 
+}

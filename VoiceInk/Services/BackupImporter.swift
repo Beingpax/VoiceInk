@@ -17,7 +17,12 @@ enum BackupImporter {
     private static let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
 
     @MainActor
-    static func apply(_ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager, modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager) throws {
+    static func apply(
+        _ backup: BackupFile, categories: Set<BackupCategory>, enhancementService: AIEnhancementService,
+        recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager,
+        mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager,
+        modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager
+    ) throws {
         var shouldRepairModePromptSelections = false
 
         if categories.contains(.dictionary) {
@@ -85,7 +90,10 @@ enum BackupImporter {
     }
 
     @MainActor
-    private static func importGeneral(_ general: GeneralBackup?, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager) {
+    private static func importGeneral(
+        _ general: GeneralBackup?, recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager,
+        mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager
+    ) {
         guard let general else {
             print("No general settings found in the imported file.")
             return
@@ -119,19 +127,23 @@ enum BackupImporter {
         }
 
         if let shortcutRawValue = general.primaryRecordingShortcutRawValue,
-           let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue) {
+            let shortcut = RecordingShortcutManager.ShortcutSelection(rawValue: shortcutRawValue)
+        {
             recordingShortcutManager.primaryRecordingShortcut = shortcut
         }
         if let secondaryShortcutRawValue = general.secondaryRecordingShortcutRawValue,
-           let secondaryShortcut = RecordingShortcutManager.ShortcutSelection(rawValue: secondaryShortcutRawValue) {
+            let secondaryShortcut = RecordingShortcutManager.ShortcutSelection(rawValue: secondaryShortcutRawValue)
+        {
             recordingShortcutManager.secondaryRecordingShortcut = secondaryShortcut
         }
         if let modeRawValue = general.primaryRecordingShortcutModeRawValue,
-           let mode = RecordingShortcutManager.Mode(rawValue: modeRawValue) {
+            let mode = RecordingShortcutManager.Mode(rawValue: modeRawValue)
+        {
             recordingShortcutManager.primaryRecordingShortcutMode = mode
         }
         if let secondaryModeRawValue = general.secondaryRecordingShortcutModeRawValue,
-           let secondaryMode = RecordingShortcutManager.Mode(rawValue: secondaryModeRawValue) {
+            let secondaryMode = RecordingShortcutManager.Mode(rawValue: secondaryModeRawValue)
+        {
             recordingShortcutManager.secondaryRecordingShortcutMode = secondaryMode
         }
         if let middleClickEnabled = general.isMiddleClickToggleEnabled {
@@ -150,7 +162,8 @@ enum BackupImporter {
             recorderUIManager.recorderType = recType
         }
         if let rawAppearancePreference = general.appAppearancePreference,
-           let appearancePreference = AppAppearancePreference(rawValue: rawAppearancePreference) {
+            let appearancePreference = AppAppearancePreference(rawValue: rawAppearancePreference)
+        {
             UserDefaults.standard.set(appearancePreference.rawValue, forKey: AppAppearancePreference.userDefaultsKey)
             appearancePreference.apply()
         }
@@ -248,7 +261,8 @@ enum BackupImporter {
                 let hasConflict = importTokens.contains { existingKeys.contains($0) }
 
                 if !hasConflict {
-                    modelContext.insert(WordReplacement(originalText: trimmedOriginal, replacementText: trimmedReplacement))
+                    modelContext.insert(
+                        WordReplacement(originalText: trimmedOriginal, replacementText: trimmedReplacement))
                     existingKeys.formUnion(importTokens)
                     insertedReplacements += 1
                 }
@@ -268,7 +282,9 @@ enum BackupImporter {
 
         do {
             try modelContext.save()
-            print("Successfully imported \(insertedWords) vocabulary words and \(insertedReplacements) word replacements to SwiftData.")
+            print(
+                "Successfully imported \(insertedWords) vocabulary words and \(insertedReplacements) word replacements to SwiftData."
+            )
             if skippedInvalidReplacements > 0 {
                 print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
             }
@@ -280,7 +296,9 @@ enum BackupImporter {
     }
 
     @MainActor
-    private static func importCustomModels(_ models: [CustomModelBackup]?, transcriptionModelManager: TranscriptionModelManager) {
+    private static func importCustomModels(
+        _ models: [CustomModelBackup]?, transcriptionModelManager: TranscriptionModelManager
+    ) {
         guard let models else {
             print("No custom models found in the imported file.")
             return

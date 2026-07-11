@@ -172,10 +172,10 @@ struct TriggerGroupEditorView: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return [] }
         return installedApps.filter { app in
-            !group.appConfigs.contains(where: { $0.bundleIdentifier == app.bundleId }) &&
-            !reservedAppBundleIds.contains(app.bundleId) &&
-            (app.name.localizedCaseInsensitiveContains(query) ||
-             app.bundleId.localizedCaseInsensitiveContains(query))
+            !group.appConfigs.contains(where: { $0.bundleIdentifier == app.bundleId })
+                && !reservedAppBundleIds.contains(app.bundleId)
+                && (app.name.localizedCaseInsensitiveContains(query)
+                    || app.bundleId.localizedCaseInsensitiveContains(query))
         }
     }
 
@@ -184,14 +184,14 @@ struct TriggerGroupEditorView: View {
     }
 
     private var canOfferWebsite: Bool {
-        isWebsiteLike(websiteCandidate) &&
-        !reservedWebsites.contains(websiteCandidate) &&
-        !group.urlConfigs.contains(where: { cleanURL($0.url) == websiteCandidate })
+        isWebsiteLike(websiteCandidate) && !reservedWebsites.contains(websiteCandidate)
+            && !group.urlConfigs.contains(where: { cleanURL($0.url) == websiteCandidate })
     }
 
     private func addApp(_ app: InstalledAppInfo) {
         guard !reservedAppBundleIds.contains(app.bundleId),
-              !group.appConfigs.contains(where: { $0.bundleIdentifier == app.bundleId }) else { return }
+            !group.appConfigs.contains(where: { $0.bundleIdentifier == app.bundleId })
+        else { return }
         group.appConfigs.append(AppConfig(bundleIdentifier: app.bundleId, appName: app.name))
         searchText = ""
     }
@@ -204,8 +204,9 @@ struct TriggerGroupEditorView: View {
 
     private func isWebsiteLike(_ value: String) -> Bool {
         guard !value.isEmpty,
-              value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
-              value.rangeOfCharacter(from: .alphanumerics) != nil else {
+            value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+            value.rangeOfCharacter(from: .alphanumerics) != nil
+        else {
             return false
         }
 

@@ -1,6 +1,6 @@
-import Foundation
 import AVFoundation
 import CoreAudio
+import Foundation
 import os
 
 @MainActor
@@ -31,11 +31,11 @@ class Recorder: NSObject, ObservableObject {
     var onAudioChunk: ((_ data: Data) -> Void)? {
         didSet { recorder?.onAudioChunk = onAudioChunk }
     }
-    
+
     enum RecorderError: Error {
         case couldNotStartRecording
     }
-    
+
     override init() {
         super.init()
         setupDeviceSwitchObserver()
@@ -72,7 +72,8 @@ class Recorder: NSObject, ObservableObject {
         guard !isReconfiguring else { return }
         guard let recorder = recorder else { return }
         guard let userInfo = notification.userInfo,
-              let newDeviceID = userInfo["newDeviceID"] as? AudioDeviceID else {
+            let newDeviceID = userInfo["newDeviceID"] as? AudioDeviceID
+        else {
             logger.error("Device switch notification missing newDeviceID")
             return
         }
@@ -156,7 +157,9 @@ class Recorder: NSObject, ObservableObject {
 
             startAudioMeterTimer()
         } catch {
-            logger.error("Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)")
+            logger.error(
+                "Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)"
+            )
             await stopRecording()
             throw RecorderError.couldNotStartRecording
         }
@@ -231,7 +234,7 @@ class Recorder: NSObject, ObservableObject {
 
     private func startAudioMeterTimer() {
         let timer = DispatchSource.makeTimerSource(queue: audioMeterQueue)
-        timer.schedule(deadline: .now(), repeating: .milliseconds(17)) 
+        timer.schedule(deadline: .now(), repeating: .milliseconds(17))
         timer.setEventHandler { [weak self] in
             self?.updateAudioMeter()
         }
@@ -258,7 +261,9 @@ class Recorder: NSObject, ObservableObject {
             do {
                 try coreAudioRecorder.prepare(deviceID: deviceID)
             } catch {
-                logger.warning("Recorder prepare failed reason=\(reason, privacy: .public) deviceID=\(deviceID, privacy: .public) error=\(error, privacy: .public)")
+                logger.warning(
+                    "Recorder prepare failed reason=\(reason, privacy: .public) deviceID=\(deviceID, privacy: .public) error=\(error, privacy: .public)"
+                )
             }
         }
     }
@@ -305,7 +310,7 @@ class Recorder: NSObject, ObservableObject {
             self.audioMeter = newAudioMeter
         }
     }
-    
+
     // MARK: - Cleanup
 
     deinit {

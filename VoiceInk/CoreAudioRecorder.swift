@@ -1,8 +1,8 @@
-import Foundation
-import CoreAudio
-import AudioToolbox
 import AVFoundation
 import Atomics
+import AudioToolbox
+import CoreAudio
+import Foundation
 import os
 
 // MARK: - Core Audio Recorder (AUHAL-based, does not change system default device)
@@ -62,7 +62,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
     private var renderBufferSize: UInt32 = 0
 
     // Keep the render callback realtime-safe; processing is best-effort under sustained overload.
-    private let audioProcessingQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audioProcessing", qos: .userInitiated)
+    private let audioProcessingQueue = DispatchQueue(
+        label: "com.prakashjoshipax.voiceink.audioProcessing", qos: .userInitiated)
     private let audioProcessingQueueKey = DispatchSpecificKey<Void>()
     private let maxFramesPerRender: UInt32 = 4096
     private let inputRingSlotCount = 96
@@ -218,7 +219,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
         guard newDeviceID != currentDeviceID else { return }
 
         let oldDeviceID = currentDeviceID
-        logger.notice("🎙️ Switching recording device from \(oldDeviceID, privacy: .public) to \(newDeviceID, privacy: .public)")
+        logger.notice(
+            "🎙️ Switching recording device from \(oldDeviceID, privacy: .public) to \(newDeviceID, privacy: .public)")
 
         // Step 1: Stop the AudioUnit (but keep file open)
         recordingActive.store(false, ordering: .releasing)
@@ -253,7 +255,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
             // Try to recover by restarting with old device
             logger.error("Failed to set new device: \(status, privacy: .public). Attempting recovery...")
             var recoveryDevice = oldDeviceID
-            AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &recoveryDevice, UInt32(MemoryLayout<AudioDeviceID>.size))
+            AudioUnitSetProperty(
+                unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &recoveryDevice,
+                UInt32(MemoryLayout<AudioDeviceID>.size))
             let initializeStatus = AudioUnitInitialize(unit)
             isAudioUnitInitialized = initializeStatus == noErr
             if initializeStatus == noErr {
@@ -366,7 +370,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
             audioUnit,
             kAudioOutputUnitProperty_EnableIO,
             kAudioUnitScope_Input,
-            1, // Element 1 = input
+            1,  // Element 1 = input
             &enableInput,
             UInt32(MemoryLayout<UInt32>.size)
         )
@@ -382,7 +386,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
             audioUnit,
             kAudioOutputUnitProperty_EnableIO,
             kAudioUnitScope_Output,
-            0, // Element 0 = output
+            0,  // Element 0 = output
             &disableOutput,
             UInt32(MemoryLayout<UInt32>.size)
         )
@@ -482,10 +486,15 @@ final class CoreAudioRecorder: @unchecked Sendable {
         let outSampleRate = outputFormat.mSampleRate
         let outChannels = outputFormat.mChannelsPerFrame
         let outBits = outputFormat.mBitsPerChannel
-        logger.notice("🎙️ Device format: sampleRate=\(devSampleRate, privacy: .public), channels=\(devChannels, privacy: .public), bitsPerChannel=\(devBits, privacy: .public)")
-        logger.notice("🎙️ Output format: sampleRate=\(outSampleRate, privacy: .public), channels=\(outChannels, privacy: .public), bitsPerChannel=\(outBits, privacy: .public)")
+        logger.notice(
+            "🎙️ Device format: sampleRate=\(devSampleRate, privacy: .public), channels=\(devChannels, privacy: .public), bitsPerChannel=\(devBits, privacy: .public)"
+        )
+        logger.notice(
+            "🎙️ Output format: sampleRate=\(outSampleRate, privacy: .public), channels=\(outChannels, privacy: .public), bitsPerChannel=\(outBits, privacy: .public)"
+        )
         if devSampleRate != outSampleRate {
-            logger.notice("🎙️ Converting: \(Int(devSampleRate), privacy: .public)Hz → \(Int(outSampleRate), privacy: .public)Hz")
+            logger.notice(
+                "🎙️ Converting: \(Int(devSampleRate), privacy: .public)Hz → \(Int(outSampleRate), privacy: .public)Hz")
         }
 
         freeBuffers()
@@ -693,14 +702,15 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
     // MARK: - Input Callback
 
-    private let inputCallback: AURenderCallback = { (
-        inRefCon,
-        ioActionFlags,
-        inTimeStamp,
-        inBusNumber,
-        inNumberFrames,
-        ioData
-    ) -> OSStatus in
+    private let inputCallback: AURenderCallback = {
+        (
+            inRefCon,
+            ioActionFlags,
+            inTimeStamp,
+            inBusNumber,
+            inNumberFrames,
+            ioData
+        ) -> OSStatus in
 
         let recorder = Unmanaged<CoreAudioRecorder>.fromOpaque(inRefCon).takeUnretainedValue()
         return recorder.handleInputBuffer(
@@ -724,7 +734,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
 
         guard let audioUnit = audioUnit,
-              recordingActive.load(ordering: .acquiring) else {
+            recordingActive.load(ordering: .acquiring)
+        else {
             return noErr
         }
 
@@ -733,8 +744,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
         let requiredSamples = inNumberFrames * channelCount
 
         guard let renderBuf = renderBuffer,
-              requiredSamples <= renderBufferSize,
-              requiredSamples <= inputBufferCapacitySamples else {
+            requiredSamples <= renderBufferSize,
+            requiredSamples <= inputBufferCapacitySamples
+        else {
             droppedInputBuffersCapacity.wrappingIncrement(ordering: .relaxed)
             return noErr
         }
@@ -812,7 +824,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
         inputSampleRate: Double
     ) {
         guard !inputBufferSlots.isEmpty,
-              let inputData = inputBuffer.mBuffers.mData else {
+            let inputData = inputBuffer.mBuffers.mData
+        else {
             return
         }
 
@@ -882,7 +895,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
 
         if maxBuffers != nil,
-           inputReadIndex.load(ordering: .acquiring) < inputWriteIndex.load(ordering: .acquiring) {
+            inputReadIndex.load(ordering: .acquiring) < inputWriteIndex.load(ordering: .acquiring)
+        {
             scheduleAudioProcessing()
         }
     }
@@ -908,7 +922,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
         let capacityDrops = droppedInputBuffersCapacity.exchange(0, ordering: .acquiringAndReleasing)
 
         if backpressureDrops > 0 || capacityDrops > 0 {
-            logger.warning("🎙️ Dropped input buffers context=\(context, privacy: .public) backpressure=\(backpressureDrops, privacy: .public) capacity=\(capacityDrops, privacy: .public)")
+            logger.warning(
+                "🎙️ Dropped input buffers context=\(context, privacy: .public) backpressure=\(backpressureDrops, privacy: .public) capacity=\(capacityDrops, privacy: .public)"
+            )
         }
     }
 
@@ -933,8 +949,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
         let outputFrameCount = UInt32(Double(frameCount) * ratio)
 
         guard outputFrameCount > 0,
-              let outputBuffer = conversionBuffer,
-              outputFrameCount <= conversionBufferSize else { return }
+            let outputBuffer = conversionBuffer,
+            outputFrameCount <= conversionBufferSize
+        else { return }
 
         // Convert Float32 multi-channel → Int16 mono (with sample rate conversion if needed)
         if inputSampleRate == outputSampleRate {
@@ -1009,24 +1026,32 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
     private func logDeviceDetails(deviceID: AudioDeviceID) {
         // Get device name
-        let deviceName = getDeviceStringProperty(deviceID: deviceID, selector: kAudioDevicePropertyDeviceNameCFString) ?? "Unknown"
+        let deviceName =
+            getDeviceStringProperty(deviceID: deviceID, selector: kAudioDevicePropertyDeviceNameCFString) ?? "Unknown"
 
         // Get device UID
-        let deviceUID = getDeviceStringProperty(deviceID: deviceID, selector: kAudioDevicePropertyDeviceUID) ?? "Unknown"
+        let deviceUID =
+            getDeviceStringProperty(deviceID: deviceID, selector: kAudioDevicePropertyDeviceUID) ?? "Unknown"
 
         // Get transport type
         let transportType = getTransportType(deviceID: deviceID)
 
         // Get manufacturer
-        let manufacturer = getDeviceStringProperty(deviceID: deviceID, selector: kAudioDevicePropertyDeviceManufacturerCFString) ?? "Unknown"
+        let manufacturer =
+            getDeviceStringProperty(deviceID: deviceID, selector: kAudioDevicePropertyDeviceManufacturerCFString)
+            ?? "Unknown"
 
         logger.notice("🎙️ Device info: name=\(deviceName, privacy: .public), uid=\(deviceUID, privacy: .public)")
-        logger.notice("🎙️ Device details: transport=\(transportType, privacy: .public), manufacturer=\(manufacturer, privacy: .public)")
+        logger.notice(
+            "🎙️ Device details: transport=\(transportType, privacy: .public), manufacturer=\(manufacturer, privacy: .public)"
+        )
 
         // Get buffer frame size
         if let bufferSize = getBufferFrameSize(deviceID: deviceID) {
-            let latencyMs = (Double(bufferSize) / 48000.0) * 1000.0 // Approximate latency assuming 48kHz
-            logger.notice("🎙️ Buffer size: \(bufferSize, privacy: .public) frames, ~latency: \(String(format: "%.1f", latencyMs), privacy: .public)ms")
+            let latencyMs = (Double(bufferSize) / 48000.0) * 1000.0  // Approximate latency assuming 48kHz
+            logger.notice(
+                "🎙️ Buffer size: \(bufferSize, privacy: .public) frames, ~latency: \(String(format: "%.1f", latencyMs), privacy: .public)ms"
+            )
         }
     }
 

@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ProviderDetailPanel: View {
     let descriptor: ProviderDescriptor
@@ -152,12 +152,15 @@ struct ProviderDetailPanel: View {
         .padding(12)
         .background(ProviderSurface(cornerRadius: 8))
         .alert("Remove API Key?", isPresented: $isShowingRemoveAPIKeyConfirmation) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
             Button("Remove", role: .destructive) {
                 removeAPIKey()
             }
         } message: {
-            Text(String(format: String(localized: "This will remove your %@ API key. You can add it again later."), descriptor.displayName))
+            Text(
+                String(
+                    format: String(localized: "This will remove your %@ API key. You can add it again later."),
+                    descriptor.displayName))
         }
     }
 
@@ -306,7 +309,9 @@ struct ProviderDetailPanel: View {
                                 } else {
                                     Image(systemName: "arrow.clockwise")
                                 }
-                                Text(isRefreshingOpenRouterModels ? LocalizedStringKey("Refreshing") : LocalizedStringKey("Refresh"))
+                                Text(
+                                    isRefreshingOpenRouterModels
+                                        ? LocalizedStringKey("Refreshing") : LocalizedStringKey("Refresh"))
                             }
                             .font(.system(size: 12, weight: .medium))
                         }
@@ -410,7 +415,8 @@ struct ProviderDetailPanel: View {
             return String(repeating: "\u{2022}", count: trimmedKey.count)
         }
 
-        return "\(trimmedKey.prefix(4))\(String(repeating: "\u{2022}", count: max(4, trimmedKey.count - 8)))\(trimmedKey.suffix(4))"
+        return
+            "\(trimmedKey.prefix(4))\(String(repeating: "\u{2022}", count: max(4, trimmedKey.count - 8)))\(trimmedKey.suffix(4))"
     }
 
     private func loadSavedAPIKey() {
@@ -480,7 +486,8 @@ struct ProviderDetailPanel: View {
                     transcriptionModelManager.refreshAllAvailableModels()
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
                 } else {
-                    verificationMessage = String(localized: "Could not verify this API key. Check the key and try again.")
+                    verificationMessage = String(
+                        localized: "Could not verify this API key. Check the key and try again.")
                     verificationDetailMessage = result.errorMessage
                 }
             }

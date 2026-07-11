@@ -37,7 +37,8 @@ struct HistorySettingsPanel: View {
 
                         Button("Run Cleanup Now") {
                             Task {
-                                await TranscriptionAutoCleanupService.shared.runManualCleanup(modelContext: modelContext)
+                                await TranscriptionAutoCleanupService.shared.runManualCleanup(
+                                    modelContext: modelContext)
                                 await MainActor.run {
                                     showTranscriptCleanupResult = true
                                 }
@@ -84,12 +85,12 @@ struct HistorySettingsPanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .alert("Transcript Cleanup", isPresented: $showTranscriptCleanupResult) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text("Cleanup complete.")
         }
         .alert("Audio Cleanup", isPresented: $isShowingAudioConfirmation) {
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {}
 
             if cleanupInfo.fileCount > 0 {
                 Button(String(localized: "Delete \(cleanupInfo.fileCount) Files"), role: .destructive) {
@@ -98,16 +99,23 @@ struct HistorySettingsPanel: View {
             }
         } message: {
             if cleanupInfo.fileCount > 0 {
-                Text(String(localized: "This will delete \(cleanupInfo.fileCount) audio files (\(AudioCleanupManager.shared.formatFileSize(cleanupInfo.totalSize)))."))
+                Text(
+                    String(
+                        localized:
+                            "This will delete \(cleanupInfo.fileCount) audio files (\(AudioCleanupManager.shared.formatFileSize(cleanupInfo.totalSize)))."
+                    ))
             } else {
                 Text(String(localized: "No audio files found older than \(audioRetentionPeriod) days."))
             }
         }
         .alert("Cleanup Complete", isPresented: $showAudioCleanupResult) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             if audioCleanupResult.errorCount > 0 {
-                Text(String(format: String(localized: "Deleted files: %lld. Failed: %lld."), Int64(audioCleanupResult.deletedCount), Int64(audioCleanupResult.errorCount)))
+                Text(
+                    String(
+                        format: String(localized: "Deleted files: %lld. Failed: %lld."),
+                        Int64(audioCleanupResult.deletedCount), Int64(audioCleanupResult.errorCount)))
             } else {
                 Text(String(localized: "Deleted \(audioCleanupResult.deletedCount) audio files."))
             }

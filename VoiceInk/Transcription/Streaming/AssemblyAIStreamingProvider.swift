@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import LLMkit
+import SwiftData
 
 /// AssemblyAI streaming provider wrapping `LLMkit.AssemblyAIStreamingClient`.
 final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider {

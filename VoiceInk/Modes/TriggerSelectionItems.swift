@@ -62,7 +62,8 @@ struct TriggerGroupRow: View {
 
     private var groupSystemImage: String {
         guard let templateId = group.templateId,
-              let template = TriggerTemplateCatalog.templates.first(where: { $0.id == templateId }) else {
+            let template = TriggerTemplateCatalog.templates.first(where: { $0.id == templateId })
+        else {
             return "folder"
         }
 

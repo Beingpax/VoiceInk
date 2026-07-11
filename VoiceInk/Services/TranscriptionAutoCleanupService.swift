@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 import OSLog
+import SwiftData
 
 class TranscriptionAutoCleanupService {
     static let shared = TranscriptionAutoCleanupService()
@@ -59,13 +59,15 @@ class TranscriptionAutoCleanupService {
         }
 
         guard let transcription = notification.object as? Transcription,
-              let modelContext = self.modelContext else {
+            let modelContext = self.modelContext
+        else {
             logger.error("Invalid transcription or missing model context")
             return
         }
 
         if let urlString = transcription.audioFileURL,
-           let url = URL(string: urlString) {
+            let url = URL(string: urlString)
+        {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
@@ -107,8 +109,9 @@ class TranscriptionAutoCleanupService {
             var deletedCount = 0
             for transcription in items {
                 if let urlString = transcription.audioFileURL,
-                   let url = URL(string: urlString),
-                   FileManager.default.fileExists(atPath: url.path) {
+                    let url = URL(string: urlString),
+                    FileManager.default.fileExists(atPath: url.path)
+                {
                     try? FileManager.default.removeItem(at: url)
                 }
                 backgroundContext.delete(transcription)
@@ -141,11 +144,13 @@ class TranscriptionAutoCleanupService {
             descriptor.propertiesToFetch = [\.audioFileURL]
 
             let transcriptions = try backgroundContext.fetch(descriptor)
-            let referencedFiles = Set(transcriptions.compactMap { transcription -> String? in
-                guard let urlString = transcription.audioFileURL,
-                      let url = URL(string: urlString) else { return nil }
-                return url.lastPathComponent
-            })
+            let referencedFiles = Set(
+                transcriptions.compactMap { transcription -> String? in
+                    guard let urlString = transcription.audioFileURL,
+                        let url = URL(string: urlString)
+                    else { return nil }
+                    return url.lastPathComponent
+                })
 
             guard FileManager.default.fileExists(atPath: recordingsDirectory.path) else { return }
             let filesInDirectory = try FileManager.default.contentsOfDirectory(

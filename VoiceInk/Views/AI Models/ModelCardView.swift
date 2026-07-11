@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ModelCardView: View {
     let model: any TranscriptionModel

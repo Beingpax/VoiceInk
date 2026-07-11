@@ -12,7 +12,7 @@ enum ShellCommandEnvironment {
         "TMPDIR",
         "LANG",
         "LC_ALL",
-        "LC_CTYPE"
+        "LC_CTYPE",
     ]
 
     static func preferredPATH(fallback: String?) -> String {
@@ -24,7 +24,8 @@ enum ShellCommandEnvironment {
             let fallbackPATH = fallback?.isEmpty == false ? fallback! : defaultPATH
             let loginShellPATH = discoverPATHFromShell(arguments: ["-lc", pathDiscoveryCommand])
             if let loginShellPATH,
-               loginShellPATH != fallbackPATH || fallbackPATH != defaultPATH {
+                loginShellPATH != fallbackPATH || fallbackPATH != defaultPATH
+            {
                 cachedPreferredPATH = loginShellPATH
                 return loginShellPATH
             }
@@ -73,7 +74,8 @@ enum ShellCommandEnvironment {
     }
 
     private static let defaultPATH = "/usr/bin:/bin:/usr/sbin:/sbin"
-    private static let pathDiscoveryCommand = "echo __VOICEINK_PATH_START__; print -r -- $PATH; echo __VOICEINK_PATH_END__"
+    private static let pathDiscoveryCommand =
+        "echo __VOICEINK_PATH_START__; print -r -- $PATH; echo __VOICEINK_PATH_END__"
 
     private static func discoverPATHFromShell(arguments: [String]) -> String? {
         let process = Process()
@@ -117,7 +119,8 @@ enum ShellCommandEnvironment {
         let endMarker = "__VOICEINK_PATH_END__"
 
         guard let startRange = output.range(of: startMarker),
-              let endRange = output.range(of: endMarker, range: startRange.upperBound..<output.endIndex) else {
+            let endRange = output.range(of: endMarker, range: startRange.upperBound..<output.endIndex)
+        else {
             return nil
         }
 

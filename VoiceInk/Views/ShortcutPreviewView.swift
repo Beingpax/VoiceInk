@@ -7,7 +7,7 @@ struct ShortcutPreviewView: View {
     init(shortcut: Shortcut?) {
         self.components = shortcut?.displayTokens
     }
-    
+
     var body: some View {
         if let components, !components.isEmpty {
             HStack(spacing: 6) {
@@ -20,44 +20,44 @@ struct ShortcutPreviewView: View {
                 .foregroundColor(.secondary)
         }
     }
-    
+
 }
 
 struct KeyCapView: View {
     let text: String
     @Environment(\.colorScheme) private var colorScheme
     @State private var isPressed = false
-    
+
     private var keyColor: Color {
         colorScheme == .dark ? Color(white: 0.2) : .white
     }
-    
+
     private var surfaceGradient: LinearGradient {
         LinearGradient(
             colors: [
                 keyColor,
-                keyColor.opacity(0.2)
+                keyColor.opacity(0.2),
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
-    
+
     private var highlightGradient: LinearGradient {
         LinearGradient(
             colors: [
                 .white.opacity(colorScheme == .dark ? 0.15 : 0.5),
-                .white.opacity(0.0)
+                .white.opacity(0.0),
             ],
             startPoint: .topLeading,
             endPoint: .center
         )
     }
-    
+
     private var shadowColor: Color {
         colorScheme == .dark ? .black : .gray
     }
-    
+
     var body: some View {
         Text(text)
             .font(.system(size: 25, weight: .semibold, design: .rounded))
@@ -73,14 +73,14 @@ struct KeyCapView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(highlightGradient)
                         )
-                    
+
                     // Border
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(
                             LinearGradient(
                                 colors: [
                                     .white.opacity(colorScheme == .dark ? 0.2 : 0.6),
-                                    shadowColor.opacity(0.3)
+                                    shadowColor.opacity(0.3),
                                 ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
@@ -103,7 +103,7 @@ struct KeyCapView: View {
                         LinearGradient(
                             colors: [
                                 shadowColor.opacity(0.0),
-                                shadowColor.opacity(0.9)
+                                shadowColor.opacity(0.9),
                             ],
                             startPoint: .top,
                             endPoint: .bottom
@@ -153,4 +153,4 @@ struct KeyCapView: View {
         ShortcutPreviewView(shortcut: nil)
     }
     .padding()
-} 
+}
