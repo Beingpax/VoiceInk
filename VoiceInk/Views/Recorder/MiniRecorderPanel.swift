@@ -17,6 +17,7 @@ class MiniRecorderPanel: NSPanel {
 
     private func configurePanel() {
         isFloatingPanel = true
+        canHide = false
         level = .floating
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
