@@ -1,12 +1,10 @@
 import Foundation
-import os
 
 /// Manages license data using secure Keychain storage (non-syncable, device-local).
 final class LicenseManager {
     static let shared = LicenseManager()
 
     private let keychain = KeychainService.shared
-    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LicenseManager")
 
     private let licenseKeyIdentifier = "voiceink.license.key"
     private let trialStartDateIdentifier = "voiceink.license.trialStartDate"
@@ -17,14 +15,7 @@ final class LicenseManager {
     // MARK: - License Key
 
     var licenseKey: String? {
-        get { keychain.getString(forKey: licenseKeyIdentifier, syncable: false) }
-        set {
-            if let value = newValue {
-                keychain.save(value, forKey: licenseKeyIdentifier, syncable: false)
-            } else {
-                keychain.delete(forKey: licenseKeyIdentifier, syncable: false)
-            }
-        }
+        keychain.getString(forKey: licenseKeyIdentifier, syncable: false)
     }
 
     // MARK: - Trial Start Date
@@ -62,25 +53,41 @@ final class LicenseManager {
     // MARK: - Activation ID
 
     var activationId: String? {
-        get { keychain.getString(forKey: activationIdIdentifier, syncable: false) }
-        set {
-            if let value = newValue {
-                keychain.save(value, forKey: activationIdIdentifier, syncable: false)
-            } else {
-                keychain.delete(forKey: activationIdIdentifier, syncable: false)
-            }
-        }
+        keychain.getString(forKey: activationIdIdentifier, syncable: false)
     }
 
-    func removeStoredLicense() {
-        licenseKey = nil
-        activationId = nil
+    func storeLicense(key: String, activationId: String?) -> Bool {
+        let savedKey = keychain.save(key, forKey: licenseKeyIdentifier, syncable: false)
+        let savedActivation: Bool
+
+        if let activationId {
+            savedActivation = keychain.save(activationId, forKey: activationIdIdentifier, syncable: false)
+        } else {
+            savedActivation = keychain.delete(forKey: activationIdIdentifier, syncable: false)
+        }
+
+        guard savedKey,
+            savedActivation,
+            licenseKey == key,
+            self.activationId == activationId
+        else {
+            removeStoredLicense()
+            return false
+        }
+
+        return true
+    }
+
+    @discardableResult
+    func removeStoredLicense() -> Bool {
+        let removedKey = keychain.delete(forKey: licenseKeyIdentifier, syncable: false)
+        let removedActivation = keychain.delete(forKey: activationIdIdentifier, syncable: false)
+        return removedKey && removedActivation
     }
 
     /// Removes all license data (for license removal/reset).
     func removeAll() {
-        licenseKey = nil
+        removeStoredLicense()
         trialStartDate = nil
-        activationId = nil
     }
 }

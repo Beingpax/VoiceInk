@@ -37,20 +37,32 @@ final class KeychainService {
             defaults.set(data, forKey: localPrefix + key)
             return true
         #else
-            // First, try to delete any existing item to avoid duplicates
-            delete(forKey: key, syncable: syncable)
+            let query = baseQuery(forKey: key, syncable: syncable)
+            let attributes = [kSecValueData as String: data]
+            let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
 
-            var query = baseQuery(forKey: key, syncable: syncable)
-            query[kSecValueData as String] = data
+            if updateStatus == errSecSuccess {
+                logger.info("Successfully updated keychain item for key: \(key, privacy: .public)")
+                return true
+            }
 
-            let status = SecItemAdd(query as CFDictionary, nil)
+            guard updateStatus == errSecItemNotFound else {
+                logger.error(
+                    "Failed to update keychain item for key: \(key, privacy: .public), status: \(updateStatus, privacy: .public)"
+                )
+                return false
+            }
 
-            if status == errSecSuccess {
+            var addQuery = query
+            addQuery[kSecValueData as String] = data
+            let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+
+            if addStatus == errSecSuccess {
                 logger.info("Successfully saved keychain item for key: \(key, privacy: .public)")
                 return true
             } else {
                 logger.error(
-                    "Failed to save keychain item for key: \(key, privacy: .public), status: \(status, privacy: .public)"
+                    "Failed to save keychain item for key: \(key, privacy: .public), status: \(addStatus, privacy: .public)"
                 )
                 return false
             }

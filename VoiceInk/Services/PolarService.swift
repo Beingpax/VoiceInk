@@ -135,6 +135,31 @@ class PolarService {
         )
     }
 
+    func deactivateLicenseKey(_ key: String, activationId: String) async throws {
+        var request = createRequest(endpoint: "/v1/customer-portal/license-keys/deactivate")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "key": key,
+            "organization_id": organizationId,
+            "activation_id": activationId,
+        ])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            logger.error("🔑 License deactivation failed: invalid server response")
+            throw LicenseError.serverError(0)
+        }
+
+        // A missing activation is already deactivated, so local cleanup can continue.
+        guard httpResponse.statusCode != 404 else { return }
+
+        guard httpResponse.statusCode == 204 else {
+            let statusCode = httpResponse.statusCode
+            let message = String(data: data, encoding: .utf8) ?? "Unknown error"
+            logger.error("🔑 License deactivation failed [HTTP \(statusCode)]: \(message, privacy: .public)")
+            throw LicenseError.serverError(statusCode)
+        }
+    }
+
     // Validate a license key with an activation ID
     func validateLicenseKeyWithActivation(_ key: String, activationId: String) async throws -> Bool {
         var request = createRequest(endpoint: "/v1/customer-portal/license-keys/validate")

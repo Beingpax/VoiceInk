@@ -13,6 +13,9 @@ struct DashboardView: View {
             licenseState: licenseViewModel.licenseState,
             onAddLicenseKey: navigateToLicenseManagement
         )
+        .onReceive(NotificationCenter.default.publisher(for: .licenseStatusChanged)) { _ in
+            licenseViewModel.refreshLicenseState()
+        }
     }
 
     private func navigateToLicenseManagement() {
