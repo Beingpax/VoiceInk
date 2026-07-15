@@ -1,10 +1,12 @@
 import Foundation
+import os
 
 /// Manages license data using secure Keychain storage (non-syncable, device-local).
 final class LicenseManager {
     static let shared = LicenseManager()
 
     private let keychain = KeychainService.shared
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LicenseManager")
 
     private let licenseKeyIdentifier = "voiceink.license.key"
     private let trialStartDateIdentifier = "voiceink.license.trialStartDate"
@@ -57,25 +59,48 @@ final class LicenseManager {
     }
 
     func storeLicense(key: String, activationId: String?) -> Bool {
-        let savedKey = keychain.save(key, forKey: licenseKeyIdentifier, syncable: false)
-        let savedActivation: Bool
+        let previousKey = licenseKey
+        let previousActivationId = self.activationId
 
-        if let activationId {
-            savedActivation = keychain.save(activationId, forKey: activationIdIdentifier, syncable: false)
-        } else {
-            savedActivation = keychain.delete(forKey: activationIdIdentifier, syncable: false)
+        guard keychain.save(key, forKey: licenseKeyIdentifier, syncable: false) else {
+            return false
         }
 
-        guard savedKey,
-            savedActivation,
+        let savedActivation = writeCredential(activationId, forKey: activationIdIdentifier)
+        guard savedActivation,
             licenseKey == key,
             self.activationId == activationId
         else {
-            removeStoredLicense()
+            if !restoreLicense(key: previousKey, activationId: previousActivationId) {
+                logger.error("Failed to restore previous license credentials after a storage failure")
+            }
             return false
         }
 
         return true
+    }
+
+    private func restoreLicense(key: String?, activationId: String?) -> Bool {
+        let restoredKey = writeCredential(key, forKey: licenseKeyIdentifier)
+        let restoredActivation = writeCredential(activationId, forKey: activationIdIdentifier)
+
+        guard restoredKey,
+            restoredActivation,
+            licenseKey == key,
+            self.activationId == activationId
+        else {
+            return false
+        }
+
+        return true
+    }
+
+    private func writeCredential(_ value: String?, forKey identifier: String) -> Bool {
+        if let value {
+            return keychain.save(value, forKey: identifier, syncable: false)
+        }
+
+        return keychain.delete(forKey: identifier, syncable: false)
     }
 
     @discardableResult

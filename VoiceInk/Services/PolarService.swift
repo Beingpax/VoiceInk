@@ -67,7 +67,7 @@ class PolarService {
             if !(200...299).contains(httpResponse.statusCode) {
                 let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
                 logger.error(
-                    "🔑 License validation failed [HTTP \(httpResponse.statusCode)]: \(errorMsg, privacy: .public)")
+                    "🔑 License validation failed [HTTP \(httpResponse.statusCode)]: \(errorMsg, privacy: .private)")
                 switch httpResponse.statusCode {
                 case 404: throw LicenseError.keyNotFound
                 default: throw LicenseError.serverError(httpResponse.statusCode)
@@ -75,10 +75,8 @@ class PolarService {
             }
         }
 
-        // Log successful response
-        let rawResponse = String(data: data, encoding: .utf8) ?? "Unable to decode response"
         let statusCode = (httpResponse as? HTTPURLResponse)?.statusCode ?? 0
-        logger.notice("🔑 License validation success [HTTP \(statusCode)]: \(rawResponse, privacy: .public)")
+        logger.notice("🔑 License validation success [HTTP \(statusCode)]")
 
         let validationResponse = try JSONDecoder().decode(LicenseValidationResponse.self, from: data)
         let isValid = validationResponse.status == "granted"
@@ -114,7 +112,7 @@ class PolarService {
             if !(200...299).contains(httpResponse.statusCode) {
                 let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
                 logger.error(
-                    "🔑 License activation failed [HTTP \(httpResponse.statusCode)]: \(errorMsg, privacy: .public)")
+                    "🔑 License activation failed [HTTP \(httpResponse.statusCode)]: \(errorMsg, privacy: .private)")
                 switch httpResponse.statusCode {
                 case 404: throw LicenseError.keyNotFound
                 case 403: throw LicenseError.activationLimitReached
@@ -123,10 +121,8 @@ class PolarService {
             }
         }
 
-        // Log successful response
-        let rawResponse = String(data: data, encoding: .utf8) ?? "Unable to decode response"
         let statusCode = (httpResponse as? HTTPURLResponse)?.statusCode ?? 0
-        logger.notice("🔑 License activation success [HTTP \(statusCode)]: \(rawResponse, privacy: .public)")
+        logger.notice("🔑 License activation success [HTTP \(statusCode)]")
 
         let activationResult = try JSONDecoder().decode(ActivationResult.self, from: data)
 
@@ -155,7 +151,7 @@ class PolarService {
         guard httpResponse.statusCode == 204 else {
             let statusCode = httpResponse.statusCode
             let message = String(data: data, encoding: .utf8) ?? "Unknown error"
-            logger.error("🔑 License deactivation failed [HTTP \(statusCode)]: \(message, privacy: .public)")
+            logger.error("🔑 License deactivation failed [HTTP \(statusCode)]: \(message, privacy: .private)")
             throw LicenseError.serverError(statusCode)
         }
     }
@@ -178,7 +174,7 @@ class PolarService {
             if !(200...299).contains(httpResponse.statusCode) {
                 let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
                 logger.error(
-                    "🔑 License validation with activation failed [HTTP \(httpResponse.statusCode)]: \(errorMsg, privacy: .public)"
+                    "🔑 License validation with activation failed [HTTP \(httpResponse.statusCode)]: \(errorMsg, privacy: .private)"
                 )
                 switch httpResponse.statusCode {
                 case 404: throw LicenseError.keyNotFound
@@ -187,11 +183,8 @@ class PolarService {
             }
         }
 
-        // Log successful response
-        let rawResponse = String(data: data, encoding: .utf8) ?? "Unable to decode response"
         let statusCode = (httpResponse as? HTTPURLResponse)?.statusCode ?? 0
-        logger.notice(
-            "🔑 License validation with activation success [HTTP \(statusCode)]: \(rawResponse, privacy: .public)")
+        logger.notice("🔑 License validation with activation success [HTTP \(statusCode)]")
 
         let validationResponse = try JSONDecoder().decode(LicenseValidationResponse.self, from: data)
 

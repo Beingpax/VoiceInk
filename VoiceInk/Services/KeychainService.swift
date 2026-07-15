@@ -60,12 +60,25 @@ final class KeychainService {
             if addStatus == errSecSuccess {
                 logger.info("Successfully saved keychain item for key: \(key, privacy: .public)")
                 return true
-            } else {
+            }
+
+            if addStatus == errSecDuplicateItem {
+                let retryStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+                if retryStatus == errSecSuccess {
+                    logger.info("Successfully updated concurrently created keychain item for key: \(key, privacy: .public)")
+                    return true
+                }
+
                 logger.error(
-                    "Failed to save keychain item for key: \(key, privacy: .public), status: \(addStatus, privacy: .public)"
+                    "Failed to update concurrently created keychain item for key: \(key, privacy: .public), status: \(retryStatus, privacy: .public)"
                 )
                 return false
             }
+
+            logger.error(
+                "Failed to save keychain item for key: \(key, privacy: .public), status: \(addStatus, privacy: .public)"
+            )
+            return false
         #endif
     }
 
