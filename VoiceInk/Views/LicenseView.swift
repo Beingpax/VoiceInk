@@ -16,11 +16,12 @@ struct LicenseView: View {
                     Button(
                         role: .destructive,
                         action: {
-                            licenseViewModel.removeLicense()
+                            Task { await licenseViewModel.deactivateLicense() }
                         }
                     ) {
-                        Text("Remove License")
+                        Text("Deactivate License")
                     }
+                    .disabled(licenseViewModel.isDeactivating)
                 }
             } else {
                 TextField("Enter License Key", text: $licenseViewModel.licenseKey)
@@ -44,7 +45,7 @@ struct LicenseView: View {
             if let message = licenseViewModel.validationMessage {
                 Text(message)
                     .foregroundColor(
-                        licenseViewModel.licenseState == .licensed ? AppTheme.Status.positive : AppTheme.Status.error
+                        licenseViewModel.validationSuccess ? AppTheme.Status.positive : AppTheme.Status.error
                     )
                     .font(.caption)
             }

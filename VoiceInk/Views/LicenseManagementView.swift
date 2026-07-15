@@ -53,11 +53,11 @@ struct LicenseManagementView: View {
             isPresented: $showingDeactivateConfirmation
         ) {
             Button("Deactivate License", role: .destructive) {
-                licenseViewModel.removeLicense()
+                Task { await licenseViewModel.deactivateLicense() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes the license from this Mac. You can activate it again later.")
+            Text("This deactivates VoiceInk on this Mac and frees a device on your license.")
         }
     }
 
@@ -115,6 +115,12 @@ struct LicenseManagementView: View {
     private var activeContent: some View {
         VStack(spacing: 14) {
             activeLicenseCard
+            if let message = licenseViewModel.validationMessage {
+                ValidationMessage(
+                    message: message,
+                    isSuccess: licenseViewModel.validationSuccess
+                )
+            }
             resourcesPanel
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -215,6 +221,7 @@ struct LicenseManagementView: View {
                 ) {
                     showingDeactivateConfirmation = true
                 }
+                .disabled(licenseViewModel.isDeactivating)
             }
         }
     }
