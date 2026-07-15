@@ -8,6 +8,12 @@ enum StreamingTranscriptionEvent {
     case error(Error)
 }
 
+/// Tells the shared streaming layer how a provider wants to finish the recording.
+enum StreamingStopDisposition {
+    case finalizeStreaming
+    case useBatchFallback
+}
+
 /// Errors specific to streaming transcription
 enum StreamingTranscriptionError: LocalizedError {
     case missingAPIKey
@@ -37,6 +43,9 @@ enum StreamingTranscriptionError: LocalizedError {
 
 /// Protocol for streaming transcription providers.
 protocol StreamingTranscriptionProvider: AnyObject {
+    /// Provider-specific decision made when the user stops recording.
+    var stopDisposition: StreamingStopDisposition { get }
+
     /// Connect to the streaming transcription endpoint
     func connect(model: any TranscriptionModel, language: String?) async throws
 
@@ -51,4 +60,8 @@ protocol StreamingTranscriptionProvider: AnyObject {
 
     /// Stream of transcription events from the provider
     var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent> { get }
+}
+
+extension StreamingTranscriptionProvider {
+    var stopDisposition: StreamingStopDisposition { .finalizeStreaming }
 }

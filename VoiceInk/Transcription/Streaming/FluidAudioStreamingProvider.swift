@@ -26,8 +26,19 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
     private var transcriptionTask: Task<Void, Never>?
     private var isTranscribing = false
     private var lastTranscribedSampleCount = 0
+    private let confirmationLock = NSLock()
+    private var confirmedSegmentCount = 0
+    private let minimumConfirmedSegmentsForStreamingFinalization = 3
     private let minimumAudioSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
     private let minNewSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
+
+    var stopDisposition: StreamingStopDisposition {
+        confirmationLock.lock()
+        defer { confirmationLock.unlock() }
+        return confirmedSegmentCount < minimumConfirmedSegmentsForStreamingFinalization
+            ? .useBatchFallback
+            : .finalizeStreaming
+    }
 
     init(fluidAudioService: FluidAudioTranscriptionService, config: AgreementConfig = AgreementConfig()) {
         self.fluidAudioService = fluidAudioService
@@ -58,6 +69,9 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         audioBuffer = []
         trimmedSampleCount = 0
         lastTranscribedSampleCount = 0
+        confirmationLock.lock()
+        confirmedSegmentCount = 0
+        confirmationLock.unlock()
 
         startTranscriptionLoop()
 
@@ -153,11 +167,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         bufferLock.unlock()
 
         // Pad with 1s trailing silence for punctuation capture
-        let maxSingleChunkSamples = 240_000
         let trailingSilenceSamples = 16_000
-        if audioSlice.count + trailingSilenceSamples <= maxSingleChunkSamples {
-            audioSlice += [Float](repeating: 0, count: trailingSilenceSamples)
-        }
+        audioSlice += [Float](repeating: 0, count: trailingSilenceSamples)
 
         guard audioSlice.count >= minimumAudioSamples else { return }
 
@@ -186,7 +197,12 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
 
             if !agreementResult.newlyConfirmedText.isEmpty {
                 let normalizedConfirmed = TextNormalizer.shared.normalizeSentence(agreementResult.newlyConfirmedText)
-                eventsContinuation?.yield(.committed(text: normalizedConfirmed))
+                if !normalizedConfirmed.isEmpty {
+                    confirmationLock.lock()
+                    confirmedSegmentCount += 1
+                    confirmationLock.unlock()
+                    eventsContinuation?.yield(.committed(text: normalizedConfirmed))
+                }
             }
             if !agreementResult.fullText.isEmpty {
                 eventsContinuation?.yield(.partial(text: agreementResult.fullText))
@@ -231,13 +247,10 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         var samples = Array(audioBuffer[bufferRelativeSeek...])
         bufferLock.unlock()
 
-        guard samples.count >= minimumAudioSamples else { return nil }
-
+        // A short spoken tail still needs enough input for FluidAudio. Padding before
+        // transcription keeps that tail instead of rejecting it for being under 300 ms.
         let trailingSilenceSamples = 16_000
-        let maxSingleChunkSamples = 240_000
-        if samples.count + trailingSilenceSamples <= maxSingleChunkSamples {
-            samples += [Float](repeating: 0, count: trailingSilenceSamples)
-        }
+        samples += [Float](repeating: 0, count: trailingSilenceSamples)
 
         do {
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)

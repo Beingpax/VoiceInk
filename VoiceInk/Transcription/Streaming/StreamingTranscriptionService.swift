@@ -102,6 +102,11 @@ enum StreamingState {
     case cancelled
 }
 
+enum StreamingStopResult {
+    case finalized(text: String)
+    case requiresBatchFallback
+}
+
 /// Manages a streaming transcription lifecycle: buffers audio chunks, sends them to the provider, and collects the final text.
 @MainActor
 class StreamingTranscriptionService {
@@ -187,10 +192,17 @@ class StreamingTranscriptionService {
         }
     }
 
-    /// Stops streaming, commits remaining audio, and returns the final transcribed text.
-    func stopAndGetFinalText() async throws -> String {
+    /// Stops streaming and follows the provider's requested finalization path.
+    func stopAndFinalize() async throws -> StreamingStopResult {
         guard let provider = provider, state == .streaming else {
             throw StreamingTranscriptionError.notConnected
+        }
+
+        if provider.stopDisposition == .useBatchFallback {
+            logger.notice("Streaming provider requested full batch fallback")
+            state = .done
+            await cleanupStreaming()
+            return .requiresBatchFallback
         }
 
         state = .committing
@@ -230,7 +242,7 @@ class StreamingTranscriptionService {
         state = .done
         await cleanupStreaming()
 
-        return finalText
+        return .finalized(text: finalText)
     }
 
     /// Cancels the streaming session without waiting for results.
