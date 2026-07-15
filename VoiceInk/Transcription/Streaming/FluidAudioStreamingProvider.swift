@@ -167,11 +167,8 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         bufferLock.unlock()
 
         // Pad with 1s trailing silence for punctuation capture
-        let maxSingleChunkSamples = 240_000
         let trailingSilenceSamples = 16_000
-        if audioSlice.count + trailingSilenceSamples <= maxSingleChunkSamples {
-            audioSlice += [Float](repeating: 0, count: trailingSilenceSamples)
-        }
+        audioSlice += [Float](repeating: 0, count: trailingSilenceSamples)
 
         guard audioSlice.count >= minimumAudioSamples else { return }
 
