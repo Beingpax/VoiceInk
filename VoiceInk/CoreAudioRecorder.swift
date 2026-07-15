@@ -5,6 +5,34 @@ import CoreAudio
 import Foundation
 import os
 
+struct AudioInputChannelSelection: Equatable {
+    let deviceChannelIndices: [Int32]
+
+    static func resolve(
+        deviceChannelCount: UInt32,
+        preferredStereoChannels: [UInt32]?
+    ) -> AudioInputChannelSelection {
+        guard deviceChannelCount > 0 else {
+            return AudioInputChannelSelection(deviceChannelIndices: [])
+        }
+
+        let fallback = (0..<min(deviceChannelCount, 2)).map(Int32.init)
+        guard let preferredStereoChannels,
+              !preferredStereoChannels.isEmpty,
+              preferredStereoChannels.allSatisfy({ (1...deviceChannelCount).contains($0) }) else {
+            return AudioInputChannelSelection(deviceChannelIndices: fallback)
+        }
+
+        var seen = Set<UInt32>()
+        let preferred = preferredStereoChannels.compactMap { channel -> Int32? in
+            guard seen.insert(channel).inserted else { return nil }
+            return Int32(channel - 1)
+        }
+
+        return AudioInputChannelSelection(deviceChannelIndices: preferred)
+    }
+}
+
 // MARK: - Core Audio Recorder (AUHAL-based, does not change system default device)
 final class CoreAudioRecorder: @unchecked Sendable {
     private final class InputBufferSlot: @unchecked Sendable {
@@ -38,6 +66,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
     // Device format (what the hardware provides)
     private var deviceFormat = AudioStreamBasicDescription()
+    private var captureChannelCount: UInt32 = 1
     // Output format (16kHz mono PCM Int16 for transcription)
     private var outputFormat = AudioStreamBasicDescription()
 
@@ -285,42 +314,23 @@ final class CoreAudioRecorder: @unchecked Sendable {
             throw CoreAudioRecorderError.failedToGetDeviceFormat(status: status)
         }
 
-        // Step 5: Configure callback format for new device
-        var callbackFormat = AudioStreamBasicDescription(
-            mSampleRate: newDeviceFormat.mSampleRate,
-            mFormatID: kAudioFormatLinearPCM,
-            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
-            mBytesPerPacket: UInt32(MemoryLayout<Float32>.size) * newDeviceFormat.mChannelsPerFrame,
-            mFramesPerPacket: 1,
-            mBytesPerFrame: UInt32(MemoryLayout<Float32>.size) * newDeviceFormat.mChannelsPerFrame,
-            mChannelsPerFrame: newDeviceFormat.mChannelsPerFrame,
-            mBitsPerChannel: 32,
-            mReserved: 0
+        // Step 5: Configure callback format and map only the device's preferred input channels.
+        let newCaptureChannelCount = try configureCaptureFormat(
+            deviceID: newDeviceID,
+            deviceFormat: newDeviceFormat
         )
-
-        status = AudioUnitSetProperty(
-            unit,
-            kAudioUnitProperty_StreamFormat,
-            kAudioUnitScope_Output,
-            1,
-            &callbackFormat,
-            UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        )
-
-        if status != noErr {
-            throw CoreAudioRecorderError.failedToSetFormat(status: status)
-        }
 
         // Step 6: Reallocate buffers if needed
         allocateAudioBuffers(
             maxFrames: renderFrameCapacity(for: newDeviceID),
-            channelCount: newDeviceFormat.mChannelsPerFrame,
+            channelCount: newCaptureChannelCount,
             inputSampleRate: newDeviceFormat.mSampleRate,
             resetQueuedAudio: true
         )
 
         // Update stored format
         deviceFormat = newDeviceFormat
+        captureChannelCount = newCaptureChannelCount
         currentDeviceID = newDeviceID
 
         // Step 7: Reinitialize and restart
@@ -452,32 +462,10 @@ final class CoreAudioRecorder: @unchecked Sendable {
             mReserved: 0
         )
 
-        // Set callback format (Float32 for processing, then convert to Int16 for file)
-        var callbackFormat = AudioStreamBasicDescription(
-            mSampleRate: deviceFormat.mSampleRate,
-            mFormatID: kAudioFormatLinearPCM,
-            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
-            mBytesPerPacket: UInt32(MemoryLayout<Float32>.size) * deviceFormat.mChannelsPerFrame,
-            mFramesPerPacket: 1,
-            mBytesPerFrame: UInt32(MemoryLayout<Float32>.size) * deviceFormat.mChannelsPerFrame,
-            mChannelsPerFrame: deviceFormat.mChannelsPerFrame,
-            mBitsPerChannel: 32,
-            mReserved: 0
+        captureChannelCount = try configureCaptureFormat(
+            deviceID: currentDeviceID,
+            deviceFormat: deviceFormat
         )
-
-        status = AudioUnitSetProperty(
-            audioUnit,
-            kAudioUnitProperty_StreamFormat,
-            kAudioUnitScope_Output,
-            1,
-            &callbackFormat,
-            UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        )
-
-        if status != noErr {
-            logger.error("Failed to set audio format: \(status, privacy: .public)")
-            throw CoreAudioRecorderError.failedToSetFormat(status: status)
-        }
 
         // Log format details
         let devSampleRate = deviceFormat.mSampleRate
@@ -501,10 +489,73 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
         allocateAudioBuffers(
             maxFrames: renderFrameCapacity(for: currentDeviceID),
-            channelCount: deviceFormat.mChannelsPerFrame,
+            channelCount: captureChannelCount,
             inputSampleRate: deviceFormat.mSampleRate,
             resetQueuedAudio: true
         )
+    }
+
+    private func configureCaptureFormat(
+        deviceID: AudioDeviceID,
+        deviceFormat: AudioStreamBasicDescription
+    ) throws -> UInt32 {
+        guard let audioUnit else {
+            throw CoreAudioRecorderError.audioUnitNotInitialized
+        }
+
+        let selection = AudioInputChannelSelection.resolve(
+            deviceChannelCount: deviceFormat.mChannelsPerFrame,
+            preferredStereoChannels: getPreferredInputChannels(deviceID: deviceID)
+        )
+        let channelCount = UInt32(selection.deviceChannelIndices.count)
+        guard channelCount > 0 else {
+            throw CoreAudioRecorderError.failedToSetFormat(status: kAudio_ParamError)
+        }
+
+        var callbackFormat = AudioStreamBasicDescription(
+            mSampleRate: deviceFormat.mSampleRate,
+            mFormatID: kAudioFormatLinearPCM,
+            mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked,
+            mBytesPerPacket: UInt32(MemoryLayout<Float32>.size) * channelCount,
+            mFramesPerPacket: 1,
+            mBytesPerFrame: UInt32(MemoryLayout<Float32>.size) * channelCount,
+            mChannelsPerFrame: channelCount,
+            mBitsPerChannel: 32,
+            mReserved: 0
+        )
+
+        var status = AudioUnitSetProperty(
+            audioUnit,
+            kAudioUnitProperty_StreamFormat,
+            kAudioUnitScope_Output,
+            1,
+            &callbackFormat,
+            UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        )
+        guard status == noErr else {
+            logger.error("Failed to set audio format: \(status, privacy: .public)")
+            throw CoreAudioRecorderError.failedToSetFormat(status: status)
+        }
+
+        var channelMap = selection.deviceChannelIndices
+        status = channelMap.withUnsafeMutableBytes { bytes in
+            AudioUnitSetProperty(
+                audioUnit,
+                kAudioOutputUnitProperty_ChannelMap,
+                kAudioUnitScope_Output,
+                1,
+                bytes.baseAddress,
+                UInt32(bytes.count)
+            )
+        }
+        guard status == noErr else {
+            logger.error("Failed to map audio input channels: \(status, privacy: .public)")
+            throw CoreAudioRecorderError.failedToSetFormat(status: status)
+        }
+
+        let mappedChannels = selection.deviceChannelIndices.map { $0 + 1 }
+        logger.notice("🎙️ Capturing device input channels: \(mappedChannels, privacy: .public)")
+        return channelCount
     }
 
     private func allocateAudioBuffers(
@@ -739,7 +790,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
             return noErr
         }
 
-        let channelCount = deviceFormat.mChannelsPerFrame
+        let channelCount = captureChannelCount
         let inputSampleRate = deviceFormat.mSampleRate
         let requiredSamples = inNumberFrames * channelCount
 
@@ -1153,6 +1204,30 @@ final class CoreAudioRecorder: @unchecked Sendable {
         )
 
         return status == noErr ? bufferSize : nil
+    }
+
+    private func getPreferredInputChannels(deviceID: AudioDeviceID) -> [UInt32]? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyPreferredChannelsForStereo,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        guard AudioObjectHasProperty(deviceID, &address) else { return nil }
+
+        var channels = [UInt32](repeating: 0, count: 2)
+        var propertySize = UInt32(MemoryLayout<UInt32>.size * channels.count)
+        let status = channels.withUnsafeMutableBytes { bytes in
+            AudioObjectGetPropertyData(
+                deviceID,
+                &address,
+                0,
+                nil,
+                &propertySize,
+                bytes.baseAddress!
+            )
+        }
+
+        return status == noErr ? channels : nil
     }
 
     /// Checks if a device is currently available using Apple's kAudioDevicePropertyDeviceIsAlive
