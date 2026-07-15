@@ -44,6 +44,10 @@ extension AIService {
                 model: resolvedModel,
                 timeout: timeout
             )
+        case .voiceInkRefine:
+            throw EnhancementError.customError(
+                String(localized: "VoiceInk Refine supports transcript cleanup, not assistant responses.")
+            )
         case .localCLI:
             result = try await enhanceWithLocalCLI(
                 systemPrompt: systemPrompt ?? "",

@@ -14,6 +14,13 @@ struct EnhancementPromptPopover: View {
         currentMode?.isAIEnhancementEnabled == true
     }
 
+    private var usesBuiltInPrompt: Bool {
+        guard let providerName = currentMode?.selectedAIProvider,
+            let provider = AIProvider(rawValue: providerName)
+        else { return false }
+        return provider.usesBuiltInEnhancementPrompt(for: currentMode?.selectedAIModel)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Enhancement Toggle at the top
@@ -25,7 +32,7 @@ struct EnhancementPromptPopover: View {
                         set: { newValue in
                             modeManager.updateCurrentEffectiveConfiguration { config in
                                 config.isAIEnhancementEnabled = newValue
-                                if newValue, config.selectedPrompt == nil {
+                                if newValue, config.selectedPrompt == nil, !usesBuiltInPrompt {
                                     config.selectedPrompt = enhancementService.allPrompts.first?.id.uuidString
                                 }
                             }
@@ -45,25 +52,33 @@ struct EnhancementPromptPopover: View {
             Divider()
                 .background(Color.white.opacity(0.1))
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
-                    // Available Enhancement Prompts
-                    ForEach(enhancementService.allPrompts) { prompt in
-                        EnhancementPromptRow(
-                            prompt: prompt,
-                            isSelected: selectedPrompt?.id == prompt.id,
-                            isDisabled: !isEnhancementEnabled,
-                            action: {
-                                modeManager.updateCurrentEffectiveConfiguration { config in
-                                    config.isAIEnhancementEnabled = true
-                                    config.selectedPrompt = prompt.id.uuidString
+            if usesBuiltInPrompt {
+                Text("Built-in model prompt")
+                    .foregroundColor(.white.opacity(0.8))
+                    .font(.system(size: 13))
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        // Available Enhancement Prompts
+                        ForEach(enhancementService.allPrompts) { prompt in
+                            EnhancementPromptRow(
+                                prompt: prompt,
+                                isSelected: selectedPrompt?.id == prompt.id,
+                                isDisabled: !isEnhancementEnabled,
+                                action: {
+                                    modeManager.updateCurrentEffectiveConfiguration { config in
+                                        config.isAIEnhancementEnabled = true
+                                        config.selectedPrompt = prompt.id.uuidString
+                                    }
+                                    selectedPrompt = prompt
                                 }
-                                selectedPrompt = prompt
-                            }
-                        )
+                            )
+                        }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
             }
         }
         .frame(width: 200)

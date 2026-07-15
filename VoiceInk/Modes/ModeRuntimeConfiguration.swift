@@ -36,6 +36,18 @@ struct EnhancementRuntimeConfiguration {
     let useSelectedTextContext: Bool
     let useScreenCaptureContext: Bool
 
+    var builtInPrompt: String? {
+        provider?.builtInEnhancementPrompt(for: modelName)
+    }
+
+    var usesBuiltInPrompt: Bool {
+        builtInPrompt != nil
+    }
+
+    var supportsAssistantResponses: Bool {
+        provider?.supportsAssistantResponses == true
+    }
+
     func replacingPrompt(_ prompt: CustomPrompt) -> EnhancementRuntimeConfiguration {
         EnhancementRuntimeConfiguration(
             mode: mode,

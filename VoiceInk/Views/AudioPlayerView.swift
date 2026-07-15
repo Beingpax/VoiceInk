@@ -376,6 +376,10 @@ struct AudioPlayerView: View {
         )
     }
 
+    private var usesBuiltInEnhancementPrompt: Bool {
+        currentEnhancementConfiguration?.usesBuiltInPrompt == true
+    }
+
     private var transcriptionService: AudioTranscriptionService {
         AudioTranscriptionService(modelContext: modelContext, engine: engine)
     }
@@ -453,7 +457,13 @@ struct AudioPlayerView: View {
                             defaultIcon: "wand.and.stars",
                             isLoading: isReEnhancing,
                             showSuccess: operationFeedback == .reEnhanceSuccess,
-                            action: { showPromptPopover.toggle() }
+                            action: {
+                                if usesBuiltInEnhancementPrompt {
+                                    reEnhanceOnly()
+                                } else {
+                                    showPromptPopover.toggle()
+                                }
+                            }
                         )
                         .disabled(isOperationInProgress)
                         .help("Re-enhance with selected prompt")
@@ -597,7 +607,7 @@ struct AudioPlayerView: View {
         NotificationManager.shared.showNotification(title: title, type: .error, duration: 3.0)
     }
 
-    private func reEnhanceOnly(prompt selectedPrompt: CustomPrompt) {
+    private func reEnhanceOnly(prompt selectedPrompt: CustomPrompt? = nil) {
         guard let transcription = transcription else { return }
 
         guard let baseEnhancementConfiguration = currentEnhancementConfiguration else {
@@ -605,7 +615,8 @@ struct AudioPlayerView: View {
             return
         }
 
-        let enhancementConfiguration = baseEnhancementConfiguration.replacingPrompt(selectedPrompt)
+        let enhancementConfiguration = selectedPrompt.map(baseEnhancementConfiguration.replacingPrompt)
+            ?? baseEnhancementConfiguration
 
         isReEnhancing = true
         operationFeedback = nil

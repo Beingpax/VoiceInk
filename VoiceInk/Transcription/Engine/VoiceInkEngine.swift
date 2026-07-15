@@ -120,6 +120,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
     let assistantSession = AssistantSession()
     let assistantChat: AssistantChatService?
     private let pipeline: TranscriptionPipeline
+    private let voiceInkRefineCoordinator: VoiceInkRefineCoordinator
 
     let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "VoiceInkEngine")
 
@@ -133,6 +134,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
         self.whisperModelManager = whisperModelManager
         self.transcriptionModelManager = transcriptionModelManager
         self.enhancementService = enhancementService
+        self.voiceInkRefineCoordinator = VoiceInkRefineCoordinator(enhancementService: enhancementService)
         if let aiService = enhancementService?.getAIService() {
             self.assistantChat = AssistantChatService(
                 modelContext: modelContext,
@@ -286,6 +288,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.startRecordingContextCapture()
+                            self.voiceInkRefineCoordinator.start(sessionID: startID)
 
                             guard
                                 let transcriptionConfiguration = ModeRuntimeResolver.transcriptionConfiguration(
@@ -693,6 +696,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
     func cleanupResources() async {
         logger.notice("cleanupResources: releasing model resources")
+        await voiceInkRefineCoordinator.finish()
         activeRecordingStartID = nil
         activeRecordingUseCase = .newSession
         await whisperModelManager.cleanupResources()

@@ -514,6 +514,7 @@ class ModeManager: ObservableObject {
         }
         UserDefaults.standard.set(config?.id.uuidString, forKey: activeConfigIdKey)
         self.objectWillChange.send()
+        NotificationCenter.default.post(name: .activeModeDidChange, object: activeConfiguration)
     }
 
     func updateCurrentEffectiveConfiguration(_ update: (inout ModeConfig) -> Void) {

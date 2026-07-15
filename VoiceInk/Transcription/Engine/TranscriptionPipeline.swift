@@ -156,6 +156,7 @@ class TranscriptionPipeline {
                 let shouldRespondInRecorder =
                     resolvedOutputConfiguration.outputMode == .respond
                     && resolvedEnhancementConfiguration?.isEnabled == true
+                    && resolvedEnhancementConfiguration?.supportsAssistantResponses == true
                     && resolvedEnhancementConfiguration.map { configuration in
                         enhancementService?.isConfigured(for: configuration) == true
                     } == true

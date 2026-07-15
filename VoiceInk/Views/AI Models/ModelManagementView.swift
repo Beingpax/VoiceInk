@@ -266,6 +266,11 @@ struct ModelManagementView: View {
                 )
             }
 
+            if SystemArchitecture.isAppleSilicon {
+                VoiceInkRefineModelCardView()
+                    .environmentObject(aiService)
+            }
+
             importLocalModelButton
 
             LocalEnhancementProviderManagementView()

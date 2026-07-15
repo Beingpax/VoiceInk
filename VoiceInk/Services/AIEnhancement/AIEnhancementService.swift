@@ -73,10 +73,11 @@ class AIEnhancementService: ObservableObject {
     }
 
     func isConfigured(for configuration: EnhancementRuntimeConfiguration) -> Bool {
-        guard configuration.prompt != nil else { return false }
         guard let provider = configuration.provider else { return false }
 
-        if provider == .localCLI || provider == .ollama {
+        guard configuration.usesBuiltInPrompt || configuration.prompt != nil else { return false }
+
+        if provider == .localCLI || provider == .voiceInkRefine || provider == .ollama {
             return true
         }
 
@@ -183,25 +184,34 @@ class AIEnhancementService: ObservableObject {
             throw EnhancementError.notConfigured
         }
 
-        guard let prompt = configuration.prompt else {
-            throw EnhancementError.notConfigured
-        }
-
         guard let provider = configuration.provider else {
             throw EnhancementError.notConfigured
         }
         let modelName = configuration.modelName ?? provider.defaultModel
+        guard configuration.usesBuiltInPrompt || configuration.prompt != nil else {
+            throw EnhancementError.notConfigured
+        }
 
         guard !text.isEmpty else {
             return ""
         }
 
-        let formattedText = "\n<USER_MESSAGE>\n\(text)\n</USER_MESSAGE>"
-        let systemMessage = await getSystemMessage(
-            prompt: prompt,
-            configuration: configuration,
-            contextSnapshot: contextSnapshot
-        )
+        let formattedText = provider == .voiceInkRefine
+            ? VoiceInkRefineService.userPrompt(for: text)
+            : "\n<USER_MESSAGE>\n\(text)\n</USER_MESSAGE>"
+        let systemMessage: String
+        if let builtInPrompt = configuration.builtInPrompt {
+            systemMessage = builtInPrompt
+        } else {
+            guard let prompt = configuration.prompt else {
+                throw EnhancementError.notConfigured
+            }
+            systemMessage = await getSystemMessage(
+                prompt: prompt,
+                configuration: configuration,
+                contextSnapshot: contextSnapshot
+            )
+        }
 
         await MainActor.run {
             self.lastSystemMessageSent = systemMessage
@@ -229,6 +239,19 @@ class AIEnhancementService: ObservableObject {
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }
+            }
+        }
+
+        if provider == .voiceInkRefine {
+            do {
+                let result = try await aiService.enhanceWithVoiceInkRefine(
+                    text: text,
+                    systemPrompt: systemMessage,
+                    model: modelName
+                )
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                throw EnhancementError.customError(error.localizedDescription)
             }
         }
 
@@ -431,7 +454,11 @@ class AIEnhancementService: ObservableObject {
         contextSnapshot: RecordingContextSnapshot? = nil
     ) async throws -> (String, TimeInterval, String?) {
         let startTime = Date()
-        let promptName = configuration.prompt?.title
+        let promptName = if configuration.usesBuiltInPrompt {
+            String(localized: "Built in")
+        } else {
+            configuration.prompt?.title
+        }
 
         do {
             let result = try await makeRequestWithRetry(
@@ -502,6 +529,20 @@ class AIEnhancementService: ObservableObject {
         var didUpdateModes = false
 
         for index in updatedConfigurations.indices {
+            let provider = updatedConfigurations[index].selectedAIProvider.flatMap(AIProvider.init(rawValue:))
+            let modelID = updatedConfigurations[index].selectedAIModel
+                ?? provider?.defaultModel
+                ?? ""
+            let usesBuiltInPrompt = provider?.usesBuiltInEnhancementPrompt(for: modelID) == true
+
+            if usesBuiltInPrompt {
+                if updatedConfigurations[index].selectedPrompt != nil {
+                    updatedConfigurations[index].selectedPrompt = nil
+                    didUpdateModes = true
+                }
+                continue
+            }
+
             let selectedPrompt = updatedConfigurations[index].selectedPrompt
             let hasInvalidPrompt = selectedPrompt.map { !availablePromptIds.contains($0) } ?? false
             let hasMissingPrompt = selectedPrompt == nil

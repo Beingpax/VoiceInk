@@ -115,6 +115,15 @@ struct ConfigurationRow: View {
         return enhancementService.allPrompts.first { $0.id == uuid }
     }
 
+    private var enhancementPromptTitle: String {
+        let provider = config.selectedAIProvider.flatMap(AIProvider.init(rawValue:))
+        let modelID = config.selectedAIModel ?? provider?.defaultModel ?? ""
+        if provider?.usesBuiltInEnhancementPrompt(for: modelID) == true {
+            return String(localized: "Built in")
+        }
+        return selectedPrompt?.title ?? String(localized: "AI")
+    }
+
     private var selectedModel: String? {
         if let modelName = config.selectedTranscriptionModelName,
             let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName })
@@ -371,7 +380,7 @@ struct ConfigurationRow: View {
                         HStack(spacing: 4) {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 10))
-                            Text(selectedPrompt?.title ?? "AI")
+                            Text(enhancementPromptTitle)
                                 .font(.caption)
                         }
                         .padding(.horizontal, 6)

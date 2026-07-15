@@ -56,6 +56,16 @@ struct ModeConfigFormView: View {
         return selectedProvider
     }
 
+    private var selectedAIModelName: String? {
+        guard let provider = configuredSelectedAIProvider else { return nil }
+        if let model = draft.selectedAIModel, !model.isEmpty { return model }
+        return warmupSnapshot.selectedModel(for: provider)
+    }
+
+    private var usesBuiltInEnhancementPrompt: Bool {
+        configuredSelectedAIProvider?.usesBuiltInEnhancementPrompt(for: selectedAIModelName) == true
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -65,6 +75,7 @@ struct ModeConfigFormView: View {
             footer
         }
         .onAppear {
+            synchronizePromptSelection()
             applyOutputRules()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 isNameFieldFocused = true
@@ -77,9 +88,11 @@ struct ModeConfigFormView: View {
             applyOutputRules()
         }
         .onChange(of: draft.selectedAIProvider) { _, _ in
+            synchronizePromptSelection()
             applyOutputRules()
         }
         .onChange(of: draft.selectedAIModel) { _, _ in
+            synchronizePromptSelection()
             applyOutputRules()
         }
     }
@@ -312,7 +325,7 @@ struct ModeConfigFormView: View {
                         {
                             draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                         }
-                        if draft.selectedPromptId == nil {
+                        if draft.selectedPromptId == nil && !usesBuiltInEnhancementPrompt {
                             draft.selectedPromptId = warmupSnapshot.firstPromptId
                         }
                         if configuredSelectedAIProvider == .ollama {
@@ -351,6 +364,8 @@ struct ModeConfigFormView: View {
                             switch provider {
                             case .localCLI:
                                 draft.selectedAIModel = nil
+                            case .voiceInkRefine:
+                                draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                             case .ollama:
                                 if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
                                     draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
@@ -365,8 +380,15 @@ struct ModeConfigFormView: View {
 
                 if let provider = configuredSelectedAIProvider {
                     aiModelPicker(for: provider)
-                    promptPicker
-                    contextAwarenessRow
+                    if usesBuiltInEnhancementPrompt {
+                        LabeledContent("Prompt") {
+                            Text("Built in")
+                                .foregroundStyle(.secondary)
+                        }
+                    } else {
+                        promptPicker
+                        contextAwarenessRow
+                    }
                 }
             }
         }
@@ -516,7 +538,20 @@ struct ModeConfigFormView: View {
     }
 
     private var canRespond: Bool {
-        draft.isAIEnhancementEnabled && selectedPrompt != nil && configuredSelectedAIProvider != nil
+        guard draft.isAIEnhancementEnabled,
+            let provider = configuredSelectedAIProvider,
+            provider.supportsAssistantResponses
+        else { return false }
+
+        return usesBuiltInEnhancementPrompt || selectedPrompt != nil
+    }
+
+    private func synchronizePromptSelection() {
+        if usesBuiltInEnhancementPrompt {
+            draft.selectedPromptId = nil
+        } else if draft.isAIEnhancementEnabled && draft.selectedPromptId == nil {
+            draft.selectedPromptId = warmupSnapshot.firstPromptId
+        }
     }
 
     private func applyOutputRules() {

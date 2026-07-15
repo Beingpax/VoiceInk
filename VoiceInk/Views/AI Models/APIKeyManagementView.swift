@@ -21,7 +21,7 @@ struct APIKeyManagementView: View {
 
     private var providerOptions: [AIProvider] {
         AIProvider.allCases.filter { provider in
-            guard provider.supportsEnhancement else { return false }
+            guard provider.supportsEnhancement, provider.isSupportedOnCurrentHardware else { return false }
             if provider == .custom {
                 return customAIProviderManager.hasConfiguredModels
             }
@@ -40,7 +40,18 @@ struct APIKeyManagementView: View {
                 .pickerStyle(.automatic)
                 .tint(AppTheme.Status.infoStrong)
 
-                if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
+                if aiService.selectedProvider == .voiceInkRefine {
+                    Spacer()
+                    let isDownloaded = aiService.voiceInkRefineStorageInfo(
+                        for: VoiceInkRefineService.defaultModel
+                    ).isDownloaded
+                    Circle()
+                        .fill(isDownloaded ? AppTheme.Status.positive : AppTheme.Status.warningStrong)
+                        .frame(width: 8, height: 8)
+                    Text(isDownloaded ? "Downloaded" : "Not downloaded")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                } else if aiService.isAPIKeyValid && aiService.selectedProvider != .ollama {
                     Spacer()
                     Circle()
                         .fill(AppTheme.Status.positive)
@@ -185,6 +196,30 @@ struct APIKeyManagementView: View {
                         }
                     }
 
+                } else if aiService.selectedProvider == .voiceInkRefine {
+                    let modelID = VoiceInkRefineService.defaultModel
+                    let storageInfo = aiService.voiceInkRefineStorageInfo(for: modelID)
+                    HStack {
+                        Text("Runs locally after download. No API key is required.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        if aiService.voiceInkRefineDownloadProgress[modelID] != nil {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if !storageInfo.isDownloaded {
+                            Button("Download model") {
+                                Task { @MainActor in
+                                    await aiService.downloadVoiceInkRefineModel(modelID)
+                                }
+                            }
+                        }
+                    }
+                    if let error = aiService.voiceInkRefineDownloadErrors[modelID] {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(AppTheme.Status.error)
+                    }
                 } else if aiService.selectedProvider == .localCLI {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {

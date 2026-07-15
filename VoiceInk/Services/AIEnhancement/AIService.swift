@@ -15,6 +15,7 @@ enum AIProvider: String, CaseIterable {
     case speechmatics = "Speechmatics"
     case assemblyAI = "AssemblyAI"
     case ollama = "Ollama"
+    case voiceInkRefine = "VoiceInk Refine"
     case localCLI = "Local CLI"
     case custom = "Custom"
 
@@ -46,6 +47,8 @@ enum AIProvider: String, CaseIterable {
             return "https://api.assemblyai.com/v2/transcript"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+        case .voiceInkRefine:
+            return ""
         case .localCLI:
             return ""
         case .custom:
@@ -79,6 +82,8 @@ enum AIProvider: String, CaseIterable {
             return "universal-3-5-pro"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+        case .voiceInkRefine:
+            return VoiceInkRefineService.defaultModel
         case .localCLI:
             return "local-cli"
         case .custom:
@@ -141,6 +146,8 @@ enum AIProvider: String, CaseIterable {
             return ["universal-3-5-pro"]
         case .ollama:
             return []
+        case .voiceInkRefine:
+            return VoiceInkRefineService.availableModels
         case .localCLI:
             return []
         case .custom:
@@ -152,7 +159,7 @@ enum AIProvider: String, CaseIterable {
 
     var requiresAPIKey: Bool {
         switch self {
-        case .ollama, .localCLI:
+        case .ollama, .voiceInkRefine, .localCLI:
             return false
         default:
             return true
@@ -166,6 +173,27 @@ enum AIProvider: String, CaseIterable {
         default:
             return true
         }
+    }
+
+    var supportsAssistantResponses: Bool {
+        supportsEnhancement && self != .voiceInkRefine
+    }
+
+    var isSupportedOnCurrentHardware: Bool {
+        self != .voiceInkRefine || SystemArchitecture.isAppleSilicon
+    }
+
+    func builtInEnhancementPrompt(for modelID: String?) -> String? {
+        switch self {
+        case .voiceInkRefine:
+            return VoiceInkRefineService.builtInSystemPrompt(modelID: modelID ?? defaultModel)
+        default:
+            return nil
+        }
+    }
+
+    func usesBuiltInEnhancementPrompt(for modelID: String?) -> Bool {
+        builtInEnhancementPrompt(for: modelID) != nil
     }
 }
 
@@ -214,15 +242,18 @@ class AIService: ObservableObject {
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
+    let voiceInkRefineService = VoiceInkRefineService()
     private lazy var localCLIService = LocalCLIService()
     private var apiKeyChangeObserver: NSObjectProtocol?
 
     @Published private var openRouterModels: [String] = []
     @Published private(set) var isOllamaRefreshing = false
+    @Published var voiceInkRefineDownloadProgress: [String: Double] = [:]
+    @Published var voiceInkRefineDownloadErrors: [String: String] = [:]
 
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
-            guard provider.supportsEnhancement else {
+            guard provider.supportsEnhancement, provider.isSupportedOnCurrentHardware else {
                 return false
             }
 
@@ -230,6 +261,8 @@ class AIService: ObservableObject {
                 return CustomAIProviderManager.shared.hasConfiguredModels
             } else if provider == .ollama {
                 return ollamaService.isConnected
+            } else if provider == .voiceInkRefine {
+                return voiceInkRefineService.isDownloaded(modelID: selectedModel(for: provider))
             } else if provider == .localCLI {
                 return localCLIService.isConfigured
             } else if provider.requiresAPIKey {
@@ -275,6 +308,8 @@ class AIService: ObservableObject {
     func availableModels(for provider: AIProvider) -> [String] {
         if provider == .ollama {
             return ollamaService.availableModels.map { $0.name }
+        } else if provider == .voiceInkRefine {
+            return VoiceInkRefineService.availableModels
         } else if provider == .openRouter {
             return openRouterModels
         } else if provider == .custom {
@@ -287,7 +322,6 @@ class AIService: ObservableObject {
         if userDefaults.string(forKey: "selectedAIProvider") == "GROQ" {
             userDefaults.set("Groq", forKey: "selectedAIProvider")
         }
-
         if let savedProvider = userDefaults.string(forKey: "selectedAIProvider"),
             let provider = AIProvider(rawValue: savedProvider)
         {
@@ -380,12 +414,22 @@ class AIService: ObservableObject {
             guard CustomAIProviderManager.shared.applyConfiguration(forModel: model) else { return }
         }
 
+        let previousModel = selectedModel(for: provider)
         selectedModels[provider] = model
         let key = "\(provider.rawValue)SelectedModel"
         userDefaults.set(model, forKey: key)
 
         if provider == .ollama {
             updateSelectedOllamaModel(model)
+        } else if provider == .voiceInkRefine {
+            if previousModel != model {
+                Task {
+                    await voiceInkRefineService.unload()
+                    await MainActor.run {
+                        self.objectWillChange.send()
+                    }
+                }
+            }
         } else if provider == .custom {
             reloadSelectedProviderConfiguration()
         }

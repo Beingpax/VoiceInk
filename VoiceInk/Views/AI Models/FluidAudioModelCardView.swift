@@ -4,6 +4,7 @@ import SwiftUI
 struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
     @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager) {
         self.model = model
@@ -114,7 +115,7 @@ struct FluidAudioModelCardView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 8)
-                .animation(.smooth, value: status.fractionCompleted)
+                .animation(reduceMotion ? nil : .smooth, value: status.fractionCompleted)
             }
         }
     }
@@ -158,7 +159,8 @@ struct FluidAudioModelCardView: View {
                     }
 
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Label("Model actions", systemImage: "ellipsis.circle")
+                        .labelStyle(.iconOnly)
                         .font(.system(size: 14))
                 }
                 .menuStyle(.borderlessButton)
