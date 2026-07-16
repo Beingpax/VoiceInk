@@ -12,7 +12,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         logger.notice(
             "🧭 Application finished launching. hasMenuBarManager=\((self.menuBarManager != nil), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
         )
+        // Ensure MenuBarExtra is registered before/while applying accessory policy.
+        menuBarManager?.ensureMenuBarExtraVisible()
         menuBarManager?.applyActivationPolicy()
+        // Policy changes can race with scene setup; re-assert after a beat.
+        DispatchQueue.main.async { [weak self] in
+            self?.menuBarManager?.ensureMenuBarExtraVisible()
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
