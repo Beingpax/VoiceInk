@@ -258,7 +258,7 @@ class CursorPaster {
         await wait(prePasteDelay)
 
         let keyStrokeMap = buildKeyStrokeMap()
-        let autoSendKey = PowerModeManager.shared.currentActiveConfiguration?.autoSendKey ?? .none
+        let autoSendKey = ModeManager.shared.currentActiveConfiguration?.autoSendKey ?? .none
 
         for character in text {
             if let keyStroke = keyStroke(for: character, in: keyStrokeMap, autoSendKey: autoSendKey) {
