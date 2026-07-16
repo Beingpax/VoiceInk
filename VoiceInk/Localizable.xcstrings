@@ -10431,6 +10431,23 @@
         }
       }
     },
+    "New" : {
+      "comment" : "A tooltip value used when the previous period contained zero words.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新增"
+          }
+        }
+      }
+    },
     "Next" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -15227,6 +15244,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "从模板开始"
+          }
+        }
+      }
+    },
+    "Starting point" : {
+      "comment" : "A tooltip label identifying the first data point as the baseline for later comparisons.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Startpunkt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "起点"
           }
         }
       }
