@@ -3,19 +3,27 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>1.79</title>
+            <title>2.0</title>
             <description><![CDATA[
-                <h3>What's New in v1.79</h3>
+                <h3>Introducing VoiceInk 2.0</h3>
+                <p>A redesigned VoiceInk experience with powerful new workflows, broader model support, and improved reliability.</p>
                 <ul>
-                    <li>🛠️ Fixed AppleScript paste crash</li>
-                    <li>⌨️ Fixed accidental Fn shortcut triggers</li>
+                    <li>✨ Introduced Modes for personalized workflows across different apps, websites, and tasks</li>
+                    <li>🤖 Added new AI providers, custom models, and expanded transcription options</li>
+                    <li>💬 Introduced VoiceInk Assistant for conversational follow-ups and contextual responses</li>
+                    <li>🎤 Improved real-time transcription and recording reliability</li>
+                    <li>🚀 Redesigned onboarding for faster and simpler setup</li>
+                    <li>📊 Added productivity insights and history analysis</li>
+                    <li>🌍 Added German and Simplified Chinese localization</li>
+                    <li>🎨 Refreshed the interface with cleaner navigation and improved accessibility</li>
+                    <li>🛠️ Added performance improvements, stability fixes, and general refinements</li>
                 </ul>
             ]]></description>
-            <pubDate>Sat, 23 May 2026 20:23:30 +0545</pubDate>
-            <sparkle:version>179</sparkle:version>
-            <sparkle:shortVersionString>1.79</sparkle:shortVersionString>
+            <pubDate>Thu, 16 Jul 2026 19:33:02 +0545</pubDate>
+            <sparkle:version>205</sparkle:version>
+            <sparkle:shortVersionString>2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v1.79/VoiceInk.dmg" length="14406786" type="application/octet-stream" sparkle:edSignature="TI2RXCaX+lx8Dp7fERw9B4Ef+xHwJQxsshBnDClUAKsyafQjfM4DYOCm3Iz9dF7VaajUZccafIktBDsbtuRzCA=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.0/VoiceInk.dmg" length="18795937" type="application/octet-stream" sparkle:edSignature="ePneSUgp3KuFyhqSb2433uZgm1DMBjWeZLCB4mv8IS9PuJLhLs1IEuOWr7RppK/zJf0oeqxXMMzRWREKL8IqCQ=="/>
         </item>
     </channel>
 </rss>
