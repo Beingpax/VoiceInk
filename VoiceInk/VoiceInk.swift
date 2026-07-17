@@ -460,8 +460,17 @@ class UpdaterViewModel: ObservableObject {
     @Published var automaticallyChecksForUpdates = false
 
     init() {
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        #if LOCAL_BUILD
+            // Local builds aren't signed with the project's real identity, so
+            // accepting a Sparkle update here silently replaces this build with
+            // the official upstream binary (see docs/adr/0007-disable-sparkle-in-local-builds.md).
+            updaterController = SPUStandardUpdaterController(
+                startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+            updaterController.updater.automaticallyChecksForUpdates = false
+        #else
+            updaterController = SPUStandardUpdaterController(
+                startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        #endif
 
         automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
