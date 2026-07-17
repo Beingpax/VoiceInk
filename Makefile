@@ -46,12 +46,20 @@ build: setup
 
 # Build for local use without Apple Developer certificate
 local: check setup
-	@echo "Building VoiceInk for local use (no Apple Developer certificate required)..."
+	@echo "Building VoiceInk for local use..."
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
+	$(eval LOCAL_SIGN_ID := $(shell security find-identity -v -p codesigning 2>/dev/null | grep "VoiceInk Local Dev" | head -1 | sed 's/.*"\(.*\)"/\1/'))
+	@if [ -n "$(LOCAL_SIGN_ID)" ]; then \
+		echo "Using certificate: $(LOCAL_SIGN_ID)"; \
+	else \
+		echo "No 'VoiceInk Local Dev' certificate found, using ad-hoc signing."; \
+		echo "  Note: Ad-hoc builds cannot auto-paste (no accessibility permission)."; \
+		echo "  Run: make cert  to create a local signing certificate."; \
+	fi
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
-		CODE_SIGN_IDENTITY="-" \
+		CODE_SIGN_IDENTITY="$(if $(LOCAL_SIGN_ID),$(LOCAL_SIGN_ID),-)" \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=YES \
 		DEVELOPMENT_TEAM="" \
