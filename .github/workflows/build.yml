@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cmake
+        run: brew install cmake
+
+      - name: Build (ad-hoc, no Apple Developer account required)
+        run: make local
+
+      - name: Run unit tests
+        # Scoped to VoiceInkTests only — VoiceInkUITests needs real GUI
+        # automation permissions and times out enabling automation mode in
+        # any headless/CI environment, this one included.
+        run: |
+          xcodebuild test \
+            -project VoiceInk.xcodeproj \
+            -scheme VoiceInk \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -only-testing:VoiceInkTests \
+            -xcconfig LocalBuild.xcconfig \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/VoiceInk/VoiceInk.local.entitlements" \
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) LOCAL_BUILD'
+
+  lint:
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Lint (report only — see docs/adr/0008-lint-as-going-forward-guardrail.md)
+        run: swiftlint lint --quiet VoiceInk
