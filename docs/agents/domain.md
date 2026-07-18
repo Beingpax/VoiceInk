@@ -20,7 +20,10 @@ This repo is single-context: one `CONTEXT.md`, one `docs/adr/`, no per-context s
 │   ├── 0003-telemetry-posthog-cloud.md
 │   ├── 0004-finetune-trigger.md
 │   ├── 0005-solo-scope-for-now.md
-│   └── 0006-ship-rough-now.md
+│   ├── 0006-ship-rough-now.md
+│   ├── 0007-disable-sparkle-in-local-builds.md
+│   ├── 0008-lint-as-going-forward-guardrail.md
+│   └── 0009-golden-eval-set-and-wer-methodology.md
 └── VoiceInk/            ← upstream's Swift source, unchanged layout
 ```
 
