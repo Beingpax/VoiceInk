@@ -22,6 +22,10 @@ jobs:
         # Scoped to VoiceInkTests only — VoiceInkUITests needs real GUI
         # automation permissions and times out enabling automation mode in
         # any headless/CI environment, this one included.
+        # Parallel testing disabled — Swift Testing's default concurrent
+        # workers are flaky on GitHub's shared runners (one worker aborted
+        # on launch and bulk-failed its whole batch with 0.000s durations,
+        # while the other worker's identical tests passed normally).
         run: |
           xcodebuild test \
             -project VoiceInk.xcodeproj \
@@ -29,6 +33,7 @@ jobs:
             -configuration Debug \
             -destination 'platform=macOS' \
             -only-testing:VoiceInkTests \
+            -parallel-testing-enabled NO \
             -xcconfig LocalBuild.xcconfig \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
