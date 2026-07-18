@@ -1,0 +1,12 @@
+# Non-blocking guardrail for new/changed code — see docs/adr/0008-lint-as-going-forward-guardrail.md.
+# Default rules produce 117 errors / 692 warnings against upstream's existing,
+# previously-unlinted code. We are not bulk-fixing that: touching 187+ files
+# for style alone is exactly the kind of destabilizing churn this project is
+# trying to avoid. CI runs this as report-only; clean up opportunistically
+# when you're already touching a file for a real change.
+
+excluded:
+  - VoiceInk.xcodeproj
+  - VoiceInkTests
+  - VoiceInkUITests
+  - .local-build
