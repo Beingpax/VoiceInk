@@ -9,6 +9,7 @@ struct PasteMethodTests {
         let suiteName = "PasteMethodTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
+        defaults.synchronize()
         return defaults
     }
 
@@ -40,6 +41,7 @@ struct PasteMethodTests {
         let defaults = isolatedDefaults()
         PasteMethod.setCurrent(.standard, in: defaults)
         defaults.set(true, forKey: PasteMethod.legacyAppleScriptPasteKey)  // stale legacy flag
+        defaults.synchronize()  // force the writes visible before reading them back below
 
         PasteMethod.migrateLegacyUserDefaultIfNeeded(in: defaults)
 
