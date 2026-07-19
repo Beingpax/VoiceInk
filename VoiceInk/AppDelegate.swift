@@ -23,6 +23,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if ProcessInfo.processInfo.arguments.contains("-uiTestOpenMainWindow") {
             NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
         }
+
+        // Test-only: force the main window down to its documented minimum size
+        // (AppWindowLayout.minimumHeight) so layout tests exercise the worst-case, most
+        // cramped real-world window size rather than whatever's comfortable on this machine.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestMinimizeMainWindow") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                WindowManager.shared.currentMainWindow()?.setContentSize(
+                    NSSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight))
+            }
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

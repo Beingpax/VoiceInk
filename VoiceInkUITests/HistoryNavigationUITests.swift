@@ -88,6 +88,14 @@ final class HistoryNavigationUITests: XCTestCase {
     // that the element exists — "exists" alone would have passed even with the bug present.
     @MainActor
     func testMarkVerifiedButtonIsVisibleWithinWindowAfterExpandingARow() throws {
+        // Worst case: this app's documented minimum window size (WindowManager.swift), not
+        // whatever's comfortable on this machine — the original bug report happened at a
+        // realistic, non-maximized window size.
+        app.terminate()
+        app.launchArguments = ["-uiTestOpenMainWindow", "-uiTestMinimizeMainWindow"]
+        app.launch()
+        XCTAssertTrue(app.buttons["History"].waitForExistence(timeout: 10))
+
         app.buttons["History"].click()
         app.radioGroups["history.modeToggle"].radioButtons["Golden Eval Set"].click()
 

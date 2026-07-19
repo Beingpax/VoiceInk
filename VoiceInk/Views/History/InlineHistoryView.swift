@@ -762,10 +762,26 @@ private struct HistoryCardRow: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: TranscriptionTab = .original
+    @State private var isShowingEnhancementDiff = false
     @State private var groundTruthText: String = ""
     @State private var goldenEvalEntry: GoldenEvalEntry?
     @State private var goldenEvalErrorMessage: String?
     @State private var hasLoadedGoldenEvalEntry = false
+
+    // What AI Enhancement (e.g. Apple Intelligence) actually changed vs the raw transcript —
+    // word-level, preserving casing/punctuation (unlike WER's normalized comparison) since a
+    // casing or punctuation fix is exactly the kind of change worth seeing here.
+    private var enhancementDiff: [WordLevelDiff.Operation] {
+        guard let enhancedText = transcription.enhancedText else { return [] }
+        return WordLevelDiff.compute(original: transcription.text, enhanced: enhancedText)
+    }
+
+    private var enhancementDiffSummary: String {
+        let changed = enhancementDiff.filter { if case .equal = $0 { return false }; return true }.count
+        return changed == 0
+            ? String(localized: "No changes")
+            : String(format: String(localized: "%lld change(s)"), Int64(changed))
+    }
 
     private var displayText: String {
         switch selectedTab {
@@ -872,48 +888,121 @@ private struct HistoryCardRow: View {
                         }
                         .buttonStyle(.plain)
                     }
+
                     Spacer()
-                }
-            }
 
-            ScrollView {
-                MarkdownContentView(
-                    displayText,
-                    fontSize: 14,
-                    foregroundColor: AppTheme.Text.primary
-                )
-            }
-            .frame(maxHeight: 350)
-            .hoverCopyButton(
-                textToCopy: displayText, transcriptionId: transcription.id, telemetrySource: "hover_button")
-
-            if hasAudioFile, let urlString = transcription.audioFileURL,
-                let url = URL(string: urlString)
-            {
-                Divider()
-                AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
-                    .padding(.vertical, 4)
-
-                Divider()
-                goldenEvalSetSection
-            } else {
-                HStack {
-                    Spacer()
-                    Button(action: onShowInfo) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            isShowingEnhancementDiff.toggle()
+                        }
+                    } label: {
+                        Text(isShowingEnhancementDiff ? "Hide Changes" : "Show Changes (\(enhancementDiffSummary))")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(isShowingEnhancementDiff ? .primary : .secondary)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(isShowingEnhancementDiff ? AppTheme.Surface.controlActive : Color.clear)
+                            )
                     }
                     .buttonStyle(.plain)
-                    .help("View details")
+                    .accessibilityIdentifier("history.showEnhancementChanges")
                 }
             }
+
+            // Everything below (transcript, audio player, golden eval editor) shares one
+            // bounded, internally-scrollable container instead of separate unbounded pieces —
+            // a long transcript plus the audio player plus the golden eval editor could
+            // otherwise add up to well over this app's minimum window height (730pt,
+            // WindowManager.swift), clipping content and controls (like "Mark Verified") below
+            // the window's edge with no way to reach them.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if isShowingEnhancementDiff {
+                        enhancementDiffView
+                    } else {
+                        MarkdownContentView(
+                            displayText,
+                            fontSize: 14,
+                            foregroundColor: AppTheme.Text.primary
+                        )
+                        .hoverCopyButton(
+                            textToCopy: displayText, transcriptionId: transcription.id,
+                            telemetrySource: "hover_button")
+                    }
+
+                    if hasAudioFile, let urlString = transcription.audioFileURL,
+                        let url = URL(string: urlString)
+                    {
+                        Divider()
+                        AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
+                            .padding(.vertical, 4)
+
+                        Divider()
+                        goldenEvalSetSection
+                    } else {
+                        HStack {
+                            Spacer()
+                            Button(action: onShowInfo) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("View details")
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 420)
         }
         .onAppear {
             guard !hasLoadedGoldenEvalEntry else { return }
             hasLoadedGoldenEvalEntry = true
             loadGoldenEvalEntry()
         }
+    }
+
+    // Word-level highlight of what AI Enhancement changed vs the raw transcript — deletions
+    // struck through in red, insertions underlined in green, matching the WER
+    // substitution/deletion/insertion vocabulary already used elsewhere in this app, but on
+    // original (non-normalized) text so casing/punctuation fixes are visible too.
+    private var enhancementDiffView: some View {
+        Group {
+            if enhancementDiff.isEmpty {
+                Text("No enhanced text to compare.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            } else {
+                enhancementDiff.reduce(Text("")) { partial, operation in
+                    switch operation {
+                    case .equal(let word):
+                        return partial + Text(word + " ")
+                    case .deletion(let word):
+                        return partial
+                            + Text(word + " ")
+                            .strikethrough()
+                            .foregroundColor(AppTheme.Status.error)
+                    case .insertion(let word):
+                        return partial
+                            + Text(word + " ")
+                            .underline()
+                            .foregroundColor(AppTheme.Status.positive)
+                    case .substitution(let from, let to):
+                        return partial
+                            + Text(from + " ")
+                            .strikethrough()
+                            .foregroundColor(AppTheme.Status.error)
+                            + Text(to + " ")
+                            .underline()
+                            .foregroundColor(AppTheme.Status.positive)
+                    }
+                }
+                .font(.system(size: 14))
+            }
+        }
+        .accessibilityIdentifier("history.enhancementDiff")
     }
 
     // Inline golden eval set panel (ADR-0009, PRD.md "Golden eval set / WER tooling UI
