@@ -13,7 +13,7 @@ class GoldenEvalSetWindowController: NSObject, NSWindowDelegate {
         super.init()
     }
 
-    func showWindow(modelContainer: ModelContainer) {
+    func showWindow(modelContainer: ModelContainer, engine: VoiceInkEngine) {
         AppPresentationPolicy.activateForUserFacingWindow(reason: "GoldenEvalSetWindow")
 
         if let existingWindow = window {
@@ -25,15 +25,16 @@ class GoldenEvalSetWindowController: NSObject, NSWindowDelegate {
             return
         }
 
-        let newWindow = createWindow(modelContainer: modelContainer)
+        let newWindow = createWindow(modelContainer: modelContainer, engine: engine)
         window = newWindow
         newWindow.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
 
-    private func createWindow(modelContainer: ModelContainer) -> NSWindow {
+    private func createWindow(modelContainer: ModelContainer, engine: VoiceInkEngine) -> NSWindow {
         let view = GoldenEvalSetView()
             .modelContainer(modelContainer)
+            .environmentObject(engine)
             .frame(minWidth: 900, minHeight: 600)
 
         let hostingController = NSHostingController(rootView: view)

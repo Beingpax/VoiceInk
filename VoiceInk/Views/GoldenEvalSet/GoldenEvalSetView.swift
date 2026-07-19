@@ -9,6 +9,7 @@ import SwiftUI
 // tempting shortcut that undermines the measurement.
 struct GoldenEvalSetView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var engine: VoiceInkEngine
     @Query(sort: \Transcription.timestamp, order: .reverse) private var allTranscriptions: [Transcription]
 
     @State private var selectedTranscription: Transcription?
@@ -17,6 +18,16 @@ struct GoldenEvalSetView: View {
     @State private var existingEntry: GoldenEvalEntry?
     @State private var counts = GoldenEvalSetService.SplitCounts(train: 0, eval: 0)
     @State private var errorMessage: String?
+
+    @State private var isShowingBaselineSheet = false
+    @State private var isRunningBaseline = false
+    @State private var baselineSummaries: [WERBaselineHarness.ModelSummary] = []
+    @State private var baselineError: String?
+
+    // The two candidates in ADR-0009's bake-off. Matched by displayName against the live
+    // registry rather than hardcoded model structs, so this stays correct if model metadata
+    // (size/speed/accuracy) changes upstream.
+    private static let baselineModelDisplayNames = ["Large v3", "Parakeet V3"]
 
     private var candidates: [Transcription] {
         allTranscriptions.filter { GoldenEvalSetView.hasAudioFile($0) }
@@ -54,11 +65,85 @@ struct GoldenEvalSetView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
             }
+            ToolbarItem(placement: .primaryAction) {
+                Button("Run Baseline Evaluation") {
+                    isShowingBaselineSheet = true
+                }
+                .disabled(counts.eval == 0)
+            }
         }
         .onAppear(perform: refreshCounts)
         .onChange(of: selectedTranscription) { _, newValue in
             loadEntry(for: newValue)
         }
+        .sheet(isPresented: $isShowingBaselineSheet) {
+            baselineEvaluationSheet
+        }
+    }
+
+    private var baselineEvaluationSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Baseline WER Evaluation")
+                .font(.system(size: 15, weight: .semibold))
+
+            Text(
+                "Runs every held-out eval-split recording (\(counts.eval)) through \(Self.baselineModelDisplayNames.joined(separator: " and ")), scoring each against its verified ground truth. Requires both models' weights to already be downloaded."
+            )
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if isRunningBaseline {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Evaluating…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let baselineError {
+                Text(baselineError)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppTheme.Status.error)
+            }
+
+            if !baselineSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(baselineSummaries, id: \.modelDisplayName) { summary in
+                        HStack {
+                            Text(summary.modelDisplayName)
+                                .font(.system(size: 13, weight: .medium))
+                            Spacer()
+                            Text(String(format: "%.1f%% WER", summary.meanWordErrorRate * 100))
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("(\(summary.evaluatedCount) evaluated, \(summary.failedCount) failed)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                .fill(AppTheme.Surface.subtle)
+                        )
+                    }
+                }
+            }
+
+            HStack {
+                Button(baselineSummaries.isEmpty ? "Run Now" : "Run Again") {
+                    runBaselineEvaluation()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRunningBaseline)
+
+                Button("Close") {
+                    isShowingBaselineSheet = false
+                }
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 480)
     }
 
     private func candidateRow(_ transcription: Transcription) -> some View {
@@ -206,5 +291,65 @@ struct GoldenEvalSetView: View {
     private func refreshCounts() {
         counts = (try? GoldenEvalSetService.splitCounts(in: modelContext)) ?? GoldenEvalSetService.SplitCounts(
             train: 0, eval: 0)
+    }
+
+    @MainActor
+    private func runBaselineEvaluation() {
+        baselineError = nil
+        isRunningBaseline = true
+
+        Task { @MainActor in
+            defer { isRunningBaseline = false }
+
+            do {
+                let evalRawValue = GoldenEvalSplit.eval.rawValue
+                let evalEntries = try modelContext.fetch(
+                    FetchDescriptor<GoldenEvalEntry>(
+                        predicate: #Predicate<GoldenEvalEntry> { $0.splitRawValue == evalRawValue }))
+
+                var evalCandidates: [WERBaselineHarness.Candidate] = []
+                for entry in evalEntries {
+                    let transcriptionId = entry.transcriptionId
+                    var descriptor = FetchDescriptor<Transcription>(
+                        predicate: #Predicate<Transcription> { $0.id == transcriptionId })
+                    descriptor.fetchLimit = 1
+                    guard let transcription = try modelContext.fetch(descriptor).first,
+                        let urlString = transcription.audioFileURL,
+                        let url = URL(string: urlString)
+                    else { continue }
+
+                    evalCandidates.append(
+                        WERBaselineHarness.Candidate(
+                            entryId: entry.id, referenceText: entry.groundTruthText, audioURL: url))
+                }
+
+                guard !evalCandidates.isEmpty else {
+                    baselineError = String(localized: "No eval-split entries with a valid audio file were found.")
+                    return
+                }
+
+                let models = Self.baselineModelDisplayNames.compactMap { name in
+                    TranscriptionModelRegistry.models.first { $0.displayName == name }
+                }
+
+                guard !models.isEmpty else {
+                    baselineError = String(localized: "Could not find the baseline models in the model registry.")
+                    return
+                }
+
+                let transcriber = TranscriptionServiceRegistryTranscriber(registry: engine.serviceRegistry)
+                let runLabel = "baseline-\(Int(Date().timeIntervalSince1970))"
+
+                baselineSummaries = await WERBaselineHarness.run(
+                    candidates: evalCandidates,
+                    models: models,
+                    runLabel: runLabel,
+                    transcriber: transcriber,
+                    in: modelContext
+                )
+            } catch {
+                baselineError = String(localized: "Failed to run baseline evaluation.")
+            }
+        }
     }
 }

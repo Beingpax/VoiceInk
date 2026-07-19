@@ -55,6 +55,7 @@ struct VoiceInkApp: App {
             WordReplacement.self,
             SessionMetric.self,
             GoldenEvalEntry.self,
+            WEREvaluationResult.self,
         ])
         let resolvedContainer: ModelContainer
 

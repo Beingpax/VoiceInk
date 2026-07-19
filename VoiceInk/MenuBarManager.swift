@@ -142,16 +142,18 @@ class MenuBarManager: ObservableObject {
     }
 
     func openGoldenEvalSetWindow() {
-        guard let modelContainer = modelContainer else {
+        guard let modelContainer = modelContainer,
+            let engine = engine
+        else {
             logger.error(
-                "🧭 Golden eval set window requested before MenuBarManager dependencies were configured. hasModelContainer=\((self.modelContainer != nil), privacy: .public)"
+                "🧭 Golden eval set window requested before MenuBarManager dependencies were configured. hasModelContainer=\((self.modelContainer != nil), privacy: .public); hasEngine=\((self.engine != nil), privacy: .public)"
             )
             return
         }
 
         let openWindow = { [weak self] in
             self?.activateForPresentedWindow(reason: "GoldenEvalSet")
-            GoldenEvalSetWindowController.shared.showWindow(modelContainer: modelContainer)
+            GoldenEvalSetWindowController.shared.showWindow(modelContainer: modelContainer, engine: engine)
         }
 
         if Thread.isMainThread {
