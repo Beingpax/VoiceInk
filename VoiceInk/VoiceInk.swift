@@ -48,15 +48,7 @@ struct VoiceInkApp: App {
         OnboardingV2Migration.prepareIfNeeded()
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
-        // Keep existing model order stable; append new models after synced entities.
-        let schema = Schema([
-            Transcription.self,
-            VocabularyWord.self,
-            WordReplacement.self,
-            SessionMetric.self,
-            GoldenEvalEntry.self,
-            WEREvaluationResult.self,
-        ])
+        let schema = AppModelSchema.combined
         let resolvedContainer: ModelContainer
 
         // Attempt 1: Try persistent storage
@@ -223,15 +215,13 @@ struct VoiceInkApp: App {
         let dictionaryStoreURL = appSupportURL.appendingPathComponent("dictionary.store")
         let statsStoreURL = appSupportURL.appendingPathComponent("stats.store")
 
-        let transcriptSchema = Schema([Transcription.self])
         let transcriptConfig = ModelConfiguration(
             "default",
-            schema: transcriptSchema,
+            schema: AppModelSchema.transcript,
             url: defaultStoreURL,
             cloudKitDatabase: .none
         )
 
-        let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
         #if LOCAL_BUILD
             let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .none
         #else
@@ -240,15 +230,14 @@ struct VoiceInkApp: App {
         #endif
         let dictionaryConfig = ModelConfiguration(
             "dictionary",
-            schema: dictionarySchema,
+            schema: AppModelSchema.dictionary,
             url: dictionaryStoreURL,
             cloudKitDatabase: dictionaryCloudKit
         )
 
-        let statsSchema = Schema([SessionMetric.self])
         let statsConfig = ModelConfiguration(
             "stats",
-            schema: statsSchema,
+            schema: AppModelSchema.stats,
             url: statsStoreURL,
             cloudKitDatabase: .none
         )
@@ -263,14 +252,11 @@ struct VoiceInkApp: App {
     }
 
     private static func createInMemoryContainer(schema: Schema, logger: Logger) throws -> ModelContainer {
-        let transcriptSchema = Schema([Transcription.self])
-        let transcriptConfig = ModelConfiguration("default", schema: transcriptSchema, isStoredInMemoryOnly: true)
-
-        let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
-        let dictionaryConfig = ModelConfiguration("dictionary", schema: dictionarySchema, isStoredInMemoryOnly: true)
-
-        let statsSchema = Schema([SessionMetric.self])
-        let statsConfig = ModelConfiguration("stats", schema: statsSchema, isStoredInMemoryOnly: true)
+        let transcriptConfig = ModelConfiguration(
+            "default", schema: AppModelSchema.transcript, isStoredInMemoryOnly: true)
+        let dictionaryConfig = ModelConfiguration(
+            "dictionary", schema: AppModelSchema.dictionary, isStoredInMemoryOnly: true)
+        let statsConfig = ModelConfiguration("stats", schema: AppModelSchema.stats, isStoredInMemoryOnly: true)
 
         do {
             return try ModelContainer(for: schema, configurations: transcriptConfig, dictionaryConfig, statsConfig)
