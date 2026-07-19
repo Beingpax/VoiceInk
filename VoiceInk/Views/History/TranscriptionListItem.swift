@@ -24,6 +24,11 @@ struct TranscriptionListItem: View {
                     Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
+                    if transcription.flagged {
+                        Image(systemName: "flag.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(AppTheme.Status.warningStrong)
+                    }
                     Spacer()
                     if transcription.duration > 0 {
                         Text(transcription.duration.formatTiming())

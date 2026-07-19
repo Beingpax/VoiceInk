@@ -462,6 +462,19 @@ struct AudioPlayerView: View {
                         }
                     }
 
+                    if let transcription {
+                        CircleIconButton(
+                            icon: transcription.flagged ? "flag.fill" : "flag",
+                            action: { toggleFlag(transcription) },
+                            fill: transcription.flagged
+                                ? AppTheme.Status.warningStrong.opacity(0.22) : AppTheme.Surface.subtle
+                        )
+                        .help(
+                            transcription.flagged
+                                ? "Flagged as wrong — click to unflag" : "Flag as wrong"
+                        )
+                    }
+
                     if let onInfoTap {
                         CircleIconButton(icon: "info.circle", action: onInfoTap)
                             .help("View details")
@@ -581,6 +594,14 @@ struct AudioPlayerView: View {
     private func selectPromptForReEnhancement(_ prompt: CustomPrompt) {
         showPromptPopover = false
         reEnhanceOnly(prompt: prompt)
+    }
+
+    private func toggleFlag(_ transcription: Transcription) {
+        do {
+            try TranscriptionFlagService.setFlagged(!transcription.flagged, on: transcription, in: modelContext)
+        } catch {
+            showErrorNotification(String(localized: "Failed to update flag"))
+        }
     }
 
     private func showSuccessFeedback(_ feedback: OperationFeedback, title: String) {

@@ -41,6 +41,17 @@ enum TelemetryService {
         PostHogSDK.shared.capture("session_metric_recorded", properties: eventProperties(for: metric))
     }
 
+    // The Flag event (CONTEXT.md) — the primary accuracy signal for ADR-0004's fine-tune
+    // trigger. Deliberately just a binary marker, joinable to session_metric_recorded via
+    // transcription_id — never the transcript text itself.
+    static func captureFlagEvent(transcriptionId: UUID) {
+        PostHogSDK.shared.capture("session_flagged", properties: flagEventProperties(transcriptionId: transcriptionId))
+    }
+
+    static func flagEventProperties(transcriptionId: UUID) -> [String: Any] {
+        ["transcription_id": transcriptionId.uuidString]
+    }
+
     static func flush() {
         PostHogSDK.shared.flush()
     }

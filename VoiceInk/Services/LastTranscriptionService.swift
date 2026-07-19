@@ -98,6 +98,37 @@ class LastTranscriptionService: ObservableObject {
         }
     }
 
+    static func flagLastTranscription(from modelContext: ModelContext) {
+        guard let lastTranscription = getLastTranscription(from: modelContext) else {
+            Task { @MainActor in
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "No transcription available"),
+                    type: .error
+                )
+            }
+            return
+        }
+
+        do {
+            let didFlag = try TranscriptionFlagService.setFlagged(true, on: lastTranscription, in: modelContext)
+            Task { @MainActor in
+                NotificationManager.shared.showNotification(
+                    title: didFlag
+                        ? String(localized: "Flagged as wrong")
+                        : String(localized: "Already flagged"),
+                    type: didFlag ? .warning : .info
+                )
+            }
+        } catch {
+            Task { @MainActor in
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "Failed to flag transcription"),
+                    type: .error
+                )
+            }
+        }
+    }
+
     static func retryLastTranscription(
         from modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager,
         serviceRegistry: TranscriptionServiceRegistry, enhancementService: AIEnhancementService?

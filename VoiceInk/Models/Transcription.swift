@@ -30,6 +30,9 @@ final class Transcription {
     @Attribute(originalName: "powerModeEmoji")
     var modeEmoji: String?
     var transcriptionStatus: String?
+    // The Flag event (CONTEXT.md) — a one-keystroke "this came out wrong" marker,
+    // the primary accuracy signal for ADR-0004's fine-tune trigger.
+    var flagged: Bool = false
 
     init(
         text: String,
@@ -45,7 +48,8 @@ final class Transcription {
         aiRequestUserMessage: String? = nil,
         modeName: String? = nil,
         modeEmoji: String? = nil,
-        transcriptionStatus: TranscriptionStatus = .pending
+        transcriptionStatus: TranscriptionStatus = .pending,
+        flagged: Bool = false
     ) {
         self.id = UUID()
         self.text = text
@@ -63,6 +67,7 @@ final class Transcription {
         self.modeName = modeName
         self.modeEmoji = modeEmoji
         self.transcriptionStatus = transcriptionStatus.rawValue
+        self.flagged = flagged
     }
 
     func markAsCanceledTranscription(

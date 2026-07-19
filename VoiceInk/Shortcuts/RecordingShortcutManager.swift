@@ -281,6 +281,8 @@ class RecordingShortcutManager: ObservableObject {
                 serviceRegistry: engine.serviceRegistry,
                 enhancementService: engine.enhancementService
             )
+        case .flagLastTranscription:
+            LastTranscriptionService.flagLastTranscription(from: engine.modelContext)
         case .openHistoryWindow:
             HistoryWindowController.shared.showHistoryWindow(
                 modelContainer: engine.modelContext.container,

@@ -85,6 +85,16 @@ struct TelemetryServiceTests {
         #expect(properties["source"] as? String == "unknown")
     }
 
+    @Test func flagEventPropertiesContainsOnlyTheTranscriptionId() {
+        // The Flag event (CONTEXT.md) is deliberately a binary marker, never the transcript
+        // text — this pins that boundary at the event-property layer.
+        let id = UUID()
+        let properties = TelemetryService.flagEventProperties(transcriptionId: id)
+
+        #expect(properties.count == 1)
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+    }
+
     @Test func detectsItIsRunningUnderXCTest() {
         // This test process IS the exact scenario the configure() guard exists for
         // (VoiceInkTests runs hosted inside VoiceInk.app, see TelemetryService.configure()) —

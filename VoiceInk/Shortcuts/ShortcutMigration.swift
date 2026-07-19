@@ -263,6 +263,9 @@ enum ShortcutMigration {
             return ["pasteLastEnhancement"]
         case .retryLastTranscription:
             return ["retryLastTranscription"]
+        case .flagLastTranscription:
+            // New action, no legacy UserDefaults key predates it.
+            return []
         case .cancelRecorder:
             return ["cancelRecorder"]
         case .openHistoryWindow:

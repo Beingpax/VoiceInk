@@ -98,6 +98,13 @@ struct SettingsView: View {
                     .controlSize(.small)
                 }
 
+                LabeledContent("Flag Last Transcription as Wrong") {
+                    ShortcutRecorder(action: .flagLastTranscription) {
+                        recordingShortcutManager.updateShortcutStatus()
+                    }
+                    .controlSize(.small)
+                }
+
                 LabeledContent("Cancel Recording") {
                     HStack(spacing: 8) {
                         ShortcutRecorder(
