@@ -13,6 +13,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "🧭 Application finished launching. hasMenuBarManager=\((self.menuBarManager != nil), privacy: .public); activationPolicy=\(WindowDiagnostics.activationPolicyDescription(NSApplication.shared.activationPolicy()), privacy: .public); snapshot=\(WindowDiagnostics.windowSnapshot(), privacy: .public)"
         )
         menuBarManager?.applyActivationPolicy()
+
+        // VoiceInk never auto-opens its main window on a cold launch (it's menu-bar-first by
+        // design) — real users reach it via the Dock icon or menu bar. XCUITest launches a
+        // fresh process each run with no prior window state to "reopen" from, so
+        // applicationShouldHandleReopen never fires and Dock-click automation is flaky
+        // (off-screen Dock geometry in some CI/background-job display setups). This launch
+        // argument gives UI tests a deterministic way in without affecting real usage.
+        if ProcessInfo.processInfo.arguments.contains("-uiTestOpenMainWindow") {
+            NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

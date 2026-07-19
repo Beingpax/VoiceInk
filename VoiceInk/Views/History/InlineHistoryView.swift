@@ -221,6 +221,7 @@ struct InlineHistoryView: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+        .accessibilityIdentifier("history.modeToggle")
         .padding(.horizontal, 24)
         .padding(.bottom, 10)
     }
@@ -232,12 +233,14 @@ struct InlineHistoryView: View {
             Text("Control: \(goldenEvalCounts.control) · Train: \(goldenEvalCounts.train) · Eval: \(goldenEvalCounts.eval)")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
+                .accessibilityIdentifier("history.goldenEvalCounts")
             Spacer()
             Button("Run Baseline Evaluation") {
                 isShowingBaselineSheet = true
             }
             .font(.system(size: 11))
             .disabled(goldenEvalCounts.eval == 0)
+            .accessibilityIdentifier("history.runBaselineEvaluation")
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 10)
