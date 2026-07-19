@@ -16,12 +16,20 @@ enum TelemetryService {
         let config = PostHogConfig(projectToken: projectToken, host: host)
         config.captureApplicationLifecycleEvents = false
         config.captureScreenViews = false
+        // Solo, low-volume usage (ADR-0005) — a handful of dictation sessions between app
+        // quits, not a high-throughput client. The default batch size of 20 could sit
+        // unflushed for a long time, so flush after every event instead.
+        config.flushAt = 1
         PostHogSDK.shared.setup(config)
         logger.notice("Telemetry configured")
     }
 
     static func captureSessionMetric(_ metric: SessionMetric) {
         PostHogSDK.shared.capture("session_metric_recorded", properties: eventProperties(for: metric))
+    }
+
+    static func flush() {
+        PostHogSDK.shared.flush()
     }
 
     static func eventProperties(for metric: SessionMetric) -> [String: Any] {
