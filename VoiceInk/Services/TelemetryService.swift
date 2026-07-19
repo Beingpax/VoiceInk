@@ -12,7 +12,20 @@ enum TelemetryService {
     private static let projectToken = "phc_pebugJX9QeVLsVHZAYYtv9qQ4TqgJPuFc6z469sUepiY"
     private static let host = "https://eu.i.posthog.com"
 
+    // VoiceInkTests runs as a hosted test bundle inside the real VoiceInk.app process
+    // (TEST_HOST in project.pbxproj), so VoiceInkApp.init() — and this call — genuinely
+    // executes on every `xcodebuild test` run. Without this guard, test fixtures leak into
+    // production PostHog as real session_metric_recorded events.
+    static var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     static func configure() {
+        guard !isRunningTests else {
+            logger.notice("Telemetry disabled under XCTest")
+            return
+        }
+
         let config = PostHogConfig(projectToken: projectToken, host: host)
         config.captureApplicationLifecycleEvents = false
         config.captureScreenViews = false
