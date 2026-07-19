@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: macos-latest
+    # Bounds worst-case cost of a hang (e.g. a Carbon/AppKit call that stalls on CI's
+    # headless runner) — without this, GitHub's default job timeout is 6 hours.
+    # Green runs take ~11-13 min; this leaves headroom without masking a real stall.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +49,7 @@ jobs:
   lint:
     runs-on: macos-latest
     continue-on-error: true
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
