@@ -79,4 +79,37 @@ final class HistoryNavigationUITests: XCTestCase {
         XCTAssertTrue(modesItem.waitForExistence(timeout: 10), "Sidebar should have a Modes item")
         modesItem.click()
     }
+
+    // Real user report: after expanding a Golden Eval Set candidate row, "Mark Verified" was
+    // clipped below the window's bottom edge ("under the fold") — the Form never auto-scrolled
+    // newly-revealed content into view. Confirmed via real element frames (buttonFrame.maxY
+    // exceeded windowFrame.maxY) before the fix (cardListView's ScrollViewReader + scrollTo on
+    // expand). Assert the button's frame is actually contained within the window, not just
+    // that the element exists — "exists" alone would have passed even with the bug present.
+    @MainActor
+    func testMarkVerifiedButtonIsVisibleWithinWindowAfterExpandingARow() throws {
+        app.buttons["History"].click()
+        app.radioGroups["history.modeToggle"].radioButtons["Golden Eval Set"].click()
+
+        // HistoryCardRow rows aren't a distinct AX role (no Cell/Button wrapper) — the tap
+        // gesture is on the row's outer HStack, so clicking any StaticText inside it (e.g. the
+        // timestamp) still hits that container.
+        let firstTimestamp = app.staticTexts.matching(
+            NSPredicate(format: "value CONTAINS[c] ' AM' OR value CONTAINS[c] ' PM'")
+        ).firstMatch
+        XCTAssertTrue(firstTimestamp.waitForExistence(timeout: 8), "Expected at least one golden eval candidate row")
+        firstTimestamp.click()
+
+        let markVerified = app.buttons["history.markVerified"]
+        XCTAssertTrue(
+            markVerified.waitForExistence(timeout: 5), "Expanding a row should reveal the Mark Verified button")
+
+        let windowFrame = app.windows.firstMatch.frame
+        let buttonFrame = markVerified.frame
+        XCTAssertTrue(markVerified.isHittable, "Mark Verified should be hittable, not clipped off-window")
+        XCTAssertLessThanOrEqual(
+            buttonFrame.maxY, windowFrame.maxY,
+            "Mark Verified (\(buttonFrame)) should be fully within the window (\(windowFrame)), not clipped below its bottom edge"
+        )
+    }
 }

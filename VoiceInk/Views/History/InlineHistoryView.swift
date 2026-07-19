@@ -345,49 +345,64 @@ struct InlineHistoryView: View {
     // MARK: - Card List
 
     private var cardListView: some View {
-        Form {
-            ForEach(currentTranscriptions) { transcription in
-                Section {
-                    HistoryCardRow(
-                        transcription: transcription,
-                        isExpanded: expandedId == transcription.id,
-                        isChecked: selectedTranscriptions.contains(transcription),
-                        goldenEvalSplit: goldenEvalSplitsByTranscriptionId[transcription.id],
-                        onToggleExpand: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                expandedId = expandedId == transcription.id ? nil : transcription.id
+        ScrollViewReader { scrollProxy in
+            Form {
+                ForEach(currentTranscriptions) { transcription in
+                    Section {
+                        HistoryCardRow(
+                            transcription: transcription,
+                            isExpanded: expandedId == transcription.id,
+                            isChecked: selectedTranscriptions.contains(transcription),
+                            goldenEvalSplit: goldenEvalSplitsByTranscriptionId[transcription.id],
+                            onToggleExpand: {
+                                let isExpanding = expandedId != transcription.id
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    expandedId = isExpanding ? transcription.id : nil
+                                }
+                                // Expanded content (audio player, golden eval editor) can be
+                                // taller than the visible viewport — without this, newly
+                                // revealed content like the "Mark Verified" button can end up
+                                // clipped below the window's bottom edge.
+                                if isExpanding {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            scrollProxy.scrollTo(transcription.id, anchor: .top)
+                                        }
+                                    }
+                                }
+                            },
+                            onToggleCheck: { toggleSelection(transcription) },
+                            onShowInfo: {
+                                openPanel(mode: .info, transcriptionID: transcription.id)
                             }
-                        },
-                        onToggleCheck: { toggleSelection(transcription) },
-                        onShowInfo: {
-                            openPanel(mode: .info, transcriptionID: transcription.id)
-                        }
-                    )
-                }
-            }
-
-            if historyMode == .all && hasMoreContent {
-                Section {
-                    Button(action: {
-                        Task { await loadMoreContent() }
-                    }) {
-                        HStack(spacing: 8) {
-                            if isLoading {
-                                ProgressView().controlSize(.small)
-                            }
-                            Text(isLoading ? "Loading..." : "Load More")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isLoading)
+                    .id(transcription.id)
+                }
+
+                if historyMode == .all && hasMoreContent {
+                    Section {
+                        Button(action: {
+                            Task { await loadMoreContent() }
+                        }) {
+                            HStack(spacing: 8) {
+                                if isLoading {
+                                    ProgressView().controlSize(.small)
+                                }
+                                Text(isLoading ? "Loading..." : "Load More")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isLoading)
+                    }
                 }
             }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Side Panel
@@ -945,6 +960,7 @@ private struct HistoryCardRow: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .accessibilityIdentifier("history.markVerified")
 
                 if goldenEvalEntry != nil {
                     Button("Remove", role: .destructive) {
