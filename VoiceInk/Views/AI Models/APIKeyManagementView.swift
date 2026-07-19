@@ -25,6 +25,9 @@ struct APIKeyManagementView: View {
             if provider == .custom {
                 return customAIProviderManager.hasConfiguredModels
             }
+            if provider == .appleIntelligence {
+                return AppleIntelligenceService.isAvailable
+            }
             return true
         }
     }

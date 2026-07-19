@@ -16,6 +16,7 @@ enum AIProvider: String, CaseIterable {
     case assemblyAI = "AssemblyAI"
     case ollama = "Ollama"
     case localCLI = "Local CLI"
+    case appleIntelligence = "Apple Intelligence"
     case custom = "Custom"
 
     var baseURL: String {
@@ -47,6 +48,8 @@ enum AIProvider: String, CaseIterable {
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
         case .localCLI:
+            return ""
+        case .appleIntelligence:
             return ""
         case .custom:
             return UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? ""
@@ -81,6 +84,8 @@ enum AIProvider: String, CaseIterable {
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
         case .localCLI:
             return "local-cli"
+        case .appleIntelligence:
+            return "on-device"
         case .custom:
             return CustomAIProviderManager.shared.defaultModelName
         case .openRouter:
@@ -143,6 +148,8 @@ enum AIProvider: String, CaseIterable {
             return []
         case .localCLI:
             return []
+        case .appleIntelligence:
+            return []
         case .custom:
             return CustomAIProviderManager.shared.availableModelNames
         case .openRouter:
@@ -152,7 +159,7 @@ enum AIProvider: String, CaseIterable {
 
     var requiresAPIKey: Bool {
         switch self {
-        case .ollama, .localCLI:
+        case .ollama, .localCLI, .appleIntelligence:
             return false
         default:
             return true
@@ -200,7 +207,13 @@ class AIService: ObservableObject {
                 }
             } else {
                 self.apiKey = ""
-                self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+                if selectedProvider == .localCLI {
+                    self.isAPIKeyValid = localCLIService.isConfigured
+                } else if selectedProvider == .appleIntelligence {
+                    self.isAPIKeyValid = AppleIntelligenceService.isAvailable
+                } else {
+                    self.isAPIKeyValid = true
+                }
                 if selectedProvider == .ollama {
                     Task {
                         await refreshOllamaAvailability()
@@ -232,6 +245,8 @@ class AIService: ObservableObject {
                 return ollamaService.isConnected
             } else if provider == .localCLI {
                 return localCLIService.isConfigured
+            } else if provider == .appleIntelligence {
+                return AppleIntelligenceService.isAvailable
             } else if provider.requiresAPIKey {
                 return APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue)
             }
@@ -614,6 +629,10 @@ class AIService: ObservableObject {
 
     func enhanceWithLocalCLI(systemPrompt: String, userPrompt: String) async throws -> String {
         try await localCLIService.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+    }
+
+    func enhanceWithAppleIntelligence(text: String, systemPrompt: String) async throws -> String {
+        try await AppleIntelligenceService.enhance(text: text, systemPrompt: systemPrompt)
     }
 
     private func refreshLocalCLIConfigurationState() {

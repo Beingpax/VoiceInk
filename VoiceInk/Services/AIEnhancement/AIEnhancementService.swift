@@ -80,6 +80,10 @@ class AIEnhancementService: ObservableObject {
             return true
         }
 
+        if provider == .appleIntelligence {
+            return AppleIntelligenceService.isAvailable
+        }
+
         if provider == .custom {
             guard let modelName = configuration.modelName else { return false }
             return CustomAIProviderManager.shared.requestConfiguration(forModel: modelName) != nil
@@ -241,6 +245,21 @@ class AIEnhancementService: ObservableObject {
                 if let localError = error as? LocalCLIError {
                     throw EnhancementError.customError(
                         localError.errorDescription ?? "An unknown Local CLI error occurred.")
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
+        if provider == .appleIntelligence {
+            do {
+                let result = try await aiService.enhanceWithAppleIntelligence(
+                    text: formattedText, systemPrompt: systemMessage)
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let appleError = error as? AppleIntelligenceService.AppleIntelligenceError {
+                    throw EnhancementError.customError(
+                        appleError.errorDescription ?? "An unknown Apple Intelligence error occurred.")
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }
