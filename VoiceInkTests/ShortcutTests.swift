@@ -11,8 +11,18 @@ import Testing
 struct ShortcutTests {
 
     @Test func keyShortcutDisplaysModifiersThenKeyName() {
-        let shortcut = Shortcut.key(keyCode: 0x00, modifierFlags: [.command])  // 'A'
-        #expect(shortcut.displayTokens.last == "A")
+        // The resolved key *character* (Shortcut.keyName -> characterForCurrentKeyboardLayout)
+        // depends on the live system keyboard layout via TISCopyCurrentKeyboardInputSource,
+        // which isn't controllable in CI — asserting displayTokens.last == "A" for keyCode
+        // 0x00 flaked on GitHub's runner because that keyCode didn't resolve to "A" there.
+        // What displayTokens actually guarantees by construction
+        // (modifierFlags.shortcutDisplayTokens + [keyName]) is structural: modifier tokens
+        // precede a non-empty key name, regardless of which character it resolves to.
+        let shortcut = Shortcut.key(keyCode: 0x00, modifierFlags: [.command])
+
+        #expect(shortcut.displayTokens.count == 2)
+        #expect(shortcut.displayTokens.first == "⌘")
+        #expect(!(shortcut.displayTokens.last?.isEmpty ?? true))
     }
 
     @Test func equalShortcutsCompareEqual() {
