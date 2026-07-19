@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Testing
 
 @testable import VoiceInk
@@ -11,18 +12,21 @@ import Testing
 struct ShortcutTests {
 
     @Test func keyShortcutDisplaysModifiersThenKeyName() {
-        // The resolved key *character* (Shortcut.keyName -> characterForCurrentKeyboardLayout)
-        // depends on the live system keyboard layout via TISCopyCurrentKeyboardInputSource,
-        // which isn't controllable in CI — asserting displayTokens.last == "A" for keyCode
-        // 0x00 flaked on GitHub's runner because that keyCode didn't resolve to "A" there.
-        // What displayTokens actually guarantees by construction
-        // (modifierFlags.shortcutDisplayTokens + [keyName]) is structural: modifier tokens
-        // precede a non-empty key name, regardless of which character it resolves to.
-        let shortcut = Shortcut.key(keyCode: 0x00, modifierFlags: [.command])
+        // keyCode 0x00 ('A' on US QWERTY) isn't in Shortcut.specialKeyNames, so resolving
+        // it calls Shortcut.keyName -> characterForCurrentKeyboardLayout ->
+        // TISCopyCurrentKeyboardInputSource, a Carbon HIToolbox call that reads the live
+        // system keyboard layout. Two failures in a row on GitHub's headless CI runner
+        // traced to that exact call: the first attempt just asserted the wrong resolved
+        // character (fixed, but still called it); the second showed the call itself
+        // hanging for ~40s before the whole test run gave up. kVK_Return *is* a special
+        // key name (Shortcut.specialKeyNames), so keyName short-circuits before ever
+        // reaching the Carbon call — this test now covers the same displayTokens ordering
+        // guarantee without touching that code path at all.
+        let shortcut = Shortcut.key(keyCode: UInt16(kVK_Return), modifierFlags: [.command])
 
         #expect(shortcut.displayTokens.count == 2)
         #expect(shortcut.displayTokens.first == "⌘")
-        #expect(!(shortcut.displayTokens.last?.isEmpty ?? true))
+        #expect(shortcut.displayTokens.last == "Return")
     }
 
     @Test func equalShortcutsCompareEqual() {
