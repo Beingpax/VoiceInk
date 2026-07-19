@@ -16,8 +16,18 @@ enum TelemetryService {
     // (TEST_HOST in project.pbxproj), so VoiceInkApp.init() — and this call — genuinely
     // executes on every `xcodebuild test` run. Without this guard, test fixtures leak into
     // production PostHog as real session_metric_recorded events.
+    //
+    // XCTestConfigurationFilePath alone is NOT reliable: confirmed via PostHog data that at
+    // least one post-fix xcodebuild test run still leaked (Swift Testing doesn't always set
+    // that env var the way legacy XCTest did). Bundle.allBundles is checked as a second,
+    // environment-independent signal — VoiceInkTests.xctest is only ever loaded into the
+    // process when tests are actually running, never on a real end-user launch. Either signal
+    // being true is enough to disable telemetry (fail toward not sending, not toward sending).
     static var isRunningTests: Bool {
-        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return true
+        }
+        return Bundle.allBundles.contains { $0.bundlePath.hasSuffix(".xctest") }
     }
 
     static func configure() {
@@ -38,6 +48,15 @@ enum TelemetryService {
     }
 
     static func captureSessionMetric(_ metric: SessionMetric) {
+        // Defense in depth: `configure()` failing to gate setup is exactly the bug that
+        // caused the leak this guards against (isRunningTests was true, but PostHogSDK.shared
+        // still ended up enabled on at least one run). Checking again here means a single
+        // point of failure in configure() can't leak events on its own.
+        guard !isRunningTests else {
+            logger.notice("Suppressed session_metric_recorded under XCTest (transcription \(metric.transcriptionId.uuidString, privacy: .public))")
+            return
+        }
+        logger.notice("Capturing session_metric_recorded (transcription \(metric.transcriptionId.uuidString, privacy: .public))")
         PostHogSDK.shared.capture("session_metric_recorded", properties: eventProperties(for: metric))
     }
 
@@ -45,6 +64,11 @@ enum TelemetryService {
     // trigger. Deliberately just a binary marker, joinable to session_metric_recorded via
     // transcription_id — never the transcript text itself.
     static func captureFlagEvent(transcriptionId: UUID) {
+        guard !isRunningTests else {
+            logger.notice("Suppressed session_flagged under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))")
+            return
+        }
+        logger.notice("Capturing session_flagged (transcription \(transcriptionId.uuidString, privacy: .public))")
         PostHogSDK.shared.capture("session_flagged", properties: flagEventProperties(transcriptionId: transcriptionId))
     }
 

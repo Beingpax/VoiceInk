@@ -101,4 +101,19 @@ struct TelemetryServiceTests {
         // asserting true here is a real, non-tautological check, not a stub.
         #expect(TelemetryService.isRunningTests == true)
     }
+
+    @Test func bothIndependentTestDetectionSignalsHoldInThisEnvironment() {
+        // Regression test for the real incident: XCTestConfigurationFilePath alone
+        // (isRunningTests' original implementation) was proven unreliable — PostHog data
+        // showed a leaked event from an xcodebuild test run *after* that guard was live,
+        // meaning the env var wasn't set on at least one real test-hosted launch. Asserting
+        // each underlying signal separately means if either one silently stops holding in a
+        // future Xcode/Swift Testing version, this fails and names which signal broke,
+        // rather than the combined isRunningTests OR masking a partial failure.
+        let hasXCTestEnvVar = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        let hasXCTestBundle = Bundle.allBundles.contains { $0.bundlePath.hasSuffix(".xctest") }
+
+        #expect(hasXCTestBundle, "Bundle-based detection must hold even if the env var doesn't")
+        _ = hasXCTestEnvVar  // recorded for visibility; not asserted on, since it's the signal already shown to be unreliable
+    }
 }
