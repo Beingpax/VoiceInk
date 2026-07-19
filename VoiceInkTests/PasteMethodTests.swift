@@ -3,6 +3,12 @@ import Testing
 
 @testable import VoiceInk
 
+// Serialized — these tests each hit the shared macOS preferences daemon
+// (cfprefsd) via UserDefaults(suiteName:), and running them concurrently
+// (Swift Testing's default within a suite, independent of xcodebuild's
+// -parallel-testing-enabled flag, which only controls device/process-level
+// parallelism) caused a genuine flake on GitHub's CI runner.
+@Suite(.serialized)
 struct PasteMethodTests {
 
     private func isolatedDefaults() -> UserDefaults {
