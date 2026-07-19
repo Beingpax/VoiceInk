@@ -14,10 +14,4 @@ This fork customizes [VoiceInk](https://github.com/Beingpax/VoiceInk) (upstream)
 
 ## Where decisions live
 
-`docs/adr/` holds the why behind each decision above — read the relevant one before changing behavior it covers. Actionable phase-wise work is tracked as GitHub Issues on this fork (`aadhar-build/VoiceInk`); `upstream` (`Beingpax/VoiceInk`) is read-only except for occasional PRs contributed back.
-
-## Planned / not yet issued
-
-Items land here once scoped, before being split into GitHub Issues for implementation. Remove an item once its issue(s) exist.
-
-- **Golden eval set / WER tooling UI integration** — the review tool (#15) and baseline WER harness (#16) currently live in a separate `GoldenEvalSetWindowController` window with its own menu bar entry and a duplicated list+detail split, rather than being folded into the existing History window as a mode/filter. Needs to be resolved into a concrete plan (candidate directions: a filter toggle in the existing History sidebar reusing `TranscriptionHistoryView`'s list+detail split; the ground-truth editor and split picker as an inline section of the existing `TranscriptionDetailView`/`AudioPlayerView` area; dropping the standalone menu bar entry in favor of a mode switch inside "History") before any further building.
+`docs/adr/` holds the why behind each decision above — read the relevant one before changing behavior it covers. Actionable phase-wise work is tracked as GitHub Issues on this fork (`aadhar-build/VoiceInk`); `upstream` (`Beingpax/VoiceInk`) is read-only except for occasional PRs contributed back. Scoped-but-not-yet-issued work is tracked in `PRD.md` until it's ready to split into GitHub Issues.
