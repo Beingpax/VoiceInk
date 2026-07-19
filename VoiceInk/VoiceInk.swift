@@ -42,6 +42,7 @@ struct VoiceInkApp: App {
         URLCache.shared = URLCache(memoryCapacity: 0, diskCapacity: 0)
 
         AppDefaults.registerDefaults()
+        TelemetryService.configure()
         AppLanguagePreference.applyStored()
         AppAppearancePreference.applyStored()
         OnboardingV2Migration.prepareIfNeeded()

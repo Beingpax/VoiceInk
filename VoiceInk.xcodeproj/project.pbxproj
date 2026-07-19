@@ -20,6 +20,7 @@
 		E1F350112F1D10D600790A2C /* whisper.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; };
 		E1F350122F1D10D600790A2C /* whisper.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = E1F511032FA3B47000F00001 /* SelectedTextKit */; };
+		57B0DA51E4197DA65B283518 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = CA6886EDFE4B18EB87797E5E /* PostHog */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -111,7 +112,8 @@
 				E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */,
 				E1DD20E12FA20AEE0020AF3B /* LLMkit in Frameworks */,
 				E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */,
-			);
+				57B0DA51E4197DA65B283518 /* PostHog in Frameworks */,
+);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E11473C02CBE0F0B00318EE4 /* Frameworks */ = {
@@ -193,6 +195,7 @@
 				E1DD20E02FA20AEE0020AF3B /* LLMkit */,
 				E1F511032FA3B47000F00001 /* SelectedTextKit */,
 				E13461EC2FD1CCCD005B6A81 /* MarkdownUI */,
+				CA6886EDFE4B18EB87797E5E /* PostHog */,
 			);
 			productName = VoiceInk;
 			productReference = E11473B02CBE0F0A00318EE4 /* VoiceInk.app */;
@@ -288,6 +291,7 @@
 				E1DD20DF2FA20AEE0020AF3B /* XCRemoteSwiftPackageReference "LLMkit" */,
 				E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */,
 				E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
+				A955A46556ACA4B120E9FACD /* XCRemoteSwiftPackageReference "posthog-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E11473B12CBE0F0A00318EE4 /* Products */;
@@ -700,6 +704,14 @@
 				minimumVersion = 2.6.4;
 			};
 		};
+		A955A46556ACA4B120E9FACD /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.66.1;
+			};
+		};
 		E1D7EF972E35E16C00640029 /* XCRemoteSwiftPackageReference "mediaremote-adapter" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Beingpax/mediaremote-adapter";
@@ -762,6 +774,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		CA6886EDFE4B18EB87797E5E /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A955A46556ACA4B120E9FACD /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
 		};
 		E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -56,6 +56,7 @@ enum SessionMetricRecorder {
 
         modelContext.insert(metric)
         logger.notice("Recorded session metric for transcription \(transcriptionId.uuidString, privacy: .public)")
+        TelemetryService.captureSessionMetric(metric)
         return true
     }
 
