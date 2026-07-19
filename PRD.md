@@ -4,7 +4,7 @@ Scoped-but-not-yet-issued work. Items land here once discussed and resolved (typ
 
 ## Golden eval set / WER tooling UI integration
 
-**Status:** resolved via grilling session (2026-07-19). Ready to convert to GitHub Issue(s) once confirmed.
+**Status:** resolved via grilling session (2026-07-19), implemented (2026-07-20). All 6 items in "Resulting shape" below are done — sidebar section + inline detail panel + standalone window removal + WER trigger relocation, with the model checklist filtered to `engine.transcriptionModelManager.usableModels` (downloaded / API-key-configured) rather than the full registry.
 
 **Problem:** the golden eval set review tool (#15) and baseline WER harness (#16) currently live in a separate `GoldenEvalSetWindowController` window with its own menu bar entry and a duplicated `NavigationSplitView` list+detail layout, rather than being deeply integrated into VoiceInk's existing History UI. Explicit ask: a single, deeply-integrated interface, not a bolted-on second window.
 

@@ -19,6 +19,13 @@ enum GoldenEvalSetService {
     // this seed (see assignSplit).
     static let trainEvalSeed: UInt64 = 20_260_719
 
+    static func hasAudioFile(_ transcription: Transcription) -> Bool {
+        guard let urlString = transcription.audioFileURL, let url = URL(string: urlString) else {
+            return false
+        }
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
     static func entry(for transcriptionId: UUID, in modelContext: ModelContext) throws -> GoldenEvalEntry? {
         var descriptor = FetchDescriptor<GoldenEvalEntry>(
             predicate: #Predicate<GoldenEvalEntry> { $0.transcriptionId == transcriptionId }

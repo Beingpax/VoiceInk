@@ -6,6 +6,24 @@ struct TranscriptionListItem: View {
     let isChecked: Bool
     let onSelect: () -> Void
     let onToggleCheck: () -> Void
+    var goldenEvalSplit: GoldenEvalSplit? = nil
+
+    private var goldenEvalSplitLabel: String {
+        switch goldenEvalSplit {
+        case .control: return "Control"
+        case .train: return "Train"
+        case .eval: return "Eval"
+        case nil: return ""
+        }
+    }
+
+    private var goldenEvalSplitColor: Color {
+        switch goldenEvalSplit {
+        case .control: return AppTheme.Data.purple
+        case .train: return AppTheme.Status.infoStrong
+        case .eval, nil: return AppTheme.Status.positive
+        }
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -28,6 +46,14 @@ struct TranscriptionListItem: View {
                         Image(systemName: "flag.fill")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(AppTheme.Status.warningStrong)
+                    }
+                    if let goldenEvalSplit {
+                        Text(goldenEvalSplitLabel)
+                            .font(.system(size: 8, weight: .semibold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(goldenEvalSplitColor))
+                            .foregroundColor(.white)
                     }
                     Spacer()
                     if transcription.duration > 0 {

@@ -133,10 +133,6 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("h", modifiers: [.command, .shift])
 
-            Button("Golden Eval Set") {
-                menuBarManager.openGoldenEvalSetWindow()
-            }
-
             Button(menuBarManager.isMenuBarOnly ? "Show Dock Icon" : "Hide Dock Icon") {
                 let shouldShowMainWindow = menuBarManager.isMenuBarOnly
                 menuBarManager.toggleMenuBarOnly()

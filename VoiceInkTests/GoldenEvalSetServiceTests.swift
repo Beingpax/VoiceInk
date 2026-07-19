@@ -19,6 +19,29 @@ struct GoldenEvalSetServiceTests {
         UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", i))!
     }
 
+    @Test func hasAudioFileIsFalseWhenURLIsNil() {
+        let transcription = Transcription(text: "hello", duration: 1.0)
+        #expect(GoldenEvalSetService.hasAudioFile(transcription) == false)
+    }
+
+    @Test func hasAudioFileIsFalseWhenFileDoesNotExistOnDisk() {
+        let missingURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("golden-eval-set-service-tests-\(UUID().uuidString).m4a")
+        let transcription = Transcription(
+            text: "hello", duration: 1.0, audioFileURL: missingURL.absoluteString)
+        #expect(GoldenEvalSetService.hasAudioFile(transcription) == false)
+    }
+
+    @Test func hasAudioFileIsTrueWhenFileExistsOnDisk() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("golden-eval-set-service-tests-\(UUID().uuidString).m4a")
+        try Data().write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let transcription = Transcription(text: "hello", duration: 1.0, audioFileURL: url.absoluteString)
+        #expect(GoldenEvalSetService.hasAudioFile(transcription) == true)
+    }
+
     @Test func entryReturnsNilWhenNoneExists() throws {
         let context = try makeContext()
         #expect(try GoldenEvalSetService.entry(for: UUID(), in: context) == nil)

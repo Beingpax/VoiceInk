@@ -1,8 +1,14 @@
+import SwiftData
 import SwiftUI
 
 struct TranscriptionDetailView: View {
     let transcription: Transcription
     var onInfoTap: (() -> Void)?
+
+    @Environment(\.modelContext) private var modelContext
+    @State private var groundTruthText: String = ""
+    @State private var goldenEvalEntry: GoldenEvalEntry?
+    @State private var goldenEvalErrorMessage: String?
 
     private var hasAudioFile: Bool {
         if let urlString = transcription.audioFileURL,
@@ -33,6 +39,10 @@ struct TranscriptionDetailView: View {
                             transcriptionId: transcription.id
                         )
                     }
+
+                    if hasAudioFile {
+                        goldenEvalSetSection
+                    }
                 }
                 .padding(16)
             }
@@ -60,6 +70,125 @@ struct TranscriptionDetailView: View {
             }
         }
         .padding(.vertical, 12)
+        .onAppear(perform: loadGoldenEvalEntry)
+    }
+
+    // Inline golden eval set panel (ADR-0009, PRD.md "Golden eval set / WER tooling UI
+    // integration") — folded into the existing detail view rather than a separate window.
+    // No train/eval/control picker: GoldenEvalSetService.verify categorizes automatically
+    // based on whether groundTruthText differs from VoiceInk's original transcript.
+    private var goldenEvalSetSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Golden Eval Set")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if let goldenEvalEntry {
+                    Text(splitLabel(goldenEvalEntry.split))
+                        .font(.system(size: 9, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(splitColor(goldenEvalEntry.split)))
+                        .foregroundColor(.white)
+                }
+            }
+
+            Text("Ground truth (edit if VoiceInk got it wrong, then mark verified)")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+
+            TextEditor(text: $groundTruthText)
+                .font(.system(size: 13))
+                .frame(minHeight: 80)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                        .fill(AppTheme.Surface.materialCard)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                .strokeBorder(AppTheme.Border.subtle, lineWidth: 1)
+                        }
+                )
+
+            HStack {
+                Button(goldenEvalEntry == nil ? "Mark Verified" : "Update") {
+                    verifyGoldenEval()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                if goldenEvalEntry != nil {
+                    Button("Remove", role: .destructive) {
+                        removeGoldenEval()
+                    }
+                    .controlSize(.small)
+                }
+
+                if let goldenEvalErrorMessage {
+                    Text(goldenEvalErrorMessage)
+                        .font(.system(size: 11))
+                        .foregroundColor(AppTheme.Status.error)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                .fill(AppTheme.Surface.subtle)
+        )
+    }
+
+    private func splitLabel(_ split: GoldenEvalSplit) -> String {
+        switch split {
+        case .control: return "Control"
+        case .train: return "Train"
+        case .eval: return "Eval"
+        }
+    }
+
+    private func splitColor(_ split: GoldenEvalSplit) -> Color {
+        switch split {
+        case .control: return AppTheme.Data.purple
+        case .train: return AppTheme.Status.infoStrong
+        case .eval: return AppTheme.Status.positive
+        }
+    }
+
+    private func loadGoldenEvalEntry() {
+        goldenEvalErrorMessage = nil
+        do {
+            let entry = try GoldenEvalSetService.entry(for: transcription.id, in: modelContext)
+            goldenEvalEntry = entry
+            groundTruthText = entry?.groundTruthText ?? (transcription.enhancedText ?? transcription.text)
+        } catch {
+            goldenEvalErrorMessage = String(localized: "Failed to load golden eval entry")
+        }
+    }
+
+    private func verifyGoldenEval() {
+        do {
+            goldenEvalEntry = try GoldenEvalSetService.verify(
+                transcriptionId: transcription.id,
+                originalText: transcription.enhancedText ?? transcription.text,
+                groundTruthText: groundTruthText,
+                in: modelContext
+            )
+            goldenEvalErrorMessage = nil
+        } catch {
+            goldenEvalErrorMessage = String(localized: "Failed to save golden eval entry")
+        }
+    }
+
+    private func removeGoldenEval() {
+        do {
+            try GoldenEvalSetService.remove(transcriptionId: transcription.id, in: modelContext)
+            goldenEvalEntry = nil
+            goldenEvalErrorMessage = nil
+        } catch {
+            goldenEvalErrorMessage = String(localized: "Failed to remove golden eval entry")
+        }
     }
 }
 

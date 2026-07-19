@@ -1,8 +1,16 @@
 import SwiftData
 import SwiftUI
 
+// Which slice of transcriptions the sidebar list is browsing: everything (paginated), or just
+// the golden eval set candidates (PRD.md item 1) — recordings that still have audio on disk.
+enum HistorySidebarMode: Hashable {
+    case all
+    case goldenEvalSet
+}
+
 struct TranscriptionHistoryView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var engine: VoiceInkEngine
     @State private var searchText = ""
     @State private var selectedTranscription: Transcription?
     @State private var selectedTranscriptions: Set<Transcription> = []
@@ -16,6 +24,16 @@ struct TranscriptionHistoryView: View {
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
+
+    @State private var sidebarMode: HistorySidebarMode = .all
+    @State private var goldenEvalCandidates: [Transcription] = []
+    @State private var goldenEvalSplitsByTranscriptionId: [UUID: GoldenEvalSplit] = [:]
+    @State private var goldenEvalCounts = GoldenEvalSetService.SplitCounts(control: 0, train: 0, eval: 0)
+    @State private var isShowingBaselineSheet = false
+    @State private var isRunningBaseline = false
+    @State private var baselineSummaries: [WERBaselineHarness.ModelSummary] = []
+    @State private var baselineError: String?
+    @State private var selectedBaselineModelNames: Set<String> = ["Large v3", "Parakeet V3"]
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -204,17 +222,37 @@ struct TranscriptionHistoryView: View {
                             .strokeBorder(AppTheme.Border.tint, lineWidth: 1)
                     }
             )
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 12)
+
+            Picker("", selection: $sidebarMode) {
+                Text("All").tag(HistorySidebarMode.all)
+                Text("Golden Eval Set").tag(HistorySidebarMode.goldenEvalSet)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 12)
+            .onChange(of: sidebarMode) { _, newMode in
+                if newMode == .goldenEvalSet {
+                    Task { await loadGoldenEvalCandidates() }
+                }
+            }
+
+            if sidebarMode == .goldenEvalSet {
+                goldenEvalToolbar
+            }
 
             Divider()
 
             ZStack(alignment: .bottom) {
-                if displayedTranscriptions.isEmpty && !isLoading {
+                if currentTranscriptions.isEmpty && !isLoading {
                     VStack(spacing: 12) {
                         Image(systemName: "doc.text.magnifyingglass")
                             .font(.system(size: 40))
                             .foregroundColor(.secondary)
-                        Text("No transcriptions")
+                        Text(sidebarMode == .goldenEvalSet ? "No candidates with audio yet" : "No transcriptions")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.secondary)
                     }
@@ -222,17 +260,18 @@ struct TranscriptionHistoryView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 8) {
-                            ForEach(displayedTranscriptions) { transcription in
+                            ForEach(currentTranscriptions) { transcription in
                                 TranscriptionListItem(
                                     transcription: transcription,
                                     isSelected: selectedTranscription == transcription,
                                     isChecked: selectedTranscriptions.contains(transcription),
                                     onSelect: { selectedTranscription = transcription },
-                                    onToggleCheck: { toggleSelection(transcription) }
+                                    onToggleCheck: { toggleSelection(transcription) },
+                                    goldenEvalSplit: goldenEvalSplitsByTranscriptionId[transcription.id]
                                 )
                             }
 
-                            if hasMoreContent {
+                            if sidebarMode == .all && hasMoreContent {
                                 Button(action: {
                                     Task { await loadMoreContent() }
                                 }) {
@@ -255,13 +294,38 @@ struct TranscriptionHistoryView: View {
                     }
                 }
 
-                if !displayedTranscriptions.isEmpty {
+                if sidebarMode == .all && !displayedTranscriptions.isEmpty {
                     selectionToolbar
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
         }
         .background(sidebarMaterialBackground)
+        .sheet(isPresented: $isShowingBaselineSheet) {
+            baselineEvaluationSheet
+        }
+    }
+
+    private var currentTranscriptions: [Transcription] {
+        sidebarMode == .goldenEvalSet ? goldenEvalCandidates : displayedTranscriptions
+    }
+
+    // Golden eval set section toolbar (PRD.md items 1 & 5): split counts plus the WER
+    // baseline trigger, folded in here instead of a separate window's own toolbar.
+    private var goldenEvalToolbar: some View {
+        HStack {
+            Text("Control: \(goldenEvalCounts.control) · Train: \(goldenEvalCounts.train) · Eval: \(goldenEvalCounts.eval)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+            Spacer()
+            Button("Run Baseline Evaluation") {
+                isShowingBaselineSheet = true
+            }
+            .font(.system(size: 11))
+            .disabled(goldenEvalCounts.eval == 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
     }
 
     private var centerPaneView: some View {
@@ -515,6 +579,177 @@ struct TranscriptionHistoryView: View {
             }
         } catch {
             print("Error selecting all transcriptions: \(error)")
+        }
+    }
+
+    @MainActor
+    private func loadGoldenEvalCandidates() async {
+        do {
+            let all = try modelContext.fetch(
+                FetchDescriptor<Transcription>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)]))
+            goldenEvalCandidates = all.filter { GoldenEvalSetService.hasAudioFile($0) }
+
+            let entries = try modelContext.fetch(FetchDescriptor<GoldenEvalEntry>())
+            goldenEvalSplitsByTranscriptionId = Dictionary(
+                uniqueKeysWithValues: entries.map { ($0.transcriptionId, $0.split) })
+
+            refreshGoldenEvalCounts()
+        } catch {
+            print("Error loading golden eval candidates: \(error)")
+        }
+    }
+
+    private func refreshGoldenEvalCounts() {
+        goldenEvalCounts = (try? GoldenEvalSetService.splitCounts(in: modelContext))
+            ?? GoldenEvalSetService.SplitCounts(control: 0, train: 0, eval: 0)
+    }
+
+    private var baselineEvaluationSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Baseline WER Evaluation")
+                .font(.system(size: 15, weight: .semibold))
+
+            Text(
+                "Runs every held-out eval-split recording (\(goldenEvalCounts.eval)) through the selected models, scoring each against its verified ground truth. Only models that are already downloaded (or have an API key configured) are listed."
+            )
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Models (downloaded / API key configured)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+
+                ForEach(engine.transcriptionModelManager.usableModels, id: \.displayName) { model in
+                    Toggle(
+                        model.displayName,
+                        isOn: Binding(
+                            get: { selectedBaselineModelNames.contains(model.displayName) },
+                            set: { isOn in
+                                if isOn {
+                                    selectedBaselineModelNames.insert(model.displayName)
+                                } else {
+                                    selectedBaselineModelNames.remove(model.displayName)
+                                }
+                            }
+                        )
+                    )
+                    .font(.system(size: 12))
+                }
+            }
+            .frame(maxHeight: 160)
+
+            if isRunningBaseline {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Evaluating…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let baselineError {
+                Text(baselineError)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppTheme.Status.error)
+            }
+
+            if !baselineSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(baselineSummaries, id: \.modelDisplayName) { summary in
+                        HStack {
+                            Text(summary.modelDisplayName)
+                                .font(.system(size: 13, weight: .medium))
+                            Spacer()
+                            Text(String(format: "%.1f%% WER", summary.meanWordErrorRate * 100))
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("(\(summary.evaluatedCount) evaluated, \(summary.failedCount) failed)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                .fill(AppTheme.Surface.subtle)
+                        )
+                    }
+                }
+            }
+
+            HStack {
+                Button(baselineSummaries.isEmpty ? "Run Now" : "Run Again") {
+                    runBaselineEvaluation()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRunningBaseline || selectedBaselineModelNames.isEmpty)
+
+                Button("Close") {
+                    isShowingBaselineSheet = false
+                }
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 480)
+    }
+
+    @MainActor
+    private func runBaselineEvaluation() {
+        baselineError = nil
+        isRunningBaseline = true
+
+        Task { @MainActor in
+            defer { isRunningBaseline = false }
+
+            do {
+                let evalRawValue = GoldenEvalSplit.eval.rawValue
+                let evalEntries = try modelContext.fetch(
+                    FetchDescriptor<GoldenEvalEntry>(
+                        predicate: #Predicate<GoldenEvalEntry> { $0.splitRawValue == evalRawValue }))
+
+                var evalCandidates: [WERBaselineHarness.Candidate] = []
+                for entry in evalEntries {
+                    let transcriptionId = entry.transcriptionId
+                    var descriptor = FetchDescriptor<Transcription>(
+                        predicate: #Predicate<Transcription> { $0.id == transcriptionId })
+                    descriptor.fetchLimit = 1
+                    guard let transcription = try modelContext.fetch(descriptor).first,
+                        let urlString = transcription.audioFileURL,
+                        let url = URL(string: urlString)
+                    else { continue }
+
+                    evalCandidates.append(
+                        WERBaselineHarness.Candidate(
+                            entryId: entry.id, referenceText: entry.groundTruthText, audioURL: url))
+                }
+
+                guard !evalCandidates.isEmpty else {
+                    baselineError = String(localized: "No eval-split entries with a valid audio file were found.")
+                    return
+                }
+
+                let models = engine.transcriptionModelManager.usableModels.filter {
+                    selectedBaselineModelNames.contains($0.displayName)
+                }
+
+                guard !models.isEmpty else {
+                    baselineError = String(localized: "Select at least one model to evaluate.")
+                    return
+                }
+
+                let transcriber = TranscriptionServiceRegistryTranscriber(registry: engine.serviceRegistry)
+                let runLabel = "baseline-\(Int(Date().timeIntervalSince1970))"
+
+                baselineSummaries = await WERBaselineHarness.run(
+                    candidates: evalCandidates,
+                    models: models,
+                    runLabel: runLabel,
+                    transcriber: transcriber,
+                    in: modelContext
+                )
+            } catch {
+                baselineError = String(localized: "Failed to run baseline evaluation.")
+            }
         }
     }
 }
