@@ -3,10 +3,10 @@ import SwiftUI
 
 // The review UI for ADR-0009's golden eval set. VoiceInk already saves every recording's
 // audio, so this is a browse-and-verify tool over existing Transcriptions, not a recorder:
-// pick a candidate, listen, correct the ground-truth text if VoiceInk got it wrong, assign it
-// to the train or held-out eval split, save. Deliberately does not pre-fill from flagged
-// transcriptions or otherwise auto-suggest a split — ADR-0009 calls that out explicitly as a
-// tempting shortcut that undermines the measurement.
+// pick a candidate, listen, correct the ground-truth text if VoiceInk got it wrong, mark it
+// verified. Split assignment is automatic (GoldenEvalSetService.assignSplit) — no manual
+// train/eval/control picker. Deliberately does not pre-fill from flagged transcriptions —
+// ADR-0009 calls that out explicitly as a tempting shortcut that undermines the measurement.
 struct GoldenEvalSetView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var engine: VoiceInkEngine
@@ -14,9 +14,8 @@ struct GoldenEvalSetView: View {
 
     @State private var selectedTranscription: Transcription?
     @State private var groundTruthText: String = ""
-    @State private var selectedSplit: GoldenEvalSplit = .eval
     @State private var existingEntry: GoldenEvalEntry?
-    @State private var counts = GoldenEvalSetService.SplitCounts(train: 0, eval: 0)
+    @State private var counts = GoldenEvalSetService.SplitCounts(control: 0, train: 0, eval: 0)
     @State private var errorMessage: String?
 
     @State private var isShowingBaselineSheet = false
@@ -61,7 +60,7 @@ struct GoldenEvalSetView: View {
         .navigationTitle("Golden Eval Set")
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text("Train: \(counts.train) · Eval: \(counts.eval)")
+                Text("Control: \(counts.control) · Train: \(counts.train) · Eval: \(counts.eval)")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.secondary)
             }
@@ -158,13 +157,11 @@ struct GoldenEvalSetView: View {
             }
             Spacer()
             if let split = splitBadge(for: transcription) {
-                Text(split == .train ? "Train" : "Eval")
+                Text(splitLabel(split))
                     .font(.system(size: 9, weight: .semibold))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(
-                        Capsule().fill(split == .train ? AppTheme.Status.infoStrong : AppTheme.Status.positive)
-                    )
+                    .background(Capsule().fill(splitColor(split)))
                     .foregroundColor(.white)
             }
         }
@@ -172,6 +169,23 @@ struct GoldenEvalSetView: View {
 
     private func splitBadge(for transcription: Transcription) -> GoldenEvalSplit? {
         try? GoldenEvalSetService.entry(for: transcription.id, in: modelContext)?.split
+    }
+
+    private func splitLabel(_ split: GoldenEvalSplit) -> String {
+        switch split {
+        case .control: return "Control"
+        case .train: return "Train"
+        case .eval: return "Eval"
+        }
+    }
+
+    private func splitColor(_ split: GoldenEvalSplit) -> Color {
+        switch split {
+        // Distinct from the flag-as-wrong badge's warning color to avoid visual confusion.
+        case .control: return AppTheme.Data.purple
+        case .train: return AppTheme.Status.infoStrong
+        case .eval: return AppTheme.Status.positive
+        }
     }
 
     private func reviewPanel(for transcription: Transcription) -> some View {
@@ -214,16 +228,15 @@ struct GoldenEvalSetView: View {
                         )
                 }
 
-                Picker("Split", selection: $selectedSplit) {
-                    Text("Held-out Eval").tag(GoldenEvalSplit.eval)
-                    Text("Train").tag(GoldenEvalSplit.train)
+                if let existingEntry {
+                    Text("Verified — categorized as \(splitLabel(existingEntry.split))")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
 
                 HStack {
-                    Button(existingEntry == nil ? "Add to Golden Eval Set" : "Update Entry") {
-                        save(for: transcription)
+                    Button(existingEntry == nil ? "Mark Verified" : "Update") {
+                        verify(for: transcription)
                     }
                     .buttonStyle(.borderedProminent)
 
@@ -256,18 +269,17 @@ struct GoldenEvalSetView: View {
             let entry = try GoldenEvalSetService.entry(for: transcription.id, in: modelContext)
             existingEntry = entry
             groundTruthText = entry?.groundTruthText ?? (transcription.enhancedText ?? transcription.text)
-            selectedSplit = entry?.split ?? .eval
         } catch {
             errorMessage = String(localized: "Failed to load existing entry")
         }
     }
 
-    private func save(for transcription: Transcription) {
+    private func verify(for transcription: Transcription) {
         do {
-            existingEntry = try GoldenEvalSetService.save(
+            existingEntry = try GoldenEvalSetService.verify(
                 transcriptionId: transcription.id,
+                originalText: transcription.enhancedText ?? transcription.text,
                 groundTruthText: groundTruthText,
-                split: selectedSplit,
                 in: modelContext
             )
             errorMessage = nil
@@ -290,7 +302,7 @@ struct GoldenEvalSetView: View {
 
     private func refreshCounts() {
         counts = (try? GoldenEvalSetService.splitCounts(in: modelContext)) ?? GoldenEvalSetService.SplitCounts(
-            train: 0, eval: 0)
+            control: 0, train: 0, eval: 0)
     }
 
     @MainActor
