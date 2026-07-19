@@ -39,6 +39,9 @@ class LastTranscriptionService: ObservableObject {
         }()
 
         let success = ClipboardManager.copyToClipboard(textToCopy)
+        if success {
+            TelemetryService.captureTranscriptionCopied(transcriptionId: lastTranscription.id, source: "shortcut")
+        }
 
         Task { @MainActor in
             if success {
@@ -173,6 +176,7 @@ class LastTranscriptionService: ObservableObject {
                     newTranscription.enhancedText?.isEmpty == false
                     ? newTranscription.enhancedText! : newTranscription.text
                 ClipboardManager.copyToClipboard(textToCopy)
+                TelemetryService.captureTranscriptionCopied(transcriptionId: newTranscription.id, source: "retry")
 
                 NotificationManager.shared.showNotification(
                     title: String(localized: "Copied to clipboard"),

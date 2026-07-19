@@ -21,14 +21,16 @@ struct TranscriptionDetailView: View {
                     MessageBubble(
                         label: "Original",
                         text: transcription.text,
-                        isEnhanced: false
+                        isEnhanced: false,
+                        transcriptionId: transcription.id
                     )
 
                     if let enhancedText = transcription.enhancedText {
                         MessageBubble(
                             label: "Enhanced",
                             text: enhancedText,
-                            isEnhanced: true
+                            isEnhanced: true,
+                            transcriptionId: transcription.id
                         )
                     }
                 }
@@ -65,6 +67,7 @@ private struct MessageBubble: View {
     let label: LocalizedStringKey
     let text: String
     let isEnhanced: Bool
+    let transcriptionId: UUID
 
     var body: some View {
         HStack(alignment: .bottom) {
@@ -104,7 +107,8 @@ private struct MessageBubble: View {
                             )
                     }
                 }
-                .hoverCopyButton(textToCopy: text)
+                .hoverCopyButton(
+                    textToCopy: text, transcriptionId: transcriptionId, telemetrySource: "hover_button")
             }
 
             if !isEnhanced { Spacer(minLength: 60) }

@@ -96,4 +96,195 @@ enum TelemetryService {
         properties["enhancement_estimated_token_count"] = metric.enhancementEstimatedTokenCount
         return properties
     }
+
+    // MARK: - transcription_started
+
+    // Fired at the top of TranscriptionPipeline.run(), not at Recorder.startRecording —
+    // the pipeline is where "transcription" (as this event is named) actually begins, and
+    // it's the point with access to a real transcription id and resolved model, letting this
+    // correlate cleanly with transcription_completed/transcription_failed below. A recording
+    // that's cancelled before the pipeline runs never emits this, which is correct: no
+    // transcription was ever attempted for it.
+    static func captureTranscriptionStarted(transcriptionId: UUID, modelName: String?, modeName: String?) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed transcription_started under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice("Capturing transcription_started (transcription \(transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "transcription_started",
+            properties: transcriptionStartedEventProperties(
+                transcriptionId: transcriptionId, modelName: modelName, modeName: modeName))
+    }
+
+    static func transcriptionStartedEventProperties(transcriptionId: UUID, modelName: String?, modeName: String?)
+        -> [String: Any]
+    {
+        var properties: [String: Any] = ["transcription_id": transcriptionId.uuidString]
+        properties["model_name"] = modelName
+        properties["mode_name"] = modeName
+        return properties
+    }
+
+    // MARK: - transcription_completed
+
+    // Deliberately redundant with session_metric_recorded — same fields, mirrored via the
+    // same eventProperties(for:), but as an explicit success signal distinct from the
+    // metrics-oriented event above.
+    static func captureTranscriptionCompleted(_ metric: SessionMetric) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed transcription_completed under XCTest (transcription \(metric.transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice(
+            "Capturing transcription_completed (transcription \(metric.transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture("transcription_completed", properties: eventProperties(for: metric))
+    }
+
+    // MARK: - transcription_failed
+
+    static func captureTranscriptionFailed(transcriptionId: UUID, errorType: String, modelName: String?) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed transcription_failed under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice("Capturing transcription_failed (transcription \(transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "transcription_failed",
+            properties: transcriptionFailedEventProperties(
+                transcriptionId: transcriptionId, errorType: errorType, modelName: modelName))
+    }
+
+    // errorType must be a short category, never the full error description — full messages
+    // can carry file paths or API response details (ADR-0003's privacy boundary applies to
+    // more than just transcript text).
+    static func transcriptionFailedEventProperties(transcriptionId: UUID, errorType: String, modelName: String?)
+        -> [String: Any]
+    {
+        var properties: [String: Any] = [
+            "transcription_id": transcriptionId.uuidString,
+            "error_type": errorType,
+        ]
+        properties["model_name"] = modelName
+        return properties
+    }
+
+    // MARK: - enhancement_triggered / enhancement_skipped
+
+    static func captureEnhancementTriggered(transcriptionId: UUID, modelName: String?, modeName: String?) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed enhancement_triggered under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice("Capturing enhancement_triggered (transcription \(transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "enhancement_triggered",
+            properties: enhancementTriggeredEventProperties(
+                transcriptionId: transcriptionId, modelName: modelName, modeName: modeName))
+    }
+
+    static func enhancementTriggeredEventProperties(transcriptionId: UUID, modelName: String?, modeName: String?)
+        -> [String: Any]
+    {
+        var properties: [String: Any] = ["transcription_id": transcriptionId.uuidString]
+        properties["model_name"] = modelName
+        properties["mode_name"] = modeName
+        return properties
+    }
+
+    // reason is whatever the call site can actually distinguish — "not_configured" (no LLM
+    // provider set up), "disabled_for_mode" (enhancement off for the active mode/config), or
+    // "short_text_skip" (below the configured word-count threshold). Fired on every session
+    // where enhancement could have run but didn't, so opt-in rate = triggered / (triggered +
+    // skipped), not just a count of one side.
+    static func captureEnhancementSkipped(transcriptionId: UUID, reason: String, modeName: String?) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed enhancement_skipped under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice("Capturing enhancement_skipped (transcription \(transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "enhancement_skipped",
+            properties: enhancementSkippedEventProperties(
+                transcriptionId: transcriptionId, reason: reason, modeName: modeName))
+    }
+
+    static func enhancementSkippedEventProperties(transcriptionId: UUID, reason: String, modeName: String?)
+        -> [String: Any]
+    {
+        var properties: [String: Any] = [
+            "transcription_id": transcriptionId.uuidString,
+            "reason": reason,
+        ]
+        properties["mode_name"] = modeName
+        return properties
+    }
+
+    // MARK: - transcription_copied
+
+    static func captureTranscriptionCopied(transcriptionId: UUID, source: String) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed transcription_copied under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice("Capturing transcription_copied (transcription \(transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "transcription_copied",
+            properties: transcriptionCopiedEventProperties(transcriptionId: transcriptionId, source: source))
+    }
+
+    static func transcriptionCopiedEventProperties(transcriptionId: UUID, source: String) -> [String: Any] {
+        ["transcription_id": transcriptionId.uuidString, "source": source]
+    }
+
+    // MARK: - transcription_discarded
+
+    // transcriptionId is optional: a recording cancelled before the pipeline creates/completes
+    // its Transcription record has nothing to key on beyond the fact that it was discarded.
+    static func captureTranscriptionDiscarded(transcriptionId: UUID?, reason: String) {
+        guard !isRunningTests else {
+            logger.notice("Suppressed transcription_discarded under XCTest (reason: \(reason, privacy: .public))")
+            return
+        }
+        logger.notice("Capturing transcription_discarded (reason: \(reason, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "transcription_discarded",
+            properties: transcriptionDiscardedEventProperties(transcriptionId: transcriptionId, reason: reason))
+    }
+
+    static func transcriptionDiscardedEventProperties(transcriptionId: UUID?, reason: String) -> [String: Any] {
+        var properties: [String: Any] = ["reason": reason]
+        properties["transcription_id"] = transcriptionId?.uuidString
+        return properties
+    }
+
+    // MARK: - model_switched
+
+    static func captureModelSwitched(fromModel: String?, toModel: String) {
+        guard !isRunningTests else {
+            logger.notice("Suppressed model_switched under XCTest (to: \(toModel, privacy: .public))")
+            return
+        }
+        logger.notice("Capturing model_switched (to: \(toModel, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "model_switched", properties: modelSwitchedEventProperties(fromModel: fromModel, toModel: toModel))
+    }
+
+    static func modelSwitchedEventProperties(fromModel: String?, toModel: String) -> [String: Any] {
+        var properties: [String: Any] = ["to_model": toModel]
+        properties["from_model"] = fromModel
+        return properties
+    }
 }

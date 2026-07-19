@@ -84,7 +84,9 @@ private struct DashboardTranscriptCardRow: View {
                 }
                 .accessibilityAddTraits(.isButton)
 
-            CopyIconButton(textToCopy: copyText, accessibilityLabel: "Copy transcript")
+            CopyIconButton(
+                textToCopy: copyText, accessibilityLabel: "Copy transcript",
+                transcriptionId: transcription.id, telemetrySource: "dashboard_card")
                 .frame(width: Self.copyButtonSize, height: Self.copyButtonSize)
                 .opacity(isHovering ? 1 : 0)
                 .allowsHitTesting(isHovering)

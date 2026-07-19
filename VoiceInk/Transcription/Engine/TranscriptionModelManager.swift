@@ -92,8 +92,12 @@ class TranscriptionModelManager: ObservableObject {
             return
         }
 
+        let previousModel = currentTranscriptionModel
         self.currentTranscriptionModel = model
         UserDefaults.standard.set(model.name, forKey: "CurrentTranscriptionModel")
+        if previousModel?.name != model.name {
+            TelemetryService.captureModelSwitched(fromModel: previousModel?.displayName, toModel: model.displayName)
+        }
         ensureSelectedLanguageIsSupported(by: model)
 
         if model.provider != .whisper {

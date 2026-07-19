@@ -588,7 +588,8 @@ private struct HistoryCardRow: View {
                 )
             }
             .frame(maxHeight: 350)
-            .hoverCopyButton(textToCopy: displayText)
+            .hoverCopyButton(
+                textToCopy: displayText, transcriptionId: transcription.id, telemetrySource: "hover_button")
 
             if hasAudioFile, let urlString = transcription.audioFileURL,
                 let url = URL(string: urlString)

@@ -92,12 +92,18 @@ class TranscriptionPipeline {
             } catch {
                 logger.error("Failed to save canceled transcription: \(error, privacy: .public)")
             }
+
+            TelemetryService.captureTranscriptionDiscarded(transcriptionId: transcription.id, reason: "cancelled")
         }
 
         if shouldCancel() {
             await finishCanceledTranscription()
             return
         }
+
+        TelemetryService.captureTranscriptionStarted(
+            transcriptionId: transcription.id, modelName: model.displayName,
+            modeName: transcriptionConfiguration.metadata.name)
 
         do {
             let transcriptionStart = Date()
@@ -202,6 +208,10 @@ class TranscriptionPipeline {
                         transcription.aiRequestSystemMessage = enhancementService.lastSystemMessageSent
                         transcription.aiRequestUserMessage = enhancementService.lastUserMessageSent
                         finalText = enhancedText
+                        TelemetryService.captureEnhancementTriggered(
+                            transcriptionId: transcription.id,
+                            modelName: transcription.aiEnhancementModelName,
+                            modeName: modeMetadata.name)
                     } catch {
                         let errorDescription =
                             (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -220,6 +230,20 @@ class TranscriptionPipeline {
                             return
                         }
                     }
+                } else {
+                    let skipReason: String
+                    if resolvedEnhancementConfiguration == nil || resolvedEnhancementConfiguration?.isEnabled != true {
+                        skipReason = "disabled_for_mode"
+                    } else if enhancementService == nil
+                        || !(resolvedEnhancementConfiguration.map { enhancementService?.isConfigured(for: $0) == true }
+                            ?? false)
+                    {
+                        skipReason = "not_configured"
+                    } else {
+                        skipReason = "short_text_skip"
+                    }
+                    TelemetryService.captureEnhancementSkipped(
+                        transcriptionId: transcription.id, reason: skipReason, modeName: modeMetadata.name)
                 }
             }
 
@@ -241,6 +265,10 @@ class TranscriptionPipeline {
 
             transcription.text = String(format: String(localized: "Transcription Failed: %@"), errorDescription)
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
+            TelemetryService.captureTranscriptionFailed(
+                transcriptionId: transcription.id,
+                errorType: String(describing: type(of: error)),
+                modelName: model.displayName)
         }
 
         func saveTranscriptionAndPostCompletion() {

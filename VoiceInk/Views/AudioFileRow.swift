@@ -110,7 +110,9 @@ struct AudioFileRow: View {
 
             if let transcription = item.transcription {
                 HStack(spacing: 2) {
-                    CopyIconButton(textToCopy: actionText)
+                    CopyIconButton(
+                        textToCopy: actionText, transcriptionId: transcription.id,
+                        telemetrySource: "audio_file_row")
                     SaveIconButton(textToSave: actionText)
                 }
 

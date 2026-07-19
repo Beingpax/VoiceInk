@@ -455,6 +455,7 @@ struct TranscriptionHistoryView: View {
         }
 
         selectedTranscriptions.remove(transcription)
+        TelemetryService.captureTranscriptionDiscarded(transcriptionId: transcription.id, reason: "deleted_from_history")
         modelContext.delete(transcription)
     }
 

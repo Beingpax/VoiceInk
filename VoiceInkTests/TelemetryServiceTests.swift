@@ -116,4 +116,118 @@ struct TelemetryServiceTests {
         #expect(hasXCTestBundle, "Bundle-based detection must hold even if the env var doesn't")
         _ = hasXCTestEnvVar  // recorded for visibility; not asserted on, since it's the signal already shown to be unreliable
     }
+
+    // MARK: - transcription_started
+
+    @Test func transcriptionStartedIncludesModelAndModeWhenPresent() {
+        let id = UUID()
+        let properties = TelemetryService.transcriptionStartedEventProperties(
+            transcriptionId: id, modelName: "Parakeet V3", modeName: "Default")
+
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["model_name"] as? String == "Parakeet V3")
+        #expect(properties["mode_name"] as? String == "Default")
+    }
+
+    @Test func transcriptionStartedOmitsNilModelAndMode() {
+        let id = UUID()
+        let properties = TelemetryService.transcriptionStartedEventProperties(
+            transcriptionId: id, modelName: nil, modeName: nil)
+
+        #expect(properties["model_name"] == nil)
+        #expect(properties["mode_name"] == nil)
+    }
+
+    // MARK: - transcription_failed
+
+    @Test func transcriptionFailedIncludesErrorTypeAndModel() {
+        let id = UUID()
+        let properties = TelemetryService.transcriptionFailedEventProperties(
+            transcriptionId: id, errorType: "WhisperTranscriptionError", modelName: "Whisper Large v3")
+
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["error_type"] as? String == "WhisperTranscriptionError")
+        #expect(properties["model_name"] as? String == "Whisper Large v3")
+    }
+
+    @Test func transcriptionFailedNeverIncludesFullErrorDescription() {
+        // error_type must be a short category (e.g. a Swift type name), never a full,
+        // potentially path/detail-carrying error description — pin the property shape itself
+        // rather than trust every call site to pass the right thing.
+        let id = UUID()
+        let properties = TelemetryService.transcriptionFailedEventProperties(
+            transcriptionId: id, errorType: "NetworkError", modelName: nil)
+
+        #expect(properties.keys.contains("error_type"))
+        #expect(properties.keys.allSatisfy { $0 != "error_description" && $0 != "message" })
+    }
+
+    // MARK: - enhancement_triggered / enhancement_skipped
+
+    @Test func enhancementTriggeredIncludesModelAndMode() {
+        let id = UUID()
+        let properties = TelemetryService.enhancementTriggeredEventProperties(
+            transcriptionId: id, modelName: "gpt-4o-mini", modeName: "Slack")
+
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["model_name"] as? String == "gpt-4o-mini")
+        #expect(properties["mode_name"] as? String == "Slack")
+    }
+
+    @Test func enhancementSkippedIncludesReasonAndMode() {
+        let id = UUID()
+        let properties = TelemetryService.enhancementSkippedEventProperties(
+            transcriptionId: id, reason: "not_configured", modeName: nil)
+
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["reason"] as? String == "not_configured")
+        #expect(properties["mode_name"] == nil)
+    }
+
+    // MARK: - transcription_copied
+
+    @Test func transcriptionCopiedIncludesIdAndSource() {
+        let id = UUID()
+        let properties = TelemetryService.transcriptionCopiedEventProperties(transcriptionId: id, source: "hover_button")
+
+        #expect(properties.count == 2)
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["source"] as? String == "hover_button")
+    }
+
+    // MARK: - transcription_discarded
+
+    @Test func transcriptionDiscardedIncludesIdWhenPresent() {
+        let id = UUID()
+        let properties = TelemetryService.transcriptionDiscardedEventProperties(transcriptionId: id, reason: "cancelled")
+
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["reason"] as? String == "cancelled")
+    }
+
+    @Test func transcriptionDiscardedOmitsIdWhenNil() {
+        // A recording cancelled before the pipeline ever creates a completed Transcription
+        // record has no id to key on — must not crash, and must simply omit the field.
+        let properties = TelemetryService.transcriptionDiscardedEventProperties(transcriptionId: nil, reason: "cancelled")
+
+        #expect(properties["transcription_id"] == nil)
+        #expect(properties["reason"] as? String == "cancelled")
+    }
+
+    // MARK: - model_switched
+
+    @Test func modelSwitchedIncludesFromAndToModel() {
+        let properties = TelemetryService.modelSwitchedEventProperties(fromModel: "Whisper Large v3", toModel: "Parakeet V3")
+
+        #expect(properties["from_model"] as? String == "Whisper Large v3")
+        #expect(properties["to_model"] as? String == "Parakeet V3")
+    }
+
+    @Test func modelSwitchedOmitsFromModelWhenThereWasNoPreviousModel() {
+        // First-ever model selection (no prior default) has no "from" side.
+        let properties = TelemetryService.modelSwitchedEventProperties(fromModel: nil, toModel: "Parakeet V3")
+
+        #expect(properties["from_model"] == nil)
+        #expect(properties["to_model"] as? String == "Parakeet V3")
+    }
 }

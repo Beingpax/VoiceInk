@@ -3,6 +3,10 @@ import SwiftUI
 struct CopyIconButton: View {
     let textToCopy: String
     var accessibilityLabel: LocalizedStringResource = "Copy"
+    // Optional: only transcription-output copies should fire transcription_copied — other
+    // uses of this shared button (e.g. copying AI request debug text) pass nil and stay silent.
+    var transcriptionId: UUID?
+    var telemetrySource: String = "unknown"
     @State private var copied = false
 
     var body: some View {
@@ -27,6 +31,9 @@ struct CopyIconButton: View {
 
     private func copy() {
         let _ = ClipboardManager.copyToClipboard(textToCopy)
+        if let transcriptionId {
+            TelemetryService.captureTranscriptionCopied(transcriptionId: transcriptionId, source: telemetrySource)
+        }
         withAnimation { copied = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation { copied = false }
@@ -39,14 +46,18 @@ extension View {
         textToCopy: String,
         accessibilityLabel: LocalizedStringResource = "Copy",
         alignment: Alignment = .bottomTrailing,
-        padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 8)
+        padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 8),
+        transcriptionId: UUID? = nil,
+        telemetrySource: String = "unknown"
     ) -> some View {
         modifier(
             HoverCopyButtonModifier(
                 textToCopy: textToCopy,
                 accessibilityLabel: accessibilityLabel,
                 alignment: alignment,
-                padding: padding
+                padding: padding,
+                transcriptionId: transcriptionId,
+                telemetrySource: telemetrySource
             )
         )
     }
@@ -57,6 +68,8 @@ private struct HoverCopyButtonModifier: ViewModifier {
     let accessibilityLabel: LocalizedStringResource
     let alignment: Alignment
     let padding: EdgeInsets
+    var transcriptionId: UUID?
+    var telemetrySource: String = "unknown"
 
     @State private var isHovering = false
 
@@ -64,9 +77,12 @@ private struct HoverCopyButtonModifier: ViewModifier {
         content
             .overlay(alignment: alignment) {
                 if isHovering {
-                    CopyIconButton(textToCopy: textToCopy, accessibilityLabel: accessibilityLabel)
-                        .padding(padding)
-                        .transition(.opacity)
+                    CopyIconButton(
+                        textToCopy: textToCopy, accessibilityLabel: accessibilityLabel,
+                        transcriptionId: transcriptionId, telemetrySource: telemetrySource
+                    )
+                    .padding(padding)
+                    .transition(.opacity)
                 }
             }
             .contentShape(Rectangle())
