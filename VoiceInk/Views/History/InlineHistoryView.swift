@@ -1,8 +1,16 @@
 import SwiftData
 import SwiftUI
 
+// Which slice of transcriptions InlineHistoryView is browsing: everything (paginated), or
+// just the golden eval set candidates (PRD.md item 1) — recordings that still have audio.
+enum InlineHistoryMode: Hashable {
+    case all
+    case goldenEvalSet
+}
+
 struct InlineHistoryView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var engine: VoiceInkEngine
     @State private var searchText = ""
     @State private var expandedId: UUID?
     @State private var selectedTranscriptions: Set<Transcription> = []
@@ -15,6 +23,16 @@ struct InlineHistoryView: View {
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
     @State private var isViewCurrentlyVisible = false
+
+    @State private var historyMode: InlineHistoryMode = .all
+    @State private var goldenEvalCandidates: [Transcription] = []
+    @State private var goldenEvalSplitsByTranscriptionId: [UUID: GoldenEvalSplit] = [:]
+    @State private var goldenEvalCounts = GoldenEvalSetService.SplitCounts(control: 0, train: 0, eval: 0)
+    @State private var isShowingBaselineSheet = false
+    @State private var isRunningBaseline = false
+    @State private var baselineSummaries: [WERBaselineHarness.ModelSummary] = []
+    @State private var baselineError: String?
+    @State private var selectedBaselineModelNames: Set<String> = ["Large v3", "Parakeet V3"]
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -59,7 +77,7 @@ struct InlineHistoryView: View {
     }
 
     private var allSelected: Bool {
-        !displayedTranscriptions.isEmpty && displayedTranscriptions.allSatisfy { selectedTranscriptions.contains($0) }
+        !currentTranscriptions.isEmpty && currentTranscriptions.allSatisfy { selectedTranscriptions.contains($0) }
     }
 
     private var panelTranscription: Transcription? {
@@ -79,12 +97,22 @@ struct InlineHistoryView: View {
         panelMode = .info
     }
 
+    private var currentTranscriptions: [Transcription] {
+        historyMode == .goldenEvalSet ? goldenEvalCandidates : displayedTranscriptions
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             topBar
+            modeToggle
+
+            if historyMode == .goldenEvalSet {
+                goldenEvalToolbar
+            }
+
             Divider()
 
-            if displayedTranscriptions.isEmpty && !isLoading {
+            if currentTranscriptions.isEmpty && !isLoading {
                 emptyStateView
             } else {
                 cardListView
@@ -107,6 +135,9 @@ struct InlineHistoryView: View {
             )
         ) {
             panelContent
+        }
+        .sheet(isPresented: $isShowingBaselineSheet) {
+            baselineEvaluationSheet
         }
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
@@ -131,6 +162,11 @@ struct InlineHistoryView: View {
             Task {
                 await resetPagination()
                 await loadInitialContent()
+            }
+        }
+        .onChange(of: historyMode) { _, newMode in
+            if newMode == .goldenEvalSet {
+                Task { await loadGoldenEvalCandidates() }
             }
         }
         .onChange(of: latestTranscriptionIndicator.first?.id) { oldId, newId in
@@ -176,6 +212,35 @@ struct InlineHistoryView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
+    }
+
+    private var modeToggle: some View {
+        Picker("", selection: $historyMode) {
+            Text("All").tag(InlineHistoryMode.all)
+            Text("Golden Eval Set").tag(InlineHistoryMode.goldenEvalSet)
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
+    }
+
+    // Golden eval set toolbar (PRD.md items 1 & 5): split counts plus the WER baseline
+    // trigger, folded into the real primary History screen rather than a separate window.
+    private var goldenEvalToolbar: some View {
+        HStack {
+            Text("Control: \(goldenEvalCounts.control) · Train: \(goldenEvalCounts.train) · Eval: \(goldenEvalCounts.eval)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+            Spacer()
+            Button("Run Baseline Evaluation") {
+                isShowingBaselineSheet = true
+            }
+            .font(.system(size: 11))
+            .disabled(goldenEvalCounts.eval == 0)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
     }
 
     private var selectionBar: some View {
@@ -246,10 +311,10 @@ struct InlineHistoryView: View {
             Image(systemName: "doc.text.magnifyingglass")
                 .font(.system(size: 40))
                 .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "No transcriptions yet" : "No results found")
+            Text(emptyStateTitle)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "Your transcription history will appear here" : "Try a different search term")
+            Text(emptyStateSubtitle)
                 .font(.system(size: 13))
                 .foregroundColor(.secondary.opacity(0.8))
             Spacer()
@@ -257,16 +322,34 @@ struct InlineHistoryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private var emptyStateTitle: String {
+        if historyMode == .goldenEvalSet {
+            return String(localized: "No candidates with audio yet")
+        }
+        return searchText.isEmpty
+            ? String(localized: "No transcriptions yet") : String(localized: "No results found")
+    }
+
+    private var emptyStateSubtitle: String {
+        if historyMode == .goldenEvalSet {
+            return String(localized: "Recordings that still have their audio file on disk will appear here")
+        }
+        return searchText.isEmpty
+            ? String(localized: "Your transcription history will appear here")
+            : String(localized: "Try a different search term")
+    }
+
     // MARK: - Card List
 
     private var cardListView: some View {
         Form {
-            ForEach(displayedTranscriptions) { transcription in
+            ForEach(currentTranscriptions) { transcription in
                 Section {
                     HistoryCardRow(
                         transcription: transcription,
                         isExpanded: expandedId == transcription.id,
                         isChecked: selectedTranscriptions.contains(transcription),
+                        goldenEvalSplit: goldenEvalSplitsByTranscriptionId[transcription.id],
                         onToggleExpand: {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 expandedId = expandedId == transcription.id ? nil : transcription.id
@@ -280,7 +363,7 @@ struct InlineHistoryView: View {
                 }
             }
 
-            if hasMoreContent {
+            if historyMode == .all && hasMoreContent {
                 Section {
                     Button(action: {
                         Task { await loadMoreContent() }
@@ -424,15 +507,24 @@ struct InlineHistoryView: View {
             do {
                 try modelContext.save()
                 NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                await loadInitialContent()
             } catch {
                 print("Error saving deletion: \(error.localizedDescription)")
+            }
+
+            if historyMode == .goldenEvalSet {
+                await loadGoldenEvalCandidates()
+            } else {
                 await loadInitialContent()
             }
         }
     }
 
     private func selectAllTranscriptions() async {
+        guard historyMode == .all else {
+            selectedTranscriptions = Set(goldenEvalCandidates)
+            return
+        }
+
         do {
             var allDescriptor = FetchDescriptor<Transcription>()
 
@@ -460,6 +552,177 @@ struct InlineHistoryView: View {
             print("Error selecting all transcriptions: \(error)")
         }
     }
+
+    @MainActor
+    private func loadGoldenEvalCandidates() async {
+        do {
+            let all = try modelContext.fetch(
+                FetchDescriptor<Transcription>(sortBy: [SortDescriptor(\.timestamp, order: .reverse)]))
+            goldenEvalCandidates = all.filter { GoldenEvalSetService.hasAudioFile($0) }
+
+            let entries = try modelContext.fetch(FetchDescriptor<GoldenEvalEntry>())
+            goldenEvalSplitsByTranscriptionId = Dictionary(
+                uniqueKeysWithValues: entries.map { ($0.transcriptionId, $0.split) })
+
+            refreshGoldenEvalCounts()
+        } catch {
+            print("Error loading golden eval candidates: \(error)")
+        }
+    }
+
+    private func refreshGoldenEvalCounts() {
+        goldenEvalCounts = (try? GoldenEvalSetService.splitCounts(in: modelContext))
+            ?? GoldenEvalSetService.SplitCounts(control: 0, train: 0, eval: 0)
+    }
+
+    private var baselineEvaluationSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Baseline WER Evaluation")
+                .font(.system(size: 15, weight: .semibold))
+
+            Text(
+                "Runs every held-out eval-split recording (\(goldenEvalCounts.eval)) through the selected models, scoring each against its verified ground truth. Only models that are already downloaded (or have an API key configured) are listed."
+            )
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Models (downloaded / API key configured)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+
+                ForEach(engine.transcriptionModelManager.usableModels, id: \.displayName) { model in
+                    Toggle(
+                        model.displayName,
+                        isOn: Binding(
+                            get: { selectedBaselineModelNames.contains(model.displayName) },
+                            set: { isOn in
+                                if isOn {
+                                    selectedBaselineModelNames.insert(model.displayName)
+                                } else {
+                                    selectedBaselineModelNames.remove(model.displayName)
+                                }
+                            }
+                        )
+                    )
+                    .font(.system(size: 12))
+                }
+            }
+            .frame(maxHeight: 160)
+
+            if isRunningBaseline {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Evaluating…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let baselineError {
+                Text(baselineError)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppTheme.Status.error)
+            }
+
+            if !baselineSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(baselineSummaries, id: \.modelDisplayName) { summary in
+                        HStack {
+                            Text(summary.modelDisplayName)
+                                .font(.system(size: 13, weight: .medium))
+                            Spacer()
+                            Text(String(format: "%.1f%% WER", summary.meanWordErrorRate * 100))
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("(\(summary.evaluatedCount) evaluated, \(summary.failedCount) failed)")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(10)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                .fill(AppTheme.Surface.subtle)
+                        )
+                    }
+                }
+            }
+
+            HStack {
+                Button(baselineSummaries.isEmpty ? "Run Now" : "Run Again") {
+                    runBaselineEvaluation()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRunningBaseline || selectedBaselineModelNames.isEmpty)
+
+                Button("Close") {
+                    isShowingBaselineSheet = false
+                }
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 480)
+    }
+
+    @MainActor
+    private func runBaselineEvaluation() {
+        baselineError = nil
+        isRunningBaseline = true
+
+        Task { @MainActor in
+            defer { isRunningBaseline = false }
+
+            do {
+                let evalRawValue = GoldenEvalSplit.eval.rawValue
+                let evalEntries = try modelContext.fetch(
+                    FetchDescriptor<GoldenEvalEntry>(
+                        predicate: #Predicate<GoldenEvalEntry> { $0.splitRawValue == evalRawValue }))
+
+                var evalCandidates: [WERBaselineHarness.Candidate] = []
+                for entry in evalEntries {
+                    let transcriptionId = entry.transcriptionId
+                    var descriptor = FetchDescriptor<Transcription>(
+                        predicate: #Predicate<Transcription> { $0.id == transcriptionId })
+                    descriptor.fetchLimit = 1
+                    guard let transcription = try modelContext.fetch(descriptor).first,
+                        let urlString = transcription.audioFileURL,
+                        let url = URL(string: urlString)
+                    else { continue }
+
+                    evalCandidates.append(
+                        WERBaselineHarness.Candidate(
+                            entryId: entry.id, referenceText: entry.groundTruthText, audioURL: url))
+                }
+
+                guard !evalCandidates.isEmpty else {
+                    baselineError = String(localized: "No eval-split entries with a valid audio file were found.")
+                    return
+                }
+
+                let models = engine.transcriptionModelManager.usableModels.filter {
+                    selectedBaselineModelNames.contains($0.displayName)
+                }
+
+                guard !models.isEmpty else {
+                    baselineError = String(localized: "Select at least one model to evaluate.")
+                    return
+                }
+
+                let transcriber = TranscriptionServiceRegistryTranscriber(registry: engine.serviceRegistry)
+                let runLabel = "baseline-\(Int(Date().timeIntervalSince1970))"
+
+                baselineSummaries = await WERBaselineHarness.run(
+                    candidates: evalCandidates,
+                    models: models,
+                    runLabel: runLabel,
+                    transcriber: transcriber,
+                    in: modelContext
+                )
+            } catch {
+                baselineError = String(localized: "Failed to run baseline evaluation.")
+            }
+        }
+    }
 }
 
 private enum InlineHistoryPanelMode {
@@ -474,11 +737,17 @@ private struct HistoryCardRow: View {
     let transcription: Transcription
     let isExpanded: Bool
     let isChecked: Bool
+    var goldenEvalSplit: GoldenEvalSplit? = nil
     let onToggleExpand: () -> Void
     let onToggleCheck: () -> Void
     let onShowInfo: () -> Void
 
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: TranscriptionTab = .original
+    @State private var groundTruthText: String = ""
+    @State private var goldenEvalEntry: GoldenEvalEntry?
+    @State private var goldenEvalErrorMessage: String?
+    @State private var hasLoadedGoldenEvalEntry = false
 
     private var displayText: String {
         switch selectedTab {
@@ -522,6 +791,15 @@ private struct HistoryCardRow: View {
                             Image(systemName: "flag.fill")
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundColor(AppTheme.Status.warningStrong)
+                        }
+
+                        if let goldenEvalSplit {
+                            Text(splitLabel(goldenEvalSplit))
+                                .font(.system(size: 8, weight: .semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(splitColor(goldenEvalSplit)))
+                                .foregroundColor(.white)
                         }
                     }
 
@@ -597,6 +875,9 @@ private struct HistoryCardRow: View {
                 Divider()
                 AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
                     .padding(.vertical, 4)
+
+                Divider()
+                goldenEvalSetSection
             } else {
                 HStack {
                     Spacer()
@@ -609,6 +890,124 @@ private struct HistoryCardRow: View {
                     .help("View details")
                 }
             }
+        }
+        .onAppear {
+            guard !hasLoadedGoldenEvalEntry else { return }
+            hasLoadedGoldenEvalEntry = true
+            loadGoldenEvalEntry()
+        }
+    }
+
+    // Inline golden eval set panel (ADR-0009, PRD.md "Golden eval set / WER tooling UI
+    // integration") — folded into InlineHistoryView's expandable row rather than a separate
+    // window. No train/eval/control picker: GoldenEvalSetService.verify categorizes
+    // automatically based on whether groundTruthText differs from VoiceInk's original transcript.
+    private var goldenEvalSetSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Golden Eval Set")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                if let goldenEvalEntry {
+                    Text(splitLabel(goldenEvalEntry.split))
+                        .font(.system(size: 9, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(splitColor(goldenEvalEntry.split)))
+                        .foregroundColor(.white)
+                }
+            }
+
+            Text("Ground truth (edit if VoiceInk got it wrong, then mark verified)")
+                .font(.system(size: 10))
+                .foregroundColor(.secondary)
+
+            TextEditor(text: $groundTruthText)
+                .font(.system(size: 13))
+                .frame(minHeight: 80)
+                .padding(6)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                        .fill(AppTheme.Surface.materialCard)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                .strokeBorder(AppTheme.Border.subtle, lineWidth: 1)
+                        }
+                )
+
+            HStack {
+                Button(goldenEvalEntry == nil ? "Mark Verified" : "Update") {
+                    verifyGoldenEval()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                if goldenEvalEntry != nil {
+                    Button("Remove", role: .destructive) {
+                        removeGoldenEval()
+                    }
+                    .controlSize(.small)
+                }
+
+                if let goldenEvalErrorMessage {
+                    Text(goldenEvalErrorMessage)
+                        .font(.system(size: 11))
+                        .foregroundColor(AppTheme.Status.error)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func splitLabel(_ split: GoldenEvalSplit) -> String {
+        switch split {
+        case .control: return "Control"
+        case .train: return "Train"
+        case .eval: return "Eval"
+        }
+    }
+
+    private func splitColor(_ split: GoldenEvalSplit) -> Color {
+        switch split {
+        case .control: return AppTheme.Data.purple
+        case .train: return AppTheme.Status.infoStrong
+        case .eval: return AppTheme.Status.positive
+        }
+    }
+
+    private func loadGoldenEvalEntry() {
+        goldenEvalErrorMessage = nil
+        do {
+            let entry = try GoldenEvalSetService.entry(for: transcription.id, in: modelContext)
+            goldenEvalEntry = entry
+            groundTruthText = entry?.groundTruthText ?? (transcription.enhancedText ?? transcription.text)
+        } catch {
+            goldenEvalErrorMessage = String(localized: "Failed to load golden eval entry")
+        }
+    }
+
+    private func verifyGoldenEval() {
+        do {
+            goldenEvalEntry = try GoldenEvalSetService.verify(
+                transcriptionId: transcription.id,
+                originalText: transcription.enhancedText ?? transcription.text,
+                groundTruthText: groundTruthText,
+                in: modelContext
+            )
+            goldenEvalErrorMessage = nil
+        } catch {
+            goldenEvalErrorMessage = String(localized: "Failed to save golden eval entry")
+        }
+    }
+
+    private func removeGoldenEval() {
+        do {
+            try GoldenEvalSetService.remove(transcriptionId: transcription.id, in: modelContext)
+            goldenEvalEntry = nil
+            goldenEvalErrorMessage = nil
+        } catch {
+            goldenEvalErrorMessage = String(localized: "Failed to remove golden eval entry")
         }
     }
 }
