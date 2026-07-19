@@ -34,6 +34,10 @@ struct InlineHistoryView: View {
     @State private var baselineError: String?
     @State private var selectedBaselineModelNames: Set<String> = ["Large v3", "Parakeet V3"]
 
+    @State private var isShowingEnhancementImpactSheet = false
+    @State private var enhancementImpactReport: EnhancementImpactService.Report?
+    @State private var enhancementImpactError: String?
+
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
 
@@ -139,6 +143,9 @@ struct InlineHistoryView: View {
         .sheet(isPresented: $isShowingBaselineSheet) {
             baselineEvaluationSheet
         }
+        .sheet(isPresented: $isShowingEnhancementImpactSheet) {
+            enhancementImpactSheet
+        }
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
                 deleteSelectedTranscriptions()
@@ -235,6 +242,13 @@ struct InlineHistoryView: View {
                 .foregroundColor(.secondary)
                 .accessibilityIdentifier("history.goldenEvalCounts")
             Spacer()
+            Button("Enhancement Impact") {
+                runEnhancementImpactReport()
+                isShowingEnhancementImpactSheet = true
+            }
+            .font(.system(size: 11))
+            .disabled(goldenEvalCounts.control + goldenEvalCounts.train + goldenEvalCounts.eval == 0)
+            .accessibilityIdentifier("history.enhancementImpact")
             Button("Run Baseline Evaluation") {
                 isShowingBaselineSheet = true
             }
@@ -244,6 +258,107 @@ struct InlineHistoryView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 10)
+    }
+
+    private func runEnhancementImpactReport() {
+        enhancementImpactError = nil
+        do {
+            enhancementImpactReport = try EnhancementImpactService.computeReport(in: modelContext)
+        } catch {
+            enhancementImpactError = String(localized: "Failed to compute enhancement impact report.")
+        }
+    }
+
+    // WER-based, not a raw text diff: both the original transcript and the enhanced text are
+    // scored against the same verified ground truth with the same WordErrorRateCalculator —
+    // apples to apples, so a lower WER after enhancement really means "closer to correct."
+    private var enhancementImpactSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Enhancement Impact")
+                .font(.system(size: 15, weight: .semibold))
+
+            Text(
+                "Compares every verified recording's raw transcript and its enhanced text, both scored against your verified ground truth with the same Word Error Rate methodology."
+            )
+            .font(.system(size: 12))
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if let enhancementImpactError {
+                Text(enhancementImpactError)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppTheme.Status.error)
+            } else if let report = enhancementImpactReport {
+                if report.entries.isEmpty {
+                    Text("No verified recordings have enhanced text yet.")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(String(format: "Mean WER before: %.1f%%", report.meanWERBefore * 100))
+                            Spacer()
+                            Text(String(format: "Mean WER after: %.1f%%", report.meanWERAfter * 100))
+                        }
+                        .font(.system(size: 13, weight: .medium))
+
+                        Text(
+                            "Improved: \(report.improvedCount) · Regressed: \(report.regressedCount) · Unchanged: \(report.unchangedCount)"
+                        )
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                            .fill(AppTheme.Surface.subtle)
+                    )
+
+                    if !report.worstRegressions.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Worst regressions — where enhancement is hurting accuracy")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(report.worstRegressions, id: \.transcriptionId) { entry in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(
+                                                String(
+                                                    format: "WER %.0f%% \u{2192} %.0f%%", entry.werBefore * 100,
+                                                    entry.werAfter * 100)
+                                            )
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundColor(AppTheme.Status.error)
+                                            Text("Original: \(entry.originalText)")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                            Text("Enhanced: \(entry.enhancedText)")
+                                                .font(.system(size: 11))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(8)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                                                .fill(AppTheme.Surface.subtle)
+                                        )
+                                    }
+                                }
+                            }
+                            .frame(maxHeight: 220)
+                        }
+                    }
+                }
+            }
+
+            Button("Close") {
+                isShowingEnhancementImpactSheet = false
+            }
+        }
+        .padding(20)
+        .frame(minWidth: 480)
     }
 
     private var selectionBar: some View {
@@ -762,26 +877,10 @@ private struct HistoryCardRow: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var selectedTab: TranscriptionTab = .original
-    @State private var isShowingEnhancementDiff = false
     @State private var groundTruthText: String = ""
     @State private var goldenEvalEntry: GoldenEvalEntry?
     @State private var goldenEvalErrorMessage: String?
     @State private var hasLoadedGoldenEvalEntry = false
-
-    // What AI Enhancement (e.g. Apple Intelligence) actually changed vs the raw transcript —
-    // word-level, preserving casing/punctuation (unlike WER's normalized comparison) since a
-    // casing or punctuation fix is exactly the kind of change worth seeing here.
-    private var enhancementDiff: [WordLevelDiff.Operation] {
-        guard let enhancedText = transcription.enhancedText else { return [] }
-        return WordLevelDiff.compute(original: transcription.text, enhanced: enhancedText)
-    }
-
-    private var enhancementDiffSummary: String {
-        let changed = enhancementDiff.filter { if case .equal = $0 { return false }; return true }.count
-        return changed == 0
-            ? String(localized: "No changes")
-            : String(format: String(localized: "%lld change(s)"), Int64(changed))
-    }
 
     private var displayText: String {
         switch selectedTab {
@@ -888,26 +987,7 @@ private struct HistoryCardRow: View {
                         }
                         .buttonStyle(.plain)
                     }
-
                     Spacer()
-
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            isShowingEnhancementDiff.toggle()
-                        }
-                    } label: {
-                        Text(isShowingEnhancementDiff ? "Hide Changes" : "Show Changes (\(enhancementDiffSummary))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isShowingEnhancementDiff ? .primary : .secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(
-                                Capsule()
-                                    .fill(isShowingEnhancementDiff ? AppTheme.Surface.controlActive : Color.clear)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("history.showEnhancementChanges")
                 }
             }
 
@@ -919,18 +999,14 @@ private struct HistoryCardRow: View {
             // the window's edge with no way to reach them.
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    if isShowingEnhancementDiff {
-                        enhancementDiffView
-                    } else {
-                        MarkdownContentView(
-                            displayText,
-                            fontSize: 14,
-                            foregroundColor: AppTheme.Text.primary
-                        )
-                        .hoverCopyButton(
-                            textToCopy: displayText, transcriptionId: transcription.id,
-                            telemetrySource: "hover_button")
-                    }
+                    MarkdownContentView(
+                        displayText,
+                        fontSize: 14,
+                        foregroundColor: AppTheme.Text.primary
+                    )
+                    .hoverCopyButton(
+                        textToCopy: displayText, transcriptionId: transcription.id,
+                        telemetrySource: "hover_button")
 
                     if hasAudioFile, let urlString = transcription.audioFileURL,
                         let url = URL(string: urlString)
@@ -962,47 +1038,6 @@ private struct HistoryCardRow: View {
             hasLoadedGoldenEvalEntry = true
             loadGoldenEvalEntry()
         }
-    }
-
-    // Word-level highlight of what AI Enhancement changed vs the raw transcript — deletions
-    // struck through in red, insertions underlined in green, matching the WER
-    // substitution/deletion/insertion vocabulary already used elsewhere in this app, but on
-    // original (non-normalized) text so casing/punctuation fixes are visible too.
-    private var enhancementDiffView: some View {
-        Group {
-            if enhancementDiff.isEmpty {
-                Text("No enhanced text to compare.")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-            } else {
-                enhancementDiff.reduce(Text("")) { partial, operation in
-                    switch operation {
-                    case .equal(let word):
-                        return partial + Text(word + " ")
-                    case .deletion(let word):
-                        return partial
-                            + Text(word + " ")
-                            .strikethrough()
-                            .foregroundColor(AppTheme.Status.error)
-                    case .insertion(let word):
-                        return partial
-                            + Text(word + " ")
-                            .underline()
-                            .foregroundColor(AppTheme.Status.positive)
-                    case .substitution(let from, let to):
-                        return partial
-                            + Text(from + " ")
-                            .strikethrough()
-                            .foregroundColor(AppTheme.Status.error)
-                            + Text(to + " ")
-                            .underline()
-                            .foregroundColor(AppTheme.Status.positive)
-                    }
-                }
-                .font(.system(size: 14))
-            }
-        }
-        .accessibilityIdentifier("history.enhancementDiff")
     }
 
     // Inline golden eval set panel (ADR-0009, PRD.md "Golden eval set / WER tooling UI
