@@ -40,11 +40,23 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
     }
 
     var finalPromptText: String {
-        if useSystemInstructions {
-            return String(format: AIPrompts.enhancementSystemTemplate, self.promptText)
-        } else {
-            return self.promptText
-        }
+        finalPromptText(for: nil)
+    }
+
+    // Apple Intelligence gets a compact template (AIPrompts.appleIntelligenceEnhancementSystemTemplate)
+    // instead of the full multi-section one — the on-device model loses track of instructions in
+    // the longer prompt and either echoes the scaffolding back or answers the dictation as a
+    // chat message. See that constant's doc comment for the measured evidence. Prompts with
+    // useSystemInstructions == false (e.g. Rewrite, Assistant) are already complete,
+    // provider-agnostic instructions and are returned as-is regardless of provider.
+    func finalPromptText(for provider: AIProvider?) -> String {
+        guard useSystemInstructions else { return self.promptText }
+
+        let template =
+            provider == .appleIntelligence
+            ? AIPrompts.appleIntelligenceEnhancementSystemTemplate
+            : AIPrompts.enhancementSystemTemplate
+        return String(format: template, self.promptText)
     }
 }
 

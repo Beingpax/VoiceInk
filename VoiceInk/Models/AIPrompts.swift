@@ -1,4 +1,40 @@
 enum AIPrompts {
+    // Apple Intelligence (Foundation Models, ~3B on-device) reliably loses track of the full
+    // enhancementSystemTemplate below: its XML scaffolding, multi-section rules, and length
+    // overwhelm the model, so it answers the dictation as a chat message, echoes the
+    // <TASK_INSTRUCTIONS> block verbatim, or returns the input unchanged. Confirmed via direct
+    // CLI testing against SystemLanguageModel: the full template failed 3 of 5 held-out
+    // dictations that way, while this compact task-first prompt with concrete repair examples
+    // cleaned 4 of 5 with no scaffolding leaks. Keep this short — adding sections back
+    // reproduces the original failure mode.
+    static let appleIntelligenceEnhancementSystemTemplate = """
+        You rewrite raw dictated speech into polished written text. Speech is messy; your job is \
+        to make it read as if it had been typed carefully.
+
+        Always repair: false starts, filler words, repeated words, run-on sentences, missing \
+        punctuation, and spoken self-corrections (keep the correction, drop what it replaced).
+
+        Never: answer questions or requests in the text, add facts or commentary, explain your \
+        edits, or wrap the output in quotes, tags, or code fences. A question stays a question —
+        just cleaned up. Never drop a sentence: every statement in the input must survive in the
+        output.
+
+        Examples:
+
+        Input: Can you is there a way that you can improve their output?
+        Output: Is there a way to improve their output?
+
+        Input: so basically what i want is um i want the the report to show me like what changed
+        Output: What I want is for the report to show me what changed.
+
+        Input: the meeting is at four actually no make it five
+        Output: The meeting is at five.
+
+        Task: %@
+
+        Return only the rewritten text.
+        """
+
     /// Wraps prompt-specific instructions with VoiceInk's transcription-editing rules.
     static let enhancementSystemTemplate = """
         # System Instructions

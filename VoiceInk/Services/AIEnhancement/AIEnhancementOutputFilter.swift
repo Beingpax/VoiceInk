@@ -18,7 +18,59 @@ struct AIEnhancementOutputFilter {
         }
 
         processedText = processedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        processedText = strippingLeakedPromptScaffolding(processedText)
+        processedText = strippingMarkdownCodeFence(processedText)
         return strippingChatPreamble(processedText)
+    }
+
+    // Observed verbatim from a model that lost track of the system prompt and echoed its own
+    // instructions back before the real answer:
+    //   <TASK_INSTRUCTIONS>\n...rules the model was given...\n</TASK_INSTRUCTIONS>\n\n<OUTPUT>\nthe actual answer
+    // VoiceInk's own prompt template (AIPrompts.enhancementSystemTemplate) and request
+    // formatting are the only source of these exact tag names, so treating them as leaked
+    // scaffolding rather than dictated content is safe.
+    private static func strippingLeakedPromptScaffolding(_ text: String) -> String {
+        // <OUTPUT> marks the true start of the model's answer — trust it completely and discard
+        // everything before it, including any echoed (and possibly malformed/unclosed) instruction
+        // blocks. This is the exact shape observed, so it's handled directly rather than relying
+        // on well-formed nested tags.
+        if let outputRange = text.range(of: "<OUTPUT>") {
+            var remainder = String(text[outputRange.upperBound...])
+            if let closeRange = remainder.range(of: "</OUTPUT>") {
+                remainder = String(remainder[..<closeRange.lowerBound])
+            }
+            return remainder.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        var processedText = text
+        let scaffoldingTags = [
+            "TASK_INSTRUCTIONS", "CUSTOM_VOCABULARY", "CURRENTLY_SELECTED_TEXT",
+            "CLIPBOARD_CONTEXT", "CURRENT_WINDOW_CONTEXT", "USER_MESSAGE",
+        ]
+        for tag in scaffoldingTags {
+            let pattern = "(?s)<\(tag)>.*?</\(tag)>"
+            if let regex = try? NSRegularExpression(pattern: pattern) {
+                let range = NSRange(processedText.startIndex..., in: processedText)
+                processedText = regex.stringByReplacingMatches(
+                    in: processedText, options: [], range: range, withTemplate: "")
+            }
+        }
+        return processedText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // A response fully wrapped in a markdown code fence (```markdown\n...\n``` or ```\n...\n```,
+    // observed verbatim from Apple Intelligence) is model formatting habit, not dictated content
+    // — dictated speech doesn't naturally start and end with triple backticks. Anchored to the
+    // whole string so a backtick the user actually dictated mid-sentence is left alone.
+    private static func strippingMarkdownCodeFence(_ text: String) -> String {
+        let fencePattern = #"(?s)^```[a-zA-Z]*\n(.*)\n```$"#
+        guard let regex = try? NSRegularExpression(pattern: fencePattern),
+            let match = regex.firstMatch(in: text, options: [], range: NSRange(text.startIndex..., in: text)),
+            let captureRange = Range(match.range(at: 1), in: text)
+        else {
+            return text
+        }
+        return String(text[captureRange]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // Small on-device models (notably Apple Intelligence) sometimes ignore "return only the
