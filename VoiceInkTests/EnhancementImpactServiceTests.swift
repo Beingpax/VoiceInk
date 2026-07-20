@@ -120,4 +120,108 @@ struct EnhancementImpactServiceTests {
 
         #expect(report.entries.isEmpty)
     }
+
+    // MARK: - Backfill (verified recordings dictated before enhancement was enabled)
+
+    @Test func missingEnhancedTextListsOnlyVerifiedRecordingsWithoutEnhancement() throws {
+        let context = try makeContext()
+        let needsBackfill = addVerifiedRecording(
+            text: "raw only", enhancedText: nil, groundTruth: "raw only", in: context)
+        addVerifiedRecording(
+            text: "already done", enhancedText: "Already done.", groundTruth: "already done", in: context)
+        context.insert(Transcription(text: "unverified", duration: 1.0))
+
+        let missing = try EnhancementImpactService.verifiedRecordingsMissingEnhancedText(in: context)
+
+        #expect(missing.map(\.id) == [needsBackfill.id])
+    }
+
+    @Test func emptyStringEnhancedTextCountsAsMissing() throws {
+        let context = try makeContext()
+        addVerifiedRecording(text: "raw", enhancedText: "", groundTruth: "raw", in: context)
+
+        let missing = try EnhancementImpactService.verifiedRecordingsMissingEnhancedText(in: context)
+
+        #expect(missing.count == 1)
+    }
+
+    @MainActor
+    @Test func backfillWritesEnhancedTextAndModelName() async throws {
+        let context = try makeContext()
+        let transcription = addVerifiedRecording(
+            text: "helo world", enhancedText: nil, groundTruth: "hello world", in: context)
+
+        let outcome = await EnhancementImpactService.backfillEnhancedText(
+            for: [transcription],
+            in: context,
+            modelName: "on-device",
+            enhance: { _ in "hello world" }
+        )
+
+        #expect(outcome.enhancedCount == 1)
+        #expect(outcome.failedCount == 0)
+        #expect(transcription.enhancedText == "hello world")
+        #expect(transcription.aiEnhancementModelName == "on-device")
+    }
+
+    @MainActor
+    @Test func backfillFailureSkipsRecordingAndContinues() async throws {
+        let context = try makeContext()
+        let failing = addVerifiedRecording(text: "fails", enhancedText: nil, groundTruth: "fails", in: context)
+        let succeeding = addVerifiedRecording(text: "works", enhancedText: nil, groundTruth: "works", in: context)
+
+        struct FakeError: Error {}
+        let outcome = await EnhancementImpactService.backfillEnhancedText(
+            for: [failing, succeeding],
+            in: context,
+            modelName: "on-device",
+            enhance: { text in
+                if text == "fails" { throw FakeError() }
+                return "Works."
+            }
+        )
+
+        #expect(outcome.enhancedCount == 1)
+        #expect(outcome.failedCount == 1)
+        #expect(failing.enhancedText == nil)
+        #expect(succeeding.enhancedText == "Works.")
+    }
+
+    @MainActor
+    @Test func backfillTreatsEmptyEnhancementResultAsFailure() async throws {
+        let context = try makeContext()
+        let transcription = addVerifiedRecording(text: "raw", enhancedText: nil, groundTruth: "raw", in: context)
+
+        let outcome = await EnhancementImpactService.backfillEnhancedText(
+            for: [transcription],
+            in: context,
+            modelName: nil,
+            enhance: { _ in "" }
+        )
+
+        #expect(outcome.enhancedCount == 0)
+        #expect(outcome.failedCount == 1)
+        #expect(transcription.enhancedText == nil)
+    }
+
+    @MainActor
+    @Test func backfilledRecordingsBecomeScoreableInTheReport() async throws {
+        let context = try makeContext()
+        let transcription = addVerifiedRecording(
+            text: "helo wrold", enhancedText: nil, groundTruth: "hello world", in: context)
+
+        #expect(try EnhancementImpactService.computeReport(in: context).entries.isEmpty)
+
+        _ = await EnhancementImpactService.backfillEnhancedText(
+            for: [transcription],
+            in: context,
+            modelName: "on-device",
+            enhance: { _ in "hello world" }
+        )
+
+        let report = try EnhancementImpactService.computeReport(in: context)
+        #expect(report.entries.count == 1)
+        #expect(report.entries[0].werAfter == 0)
+        #expect(report.improvedCount == 1)
+    }
 }

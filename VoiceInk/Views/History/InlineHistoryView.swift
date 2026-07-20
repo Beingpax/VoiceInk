@@ -37,6 +37,9 @@ struct InlineHistoryView: View {
     @State private var isShowingEnhancementImpactSheet = false
     @State private var enhancementImpactReport: EnhancementImpactService.Report?
     @State private var enhancementImpactError: String?
+    @State private var enhancementBackfillCandidates: [Transcription] = []
+    @State private var isBackfillingEnhancement = false
+    @State private var enhancementBackfillProgress: String?
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -264,8 +267,62 @@ struct InlineHistoryView: View {
         enhancementImpactError = nil
         do {
             enhancementImpactReport = try EnhancementImpactService.computeReport(in: modelContext)
+            enhancementBackfillCandidates = try EnhancementImpactService.verifiedRecordingsMissingEnhancedText(
+                in: modelContext)
         } catch {
             enhancementImpactError = String(localized: "Failed to compute enhancement impact report.")
+        }
+    }
+
+    // Recordings verified before AI enhancement was enabled have ground truth but no enhanced
+    // text; running their stored raw transcripts through the current enhancement provider makes
+    // them scoreable without re-dictating anything.
+    private func backfillEnhancementForVerifiedRecordings() {
+        guard let enhancementService = engine.enhancementService,
+            let aiService = enhancementService.getAIService()
+        else {
+            enhancementImpactError = String(localized: "AI enhancement is not available.")
+            return
+        }
+
+        let configuration = ModeRuntimeResolver.currentEnhancementConfiguration(
+            enhancementService: enhancementService,
+            aiService: aiService
+        )
+
+        guard enhancementService.isConfigured(for: configuration) else {
+            enhancementImpactError = String(
+                localized: "No enhancement provider is configured. Enable AI Enhancement for a mode first.")
+            return
+        }
+
+        let candidates = enhancementBackfillCandidates
+        isBackfillingEnhancement = true
+        enhancementImpactError = nil
+
+        Task {
+            let outcome = await EnhancementImpactService.backfillEnhancedText(
+                for: candidates,
+                in: modelContext,
+                modelName: configuration.modelName ?? configuration.provider?.defaultModel,
+                enhance: { text in
+                    let (enhancedText, _, _) = try await enhancementService.enhance(
+                        text, configuration: configuration)
+                    return enhancedText
+                },
+                progress: { current, total in
+                    enhancementBackfillProgress = String(
+                        format: String(localized: "Enhancing %d of %d…"), current, total)
+                }
+            )
+
+            isBackfillingEnhancement = false
+            enhancementBackfillProgress = nil
+            runEnhancementImpactReport()
+            if outcome.failedCount > 0 {
+                enhancementImpactError = String(
+                    format: String(localized: "%d recording(s) could not be enhanced."), outcome.failedCount)
+            }
         }
     }
 
@@ -288,11 +345,44 @@ struct InlineHistoryView: View {
                 Text(enhancementImpactError)
                     .font(.system(size: 12))
                     .foregroundColor(AppTheme.Status.error)
-            } else if let report = enhancementImpactReport {
-                if report.entries.isEmpty {
-                    Text("No verified recordings have enhanced text yet.")
-                        .font(.system(size: 13))
+            }
+
+            if !enhancementBackfillCandidates.isEmpty || isBackfillingEnhancement {
+                HStack(spacing: 10) {
+                    if isBackfillingEnhancement {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text(enhancementBackfillProgress ?? String(localized: "Enhancing…"))
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text(
+                            "\(enhancementBackfillCandidates.count) verified recording(s) have no enhanced text yet."
+                        )
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Enhance Now") {
+                            backfillEnhancementForVerifiedRecordings()
+                        }
+                        .font(.system(size: 12))
+                        .accessibilityIdentifier("history.enhanceVerifiedNow")
+                    }
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.card, style: .continuous)
+                        .fill(AppTheme.Surface.subtle)
+                )
+            }
+
+            if enhancementImpactError == nil, let report = enhancementImpactReport {
+                if report.entries.isEmpty {
+                    if enhancementBackfillCandidates.isEmpty && !isBackfillingEnhancement {
+                        Text("No verified recordings have enhanced text yet.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {

@@ -43,6 +43,66 @@ enum EnhancementImpactService {
         }
     }
 
+    // Verified recordings the report can't score yet: they have ground truth but were dictated
+    // before AI enhancement was enabled, so no enhanced text was ever produced. These are the
+    // backfill candidates — running their raw transcripts through the current enhancement
+    // provider makes them comparable without re-recording anything.
+    static func verifiedRecordingsMissingEnhancedText(in modelContext: ModelContext) throws -> [Transcription] {
+        let goldenEntries = try modelContext.fetch(FetchDescriptor<GoldenEvalEntry>())
+
+        var missing: [Transcription] = []
+        for goldenEntry in goldenEntries {
+            let transcriptionId = goldenEntry.transcriptionId
+            var descriptor = FetchDescriptor<Transcription>(
+                predicate: #Predicate<Transcription> { $0.id == transcriptionId })
+            descriptor.fetchLimit = 1
+
+            guard let transcription = try modelContext.fetch(descriptor).first else { continue }
+            if transcription.enhancedText?.isEmpty ?? true {
+                missing.append(transcription)
+            }
+        }
+        return missing
+    }
+
+    struct BackfillOutcome {
+        var enhancedCount = 0
+        var failedCount = 0
+    }
+
+    // The enhance closure is injected so this stays unit-testable and provider-agnostic; the
+    // caller passes the same enhancement path live dictations use. Failures skip the recording
+    // and keep going — a partial backfill still grows the report.
+    @MainActor
+    static func backfillEnhancedText(
+        for transcriptions: [Transcription],
+        in modelContext: ModelContext,
+        modelName: String?,
+        enhance: (String) async throws -> String,
+        progress: ((Int, Int) -> Void)? = nil
+    ) async -> BackfillOutcome {
+        var outcome = BackfillOutcome()
+
+        for (index, transcription) in transcriptions.enumerated() {
+            progress?(index + 1, transcriptions.count)
+            do {
+                let enhancedText = try await enhance(transcription.text)
+                guard !enhancedText.isEmpty else {
+                    outcome.failedCount += 1
+                    continue
+                }
+                transcription.enhancedText = enhancedText
+                transcription.aiEnhancementModelName = modelName
+                outcome.enhancedCount += 1
+            } catch {
+                outcome.failedCount += 1
+            }
+        }
+
+        try? modelContext.save()
+        return outcome
+    }
+
     // Only verified (Golden Eval Set) recordings qualify — comparing against anything else
     // wouldn't be "ground truth," it'd just be one AI's output scored against another's.
     static func computeReport(in modelContext: ModelContext) throws -> Report {
