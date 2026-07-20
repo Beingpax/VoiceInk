@@ -40,12 +40,10 @@ class AIEnhancementService: ObservableObject {
         self.screenCaptureService = ScreenCaptureService()
         self.customVocabularyService = CustomVocabularyService.shared
 
-        if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
-            let decodedPrompts = try? JSONDecoder().decode([CustomPrompt].self, from: savedPromptsData)
-        {
-            self.customPrompts = decodedPrompts
-        } else {
-            self.customPrompts = []
+        let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts")
+        self.customPrompts = Self.initialPrompts(fromSaved: savedPromptsData)
+        if savedPromptsData == nil {
+            savePrompts()
         }
 
         repairModePromptSelections()
@@ -66,6 +64,17 @@ class AIEnhancementService: ObservableObject {
         DispatchQueue.main.async {
             self.objectWillChange.send()
         }
+    }
+
+    // A store that has never been written (nil) seeds the built-in templates: with zero prompts,
+    // every mode's AI enhancement silently skips as "not configured" and there is nothing to
+    // select in the mode editor. An empty-but-saved store is respected — the user deleted them.
+    nonisolated static func initialPrompts(fromSaved data: Data?) -> [CustomPrompt] {
+        guard let data else {
+            return PromptTemplates.seedPrompts
+        }
+
+        return (try? JSONDecoder().decode([CustomPrompt].self, from: data)) ?? PromptTemplates.seedPrompts
     }
 
     func getAIService() -> AIService? {

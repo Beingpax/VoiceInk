@@ -218,6 +218,12 @@ class TranscriptionPipeline {
                         transcription.enhancedText = String(
                             format: String(localized: "Enhancement failed: %@"), errorDescription)
                         responseError = errorDescription
+                        TelemetryService.captureEnhancementFailed(
+                            transcriptionId: transcription.id,
+                            modelName: resolvedEnhancementConfiguration.modelName
+                                ?? resolvedEnhancementConfiguration.provider?.defaultModel,
+                            modeName: modeMetadata.name,
+                            errorDescription: errorDescription)
                         let shortReason = String(errorDescription.prefix(80))
                         await MainActor.run {
                             NotificationManager.shared.showNotification(

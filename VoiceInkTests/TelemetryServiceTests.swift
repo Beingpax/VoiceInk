@@ -184,6 +184,28 @@ struct TelemetryServiceTests {
         #expect(properties["mode_name"] == nil)
     }
 
+    @Test func enhancementFailedIncludesModelModeAndError() {
+        let id = UUID()
+        let properties = TelemetryService.enhancementFailedEventProperties(
+            transcriptionId: id, modelName: "on-device", modeName: "Dictation",
+            errorDescription: "Apple Intelligence is unavailable: model not ready")
+
+        #expect(properties["transcription_id"] as? String == id.uuidString)
+        #expect(properties["model_name"] as? String == "on-device")
+        #expect(properties["mode_name"] as? String == "Dictation")
+        #expect(
+            properties["error_description"] as? String == "Apple Intelligence is unavailable: model not ready")
+    }
+
+    @Test func enhancementFailedTruncatesLongErrorDescriptions() {
+        let longError = String(repeating: "x", count: 500)
+        let properties = TelemetryService.enhancementFailedEventProperties(
+            transcriptionId: UUID(), modelName: nil, modeName: nil, errorDescription: longError)
+
+        #expect((properties["error_description"] as? String)?.count == 200)
+        #expect(properties["model_name"] == nil)
+    }
+
     // MARK: - transcription_copied
 
     @Test func transcriptionCopiedIncludesIdAndSource() {

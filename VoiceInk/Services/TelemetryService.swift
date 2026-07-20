@@ -230,6 +230,43 @@ enum TelemetryService {
         return properties
     }
 
+    // MARK: - enhancement_failed
+
+    // The third leg of the enhancement funnel: triggered (ran and succeeded), skipped (never
+    // attempted, with reason), failed (attempted but the provider errored). Without this event
+    // a provider that always errors — e.g. Apple Intelligence mid model-download — is
+    // indistinguishable in PostHog from one that works. model_name "on-device" = Apple
+    // Intelligence.
+    static func captureEnhancementFailed(
+        transcriptionId: UUID, modelName: String?, modeName: String?, errorDescription: String
+    ) {
+        guard !isRunningTests else {
+            logger.notice(
+                "Suppressed enhancement_failed under XCTest (transcription \(transcriptionId.uuidString, privacy: .public))"
+            )
+            return
+        }
+        logger.notice("Capturing enhancement_failed (transcription \(transcriptionId.uuidString, privacy: .public))")
+        PostHogSDK.shared.capture(
+            "enhancement_failed",
+            properties: enhancementFailedEventProperties(
+                transcriptionId: transcriptionId, modelName: modelName, modeName: modeName,
+                errorDescription: errorDescription))
+    }
+
+    static func enhancementFailedEventProperties(
+        transcriptionId: UUID, modelName: String?, modeName: String?, errorDescription: String
+    ) -> [String: Any] {
+        var properties: [String: Any] = [
+            "transcription_id": transcriptionId.uuidString,
+            // Bounded so a long provider stack trace can't blow up event size.
+            "error_description": String(errorDescription.prefix(200)),
+        ]
+        properties["model_name"] = modelName
+        properties["mode_name"] = modeName
+        return properties
+    }
+
     // MARK: - transcription_copied
 
     static func captureTranscriptionCopied(transcriptionId: UUID, source: String) {
