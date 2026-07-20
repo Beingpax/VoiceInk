@@ -305,6 +305,7 @@ struct InlineHistoryView: View {
                 for: candidates,
                 in: modelContext,
                 modelName: configuration.modelName ?? configuration.provider?.defaultModel,
+                promptName: configuration.prompt?.title,
                 enhance: { text in
                     let (enhancedText, _, _) = try await enhancementService.enhance(
                         text, configuration: configuration)
@@ -981,6 +982,29 @@ private struct HistoryCardRow: View {
         }
     }
 
+    // "What was done by who": names the producer of the text currently shown, so the raw
+    // transcription model's output and the AI enhancement's rewrite are never ambiguous.
+    private var displayAttribution: String {
+        switch selectedTab {
+        case .original:
+            if let modelName = transcription.transcriptionModelName {
+                return String(format: String(localized: "Raw transcript — %@"), modelName)
+            }
+            return String(localized: "Raw transcript")
+        case .enhanced:
+            var attribution: String
+            if let modelName = transcription.aiEnhancementModelName {
+                attribution = String(format: String(localized: "Enhanced by %@"), modelName)
+            } else {
+                attribution = String(localized: "Enhanced")
+            }
+            if let promptName = transcription.promptName {
+                attribution += String(format: String(localized: " · %@ prompt"), promptName)
+            }
+            return attribution
+        }
+    }
+
     private var hasAudioFile: Bool {
         if let urlString = transcription.audioFileURL,
             let url = URL(string: urlString),
@@ -1089,6 +1113,13 @@ private struct HistoryCardRow: View {
             // the window's edge with no way to reach them.
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
+                    if transcription.enhancedText != nil {
+                        Text(displayAttribution)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .accessibilityIdentifier("history.textAttribution")
+                    }
+
                     MarkdownContentView(
                         displayText,
                         fontSize: 14,

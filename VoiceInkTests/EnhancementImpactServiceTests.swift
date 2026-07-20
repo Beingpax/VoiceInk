@@ -155,6 +155,7 @@ struct EnhancementImpactServiceTests {
             for: [transcription],
             in: context,
             modelName: "on-device",
+            promptName: "Default",
             enhance: { _ in "hello world" }
         )
 
@@ -162,6 +163,7 @@ struct EnhancementImpactServiceTests {
         #expect(outcome.failedCount == 0)
         #expect(transcription.enhancedText == "hello world")
         #expect(transcription.aiEnhancementModelName == "on-device")
+        #expect(transcription.promptName == "Default")
     }
 
     @MainActor

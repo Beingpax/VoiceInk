@@ -78,6 +78,7 @@ enum EnhancementImpactService {
         for transcriptions: [Transcription],
         in modelContext: ModelContext,
         modelName: String?,
+        promptName: String? = nil,
         enhance: (String) async throws -> String,
         progress: ((Int, Int) -> Void)? = nil
     ) async -> BackfillOutcome {
@@ -93,6 +94,7 @@ enum EnhancementImpactService {
                 }
                 transcription.enhancedText = enhancedText
                 transcription.aiEnhancementModelName = modelName
+                transcription.promptName = promptName
                 outcome.enhancedCount += 1
             } catch {
                 outcome.failedCount += 1
