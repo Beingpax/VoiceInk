@@ -3191,6 +3191,22 @@
         }
       }
     },
+    "Direct Typing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direktes Tippen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "直接键入"
+          }
+        }
+      }
+    },
     "Apply intelligent text formatting to break large block of text into paragraphs." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5434,19 +5450,19 @@
         }
       }
     },
-    "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly." : {
+    "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly. Direct Typing types character by character — use this when dictating into a remote desktop or virtual machine." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard verwendet simulierte Cmd+V-Tastenereignisse. AppleScript kann helfen, wenn eigene Tastaturlayouts nicht korrekt einfügen."
+            "value" : "Standard verwendet simulierte Cmd+V-Tastenereignisse. AppleScript kann helfen, wenn eigene Tastaturlayouts nicht korrekt einfügen. Direktes Tippen gibt Zeichen für Zeichen ein — verwenden Sie dies beim Diktieren in eine Remotedesktop- oder VM-Sitzung."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "默认使用模拟的 Cmd+V 按键事件。当自定键盘布局无法正确粘贴时，AppleScript 会有所帮助。"
+            "value" : "默认使用模拟的 Cmd+V 按键事件。当自定键盘布局无法正确粘贴时，AppleScript 会有所帮助。直接键入会逐字符输入——在远程桌面或虚拟机中听写时使用此选项。"
           }
         }
       }

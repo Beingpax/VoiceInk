@@ -210,6 +210,11 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
+        if let method = general.pasteMethod {
+            PasteMethod.setCurrent(PasteMethod.resolve(method) ?? .standard)
+        } else if let appleScriptPaste = general.useAppleScriptPaste {
+            PasteMethod.setCurrent(appleScriptPaste ? .appleScript : .standard)
+        }
 
         print("Successfully imported general settings.")
     }
