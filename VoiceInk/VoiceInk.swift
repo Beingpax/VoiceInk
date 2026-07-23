@@ -60,6 +60,13 @@ struct VoiceInkApp: App {
         do {
             resolvedContainer = try Self.createPersistentContainer(schema: schema, logger: logger)
         } catch let persistentError {
+            #if DEBUG
+                Self.writeStorageReproductionMarker(
+                    named: "persistent-container-failed.txt",
+                    contents: Self.fullErrorDescription(persistentError)
+                )
+            #endif
+
             // Attempt 2: Try in-memory storage
             do {
                 resolvedContainer = try Self.createInMemoryContainer(schema: schema, logger: logger)
@@ -89,6 +96,9 @@ struct VoiceInkApp: App {
         }
 
         container = resolvedContainer
+        #if DEBUG
+            Self.writeStorageReproductionMarker(named: "startup-completed.txt")
+        #endif
         DictionaryService.removeExactDuplicateContent(context: resolvedContainer.mainContext, source: "launch")
 
         // Initialize services with proper sharing of instances
@@ -210,9 +220,46 @@ struct VoiceInkApp: App {
         return lines.joined(separator: "\n")
     }
 
+    #if DEBUG
+        private static let storageReproductionRootEnvironmentKey = "VOICEINK_STORAGE_REPRODUCTION_ROOT"
+
+        private static var storageReproductionRootURL: URL? {
+            guard
+                let path = ProcessInfo.processInfo.environment[storageReproductionRootEnvironmentKey],
+                !path.isEmpty
+            else {
+                return nil
+            }
+
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+
+        private static func writeStorageReproductionMarker(named name: String, contents: String = "") {
+            guard let rootURL = storageReproductionRootURL else { return }
+
+            do {
+                try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+                try contents.write(
+                    to: rootURL.appendingPathComponent(name),
+                    atomically: true,
+                    encoding: .utf8
+                )
+            } catch {
+                Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization").error(
+                    "Failed to write storage reproduction marker \(name, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                )
+            }
+        }
+    #endif
+
     private static func createPersistentContainer(schema: Schema, logger: Logger) throws -> ModelContainer {
-        let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let defaultAppSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
+        #if DEBUG
+            let appSupportURL = storageReproductionRootURL ?? defaultAppSupportURL
+        #else
+            let appSupportURL = defaultAppSupportURL
+        #endif
 
         try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
 

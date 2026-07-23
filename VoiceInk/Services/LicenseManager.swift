@@ -66,11 +66,7 @@ final class LicenseManager {
             return false
         }
 
-        let savedActivation = writeCredential(activationId, forKey: activationIdIdentifier)
-        guard savedActivation,
-            licenseKey == key,
-            self.activationId == activationId
-        else {
+        guard writeCredential(activationId, forKey: activationIdIdentifier) else {
             if !restoreLicense(key: previousKey, activationId: previousActivationId) {
                 logger.error("Failed to restore previous license credentials after a storage failure")
             }
@@ -83,16 +79,7 @@ final class LicenseManager {
     private func restoreLicense(key: String?, activationId: String?) -> Bool {
         let restoredKey = writeCredential(key, forKey: licenseKeyIdentifier)
         let restoredActivation = writeCredential(activationId, forKey: activationIdIdentifier)
-
-        guard restoredKey,
-            restoredActivation,
-            licenseKey == key,
-            self.activationId == activationId
-        else {
-            return false
-        }
-
-        return true
+        return restoredKey && restoredActivation
     }
 
     private func writeCredential(_ value: String?, forKey identifier: String) -> Bool {
