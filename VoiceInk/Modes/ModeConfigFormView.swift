@@ -317,6 +317,8 @@ struct ModeConfigFormView: View {
                         }
                         if configuredSelectedAIProvider == .ollama {
                             aiService.refreshOllamaAvailabilityInBackground()
+                        } else if configuredSelectedAIProvider == .mlx {
+                            aiService.refreshMLXAvailabilityInBackground()
                         }
                     }
                 }
@@ -356,6 +358,11 @@ struct ModeConfigFormView: View {
                                     draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                                 }
                                 aiService.refreshOllamaAvailabilityInBackground()
+                            case .mlx:
+                                if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
+                                    draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
+                                }
+                                aiService.refreshMLXAvailabilityInBackground()
                             default:
                                 draft.selectedAIModel = provider.defaultModel
                             }

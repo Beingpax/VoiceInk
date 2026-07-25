@@ -5,10 +5,14 @@ struct LocalEnhancementProviderManagementView: View {
     @EnvironmentObject private var aiService: AIService
 
     @State private var isOllamaExpanded = false
+    @State private var isMLXExpanded = false
     @State private var isLocalCLIExpanded = false
     @State private var ollamaBaseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
     @State private var selectedOllamaModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var ollamaUserRefreshError: String?
+    @State private var mlxBaseURL = UserDefaults.standard.string(forKey: "mlxBaseURL") ?? "http://localhost:8080"
+    @State private var selectedMLXModel = UserDefaults.standard.string(forKey: "mlxSelectedModel") ?? ""
+    @State private var mlxUserRefreshError: String?
     @State private var localCLICommandTemplate = ""
     @State private var localCLITimeoutSeconds = LocalCLIService.defaultTimeoutSeconds
     @State private var isSyncingLocalCLIState = false
@@ -21,19 +25,32 @@ struct LocalEnhancementProviderManagementView: View {
         VStack(alignment: .leading, spacing: 10) {
             ProviderSectionHeader(
                 title: "Local & CLI Providers",
-                subtitle: "Run enhancement with Ollama on this Mac, or send it to any CLI command."
+                subtitle: "Run enhancement with Ollama or MLX on this Mac, or send it to any CLI command."
             )
             .padding(.top, 8)
 
             VStack(spacing: 0) {
                 LocalProviderDisclosureRow(
                     title: Text(verbatim: "Ollama"),
-                    subtitle: ollamaModelNames.isEmpty ? Text("Local server") : Text(localModelCountLabel),
+                    subtitle: ollamaModelNames.isEmpty ? Text("Local server") : Text(localModelCountLabel(ollamaModelNames)),
                     systemImage: "server.rack",
                     statusTitle: ollamaStatusTitle,
                     isExpanded: $isOllamaExpanded
                 ) {
                     ollamaConfiguration
+                }
+
+                Divider()
+                    .padding(.leading, 58)
+
+                LocalProviderDisclosureRow(
+                    title: Text(verbatim: "MLX"),
+                    subtitle: mlxModelNames.isEmpty ? Text("Local server") : Text(localModelCountLabel(mlxModelNames)),
+                    systemImage: "cpu",
+                    statusTitle: mlxStatusTitle,
+                    isExpanded: $isMLXExpanded
+                ) {
+                    mlxConfiguration
                 }
 
                 Divider()
@@ -53,6 +70,7 @@ struct LocalEnhancementProviderManagementView: View {
         }
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
+            selectedMLXModel = aiService.selectedModel(for: .mlx)
             syncLocalCLIStateFromService()
         }
     }
@@ -61,8 +79,12 @@ struct LocalEnhancementProviderManagementView: View {
         aiService.availableModels(for: .ollama)
     }
 
-    private var localModelCountLabel: String {
-        let count = ollamaModelNames.count
+    private var mlxModelNames: [String] {
+        aiService.availableModels(for: .mlx)
+    }
+
+    private func localModelCountLabel(_ modelNames: [String]) -> String {
+        let count = modelNames.count
         return String(localized: "\(count) models")
     }
 
@@ -75,11 +97,27 @@ struct LocalEnhancementProviderManagementView: View {
             return Text("Disconnected")
         }
 
-        return ollamaModelNames.isEmpty ? Text("No models") : Text(localModelCountLabel)
+        return ollamaModelNames.isEmpty ? Text("No models") : Text(localModelCountLabel(ollamaModelNames))
     }
 
     private var ollamaActionTitle: LocalizedStringKey {
         aiService.connectedProviders.contains(.ollama) ? "Refresh" : "Connect"
+    }
+
+    private var mlxStatusTitle: Text {
+        if aiService.isMLXRefreshing {
+            return Text("Checking")
+        }
+
+        if !aiService.connectedProviders.contains(.mlx) {
+            return Text("Disconnected")
+        }
+
+        return mlxModelNames.isEmpty ? Text("No models") : Text(localModelCountLabel(mlxModelNames))
+    }
+
+    private var mlxActionTitle: LocalizedStringKey {
+        aiService.connectedProviders.contains(.mlx) ? "Refresh" : "Connect"
     }
 
     private var ollamaConfiguration: some View {
@@ -136,6 +174,66 @@ struct LocalEnhancementProviderManagementView: View {
                     .onChange(of: selectedOllamaModel) { _, newValue in
                         aiService.updateSelectedOllamaModel(newValue)
                         aiService.selectModel(newValue, for: .ollama)
+                    }
+                }
+            }
+        }
+    }
+
+    private var mlxConfiguration: some View {
+        LocalProviderExpandedContent {
+            LocalProviderFormRow(title: "Server") {
+                HStack(spacing: 8) {
+                    TextField("", text: $mlxBaseURL, prompt: Text(verbatim: "http://localhost:8080"))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: 320)
+                        .disabled(aiService.isMLXRefreshing)
+                        .onChange(of: mlxBaseURL) { _, _ in
+                            mlxUserRefreshError = nil
+                        }
+
+                    Button {
+                        mlxUserRefreshError = nil
+                        aiService.updateMLXBaseURL(mlxBaseURL)
+                        checkMLXConnectionFromUserAction()
+                    } label: {
+                        if aiService.isMLXRefreshing {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text(mlxActionTitle)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(aiService.isMLXRefreshing)
+                }
+            }
+
+            if let mlxUserRefreshError {
+                Text(mlxUserRefreshError)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.Status.error)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, LocalProviderMetrics.labelWidth + 12)
+            }
+
+            if !mlxModelNames.isEmpty {
+                Divider()
+                    .padding(.leading, LocalProviderMetrics.labelWidth + 12)
+
+                LocalProviderFormRow(title: "Model") {
+                    Picker("Model", selection: $selectedMLXModel) {
+                        ForEach(mlxModelNames, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(maxWidth: 320, alignment: .leading)
+                    .onChange(of: selectedMLXModel) { _, newValue in
+                        aiService.updateSelectedMLXModel(newValue)
+                        aiService.selectModel(newValue, for: .mlx)
                     }
                 }
             }
@@ -225,6 +323,20 @@ struct LocalEnhancementProviderManagementView: View {
             if !models.contains(selectedOllamaModel), let firstModel = models.first {
                 selectedOllamaModel = firstModel
                 aiService.selectModel(firstModel, for: .ollama)
+            }
+        }
+    }
+
+    private func checkMLXConnectionFromUserAction() {
+        Task { @MainActor in
+            let result = await aiService.refreshMLXAvailability()
+            let models = result.models.map(\.id)
+
+            mlxUserRefreshError = result.errorMessage
+
+            if !models.contains(selectedMLXModel), let firstModel = models.first {
+                selectedMLXModel = firstModel
+                aiService.selectModel(firstModel, for: .mlx)
             }
         }
     }

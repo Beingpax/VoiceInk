@@ -15,6 +15,7 @@ enum AIProvider: String, CaseIterable {
     case speechmatics = "Speechmatics"
     case assemblyAI = "AssemblyAI"
     case ollama = "Ollama"
+    case mlx = "MLX"
     case localCLI = "Local CLI"
     case appleIntelligence = "Apple Intelligence"
     case custom = "Custom"
@@ -47,6 +48,8 @@ enum AIProvider: String, CaseIterable {
             return "https://api.assemblyai.com/v2/transcript"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
+        case .mlx:
+            return UserDefaults.standard.string(forKey: "mlxBaseURL") ?? "http://localhost:8080"
         case .localCLI:
             return ""
         case .appleIntelligence:
@@ -82,6 +85,8 @@ enum AIProvider: String, CaseIterable {
             return "universal-3-5-pro"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
+        case .mlx:
+            return UserDefaults.standard.string(forKey: "mlxSelectedModel") ?? ""
         case .localCLI:
             return "local-cli"
         case .appleIntelligence:
@@ -146,6 +151,8 @@ enum AIProvider: String, CaseIterable {
             return ["universal-3-5-pro"]
         case .ollama:
             return []
+        case .mlx:
+            return []
         case .localCLI:
             return []
         case .appleIntelligence:
@@ -159,7 +166,7 @@ enum AIProvider: String, CaseIterable {
 
     var requiresAPIKey: Bool {
         switch self {
-        case .ollama, .localCLI, .appleIntelligence:
+        case .ollama, .mlx, .localCLI, .appleIntelligence:
             return false
         default:
             return true
@@ -178,6 +185,11 @@ enum AIProvider: String, CaseIterable {
 
 struct OllamaRefreshResult {
     let models: [OllamaModel]
+    let errorMessage: String?
+}
+
+struct MLXRefreshResult {
+    let models: [MLXModel]
     let errorMessage: String?
 }
 
@@ -218,6 +230,10 @@ class AIService: ObservableObject {
                     Task {
                         await refreshOllamaAvailability()
                     }
+                } else if selectedProvider == .mlx {
+                    Task {
+                        await refreshMLXAvailability()
+                    }
                 }
             }
             NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
@@ -227,11 +243,13 @@ class AIService: ObservableObject {
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
+    private lazy var mlxService = MLXService()
     private lazy var localCLIService = LocalCLIService()
     private var apiKeyChangeObserver: NSObjectProtocol?
 
     @Published private var openRouterModels: [String] = []
     @Published private(set) var isOllamaRefreshing = false
+    @Published private(set) var isMLXRefreshing = false
 
     var connectedProviders: [AIProvider] {
         AIProvider.allCases.filter { provider in
@@ -243,6 +261,8 @@ class AIService: ObservableObject {
                 return CustomAIProviderManager.shared.hasConfiguredModels
             } else if provider == .ollama {
                 return ollamaService.isConnected
+            } else if provider == .mlx {
+                return mlxService.isConnected
             } else if provider == .localCLI {
                 return localCLIService.isConfigured
             } else if provider == .appleIntelligence {
@@ -257,7 +277,9 @@ class AIService: ObservableObject {
     var currentModel: String {
         if let selectedModel = selectedModels[selectedProvider],
             !selectedModel.isEmpty,
-            (selectedProvider == .ollama && !selectedModel.isEmpty) || availableModels.contains(selectedModel)
+            (selectedProvider == .ollama && !selectedModel.isEmpty)
+                || (selectedProvider == .mlx && !selectedModel.isEmpty)
+                || availableModels.contains(selectedModel)
         {
             return selectedModel
         }
@@ -290,6 +312,8 @@ class AIService: ObservableObject {
     func availableModels(for provider: AIProvider) -> [String] {
         if provider == .ollama {
             return ollamaService.availableModels.map { $0.name }
+        } else if provider == .mlx {
+            return mlxService.availableModels.map { $0.id }
         } else if provider == .openRouter {
             return openRouterModels
         } else if provider == .custom {
@@ -401,6 +425,8 @@ class AIService: ObservableObject {
 
         if provider == .ollama {
             updateSelectedOllamaModel(model)
+        } else if provider == .mlx {
+            updateSelectedMLXModel(model)
         } else if provider == .custom {
             reloadSelectedProviderConfiguration()
         }
@@ -610,6 +636,70 @@ class AIService: ObservableObject {
     func updateSelectedOllamaModel(_ modelName: String) {
         ollamaService.selectedModel = modelName
         userDefaults.set(modelName, forKey: "ollamaSelectedModel")
+    }
+
+    func refreshMLXAvailabilityInBackground() {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.refreshMLXAvailability()
+        }
+    }
+
+    @MainActor
+    @discardableResult
+    func refreshMLXAvailability() async -> MLXRefreshResult {
+        guard !isMLXRefreshing else {
+            return MLXRefreshResult(models: mlxService.availableModels, errorMessage: nil)
+        }
+
+        isMLXRefreshing = true
+        defer {
+            isMLXRefreshing = false
+            NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        }
+
+        let result = await mlxService.refreshConnectionAndModels()
+        switch result {
+        case .success(let models):
+            return MLXRefreshResult(models: models, errorMessage: nil)
+        case .failure(let error):
+            return MLXRefreshResult(models: [], errorMessage: mlxErrorMessage(for: error))
+        }
+    }
+
+    private func mlxErrorMessage(for error: Error) -> String {
+        if let mlxError = error as? MLXError, let errorDescription = mlxError.errorDescription {
+            return errorDescription
+        }
+
+        if let llmKitError = error as? LLMKitError {
+            switch llmKitError {
+            case .httpError(let statusCode, let message):
+                let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmedMessage.isEmpty else { return "HTTP \(statusCode)" }
+                return "HTTP \(statusCode): \(trimmedMessage)"
+            default:
+                return llmKitError.localizedDescription
+            }
+        }
+
+        return error.localizedDescription
+    }
+
+    func enhanceWithMLX(text: String, systemPrompt: String, model: String? = nil, timeout: TimeInterval = 30)
+        async throws -> String
+    {
+        try await mlxService.enhance(text, withSystemPrompt: systemPrompt, model: model, timeout: timeout)
+    }
+
+    func updateMLXBaseURL(_ newURL: String) {
+        mlxService.baseURL = newURL
+        userDefaults.set(newURL, forKey: "mlxBaseURL")
+    }
+
+    func updateSelectedMLXModel(_ modelName: String) {
+        mlxService.selectedModel = modelName
+        userDefaults.set(modelName, forKey: "mlxSelectedModel")
     }
 
     func loadLocalCLITemplate(_ template: LocalCLITemplate) {

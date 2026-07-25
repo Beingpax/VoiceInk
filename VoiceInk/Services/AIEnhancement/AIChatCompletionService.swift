@@ -44,6 +44,13 @@ extension AIService {
                 model: resolvedModel,
                 timeout: timeout
             )
+        case .mlx:
+            result = try await enhanceWithMLX(
+                text: chatPrompt(from: messages),
+                systemPrompt: systemPrompt ?? "",
+                model: resolvedModel,
+                timeout: timeout
+            )
         case .localCLI:
             result = try await enhanceWithLocalCLI(
                 systemPrompt: systemPrompt ?? "",

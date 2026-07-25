@@ -85,7 +85,7 @@ class AIEnhancementService: ObservableObject {
         guard configuration.prompt != nil else { return false }
         guard let provider = configuration.provider else { return false }
 
-        if provider == .localCLI || provider == .ollama {
+        if provider == .localCLI || provider == .ollama || provider == .mlx {
             return true
         }
 
@@ -238,6 +238,30 @@ class AIEnhancementService: ObservableObject {
                     default:
                         throw EnhancementError.customError(
                             localError.errorDescription ?? "An unknown Ollama error occurred.")
+                    }
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
+        if provider == .mlx {
+            do {
+                let result = try await aiService.enhanceWithMLX(
+                    text: formattedText,
+                    systemPrompt: systemMessage,
+                    model: modelName,
+                    timeout: baseTimeout
+                )
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let mlxError = error as? MLXError {
+                    switch mlxError {
+                    case .timeout:
+                        throw EnhancementError.timeout
+                    default:
+                        throw EnhancementError.customError(
+                            mlxError.errorDescription ?? "An unknown MLX error occurred.")
                     }
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
