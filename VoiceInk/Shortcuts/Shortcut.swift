@@ -27,6 +27,13 @@ struct Shortcut: Codable, Equatable {
         displayTokens.joined(separator: " + ")
     }
 
+    /// Compact machine-readable description for diagnostic logs / system info.
+    var diagnosticDescription: String {
+        let modifierHex = String(modifierFlags.rawValue, radix: 16)
+        return
+            "\(displayString) [kind=\(kind.rawValue) keyCode=\(keyCode) modifiers=0x\(modifierHex)]"
+    }
+
     var displayTokens: [String] {
         switch kind {
         case .key:

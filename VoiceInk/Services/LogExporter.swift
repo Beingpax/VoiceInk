@@ -6,34 +6,23 @@ final class LogExporter {
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LogExporter")
     private let subsystem = "com.prakashjoshipax.voiceink"
-    private let maxSessionsToKeep = 3
-    private let sessionsKey = "logExporter.sessionStartDates.v1"
 
-    private(set) var sessionStartDates: [Date] = []
+    /// OSLogStore is disk-backed and keyed by wall-clock time, not process lifetime, so a plain
+    /// time window (rather than tracking app session boundaries) still spans an app restart —
+    /// e.g. a shortcut that breaks and is only "fixed" by restarting still has its pre-restart
+    /// logs included as long as the restart happened within this window.
+    private let exportWindow: TimeInterval = 60 * 60
 
-    private init() {
-        var loadedDates: [Date] = []
-        if let data = UserDefaults.standard.data(forKey: sessionsKey),
-            let dates = try? JSONDecoder().decode([Date].self, from: data)
-        {
-            loadedDates = dates
-        }
-
-        sessionStartDates = [Date()] + loadedDates
-        sessionStartDates = Array(sessionStartDates.prefix(maxSessionsToKeep))
-        saveSessions()
-
-        logger.notice("🎙️ LogExporter initialized, \(self.sessionStartDates.count, privacy: .public) session(s) tracked")
-    }
-
-    private func saveSessions() {
-        if let data = try? JSONEncoder().encode(sessionStartDates) {
-            UserDefaults.standard.set(data, forKey: sessionsKey)
-        }
-    }
+    private init() {}
 
     func exportLogs() async throws -> URL {
         logger.notice("🎙️ Starting log export")
+
+        // Force a fresh shortcut health probe so the export always contains
+        // current permission/tap/config state even if the user never hit a key.
+        await MainActor.run {
+            ShortcutDiagnostics.logHealthReport(reason: "log-export")
+        }
 
         let logs = try await fetchLogs()
         let fileURL = try saveLogsToFile(logs)
@@ -47,6 +36,12 @@ final class LogExporter {
             SystemInfoService.shared.getSystemInfoString()
         }
 
+        let shortcutHealth = await MainActor.run {
+            ShortcutDiagnostics.healthReport(reason: "log-export-snapshot")
+        }
+
+        let shortcutRingBuffer = ShortcutDiagnostics.recentEventsDump()
+
         let store = try OSLogStore(scope: .system)
         let predicate = NSPredicate(format: "subsystem == %@", subsystem)
 
@@ -54,67 +49,53 @@ final class LogExporter {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
 
+        let now = Date()
+        let windowStart = now.addingTimeInterval(-exportWindow)
+
         logLines.append("=== VoiceInk Diagnostic Logs ===")
-        logLines.append("Export Date: \(dateFormatter.string(from: Date()))")
+        logLines.append("Export Date: \(dateFormatter.string(from: now))")
         logLines.append("Subsystem: \(subsystem)")
-        logLines.append("Total Sessions: \(sessionStartDates.count)")
+        logLines.append(
+            "Log Window: \(dateFormatter.string(from: windowStart)) → \(dateFormatter.string(from: now)) (last \(Int(exportWindow / 60)) min)"
+        )
         logLines.append("================================")
         logLines.append("")
         logLines.append(systemInfo)
         logLines.append("")
+        logLines.append(shortcutHealth)
+        logLines.append("")
+        logLines.append("=== SHORTCUT DIAGNOSTIC RING BUFFER (in-memory) ===")
+        logLines.append(
+            "These events are dual-written in-process so sparse-user bugs still show evidence even if OSLogStore is sparse."
+        )
+        logLines.append(shortcutRingBuffer)
+        logLines.append("=== END SHORTCUT DIAGNOSTIC RING BUFFER ===")
+        logLines.append("")
 
-        // Build session ranges with labels
-        let totalSessions = sessionStartDates.count
-        var sessionRanges: [(label: String, start: Date, end: Date?)] = []
+        logLines.append("--- Logs (last \(Int(exportWindow / 60)) min) ---")
+        logLines.append("")
 
-        for i in 0..<totalSessions {
-            let start = sessionStartDates[i]
-            let end: Date? = (i == 0) ? nil : sessionStartDates[i - 1]
-            let sessionNumber = totalSessions - i
+        let position = store.position(date: windowStart)
+        let entries = try store.getEntries(at: position, matching: predicate)
 
-            let label: String
-            if totalSessions == 1 {
-                label = "Session 1 (Current)"
-            } else if i == 0 {
-                label = "Session \(sessionNumber) (Current)"
-            } else if i == totalSessions - 1 {
-                label = "Session 1 (Oldest)"
-            } else {
-                label = "Session \(sessionNumber)"
-            }
+        var logCount = 0
+        for entry in entries {
+            guard let logEntry = entry as? OSLogEntryLog else { continue }
 
-            sessionRanges.append((label, start, end))
+            let timestamp = dateFormatter.string(from: logEntry.date)
+            let level = logLevelString(logEntry.level)
+            let category = logEntry.category
+            let message = logEntry.composedMessage
+
+            logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
+            logCount += 1
         }
 
-        // Fetch logs for each session (oldest first for chronological order)
-        for (label, startDate, endDate) in sessionRanges.reversed() {
-            logLines.append("--- \(label) ---")
-            logLines.append("")
-
-            let position = store.position(date: startDate)
-            let entries = try store.getEntries(at: position, matching: predicate)
-
-            var sessionLogCount = 0
-            for entry in entries {
-                guard let logEntry = entry as? OSLogEntryLog else { continue }
-
-                if let endDate, logEntry.date >= endDate { break }
-
-                let timestamp = dateFormatter.string(from: logEntry.date)
-                let level = logLevelString(logEntry.level)
-                let category = logEntry.category
-                let message = logEntry.composedMessage
-
-                logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
-                sessionLogCount += 1
-            }
-
-            if sessionLogCount == 0 {
-                logLines.append("No logs found for this session.")
-            }
-
-            logLines.append("")
+        if logCount == 0 {
+            logLines.append("No logs found in this window.")
         }
+
+        logLines.append("")
 
         return logLines
     }

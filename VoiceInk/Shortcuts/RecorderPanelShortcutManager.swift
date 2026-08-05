@@ -7,7 +7,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
-    private let visibleRecorderMonitor = ShortcutMonitor()
+    private let visibleRecorderMonitor = ShortcutMonitor(ownerLabel: "RecorderPanel")
 
     // Double-tap Escape handling
     private var firstEscapePressTime: Date? = nil

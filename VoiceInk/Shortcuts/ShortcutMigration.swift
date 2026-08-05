@@ -31,16 +31,22 @@ struct ShortcutBackup: Codable {
 
 enum ShortcutMigration {
     static func migrateLegacyShortcutsIfNeeded() {
+        ShortcutDiagnostics.notice("migrateLegacyShortcutsIfNeeded begin")
         discardLegacyCustomRecordingShortcutsIfNeeded()
         migrateLegacyKeyboardShortcutsIfNeeded()
+        ShortcutDiagnostics.notice(
+            "migrateLegacyShortcutsIfNeeded done primary=\(ShortcutStore.rawShortcut(for: .primaryRecording)?.diagnosticDescription ?? "nil") secondary=\(ShortcutStore.rawShortcut(for: .secondaryRecording)?.diagnosticDescription ?? "nil")"
+        )
     }
 
     static func migrateLegacyKeyboardShortcutsIfNeeded() {
         let migrationKey = "Shortcut_LegacyKeyboardShortcutsMigrated"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else {
+            ShortcutDiagnostics.notice("legacy KeyboardShortcuts migration already completed")
             return
         }
 
+        ShortcutDiagnostics.notice("running legacy KeyboardShortcuts migration")
         for action in ShortcutAction.legacyKeyboardShortcutActions {
             migrateLegacyKeyboardShortcut(for: action)
         }
@@ -169,6 +175,10 @@ enum ShortcutMigration {
         }
 
         guard !isRecordingShortcutAction(action) else {
+            // Intentionally skipped: primary/secondary recording no longer import KeyboardShortcuts_* values.
+            ShortcutDiagnostics.notice(
+                "skip KeyboardShortcuts migration for recording action=\(action.displayName)"
+            )
             return
         }
 
@@ -180,15 +190,22 @@ enum ShortcutMigration {
             return
         }
 
+        ShortcutDiagnostics.notice(
+            "migrated KeyboardShortcuts action=\(action.displayName) shortcut=\(shortcut.diagnosticDescription)"
+        )
         ShortcutStore.setShortcut(shortcut, for: action)
     }
 
     private static func discardLegacyCustomRecordingShortcutsIfNeeded() {
         let migrationKey = "Shortcut_LegacyCustomRecordingShortcutsMigrated"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else {
+            ShortcutDiagnostics.notice("legacy custom recording shortcut discard already completed")
             return
         }
 
+        ShortcutDiagnostics.notice(
+            "discarding legacy CustomRecordingShortcut_* keys without migrating them into Shortcut_* storage"
+        )
         for action in [ShortcutAction.primaryRecording, .secondaryRecording] {
             removeLegacyCustomRecordingShortcut(for: action)
         }

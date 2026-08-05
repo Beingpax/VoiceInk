@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 class ModeShortcutManager {
-    private let shortcutMonitor = ShortcutMonitor()
+    private let shortcutMonitor = ShortcutMonitor(ownerLabel: "Mode")
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
@@ -66,6 +66,15 @@ class ModeShortcutManager {
             }
         }
 
+        let summary =
+            shortcuts
+            .map { "\($0.key.displayName)=\($0.value.diagnosticDescription)" }
+            .sorted()
+            .joined(separator: " | ")
+        ShortcutDiagnostics.notice(
+            "refresh mode shortcuts: count=\(shortcuts.count) \(summary.isEmpty ? "none" : summary)"
+        )
+
         shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: Set(shortcuts.keys),
@@ -74,6 +83,9 @@ class ModeShortcutManager {
                     guard let self,
                         let modeId = self.modeId(for: action)
                     else {
+                        ShortcutDiagnostics.notice(
+                            "mode keyDown ignored (mode unavailable) action=\(action.displayName)"
+                        )
                         return
                     }
 

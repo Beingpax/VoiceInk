@@ -180,10 +180,16 @@ final class ShortcutRecorderModel: ObservableObject {
         self.onCapture = onCapture
         isRecording = true
         previewShortcut = nil
+        ShortcutDiagnostics.notice("capture start action=\(action.displayName)")
         installRecordingMonitor()
     }
 
     func cancel() {
+        if isRecording {
+            ShortcutDiagnostics.notice(
+                "capture cancel action=\(activeAction?.displayName ?? "nil")"
+            )
+        }
         removeRecordingMonitor()
         resetRecordingState()
     }
@@ -195,10 +201,17 @@ final class ShortcutRecorderModel: ObservableObject {
         }
 
         if let validationError = ShortcutValidator.validationError(for: shortcut, action: activeAction) {
+            ShortcutDiagnostics.notice(
+                "capture rejected action=\(activeAction.displayName) shortcut=\(shortcut.diagnosticDescription) reason=\(String(describing: validationError))"
+            )
             cancel()
             showErrorNotification(validationError.notificationTitle(for: shortcut))
             return
         }
+
+        ShortcutDiagnostics.notice(
+            "capture accepted action=\(activeAction.displayName) shortcut=\(shortcut.diagnosticDescription)"
+        )
 
         let capture = onCapture
         removeRecordingMonitor()
@@ -260,6 +273,7 @@ final class ShortcutRecorderModel: ObservableObject {
         let modifiers = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: keyCode)
 
         if keyCode == UInt16(kVK_Escape), modifiers.isEmpty {
+            ShortcutDiagnostics.notice("capture event Escape → cancel")
             cancel()
             return true
         }
@@ -269,6 +283,9 @@ final class ShortcutRecorderModel: ObservableObject {
         }
 
         let shortcut = Shortcut.key(keyCode: keyCode, modifierFlags: modifiers)
+        ShortcutDiagnostics.notice(
+            "capture event keyDown keyCode=\(keyCode) modifiers=0x\(String(modifiers.rawValue, radix: 16)) → \(shortcut.diagnosticDescription)"
+        )
         previewShortcut = shortcut
         finish(with: shortcut)
         return true
@@ -281,6 +298,9 @@ final class ShortcutRecorderModel: ObservableObject {
             Shortcut.isFunctionKeyCode(keyCode),
             Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil).contains(.function)
         {
+            ShortcutDiagnostics.notice(
+                "capture event flagsChanged ignored function-key noise keyCode=\(keyCode)"
+            )
             return true
         }
 
@@ -297,10 +317,16 @@ final class ShortcutRecorderModel: ObservableObject {
 
             pendingModifierShortcut = shortcut
             previewShortcut = shortcut
+            ShortcutDiagnostics.notice(
+                "capture event flagsChanged pending keyCode=\(keyCode) peakModifiers=0x\(String(peakModifierFlags.rawValue, radix: 16)) preview=\(shortcut.diagnosticDescription)"
+            )
             return true
         }
 
         if let pendingModifierShortcut {
+            ShortcutDiagnostics.notice(
+                "capture event modifiers released → commit modifier-only \(pendingModifierShortcut.diagnosticDescription)"
+            )
             finish(with: pendingModifierShortcut)
         }
 

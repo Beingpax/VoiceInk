@@ -405,6 +405,9 @@ struct VoiceInkApp: App {
         didShowLaunchReminders = true
 
         if !AXIsProcessTrusted() {
+            ShortcutDiagnostics.error(
+                "launch reminder: Accessibility not trusted — global shortcuts cannot install event taps"
+            )
             NotificationManager.shared.showNotification(
                 title: String(localized: "Accessibility permission is not provided"),
                 type: .warning,
@@ -413,6 +416,8 @@ struct VoiceInkApp: App {
             )
             return
         }
+
+        ShortcutDiagnostics.logPermissionSnapshot(reason: "launch-reminder-ax-ok", force: true)
 
         if !ModeManager.shared.hasEnabledConfiguration {
             NotificationManager.shared.showNotification(

@@ -45,8 +45,9 @@ class RecordingShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var recorderPanelShortcutManager: RecorderPanelShortcutManager
     private let modeShortcutManager: ModeShortcutManager
-    private let shortcutMonitor = ShortcutMonitor()
+    private let shortcutMonitor = ShortcutMonitor(ownerLabel: "Recording")
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var appActiveObserver: NSObjectProtocol?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
 
@@ -159,6 +160,30 @@ class RecordingShortcutManager: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 100_000_000)
             self.refreshShortcutMonitoring()
+            ShortcutDiagnostics.logHealthReport(reason: "app-launch-after-shortcut-setup")
+        }
+
+        appActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                let previousOK = ShortcutMonitor.installSucceededByOwnerValue(for: "Recording")
+                let snapshot = ShortcutDiagnostics.logPermissionSnapshot(
+                    reason: "app-did-become-active",
+                    force: false
+                )
+
+                // If Accessibility was granted while we were in background and the tap never installed, rebuild.
+                if snapshot.accessibilityTrusted, previousOK == false {
+                    ShortcutDiagnostics.notice(
+                        "Accessibility now trusted after previous tap failure — refreshing shortcut monitoring"
+                    )
+                    self.refreshShortcutMonitoring()
+                }
+            }
         }
     }
 
@@ -220,13 +245,34 @@ class RecordingShortcutManager: ObservableObject {
             interruptibleRecordingActions.insert(.secondaryRecording)
         }
 
-        shortcutMonitor.start(
+        ShortcutDiagnostics.notice(
+            "refresh monitor: primarySelection=\(primaryRecordingShortcut.rawValue) primary=\(primaryShortcut?.diagnosticDescription ?? "nil") secondarySelection=\(secondaryRecordingShortcut.rawValue) secondary=\(secondaryShortcut?.diagnosticDescription ?? "nil") totalRegistered=\(shortcuts.count) recordingState=\(String(describing: engine.recordingState))"
+        )
+
+        let config = ShortcutDiagnostics.configurationSnapshot()
+        if !config.issues.isEmpty {
+            ShortcutDiagnostics.error(
+                "refresh monitor config issues: \(config.issues.joined(separator: "; "))"
+            )
+        }
+        if primaryRecordingShortcut == .custom, primaryShortcut == nil {
+            ShortcutDiagnostics.error(
+                "primary is Custom but stored shortcut is nil — user will see no global recording hotkey until they re-record"
+            )
+        }
+
+        let installed = shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: interruptibleRecordingActions,
             onKeyDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
-                    guard let mode = self.recordingMode(for: action) else { return }
+                    guard let mode = self.recordingMode(for: action) else {
+                        ShortcutDiagnostics.notice(
+                            "keyDown ignored: no recording mode for action=\(action.displayName)"
+                        )
+                        return
+                    }
                     await self.shortcutModeHandler.handleKeyDown(
                         action: action,
                         eventTime: eventTime,
@@ -244,6 +290,9 @@ class RecordingShortcutManager: ObservableObject {
                             mode: mode
                         )
                     } else {
+                        ShortcutDiagnostics.notice(
+                            "global utility keyUp action=\(action.displayName)"
+                        )
                         await self.handleGlobalShortcut(action)
                     }
                 }
@@ -251,10 +300,23 @@ class RecordingShortcutManager: ObservableObject {
             onShortcutInterrupted: { [weak self] action, _ in
                 Task { @MainActor in
                     guard let self, self.recordingMode(for: action) != nil else { return }
+                    ShortcutDiagnostics.notice(
+                        "recording shortcut interrupted action=\(action.displayName)"
+                    )
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
             }
         )
+
+        if !installed {
+            ShortcutDiagnostics.error(
+                "recording shortcut event tap failed to install; global shortcuts will not work. \(ShortcutDiagnostics.permissionSnapshot().humanSummary)"
+            )
+        } else {
+            ShortcutDiagnostics.notice(
+                "recording shortcut monitor refreshed successfully liveTaps=\(ShortcutMonitor.allOwnersLiveTapSummary)"
+            )
+        }
     }
 
     private func recordingMode(for action: ShortcutAction) -> Mode? {
@@ -324,6 +386,9 @@ class RecordingShortcutManager: ObservableObject {
         if let shortcutChangeObserver {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
         }
+        if let appActiveObserver {
+            NotificationCenter.default.removeObserver(appActiveObserver)
+        }
 
         MainActor.assumeIsolated {
             removeAllMonitoring()
@@ -388,17 +453,29 @@ final class RecordingShortcutModeHandler {
         mode: RecordingShortcutManager.Mode,
         modeId: UUID? = nil
     ) async {
+        let state = recordingState()
+        let recorderVisible = isRecorderVisible()
+
         if interruptedRecordingActions.remove(action) != nil {
+            ShortcutDiagnostics.notice(
+                "handler keyDown IGNORED (prior interruption) action=\(action.displayName) mode=\(mode.rawValue) state=\(String(describing: state)) — event was already matched/suppressed by the tap"
+            )
             return
         }
 
         if let lastTrigger = lastShortcutPressTime,
             Date().timeIntervalSince(lastTrigger) < shortcutPressCooldown
         {
+            ShortcutDiagnostics.notice(
+                "handler keyDown IGNORED (cooldown \(shortcutPressCooldown)s) action=\(action.displayName) mode=\(mode.rawValue) state=\(String(describing: state)) — event was already matched/suppressed by the tap"
+            )
             return
         }
 
         guard !isShortcutPressed else {
+            ShortcutDiagnostics.notice(
+                "handler keyDown IGNORED (already pressed) action=\(action.displayName) active=\(activeRecordingShortcutAction?.displayName ?? "nil") — event was already matched/suppressed by the tap"
+            )
             return
         }
         isShortcutPressed = true
@@ -407,23 +484,55 @@ final class RecordingShortcutModeHandler {
         lastShortcutPressTime = Date()
         shortcutPressStartTime = eventTime
 
+        ShortcutDiagnostics.notice(
+            "handler keyDown begin action=\(action.displayName) mode=\(mode.rawValue) modeId=\(modeId?.uuidString ?? "nil") state=\(String(describing: state)) recorderVisible=\(recorderVisible) handsFree=\(isHandsFreeRecording) canHandle=\(canHandleShortcutAction())"
+        )
+
         switch mode {
         case .toggle, .hybrid:
             if isHandsFreeRecording {
                 isHandsFreeRecording = false
-                guard canHandleShortcutAction() else { return }
+                guard canHandleShortcutAction() else {
+                    ShortcutDiagnostics.notice(
+                        "handler keyDown skip toggle (busy) action=\(action.displayName) state=\(String(describing: state)) — key already suppressed, user may hear system reject sound with no UI"
+                    )
+                    return
+                }
+                ShortcutDiagnostics.notice(
+                    "handler keyDown → toggleRecorderPanel (hands-free stop) action=\(action.displayName)"
+                )
                 await toggleRecorderPanel(modeId)
                 return
             }
 
             if !isRecorderVisible() {
-                guard canHandleShortcutAction() else { return }
+                guard canHandleShortcutAction() else {
+                    ShortcutDiagnostics.notice(
+                        "handler keyDown skip start (busy) action=\(action.displayName) state=\(String(describing: state)) — key already suppressed, user may hear system reject sound with no UI"
+                    )
+                    return
+                }
+                ShortcutDiagnostics.notice(
+                    "handler keyDown → toggleRecorderPanel (start) action=\(action.displayName)"
+                )
                 await toggleRecorderPanel(modeId)
+            } else {
+                ShortcutDiagnostics.notice(
+                    "handler keyDown no-op (recorder already visible) action=\(action.displayName)"
+                )
             }
 
         case .pushToTalk:
             if !isRecorderVisible() {
-                guard canHandleShortcutAction() else { return }
+                guard canHandleShortcutAction() else {
+                    ShortcutDiagnostics.notice(
+                        "handler keyDown skip PTT start (busy) action=\(action.displayName) state=\(String(describing: state)) — key already suppressed"
+                    )
+                    return
+                }
+                ShortcutDiagnostics.notice(
+                    "handler keyDown → toggleRecorderPanel (PTT start) action=\(action.displayName)"
+                )
                 await toggleRecorderPanel(modeId)
             }
         }
@@ -435,10 +544,20 @@ final class RecordingShortcutModeHandler {
         mode: RecordingShortcutManager.Mode,
         modeId: UUID? = nil
     ) async {
-        guard isShortcutPressed, activeRecordingShortcutAction == action else { return }
+        guard isShortcutPressed, activeRecordingShortcutAction == action else {
+            ShortcutDiagnostics.notice(
+                "handler keyUp IGNORED action=\(action.displayName) isPressed=\(isShortcutPressed) active=\(activeRecordingShortcutAction?.displayName ?? "nil")"
+            )
+            return
+        }
         isShortcutPressed = false
         activeRecordingShortcutAction = nil
         activeShortcutCanCancelAccidentalStart = false
+
+        let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
+        ShortcutDiagnostics.notice(
+            "handler keyUp begin action=\(action.displayName) mode=\(mode.rawValue) duration=\(pressDuration)s state=\(String(describing: recordingState())) recorderVisible=\(isRecorderVisible())"
+        )
 
         switch mode {
         case .toggle:
@@ -446,17 +565,35 @@ final class RecordingShortcutModeHandler {
 
         case .pushToTalk:
             if isRecorderVisible() {
-                guard canHandleShortcutAction() else { return }
+                guard canHandleShortcutAction() else {
+                    ShortcutDiagnostics.notice(
+                        "handler keyUp skip PTT stop (busy) action=\(action.displayName)"
+                    )
+                    return
+                }
+                ShortcutDiagnostics.notice(
+                    "handler keyUp → toggleRecorderPanel (PTT stop) action=\(action.displayName)"
+                )
                 await toggleRecorderPanel(modeId)
             }
 
         case .hybrid:
-            let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
             if pressDuration >= hybridPressThreshold && recordingState() == .recording {
-                guard canHandleShortcutAction() else { return }
+                guard canHandleShortcutAction() else {
+                    ShortcutDiagnostics.notice(
+                        "handler keyUp skip hybrid stop (busy) action=\(action.displayName)"
+                    )
+                    return
+                }
+                ShortcutDiagnostics.notice(
+                    "handler keyUp → toggleRecorderPanel (hybrid long-press stop) action=\(action.displayName)"
+                )
                 await toggleRecorderPanel(modeId)
             } else {
                 isHandsFreeRecording = true
+                ShortcutDiagnostics.notice(
+                    "handler keyUp hybrid → hands-free action=\(action.displayName) duration=\(pressDuration)s"
+                )
             }
         }
 
@@ -467,12 +604,27 @@ final class RecordingShortcutModeHandler {
         guard isShortcutPressed, activeRecordingShortcutAction == action else {
             if canCurrentShortcutPressCancelAccidentalStart {
                 interruptedRecordingActions.insert(action)
+                ShortcutDiagnostics.notice(
+                    "handler interruption queued (pre-handler) action=\(action.displayName)"
+                )
+            } else {
+                ShortcutDiagnostics.notice(
+                    "handler interruption ignored (not active) action=\(action.displayName)"
+                )
             }
             return
         }
 
-        guard activeShortcutCanCancelAccidentalStart else { return }
+        guard activeShortcutCanCancelAccidentalStart else {
+            ShortcutDiagnostics.notice(
+                "handler interruption ignored (cannot cancel) action=\(action.displayName)"
+            )
+            return
+        }
 
+        ShortcutDiagnostics.notice(
+            "handler interruption → cancelRecording action=\(action.displayName)"
+        )
         reset()
         await cancelRecording()
     }

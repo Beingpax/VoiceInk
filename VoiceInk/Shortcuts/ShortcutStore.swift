@@ -26,6 +26,9 @@ enum ShortcutStore {
         }
 
         if let shortcut, ShortcutValidator.validationError(for: shortcut, action: action) != nil {
+            ShortcutDiagnostics.error(
+                "setShortcut blocked by validation action=\(action.displayName) shortcut=\(shortcut.diagnosticDescription)"
+            )
             return
         }
 
@@ -36,11 +39,17 @@ enum ShortcutStore {
             UserDefaults.standard.removeObject(forKey: clearedUserDefaultsKey(for: action))
             ShortcutMigration.removeLegacyCustomRecordingShortcut(for: action)
             ShortcutMigration.removeLegacyKeyboardShortcut(for: action)
+            ShortcutDiagnostics.notice(
+                "setShortcut action=\(action.displayName) shortcut=\(shortcut.diagnosticDescription)"
+            )
         } else {
             UserDefaults.standard.removeObject(forKey: action.userDefaultsKey)
             UserDefaults.standard.set(true, forKey: clearedUserDefaultsKey(for: action))
             ShortcutMigration.removeLegacyCustomRecordingShortcut(for: action)
             ShortcutMigration.removeLegacyKeyboardShortcut(for: action)
+            ShortcutDiagnostics.notice(
+                "clearShortcut action=\(action.displayName)"
+            )
         }
 
         NotificationCenter.default.post(

@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 
 class SystemInfoService {
@@ -33,7 +34,23 @@ class SystemInfoService {
 
             HOTKEY SETTINGS:
             Primary Shortcut: \(getPrimaryShortcut())
+            Primary Shortcut Detail: \(detailedShortcutDescription(for: .primaryRecording))
+            Primary Selection: \(UserDefaults.standard.string(forKey: "primaryRecordingShortcut") ?? "unset")
+            Primary Mode: \(UserDefaults.standard.string(forKey: "primaryRecordingShortcutMode") ?? "unset")
             Secondary Shortcut: \(getSecondaryShortcut())
+            Secondary Shortcut Detail: \(detailedShortcutDescription(for: .secondaryRecording))
+            Secondary Selection: \(UserDefaults.standard.string(forKey: "secondaryRecordingShortcut") ?? "unset")
+            Secondary Mode: \(UserDefaults.standard.string(forKey: "secondaryRecordingShortcutMode") ?? "unset")
+            Utility Shortcuts: \(utilityShortcutsDescription())
+            Mode Shortcuts: \(modeShortcutsDescription())
+            Event Tap Install: \(ShortcutMonitor.allOwnersInstallSummary)
+            Event Tap Live Enabled: \(ShortcutMonitor.allOwnersLiveTapSummary)
+            Accessibility Trusted: \(AXIsProcessTrusted() ? "true" : "false")
+            Listen Event Access (Input Monitoring): \(CGPreflightListenEventAccess() ? "true" : "false")
+            Post Event Access: \(CGPreflightPostEventAccess() ? "true" : "false")
+            Secure Event Input Enabled: \(IsSecureEventInputEnabled() ? "true" : "false")
+            Shortcut Config Issues: \(shortcutConfigIssuesDescription())
+            Shortcut Permission Implication: \(ShortcutDiagnostics.permissionSnapshot().humanSummary)
             Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
             Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
@@ -159,6 +176,48 @@ class SystemInfoService {
     private func shortcutDescription(for action: ShortcutAction) -> String {
         ShortcutStore.shortcut(for: action)?.displayString ?? ""
     }
+
+    private func detailedShortcutDescription(for action: ShortcutAction) -> String {
+        if ShortcutStore.isShortcutCleared(for: action) {
+            return "cleared"
+        }
+
+        guard let shortcut = ShortcutStore.rawShortcut(for: action) else {
+            return "nil"
+        }
+
+        return shortcut.diagnosticDescription
+    }
+
+    private func shortcutConfigIssuesDescription() -> String {
+        let issues = ShortcutDiagnostics.configurationSnapshot().issues
+        return issues.isEmpty ? "none" : issues.joined(separator: "; ")
+    }
+
+    private func utilityShortcutsDescription() -> String {
+        let lines = ShortcutAction.globalUtilityActions.compactMap { action -> String? in
+            guard let shortcut = ShortcutStore.shortcut(for: action) else {
+                return nil
+            }
+            return "\(action.displayName)=\(shortcut.diagnosticDescription)"
+        }
+
+        return lines.isEmpty ? "none" : lines.joined(separator: " | ")
+    }
+
+    private func modeShortcutsDescription() -> String {
+        let lines = ModeManager.shared.configurations.compactMap { config -> String? in
+            let action = ShortcutAction.mode(config.id)
+            guard let shortcut = ShortcutStore.shortcut(for: action) else {
+                return nil
+            }
+            let enabled = config.isEnabled ? "on" : "off"
+            return "\(config.name)[\(enabled)]=\(shortcut.diagnosticDescription)"
+        }
+
+        return lines.isEmpty ? "none" : lines.joined(separator: " | ")
+    }
+
 
     private func getCurrentTranscriptionModel() -> String {
         if let modelName = ModeManager.shared.currentEffectiveConfiguration?.selectedTranscriptionModelName {
