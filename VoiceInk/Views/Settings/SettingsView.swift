@@ -23,8 +23,10 @@ struct SettingsView: View {
     @AppStorage(AppLanguagePreference.userDefaultsKey) private var appLanguagePreference = AppLanguagePreference
         .systemValue
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+    @AppStorage(AppPreferenceKey.showMenuBarIcon) private var showMenuBarIcon = true
     @State private var showResetOnboardingAlert = false
     @State private var showLanguageRestartAlert = false
+    @State private var pendingIconVisibilityChange: AppIconVisibilityChange?
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
     @State private var cancelRecordingShortcutRecorderResetID = 0
 
@@ -234,7 +236,21 @@ struct SettingsView: View {
             }
 
             Section("General") {
-                Toggle("Hide Dock Icon", isOn: $menuBarManager.isMenuBarOnly)
+                Toggle(
+                    "Hide Dock Icon",
+                    isOn: Binding(
+                        get: { menuBarManager.isMenuBarOnly },
+                        set: { requestIconVisibilityChange(.setDockIconHidden($0)) }
+                    )
+                )
+
+                Toggle(
+                    "Hide Menu Bar Icon",
+                    isOn: Binding(
+                        get: { !showMenuBarIcon },
+                        set: { requestIconVisibilityChange(.setMenuBarIconHidden($0)) }
+                    )
+                )
 
                 Toggle(
                     String(localized: "Launch at Login"),
@@ -330,6 +346,50 @@ struct SettingsView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Your language change will take full effect after you quit and reopen VoiceInk.")
+        }
+        .alert("Hide Both App Icons?", isPresented: isHideBothConfirmationPresented) {
+            Button("Cancel", role: .cancel) {}
+            Button("Hide Both", role: .destructive) {
+                guard let change = pendingIconVisibilityChange else { return }
+                applyIconVisibilityChange(change)
+            }
+        } message: {
+            Text("VoiceInk keeps running and can be reopened from Applications or Spotlight.")
+        }
+    }
+
+    private var iconVisibility: AppIconVisibility {
+        AppIconVisibility(
+            isDockIconHidden: menuBarManager.isMenuBarOnly,
+            isMenuBarIconHidden: !showMenuBarIcon
+        )
+    }
+
+    private var isHideBothConfirmationPresented: Binding<Bool> {
+        Binding(
+            get: { pendingIconVisibilityChange != nil },
+            set: { isPresented in
+                if !isPresented {
+                    pendingIconVisibilityChange = nil
+                }
+            }
+        )
+    }
+
+    private func requestIconVisibilityChange(_ change: AppIconVisibilityChange) {
+        if iconVisibility.decision(for: change).requiresConfirmation {
+            pendingIconVisibilityChange = change
+        } else {
+            applyIconVisibilityChange(change)
+        }
+    }
+
+    private func applyIconVisibilityChange(_ change: AppIconVisibilityChange) {
+        switch change {
+        case .setDockIconHidden(let isHidden):
+            menuBarManager.isMenuBarOnly = isHidden
+        case .setMenuBarIconHidden(let isHidden):
+            showMenuBarIcon = !isHidden
         }
     }
 

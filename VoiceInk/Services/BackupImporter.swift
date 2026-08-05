@@ -154,6 +154,9 @@ enum BackupImporter {
         if let launch = general.launchAtLoginEnabled {
             LaunchAtLoginManager.shared.setEnabled(launch)
         }
+        if let showMenuBarIcon = general.showMenuBarIcon {
+            UserDefaults.standard.set(showMenuBarIcon, forKey: AppPreferenceKey.showMenuBarIcon)
+        }
         if let menuOnly = general.isMenuBarOnly {
             menuBarManager.isMenuBarOnly = menuOnly
         }

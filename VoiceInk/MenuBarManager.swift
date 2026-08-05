@@ -5,7 +5,7 @@ import SwiftUI
 class MenuBarManager: ObservableObject {
     @Published var isMenuBarOnly: Bool {
         didSet {
-            UserDefaults.standard.set(isMenuBarOnly, forKey: "IsMenuBarOnly")
+            UserDefaults.standard.set(isMenuBarOnly, forKey: AppPreferenceKey.isMenuBarOnly)
             applyActivationPolicy()
         }
     }
@@ -17,7 +17,7 @@ class MenuBarManager: ObservableObject {
     }
 
     init() {
-        self.isMenuBarOnly = UserDefaults.standard.bool(forKey: "IsMenuBarOnly")
+        self.isMenuBarOnly = UserDefaults.standard.bool(forKey: AppPreferenceKey.isMenuBarOnly)
         applyActivationPolicy()
 
         NotificationCenter.default.addObserver(
