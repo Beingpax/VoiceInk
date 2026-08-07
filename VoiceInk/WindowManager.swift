@@ -30,7 +30,7 @@ enum AppPresentationPolicy {
 
     static func restoreAccessoryIfNeededAfterUserFacingWindowClosed() {
         DispatchQueue.main.async {
-            let menuBarOnly = UserDefaults.standard.bool(forKey: "IsMenuBarOnly")
+            let menuBarOnly = UserDefaults.standard.bool(forKey: AppPreferenceKey.isMenuBarOnly)
             let hasVisibleUserWindows = !WindowDiagnostics.visibleUserFacingWindows().isEmpty
 
             guard menuBarOnly else { return }
@@ -97,7 +97,7 @@ class WindowManager: NSObject {
         if shouldShowNextConfiguredMainWindow {
             shouldShowNextConfiguredMainWindow = false
             presentMainWindow(window)
-        } else if UserDefaults.standard.bool(forKey: "IsMenuBarOnly") {
+        } else if UserDefaults.standard.bool(forKey: AppPreferenceKey.isMenuBarOnly) {
             window.orderOut(nil)
         }
     }

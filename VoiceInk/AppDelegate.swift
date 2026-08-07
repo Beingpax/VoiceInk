@@ -1,26 +1,53 @@
 import Cocoa
+import Carbon.HIToolbox
 import SwiftUI
 import UniformTypeIdentifiers
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     weak var menuBarManager: MenuBarManager?
+    private var launchedAsLoginItem = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        launchedAsLoginItem = Self.isLoginItemLaunch(NSAppleEventManager.shared().currentAppleEvent)
+
+        guard !launchedAsLoginItem, Self.areBothIconsHidden else { return }
+        AppPresentationPolicy.activateForUserFacingWindow()
+        WindowManager.shared.prepareForUserRequestedMainWindow()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        menuBarManager?.applyActivationPolicy()
+        guard !launchedAsLoginItem, Self.areBothIconsHidden else {
+            menuBarManager?.applyActivationPolicy()
+            return
+        }
+
+        menuBarManager?.activateForPresentedWindow()
+        if WindowManager.shared.showMainWindow() == nil {
+            WindowManager.shared.prepareForUserRequestedMainWindow()
+        }
+    }
+
+    private static func isLoginItemLaunch(_ event: NSAppleEventDescriptor?) -> Bool {
+        return event?.eventID == kAEOpenApplication
+            && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+    }
+
+    private static var areBothIconsHidden: Bool {
+        let defaults = UserDefaults.standard
+        return AppIconVisibility(
+            isDockIconHidden: defaults.bool(forKey: AppPreferenceKey.isMenuBarOnly),
+            isMenuBarIconHidden: !defaults.bool(forKey: AppPreferenceKey.showMenuBarIcon)
+        ).areBothIconsHidden
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if let menuBarManager, !menuBarManager.isMenuBarOnly {
-            if WindowManager.shared.currentMainWindow() != nil {
-                WindowManager.shared.showMainWindow()
-                return false
-            }
-
-            WindowManager.shared.prepareForUserRequestedMainWindow()
-            NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
+        if WindowManager.shared.currentMainWindow() != nil {
+            WindowManager.shared.showMainWindow()
             return false
         }
 
+        WindowManager.shared.prepareForUserRequestedMainWindow()
+        NotificationCenter.default.post(name: .showMainWindowRequested, object: nil)
         return true
     }
 

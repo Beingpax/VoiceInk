@@ -25,7 +25,7 @@ struct VoiceInkApp: App {
     @StateObject private var activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
-    @State private var showMenuBarIcon = true
+    @AppStorage(AppPreferenceKey.showMenuBarIcon) private var showMenuBarIcon = true
     @State private var didShowLaunchReminders = false
 
     // Audio cleanup manager for automatic deletion of old audio files
@@ -354,6 +354,7 @@ struct VoiceInkApp: App {
                 }
             }
             .confettiCelebrationPresenter()
+            .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)

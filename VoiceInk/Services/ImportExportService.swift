@@ -170,6 +170,7 @@ class ImportExportService {
             middleClickActivationDelay: recordingShortcutManager.middleClickActivationDelay,
             launchAtLoginEnabled: launchAtLoginEnabled,
             isMenuBarOnly: menuBarManager.isMenuBarOnly,
+            showMenuBarIcon: UserDefaults.standard.bool(forKey: AppPreferenceKey.showMenuBarIcon),
             recorderType: recorderUIManager.recorderPanelStyle.rawValue,
             appAppearancePreference: AppAppearancePreference.stored.rawValue,
             appLanguagePreference: AppLanguagePreference.storedRawValue,
@@ -303,6 +304,21 @@ class ImportExportService {
                 return
             }
 
+            let currentIconVisibility = AppIconVisibility(
+                isDockIconHidden: menuBarManager.isMenuBarOnly,
+                isMenuBarIconHidden: !UserDefaults.standard.bool(forKey: AppPreferenceKey.showMenuBarIcon)
+            )
+            if BackupIconVisibilityPreflight.resultsInBothIconsHidden(
+                for: backup, categories: selectedCategories, current: currentIconVisibility
+            ),
+                !confirmHidingBothAppIcons()
+            {
+                showAlert(
+                    title: String(localized: "Import Canceled"),
+                    message: String(localized: "No settings were imported."))
+                return
+            }
+
             try BackupImporter.apply(
                 backup,
                 categories: selectedCategories,
@@ -349,6 +365,17 @@ class ImportExportService {
         }
 
         return accessory.selectedCategories
+    }
+
+    private func confirmHidingBothAppIcons() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Hide Both App Icons?")
+        alert.informativeText = String(
+            localized: "VoiceInk keeps running and can be reopened from Applications or Spotlight.")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.addButton(withTitle: String(localized: "Hide Both"))
+        return alert.runModal() == .alertSecondButtonReturn
     }
 
     private func categorySummary(for categories: Set<BackupCategory>) -> String {

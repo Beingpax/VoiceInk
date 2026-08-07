@@ -8457,6 +8457,12 @@
         }
       }
     },
+    "Hide Both" : {
+
+    },
+    "Hide Both App Icons?" : {
+
+    },
     "Hide Dock Icon" : {
       "localizations" : {
         "de" : {
@@ -8472,6 +8478,9 @@
           }
         }
       }
+    },
+    "Hide Menu Bar Icon" : {
+
     },
     "History" : {
       "localizations" : {
@@ -18253,6 +18262,9 @@
           }
         }
       }
+    },
+    "VoiceInk keeps running and can be reopened from Applications or Spotlight." : {
+
     },
     "VoiceInk is also open source, so you can inspect every single line of code." : {
       "localizations" : {
