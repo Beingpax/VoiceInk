@@ -1,9 +1,9 @@
 import SwiftUI
 
-struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
-    @ObservedObject var stateProvider: S
-    @ObservedObject var recorder: Recorder
-    @ObservedObject var assistantSession: AssistantSession
+struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
+    var stateProvider: S
+    var recorder: Recorder
+    var assistantSession: AssistantSession
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
@@ -11,27 +11,18 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Display State
 
-    private enum DisplayState: Equatable {
-        case collapsed
-        case active
-        case liveText
-        case assistant
+    private var presentation: RecorderPresentation {
+        RecorderPresentation(
+            recordingState: stateProvider.recordingState,
+            partialTranscript: stateProvider.partialTranscript,
+            showLiveTranscript: showLiveTranscript,
+            isAssistantVisible: assistantSession.isVisible,
+            isAssistantBusy: assistantSession.isBusy
+        )
     }
 
-    private var displayState: DisplayState {
-        if assistantSession.isVisible {
-            return .assistant
-        }
-
-        switch stateProvider.recordingState {
-        case .recording:
-            let shouldShowLive = showLiveTranscript && !stateProvider.partialTranscript.isEmpty
-            return shouldShowLive ? .liveText : .active
-        case .transcribing, .enhancing:
-            return .active
-        default:
-            return .collapsed
-        }
+    private var displayState: RecorderDisplayState {
+        presentation.displayState
     }
 
     // MARK: - Screen Geometry
@@ -99,18 +90,17 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     }
 
     private var shouldShowCloseButton: Bool {
-        displayState == .assistant && stateProvider.recordingState == .idle && !assistantSession.isBusy
+        presentation.shouldShowCloseButton
     }
 
     private var liveAssistantFollowUpText: String {
-        guard showLiveTranscript, stateProvider.recordingState == .recording else { return "" }
-        return stateProvider.partialTranscript
+        presentation.assistantFollowUpText
     }
 
     // MARK: - Animation
 
-    private let expandAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80)
-    private let collapseAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0)
+    private let expandAnimation = AppTheme.Motion.panelExpand
+    private let collapseAnimation = AppTheme.Motion.panelCollapse
 
     private var pillAnimation: Animation {
         displayState == .collapsed ? collapseAnimation : expandAnimation
@@ -134,13 +124,23 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             assistantPanel
         }
         .frame(width: pillWidth, height: pillHeight)
-        .background(Color.black)
-        .clipShape(
-            NotchShape(
-                topCornerRadius: displayState == .liveText ? 12 : 8,
-                bottomCornerRadius: displayState == .liveText || displayState == .assistant ? 22 : 16
+        .background(
+            NotchRecorderChrome(
+                topCornerRadius: topCornerRadius,
+                bottomCornerRadius: bottomCornerRadius
             )
         )
+        .clipShape(
+            NotchShape(topCornerRadius: topCornerRadius, bottomCornerRadius: bottomCornerRadius)
+        )
+    }
+
+    private var topCornerRadius: CGFloat {
+        displayState == .liveText ? 12 : 8
+    }
+
+    private var bottomCornerRadius: CGFloat {
+        displayState == .liveText || displayState == .assistant ? 22 : 16
     }
 
     // MARK: - Main Row
@@ -195,7 +195,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var liveTextPanel: some View {
         VStack(spacing: 0) {
             if displayState == .liveText {
-                Divider().background(Color.white.opacity(0.15))
+                Divider().background(AppTheme.Recorder.separator)
                 LiveTranscriptView(text: stateProvider.partialTranscript)
                     .padding(.horizontal, 8)
             }
@@ -207,7 +207,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     private var assistantPanel: some View {
         VStack(spacing: 0) {
             if displayState == .assistant {
-                Divider().background(Color.white.opacity(0.15))
+                Divider().background(AppTheme.Recorder.separator)
                 AssistantPanelView(
                     session: assistantSession,
                     liveFollowUpText: liveAssistantFollowUpText,

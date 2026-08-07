@@ -1,8 +1,9 @@
 import SwiftUI
 
 enum ModelUsageText {
-    static let estimateInfo: LocalizedStringKey =
+    static var estimateInfo: LocalizedStringKey {
         "These estimated tokens are a rough estimate of token usage. They are not exact token counts or provider-reported billing usage."
+    }
 }
 
 struct ModelUsageCard: View {

@@ -1,22 +1,76 @@
 import SwiftUI
 
+// MARK: - Recorder Chrome
+
+/// The recorder's panel surface. Replaces a flat opaque `Color.black` with a dark material, a
+/// rim light and a drop shadow, so the panel reads as floating above the desktop rather than
+/// punched out of it.
+struct RecorderChrome: View {
+    var cornerRadius: CGFloat
+
+    var body: some View {
+        shape
+            .fill(.ultraThinMaterial)
+            .overlay(shape.fill(AppTheme.Recorder.chrome))
+            .overlay(shape.strokeBorder(AppTheme.Recorder.rim, lineWidth: 0.5))
+            .compositingGroup()
+            .shadow(color: AppTheme.Recorder.shadow, radius: 12, y: 4)
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+    }
+}
+
+/// Same treatment for the notch, which needs its own clip shape rather than a rounded rectangle.
+struct NotchRecorderChrome: View {
+    var topCornerRadius: CGFloat
+    var bottomCornerRadius: CGFloat
+
+    var body: some View {
+        let shape = NotchShape(
+            topCornerRadius: topCornerRadius,
+            bottomCornerRadius: bottomCornerRadius
+        )
+
+        shape
+            .fill(.ultraThinMaterial)
+            .overlay(shape.fill(AppTheme.Recorder.chrome))
+            .compositingGroup()
+            .shadow(color: AppTheme.Recorder.shadow, radius: 10, y: 3)
+    }
+}
+
 // MARK: - Icon Toggle Button
 
 struct RecorderToggleButton: View {
     let isEnabled: Bool
     let icon: String
     let disabled: Bool
+    let accessibilityLabel: String
     let action: () -> Void
 
-    init(isEnabled: Bool, icon: String, disabled: Bool = false, action: @escaping () -> Void) {
+    init(
+        isEnabled: Bool,
+        icon: String,
+        disabled: Bool = false,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) {
         self.isEnabled = isEnabled
         self.icon = icon
         self.disabled = disabled
+        self.accessibilityLabel = accessibilityLabel
         self.action = action
     }
 
     private var isEmoji: Bool {
         !icon.contains(".") && !icon.contains("-") && icon.unicodeScalars.contains { !$0.isASCII }
+    }
+
+    private var tint: Color {
+        if disabled { return AppTheme.Recorder.labelDisabled }
+        return isEnabled ? AppTheme.Recorder.label : AppTheme.Recorder.labelInactive
     }
 
     var body: some View {
@@ -28,10 +82,12 @@ struct RecorderToggleButton: View {
                     Image(systemName: icon).font(.system(size: 13))
                 }
             }
-            .foregroundColor(disabled ? .white.opacity(0.3) : (isEnabled ? .white : .white.opacity(0.6)))
+            .foregroundStyle(tint)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .disabled(disabled)
+        .help(accessibilityLabel)
+        .accessibilityLabel(Text(accessibilityLabel))
     }
 }
 
@@ -91,22 +147,22 @@ struct RecorderRecordButton: View {
         switch visualState {
         case .ready:
             return StateColors(
-                surface: Color(red: 0.30, green: 0.30, blue: 0.32),
-                border: Color(red: 0.42, green: 0.42, blue: 0.44),
-                mark: Color(red: 0.78, green: 0.78, blue: 0.80)
+                surface: AppTheme.Recorder.idleFill,
+                border: AppTheme.Recorder.idleBorder,
+                mark: AppTheme.Recorder.idleMark
             )
         case .recording:
             let red = AppTheme.Status.error
             return StateColors(
                 surface: red.opacity(0.92),
                 border: red.opacity(0.98),
-                mark: .white
+                mark: AppTheme.Recorder.label
             )
         case .processing:
             return StateColors(
-                surface: Color.white.opacity(0.13),
-                border: Color.white.opacity(0.18),
-                mark: Color.white.opacity(0.86)
+                surface: AppTheme.Recorder.controlFill,
+                border: AppTheme.Recorder.controlBorder,
+                mark: AppTheme.Recorder.labelSecondary
             )
         }
     }
@@ -162,15 +218,15 @@ struct RecorderCloseButton: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.13))
+                    .fill(AppTheme.Recorder.controlFill)
                     .overlay(
                         Circle()
-                            .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.6)
+                            .strokeBorder(AppTheme.Recorder.controlBorder, lineWidth: 0.6)
                     )
 
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.86))
+                    .foregroundColor(AppTheme.Recorder.labelSecondary)
             }
             .frame(width: 21, height: 21)
             .contentShape(Circle())
@@ -183,20 +239,24 @@ struct RecorderCloseButton: View {
 // MARK: - Processing Indicator
 
 struct ProcessingIndicator: View {
-    @State private var rotation: Double = 0
     let color: Color
 
+    /// Seconds per full turn.
+    private let period: TimeInterval = 1
+
     var body: some View {
-        Circle()
-            .trim(from: 0.1, to: 0.9)
-            .stroke(color, lineWidth: 1.5)
-            .frame(width: 12, height: 12)
-            .rotationEffect(.degrees(rotation))
-            .onAppear {
-                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
-                    rotation = 360
-                }
-            }
+        // TimelineView drives rotation off the frame clock, so it suspends when the view is
+        // offscreen or the window is occluded — unlike a retained `repeatForever` animation.
+        TimelineView(.animation) { context in
+            let turns = context.date.timeIntervalSinceReferenceDate / period
+
+            Circle()
+                .trim(from: 0.1, to: 0.9)
+                .stroke(color, lineWidth: 1.5)
+                .rotationEffect(.degrees(360 * turns.truncatingRemainder(dividingBy: 1)))
+        }
+        .frame(width: 12, height: 12)
+        .accessibilityHidden(true)
     }
 }
 
@@ -210,92 +270,92 @@ struct ProgressAnimation: View {
     private let dotSize: CGFloat = 3
     private let dotSpacing: CGFloat = 2
 
-    @State private var currentDot = 0
-    @State private var timer: Timer?
-
-    init(color: Color = .white, animationSpeed: Double = 0.3) {
+    init(color: Color = AppTheme.Recorder.label, animationSpeed: Double = 0.3) {
         self.color = color
         self.animationSpeed = animationSpeed
     }
 
-    var body: some View {
-        HStack(spacing: dotSpacing) {
-            ForEach(0..<dotCount, id: \.self) { index in
-                RoundedRectangle(cornerRadius: dotSize / 2)
-                    .fill(color.opacity(index <= currentDot ? 0.85 : 0.25))
-                    .frame(width: dotSize, height: dotSize)
-            }
-        }
-        .onAppear { startAnimation() }
-        .onDisappear {
-            timer?.invalidate()
-            timer = nil
-        }
-    }
+    /// One extra step at each end produces the brief all-off pause the original sentinel value
+    /// was reaching for.
+    private var phaseCount: Int { dotCount + 2 }
 
-    private func startAnimation() {
-        timer?.invalidate()
-        currentDot = 0
-        timer = Timer.scheduledTimer(withTimeInterval: animationSpeed, repeats: true) { _ in
-            currentDot = (currentDot + 1) % (dotCount + 2)
-            if currentDot > dotCount { currentDot = -1 }
+    var body: some View {
+        PhaseAnimator(0..<phaseCount) { phase in
+            HStack(spacing: dotSpacing) {
+                ForEach(0..<dotCount, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: dotSize / 2, style: .continuous)
+                        .fill(color.opacity(index < phase ? 0.85 : 0.25))
+                        .frame(width: dotSize, height: dotSize)
+                }
+            }
+        } animation: { _ in
+            .easeInOut(duration: animationSpeed)
         }
+        .accessibilityHidden(true)
     }
 }
 
 // MARK: - Mode Button
 
 struct RecorderModeButton: View {
-    @ObservedObject private var modeManager = ModeManager.shared
+    private let modeManager = ModeManager.shared
     let buttonSize: CGFloat
     let padding: EdgeInsets
+
+    private static let dismissDelay = Duration.milliseconds(250)
 
     @State private var isPopoverPresented = false
     @State private var isHoveringButton: Bool = false
     @State private var isHoveringPopover: Bool = false
-    @State private var dismissWorkItem: DispatchWorkItem?
 
     init(buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7)) {
         self.buttonSize = buttonSize
         self.padding = padding
     }
 
+    private var hasModes: Bool {
+        !modeManager.enabledConfigurations.isEmpty
+    }
+
+    private var isHovering: Bool {
+        isHoveringButton || isHoveringPopover
+    }
+
+    private var currentModeName: String {
+        modeManager.currentEffectiveConfiguration?.name ?? String(localized: "None")
+    }
+
     var body: some View {
         RecorderToggleButton(
-            isEnabled: !modeManager.enabledConfigurations.isEmpty,
-            icon: modeManager.enabledConfigurations.isEmpty
-                ? "square.grid.2x2" : (modeManager.currentEffectiveConfiguration?.icon.value ?? "square.grid.2x2"),
-            disabled: modeManager.enabledConfigurations.isEmpty
+            isEnabled: hasModes,
+            icon: hasModes
+                ? (modeManager.currentEffectiveConfiguration?.icon.value ?? "square.grid.2x2") : "square.grid.2x2",
+            disabled: !hasModes,
+            accessibilityLabel: hasModes
+                ? String(format: String(localized: "Switch mode, currently %@"), currentModeName)
+                : String(localized: "No modes configured")
         ) {
             isPopoverPresented.toggle()
         }
         .frame(width: buttonSize)
         .padding(padding)
-        .onHover {
-            isHoveringButton = $0
-            syncPopoverVisibility()
-        }
+        .onHover { isHoveringButton = $0 }
         .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
             ModePopover()
-                .onHover {
-                    isHoveringPopover = $0
-                    syncPopoverVisibility()
-                }
+                .onHover { isHoveringPopover = $0 }
         }
-    }
-
-    private func syncPopoverVisibility() {
-        if isHoveringButton || isHoveringPopover {
-            dismissWorkItem?.cancel()
-            dismissWorkItem = nil
-            isPopoverPresented = true
-        } else {
-            dismissWorkItem?.cancel()
-            let work = DispatchWorkItem { [isPopoverPresentedBinding = $isPopoverPresented] in
-                isPopoverPresentedBinding.wrappedValue = false
+        // Debounce dismissal so travelling from the button to the popover does not close it.
+        // Cancellation is tied to view lifetime, so there is no work item to leak.
+        .task(id: isHovering) {
+            if isHovering {
+                isPopoverPresented = true
+                return
             }
-            dismissWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
+
+            guard isPopoverPresented else { return }
+            try? await Task.sleep(for: Self.dismissDelay)
+            guard !Task.isCancelled else { return }
+            isPopoverPresented = false
         }
     }
 }
@@ -310,7 +370,7 @@ struct LiveTranscriptView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 Text(text)
                     .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundStyle(AppTheme.Recorder.labelSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
@@ -380,7 +440,7 @@ struct RecorderStatusDisplay: View {
 // MARK: - Assistant Response Panel
 
 struct AssistantPanelView: View {
-    @ObservedObject var session: AssistantSession
+    var session: AssistantSession
     let liveFollowUpText: String
     let onSend: (String) -> Void
 
@@ -388,7 +448,7 @@ struct AssistantPanelView: View {
     @FocusState private var isFollowUpFieldFocused: Bool
 
     private let horizontalPadding: CGFloat = 20
-    private let followUpTextColor = Color.white.opacity(0.9)
+    private let followUpTextColor = AppTheme.Recorder.labelSecondary
 
     private var statusText: String? {
         switch session.phase {
@@ -434,7 +494,7 @@ struct AssistantPanelView: View {
                     if let statusText {
                         Text(statusText)
                             .font(.system(size: 11))
-                            .foregroundColor(.white.opacity(0.62))
+                            .foregroundColor(AppTheme.Recorder.labelTertiary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -482,15 +542,15 @@ struct AssistantPanelView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(Color.white.opacity(0.10))
+            .background(AppTheme.Recorder.fieldFill)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             Button(action: sendDraftMessage) {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(canSendDraft ? .black : .white.opacity(0.35))
+                    .foregroundColor(canSendDraft ? .black : AppTheme.Recorder.labelDisabled)
                     .frame(width: 24, height: 24)
-                    .background(canSendDraft ? Color.white.opacity(0.88) : Color.white.opacity(0.10))
+                    .background(canSendDraft ? AppTheme.Recorder.sendEnabled : AppTheme.Recorder.fieldFill)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -551,12 +611,12 @@ private struct AssistantMessageBubble: View {
             MarkdownContentView(
                 message.content,
                 fontSize: 12,
-                foregroundColor: .white.opacity(isUser ? 0.92 : 0.86),
+                foregroundColor: isUser ? AppTheme.Recorder.label : AppTheme.Recorder.labelSecondary,
                 alignment: .leading
             )
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background(isUser ? Color.white.opacity(0.16) : Color.white.opacity(0.08))
+            .background(isUser ? AppTheme.Recorder.bubbleUser : AppTheme.Recorder.bubbleAssistant)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .overlay(alignment: .bottomTrailing) {
                 if !isUser {
