@@ -49,6 +49,7 @@ enum ModeValidationError: Error, Identifiable {
     }
 }
 
+@MainActor
 struct ModeValidator {
     private let modeManager: ModeManager
 

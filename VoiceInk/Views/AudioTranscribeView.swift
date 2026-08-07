@@ -4,9 +4,9 @@ import UniformTypeIdentifiers
 
 struct AudioTranscribeView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var engine: VoiceInkEngine
-    @ObservedObject private var modeManager = ModeManager.shared
-    @StateObject private var transcriptionManager = AudioTranscriptionManager.shared
+    @Environment(VoiceInkEngine.self) private var engine
+    private let modeManager = ModeManager.shared
+    private let transcriptionManager = AudioTranscriptionManager.shared
     @State private var isDropTargeted = false
     @State private var showModePopover = false
     @State private var expandedItemId: UUID?

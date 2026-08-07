@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import os
 
-class AudioProcessor {
+final class AudioProcessor: Sendable {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioProcessor")
 
     struct AudioFormat {

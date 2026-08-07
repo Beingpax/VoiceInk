@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LicenseView: View {
-    @StateObject private var licenseViewModel = LicenseViewModel()
+    @State private var licenseViewModel = LicenseViewModel()
 
     var body: some View {
         VStack(spacing: 15) {

@@ -2,7 +2,9 @@ import AVFoundation
 import Foundation
 import SwiftUI
 
-class CustomSoundManager: ObservableObject {
+@MainActor
+@Observable
+class CustomSoundManager {
     static let shared = CustomSoundManager()
 
     enum BuiltInSound: String, CaseIterable, Identifiable {
@@ -87,13 +89,13 @@ class CustomSoundManager: ObservableObject {
 
     private let maxSoundDuration: TimeInterval = 3.0
 
-    @Published private var startSoundSelection: SoundSelection {
+    private var startSoundSelection: SoundSelection {
         didSet {
             saveSoundSelection(startSoundSelection, for: .start)
         }
     }
 
-    @Published private var stopSoundSelection: SoundSelection {
+    private var stopSoundSelection: SoundSelection {
         didSet {
             saveSoundSelection(stopSoundSelection, for: .stop)
         }

@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import SwiftUI
 
+@MainActor
 struct EmailSupport {
     private static let supportEmailAddress = "support@tryvoiceink.com"
     private static let supportEmailSubject = "VoiceInk Support Request"

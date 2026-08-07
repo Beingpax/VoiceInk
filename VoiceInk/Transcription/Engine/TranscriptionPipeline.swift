@@ -6,12 +6,12 @@ import os
 /// transcribe → filter → format → word-replace → AI enhance → deliver → save
 @MainActor
 class TranscriptionPipeline {
-    struct AssistantHooks {
+    struct AssistantHooks: Sendable {
         let isFollowUp: Bool
-        let sendFollowUp: (String, Transcription) async -> Void
-        let startResponse: (String, EnhancementRuntimeConfiguration) async -> Void
-        let showResponse: (String, String?) async -> Void
-        let failResponse: (String) async -> Void
+        let sendFollowUp: @MainActor (String, Transcription) async -> Void
+        let startResponse: @MainActor (String, EnhancementRuntimeConfiguration) async -> Void
+        let showResponse: @MainActor (String, String?) async -> Void
+        let failResponse: @MainActor (String) async -> Void
 
         static let inactive = AssistantHooks(
             isFollowUp: false,
@@ -58,10 +58,10 @@ class TranscriptionPipeline {
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
         recordingContextSnapshot: @escaping () async -> RecordingContextSnapshot? = { nil },
         outputConfiguration: @escaping () -> OutputRuntimeConfiguration,
-        onStateChange: @escaping (RecordingState) -> Void,
+        onStateChange: @escaping @MainActor (RecordingState) -> Void,
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
-        onDismiss: @escaping () async -> Void,
+        onDismiss: @escaping @MainActor () async -> Void,
         assistant: AssistantHooks = .inactive
     ) async {
         let model = transcriptionConfiguration.model

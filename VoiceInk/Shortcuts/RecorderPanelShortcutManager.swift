@@ -3,16 +3,20 @@ import Carbon.HIToolbox
 import Foundation
 
 @MainActor
-final class RecorderPanelShortcutManager: ObservableObject {
+@Observable
+final class RecorderPanelShortcutManager {
     private var recorderUIManager: RecorderUIManager
-    private var visibilityTask: Task<Void, Never>?
-    private var shortcutChangeObserver: NSObjectProtocol?
-    private let visibleRecorderMonitor = ShortcutMonitor()
+
+    // Lifecycle handles, not UI state. Kept out of observation so `deinit` can still touch them
+    // directly — observed properties become computed and are unreachable from a nonisolated deinit.
+    nonisolated(unsafe) private var visibilityObserver: ObservationBridge?
+    nonisolated(unsafe) private var shortcutChangeObserver: NSObjectProtocol?
+    @ObservationIgnored private let visibleRecorderMonitor = ShortcutMonitor()
 
     // Double-tap Escape handling
-    private var firstEscapePressTime: Date? = nil
+    @ObservationIgnored private var firstEscapePressTime: Date? = nil
     private let escapeDoublePressThreshold: TimeInterval = 1.5
-    private var escapeTimeoutTask: Task<Void, Never>?
+    @ObservationIgnored private var escapeTimeoutTask: Task<Void, Never>?
 
     init(recorderUIManager: RecorderUIManager) {
         self.recorderUIManager = recorderUIManager
@@ -40,14 +44,16 @@ final class RecorderPanelShortcutManager: ObservableObject {
     }
 
     private func setupVisibilityObserver() {
-        visibilityTask = Task { @MainActor in
-            for await isVisible in recorderUIManager.$isRecorderPanelVisible.values {
-                if isVisible {
-                    refreshVisibleShortcuts()
-                } else {
-                    visibleRecorderMonitor.stop()
-                    resetEscapeState()
-                }
+        // Replaces the `$isRecorderPanelVisible.values` async sequence; Observation has no
+        // projected publisher, so track the property directly.
+        visibilityObserver = ObservationBridge { [weak self] in
+            guard let self else { return }
+
+            if recorderUIManager.isRecorderPanelVisible {
+                refreshVisibleShortcuts()
+            } else {
+                visibleRecorderMonitor.stop()
+                resetEscapeState()
             }
         }
     }
@@ -154,7 +160,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
         }
 
-        visibilityTask?.cancel()
+        visibilityObserver?.cancel()
         MainActor.assumeIsolated {
             visibleRecorderMonitor.stop()
             resetEscapeState()

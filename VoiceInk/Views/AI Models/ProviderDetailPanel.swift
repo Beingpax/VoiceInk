@@ -5,8 +5,8 @@ struct ProviderDetailPanel: View {
     let descriptor: ProviderDescriptor
     let onClose: () -> Void
 
-    @EnvironmentObject private var aiService: AIService
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @Environment(AIService.self) private var aiService
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
 
     @State private var apiKey = ""
     @State private var isVerifying = false

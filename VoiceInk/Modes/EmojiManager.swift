@@ -1,11 +1,12 @@
 import Foundation
 
-class EmojiManager: ObservableObject {
-    static let shared = EmojiManager()
+@Observable
+class EmojiManager {
+    @MainActor static let shared = EmojiManager()
 
     private let customEmojisKey = "userAddedEmojis"
 
-    @Published var customEmojis: [String] = []
+    var customEmojis: [String] = []
 
     private init() {
         loadCustomEmojis()

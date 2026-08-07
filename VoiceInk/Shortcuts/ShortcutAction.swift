@@ -53,6 +53,8 @@ enum ShortcutAction: Hashable {
         }
     }
 
+    /// Resolves mode names through `ModeManager`, which is main-actor isolated.
+    @MainActor
     var displayName: String {
         switch self {
         case .primaryRecording:

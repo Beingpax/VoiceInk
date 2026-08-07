@@ -80,8 +80,8 @@ enum BrowserURLError: Error {
     case noActiveTab
 }
 
-class BrowserURLService {
-    static let shared = BrowserURLService()
+final class BrowserURLService: Sendable {
+    @MainActor static let shared = BrowserURLService()
 
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",

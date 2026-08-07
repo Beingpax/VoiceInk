@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct AIProviderVerificationCard: View {
-    @ObservedObject var aiService: AIService
+    var aiService: AIService
 
     let providerOptions: [AIProvider]
     @Binding var selectedProvider: AIProvider

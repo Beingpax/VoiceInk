@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LicenseManagementView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @StateObject private var licenseViewModel = LicenseViewModel()
+    @State private var licenseViewModel = LicenseViewModel()
     @State private var showingDeactivateConfirmation = false
     @State private var didCopyLicenseKey = false
     @State private var isShowingReportPanel = false

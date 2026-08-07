@@ -11,8 +11,8 @@ struct ModeConfigFormView: View {
     let onDelete: () -> ModeRemovalResult
     let openPromptEditor: (PromptEditorView.Mode) -> Void
 
-    @EnvironmentObject private var aiService: AIService
-    @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
+    @Environment(AIService.self) private var aiService
+    @Environment(ModeFormWarmupStore.self) private var modeWarmupStore
     @FocusState private var isNameFieldFocused: Bool
 
     @State private var isShowingIconPicker = false

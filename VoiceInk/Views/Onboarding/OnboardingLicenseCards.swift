@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct OnboardingLicenseSetupCard: View {
-    @ObservedObject var licenseViewModel: LicenseViewModel
+    @Bindable var licenseViewModel: LicenseViewModel
 
     let onPurchase: () -> Void
     let onStartTrial: () -> Void

@@ -13,7 +13,7 @@ struct OnboardingTranscriptionSetupCard: View {
     let onDownloadLocalModel: (FluidAudioModel) -> Void
     let onVerificationChanged: () -> Void
 
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
     @State private var apiKey = ""
     @State private var isVerifying = false
     @State private var verificationMessage: String?

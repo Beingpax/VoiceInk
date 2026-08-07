@@ -2,21 +2,21 @@ import SwiftUI
 
 /// A reusable grid component for selecting prompts with a plus button to add new ones
 struct PromptSelectionGrid: View {
-    @EnvironmentObject private var enhancementService: AIEnhancementService
+    @Environment(AIEnhancementService.self) private var enhancementService
 
     let prompts: [CustomPrompt]
     let selectedPromptId: UUID?
     let onPromptSelected: (CustomPrompt) -> Void
-    let onEditPrompt: ((CustomPrompt) -> Void)?
-    let onDeletePrompt: ((CustomPrompt) -> Void)?
+    let onEditPrompt: (@MainActor (CustomPrompt) -> Void)?
+    let onDeletePrompt: (@MainActor (CustomPrompt) -> Void)?
     let onAddNewPrompt: (() -> Void)?
 
     init(
         prompts: [CustomPrompt],
         selectedPromptId: UUID?,
         onPromptSelected: @escaping (CustomPrompt) -> Void,
-        onEditPrompt: ((CustomPrompt) -> Void)? = nil,
-        onDeletePrompt: ((CustomPrompt) -> Void)? = nil,
+        onEditPrompt: (@MainActor (CustomPrompt) -> Void)? = nil,
+        onDeletePrompt: (@MainActor (CustomPrompt) -> Void)? = nil,
         onAddNewPrompt: (() -> Void)? = nil
     ) {
         self.prompts = prompts

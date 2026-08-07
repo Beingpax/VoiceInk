@@ -1,6 +1,8 @@
 import Foundation
 
-class FillerWordManager: ObservableObject {
+@MainActor
+@Observable
+class FillerWordManager {
     static let shared = FillerWordManager()
 
     static let defaultFillerWords = [
@@ -10,7 +12,7 @@ class FillerWordManager: ObservableObject {
 
     private let fillerWordsKey = "FillerWords"
 
-    @Published var fillerWords: [String] {
+    var fillerWords: [String] {
         didSet {
             UserDefaults.standard.set(fillerWords, forKey: fillerWordsKey)
         }

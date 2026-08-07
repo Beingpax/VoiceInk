@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// Manages license data using secure Keychain storage (non-syncable, device-local).
-final class LicenseManager {
+final class LicenseManager: Sendable {
     static let shared = LicenseManager()
 
     private let keychain = KeychainService.shared

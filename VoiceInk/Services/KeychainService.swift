@@ -5,7 +5,8 @@ import os
 /// Securely stores and retrieves API keys using Keychain with iCloud sync.
 /// For local (unsigned) builds, uses UserDefaults instead since Keychain
 /// requires stable code signing to reliably persist data across rebuilds.
-final class KeychainService {
+/// Keychain and UserDefaults are both thread-safe; the imports just cannot express it.
+final class KeychainService: @unchecked Sendable {
     static let shared = KeychainService()
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "KeychainService")

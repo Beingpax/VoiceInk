@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 
+@MainActor
 final class LogExporter {
     static let shared = LogExporter()
 

@@ -15,11 +15,11 @@ final class TranscriptionDelivery {
     }
 
     struct Actions {
-        let setState: (RecordingState) -> Void
-        let dismiss: () async -> Void
-        let sendFollowUp: (String, Transcription) async -> Void
-        let showResponse: (String, String?) async -> Void
-        let failResponse: (String) async -> Void
+        let setState: @MainActor (RecordingState) -> Void
+        let dismiss: @MainActor () async -> Void
+        let sendFollowUp: @MainActor (String, Transcription) async -> Void
+        let showResponse: @MainActor (String, String?) async -> Void
+        let failResponse: @MainActor (String) async -> Void
     }
 
     func deliver(_ request: Request, actions: Actions) async {

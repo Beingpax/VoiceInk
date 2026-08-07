@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct AudioFileRow: View {
-    @ObservedObject var item: AudioFileQueueItem
+    var item: AudioFileQueueItem
     let isExpanded: Bool
     let onToggleExpand: () -> Void
     let onRemove: () -> Void

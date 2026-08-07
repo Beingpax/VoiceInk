@@ -7,7 +7,7 @@ struct ShortcutRecorder: View {
     let defaultShortcut: Shortcut?
     let onShortcutChanged: () -> Void
 
-    @StateObject private var recorder = ShortcutRecorderModel()
+    @State private var recorder = ShortcutRecorderModel()
     @State private var recorderID = UUID()
     @State private var shortcut: Shortcut?
 
@@ -159,18 +159,25 @@ private struct ShortcutKeyCap: View {
     }
 }
 
-final class ShortcutRecorderModel: ObservableObject {
-    @Published var isRecording = false
-    @Published var previewShortcut: Shortcut?
+@MainActor
+@Observable
+final class ShortcutRecorderModel {
+    var isRecording = false
+    var previewShortcut: Shortcut?
 
-    private var localMonitor: Any?
-    private var onCapture: ((Shortcut) -> Void)?
-    private var activeAction: ShortcutAction?
-    private var pendingModifierShortcut: Shortcut?
-    private var peakModifierFlags: NSEvent.ModifierFlags = []
+    // Lifecycle handles rather than observable state, so `deinit` can reach them from a
+    // nonisolated context.
+    nonisolated(unsafe) private var localMonitor: Any?
+    @ObservationIgnored private var onCapture: ((Shortcut) -> Void)?
+    @ObservationIgnored private var activeAction: ShortcutAction?
+    @ObservationIgnored private var pendingModifierShortcut: Shortcut?
+    @ObservationIgnored private var peakModifierFlags: NSEvent.ModifierFlags = []
 
     deinit {
-        removeRecordingMonitor()
+        // Inlined rather than calling the main-actor helper: deinit carries no isolation.
+        if let localMonitor {
+            NSEvent.removeMonitor(localMonitor)
+        }
     }
 
     func start(action: ShortcutAction, onCapture: @escaping (Shortcut) -> Void) {

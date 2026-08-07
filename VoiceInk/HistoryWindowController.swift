@@ -2,6 +2,7 @@ import AppKit
 import SwiftData
 import SwiftUI
 
+@MainActor
 class HistoryWindowController: NSObject, NSWindowDelegate {
     static let shared = HistoryWindowController()
 
@@ -34,8 +35,8 @@ class HistoryWindowController: NSObject, NSWindowDelegate {
     private func createHistoryWindow(modelContainer: ModelContainer, engine: VoiceInkEngine) -> NSWindow {
         let historyView = TranscriptionHistoryView()
             .modelContainer(modelContainer)
-            .environmentObject(engine)
-            .environmentObject(engine.enhancementService!)
+            .environment(engine)
+            .environment(engine.enhancementService!)
             .frame(minWidth: 1150, minHeight: 700)
 
         let hostingController = NSHostingController(rootView: historyView)

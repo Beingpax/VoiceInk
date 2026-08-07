@@ -34,9 +34,14 @@ struct WhisperModelFile: Identifiable {
     }
 }
 
+private struct ProgressThrottleState {
+    var lastUpdateTime = Date()
+    var lastProgressValue: Double = 0
+}
+
 // MARK: - Private download task delegate
 
-private class TaskDelegate: NSObject, URLSessionTaskDelegate {
+private final class TaskDelegate: NSObject, URLSessionTaskDelegate {
     private let continuation: CheckedContinuation<Void, Never>
     private let finished = ManagedAtomic(false)
 
@@ -54,13 +59,14 @@ private class TaskDelegate: NSObject, URLSessionTaskDelegate {
 // MARK: - WhisperModelManager
 
 @MainActor
-class WhisperModelManager: ObservableObject {
-    @Published var availableModels: [WhisperModelFile] = []
-    @Published var downloadProgress: [String: Double] = [:]
-    @Published var whisperContext: WhisperContext?
-    @Published var isModelLoaded = false
-    @Published var loadedWhisperModel: WhisperModelFile?
-    @Published var isModelLoading = false
+@Observable
+class WhisperModelManager {
+    var availableModels: [WhisperModelFile] = []
+    var downloadProgress: [String: Double] = [:]
+    var whisperContext: WhisperContext?
+    var isModelLoaded = false
+    var loadedWhisperModel: WhisperModelFile?
+    var isModelLoading = false
 
     let modelsDirectory: URL
     let whisperPrompt = WhisperPrompt()
@@ -165,31 +171,41 @@ class WhisperModelManager: ObservableObject {
 
             task.resume()
 
-            var lastUpdateTime = Date()
-            var lastProgressValue: Double = 0
+            // KVO fires on an arbitrary queue, so the throttling state needs a lock rather
+            // than being captured as plain mutable locals.
+            let throttle = LockedValue(ProgressThrottleState())
 
-            let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
-                let currentTime = Date()
-                let timeSinceLastUpdate = currentTime.timeIntervalSince(lastUpdateTime)
+            nonisolated(unsafe) let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
                 let currentProgress = round(progress.fractionCompleted * 100) / 100
 
-                if timeSinceLastUpdate >= 0.5 && abs(currentProgress - lastProgressValue) >= 0.01 {
-                    lastUpdateTime = currentTime
-                    lastProgressValue = currentProgress
+                let shouldPublish = throttle.withLock { state -> Bool in
+                    let now = Date()
+                    guard now.timeIntervalSince(state.lastUpdateTime) >= 0.5,
+                        abs(currentProgress - state.lastProgressValue) >= 0.01
+                    else { return false }
 
-                    DispatchQueue.main.async {
-                        self.downloadProgress[progressKey] = currentProgress
-                    }
+                    state.lastUpdateTime = now
+                    state.lastProgressValue = currentProgress
+                    return true
+                }
+
+                guard shouldPublish else { return }
+
+                Task { @MainActor in
+                    self.downloadProgress[progressKey] = currentProgress
                 }
             }
 
+            // Parks until this task is cancelled, then tears down the observation and fails the
+            // outer continuation. The operation closure has to be explicitly @Sendable because
+            // `withTaskCancellationHandler` takes it as a `sending` parameter.
             Task {
                 await withTaskCancellationHandler {
                     observation.invalidate()
                     if finished.exchange(true, ordering: .acquiring) == false {
                         continuation.resume(throwing: CancellationError())
                     }
-                } operation: {
+                } operation: { @Sendable in
                     await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
                 }
             }

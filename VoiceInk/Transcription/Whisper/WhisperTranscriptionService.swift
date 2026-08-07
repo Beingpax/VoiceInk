@@ -2,7 +2,9 @@ import AVFoundation
 import Foundation
 import os
 
-class WhisperTranscriptionService: TranscriptionService {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class WhisperTranscriptionService: TranscriptionService, @unchecked Sendable {
 
     private var whisperContext: WhisperContext?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "WhisperTranscriptionService")

@@ -16,9 +16,10 @@ struct FluidAudioDownloadStatus {
 }
 
 @MainActor
-class FluidAudioModelManager: ObservableObject {
-    @Published private var downloadStatuses: [String: FluidAudioDownloadStatus] = [:]
-    @Published private var modelStateRevision = 0
+@Observable
+class FluidAudioModelManager {
+    private var downloadStatuses: [String: FluidAudioDownloadStatus] = [:]
+    private var modelStateRevision = 0
     private var activeDownloadIDs: [String: UUID] = [:]
     private var activeNetworkProgressIDs: [String: UUID] = [:]
 
@@ -28,7 +29,7 @@ class FluidAudioModelManager: ObservableObject {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "FluidAudioModelManager")
 
     // Add new Fluid Audio models here when support is added.
-    private static let modelVersionMap: [String: AsrModelVersion] = [
+    nonisolated private static let modelVersionMap: [String: AsrModelVersion] = [
         "parakeet-tdt-0.6b-v2": .v2,
         "parakeet-tdt-0.6b-v3": .v3,
     ]

@@ -3,9 +3,10 @@ import SwiftUI
 import os
 
 @MainActor
-class TranscriptionModelManager: ObservableObject {
-    @Published var currentTranscriptionModel: (any TranscriptionModel)?
-    @Published var allAvailableModels: [any TranscriptionModel] = TranscriptionModelRegistry.models
+@Observable
+class TranscriptionModelManager {
+    var currentTranscriptionModel: (any TranscriptionModel)?
+    var allAvailableModels: [any TranscriptionModel] = TranscriptionModelRegistry.models
 
     private weak var whisperModelManager: WhisperModelManager?
     private weak var fluidAudioModelManager: FluidAudioModelManager?

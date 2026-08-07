@@ -5,9 +5,10 @@ import ScreenCaptureKit
 import Vision
 
 @MainActor
-class ScreenCaptureService: ObservableObject {
-    @Published var isCapturing = false
-    @Published var lastCapturedText: String?
+@Observable
+class ScreenCaptureService {
+    var isCapturing = false
+    var lastCapturedText: String?
 
     private struct FocusedWindowHint: Sendable {
         let processID: pid_t
@@ -16,8 +17,8 @@ class ScreenCaptureService: ObservableObject {
     }
 
     private static let captureTimeout: TimeInterval = 3.0
-    private static let maximumCaptureDimension: CGFloat = 2800
-    private static let focusedWindowFrameTolerance: CGFloat = 96
+    nonisolated private static let maximumCaptureDimension: CGFloat = 2800
+    nonisolated private static let focusedWindowFrameTolerance: CGFloat = 96
 
     static func requestScreenCapturePermissionRegistration() async -> Bool {
         if CGPreflightScreenCaptureAccess() {

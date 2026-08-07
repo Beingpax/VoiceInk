@@ -1,6 +1,8 @@
 import AppKit
 
-final class TriggerAppIconCache {
+/// Populated from the background installed-apps scan and read from the main actor, so it stays
+/// unisolated. `NSCache` is already thread-safe.
+final class TriggerAppIconCache: @unchecked Sendable {
     static let shared = TriggerAppIconCache()
 
     private let icons = NSCache<NSString, NSImage>()

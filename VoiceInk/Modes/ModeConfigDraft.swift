@@ -27,6 +27,7 @@ struct ModeConfigDraft {
 
     private var sourceConfig: ModeConfig?
 
+    @MainActor
     init(mode: ConfigurationMode, modeManager: ModeManager) {
         switch mode {
         case .add:
@@ -90,6 +91,7 @@ struct ModeConfigDraft {
         !name.isEmpty
     }
 
+    @MainActor
     mutating func applyAddModeDefaults(snapshot: ModeFormWarmupSnapshot) {
         let connectedProviders = snapshot.connectedAIProviders
         let inheritedProvider = selectedAIProvider.flatMap(AIProvider.init(rawValue:))

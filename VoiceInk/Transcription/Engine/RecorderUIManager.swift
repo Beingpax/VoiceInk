@@ -30,8 +30,9 @@ protocol RecorderPanelPresenting: AnyObject {
 }
 
 @MainActor
-class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
-    @Published var recorderPanelStyle: RecorderPanelStyle = .stored {
+@Observable
+class RecorderUIManager: RecorderPanelPresenting {
+    var recorderPanelStyle: RecorderPanelStyle = .stored {
         didSet {
             guard oldValue != recorderPanelStyle else { return }
             rebuildVisiblePanel(previousStyle: oldValue)
@@ -44,7 +45,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         set { recorderPanelStyle = RecorderPanelStyle(rawValue: newValue) ?? .mini }
     }
 
-    @Published var isRecorderPanelVisible = false {
+    var isRecorderPanelVisible = false {
         didSet {
             guard oldValue != isRecorderPanelVisible else { return }
 

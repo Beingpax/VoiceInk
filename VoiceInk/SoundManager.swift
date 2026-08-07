@@ -2,7 +2,8 @@ import Foundation
 import SwiftUI
 
 @MainActor
-class SoundManager: ObservableObject {
+@Observable
+class SoundManager {
     static let shared = SoundManager()
 
     private let playbackEngine = SoundPlaybackEngine()

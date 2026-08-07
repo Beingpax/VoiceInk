@@ -3,7 +3,9 @@ import Foundation
 import os
 
 /// True streaming provider backed by FluidAudio's Parakeet Unified manager.
-final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider, @unchecked Sendable {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "FluidAudioUnifiedStreaming")
     private var manager: StreamingUnifiedAsrManager?
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?

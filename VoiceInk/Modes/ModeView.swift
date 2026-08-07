@@ -52,11 +52,11 @@ enum ConfigurationType {
 }
 
 struct ModeView: View {
-    @StateObject private var modeManager = ModeManager.shared
-    @StateObject private var modeWarmupStore = ModeFormWarmupStore.shared
-    @EnvironmentObject private var enhancementService: AIEnhancementService
-    @EnvironmentObject private var aiService: AIService
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    private let modeManager = ModeManager.shared
+    private let modeWarmupStore = ModeFormWarmupStore.shared
+    @Environment(AIEnhancementService.self) private var enhancementService
+    @Environment(AIService.self) private var aiService
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
     @State private var activePanel: PanelType?
     @State private var panelID = UUID()
 
@@ -167,7 +167,7 @@ struct ModeView: View {
             switch activePanel {
             case .configuration(let mode)?:
                 ModeConfigEditorView(mode: mode, modeManager: modeManager, onDismiss: closePanel)
-                    .environmentObject(modeWarmupStore)
+                    .environment(modeWarmupStore)
                     .id(panelID)
             case .settings?:
                 ModeSettingsPanelView(modeManager: modeManager, onDismiss: closePanel)

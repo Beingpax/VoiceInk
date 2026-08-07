@@ -7,7 +7,8 @@ private enum LicenseStorageError: Error {
 }
 
 @MainActor
-class LicenseViewModel: ObservableObject {
+@Observable
+class LicenseViewModel {
     enum LicenseState: Equatable {
         case unlicensed
         case trial(daysRemaining: Int)
@@ -15,13 +16,13 @@ class LicenseViewModel: ObservableObject {
         case licensed
     }
 
-    @Published private(set) var licenseState: LicenseState = .unlicensed
-    @Published var licenseKey: String = ""
-    @Published var isValidating = false
-    @Published private(set) var isDeactivating = false
-    @Published var validationMessage: String?
-    @Published var validationSuccess: Bool = false
-    @Published private(set) var activationsLimit: Int = 0
+    private(set) var licenseState: LicenseState = .unlicensed
+    var licenseKey: String = ""
+    var isValidating = false
+    private(set) var isDeactivating = false
+    var validationMessage: String?
+    var validationSuccess: Bool = false
+    private(set) var activationsLimit: Int = 0
 
     private let trialPeriodDays = 7
     private let polarService = PolarService()

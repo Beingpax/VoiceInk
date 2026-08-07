@@ -107,6 +107,7 @@ class CursorPaster {
             minimumClipboardRestoreDelay
         )
 
+        nonisolated(unsafe) let pasteboard = pasteboard
         Task { @MainActor in
             await wait(delay)
             guard pasteboardStillOwnedByPasteSession(pasteboard, expectedText: expectedText, sessionID: sessionID)
@@ -150,9 +151,10 @@ class CursorPaster {
         return script
     }
 
-    private static let pasteScriptKeystroke = makeScript(
+    // Compiled once at first use; NSAppleScript execution is serialised by the caller.
+    nonisolated(unsafe) private static let pasteScriptKeystroke = makeScript(
         "tell application \"System Events\" to keystroke \"v\" using command down")
-    private static let pasteScriptKeyCode = makeScript(
+    nonisolated(unsafe) private static let pasteScriptKeyCode = makeScript(
         "tell application \"System Events\" to key code 9 using command down")
 
     @MainActor

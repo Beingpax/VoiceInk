@@ -1,3 +1,4 @@
+import Combine
 import AppIntents
 import AppKit
 import FluidAudio
@@ -11,18 +12,18 @@ struct VoiceInkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let container: ModelContainer
 
-    @StateObject private var engine: VoiceInkEngine
-    @StateObject private var whisperModelManager: WhisperModelManager
-    @StateObject private var fluidAudioModelManager: FluidAudioModelManager
-    @StateObject private var transcriptionModelManager: TranscriptionModelManager
-    @StateObject private var recorderUIManager: RecorderUIManager
-    @StateObject private var recordingShortcutManager: RecordingShortcutManager
-    @StateObject private var updaterViewModel: UpdaterViewModel
-    @StateObject private var menuBarManager: MenuBarManager
-    @StateObject private var mainWindowNavigation = MainWindowNavigation.shared
-    @StateObject private var aiService = AIService()
-    @StateObject private var enhancementService: AIEnhancementService
-    @StateObject private var activeWindowService = ActiveWindowService.shared
+    @State private var engine: VoiceInkEngine
+    @State private var whisperModelManager: WhisperModelManager
+    @State private var fluidAudioModelManager: FluidAudioModelManager
+    @State private var transcriptionModelManager: TranscriptionModelManager
+    @State private var recorderUIManager: RecorderUIManager
+    @State private var recordingShortcutManager: RecordingShortcutManager
+    @State private var updaterViewModel: UpdaterViewModel
+    @State private var menuBarManager: MenuBarManager
+    private let mainWindowNavigation = MainWindowNavigation.shared
+    @State private var aiService = AIService()
+    @State private var enhancementService: AIEnhancementService
+    private let activeWindowService = ActiveWindowService.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
@@ -35,7 +36,7 @@ struct VoiceInkApp: App {
     private let transcriptionAutoCleanupService = TranscriptionAutoCleanupService.shared
 
     // Model prewarm service for optimizing model on wake from sleep
-    @StateObject private var prewarmService: ModelPrewarmService
+    private let prewarmService: ModelPrewarmService
 
     init() {
         // Disable HTTP response caching — prevents API responses from being stored in Cache.db
@@ -93,14 +94,14 @@ struct VoiceInkApp: App {
 
         // Initialize services with proper sharing of instances
         let aiService = AIService()
-        _aiService = StateObject(wrappedValue: aiService)
+        _aiService = State(initialValue: aiService)
         aiService.refreshOllamaAvailabilityInBackground()
 
         let updaterViewModel = UpdaterViewModel()
-        _updaterViewModel = StateObject(wrappedValue: updaterViewModel)
+        _updaterViewModel = State(initialValue: updaterViewModel)
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
-        _enhancementService = StateObject(wrappedValue: enhancementService)
+        _enhancementService = State(initialValue: enhancementService)
 
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -138,29 +139,26 @@ struct VoiceInkApp: App {
         transcriptionModelManager.refreshAllAvailableModels()
         transcriptionModelManager.loadCurrentTranscriptionModel()
 
-        _whisperModelManager = StateObject(wrappedValue: whisperModelManager)
-        _fluidAudioModelManager = StateObject(wrappedValue: fluidAudioModelManager)
-        _transcriptionModelManager = StateObject(wrappedValue: transcriptionModelManager)
-        _recorderUIManager = StateObject(wrappedValue: recorderUIManager)
-        _engine = StateObject(wrappedValue: engine)
+        _whisperModelManager = State(initialValue: whisperModelManager)
+        _fluidAudioModelManager = State(initialValue: fluidAudioModelManager)
+        _transcriptionModelManager = State(initialValue: transcriptionModelManager)
+        _recorderUIManager = State(initialValue: recorderUIManager)
+        _engine = State(initialValue: engine)
 
         // 7. Create other services that depend on engine
         let recordingShortcutManager = RecordingShortcutManager(engine: engine, recorderUIManager: recorderUIManager)
-        _recordingShortcutManager = StateObject(wrappedValue: recordingShortcutManager)
+        _recordingShortcutManager = State(initialValue: recordingShortcutManager)
 
         let menuBarManager = MenuBarManager()
-        _menuBarManager = StateObject(wrappedValue: menuBarManager)
+        _menuBarManager = State(initialValue: menuBarManager)
         menuBarManager.configure(modelContainer: resolvedContainer, engine: engine)
-
-        let activeWindowService = ActiveWindowService.shared
-        _activeWindowService = StateObject(wrappedValue: activeWindowService)
 
         let prewarmService = ModelPrewarmService(
             transcriptionModelManager: transcriptionModelManager,
             whisperModelManager: whisperModelManager,
             modelContext: resolvedContainer.mainContext
         )
-        _prewarmService = StateObject(wrappedValue: prewarmService)
+        self.prewarmService = prewarmService
 
         appDelegate.menuBarManager = menuBarManager
 
@@ -283,17 +281,17 @@ struct VoiceInkApp: App {
             Group {
                 if hasCompletedOnboardingV2 {
                     ContentView()
-                        .environmentObject(engine)
-                        .environmentObject(whisperModelManager)
-                        .environmentObject(fluidAudioModelManager)
-                        .environmentObject(transcriptionModelManager)
-                        .environmentObject(recorderUIManager)
-                        .environmentObject(recordingShortcutManager)
-                        .environmentObject(updaterViewModel)
-                        .environmentObject(menuBarManager)
-                        .environmentObject(mainWindowNavigation)
-                        .environmentObject(aiService)
-                        .environmentObject(enhancementService)
+                        .environment(engine)
+                        .environment(whisperModelManager)
+                        .environment(fluidAudioModelManager)
+                        .environment(transcriptionModelManager)
+                        .environment(recorderUIManager)
+                        .environment(recordingShortcutManager)
+                        .environment(updaterViewModel)
+                        .environment(menuBarManager)
+                        .environment(mainWindowNavigation)
+                        .environment(aiService)
+                        .environment(enhancementService)
                         .modelContainer(container)
                         .onAppear {
                             if enableAnnouncements {
@@ -339,12 +337,11 @@ struct VoiceInkApp: App {
                         }
                 } else {
                     OnboardingView(hasCompletedOnboardingV2: $hasCompletedOnboardingV2)
-                        .environmentObject(fluidAudioModelManager)
-                        .environmentObject(transcriptionModelManager)
-                        .environmentObject(aiService)
-                        .environmentObject(enhancementService)
-                        .frame(width: AppWindowLayout.width)
-                        .frame(minHeight: AppWindowLayout.minimumHeight)
+                        .environment(fluidAudioModelManager)
+                        .environment(transcriptionModelManager)
+                        .environment(aiService)
+                        .environment(enhancementService)
+                        .frame(minWidth: AppWindowLayout.minimumWidth, minHeight: AppWindowLayout.minimumHeight)
                         .background(
                             WindowAccessor { window in
                                 WindowManager.shared.configureWindow(window)
@@ -354,29 +351,39 @@ struct VoiceInkApp: App {
             .confettiCelebrationPresenter()
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
-        .windowResizability(.contentSize)
+        .defaultSize(width: AppWindowLayout.width, height: AppWindowLayout.defaultHeight)
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
 
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updaterViewModel: updaterViewModel)
             }
+
+            // Settings lives inside the main window rather than in a Settings scene, so the
+            // standard shortcut has to be routed to the sidebar by hand.
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings…") {
+                    mainWindowNavigation.navigate(to: .settings)
+                    WindowManager.shared.showMainWindow()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
         }
 
         MenuBarExtra(isInserted: $showMenuBarIcon) {
             MenuBarView()
-                .environmentObject(engine)
-                .environmentObject(whisperModelManager)
-                .environmentObject(fluidAudioModelManager)
-                .environmentObject(transcriptionModelManager)
-                .environmentObject(recorderUIManager)
-                .environmentObject(recordingShortcutManager)
-                .environmentObject(menuBarManager)
-                .environmentObject(mainWindowNavigation)
-                .environmentObject(updaterViewModel)
-                .environmentObject(aiService)
-                .environmentObject(enhancementService)
+                .environment(engine)
+                .environment(whisperModelManager)
+                .environment(fluidAudioModelManager)
+                .environment(transcriptionModelManager)
+                .environment(recorderUIManager)
+                .environment(recordingShortcutManager)
+                .environment(menuBarManager)
+                .environment(mainWindowNavigation)
+                .environment(updaterViewModel)
+                .environment(aiService)
+                .environment(enhancementService)
         } label: {
             let image: NSImage = {
                 let ratio = $0.size.height / $0.size.width
@@ -454,11 +461,14 @@ private struct MainWindowRequestBridge: View {
     }
 }
 
-class UpdaterViewModel: ObservableObject {
-    private let updaterController: SPUStandardUpdaterController
+@MainActor
+@Observable
+class UpdaterViewModel {
+    @ObservationIgnored private let updaterController: SPUStandardUpdaterController
+    @ObservationIgnored private var observers: Set<AnyCancellable> = []
 
-    @Published var canCheckForUpdates = false
-    @Published var automaticallyChecksForUpdates = false
+    var canCheckForUpdates = false
+    var automaticallyChecksForUpdates = false
 
     init() {
         updaterController = SPUStandardUpdaterController(
@@ -466,11 +476,15 @@ class UpdaterViewModel: ObservableObject {
 
         automaticallyChecksForUpdates = updaterController.updater.automaticallyChecksForUpdates
 
+        // Sparkle exposes these via KVO. `assign(to: &$x)` only works with @Published, so mirror
+        // the values into observed storage by hand.
         updaterController.updater.publisher(for: \.canCheckForUpdates)
-            .assign(to: &$canCheckForUpdates)
+            .sink { [weak self] value in self?.canCheckForUpdates = value }
+            .store(in: &observers)
 
         updaterController.updater.publisher(for: \.automaticallyChecksForUpdates)
-            .assign(to: &$automaticallyChecksForUpdates)
+            .sink { [weak self] value in self?.automaticallyChecksForUpdates = value }
+            .store(in: &observers)
     }
 
     func setAutomaticallyChecksForUpdates(_ value: Bool) {
@@ -484,7 +498,7 @@ class UpdaterViewModel: ObservableObject {
 }
 
 struct CheckForUpdatesView: View {
-    @ObservedObject var updaterViewModel: UpdaterViewModel
+    var updaterViewModel: UpdaterViewModel
 
     var body: some View {
         Button("Check for Updates…", action: updaterViewModel.checkForUpdates)

@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct CustomProviderManagementView: View {
-    @ObservedObject var customModelManager: CustomCloudModelManager
-    @ObservedObject var customAIProviderManager: CustomAIProviderManager
+    var customModelManager: CustomCloudModelManager
+    var customAIProviderManager: CustomAIProviderManager
 
     let onAddTranscriptionModel: () -> Void
     let onEditTranscriptionModel: (CustomCloudModel) -> Void
@@ -172,7 +172,7 @@ private struct CustomEnhancementModelRow: View {
 
 struct CustomTranscriptionModelEditorPanel: View {
     let editingModel: CustomCloudModel?
-    @ObservedObject var customModelManager: CustomCloudModelManager
+    var customModelManager: CustomCloudModelManager
     let onClose: () -> Void
     let onSave: () -> Void
 
@@ -375,7 +375,7 @@ struct CustomTranscriptionModelEditorPanel: View {
 
 struct CustomEnhancementModelEditorPanel: View {
     let editingProvider: CustomAIProviderConfig?
-    @ObservedObject var manager: CustomAIProviderManager
+    var manager: CustomAIProviderManager
     let onClose: () -> Void
     let onSave: () -> Void
 

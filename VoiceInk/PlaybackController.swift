@@ -4,7 +4,9 @@ import Foundation
 import MediaRemoteAdapter
 import SwiftUI
 
-class PlaybackController: ObservableObject {
+@MainActor
+@Observable
+class PlaybackController {
     static let shared = PlaybackController()
     private var mediaController: MediaRemoteAdapter.MediaController
     private var wasPlayingWhenRecordingStarted = false
@@ -13,7 +15,7 @@ class PlaybackController: ObservableObject {
     private var originalMediaAppBundleId: String?
     private var resumeTask: Task<Void, Never>?
 
-    @Published var isPauseMediaEnabled: Bool = UserDefaults.standard.bool(forKey: "isPauseMediaEnabled") {
+    var isPauseMediaEnabled: Bool = UserDefaults.standard.bool(forKey: "isPauseMediaEnabled") {
         didSet {
             UserDefaults.standard.set(isPauseMediaEnabled, forKey: "isPauseMediaEnabled")
 

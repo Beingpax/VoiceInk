@@ -10,9 +10,10 @@ struct AudioRetranscriptionResult {
 }
 
 @MainActor
-class AudioTranscriptionService: ObservableObject {
-    @Published var isTranscribing = false
-    @Published var currentError: TranscriptionError?
+@Observable
+class AudioTranscriptionService {
+    var isTranscribing = false
+    var currentError: TranscriptionError?
 
     private let modelContext: ModelContext
     private let enhancementService: AIEnhancementService?

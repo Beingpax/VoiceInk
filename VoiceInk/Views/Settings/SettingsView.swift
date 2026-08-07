@@ -4,15 +4,15 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var updaterViewModel: UpdaterViewModel
-    @EnvironmentObject private var menuBarManager: MenuBarManager
-    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
-    @EnvironmentObject private var recorderUIManager: RecorderUIManager
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject private var enhancementService: AIEnhancementService
-    @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
-    @ObservedObject private var mediaController = MediaController.shared
-    @ObservedObject private var playbackController = PlaybackController.shared
+    @Environment(UpdaterViewModel.self) private var updaterViewModel
+    @Environment(MenuBarManager.self) private var menuBarManager
+    @Environment(RecordingShortcutManager.self) private var recordingShortcutManager
+    @Environment(RecorderUIManager.self) private var recorderUIManager
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
+    @Environment(AIEnhancementService.self) private var enhancementService
+    private let launchAtLoginManager = LaunchAtLoginManager.shared
+    private let mediaController = MediaController.shared
+    private let playbackController = PlaybackController.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
@@ -32,7 +32,12 @@ struct SettingsView: View {
     @State private var isRestoreClipboardExpanded = false
 
     var body: some View {
-        Form {
+        // Environment-provided observables need a local @Bindable to project bindings.
+        @Bindable var recordingShortcutManager = recordingShortcutManager
+        @Bindable var menuBarManager = menuBarManager
+        @Bindable var recorderUIManager = recorderUIManager
+
+        return Form {
             Section {
                 LabeledContent("Primary Shortcut") {
                     HStack(spacing: 8) {

@@ -1,11 +1,10 @@
-import Charts
 import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
-    @StateObject private var licenseViewModel = LicenseViewModel()
+    @Environment(RecordingShortcutManager.self) private var recordingShortcutManager
+    @State private var licenseViewModel = LicenseViewModel()
 
     var body: some View {
         DashboardContent(

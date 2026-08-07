@@ -39,7 +39,7 @@ struct FillerWordChip: View {
 }
 
 struct FillerWordsSettingsSection: View {
-    @StateObject private var fillerWordManager = FillerWordManager.shared
+    private let fillerWordManager = FillerWordManager.shared
     @State private var newWord = ""
     @State private var isShowingAddWord = false
     @State private var errorMessage: String?

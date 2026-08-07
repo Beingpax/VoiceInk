@@ -3,7 +3,9 @@ import LLMkit
 import SwiftData
 
 /// Deepgram streaming provider wrapping `LLMkit.DeepgramStreamingClient`.
-final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class DeepgramStreamingProvider: StreamingTranscriptionProvider, @unchecked Sendable {
 
     private let client = LLMkit.DeepgramStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?

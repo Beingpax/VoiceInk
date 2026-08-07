@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 class WordReplacementService {
     static let shared = WordReplacementService()
 

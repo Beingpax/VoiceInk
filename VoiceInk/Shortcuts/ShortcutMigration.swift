@@ -29,6 +29,7 @@ struct ShortcutBackup: Codable {
     }
 }
 
+@MainActor
 enum ShortcutMigration {
     static func migrateLegacyShortcutsIfNeeded() {
         discardLegacyCustomRecordingShortcutsIfNeeded()

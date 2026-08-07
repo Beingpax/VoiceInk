@@ -8,7 +8,7 @@ struct ModeTriggerSection: View {
     let modeId: UUID
     let cleanURL: (String) -> String
 
-    @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
+    @Environment(ModeFormWarmupStore.self) private var modeWarmupStore
 
     @State private var isShowingTriggerPicker = false
     @State private var triggerSearchText = ""

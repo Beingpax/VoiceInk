@@ -19,9 +19,9 @@ final class ShortcutMonitor {
 
     private var shortcuts: [ShortcutAction: ShortcutState] = [:]
     private var interruptibleActions: Set<ShortcutAction> = []
-    private var onKeyDown: ((ShortcutAction, TimeInterval) -> Void)?
-    private var onKeyUp: ((ShortcutAction, TimeInterval) -> Void)?
-    private var onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)?
+    private var onKeyDown: (@MainActor (ShortcutAction, TimeInterval) -> Void)?
+    private var onKeyUp: (@MainActor (ShortcutAction, TimeInterval) -> Void)?
+    private var onShortcutInterrupted: (@MainActor (ShortcutAction, TimeInterval) -> Void)?
     private var eventTap: CFMachPort?
     private var eventTapRunLoopSource: CFRunLoopSource?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ShortcutMonitor")
@@ -36,9 +36,9 @@ final class ShortcutMonitor {
     func start(
         shortcuts: [ShortcutAction: Shortcut],
         interruptibleActions: Set<ShortcutAction> = [],
-        onKeyDown: @escaping (ShortcutAction, TimeInterval) -> Void,
-        onKeyUp: @escaping (ShortcutAction, TimeInterval) -> Void,
-        onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)? = nil
+        onKeyDown: @escaping @MainActor (ShortcutAction, TimeInterval) -> Void,
+        onKeyUp: @escaping @MainActor (ShortcutAction, TimeInterval) -> Void,
+        onShortcutInterrupted: (@MainActor (ShortcutAction, TimeInterval) -> Void)? = nil
     ) -> Bool {
         stop()
 
@@ -106,7 +106,12 @@ final class ShortcutMonitor {
                 userInfo: Unmanaged.passUnretained(self).toOpaque()
             )
         else {
-            logger.error("Failed to install global shortcut event tap")
+            // Nearly always missing Accessibility permission: CGEvent.tapCreate returns nil when
+            // the process is not trusted. Say so explicitly — the bare failure message made this
+            // look like a code fault rather than a permissions one.
+            logger.error(
+                "Failed to install global shortcut event tap (accessibilityTrusted=\(AXIsProcessTrusted(), privacy: .public)). Global shortcuts will not fire."
+            )
             return false
         }
 
@@ -314,21 +319,25 @@ final class ShortcutMonitor {
         }
     }
 
+    // These must stay on DispatchQueue.main rather than `Task { @MainActor }`. The main queue is
+    // FIFO, so a key-down is always delivered before the matching key-up; unstructured tasks carry
+    // no ordering guarantee between separate submissions, which can invert a push-to-talk pair and
+    // strand the recorder. `assumeIsolated` is safe here because the block already runs on main.
     private func dispatchKeyDown(for action: ShortcutAction, eventTime: TimeInterval) {
         DispatchQueue.main.async { [onKeyDown] in
-            onKeyDown?(action, eventTime)
+            MainActor.assumeIsolated { onKeyDown?(action, eventTime) }
         }
     }
 
     private func dispatchKeyUp(for action: ShortcutAction, eventTime: TimeInterval) {
         DispatchQueue.main.async { [onKeyUp] in
-            onKeyUp?(action, eventTime)
+            MainActor.assumeIsolated { onKeyUp?(action, eventTime) }
         }
     }
 
     private func dispatchShortcutInterrupted(for action: ShortcutAction, eventTime: TimeInterval) {
         DispatchQueue.main.async { [onShortcutInterrupted] in
-            onShortcutInterrupted?(action, eventTime)
+            MainActor.assumeIsolated { onShortcutInterrupted?(action, eventTime) }
         }
     }
 

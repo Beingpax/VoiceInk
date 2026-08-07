@@ -2,14 +2,15 @@ import AppKit
 import Foundation
 
 @MainActor
-class RecordingShortcutManager: ObservableObject {
-    @Published var primaryRecordingShortcut: ShortcutSelection {
+@Observable
+class RecordingShortcutManager {
+    var primaryRecordingShortcut: ShortcutSelection {
         didSet {
             UserDefaults.standard.set(primaryRecordingShortcut.rawValue, forKey: "primaryRecordingShortcut")
             refreshShortcutMonitoring()
         }
     }
-    @Published var secondaryRecordingShortcut: ShortcutSelection {
+    var secondaryRecordingShortcut: ShortcutSelection {
         didSet {
             if secondaryRecordingShortcut == .none {
                 ShortcutStore.setShortcut(nil, for: .secondaryRecording)
@@ -18,24 +19,24 @@ class RecordingShortcutManager: ObservableObject {
             refreshShortcutMonitoring()
         }
     }
-    @Published var primaryRecordingShortcutMode: Mode {
+    var primaryRecordingShortcutMode: Mode {
         didSet {
             UserDefaults.standard.set(primaryRecordingShortcutMode.rawValue, forKey: "primaryRecordingShortcutMode")
             primaryRecordingShortcutModeSource.primaryMode = primaryRecordingShortcutMode
         }
     }
-    @Published var secondaryRecordingShortcutMode: Mode {
+    var secondaryRecordingShortcutMode: Mode {
         didSet {
             UserDefaults.standard.set(secondaryRecordingShortcutMode.rawValue, forKey: "secondaryRecordingShortcutMode")
         }
     }
-    @Published var isMiddleClickToggleEnabled: Bool {
+    var isMiddleClickToggleEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isMiddleClickToggleEnabled, forKey: "isMiddleClickToggleEnabled")
             refreshShortcutMonitoring()
         }
     }
-    @Published var middleClickActivationDelay: Int {
+    var middleClickActivationDelay: Int {
         didSet {
             UserDefaults.standard.set(middleClickActivationDelay, forKey: "middleClickActivationDelay")
         }
@@ -46,7 +47,7 @@ class RecordingShortcutManager: ObservableObject {
     private var recorderPanelShortcutManager: RecorderPanelShortcutManager
     private let modeShortcutManager: ModeShortcutManager
     private let shortcutMonitor = ShortcutMonitor()
-    private var shortcutChangeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var shortcutChangeObserver: NSObjectProtocol?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
 

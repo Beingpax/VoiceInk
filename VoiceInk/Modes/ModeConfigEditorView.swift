@@ -5,10 +5,10 @@ struct ModeConfigEditorView: View {
     let modeManager: ModeManager
     let onDismiss: () -> Void
 
-    @EnvironmentObject private var enhancementService: AIEnhancementService
-    @EnvironmentObject private var aiService: AIService
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
+    @Environment(AIEnhancementService.self) private var enhancementService
+    @Environment(AIService.self) private var aiService
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
+    @Environment(ModeFormWarmupStore.self) private var modeWarmupStore
 
     @State private var draft: ModeConfigDraft
     @State private var validationErrors: [ModeValidationError] = []
@@ -33,7 +33,7 @@ struct ModeConfigEditorView: View {
                     onSave: handlePromptSaved,
                     onDelete: handlePromptDeleted
                 )
-                .environmentObject(enhancementService)
+                .environment(enhancementService)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .id(promptEditorID)
             } else {
