@@ -10,6 +10,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var densityJudge = RecorderDensityJudge()
+    @State private var isModeRowExpanded = false
 
     // MARK: - Display State
 
@@ -60,8 +61,11 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     // MARK: - Pill Dimensions
 
     private var pillWidth: CGFloat {
-        notchWidth + sideExpansion * 2
+        notchWidth + max(sideExpansion, isModeRowExpanded ? modeRowSideExpansion : 0) * 2
     }
+
+    /// Room for the expanded mode row, which the recording expansion alone cannot fit.
+    private let modeRowSideExpansion: CGFloat = 150
 
     private let signalStripHeight: CGFloat = 26
     private let resultPanelHeight: CGFloat = 92
@@ -91,7 +95,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     /// Width the side controls are laid out in. Held at the recording expansion even while
     /// collapsed so the buttons do not squash to zero on the way out — only the pill animates.
     private var controlColumnWidth: CGFloat {
-        max(sideExpansion, recordingSideExpansion)
+        max(sideExpansion, isModeRowExpanded ? modeRowSideExpansion : recordingSideExpansion)
     }
 
     private var sideEdgePadding: CGFloat {
@@ -123,6 +127,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         }
         .animation(pillAnimation, value: displayState)
         .animation(AppTheme.Motion.standard, value: showsSignalStrip)
+        .animation(AppTheme.Motion.quick, value: isModeRowExpanded)
         .task(id: presentation.recordingState) {
             guard presentation.recordingState == .recording else {
                 healthMonitor.reset()
@@ -185,7 +190,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                         action: onRecordButtonTapped
                     )
                 }
-                RecorderModeButton(buttonSize: 20, padding: EdgeInsets())
+                RecorderModeButton(buttonSize: 20, padding: EdgeInsets(), isExpanded: $isModeRowExpanded)
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)

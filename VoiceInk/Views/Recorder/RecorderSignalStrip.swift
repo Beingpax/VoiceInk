@@ -40,10 +40,13 @@ enum RecorderInputHealth: Equatable {
 final class RecorderInputHealthMonitor {
     private(set) var health: RecorderInputHealth = .unknown
 
-    /// dBFS thresholds. Peaks above the clip line, or averages below the quiet line, only count
-    /// once they persist for `sustainedSampleCount`.
-    private let clipThreshold: Double = -1.5
-    private let quietThreshold: Double = -45
+    /// `AudioMeter` reports **normalized 0…1**, not dBFS: `Recorder` maps −60…0 dB onto that range
+    /// and then EMA-smooths it. Thresholds have to be expressed in the same units — an earlier dBFS
+    /// version tripped clipping on every take, because any peak is trivially above −1.5.
+    ///
+    /// 0.96 ≈ −2.4 dB (genuinely hot), 0.10 ≈ −54 dB (barely above the noise floor).
+    private let clipThreshold: Double = 0.96
+    private let quietThreshold: Double = 0.10
     private let sustainedSampleCount = 12  // ~1.2s at the 10Hz sample rate below
 
     private var clipRun = 0

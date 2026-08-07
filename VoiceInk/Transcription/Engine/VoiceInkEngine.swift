@@ -622,7 +622,12 @@ class VoiceInkEngine: NSObject {
                 await self.recorderUIManager?.dismissRecorderPanel()
             },
             onPresentResultPeek: { [weak self] peek in
-                guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
+                // Deliberately *not* guarded on activePipelineTranscriptionID like the hooks
+                // above: this fires after the paste completes, by which point the pipeline has
+                // finished and already cleared that ID, so the guard rejected every peek. No
+                // replacement guard is needed — delivery only reaches paste for a completed take.
+                guard let self else { return }
+
                 // Delivery has already dismissed the panel; bring it back holding the result.
                 self.recorderUIManager?.presentPanelForResult()
                 self.presentResultPeek(peek)

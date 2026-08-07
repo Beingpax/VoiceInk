@@ -121,8 +121,11 @@ struct RecorderRecordButton: View {
     /// Push-to-talk and toggle used to render identically, so there was no way to tell whether
     /// releasing the key would stop the take. Read from the same defaults key the shortcut
     /// manager writes, rather than threading the manager into the panel.
+    /// Defaults to `.hybrid` to match `ShortcutMigration.migrateShortcutMode`, which is what the
+    /// app actually runs when the user has never opened the setting. Defaulting to `.toggle` here
+    /// meant the hold affordance never appeared for anyone on the stock configuration.
     @AppStorage("primaryRecordingShortcutMode") private var shortcutModeRaw =
-        RecordingShortcutManager.Mode.toggle.rawValue
+        RecordingShortcutManager.Mode.hybrid.rawValue
 
     private var isHoldStyle: Bool {
         switch RecordingShortcutManager.Mode(rawValue: shortcutModeRaw) {
@@ -360,12 +363,19 @@ struct RecorderModeButton: View {
     private static let inlineModeLimit = 4
     private static let collapseDelay = Duration.milliseconds(260)
 
-    @State private var isExpanded = false
+    /// Bound to the panel so it can widen to fit the row — at the compact 184pt the chips were
+    /// simply clipped off the right edge.
+    @Binding var isExpanded: Bool
     @State private var isHovering = false
 
-    init(buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7)) {
+    init(
+        buttonSize: CGFloat = 28,
+        padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7),
+        isExpanded: Binding<Bool>
+    ) {
         self.buttonSize = buttonSize
         self.padding = padding
+        self._isExpanded = isExpanded
     }
 
     private var enabledModes: [ModeConfig] {

@@ -10,12 +10,21 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var densityJudge = RecorderDensityJudge()
+    @State private var isModeRowExpanded = false
 
     // MARK: - Layout Constants
 
     private let controlBarHeight: CGFloat = 40
     private let compactCornerRadius: CGFloat = 20
     private let expandedCornerRadius: CGFloat = 14
+
+    /// The mode row needs room the compact width does not have, so an open row widens the panel
+    /// without disturbing the width grammar for every other state.
+    private func panelWidth(for presentation: RecorderPresentation) -> CGFloat {
+        let base = width(for: presentation.widthClass)
+        guard isModeRowExpanded else { return base }
+        return max(base, 330)
+    }
 
     /// Width grammar — each width means exactly one thing.
     private func width(for widthClass: RecorderWidthClass) -> CGFloat {
@@ -71,7 +80,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                 )
             }
         }
-        .frame(width: width(for: presentation.widthClass))
+        .frame(width: panelWidth(for: presentation))
         .background(
             RecorderChrome(
                 cornerRadius: isExpanded ? expandedCornerRadius : compactCornerRadius,
@@ -79,6 +88,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             )
         )
         .animation(AppTheme.Motion.standard, value: presentation.displayState)
+        .animation(AppTheme.Motion.quick, value: isModeRowExpanded)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .task(id: presentation.recordingState) {
             guard presentation.recordingState == .recording else {
@@ -168,7 +178,8 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
 
             RecorderModeButton(
                 buttonSize: 22,
-                padding: EdgeInsets()
+                padding: EdgeInsets(),
+                isExpanded: $isModeRowExpanded
             )
             .padding(.trailing, 12)
         }
