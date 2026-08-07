@@ -117,6 +117,17 @@ enum AppTheme {
         static let shadow = Color.black.opacity(0.34)
         static let separator = Color.white.opacity(0.15)
 
+        /// The rim carries recorder state peripherally — one colour, one meaning.
+        static let rimRecording = Color(nsColor: .systemRed).opacity(0.85)
+        static let rimProcessing = Color(nsColor: .systemOrange).opacity(0.80)
+
+        /// Signal Strip: health reads green/red, context reads blue. No other
+        /// element in the recorder uses these families, so the split is legible
+        /// without labels.
+        static let healthOK = Color(nsColor: .systemGreen)
+        static let healthBad = Color(nsColor: .systemRed)
+        static let context = Color(nsColor: .systemBlue)
+
         static let label = Color.white
         static let labelSecondary = Color.white.opacity(0.86)
         static let labelTertiary = Color.white.opacity(0.62)

@@ -12,11 +12,18 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     // MARK: - Layout Constants
 
     private let controlBarHeight: CGFloat = 40
-    private let compactWidth: CGFloat = 184
-    private let expandedWidth: CGFloat = 300
-    private let assistantWidth: CGFloat = 520
     private let compactCornerRadius: CGFloat = 20
     private let expandedCornerRadius: CGFloat = 14
+
+    /// Width grammar — each width means exactly one thing.
+    private func width(for widthClass: RecorderWidthClass) -> CGFloat {
+        switch widthClass {
+        case .compact: return 184
+        case .standard: return 232
+        case .wide: return 300
+        case .conversation: return 520
+        }
+    }
 
     private var presentation: RecorderPresentation {
         RecorderPresentation(
@@ -50,11 +57,13 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
 
             controlBar(presentation)
         }
-        .frame(
-            width: presentation.isAssistantVisible
-                ? assistantWidth : (presentation.hasLiveTranscript ? expandedWidth : compactWidth)
+        .frame(width: width(for: presentation.widthClass))
+        .background(
+            RecorderChrome(
+                cornerRadius: isExpanded ? expandedCornerRadius : compactCornerRadius,
+                rimState: presentation.rimState
+            )
         )
-        .background(RecorderChrome(cornerRadius: isExpanded ? expandedCornerRadius : compactCornerRadius))
         .animation(AppTheme.Motion.standard, value: presentation.displayState)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }

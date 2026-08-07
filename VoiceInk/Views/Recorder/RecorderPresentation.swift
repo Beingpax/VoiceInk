@@ -15,6 +15,56 @@ enum RecorderDisplayState: Equatable {
     case assistant
 }
 
+/// What the panel's rim is reporting. One colour, one meaning — the rim is readable peripherally
+/// so the state does not have to be decoded from the controls.
+enum RecorderRimState: Equatable {
+    case neutral
+    case recording
+    case processing
+
+    init(_ recordingState: RecordingState) {
+        switch recordingState {
+        case .recording:
+            self = .recording
+        case .transcribing, .enhancing:
+            self = .processing
+        case .idle, .starting, .busy:
+            self = .neutral
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .neutral: return AppTheme.Recorder.rim
+        case .recording: return AppTheme.Recorder.rimRecording
+        case .processing: return AppTheme.Recorder.rimProcessing
+        }
+    }
+
+    /// Outer glow. Absent when neutral so an idle recorder stays quiet.
+    var glow: Color? {
+        switch self {
+        case .neutral: return nil
+        case .recording: return AppTheme.Recorder.rimRecording.opacity(0.20)
+        case .processing: return AppTheme.Recorder.rimProcessing.opacity(0.18)
+        }
+    }
+}
+
+/// Width grammar: each width means exactly one thing, so a glance at the panel's size already
+/// says what it is doing. Previously width changed only for transcript and assistant, and the
+/// same width could mean two different things.
+enum RecorderWidthClass: Equatable {
+    /// Idle or starting — controls only.
+    case compact
+    /// Recording or processing, nothing to read.
+    case standard
+    /// Something to read: live transcript, or a result.
+    case wide
+    /// A conversation.
+    case conversation
+}
+
 struct RecorderPresentation: Equatable {
     let recordingState: RecordingState
     let displayState: RecorderDisplayState
@@ -22,6 +72,8 @@ struct RecorderPresentation: Equatable {
     /// Text to show as a live placeholder in the assistant's follow-up field.
     let assistantFollowUpText: String
     let shouldShowCloseButton: Bool
+    let rimState: RecorderRimState
+    let widthClass: RecorderWidthClass
 
     init(
         recordingState: RecordingState,
@@ -53,6 +105,19 @@ struct RecorderPresentation: Equatable {
 
         shouldShowCloseButton =
             isAssistantVisible && recordingState == .idle && !isAssistantBusy
+
+        rimState = RecorderRimState(recordingState)
+
+        switch displayState {
+        case .assistant:
+            widthClass = .conversation
+        case .liveText:
+            widthClass = .wide
+        case .active:
+            widthClass = .standard
+        case .collapsed:
+            widthClass = .compact
+        }
     }
 
     var hasLiveTranscript: Bool { displayState == .liveText }

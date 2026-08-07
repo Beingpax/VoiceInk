@@ -57,12 +57,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     // MARK: - Pill Dimensions
 
     private var pillWidth: CGFloat {
-        switch displayState {
-        case .collapsed: return notchWidth
-        case .active: return notchWidth + recordingSideExpansion * 2
-        case .liveText: return notchWidth + transcriptSideExpansion * 2
-        case .assistant: return notchWidth + assistantSideExpansion * 2
-        }
+        notchWidth + sideExpansion * 2
     }
 
     private var pillHeight: CGFloat {
@@ -74,15 +69,21 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         }
     }
 
+    /// Width grammar — one expansion per width class, so a given width always means one thing.
+    /// Collapsed contributes nothing, letting the pill shrink back to exactly the notch.
     private var sideExpansion: CGFloat {
-        switch displayState {
-        case .liveText:
-            return transcriptSideExpansion
-        case .assistant:
-            return assistantSideExpansion
-        case .active, .collapsed:
-            return recordingSideExpansion
+        switch presentation.widthClass {
+        case .compact: return 0
+        case .standard: return recordingSideExpansion
+        case .wide: return transcriptSideExpansion
+        case .conversation: return assistantSideExpansion
         }
+    }
+
+    /// Width the side controls are laid out in. Held at the recording expansion even while
+    /// collapsed so the buttons do not squash to zero on the way out — only the pill animates.
+    private var controlColumnWidth: CGFloat {
+        max(sideExpansion, recordingSideExpansion)
     }
 
     private var sideEdgePadding: CGFloat {
@@ -127,7 +128,8 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         .background(
             NotchRecorderChrome(
                 topCornerRadius: topCornerRadius,
-                bottomCornerRadius: bottomCornerRadius
+                bottomCornerRadius: bottomCornerRadius,
+                rimState: presentation.rimState
             )
         )
         .clipShape(
@@ -162,7 +164,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)
-            .frame(width: sideExpansion)
+            .frame(width: controlColumnWidth)
             .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(displayState != .collapsed ? 1 : 0)
             .animation(
@@ -179,7 +181,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                 )
             }
             .padding(.trailing, sideEdgePadding)
-            .frame(width: sideExpansion)
+            .frame(width: controlColumnWidth)
             .frame(maxWidth: .infinity, alignment: .trailing)
             .opacity(displayState != .collapsed ? 1 : 0)
             .animation(

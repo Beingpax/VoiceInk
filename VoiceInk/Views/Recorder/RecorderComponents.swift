@@ -7,14 +7,21 @@ import SwiftUI
 /// punched out of it.
 struct RecorderChrome: View {
     var cornerRadius: CGFloat
+    var rimState: RecorderRimState = .neutral
+
+    private var rimWidth: CGFloat { rimState == .neutral ? 0.5 : 1 }
 
     var body: some View {
         shape
             .fill(.ultraThinMaterial)
             .overlay(shape.fill(AppTheme.Recorder.chrome))
-            .overlay(shape.strokeBorder(AppTheme.Recorder.rim, lineWidth: 0.5))
+            .overlay(shape.strokeBorder(rimState.color, lineWidth: rimWidth))
             .compositingGroup()
             .shadow(color: AppTheme.Recorder.shadow, radius: 12, y: 4)
+            // A soft outer bloom in the rim colour, so state is readable from the corner of the
+            // eye without occupying any layout.
+            .shadow(color: rimState.glow ?? .clear, radius: 7)
+            .animation(AppTheme.Motion.standard, value: rimState)
     }
 
     private var shape: RoundedRectangle {
@@ -26,6 +33,7 @@ struct RecorderChrome: View {
 struct NotchRecorderChrome: View {
     var topCornerRadius: CGFloat
     var bottomCornerRadius: CGFloat
+    var rimState: RecorderRimState = .neutral
 
     var body: some View {
         let shape = NotchShape(
@@ -36,8 +44,21 @@ struct NotchRecorderChrome: View {
         shape
             .fill(.ultraThinMaterial)
             .overlay(shape.fill(AppTheme.Recorder.chrome))
+            // The notch is flush with the bezel on three sides, so only the visible lower edge
+            // carries the rim — a full stroke would draw a line across the display cutout.
+            .overlay(
+                shape.stroke(rimState.color, lineWidth: rimState == .neutral ? 0 : 1.5)
+                    .mask(LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.35),
+                            .init(color: .black, location: 0.75),
+                        ],
+                        startPoint: .top, endPoint: .bottom))
+            )
             .compositingGroup()
             .shadow(color: AppTheme.Recorder.shadow, radius: 10, y: 3)
+            .shadow(color: rimState.glow ?? .clear, radius: 6)
+            .animation(AppTheme.Motion.standard, value: rimState)
     }
 }
 
@@ -97,6 +118,19 @@ struct RecorderRecordButton: View {
     let recordingState: RecordingState
     let action: () -> Void
 
+    /// Push-to-talk and toggle used to render identically, so there was no way to tell whether
+    /// releasing the key would stop the take. Read from the same defaults key the shortcut
+    /// manager writes, rather than threading the manager into the panel.
+    @AppStorage("primaryRecordingShortcutMode") private var shortcutModeRaw =
+        RecordingShortcutManager.Mode.toggle.rawValue
+
+    private var isHoldStyle: Bool {
+        switch RecordingShortcutManager.Mode(rawValue: shortcutModeRaw) {
+        case .pushToTalk, .hybrid: return true
+        case .toggle, nil: return false
+        }
+    }
+
     private var visualState: VisualState {
         switch recordingState {
         case .idle, .starting, .busy:
@@ -129,18 +163,33 @@ struct RecorderRecordButton: View {
 
     private var buttonFace: some View {
         ZStack {
+            // Hold modes get an outer ring: idle it reads as "press and hold me", recording it
+            // reads as sustained pressure. Toggle keeps the plain disc — a steady state.
+            if isHoldStyle {
+                Circle()
+                    .strokeBorder(
+                        visualState == .recording
+                            ? colors.surface.opacity(0.9) : AppTheme.Recorder.labelDisabled,
+                        lineWidth: visualState == .recording ? 1.6 : 1
+                    )
+                    .frame(width: 21, height: 21)
+            }
+
             Circle()
                 .fill(colors.surface)
                 .overlay(
                     Circle()
                         .strokeBorder(colors.border, lineWidth: 0.6)
                 )
+                .frame(width: isHoldStyle ? 15 : 21, height: isHoldStyle ? 15 : 21)
 
             stateMark
+                .scaleEffect(isHoldStyle ? 0.72 : 1)
         }
         .frame(width: 21, height: 21)
         .contentShape(Circle())
         .animation(.easeOut(duration: 0.16), value: visualState)
+        .animation(AppTheme.Motion.quick, value: isHoldStyle)
     }
 
     private var colors: StateColors {
@@ -297,28 +346,40 @@ struct ProgressAnimation: View {
 
 // MARK: - Mode Button
 
+/// Mode switcher. Expands inline on hover into a row of the first few enabled modes with their
+/// ⌥-number badges, instead of opening a popover that steals focus.
+///
+/// `RecorderPanelShortcutManager` already binds ⌥1–9 to modes while the panel is visible
+/// (`ShortcutAction.recorderPanelMode`), and nothing on screen has ever said so.
 struct RecorderModeButton: View {
     private let modeManager = ModeManager.shared
     let buttonSize: CGFloat
     let padding: EdgeInsets
 
-    private static let dismissDelay = Duration.milliseconds(250)
+    /// ⌥1–9 plus ⌥0 are bound, but a row of ten is unreadable at panel scale.
+    private static let inlineModeLimit = 4
+    private static let collapseDelay = Duration.milliseconds(260)
 
-    @State private var isPopoverPresented = false
-    @State private var isHoveringButton: Bool = false
-    @State private var isHoveringPopover: Bool = false
+    @State private var isExpanded = false
+    @State private var isHovering = false
 
     init(buttonSize: CGFloat = 28, padding: EdgeInsets = EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 7)) {
         self.buttonSize = buttonSize
         self.padding = padding
     }
 
-    private var hasModes: Bool {
-        !modeManager.enabledConfigurations.isEmpty
+    private var enabledModes: [ModeConfig] {
+        modeManager.enabledConfigurations
     }
 
-    private var isHovering: Bool {
-        isHoveringButton || isHoveringPopover
+    private var hasModes: Bool { !enabledModes.isEmpty }
+
+    private var inlineModes: [ModeConfig] {
+        Array(enabledModes.prefix(Self.inlineModeLimit))
+    }
+
+    private var activeModeID: UUID? {
+        modeManager.currentEffectiveConfiguration?.id
     }
 
     private var currentModeName: String {
@@ -326,6 +387,31 @@ struct RecorderModeButton: View {
     }
 
     var body: some View {
+        Group {
+            if isExpanded && hasModes {
+                modeRow
+            } else {
+                collapsedButton
+            }
+        }
+        .padding(padding)
+        .onHover { isHovering = $0 }
+        .animation(AppTheme.Motion.quick, value: isExpanded)
+        // Expand on hover, collapse on a short delay so crossing a gap between chips does not
+        // snap it shut. Cancellation is tied to view lifetime.
+        .task(id: isHovering) {
+            if isHovering {
+                isExpanded = true
+                return
+            }
+            guard isExpanded else { return }
+            try? await Task.sleep(for: Self.collapseDelay)
+            guard !Task.isCancelled else { return }
+            isExpanded = false
+        }
+    }
+
+    private var collapsedButton: some View {
         RecorderToggleButton(
             isEnabled: hasModes,
             icon: hasModes
@@ -335,28 +421,65 @@ struct RecorderModeButton: View {
                 ? String(format: String(localized: "Switch mode, currently %@"), currentModeName)
                 : String(localized: "No modes configured")
         ) {
-            isPopoverPresented.toggle()
+            isExpanded.toggle()
         }
         .frame(width: buttonSize)
-        .padding(padding)
-        .onHover { isHoveringButton = $0 }
-        .popover(isPresented: $isPopoverPresented, arrowEdge: .bottom) {
-            ModePopover()
-                .onHover { isHoveringPopover = $0 }
-        }
-        // Debounce dismissal so travelling from the button to the popover does not close it.
-        // Cancellation is tied to view lifetime, so there is no work item to leak.
-        .task(id: isHovering) {
-            if isHovering {
-                isPopoverPresented = true
-                return
-            }
+    }
 
-            guard isPopoverPresented else { return }
-            try? await Task.sleep(for: Self.dismissDelay)
-            guard !Task.isCancelled else { return }
-            isPopoverPresented = false
+    private var modeRow: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(inlineModes.enumerated()), id: \.element.id) { index, mode in
+                RecorderModeChip(
+                    mode: mode,
+                    shortcutNumber: index + 1,
+                    isActive: mode.id == activeModeID
+                ) {
+                    modeManager.setActiveConfiguration(mode)
+                }
+            }
         }
+        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .trailing)))
+    }
+}
+
+private struct RecorderModeChip: View {
+    let mode: ModeConfig
+    let shortcutNumber: Int
+    let isActive: Bool
+    let action: () -> Void
+
+    private var label: String {
+        String(format: String(localized: "Switch to %@, option %lld"), mode.name, Int64(shortcutNumber))
+    }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Text("⌥\(shortcutNumber)")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(
+                        isActive ? AppTheme.Recorder.label : AppTheme.Recorder.labelTertiary
+                    )
+
+                Text(mode.name)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .foregroundStyle(
+                        isActive ? AppTheme.Recorder.label : AppTheme.Recorder.labelSecondary
+                    )
+            }
+            .padding(.horizontal, 6)
+            .frame(height: 18)
+            .background(
+                Capsule().fill(
+                    isActive ? AppTheme.Recorder.bubbleUser : AppTheme.Recorder.controlFill
+                )
+            )
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 }
 
