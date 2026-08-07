@@ -9,6 +9,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     let onAssistantFollowUp: (String) -> Void
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
     @State private var healthMonitor = RecorderInputHealthMonitor()
+    @State private var densityJudge = RecorderDensityJudge()
 
     // MARK: - Layout Constants
 
@@ -78,11 +79,15 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
         .task(id: presentation.recordingState) {
             guard presentation.recordingState == .recording else {
                 healthMonitor.reset()
+                densityJudge.endTake()
                 return
             }
             // 10Hz sampling, scoped to the take and cancelled with it.
+            RecorderModeFamiliarity.recordUse(of: ModeManager.shared.currentEffectiveConfiguration?.id)
+
             while !Task.isCancelled {
                 healthMonitor.ingest(recorder.audioMeterSnapshot())
+                judgeDensity()
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
@@ -91,10 +96,26 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     /// The strip earns its space only when it has something non-obvious to report.
     private var showsSignalStrip: Bool {
         presentation.recordingState == .recording
+            && densityJudge.density >= .standard
             && RecorderSignalStrip.shouldRender(
                 health: healthMonitor.health,
                 context: stateProvider.contextSummary
             )
+    }
+
+    private func judgeDensity() {
+        let mode = ModeManager.shared.currentEffectiveConfiguration
+        densityJudge.evaluate(
+            .init(
+                isRecording: presentation.recordingState == .recording,
+                hasHealthProblem: healthMonitor.health.isProblem,
+                contextIsEmpty: stateProvider.contextSummary.isEmpty,
+                isRealtimeTranscriptionEnabled: mode?.isRealtimeTranscriptionEnabled ?? false,
+                showLiveTranscript: showLiveTranscript,
+                isUnfamiliarMode: RecorderModeFamiliarity.isUnfamiliar(mode?.id),
+                deviceChangedDuringTake: false
+            )
+        )
     }
 
     private var separator: some View {
