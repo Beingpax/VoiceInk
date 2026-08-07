@@ -2,8 +2,8 @@ import SwiftUI
 
 // Enhancement Prompt Popover for recorder views
 struct EnhancementPromptPopover: View {
-    @EnvironmentObject var enhancementService: AIEnhancementService
-    @ObservedObject private var modeManager = ModeManager.shared
+    @Environment(AIEnhancementService.self) var enhancementService
+    private let modeManager = ModeManager.shared
     @State private var selectedPrompt: CustomPrompt?
 
     private var currentMode: ModeConfig? {
@@ -33,7 +33,7 @@ struct EnhancementPromptPopover: View {
                         }
                     )
                 )
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundStyle(AppTheme.Recorder.labelSecondary)
                 .font(.headline)
                 .lineLimit(1)
 
@@ -43,7 +43,7 @@ struct EnhancementPromptPopover: View {
             .padding(.top, 8)
 
             Divider()
-                .background(Color.white.opacity(0.1))
+                .background(AppTheme.Recorder.fieldFill)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {
@@ -69,7 +69,7 @@ struct EnhancementPromptPopover: View {
         .frame(width: 200)
         .frame(maxHeight: 340)
         .padding(.vertical, 8)
-        .background(Color.black)
+        .background(AppTheme.Recorder.chrome)
         .environment(\.colorScheme, .dark)
         .onAppear {
             refreshSelectedPrompt()
@@ -99,7 +99,7 @@ struct EnhancementPromptRow: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Text(prompt.title)
-                    .foregroundColor(isDisabled ? .white.opacity(0.4) : .white.opacity(0.9))
+                    .foregroundStyle(isDisabled ? AppTheme.Recorder.labelDisabled : AppTheme.Recorder.labelSecondary)
                     .font(.system(size: 13))
                     .lineLimit(1)
 
@@ -116,7 +116,7 @@ struct EnhancementPromptRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(isSelected ? Color.white.opacity(0.1) : Color.clear)
+        .background(isSelected ? AppTheme.Recorder.fieldFill : Color.clear)
         .cornerRadius(4)
     }
 }

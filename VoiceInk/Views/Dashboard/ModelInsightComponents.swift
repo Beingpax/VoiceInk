@@ -333,6 +333,7 @@ private struct ModelProviderIdentity {
     let descriptor: ProviderDescriptor
     let fallbackSystemImage: String
 
+    @MainActor
     static func resolve(modelName: String, kind: ModelInsightKind) -> ModelProviderIdentity {
         switch kind {
         case .transcription:
@@ -341,6 +342,8 @@ private struct ModelProviderIdentity {
             return resolveEnhancement(modelName)
         }
     }
+
+    @MainActor
 
     private static func resolveTranscription(_ modelName: String) -> ModelProviderIdentity {
         let trimmedName = normalized(modelName)
@@ -372,6 +375,8 @@ private struct ModelProviderIdentity {
         return unknownIdentity(
             providerName: String(localized: "Transcription Model"), fallbackSystemImage: "captions.bubble.fill")
     }
+
+    @MainActor
 
     private static func resolveEnhancement(_ modelName: String) -> ModelProviderIdentity {
         let trimmedName = normalized(modelName)
@@ -507,6 +512,8 @@ private struct ModelProviderIdentity {
             cloudProvider: cloudProvider
         )
     }
+
+    @MainActor
 
     private static func providerMatches(_ provider: AIProvider, modelName: String) -> Bool {
         if namesMatch(provider.defaultModel, modelName) {

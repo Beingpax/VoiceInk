@@ -1,4 +1,5 @@
 import AVFoundation
+import OSLog
 import SwiftUI
 
 extension TimeInterval {
@@ -16,7 +17,8 @@ extension TimeInterval {
 }
 
 class WaveformGenerator {
-    private static let cache = NSCache<NSString, NSArray>()
+    // NSCache is thread-safe; the waveform generator runs off the main actor.
+    nonisolated(unsafe) private static let cache = NSCache<NSString, NSArray>()
 
     static func generateWaveformSamples(from url: URL, sampleCount: Int = 200) async -> [Float] {
         let cacheKey = url.absoluteString as NSString
@@ -42,7 +44,14 @@ class WaveformGenerator {
                 try audioFile.read(into: buffer)
 
                 if let channelData = buffer.floatChannelData?[0], buffer.frameLength > 0 {
-                    maxValues[sampleIndex] = abs(channelData[0])
+                    // Peak across the whole window, not just its first frame — otherwise the
+                    // waveform is a point sample rather than an envelope and under-reports
+                    // loud passages.
+                    var peak: Float = 0
+                    for frame in 0..<Int(buffer.frameLength) {
+                        peak = max(peak, abs(channelData[frame]))
+                    }
+                    maxValues[sampleIndex] = peak
                     sampleIndex += 1
                 }
 
@@ -65,15 +74,21 @@ class WaveformGenerator {
     }
 }
 
-class AudioPlayerManager: ObservableObject {
+@MainActor
+@Observable
+final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
+    private static let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink",
+        category: "AudioPlayerManager"
+    )
+
     private var audioPlayer: AVAudioPlayer?
-    private var timer: Timer?
-    @Published var isPlaying = false
-    @Published var currentTime: TimeInterval = 0
-    @Published var duration: TimeInterval = 0
-    @Published var waveformSamples: [Float] = []
-    @Published var isLoadingWaveform = false
-    @Published var playbackRate: Float = {
+
+    var isPlaying = false
+    var duration: TimeInterval = 0
+    var waveformSamples: [Float] = []
+    var isLoadingWaveform = false
+    var playbackRate: Float = {
         let saved = UserDefaults.standard.float(forKey: "audioPlaybackRate")
         return saved > 0 ? saved : 1.0
     }()
@@ -81,23 +96,32 @@ class AudioPlayerManager: ObservableObject {
         didSet { UserDefaults.standard.set(playbackRate, forKey: "audioPlaybackRate") }
     }
 
+    /// Read directly off the player rather than republished on a timer. The waveform samples this
+    /// each frame from a TimelineView, so playback no longer invalidates the view tree at 10Hz.
+    var currentTime: TimeInterval {
+        audioPlayer?.currentTime ?? 0
+    }
+
+    /// Where playback should stop, when a trim range is active.
+    var playbackLimit: TimeInterval?
+
     func loadAudio(from url: URL) {
         do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
-            audioPlayer?.enableRate = true
-            audioPlayer?.prepareToPlay()
-            duration = audioPlayer?.duration ?? 0
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.delegate = self
+            player.enableRate = true
+            player.prepareToPlay()
+            audioPlayer = player
+            duration = player.duration
             isLoadingWaveform = true
 
             Task {
                 let samples = await WaveformGenerator.generateWaveformSamples(from: url)
-                await MainActor.run {
-                    self.waveformSamples = samples
-                    self.isLoadingWaveform = false
-                }
+                self.waveformSamples = samples
+                self.isLoadingWaveform = false
             }
         } catch {
-            print("Error loading audio: \(error.localizedDescription)")
+            Self.logger.error("Error loading audio: \(error, privacy: .public)")
         }
     }
 
@@ -105,7 +129,6 @@ class AudioPlayerManager: ObservableObject {
         audioPlayer?.rate = playbackRate
         audioPlayer?.play()
         isPlaying = true
-        startTimer()
     }
 
     func cyclePlaybackRate() {
@@ -120,38 +143,30 @@ class AudioPlayerManager: ObservableObject {
     func pause() {
         audioPlayer?.pause()
         isPlaying = false
-        stopTimer()
     }
 
     func seek(to time: TimeInterval) {
-        audioPlayer?.currentTime = time
-        currentTime = time
+        audioPlayer?.currentTime = max(0, min(time, duration))
     }
 
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.currentTime = self.audioPlayer?.currentTime ?? 0
-            if self.currentTime >= self.duration {
-                self.pause()
-                self.seek(to: 0)
-            }
-        }
-    }
-
-    private func stopTimer() {
-        timer?.invalidate()
-        timer = nil
+    /// Called each frame while playing so a trim range can stop playback at its end.
+    func enforcePlaybackLimit() {
+        guard isPlaying, let limit = playbackLimit, currentTime >= limit else { return }
+        pause()
     }
 
     func cleanup() {
-        stopTimer()
         audioPlayer?.stop()
+        audioPlayer?.delegate = nil
         audioPlayer = nil
+        isPlaying = false
     }
 
-    deinit {
-        cleanup()
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            self.isPlaying = false
+            self.seek(to: 0)
+        }
     }
 }
 
@@ -161,124 +176,187 @@ private func formatTime(_ time: TimeInterval) -> String {
     return String(format: "%d:%02d", minutes, seconds)
 }
 
+/// A start/end pair in seconds. Always normalized so `start <= end`.
+struct WaveformRange: Equatable {
+    var start: TimeInterval
+    var end: TimeInterval
+
+    var lower: TimeInterval { min(start, end) }
+    var upper: TimeInterval { max(start, end) }
+    var length: TimeInterval { upper - lower }
+
+    /// Ignore incidental drags that were really just a click-to-seek.
+    var isMeaningful: Bool { length > 0.15 }
+}
+
 struct WaveformView: View {
     let samples: [Float]
-    let currentTime: TimeInterval
     let duration: TimeInterval
     let isLoading: Bool
+    let isPlaying: Bool
+    /// Read per frame rather than passed as published state.
+    let timeProvider: () -> TimeInterval
     var onSeek: (Double) -> Void
+    @Binding var selection: WaveformRange?
+
     @State private var isHovering = false
     @State private var hoverLocation: CGFloat = 0
+    @State private var dragAnchor: TimeInterval?
+
+    private let barHeight: CGFloat = 24
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 if isLoading {
-                    HStack {
-                        ProgressView()
-                            .controlSize(.small)
-                        Text("Loading...")
-                            .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                    HStack(spacing: AppTheme.Spacing.s) {
+                        ProgressView().controlSize(.small)
+                        Text("Loading…")
+                            .font(AppTheme.Typography.caption)
+                            .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    HStack(spacing: 0.5) {
-                        ForEach(0..<samples.count, id: \.self) { index in
-                            WaveformBar(
-                                sample: samples[index],
-                                isPlayed: CGFloat(index) / CGFloat(samples.count) <= CGFloat(currentTime / duration),
-                                totalBars: samples.count,
-                                geometryWidth: geometry.size.width,
-                                isHovering: isHovering,
-                                hoverProgress: hoverLocation / geometry.size.width
-                            )
+                    // One Canvas draw instead of ~200 individual views. TimelineView only ticks
+                    // while audio is actually playing.
+                    TimelineView(.animation(paused: !isPlaying)) { _ in
+                        Canvas { context, size in
+                            draw(in: &context, size: size, playhead: timeProvider())
                         }
                     }
-                    .opacity(0.6)
-                    .frame(maxHeight: .infinity)
-                    .padding(.horizontal, 2)
 
                     if isHovering {
-                        Text(formatTime(duration * Double(hoverLocation / geometry.size.width)))
-                            .font(.system(size: 10, weight: .medium))
-                            .monospacedDigit()
-                            .foregroundColor(AppTheme.Surface.window)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(AppTheme.Waveform.hoverBubble))
-                            .offset(x: max(0, min(hoverLocation - 25, geometry.size.width - 50)))
-                            .offset(y: -26)
-
-                        Rectangle()
-                            .fill(AppTheme.Waveform.hoverMarker)
-                            .frame(width: 2)
-                            .frame(maxHeight: .infinity)
-                            .offset(x: hoverLocation)
+                        hoverReadout(width: geometry.size.width)
                     }
                 }
             }
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        if !isLoading {
-                            hoverLocation = value.location.x
-                            onSeek(Double(value.location.x / geometry.size.width) * duration)
-                        }
-                    }
-            )
+            .gesture(scrubGesture(width: geometry.size.width))
             .onHover { hovering in
-                if !isLoading {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        isHovering = hovering
-                    }
-                }
+                guard !isLoading else { return }
+                withAnimation(AppTheme.Motion.quick) { isHovering = hovering }
             }
             .onContinuousHover { phase in
-                if !isLoading {
-                    if case .active(let location) = phase {
-                        hoverLocation = location.x
-                    }
-                }
+                guard !isLoading, case .active(let location) = phase else { return }
+                hoverLocation = location.x
             }
         }
         .frame(height: 32)
-    }
-}
-
-struct WaveformBar: View {
-    let sample: Float
-    let isPlayed: Bool
-    let totalBars: Int
-    let geometryWidth: CGFloat
-    let isHovering: Bool
-    let hoverProgress: CGFloat
-
-    private var isNearHover: Bool {
-        let barPosition = geometryWidth / CGFloat(totalBars)
-        let hoverPosition = hoverProgress * geometryWidth
-        return abs(barPosition - hoverPosition) < 20
+        .accessibilityElement()
+        .accessibilityLabel("Audio waveform")
+        .accessibilityValue(Text(formatTime(timeProvider()) + " of " + formatTime(duration)))
     }
 
-    var body: some View {
-        Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        isPlayed ? AppTheme.Waveform.playedLower : AppTheme.Waveform.unplayedLower,
-                        isPlayed ? AppTheme.Waveform.playedUpper : AppTheme.Waveform.unplayedUpper,
-                    ],
-                    startPoint: .bottom,
-                    endPoint: .top
-                )
+    // MARK: - Drawing
+
+    private func draw(in context: inout GraphicsContext, size: CGSize, playhead: TimeInterval) {
+        guard !samples.isEmpty, duration > 0 else { return }
+
+        let barSlot = size.width / CGFloat(samples.count)
+        let barWidth = max(barSlot - 0.5, 1)
+        let midY = size.height / 2
+        let progress = CGFloat(playhead / duration)
+        let selectionRange = selection.map { ($0.lower / duration, $0.upper / duration) }
+
+        if let selectionRange {
+            let rect = CGRect(
+                x: size.width * CGFloat(selectionRange.0),
+                y: 0,
+                width: size.width * CGFloat(selectionRange.1 - selectionRange.0),
+                height: size.height
             )
-            .frame(
-                width: max((geometryWidth / CGFloat(totalBars)) - 0.5, 1),
-                height: max(CGFloat(sample) * 24, 2)
+            context.fill(Path(rect), with: .color(AppTheme.Accent.fill))
+        }
+
+        for (index, sample) in samples.enumerated() {
+            let fraction = CGFloat(index) / CGFloat(samples.count)
+            let height = max(CGFloat(sample) * barHeight, 2)
+            let rect = CGRect(
+                x: fraction * size.width,
+                y: midY - height / 2,
+                width: barWidth,
+                height: height
             )
-            .scaleEffect(y: isHovering && isNearHover ? 1.15 : 1.0)
-            .animation(.interpolatingSpring(stiffness: 300, damping: 15), value: isHovering && isNearHover)
+
+            let isPlayed = fraction <= progress
+            let inSelection =
+                selectionRange.map { fraction >= CGFloat($0.0) && fraction <= CGFloat($0.1) } ?? false
+
+            let color: Color
+            if inSelection {
+                color = AppTheme.Accent.primary
+            } else if isPlayed {
+                color = AppTheme.Waveform.playedLower
+            } else {
+                color = AppTheme.Waveform.unplayedLower
+            }
+
+            context.fill(
+                Path(roundedRect: rect, cornerRadius: barWidth / 2),
+                with: .color(color.opacity(inSelection ? 0.9 : 0.6))
+            )
+        }
+
+        // Playhead
+        let x = progress * size.width
+        context.stroke(
+            Path { $0.move(to: CGPoint(x: x, y: 0)); $0.addLine(to: CGPoint(x: x, y: size.height)) },
+            with: .color(AppTheme.Waveform.playedLower.opacity(0.85)),
+            lineWidth: 1.5
+        )
+    }
+
+    private func hoverReadout(width: CGFloat) -> some View {
+        let time = duration * Double(hoverLocation / max(width, 1))
+
+        return ZStack(alignment: .leading) {
+            Text(formatTime(time))
+                .font(AppTheme.Typography.caption)
+                .monospacedDigit()
+                .foregroundStyle(AppTheme.Surface.window)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(AppTheme.Waveform.hoverBubble))
+                .offset(x: max(0, min(hoverLocation - 25, width - 50)), y: -26)
+
+            Rectangle()
+                .fill(AppTheme.Waveform.hoverMarker)
+                .frame(width: 2)
+                .frame(maxHeight: .infinity)
+                .offset(x: hoverLocation)
+        }
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Gesture
+
+    /// A click seeks. A drag of any real distance defines a trim range instead — so scrubbing and
+    /// range-selection share one gesture without a modifier key.
+    private func scrubGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                guard !isLoading, duration > 0 else { return }
+
+                hoverLocation = value.location.x
+                let time = Double(value.location.x / max(width, 1)) * duration
+
+                if dragAnchor == nil {
+                    dragAnchor = Double(value.startLocation.x / max(width, 1)) * duration
+                }
+
+                guard let anchor = dragAnchor else { return }
+                let candidate = WaveformRange(start: anchor, end: time)
+
+                if candidate.isMeaningful {
+                    selection = candidate
+                } else {
+                    selection = nil
+                    onSeek(time)
+                }
+            }
+            .onEnded { _ in
+                dragAnchor = nil
+            }
     }
 }
 
@@ -350,16 +428,18 @@ struct AudioPlayerView: View {
     let url: URL
     let transcription: Transcription?
     var onInfoTap: (() -> Void)?
-    @StateObject private var playerManager = AudioPlayerManager()
+    @State private var playerManager = AudioPlayerManager()
+    @State private var trimSelection: WaveformRange?
+    @State private var isExportingClip = false
     @State private var isHovering = false
     @State private var isRetranscribing = false
     @State private var isReEnhancing = false
     @State private var operationFeedback: OperationFeedback?
     @State private var showModePopover = false
     @State private var showPromptPopover = false
-    @EnvironmentObject private var engine: VoiceInkEngine
-    @EnvironmentObject private var enhancementService: AIEnhancementService
-    @ObservedObject private var modeManager = ModeManager.shared
+    @Environment(VoiceInkEngine.self) private var engine
+    @Environment(AIEnhancementService.self) private var enhancementService
+    private let modeManager = ModeManager.shared
     @Environment(\.modelContext) private var modelContext
 
     private var isOperationInProgress: Bool {
@@ -379,6 +459,95 @@ struct AudioPlayerView: View {
         AudioTranscriptionService(modelContext: modelContext, engine: engine)
     }
 
+    // MARK: - Trim
+
+    @ViewBuilder
+    private func trimBar(for range: WaveformRange) -> some View {
+        HStack(spacing: AppTheme.Spacing.s) {
+            Image(systemName: "selection.pin.in.out")
+                .font(AppTheme.Typography.caption)
+                .foregroundStyle(AppTheme.Accent.primary)
+                .accessibilityHidden(true)
+
+            Text(
+                String(
+                    format: String(localized: "%@ – %@ (%@)"),
+                    formatTime(range.lower),
+                    formatTime(range.upper),
+                    range.length.formatTiming()
+                )
+            )
+            .font(AppTheme.Typography.caption)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Button("Play") {
+                playerManager.playbackLimit = range.upper
+                playerManager.seek(to: range.lower)
+                playerManager.play()
+            }
+            .controlSize(.small)
+
+            Button {
+                exportClip(range)
+            } label: {
+                if isExportingClip {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text("Export Clip…")
+                }
+            }
+            .controlSize(.small)
+            .disabled(isExportingClip)
+            .help("Export the selected audio and its transcript")
+
+            Button {
+                clearTrimSelection()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Clear selection")
+            .accessibilityLabel("Clear selection")
+        }
+        .padding(.horizontal, AppTheme.Spacing.m)
+        .padding(.vertical, AppTheme.Spacing.s)
+        .background(AppCardBackground(cornerRadius: AppTheme.Radius.row))
+    }
+
+    private func clearTrimSelection() {
+        withAnimation(AppTheme.Motion.quick) {
+            trimSelection = nil
+        }
+        playerManager.playbackLimit = nil
+    }
+
+    private func exportClip(_ range: WaveformRange) {
+        isExportingClip = true
+
+        Task {
+            defer { isExportingClip = false }
+
+            do {
+                try await AudioClipExporter.export(
+                    source: url,
+                    range: range,
+                    transcriptText: transcription?.displayText
+                )
+            } catch AudioClipExporter.ExportError.cancelled {
+                return
+            } catch {
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "Could not export clip"),
+                    type: .error
+                )
+            }
+        }
+    }
+
     private var selectedMode: ModeConfig? {
         modeManager.currentEffectiveConfiguration
     }
@@ -387,18 +556,28 @@ struct AudioPlayerView: View {
         VStack(spacing: 8) {
             WaveformView(
                 samples: playerManager.waveformSamples,
-                currentTime: playerManager.currentTime,
                 duration: playerManager.duration,
                 isLoading: playerManager.isLoadingWaveform,
-                onSeek: { playerManager.seek(to: $0) }
+                isPlaying: playerManager.isPlaying,
+                timeProvider: { playerManager.currentTime },
+                onSeek: { playerManager.seek(to: $0) },
+                selection: $trimSelection
             )
             .padding(.horizontal, 10)
 
+            if let trimSelection, trimSelection.isMeaningful {
+                trimBar(for: trimSelection)
+                    .padding(.horizontal, 10)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             HStack(spacing: 8) {
-                Text(formatTime(playerManager.currentTime))
-                    .font(.system(size: 11, weight: .medium))
-                    .monospacedDigit()
-                    .foregroundColor(.secondary)
+                TimelineView(.animation(paused: !playerManager.isPlaying)) { _ in
+                    Text(formatTime(playerManager.currentTime))
+                        .font(AppTheme.Typography.captionEmphasized)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
 
                 Spacer()
 
@@ -429,7 +608,15 @@ struct AudioPlayerView: View {
 
                     CircleIconButton(
                         icon: playerManager.isPlaying ? "pause.fill" : "play.fill",
-                        action: { playerManager.isPlaying ? playerManager.pause() : playerManager.play() }
+                        action: {
+                            if playerManager.isPlaying {
+                                playerManager.pause()
+                            } else {
+                                // Plain playback ignores any trim range.
+                                playerManager.playbackLimit = nil
+                                playerManager.play()
+                            }
+                        }
                     )
                     .scaleEffect(isHovering ? 1.05 : 1.0)
                     .onHover { hovering in
@@ -484,6 +671,20 @@ struct AudioPlayerView: View {
         .onDisappear {
             playerManager.cleanup()
         }
+        // Only runs while a trim range is actually being auditioned, and is cancelled with the
+        // view — no free-running timer.
+        .task(id: playbackLimitWatchKey) {
+            guard playerManager.isPlaying, playerManager.playbackLimit != nil else { return }
+
+            while !Task.isCancelled, playerManager.isPlaying {
+                playerManager.enforcePlaybackLimit()
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+        }
+    }
+
+    private var playbackLimitWatchKey: String {
+        "\(playerManager.isPlaying)|\(playerManager.playbackLimit ?? -1)"
     }
 
     private func showInFinder() {

@@ -31,7 +31,7 @@ struct DashboardContent: View {
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
-    @ObservedObject private var modeManager = ModeManager.shared
+    private let modeManager = ModeManager.shared
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
@@ -68,8 +68,6 @@ struct DashboardContent: View {
             let contentWidth = DashboardLayout.contentWidth(for: geometry.size.width)
 
             ZStack(alignment: .top) {
-                DashboardAmbientBackground()
-
                 ScrollView {
                     Group {
                         if isInsightsViewPresented && canViewInsights {
@@ -142,7 +140,14 @@ struct DashboardContent: View {
 
             if !modeManager.hasEnabledConfiguration {
                 nameEditorDismissArea {
-                    DashboardNoModesReminder(onOpenModes: ModeSetupNavigator.openModesSettings)
+                    DashboardCalloutCard(
+                        icon: "square.grid.2x2",
+                        title: "Set Up a Mode",
+                        message: "VoiceInk needs at least one mode to record. Create one to start dictating.",
+                        actionTitle: "Manage Modes",
+                        actionHelp: String(localized: "Open Modes settings"),
+                        action: ModeSetupNavigator.openModesSettings
+                    )
                 }
             }
 
@@ -268,7 +273,14 @@ struct DashboardContent: View {
     }
 
     private var accessibilityReminder: some View {
-        DashboardAccessibilityReminder(onOpenSettings: openAccessibilitySettings)
+        DashboardCalloutCard(
+            icon: "hand.raised",
+            title: "Enable Accessibility Access",
+            message: "Required for VoiceInk shortcuts and app-wide controls to work properly.",
+            actionTitle: "Open Settings",
+            actionHelp: String(localized: "Open Accessibility settings"),
+            action: openAccessibilitySettings
+        )
     }
 
     private var greetingHeader: some View {
@@ -323,7 +335,7 @@ struct DashboardContent: View {
                         .stroke(AppTheme.Accent.border, lineWidth: 1)
                 )
                 .onSubmit(finishEditingDisplayName)
-                .onChange(of: isNameFieldFocused) { isFocused in
+                .onChange(of: isNameFieldFocused) { _, isFocused in
                     if !isFocused {
                         finishEditingDisplayName()
                     }
@@ -799,90 +811,50 @@ struct DashboardContent: View {
     }
 }
 
-private struct DashboardAccessibilityReminder: View {
-    let onOpenSettings: () -> Void
+/// Inline prompt shown on the dashboard when something needs the user's attention before
+/// VoiceInk can work properly.
+struct DashboardCalloutCard: View {
+    let icon: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    let actionTitle: LocalizedStringKey
+    let actionHelp: String
+    let action: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: AppTheme.Spacing.m) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: AppTheme.Radius.row, style: .continuous)
                     .fill(AppTheme.Accent.fill)
 
-                Image(systemName: "hand.raised")
-                    .font(.system(size: 15, weight: .medium))
+                Image(systemName: icon)
+                    .font(AppTheme.Typography.label)
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(AppTheme.Accent.primary)
             }
             .frame(width: 34, height: 34)
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Enable Accessibility Access")
-                    .font(.system(size: 13, weight: .semibold))
+                Text(title)
+                    .font(AppTheme.Typography.cardTitle)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text("Required for VoiceInk shortcuts and app-wide controls to work properly.")
-                    .font(.system(size: 11))
+                Text(message)
+                    .font(AppTheme.Typography.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: AppTheme.Spacing.m)
 
-            Button("Open Settings", action: onOpenSettings)
+            Button(actionTitle, action: action)
                 .controlSize(.small)
-                .help("Open Accessibility settings")
+                .help(actionHelp)
         }
-        .padding(16)
+        .padding(AppTheme.Spacing.l)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: 16))
-    }
-}
-
-private struct DashboardNoModesReminder: View {
-    let onOpenModes: () -> Void
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(AppTheme.Accent.fill)
-
-                Image(systemName: "square.grid.2x2")
-                    .font(.system(size: 15, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AppTheme.Accent.primary)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Set Up a Mode")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                Text("VoiceInk needs at least one mode to record. Create one to start dictating.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            Spacer(minLength: 12)
-
-            Button("Manage Modes", action: onOpenModes)
-                .controlSize(.small)
-                .help("Open Modes settings")
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppCardBackground(cornerRadius: 16))
-    }
-}
-
-private struct DashboardAmbientBackground: View {
-    var body: some View {
-        Color.clear
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+        .background(AppCardBackground(cornerRadius: AppTheme.Radius.panel))
     }
 }
