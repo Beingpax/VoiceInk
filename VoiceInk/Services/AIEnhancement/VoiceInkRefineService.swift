@@ -22,7 +22,9 @@ enum VoiceInkRefineError: LocalizedError {
     }
 }
 
-final class VoiceInkRefineService: ObservableObject {
+@MainActor
+@Observable
+final class VoiceInkRefineService {
     static let shared = VoiceInkRefineService()
 
     static let providerName = "VoiceInk Refine"
@@ -40,13 +42,13 @@ final class VoiceInkRefineService: ObservableObject {
         )
     }
 
-    @Published private(set) var isDownloaded = false
-    @Published private(set) var isDownloading = false
-    @Published private(set) var downloadProgress = 0.0
+    private(set) var isDownloaded = false
+    private(set) var isDownloading = false
+    private(set) var downloadProgress = 0.0
     private(set) var downloadedBytes: Int64 = 0
     private(set) var totalDownloadBytes = VoiceInkRefineModelDownloader.totalBytes
     private(set) var isFinalizingDownload = false
-    @Published private(set) var downloadError: String?
+    private(set) var downloadError: String?
 
     let availability: VoiceInkRefineAvailability
 

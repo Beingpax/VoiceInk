@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 class NotificationManager {
     static let shared = NotificationManager()
 

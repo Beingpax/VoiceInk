@@ -172,7 +172,7 @@ struct ProviderDescriptor: Identifiable {
 }
 
 private struct ProviderListRow: View {
-    @EnvironmentObject private var aiService: AIService
+    @Environment(AIService.self) private var aiService
 
     let descriptor: ProviderDescriptor
     let isSelected: Bool

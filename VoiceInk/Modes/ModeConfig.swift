@@ -276,10 +276,12 @@ enum ModeRemovalResult {
     case notFound
 }
 
-class ModeManager: ObservableObject {
+@MainActor
+@Observable
+class ModeManager {
     static let shared = ModeManager()
-    @Published var configurations: [ModeConfig] = []
-    @Published var activeConfiguration: ModeConfig?
+    var configurations: [ModeConfig] = []
+    var activeConfiguration: ModeConfig?
 
     private let configKey = "modeConfigurationsV2"
     private let activeConfigIdKey = "activeConfigurationId"
@@ -614,7 +616,6 @@ class ModeManager: ObservableObject {
             activeConfiguration = config
         }
         UserDefaults.standard.set(config?.id.uuidString, forKey: activeConfigIdKey)
-        self.objectWillChange.send()
     }
 
     func updateCurrentEffectiveConfiguration(_ update: (inout ModeConfig) -> Void) {

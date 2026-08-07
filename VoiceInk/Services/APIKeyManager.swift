@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// Manages API keys using secure Keychain storage.
-final class APIKeyManager {
+final class APIKeyManager: Sendable {
     static let shared = APIKeyManager()
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "APIKeyManager")

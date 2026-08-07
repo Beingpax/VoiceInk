@@ -4,11 +4,12 @@ import ServiceManagement
 import os
 
 @MainActor
-final class LaunchAtLoginManager: ObservableObject {
+@Observable
+final class LaunchAtLoginManager {
     static let shared = LaunchAtLoginManager()
 
-    @Published private(set) var isEnabled = false
-    @Published private(set) var isUpdating = false
+    private(set) var isEnabled = false
+    private(set) var isUpdating = false
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LaunchAtLogin")
     private var isRefreshing = false

@@ -2,6 +2,7 @@ import Foundation
 import OSLog
 import SwiftData
 
+@MainActor
 class TranscriptionAutoCleanupService {
     static let shared = TranscriptionAutoCleanupService()
 

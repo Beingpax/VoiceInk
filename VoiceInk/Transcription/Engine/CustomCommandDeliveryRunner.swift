@@ -277,7 +277,9 @@ enum CustomCommandDeliveryRunner {
     }
 }
 
-private final class PipeOutputCollector {
+/// Mutable state is guarded by `stopLock` and `LockedDataBuffer`; the readability handler is
+/// invoked on an arbitrary queue by design.
+private final class PipeOutputCollector: @unchecked Sendable {
     private let handle: FileHandle
     private let buffer = LockedDataBuffer()
     private let drainTracker = PipeDrainTracker()

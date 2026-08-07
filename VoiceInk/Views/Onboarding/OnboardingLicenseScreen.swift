@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OnboardingLicenseScreen: View {
-    @ObservedObject var licenseViewModel: LicenseViewModel
+    var licenseViewModel: LicenseViewModel
     @Binding var licenseKeyDraft: String
 
     let onBack: () -> Void

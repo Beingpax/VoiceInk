@@ -1,7 +1,7 @@
 import Foundation
 import OSLog
 
-private final class VoiceInkRefineXPCReply<Value>: @unchecked Sendable {
+private final class VoiceInkRefineXPCReply<Value: Sendable>: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Value, Error>?
 
@@ -258,21 +258,18 @@ actor VoiceInkRefineXPCClient {
         }
 
         let identifier = UUID()
-        let connection = NSXPCConnection(serviceName: voiceInkRefineXPCServiceName)
+        // NSXPCConnection is documented as safe to use from multiple threads.
+        nonisolated(unsafe) let connection = NSXPCConnection(serviceName: voiceInkRefineXPCServiceName)
         connection.remoteObjectInterface = NSXPCInterface(
             with: VoiceInkRefineXPCProtocol.self
         )
-        connection.interruptionHandler = { [weak self, weak connection] in
-            guard let self, let connection else { return }
-            Task {
-                await self.connectionInterrupted(connection, identifier: identifier)
-            }
+        // Identify the connection by its token rather than capturing the (non-Sendable)
+        // NSXPCConnection itself — `connectionID` already distinguishes generations.
+        connection.interruptionHandler = { [weak self] in
+            Task { await self?.connectionInterrupted(identifier: identifier) }
         }
-        connection.invalidationHandler = { [weak self, weak connection] in
-            guard let self, let connection else { return }
-            Task {
-                await self.connectionInvalidated(connection, identifier: identifier)
-            }
+        connection.invalidationHandler = { [weak self] in
+            Task { await self?.connectionInvalidated(identifier: identifier) }
         }
         connection.resume()
 
@@ -283,6 +280,7 @@ actor VoiceInkRefineXPCClient {
 
     private func scheduleIdleShutdown(for activeConnection: NSXPCConnection) {
         guard connection === activeConnection else { return }
+        nonisolated(unsafe) let activeConnection = activeConnection
 
         cancelIdleShutdown()
         let token = UUID()
@@ -467,11 +465,8 @@ actor VoiceInkRefineXPCClient {
         )
     }
 
-    private func connectionInterrupted(
-        _ interruptedConnection: NSXPCConnection,
-        identifier: UUID
-    ) {
-        guard connection === interruptedConnection, connectionID == identifier else {
+    private func connectionInterrupted(identifier: UUID) {
+        guard connectionID == identifier else {
             return
         }
         connection = nil
@@ -482,11 +477,8 @@ actor VoiceInkRefineXPCClient {
         )
     }
 
-    private func connectionInvalidated(
-        _ invalidatedConnection: NSXPCConnection,
-        identifier: UUID
-    ) {
-        guard connection === invalidatedConnection, connectionID == identifier else {
+    private func connectionInvalidated(identifier: UUID) {
+        guard connectionID == identifier else {
             return
         }
         connection = nil

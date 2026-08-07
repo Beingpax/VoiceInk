@@ -6,8 +6,9 @@ import os
 @MainActor
 final class SelectedTextService {
     private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "SelectedTextService")
-    private static let textManager = SelectedTextManager.shared
-    private static let selectedTextStrategies: [TextStrategy] = [
+    // SelectedTextKit types are not Sendable; access stays on the main actor.
+    nonisolated(unsafe) private static let textManager = SelectedTextManager.shared
+    nonisolated(unsafe) private static let selectedTextStrategies: [TextStrategy] = [
         .accessibility,
         .menuAction,
         .appleScript,
@@ -20,7 +21,10 @@ final class SelectedTextService {
         }
 
         do {
-            return normalized(try await textManager.getSelectedText(strategies: selectedTextStrategies))
+            // SelectedTextKit's types are not Sendable; the call is serialised by this service.
+            nonisolated(unsafe) let manager = textManager
+            nonisolated(unsafe) let strategies = selectedTextStrategies
+            return normalized(try await manager.getSelectedText(strategies: strategies))
         } catch {
             logger.debug("SelectedTextKit failed to capture selected text: \(error, privacy: .public)")
             return nil

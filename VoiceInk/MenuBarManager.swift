@@ -2,8 +2,10 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-class MenuBarManager: ObservableObject {
-    @Published var isMenuBarOnly: Bool {
+@MainActor
+@Observable
+class MenuBarManager {
+    var isMenuBarOnly: Bool {
         didSet {
             UserDefaults.standard.set(isMenuBarOnly, forKey: "IsMenuBarOnly")
             applyActivationPolicy()

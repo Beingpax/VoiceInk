@@ -18,7 +18,7 @@ struct PromptEditorView: View {
     }
 
     let mode: Mode
-    @EnvironmentObject private var enhancementService: AIEnhancementService
+    @Environment(AIEnhancementService.self) private var enhancementService
     let onDismiss: () -> Void
     let onSave: (CustomPrompt) -> Void
     let onDelete: ((CustomPrompt) -> Void)?

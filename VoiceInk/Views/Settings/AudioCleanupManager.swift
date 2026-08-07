@@ -1,23 +1,30 @@
 import Foundation
 import SwiftData
 
-/// A utility class that manages automatic cleanup of audio files while preserving transcript data
+/// A utility class that manages automatic cleanup of audio files while preserving transcript data.
+/// SwiftData models are main-actor bound, so the whole manager is isolated rather than hopping.
+@MainActor
 class AudioCleanupManager {
     static let shared = AudioCleanupManager()
 
-    private var cleanupTimer: Timer?
+    nonisolated(unsafe) private var cleanupTask: Task<Void, Never>?
     private let cleanupCheckInterval: TimeInterval = 86400  // Check once per day (in seconds)
 
     private init() {}
 
     /// Start the automatic cleanup schedule.
+    ///
+    /// Uses a main-actor task rather than a `Timer` so `modelContext` — which is not Sendable —
+    /// never leaves this isolation domain, and so cancellation is structured.
     func startAutomaticCleanup(modelContext: ModelContext) {
-        // Cancel any existing timer
-        cleanupTimer?.invalidate()
+        cleanupTask?.cancel()
 
-        // Schedule regular cleanup
-        cleanupTimer = Timer.scheduledTimer(withTimeInterval: cleanupCheckInterval, repeats: true) { [weak self] _ in
-            Task { [weak self] in
+        cleanupTask = Task { [weak self] in
+            guard let interval = self?.cleanupCheckInterval else { return }
+
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(interval))
+                guard !Task.isCancelled else { return }
                 await self?.runAutomaticCleanupIfNeeded(modelContext: modelContext)
             }
         }
@@ -38,8 +45,8 @@ class AudioCleanupManager {
 
     /// Stop the automatic cleanup process
     func stopAutomaticCleanup() {
-        cleanupTimer?.invalidate()
-        cleanupTimer = nil
+        cleanupTask?.cancel()
+        cleanupTask = nil
     }
 
     /// Get information about the files that would be cleaned up
@@ -56,39 +63,37 @@ class AudioCleanupManager {
         }
 
         do {
-            // Execute SwiftData operations on the main thread
-            return try await MainActor.run {
-                // Create a predicate to find transcriptions with audio files older than the cutoff date
-                let descriptor = FetchDescriptor<Transcription>(
-                    predicate: #Predicate<Transcription> { transcription in
-                        transcription.timestamp < cutoffDate && transcription.audioFileURL != nil
-                    }
-                )
+            // Already on the main actor: SwiftData models never leave this isolation domain.
+            // Create a predicate to find transcriptions with audio files older than the cutoff date
+            let descriptor = FetchDescriptor<Transcription>(
+                predicate: #Predicate<Transcription> { transcription in
+                    transcription.timestamp < cutoffDate && transcription.audioFileURL != nil
+                }
+            )
 
-                let transcriptions = try modelContext.fetch(descriptor)
+            let transcriptions = try modelContext.fetch(descriptor)
 
-                // Calculate stats (can be done on any thread)
-                var fileCount = 0
-                var totalSize: Int64 = 0
-                var eligibleTranscriptions: [Transcription] = []
+            // Calculate stats (can be done on any thread)
+            var fileCount = 0
+            var totalSize: Int64 = 0
+            var eligibleTranscriptions: [Transcription] = []
 
-                for transcription in transcriptions {
-                    if let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString),
-                        FileManager.default.fileExists(atPath: url.path)
+            for transcription in transcriptions {
+                if let urlString = transcription.audioFileURL,
+                    let url = URL(string: urlString),
+                    FileManager.default.fileExists(atPath: url.path)
+                {
+                    if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+                        let fileSize = attributes[.size] as? Int64
                     {
-                        if let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-                            let fileSize = attributes[.size] as? Int64
-                        {
-                            totalSize += fileSize
-                            fileCount += 1
-                            eligibleTranscriptions.append(transcription)
-                        }
+                        totalSize += fileSize
+                        fileCount += 1
+                        eligibleTranscriptions.append(transcription)
                     }
                 }
-
-                return (fileCount, totalSize, eligibleTranscriptions)
             }
+
+            return (fileCount, totalSize, eligibleTranscriptions)
         } catch {
             return (0, 0, [])
         }
@@ -110,36 +115,34 @@ class AudioCleanupManager {
         }
 
         do {
-            // Execute SwiftData operations on the main thread
-            try await MainActor.run {
-                // Create a predicate to find transcriptions with audio files older than the cutoff date
-                let descriptor = FetchDescriptor<Transcription>(
-                    predicate: #Predicate<Transcription> { transcription in
-                        transcription.timestamp < cutoffDate && transcription.audioFileURL != nil
-                    }
-                )
+            // Already on the main actor: SwiftData models never leave this isolation domain.
+            // Create a predicate to find transcriptions with audio files older than the cutoff date
+            let descriptor = FetchDescriptor<Transcription>(
+                predicate: #Predicate<Transcription> { transcription in
+                    transcription.timestamp < cutoffDate && transcription.audioFileURL != nil
+                }
+            )
 
-                let transcriptions = try modelContext.fetch(descriptor)
-                var deletedCount = 0
+            let transcriptions = try modelContext.fetch(descriptor)
+            var deletedCount = 0
 
-                for transcription in transcriptions {
-                    if let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString),
-                        FileManager.default.fileExists(atPath: url.path)
-                    {
-                        do {
-                            try FileManager.default.removeItem(at: url)
-                            transcription.audioFileURL = nil
-                            deletedCount += 1
-                        } catch {
-                            // Skip this file - don't update audioFileURL if deletion failed
-                        }
+            for transcription in transcriptions {
+                if let urlString = transcription.audioFileURL,
+                    let url = URL(string: urlString),
+                    FileManager.default.fileExists(atPath: url.path)
+                {
+                    do {
+                        try FileManager.default.removeItem(at: url)
+                        transcription.audioFileURL = nil
+                        deletedCount += 1
+                    } catch {
+                        // Skip this file - don't update audioFileURL if deletion failed
                     }
                 }
+            }
 
-                if deletedCount > 0 {
-                    try modelContext.save()
-                }
+            if deletedCount > 0 {
+                try modelContext.save()
             }
         } catch {
             // Silently fail - cleanup is non-critical
@@ -167,32 +170,30 @@ class AudioCleanupManager {
         deletedCount: Int, errorCount: Int
     ) {
         do {
-            // Execute SwiftData operations on the main thread
-            return try await MainActor.run {
-                var deletedCount = 0
-                var errorCount = 0
+            // Already on the main actor: SwiftData models never leave this isolation domain.
+            var deletedCount = 0
+            var errorCount = 0
 
-                for transcription in transcriptions {
-                    if let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString),
-                        FileManager.default.fileExists(atPath: url.path)
-                    {
-                        do {
-                            try FileManager.default.removeItem(at: url)
-                            transcription.audioFileURL = nil
-                            deletedCount += 1
-                        } catch {
-                            errorCount += 1
-                        }
+            for transcription in transcriptions {
+                if let urlString = transcription.audioFileURL,
+                    let url = URL(string: urlString),
+                    FileManager.default.fileExists(atPath: url.path)
+                {
+                    do {
+                        try FileManager.default.removeItem(at: url)
+                        transcription.audioFileURL = nil
+                        deletedCount += 1
+                    } catch {
+                        errorCount += 1
                     }
                 }
-
-                if deletedCount > 0 || errorCount > 0 {
-                    try? modelContext.save()
-                }
-
-                return (deletedCount, errorCount)
             }
+
+            if deletedCount > 0 || errorCount > 0 {
+                try? modelContext.save()
+            }
+
+            return (deletedCount, errorCount)
         } catch {
             return (0, 0)
         }

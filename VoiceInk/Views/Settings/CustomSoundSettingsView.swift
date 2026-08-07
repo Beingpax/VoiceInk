@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct CustomSoundSettingsView: View {
-    @StateObject private var customSoundManager = CustomSoundManager.shared
+    private let customSoundManager = CustomSoundManager.shared
     @State private var showingAlert = false
     @State private var alertTitle = ""
     @State private var alertMessage = ""

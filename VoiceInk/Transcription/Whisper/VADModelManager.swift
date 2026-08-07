@@ -1,6 +1,7 @@
 import Foundation
 import OSLog
 
+@MainActor
 class VADModelManager {
     static let shared = VADModelManager()
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ModelManagement")

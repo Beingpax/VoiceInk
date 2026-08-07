@@ -1,14 +1,16 @@
 import Foundation
 import os
 
-class CustomCloudModelManager: ObservableObject {
+@MainActor
+@Observable
+class CustomCloudModelManager {
     static let shared = CustomCloudModelManager()
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CustomCloudModelManager")
     private let userDefaults = UserDefaults.standard
     private let customModelsKey = "customCloudModels"
 
-    @Published var customModels: [CustomCloudModel] = []
+    var customModels: [CustomCloudModel] = []
 
     private init() {
         loadCustomModels()

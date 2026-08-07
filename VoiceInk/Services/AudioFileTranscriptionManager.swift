@@ -5,14 +5,15 @@ import SwiftUI
 import os
 
 @MainActor
-class AudioTranscriptionManager: ObservableObject {
+@Observable
+class AudioTranscriptionManager {
     static let shared = AudioTranscriptionManager()
 
     // MARK: - Published State
 
-    @Published var queue: [AudioFileQueueItem] = []
-    @Published var isProcessingQueue = false
-    @Published var lastCompletedItemId: UUID?
+    var queue: [AudioFileQueueItem] = []
+    var isProcessingQueue = false
+    var lastCompletedItemId: UUID?
 
     // MARK: - Private
 

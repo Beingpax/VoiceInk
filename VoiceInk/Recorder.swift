@@ -4,21 +4,23 @@ import Foundation
 import os
 
 @MainActor
-class Recorder: NSObject, ObservableObject {
-    private var recorder: CoreAudioRecorder?
+@Observable
+class Recorder: NSObject {
+    // Torn down in deinit, which carries no isolation.
+    nonisolated(unsafe) private var recorder: CoreAudioRecorder?
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Recorder")
     private let deviceManager = AudioDeviceManager.shared
-    private var deviceSwitchObserver: NSObjectProtocol?
-    private var audioDeviceChangedObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var deviceSwitchObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var audioDeviceChangedObserver: NSObjectProtocol?
     private var isReconfiguring = false
     private let mediaController = MediaController.shared
     private let playbackController = PlaybackController.shared
     /// Dedicated serial queue for hardware setup.
     private let audioSetupQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.audioSetup", qos: .userInitiated)
     private let recordingAudioActionDelayNanoseconds: UInt64 = 220_000_000
-    private var audioMuteTask: Task<Void, Never>?
-    private var mediaPauseTask: Task<Void, Never>?
-    private var audioRestorationTask: Task<Void, Never>?
+    @ObservationIgnored private var audioMuteTask: Task<Void, Never>?
+    @ObservationIgnored private var mediaPauseTask: Task<Void, Never>?
+    @ObservationIgnored private var audioRestorationTask: Task<Void, Never>?
     private let smoothedValuesLock = NSLock()
     private var smoothedAverage: Float = 0
     private var smoothedPeak: Float = 0
@@ -46,8 +48,12 @@ class Recorder: NSObject, ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] notification in
+            // Pull the payload out here: Notification is not Sendable, but the device ID is.
+            guard let newDeviceID = notification.userInfo?["newDeviceID"] as? AudioDeviceID else {
+                return
+            }
             Task {
-                await self?.handleDeviceSwitchRequired(notification)
+                await self?.handleDeviceSwitchRequired(newDeviceID: newDeviceID)
             }
         }
     }
@@ -65,15 +71,9 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    private func handleDeviceSwitchRequired(_ notification: Notification) async {
+    private func handleDeviceSwitchRequired(newDeviceID: AudioDeviceID) async {
         guard !isReconfiguring else { return }
         guard let recorder = recorder else { return }
-        guard let userInfo = notification.userInfo,
-            let newDeviceID = userInfo["newDeviceID"] as? AudioDeviceID
-        else {
-            logger.error("Device switch notification missing newDeviceID")
-            return
-        }
 
         // Prevent concurrent device switches and handleDeviceChange() interference
         isReconfiguring = true

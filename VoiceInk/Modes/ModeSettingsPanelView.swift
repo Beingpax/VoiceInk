@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ModeSettingsPanelView: View {
-    @ObservedObject var modeManager: ModeManager
+    var modeManager: ModeManager
     let onDismiss: () -> Void
 
     @AppStorage("ModeTipDismissed")
@@ -70,7 +70,7 @@ struct ModeSettingsPanelView: View {
 }
 
 private struct ModeReorderList: View {
-    @ObservedObject var modeManager: ModeManager
+    var modeManager: ModeManager
 
     @State private var draggedConfigID: UUID?
     @State private var targetedConfigID: UUID?

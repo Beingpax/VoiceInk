@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 
 /// A minimal pull-based announcements fetcher that shows one-time in-app banners.
+@MainActor
 final class AnnouncementsService {
     static let shared = AnnouncementsService()
 

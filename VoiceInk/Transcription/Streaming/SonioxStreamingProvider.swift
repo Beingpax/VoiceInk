@@ -3,7 +3,9 @@ import LLMkit
 import SwiftData
 
 /// Soniox streaming provider wrapping `LLMkit.SonioxStreamingClient`.
-final class SonioxStreamingProvider: StreamingTranscriptionProvider {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class SonioxStreamingProvider: StreamingTranscriptionProvider, @unchecked Sendable {
 
     private let client = LLMkit.SonioxStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?

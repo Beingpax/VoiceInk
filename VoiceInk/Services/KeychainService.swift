@@ -3,7 +3,8 @@ import Security
 import os
 
 /// Stores credentials with caller-selected Keychain synchronization and accessibility.
-final class KeychainService {
+/// Keychain access is thread-safe; the imports just cannot express it.
+final class KeychainService: @unchecked Sendable {
     static let shared = KeychainService()
 
     enum Accessibility {

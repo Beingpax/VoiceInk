@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ModePopover: View {
-    @ObservedObject var modeManager = ModeManager.shared
+    let modeManager = ModeManager.shared
     let selectedModeId: UUID?
     let onSelect: ((ModeConfig) -> Void)?
 

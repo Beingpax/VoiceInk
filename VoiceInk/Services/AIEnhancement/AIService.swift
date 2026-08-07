@@ -57,6 +57,7 @@ enum AIProvider: String, CaseIterable {
         }
     }
 
+    @MainActor
     var defaultModel: String {
         switch self {
         case .cerebras:
@@ -94,6 +95,7 @@ enum AIProvider: String, CaseIterable {
         }
     }
 
+    @MainActor
     var availableModels: [String] {
         switch self {
         case .cerebras:
@@ -186,20 +188,22 @@ struct OllamaRefreshResult {
     let errorMessage: String?
 }
 
-class AIService: ObservableObject {
-    @Published var apiKey: String = ""
-    @Published var isAPIKeyValid: Bool = false
-    @Published var customBaseURL: String = UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? "" {
+@MainActor
+@Observable
+class AIService {
+    var apiKey: String = ""
+    var isAPIKeyValid: Bool = false
+    var customBaseURL: String = UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? "" {
         didSet {
             userDefaults.set(customBaseURL, forKey: "customProviderBaseURL")
         }
     }
-    @Published var customModel: String = UserDefaults.standard.string(forKey: "customProviderModel") ?? "" {
+    var customModel: String = UserDefaults.standard.string(forKey: "customProviderModel") ?? "" {
         didSet {
             userDefaults.set(customModel, forKey: "customProviderModel")
         }
     }
-    @Published var selectedProvider: AIProvider {
+    var selectedProvider: AIProvider {
         didSet {
             userDefaults.set(selectedProvider.rawValue, forKey: "selectedAIProvider")
             if selectedProvider.requiresAPIKey {
@@ -229,19 +233,34 @@ class AIService: ObservableObject {
         }
     }
 
-    @Published private var selectedModels: [AIProvider: String] = [:]
+    private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
     let voiceInkRefineService = VoiceInkRefineService.shared
-    private lazy var ollamaService = OllamaService()
-    private lazy var localCLIService = LocalCLIService()
-    private var apiKeyChangeObserver: NSObjectProtocol?
-    private var voiceInkRefineObserver: AnyCancellable?
+    @ObservationIgnored  // lazy storage is not observable
+    nonisolated(unsafe) private lazy var ollamaService = OllamaService()
+    @ObservationIgnored  // lazy storage is not observable
+    nonisolated(unsafe) private lazy var localCLIService = LocalCLIService()
+    nonisolated(unsafe) private var apiKeyChangeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var voiceInkRefineObserver: ObservationBridge?
 
-    @Published private var openRouterModels: [String] = []
-    @Published private(set) var isOllamaRefreshing = false
+    private var openRouterModels: [String] = []
+    private(set) var isOllamaRefreshing = false
+
+    /// Much of what this service exposes is derived from places Observation cannot see — the
+    /// keychain, `UserDefaults`, and sibling services. Bumping this is how those changes reach
+    /// SwiftUI; the derived accessors below read it so their readers get invalidated.
+    /// This replaces the `objectWillChange.send()` calls the Combine version relied on.
+    private(set) var externalStateRevision = 0
+
+    private func markExternalStateChanged() {
+        externalStateRevision &+= 1
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
 
     var connectedProviders: [AIProvider] {
-        AIProvider.allCases.filter { provider in
+        _ = externalStateRevision
+
+        return AIProvider.allCases.filter { provider in
             guard provider.supportsEnhancement else {
                 return false
             }
@@ -291,18 +310,23 @@ class AIService: ObservableObject {
     }
 
     var localCLICommandTemplate: String {
-        localCLIService.commandTemplate
+        _ = externalStateRevision
+        return localCLIService.commandTemplate
     }
 
     var localCLITemplateSelection: LocalCLITemplate {
-        localCLIService.selectedTemplate
+        _ = externalStateRevision
+        return localCLIService.selectedTemplate
     }
 
     var localCLITimeoutSeconds: Double {
-        localCLIService.timeoutSeconds
+        _ = externalStateRevision
+        return localCLIService.timeoutSeconds
     }
 
     func availableModels(for provider: AIProvider) -> [String] {
+        _ = externalStateRevision
+
         if provider == .ollama {
             return ollamaService.availableModels.map { $0.name }
         } else if provider == .openRouter {
@@ -344,19 +368,21 @@ class AIService: ObservableObject {
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
 
-        voiceInkRefineObserver = voiceInkRefineService.objectWillChange.sink { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
+        // Tracks `isAvailableInModes` specifically, rather than every change on the service.
+        voiceInkRefineObserver = ObservationBridge { [weak self] in
+            guard let self else { return }
 
-                if self.selectedProvider == .voiceInkRefine {
-                    let isAvailable = self.voiceInkRefineService.isAvailableInModes
-                    if self.isAPIKeyValid != isAvailable {
-                        self.isAPIKeyValid = isAvailable
-                        return
-                    }
-                }
+            let isAvailable = self.voiceInkRefineService.isAvailableInModes
 
-                self.objectWillChange.send()
+            guard self.selectedProvider == .voiceInkRefine else {
+                self.markExternalStateChanged()
+                return
+            }
+
+            if self.isAPIKeyValid != isAvailable {
+                self.isAPIKeyValid = isAvailable
+            } else {
+                self.markExternalStateChanged()
             }
         }
 
@@ -457,8 +483,7 @@ class AIService: ObservableObject {
             reloadSelectedProviderConfiguration()
         }
 
-        objectWillChange.send()
-        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        markExternalStateChanged()
     }
 
     func saveAPIKey(_ key: String, completion: @escaping (Bool, String?) -> Void) {
@@ -691,8 +716,7 @@ class AIService: ObservableObject {
         if selectedProvider == .localCLI {
             isAPIKeyValid = localCLIService.isConfigured
         }
-        objectWillChange.send()
-        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+        markExternalStateChanged()
     }
 
     func fetchOpenRouterModels() async {
@@ -706,13 +730,11 @@ class AIService: ObservableObject {
                 {
                     self.selectModel(models.first!)
                 }
-                self.objectWillChange.send()
             }
         } catch {
             await MainActor.run {
                 self.openRouterModels = []
                 self.saveOpenRouterModels()
-                self.objectWillChange.send()
             }
         }
     }

@@ -1,7 +1,9 @@
 import Foundation
 import os
 
-protocol PolarServicing {
+/// Sendable because callers await it from the main actor: without the constraint, strict
+/// concurrency has to assume an arbitrary conformer is unsafe to hand across the boundary.
+protocol PolarServicing: Sendable {
     func checkLicenseRequiresActivation(_ key: String) async throws -> (
         isValid: Bool, requiresActivation: Bool, activationsLimit: Int?
     )
@@ -10,7 +12,7 @@ protocol PolarServicing {
     func validateLicenseKeyWithActivation(_ key: String, activationId: String) async throws -> Bool
 }
 
-final class PolarService: PolarServicing {
+final class PolarService: PolarServicing, Sendable {
     private let organizationId = "6f3d781d-a630-4435-9dba-058486f2d936"
     private let baseURL = "https://api.polar.sh"
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "PolarService")

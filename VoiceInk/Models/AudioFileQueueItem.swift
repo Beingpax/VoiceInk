@@ -23,13 +23,14 @@ enum QueueItemStatus: Equatable {
 }
 
 @MainActor
-class AudioFileQueueItem: Identifiable, ObservableObject {
+@Observable
+class AudioFileQueueItem: Identifiable {
     let id = UUID()
     let url: URL
     let filename: String
 
-    @Published var status: QueueItemStatus = .pending
-    @Published var transcription: Transcription?
+    var status: QueueItemStatus = .pending
+    var transcription: Transcription?
 
     init(url: URL) {
         self.url = url

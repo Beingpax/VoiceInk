@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct LocalEnhancementServiceManagementView: View {
-    @EnvironmentObject private var aiService: AIService
+    @Environment(AIService.self) private var aiService
 
     @State private var isOllamaExpanded = false
     @State private var isLocalCLIExpanded = false

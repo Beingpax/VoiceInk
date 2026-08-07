@@ -21,7 +21,7 @@ struct ModeIconView: View {
 }
 
 struct ModeIconPickerView: View {
-    @StateObject private var emojiManager = EmojiManager.shared
+    private let emojiManager = EmojiManager.shared
     @Binding var selectedIcon: ModeIcon
     @Binding var isPresented: Bool
 
@@ -286,7 +286,7 @@ extension String {
                 selectedIcon: .constant(.defaultIcon),
                 isPresented: .constant(true)
             )
-            .environmentObject(EmojiManager.shared)
+            .environment(EmojiManager.shared)
         }
     }
 #endif

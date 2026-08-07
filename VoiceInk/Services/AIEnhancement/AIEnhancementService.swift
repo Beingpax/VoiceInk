@@ -13,10 +13,11 @@ struct AIEnhancementResult: Sendable {
 }
 
 @MainActor
-class AIEnhancementService: ObservableObject {
+@Observable
+class AIEnhancementService {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AIEnhancementService")
 
-    @Published var customPrompts: [CustomPrompt] {
+    var customPrompts: [CustomPrompt] {
         didSet {
             savePrompts()
         }
@@ -24,6 +25,14 @@ class AIEnhancementService: ObservableObject {
 
     var allPrompts: [CustomPrompt] {
         return customPrompts
+    }
+
+    /// Signals changes originating outside this object — an API key written to the keychain, or a
+    /// fresh screen-context capture. Replaces the `objectWillChange.send()` the Combine version used.
+    private(set) var externalStateRevision = 0
+
+    private func markExternalStateChanged() {
+        externalStateRevision &+= 1
     }
 
     private let aiService: AIService
@@ -37,7 +46,7 @@ class AIEnhancementService: ObservableObject {
     private var lastRequestTime: Date?
     private let modelContext: ModelContext
 
-    @Published var lastCapturedClipboard: String?
+    var lastCapturedClipboard: String?
 
     init(aiService: AIService = AIService(), modelContext: ModelContext) {
         self.aiService = aiService
@@ -68,8 +77,8 @@ class AIEnhancementService: ObservableObject {
     }
 
     @objc private func handleAPIKeyChange() {
-        DispatchQueue.main.async {
-            self.objectWillChange.send()
+        Task { @MainActor in
+            self.markExternalStateChanged()
         }
     }
 
@@ -515,9 +524,9 @@ class AIEnhancementService: ObservableObject {
             return
         }
 
-        if let capturedText = await screenCaptureService.captureAndExtractText() {
+        if await screenCaptureService.captureAndExtractText() != nil {
             await MainActor.run {
-                self.objectWillChange.send()
+                self.markExternalStateChanged()
             }
         }
     }

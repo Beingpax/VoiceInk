@@ -1,12 +1,14 @@
 import Foundation
 
 @MainActor
-class WhisperPrompt: ObservableObject {
-    @Published var transcriptionPrompt: String = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
+@Observable
+class WhisperPrompt {
+    var transcriptionPrompt: String = UserDefaults.standard.string(forKey: "TranscriptionPrompt") ?? ""
 
     private let customPromptsKey = "CustomLanguagePrompts"
 
-    // Store user-customized prompts
+    // Store user-customized prompts. Observed so edits invalidate readers of the
+    // language-prompt accessors without a manual change notification.
     private var customPrompts: [String: String] = [:]
 
     // Language-specific base prompts
@@ -113,8 +115,5 @@ class WhisperPrompt: ObservableObject {
         customPrompts[language] = prompt
         saveCustomPrompts()
         updateTranscriptionPrompt()
-
-        // Force update the UI
-        objectWillChange.send()
     }
 }

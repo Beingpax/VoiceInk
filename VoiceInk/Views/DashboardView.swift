@@ -1,11 +1,10 @@
-import Charts
 import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject private var recordingShortcutManager: RecordingShortcutManager
-    @ObservedObject private var licenseViewModel = LicenseViewModel.shared
+    @Environment(RecordingShortcutManager.self) private var recordingShortcutManager
+    private let licenseViewModel = LicenseViewModel.shared
     @ObservedObject private var starPrompt = GitHubStarPromptCoordinator.shared
 
     var body: some View {

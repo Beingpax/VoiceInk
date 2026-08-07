@@ -21,6 +21,7 @@ enum ShortcutValidationError: Equatable {
     }
 }
 
+@MainActor
 enum ShortcutValidator {
     static func validationError(for shortcut: Shortcut, action: ShortcutAction) -> ShortcutValidationError? {
         if let error = userRecordingShortcutError(for: shortcut) {

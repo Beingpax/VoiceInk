@@ -6,7 +6,7 @@ struct OnboardingMicrophoneScreen: View {
     let onBack: () -> Void
     let onContinue: () -> Void
 
-    @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
+    private let audioDeviceManager = AudioDeviceManager.shared
     @State private var selectedDeviceUID: String?
     @State private var refreshIconRotation = 0.0
 

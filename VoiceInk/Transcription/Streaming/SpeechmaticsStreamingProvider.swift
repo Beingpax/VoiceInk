@@ -3,7 +3,9 @@ import LLMkit
 import SwiftData
 
 /// Speechmatics streaming provider wrapping `LLMkit.SpeechmaticsStreamingClient`.
-final class SpeechmaticsStreamingProvider: StreamingTranscriptionProvider {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class SpeechmaticsStreamingProvider: StreamingTranscriptionProvider, @unchecked Sendable {
 
     private let client = LLMkit.SpeechmaticsStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?

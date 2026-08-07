@@ -113,14 +113,14 @@ class StreamingTranscriptionService {
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "StreamingTranscriptionService")
     private var provider: StreamingTranscriptionProvider?
-    private var sendTask: Task<Void, Never>?
-    private var eventConsumerTask: Task<Void, Never>?
+    nonisolated(unsafe) private var sendTask: Task<Void, Never>?
+    nonisolated(unsafe) private var eventConsumerTask: Task<Void, Never>?
     private let chunkSource = AudioChunkSource()
     private var state: StreamingState = .idle
     private var committedSegments: [String] = []
     private let modelContext: ModelContext
     private let fluidAudioService: FluidAudioTranscriptionService?
-    private var onPartialTranscript: ((String) -> Void)?
+    nonisolated(unsafe) private var onPartialTranscript: ((String) -> Void)?
     private let metrics = StreamingMetrics()
     private var stopStartedAt: Date?
     private var firstPartialLogged = false
@@ -144,7 +144,7 @@ class StreamingTranscriptionService {
     }
 
     /// Signal used to notify `waitForFinalCommit` when a new committed segment arrives.
-    private var commitSignal: AsyncStream<Void>.Continuation?
+    nonisolated(unsafe) private var commitSignal: AsyncStream<Void>.Continuation?
 
     /// Whether the streaming connection is fully established and actively sending.
     var isActive: Bool { state == .streaming || state == .committing }
@@ -398,7 +398,7 @@ class StreamingTranscriptionService {
     private func waitForFinalCommit(signalStream: AsyncStream<Void>) async -> String {
         // Race: wait for commit acknowledgment vs timeout
         let receivedInTime = await withTaskGroup(of: Bool.self) { group in
-            group.addTask { @MainActor in
+            group.addTask {
                 for await _ in signalStream {
                     return true
                 }

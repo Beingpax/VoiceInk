@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 final class AnnouncementManager {
     static let shared = AnnouncementManager()
 

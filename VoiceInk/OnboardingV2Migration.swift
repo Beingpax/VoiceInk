@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum OnboardingV2Migration {
     private static let legacyCompletedKey = "hasCompletedOnboarding"
     private static let completedKey = "hasCompletedOnboardingV2"

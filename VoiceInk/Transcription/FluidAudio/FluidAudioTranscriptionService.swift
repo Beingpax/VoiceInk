@@ -2,7 +2,9 @@ import FluidAudio
 import Foundation
 import os.log
 
-class FluidAudioTranscriptionService: TranscriptionService {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class FluidAudioTranscriptionService: TranscriptionService, @unchecked Sendable {
     private var asrManager: AsrManager?
     private var unifiedAsrManager: UnifiedAsrManager?
     private var nemotronAsrManager: StreamingNemotronMultilingualAsrManager?

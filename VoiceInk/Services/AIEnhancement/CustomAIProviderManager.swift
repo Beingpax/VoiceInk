@@ -42,10 +42,12 @@ struct CustomAIProviderConfig: Identifiable, Codable, Hashable {
     }
 }
 
-final class CustomAIProviderManager: ObservableObject {
+@MainActor
+@Observable
+final class CustomAIProviderManager {
     static let shared = CustomAIProviderManager()
 
-    @Published private(set) var providers: [CustomAIProviderConfig] = []
+    private(set) var providers: [CustomAIProviderConfig] = []
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "CustomAIProviderManager")
     private let providersKey = "customAIProviders"
