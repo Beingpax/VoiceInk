@@ -2,7 +2,12 @@
 // Build configuration for local/unsigned builds (no Apple Developer certificate required).
 // Used by `make local` — does NOT affect Debug or Release configurations.
 
-// Ad-hoc signing (works without a developer account)
+// Ad-hoc signing (works without a developer account).
+//
+// The app target defines CODE_SIGN_IDENTITY[sdk=macosx*] at target level, which outranks anything
+// this project-level xcconfig or the xcodebuild command line can set — so the identity cannot be
+// swapped here. `make local` instead re-signs the built app afterwards with a stable self-signed
+// identity when one exists (see scripts/make-local-signing-cert.sh).
 CODE_SIGN_IDENTITY = -
 CODE_SIGN_STYLE = Manual
 DEVELOPMENT_TEAM =

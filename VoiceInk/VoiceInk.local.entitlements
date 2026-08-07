@@ -6,6 +6,12 @@
 	<false/>
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
+	<!-- Local builds are signed with a self-signed certificate, which carries no Team ID. The
+	     hardened runtime's library validation then refuses to load the app's own dylibs and
+	     frameworks ("different Team IDs"), so it has to be disabled here. Release builds use
+	     VoiceInk.entitlements and keep library validation on. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
 	<key>com.apple.security.files.user-selected.read-only</key>

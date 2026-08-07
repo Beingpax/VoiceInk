@@ -4,7 +4,19 @@ WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup
+# The mlx-swift dependency ships a CudaBuild package plugin. Xcode blocks it on a clean build
+# pending a one-time "Trust & Enable" click in the GUI, which fails any command-line build with
+# `Validate plug-in "CudaBuild" in package "mlx-swift"`. These flags accept the dependencies the
+# checked-in Package.resolved already pins.
+PACKAGE_VALIDATION_FLAGS := -skipPackagePluginValidation -skipMacroValidation
+
+# Prefer the stable self-signed identity created by scripts/make-local-signing-cert.sh. Ad-hoc
+# signing changes on every build, which makes macOS treat each rebuild as a new app and drop its
+# Accessibility / Screen Recording grants. Falls back to ad-hoc when the identity is absent.
+LOCAL_SIGN_IDENTITY := $(shell security find-identity -v -p codesigning 2>/dev/null \
+	| grep -q "VoiceInk Local Dev" && echo "VoiceInk Local Dev" || echo "-")
+
+.PHONY: all clean whisper setup build local local-cert check healthcheck help dev run release release-setup
 
 # Default target
 all: check build
@@ -42,22 +54,40 @@ setup: whisper
 	@echo "Please ensure your Xcode project references the framework from this new location."
 
 build: setup
-	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" build
+	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
+		$(PACKAGE_VALIDATION_FLAGS) CODE_SIGN_IDENTITY="" build
+
+# One-time setup: a stable self-signed identity so macOS keeps privacy grants across rebuilds
+local-cert:
+	@./scripts/make-local-signing-cert.sh
 
 # Build for local use without Apple Developer certificate
 local: check setup
 	@echo "Building VoiceInk for local use (no Apple Developer certificate required)..."
+	@if [ "$(LOCAL_SIGN_IDENTITY)" = "-" ]; then \
+		echo "Signing: ad-hoc (macOS will drop privacy permissions on every rebuild)"; \
+		echo "         Run ./scripts/make-local-signing-cert.sh once to make them stick."; \
+	else \
+		echo "Signing: $(LOCAL_SIGN_IDENTITY) (stable — privacy permissions survive rebuilds)"; \
+	fi
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
 		-xcconfig LocalBuild.xcconfig \
-		CODE_SIGN_IDENTITY="-" \
+		$(PACKAGE_VALIDATION_FLAGS) \
 		CODE_SIGNING_REQUIRED=NO \
 		CODE_SIGNING_ALLOWED=YES \
 		DEVELOPMENT_TEAM="" \
 		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoiceInk/VoiceInk.local.entitlements" \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
 		build
+	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoiceInk.app" && \
+	if [ -d "$$APP_PATH" ] && [ "$(LOCAL_SIGN_IDENTITY)" != "-" ]; then \
+		echo "Re-signing with '$(LOCAL_SIGN_IDENTITY)' for a stable signature..."; \
+		codesign --force --deep --sign "$(LOCAL_SIGN_IDENTITY)" --options runtime \
+			--entitlements "$(CURDIR)/VoiceInk/VoiceInk.local.entitlements" "$$APP_PATH" || exit 1; \
+		codesign --verify --deep --strict "$$APP_PATH" || exit 1; \
+	fi
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Debug/VoiceInk.app" && \
 	if [ -d "$$APP_PATH" ]; then \
 		echo "Copying VoiceInk.app to ~/Downloads..."; \
