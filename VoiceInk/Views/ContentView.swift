@@ -15,10 +15,11 @@ enum ViewType: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-final class MainWindowNavigation: ObservableObject {
-    static let shared = MainWindowNavigation()
+@Observable
+final class MainWindowNavigation {
+    @MainActor static let shared = MainWindowNavigation()
 
-    @Published var selectedView: ViewType = .dashboard
+    var selectedView: ViewType = .dashboard
 
     private init() {}
 
@@ -38,16 +39,38 @@ final class MainWindowNavigation: ObservableObject {
 struct ContentView: View {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ContentView")
     private static let detailBackgroundTintOpacity = 0.50
-    @EnvironmentObject private var navigation: MainWindowNavigation
+    @Environment(MainWindowNavigation.self) private var navigation
+    @State private var isCommandPalettePresented = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            AppSidebar(selectedView: $navigation.selectedView)
+        @Bindable var navigation = navigation
 
+        return NavigationSplitView {
+            AppSidebar(selectedView: $navigation.selectedView)
+                .navigationSplitViewColumnWidth(
+                    min: AppSidebarLayout.minimumWidth,
+                    ideal: AppSidebarLayout.idealWidth,
+                    max: AppSidebarLayout.maximumWidth
+                )
+        } detail: {
             detailContent
         }
-        .frame(width: AppWindowLayout.width)
-        .frame(minHeight: AppWindowLayout.minimumHeight)
+        .navigationSplitViewStyle(.balanced)
+        .frame(minWidth: AppWindowLayout.minimumWidth, minHeight: AppWindowLayout.minimumHeight)
+        .overlay {
+            if isCommandPalettePresented {
+                commandPaletteOverlay
+            }
+        }
+        .background {
+            // Invisible shortcut host: gives ⌘K a home without putting a button in the UI.
+            Button("Command Palette") {
+                isCommandPalettePresented = true
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .opacity(0)
+            .accessibilityHidden(true)
+        }
         .onAppear {
             logger.notice("ContentView appeared")
         }
@@ -60,6 +83,19 @@ struct ContentView: View {
                 navigation.navigate(to: destination)
             }
         }
+    }
+
+    private var commandPaletteOverlay: some View {
+        ZStack(alignment: .top) {
+            Color.black.opacity(0.18)
+                .ignoresSafeArea()
+                .onTapGesture { isCommandPalettePresented = false }
+
+            CommandPaletteView(isPresented: $isCommandPalettePresented)
+                .padding(.top, 90)
+        }
+        .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+        .animation(AppTheme.Motion.quick, value: isCommandPalettePresented)
     }
 
     @ViewBuilder
