@@ -75,6 +75,15 @@ class AudioDeviceManager {
         return deviceID
     }
 
+    /// Name of the input the next take will actually use. Surfaced by the recorder's Signal Strip
+    /// when the input looks unhealthy — the wrong device is usually the cause.
+    var currentInputDeviceName: String? {
+        if let selectedDeviceID {
+            return getDeviceName(deviceID: selectedDeviceID)
+        }
+        return getSystemDefaultDeviceName()
+    }
+
     func getSystemDefaultDeviceName() -> String? {
         guard let deviceID = getSystemDefaultDevice() else { return nil }
         return getDeviceName(deviceID: deviceID)

@@ -8,6 +8,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+    @State private var healthMonitor = RecorderInputHealthMonitor()
 
     // MARK: - Layout Constants
 
@@ -56,6 +57,14 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             }
 
             controlBar(presentation)
+
+            if showsSignalStrip {
+                RecorderSignalStrip(
+                    health: healthMonitor.health,
+                    context: stateProvider.contextSummary,
+                    deviceName: AudioDeviceManager.shared.currentInputDeviceName
+                )
+            }
         }
         .frame(width: width(for: presentation.widthClass))
         .background(
@@ -66,6 +75,26 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
         )
         .animation(AppTheme.Motion.standard, value: presentation.displayState)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .task(id: presentation.recordingState) {
+            guard presentation.recordingState == .recording else {
+                healthMonitor.reset()
+                return
+            }
+            // 10Hz sampling, scoped to the take and cancelled with it.
+            while !Task.isCancelled {
+                healthMonitor.ingest(recorder.audioMeterSnapshot())
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+
+    /// The strip earns its space only when it has something non-obvious to report.
+    private var showsSignalStrip: Bool {
+        presentation.recordingState == .recording
+            && RecorderSignalStrip.shouldRender(
+                health: healthMonitor.health,
+                context: stateProvider.contextSummary
+            )
     }
 
     private var separator: some View {

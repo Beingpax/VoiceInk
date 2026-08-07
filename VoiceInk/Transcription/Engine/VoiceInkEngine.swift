@@ -495,6 +495,11 @@ class VoiceInkEngine: NSObject {
 
     // MARK: - Recording Context
 
+    /// Live view of the context captured for the take in flight, for the recorder panel.
+    var activeRecordingContextSnapshot: RecordingContextSnapshot? {
+        activeRecordingContextStore?.snapshot
+    }
+
     private func startRecordingContextCapture() {
         clearActiveRecordingContext()
 

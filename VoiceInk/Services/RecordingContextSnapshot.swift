@@ -1,14 +1,17 @@
 import AppKit
 import Foundation
 
-struct RecordingContextSnapshot {
+struct RecordingContextSnapshot: Equatable {
     var capturedAt = Date()
     var selectedText: String?
     var clipboardText: String?
     var screenText: String?
 }
 
+/// Observable so the recorder panel can show context as each capture task lands — selection,
+/// clipboard and screen text all arrive asynchronously and at different times.
 @MainActor
+@Observable
 final class RecordingContextSnapshotStore {
     private(set) var snapshot = RecordingContextSnapshot()
 

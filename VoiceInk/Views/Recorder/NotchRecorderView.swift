@@ -8,6 +8,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+    @State private var healthMonitor = RecorderInputHealthMonitor()
 
     // MARK: - Display State
 
@@ -60,11 +61,14 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         notchWidth + sideExpansion * 2
     }
 
+    private let signalStripHeight: CGFloat = 26
+
     private var pillHeight: CGFloat {
+        let strip = showsSignalStrip ? signalStripHeight : 0
         switch displayState {
         case .collapsed: return 0
-        case .active: return mainRowHeight
-        case .liveText: return mainRowHeight + transcriptPanelHeight
+        case .active: return mainRowHeight + strip
+        case .liveText: return mainRowHeight + strip + transcriptPanelHeight
         case .assistant: return mainRowHeight + assistantPanelHeight
         }
     }
@@ -114,6 +118,17 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
             pill.position(x: geo.size.width / 2, y: pillHeight / 2)
         }
         .animation(pillAnimation, value: displayState)
+        .animation(AppTheme.Motion.standard, value: showsSignalStrip)
+        .task(id: presentation.recordingState) {
+            guard presentation.recordingState == .recording else {
+                healthMonitor.reset()
+                return
+            }
+            while !Task.isCancelled {
+                healthMonitor.ingest(recorder.audioMeterSnapshot())
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
     }
 
     // MARK: - Pill
@@ -121,6 +136,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     private var pill: some View {
         VStack(spacing: 0) {
             mainRow
+            signalStrip
             liveTextPanel
             assistantPanel
         }
@@ -190,6 +206,27 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
             )
         }
         .frame(height: mainRowHeight)
+    }
+
+    /// The strip earns its space only when it has something non-obvious to report.
+    private var showsSignalStrip: Bool {
+        presentation.recordingState == .recording
+            && RecorderSignalStrip.shouldRender(
+                health: healthMonitor.health,
+                context: stateProvider.contextSummary
+            )
+    }
+
+    @ViewBuilder
+    private var signalStrip: some View {
+        if showsSignalStrip {
+            RecorderSignalStrip(
+                health: healthMonitor.health,
+                context: stateProvider.contextSummary,
+                deviceName: AudioDeviceManager.shared.currentInputDeviceName
+            )
+            .frame(width: pillWidth)
+        }
     }
 
     // MARK: - Live Text Panel
