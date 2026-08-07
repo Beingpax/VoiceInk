@@ -33,7 +33,8 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             partialTranscript: stateProvider.partialTranscript,
             showLiveTranscript: showLiveTranscript,
             isAssistantVisible: assistantSession.isVisible,
-            isAssistantBusy: assistantSession.isBusy
+            isAssistantBusy: assistantSession.isBusy,
+            hasResultPeek: stateProvider.resultPeek != nil
         )
     }
 
@@ -51,6 +52,9 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                     liveFollowUpText: presentation.assistantFollowUpText,
                     onSend: onAssistantFollowUp
                 )
+                separator
+            } else if presentation.displayState == .result {
+                resultPeekPanel
                 separator
             } else if presentation.hasLiveTranscript {
                 LiveTranscriptView(text: presentation.partialTranscript)
@@ -116,6 +120,21 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                 deviceChangedDuringTake: false
             )
         )
+    }
+
+
+    @ViewBuilder
+    private var resultPeekPanel: some View {
+        if let peek = stateProvider.resultPeek {
+            RecorderResultPeekView(
+                peek: peek,
+                onUndo: { Task { await stateProvider.undoResultPeek() } },
+                onRetry: { stateProvider.retryResultPeek() },
+                onShowOriginal: {},
+                onDismiss: { stateProvider.dismissResultPeek() },
+                onHoverChange: { stateProvider.setResultPeekHovered($0) }
+            )
+        }
     }
 
     private var separator: some View {

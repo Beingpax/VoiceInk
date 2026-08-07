@@ -19,7 +19,8 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
             partialTranscript: stateProvider.partialTranscript,
             showLiveTranscript: showLiveTranscript,
             isAssistantVisible: assistantSession.isVisible,
-            isAssistantBusy: assistantSession.isBusy
+            isAssistantBusy: assistantSession.isBusy,
+            hasResultPeek: stateProvider.resultPeek != nil
         )
     }
 
@@ -63,6 +64,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     }
 
     private let signalStripHeight: CGFloat = 26
+    private let resultPanelHeight: CGFloat = 92
 
     private var pillHeight: CGFloat {
         let strip = showsSignalStrip ? signalStripHeight : 0
@@ -70,6 +72,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         case .collapsed: return 0
         case .active: return mainRowHeight + strip
         case .liveText: return mainRowHeight + strip + transcriptPanelHeight
+        case .result: return mainRowHeight + resultPanelHeight
         case .assistant: return mainRowHeight + assistantPanelHeight
         }
     }
@@ -142,6 +145,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         VStack(spacing: 0) {
             mainRow
             signalStrip
+            resultPanel
             liveTextPanel
             assistantPanel
         }
@@ -247,6 +251,28 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                 deviceName: AudioDeviceManager.shared.currentInputDeviceName
             )
             .frame(width: pillWidth)
+        }
+    }
+
+    @ViewBuilder
+    private var resultPanel: some View {
+        if displayState == .result {
+            resultPeekPanel
+                .frame(width: pillWidth, height: resultPanelHeight)
+        }
+    }
+
+    @ViewBuilder
+    private var resultPeekPanel: some View {
+        if let peek = stateProvider.resultPeek {
+            RecorderResultPeekView(
+                peek: peek,
+                onUndo: { Task { await stateProvider.undoResultPeek() } },
+                onRetry: { stateProvider.retryResultPeek() },
+                onShowOriginal: {},
+                onDismiss: { stateProvider.dismissResultPeek() },
+                onHoverChange: { stateProvider.setResultPeekHovered($0) }
+            )
         }
     }
 

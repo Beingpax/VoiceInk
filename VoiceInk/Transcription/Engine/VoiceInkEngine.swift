@@ -495,6 +495,42 @@ class VoiceInkEngine: NSObject {
 
     // MARK: - Recording Context
 
+    /// Set for a few seconds after delivery so the panel can offer undo and retry.
+    var resultPeek: RecorderResultPeek?
+
+    private var resultPeekDismissTask: Task<Void, Never>?
+
+    /// Auto-dismiss window. Long enough to notice a bad take, short enough not to nag.
+    private static let resultPeekLifetime = Duration.seconds(4)
+
+    func presentResultPeek(_ peek: RecorderResultPeek) {
+        resultPeekDismissTask?.cancel()
+        resultPeek = peek
+        scheduleResultPeekDismiss()
+    }
+
+    /// Hovering pauses the countdown; leaving restarts it.
+    func setResultPeekHovered(_ isHovered: Bool) {
+        resultPeekDismissTask?.cancel()
+        guard !isHovered, resultPeek != nil else { return }
+        scheduleResultPeekDismiss()
+    }
+
+    func dismissResultPeek() {
+        resultPeekDismissTask?.cancel()
+        resultPeekDismissTask = nil
+        resultPeek = nil
+        Task { await recorderUIManager?.dismissRecorderPanel() }
+    }
+
+    private func scheduleResultPeekDismiss() {
+        resultPeekDismissTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.resultPeekLifetime)
+            guard !Task.isCancelled else { return }
+            self?.dismissResultPeek()
+        }
+    }
+
     /// Live view of the context captured for the take in flight, for the recorder panel.
     var activeRecordingContextSnapshot: RecordingContextSnapshot? {
         activeRecordingContextStore?.snapshot
@@ -584,6 +620,12 @@ class VoiceInkEngine: NSObject {
             onDismiss: { [weak self] in
                 guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
                 await self.recorderUIManager?.dismissRecorderPanel()
+            },
+            onPresentResultPeek: { [weak self] peek in
+                guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
+                // Delivery has already dismissed the panel; bring it back holding the result.
+                self.recorderUIManager?.presentPanelForResult()
+                self.presentResultPeek(peek)
             },
             assistant: TranscriptionPipeline.AssistantHooks(
                 isFollowUp: activePipelineUseCase.isAssistantFollowUp,

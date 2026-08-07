@@ -13,6 +13,8 @@ enum RecorderDisplayState: Equatable {
     case liveText
     /// Assistant conversation is on screen.
     case assistant
+    /// Showing what was just delivered, with undo and retry.
+    case result
 }
 
 /// What the panel's rim is reporting. One colour, one meaning — the rim is readable peripherally
@@ -80,7 +82,8 @@ struct RecorderPresentation: Equatable {
         partialTranscript: String,
         showLiveTranscript: Bool,
         isAssistantVisible: Bool,
-        isAssistantBusy: Bool
+        isAssistantBusy: Bool,
+        hasResultPeek: Bool = false
     ) {
         self.recordingState = recordingState
         self.partialTranscript = partialTranscript
@@ -90,6 +93,8 @@ struct RecorderPresentation: Equatable {
 
         if isAssistantVisible {
             displayState = .assistant
+        } else if hasResultPeek {
+            displayState = .result
         } else {
             switch recordingState {
             case .recording:
@@ -111,7 +116,7 @@ struct RecorderPresentation: Equatable {
         switch displayState {
         case .assistant:
             widthClass = .conversation
-        case .liveText:
+        case .liveText, .result:
             widthClass = .wide
         case .active:
             widthClass = .standard

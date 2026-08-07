@@ -17,6 +17,9 @@ final class TranscriptionDelivery {
     struct Actions {
         let setState: @MainActor (RecordingState) -> Void
         let dismiss: @MainActor () async -> Void
+        /// Called after a successful paste so the panel can offer undo and retry. The peek
+        /// deliberately follows delivery rather than gating it — the text lands immediately.
+        var presentResultPeek: @MainActor (RecorderResultPeek) -> Void = { _ in }
         let sendFollowUp: @MainActor (String, Transcription) async -> Void
         let showResponse: @MainActor (String, String?) async -> Void
         let failResponse: @MainActor (String) async -> Void
@@ -46,6 +49,8 @@ final class TranscriptionDelivery {
         }
 
         if let text = request.text {
+            pendingPeekSource = request
+            defer { pendingPeekSource = nil }
             await paste(text, output: request.output, actions: actions)
         } else {
             await actions.dismiss()
@@ -164,6 +169,7 @@ final class TranscriptionDelivery {
         let pasteTask = CursorPaster.startPasteAtCursor(pastedText)
 
         let autoSendKey = output.outputMode == .paste ? output.autoSendKey : .none
+        let peek = peek(for: textToPaste)
         Task { @MainActor in
             _ = await pasteTask.value
 
@@ -171,7 +177,29 @@ final class TranscriptionDelivery {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 CursorPaster.performAutoSend(autoSendKey)
             }
+
+            // Auto-send means the text is already committed elsewhere; offering undo there would
+            // be misleading, so the peek is skipped.
+            if !autoSendKey.isEnabled, let peek {
+                actions.presentResultPeek(peek)
+            }
         }
+    }
+
+    /// Built from the request currently being delivered, so the peek can offer the original text
+    /// when enhancement changed it.
+    private var pendingPeekSource: Request?
+
+    private func peek(for pastedText: String) -> RecorderResultPeek? {
+        guard let request = pendingPeekSource else { return nil }
+        let transcription = request.transcription
+        return RecorderResultPeek(
+            pastedText: pastedText,
+            originalText: transcription.text,
+            hasEnhancement: transcription.enhancedText != nil,
+            duration: transcription.duration,
+            modeName: transcription.modeName
+        )
     }
 
     private func deliverableText(from text: String) -> String {

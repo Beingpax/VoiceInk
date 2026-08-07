@@ -183,6 +183,43 @@ class CursorPaster {
 
     // Posts Cmd+V via CGEvent without modifying the active input source.
     @MainActor
+    /// Undoes the insertion by sending Cmd+Z to whatever now has focus.
+    ///
+    /// This relies on the target app's own undo stack, which is what makes it feel native — but it
+    /// also means the result is not guaranteed: an app with no undo support, or one the user has
+    /// typed into since, will not restore cleanly.
+    static func undoLastPaste() async -> Bool {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility permission is required to undo with simulated key events")
+            return false
+        }
+
+        let source = CGEventSource(stateID: .privateState)
+
+        guard let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true),
+            let zDown = CGEvent(keyboardEventSource: source, virtualKey: 0x06, keyDown: true),
+            let zUp = CGEvent(keyboardEventSource: source, virtualKey: 0x06, keyDown: false),
+            let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false)
+        else {
+            logger.error("Failed to create Cmd+Z keyboard events")
+            return false
+        }
+
+        cmdDown.flags = .maskCommand
+        zDown.flags = .maskCommand
+        zUp.flags = .maskCommand
+
+        cmdDown.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        zDown.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        zUp.post(tap: .cghidEventTap)
+        await wait(pasteShortcutEventDelay)
+        cmdUp.post(tap: .cghidEventTap)
+
+        return true
+    }
+
     private static func pasteFromClipboard() async -> PasteResult {
         guard AXIsProcessTrusted() else {
             logger.error("Accessibility permission is required to paste with simulated key events")

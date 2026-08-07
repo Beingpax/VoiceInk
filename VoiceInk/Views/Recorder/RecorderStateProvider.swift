@@ -8,4 +8,13 @@ protocol RecorderStateProvider: AnyObject {
     /// What will be sent alongside the audio. Captured per take by the engine; previously
     /// invisible to the user.
     var contextSummary: RecorderContextSummary { get }
+    /// Set for a few seconds after delivery so a bad take can be undone or retried.
+    var resultPeek: RecorderResultPeek? { get }
+
+    /// Result peek actions. On the provider rather than threaded as callbacks, so the window
+    /// managers stay unaware of the peek entirely.
+    func undoResultPeek() async
+    func retryResultPeek()
+    func dismissResultPeek()
+    func setResultPeekHovered(_ isHovered: Bool)
 }

@@ -62,6 +62,7 @@ class TranscriptionPipeline {
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
         onDismiss: @escaping @MainActor () async -> Void,
+        onPresentResultPeek: @escaping @MainActor (RecorderResultPeek) -> Void = { _ in },
         assistant: AssistantHooks = .inactive
     ) async {
         let model = transcriptionConfiguration.model
@@ -283,6 +284,7 @@ class TranscriptionPipeline {
             actions: TranscriptionDelivery.Actions(
                 setState: onStateChange,
                 dismiss: onDismiss,
+                presentResultPeek: onPresentResultPeek,
                 sendFollowUp: assistant.sendFollowUp,
                 showResponse: assistant.showResponse,
                 failResponse: assistant.failResponse

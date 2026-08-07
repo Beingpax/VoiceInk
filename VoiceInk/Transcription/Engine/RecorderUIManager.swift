@@ -27,6 +27,8 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
 protocol RecorderPanelPresenting: AnyObject {
     var isRecorderPanelVisible: Bool { get }
     func dismissRecorderPanel() async
+    /// Re-presents the panel after delivery has dismissed it, so it can carry the result peek.
+    func presentPanelForResult()
 }
 
 @MainActor
@@ -75,6 +77,11 @@ class RecorderUIManager: RecorderPanelPresenting {
     }
 
     // MARK: - Recorder Panel Management
+
+    /// Re-presents the panel to carry the result peek after delivery has dismissed it.
+    func presentPanelForResult() {
+        showRecorderPanel()
+    }
 
     private func showRecorderPanel() {
         guard let engine = engine, let recorder = recorder else { return }
