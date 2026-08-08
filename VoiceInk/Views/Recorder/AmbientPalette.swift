@@ -2,9 +2,9 @@ import SwiftUI
 
 /// How the ambient light should be drawn for the background it is sitting on.
 ///
-/// `auto` now *measures* the background rather than inferring it — see `AmbientBackgroundSensor`.
-/// The override remains for when the measurement is unavailable (no Screen Recording permission) or
-/// simply not what you want.
+/// `auto` follows the theme of the window you are dictating into, measured rather than inferred —
+/// see `AmbientBackgroundSensor`. The overrides remain for when that is unavailable (no Screen
+/// Recording permission) or simply not what you want.
 enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
     case auto
     case dark
@@ -16,7 +16,7 @@ enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .auto: return String(localized: "Match background")
+        case .auto: return String(localized: "Match the app I'm dictating into")
         case .dark: return String(localized: "Tuned for dark backgrounds")
         case .light: return String(localized: "Tuned for light backgrounds")
         }
