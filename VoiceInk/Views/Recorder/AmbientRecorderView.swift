@@ -32,12 +32,25 @@ enum AmbientState: Equatable {
         }
     }
 
+    /// Light, not UI colour. `systemGreen` and friends are tuned to sit inside controls against a
+    /// known background; spread across a whole display edge they read as a coloured rectangle
+    /// rather than something glowing. These are lighter and less saturated.
     var color: Color {
         switch self {
         case .hidden: return .clear
-        case .problem: return AppTheme.Recorder.healthBad
-        case .working: return AppTheme.Status.warningStrong
-        case .listening: return AppTheme.Recorder.healthOK
+        case .problem: return Color(red: 0.97, green: 0.42, blue: 0.36)
+        case .working: return Color(red: 0.98, green: 0.72, blue: 0.35)
+        case .listening: return Color(red: 0.38, green: 0.86, blue: 0.68)
+        }
+    }
+
+    /// The common case should be calm. A problem is allowed to be louder than "recording fine".
+    var intensity: Double {
+        switch self {
+        case .hidden: return 0
+        case .listening: return 0.55
+        case .working: return 0.75
+        case .problem: return 1.0
         }
     }
 }
@@ -49,10 +62,17 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var level: Double = 0
 
-    /// Border thickness at silence and at full level. The screen edge breathes with your voice —
-    /// the most direct "it can hear me" the app can give without drawing anything.
-    private let minThickness: CGFloat = 2
-    private let maxThickness: CGFloat = 9
+    /// Width of the light band at silence and at full level. Most of the band is positioned
+    /// off-screen, so what you actually see is its inward falloff — light seeping in from the
+    /// bezel rather than a line drawn on top of your work.
+    private let minBloom: CGFloat = 26
+    private let maxBloom: CGFloat = 62
+
+    /// macOS does not expose the display's physical corner radius. A squared-off glow fights the
+    /// rounded corners badly, and this is close enough that the light appears to hug the bezel.
+    private var displayCornerRadius: CGFloat {
+        (NSScreen.main?.safeAreaInsets.top ?? 0) > 0 ? 12 : 8
+    }
 
     private var state: AmbientState {
         AmbientState.resolve(
@@ -65,10 +85,10 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     /// audio is close to a migraine trigger.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var thickness: CGFloat {
+    private var bloomWidth: CGFloat {
         guard state != .hidden else { return 0 }
-        guard !reduceMotion else { return (minThickness + maxThickness) / 2 }
-        return minThickness + (maxThickness - minThickness) * CGFloat(level)
+        guard !reduceMotion else { return (minBloom + maxBloom) / 2 }
+        return minBloom + (maxBloom - minBloom) * CGFloat(level)
     }
 
     var body: some View {
@@ -81,7 +101,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                     }
                 }
             }
-            .animation(.easeOut(duration: 0.12), value: thickness)
+            .animation(.easeOut(duration: 0.14), value: bloomWidth)
             .animation(AppTheme.Motion.standard, value: state)
         }
         .ignoresSafeArea()
@@ -103,17 +123,24 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         }
     }
 
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: displayCornerRadius, style: .continuous)
+    }
+
+    /// Two layers: a wide, heavily blurred band pushed half off-screen so only its falloff is
+    /// visible, and a faint crisp line right at the bezel to give the light an origin. A single
+    /// hard-edged stroke — which is what this was — reads as a rendering error rather than a glow.
     private var frame: some View {
-        Rectangle()
-            .strokeBorder(
-                LinearGradient(
-                    colors: [state.color.opacity(0.95), state.color.opacity(0.55)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ),
-                lineWidth: thickness
-            )
-            .shadow(color: state.color.opacity(0.45), radius: thickness * 1.6)
+        ZStack {
+            shape
+                .stroke(state.color.opacity(0.85 * state.intensity), lineWidth: bloomWidth)
+                .blur(radius: bloomWidth * 0.5)
+                .padding(-bloomWidth / 2)
+
+            shape
+                .stroke(state.color.opacity(0.5 * state.intensity), lineWidth: 1)
+                .blur(radius: 0.5)
+        }
     }
 
     /// A light completing one lap of the perimeter, where the lap *is* the predicted wait.
@@ -123,14 +150,25 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             let seconds = context.date.timeIntervalSinceReferenceDate
             let position = seconds.truncatingRemainder(dividingBy: 3) / 3
 
-            Rectangle()
-                .stroke(state.color, lineWidth: max(thickness, 3))
-                .mask(
-                    Rectangle()
-                        .trim(from: position, to: min(position + 0.16, 1))
-                        .stroke(style: StrokeStyle(lineWidth: max(thickness, 3) * 2))
-                )
-                .blur(radius: 1.5)
+            // A comet running the perimeter: a soft wide tail with a brighter core, so it reads
+            // as a moving light rather than a sliding rectangle segment.
+            ZStack {
+                shape
+                    .trim(from: position, to: min(position + 0.14, 1))
+                    .stroke(
+                        state.color.opacity(0.7),
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                    )
+                    .blur(radius: 9)
+
+                shape
+                    .trim(from: position, to: min(position + 0.05, 1))
+                    .stroke(
+                        state.color,
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                    )
+                    .blur(radius: 1.2)
+            }
         }
         .frame(width: size.width, height: size.height)
     }
