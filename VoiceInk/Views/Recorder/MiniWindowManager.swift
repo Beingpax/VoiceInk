@@ -7,6 +7,7 @@ class MiniWindowManager {
     private var panel: MiniRecorderPanel?
 
     private let makeView: () -> AnyView
+    private let isAssistantVisible: () -> Bool
 
     init(
         engine: VoiceInkEngine,
@@ -16,6 +17,7 @@ class MiniWindowManager {
         onCloseTapped: @escaping () -> Void,
         onAssistantFollowUp: @escaping (String) -> Void
     ) {
+        self.isAssistantVisible = { [weak assistantSession] in assistantSession?.isVisible ?? false }
         self.makeView = {
             AnyView(
                 MiniRecorderView(
@@ -47,6 +49,8 @@ class MiniWindowManager {
         deinitializeWindow()
         let metrics = MiniRecorderPanel.calculateWindowMetrics()
         let newPanel = MiniRecorderPanel(contentRect: metrics)
+        // Key focus only while the assistant is on screen and expecting typed input.
+        newPanel.needsKeyFocus = isAssistantVisible
         let view = makeView()
         let hostingController = NSHostingController(rootView: view)
         newPanel.contentView = hostingController.view

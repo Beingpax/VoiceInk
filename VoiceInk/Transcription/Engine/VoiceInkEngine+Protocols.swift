@@ -13,9 +13,7 @@ extension VoiceInkEngine: RecorderStateProvider {
     /// makes it feel native, and also why it cannot be guaranteed — an app without undo support,
     /// or one typed into since, will not restore cleanly.
     func undoResultPeek() async {
-        let target = resultPeek?.targetBundleIdentifier
         dismissResultPeek()
-        guard await Self.restoreFocus(to: target) else { return }
         _ = await CursorPaster.undoLastPaste()
     }
 
@@ -25,8 +23,7 @@ extension VoiceInkEngine: RecorderStateProvider {
     /// clipboard — correct for a keyboard shortcut fired from anywhere, wrong for a button on a
     /// peek that is sitting next to text the user expects to be replaced.
     func retryResultPeek() {
-        guard let peek = resultPeek else { return }
-        let target = peek.targetBundleIdentifier
+        guard resultPeek != nil else { return }
         dismissResultPeek()
 
         Task { @MainActor in
@@ -66,7 +63,10 @@ extension VoiceInkEngine: RecorderStateProvider {
                     result.enhancementFailure == nil && retried.enhancedText?.isEmpty == false
                     ? retried.enhancedText! : retried.text
 
-                guard await Self.restoreFocus(to: target) else { return }
+                // Remove the first result before inserting the new one, otherwise retry appends
+                // and you end up with the sentence twice.
+                _ = await CursorPaster.undoLastPaste()
+                try? await Task.sleep(for: .milliseconds(120))
                 _ = await CursorPaster.startPasteAtCursor(text).value
             } catch {
                 NotificationManager.shared.showNotification(
@@ -77,17 +77,4 @@ extension VoiceInkEngine: RecorderStateProvider {
         }
     }
 
-    /// Brings the paste target back to the front and waits for the activation to settle. Without
-    /// this the synthesized keystroke goes to the recorder panel, which took key focus the moment
-    /// the button was clicked.
-    private static func restoreFocus(to bundleIdentifier: String?) async -> Bool {
-        guard let bundleIdentifier,
-            let app = NSRunningApplication.runningApplications(
-                withBundleIdentifier: bundleIdentifier).first
-        else { return false }
-
-        app.activate()
-        try? await Task.sleep(for: .milliseconds(140))
-        return true
-    }
 }

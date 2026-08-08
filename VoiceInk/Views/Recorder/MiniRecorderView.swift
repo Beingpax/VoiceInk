@@ -170,12 +170,16 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
 
             Spacer(minLength: 0)
 
-            RecorderStatusDisplay(
-                currentState: presentation.recordingState,
-                audioMeterProvider: recorder.audioMeterSnapshot
-            )
+            // The visualizer yields while the mode row is open — competing for the same row was
+            // squeezing every control down to nothing.
+            if !isModeRowExpanded {
+                RecorderStatusDisplay(
+                    currentState: presentation.recordingState,
+                    audioMeterProvider: recorder.audioMeterSnapshot
+                )
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
+            }
 
             RecorderModeButton(
                 buttonSize: 22,

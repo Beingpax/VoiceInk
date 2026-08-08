@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 // MARK: - Input health
@@ -55,14 +56,33 @@ final class RecorderInputHealthMonitor {
     private var quietRun = 0
     private var sawAnySignal = false
 
+    /// Observed extremes for the current take. Two rounds of guessing thresholds blind was two
+    /// rounds too many — set `RecorderMeterDebug` in defaults and the real numbers get logged, so
+    /// the next calibration is measured rather than assumed.
+    private var observedPeakMax: Double = 0
+    private var observedAverageMin: Double = 1
+    private static let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink", category: "RecorderInputHealth")
+    private static let isDebugEnabled = UserDefaults.standard.bool(forKey: "RecorderMeterDebug")
+
     func reset() {
+        if Self.isDebugEnabled, observedPeakMax > 0 {
+            Self.logger.notice(
+                "take ended — peak max \(self.observedPeakMax, format: .fixed(precision: 3)), average min \(self.observedAverageMin, format: .fixed(precision: 3)), final \(String(describing: self.health), privacy: .public)"
+            )
+        }
         health = .unknown
         clipRun = 0
         quietRun = 0
         sawAnySignal = false
+        observedPeakMax = 0
+        observedAverageMin = 1
     }
 
     func ingest(_ meter: AudioMeter) {
+        observedPeakMax = max(observedPeakMax, meter.peakPower)
+        observedAverageMin = min(observedAverageMin, meter.averagePower)
+
         if meter.peakPower >= clipThreshold {
             clipRun += 1
         } else {

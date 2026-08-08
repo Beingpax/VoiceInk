@@ -7,6 +7,7 @@ class NotchWindowManager {
     private var panel: NotchRecorderPanel?
 
     private let makeView: () -> AnyView
+    private let isAssistantVisible: () -> Bool
 
     init(
         engine: VoiceInkEngine,
@@ -16,6 +17,7 @@ class NotchWindowManager {
         onCloseTapped: @escaping () -> Void,
         onAssistantFollowUp: @escaping (String) -> Void
     ) {
+        self.isAssistantVisible = { [weak assistantSession] in assistantSession?.isVisible ?? false }
         self.makeView = {
             AnyView(
                 NotchRecorderView(
@@ -47,6 +49,8 @@ class NotchWindowManager {
         deinitializeWindow()
         let metrics = NotchRecorderPanel.calculateWindowMetrics()
         let newPanel = NotchRecorderPanel(contentRect: metrics.frame)
+        // Key focus only while the assistant is on screen and expecting typed input.
+        newPanel.needsKeyFocus = isAssistantVisible
         let view = makeView()
         let hostingController = NotchRecorderHostingController(rootView: view)
         newPanel.contentView = hostingController.view

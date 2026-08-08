@@ -2,8 +2,15 @@ import AppKit
 import SwiftUI
 
 class MiniRecorderPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+    /// Only the assistant needs to type into this panel. For everything else the panel must stay
+    /// non-key: clicking a peek button was pulling focus off the app the text landed in, so the
+    /// synthesized Cmd+Z went to the panel and Undo did nothing. Reactivating the target app
+    /// afterwards proved unreliable — macOS 14+ restricts cross-app activation — so the fix is to
+    /// never take focus in the first place.
+    var needsKeyFocus: () -> Bool = { false }
+
+    override var canBecomeKey: Bool { needsKeyFocus() }
+    override var canBecomeMain: Bool { needsKeyFocus() }
 
     init(contentRect: NSRect) {
         super.init(
