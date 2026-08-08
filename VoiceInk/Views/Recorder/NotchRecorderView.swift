@@ -11,6 +11,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var densityJudge = RecorderDensityJudge()
     @State private var isModeRowExpanded = false
+    @State private var processingEstimate = RecorderProcessingEstimate()
 
     // MARK: - Display State
 
@@ -75,7 +76,8 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         let strip = showsSignalStrip ? signalStripHeight : 0
         switch displayState {
         case .collapsed: return 0
-        case .active: return mainRowHeight + strip
+        case .active:
+            return mainRowHeight + strip + (isProcessing && processingEstimate.hasEstimate ? 54 : 0)
         case .liveText: return mainRowHeight + strip + transcriptPanelHeight
         case .result: return mainRowHeight + resultPanelHeight
         case .assistant: return mainRowHeight + assistantPanelHeight
@@ -130,7 +132,24 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         .animation(AppTheme.Motion.standard, value: showsSignalStrip)
         .animation(AppTheme.Motion.quick, value: isModeRowExpanded)
         .task(id: presentation.recordingState) {
-            guard presentation.recordingState == .recording else {
+            let state = presentation.recordingState
+            if state == .transcribing || state == .enhancing {
+                if !processingEstimate.hasEstimate {
+                    processingEstimate.begin(
+                        audioDuration: stateProvider.lastTakeAudioDuration,
+                        modelName: stateProvider.activeTranscriptionModelName
+                    )
+                }
+                while !Task.isCancelled {
+                    processingEstimate.tick()
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+                return
+            }
+
+            processingEstimate.end()
+
+            guard state == .recording else {
                 healthMonitor.reset()
                 densityJudge.endTake()
                 return
@@ -150,6 +169,7 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
     private var pill: some View {
         VStack(spacing: 0) {
             mainRow
+            processingRow
             signalStrip
             resultPanel
             liveTextPanel
@@ -280,6 +300,18 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                 deviceName: AudioDeviceManager.shared.currentInputDeviceName
             )
             .frame(width: pillWidth)
+        }
+    }
+
+    private var isProcessing: Bool {
+        presentation.recordingState == .transcribing || presentation.recordingState == .enhancing
+    }
+
+    @ViewBuilder
+    private var processingRow: some View {
+        if isProcessing, processingEstimate.hasEstimate {
+            RecorderProcessingRow(state: presentation.recordingState, estimate: processingEstimate)
+                .frame(width: pillWidth)
         }
     }
 

@@ -4,6 +4,16 @@ import Foundation
 // MARK: - RecorderStateProvider
 
 extension VoiceInkEngine: RecorderStateProvider {
+    var lastTakeAudioDuration: TimeInterval {
+        LastTranscriptionService.getLastTranscription(from: modelContext)?.duration ?? 0
+    }
+
+    var activeTranscriptionModelName: String? {
+        ModeRuntimeResolver.transcriptionConfiguration(
+            transcriptionModelManager: transcriptionModelManager
+        )?.model.name
+    }
+
     var contextSummary: RecorderContextSummary {
         guard let snapshot = activeRecordingContextSnapshot else { return .empty }
         return RecorderContextSummary(snapshot: snapshot)

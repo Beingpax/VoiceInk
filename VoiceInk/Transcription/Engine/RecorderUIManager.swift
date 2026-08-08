@@ -5,6 +5,8 @@ import os
 enum RecorderPanelStyle: String, CaseIterable, Identifiable {
     case notch
     case mini
+    /// No panel — the display border carries state. See AmbientRecorderView.
+    case ambient
 
     var id: String { rawValue }
 
@@ -14,6 +16,8 @@ enum RecorderPanelStyle: String, CaseIterable, Identifiable {
             return String(localized: "Notch")
         case .mini:
             return String(localized: "Mini")
+        case .ambient:
+            return String(localized: "Ambient")
         }
     }
 
@@ -60,6 +64,7 @@ class RecorderUIManager: RecorderPanelPresenting {
     }
 
     private var notchWindowManager: NotchWindowManager?
+    private var ambientWindowManager: AmbientWindowManager?
     private var miniWindowManager: MiniWindowManager?
 
     private weak var engine: VoiceInkEngine?
@@ -135,6 +140,12 @@ class RecorderUIManager: RecorderPanelPresenting {
                 )
             }
             miniWindowManager?.show()
+
+        case .ambient:
+            if ambientWindowManager == nil {
+                ambientWindowManager = AmbientWindowManager(engine: engine, recorder: recorder)
+            }
+            ambientWindowManager?.show()
         }
     }
 
@@ -144,6 +155,8 @@ class RecorderUIManager: RecorderPanelPresenting {
             notchWindowManager?.hide()
         case .mini:
             miniWindowManager?.hide()
+        case .ambient:
+            ambientWindowManager?.hide()
         }
     }
 
@@ -157,6 +170,9 @@ class RecorderUIManager: RecorderPanelPresenting {
         case .mini:
             miniWindowManager?.destroyWindow()
             miniWindowManager = nil
+        case .ambient:
+            ambientWindowManager?.destroyWindow()
+            ambientWindowManager = nil
         }
 
         Task { @MainActor in

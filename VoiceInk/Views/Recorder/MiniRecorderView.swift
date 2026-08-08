@@ -11,6 +11,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var densityJudge = RecorderDensityJudge()
     @State private var isModeRowExpanded = false
+    @State private var processingEstimate = RecorderProcessingEstimate()
 
     // MARK: - Layout Constants
 
@@ -66,6 +67,9 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             } else if presentation.displayState == .result {
                 resultPeekPanel
                 separator
+            } else if isProcessing, processingEstimate.hasEstimate {
+                RecorderProcessingRow(state: presentation.recordingState, estimate: processingEstimate)
+                separator
             } else if presentation.hasLiveTranscript {
                 LiveTranscriptView(text: presentation.partialTranscript)
                 separator
@@ -92,7 +96,24 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
         .animation(AppTheme.Motion.quick, value: isModeRowExpanded)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .task(id: presentation.recordingState) {
-            guard presentation.recordingState == .recording else {
+            let state = presentation.recordingState
+            if state == .transcribing || state == .enhancing {
+                if !processingEstimate.hasEstimate {
+                    processingEstimate.begin(
+                        audioDuration: stateProvider.lastTakeAudioDuration,
+                        modelName: stateProvider.activeTranscriptionModelName
+                    )
+                }
+                while !Task.isCancelled {
+                    processingEstimate.tick()
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+                return
+            }
+
+            processingEstimate.end()
+
+            guard state == .recording else {
                 healthMonitor.reset()
                 densityJudge.endTake()
                 return
@@ -106,6 +127,10 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
+    }
+
+    private var isProcessing: Bool {
+        presentation.recordingState == .transcribing || presentation.recordingState == .enhancing
     }
 
     /// The strip earns its space only when it has something non-obvious to report.
