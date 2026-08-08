@@ -163,8 +163,10 @@ class RecorderUIManager: RecorderPanelPresenting {
     }
 
     private func rebuildVisiblePanel(previousStyle: RecorderPanelStyle) {
-        guard isRecorderPanelVisible else { return }
-
+        // Torn down whether or not it was on screen. A hidden window is not an inert one — the
+        // ambient panel keeps a watchdog running to survive display changes, and leaving that alive
+        // after switching to Mini left a full-screen window forcing itself to the front once a
+        // second, swallowing clicks across the whole machine.
         switch previousStyle {
         case .notch:
             notchWindowManager?.destroyWindow()
@@ -176,6 +178,8 @@ class RecorderUIManager: RecorderPanelPresenting {
             ambientWindowManager?.destroyWindow()
             ambientWindowManager = nil
         }
+
+        guard isRecorderPanelVisible else { return }
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 50_000_000)

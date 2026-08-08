@@ -53,6 +53,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
 
     var stateProvider: S
     var recorder: Recorder
+    /// Lets the window drop out of the event path entirely when nothing here is clickable.
+    var onInteractiveChange: (Bool) -> Void = { _ in }
 
     @AppStorage(AmbientBackgroundMode.userDefaultsKey) private var backgroundMode =
         AmbientBackgroundMode.auto.rawValue
@@ -93,6 +95,14 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     }
 
     private var state: AmbientState { presentation.state }
+
+    /// The only three moments this surface has anything to click: the result peek's buttons, the
+    /// silence countdown's reprieve, and the mode strip and cancel shown during a take.
+    private var isInteractive: Bool {
+        stateProvider.resultPeek != nil
+            || silenceWatch.secondsRemaining != nil
+            || stateProvider.recordingState == .recording
+    }
 
     var body: some View {
         ZStack {
@@ -138,6 +148,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             geometry = .current()
         }
         .task(id: stateProvider.recordingState) { await run() }
+        .onChange(of: isInteractive, initial: true) { _, value in onInteractiveChange(value) }
+        .onDisappear { onInteractiveChange(false) }
     }
 
     // MARK: - Text

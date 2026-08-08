@@ -56,10 +56,13 @@ final class AmbientRecorderPanel: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = false
-        // Not ignoring mouse events outright: the caption has buttons. Pass-through is handled
-        // precisely by the hosting view below, which returns nil everywhere the SwiftUI content is
-        // not hit-testable, so clicks fall to whatever is underneath.
-        ignoresMouseEvents = false
+        // Ignored by default, and only switched on for the moments something here is actually
+        // clickable — a result peek, the cancel button, the mode strip. The hosting view below also
+        // passes through everything it does not draw, but that is a second line of defence now
+        // rather than the only one: a display-sized window that accepts events is one SwiftUI
+        // hit-testing surprise away from swallowing every click on the machine, and the cost of
+        // being wrong is the user losing their mouse.
+        ignoresMouseEvents = true
         canHide = false
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
@@ -93,9 +96,17 @@ final class AmbientWindowManager {
     private var watchdog: Task<Void, Never>?
 
     init(engine: VoiceInkEngine, recorder: Recorder) {
+        var setInteractive: (Bool) -> Void = { _ in }
         self.makeView = {
-            AnyView(AmbientRecorderView(stateProvider: engine, recorder: recorder))
+            AnyView(
+                AmbientRecorderView(
+                    stateProvider: engine,
+                    recorder: recorder,
+                    onInteractiveChange: { setInteractive($0) }
+                )
+            )
         }
+        setInteractive = { [weak self] value in self?.setInteractive(value) }
     }
 
     deinit {
@@ -112,12 +123,19 @@ final class AmbientWindowManager {
     func hide() {
         isShowing = false
         stopObserving()
+        panel?.ignoresMouseEvents = true
         panel?.orderOut(nil)
+    }
+
+    /// Called by the view when clickable content appears or leaves.
+    func setInteractive(_ isInteractive: Bool) {
+        panel?.ignoresMouseEvents = !isInteractive
     }
 
     func destroyWindow() {
         isShowing = false
         stopObserving()
+        panel?.ignoresMouseEvents = true
         panel?.orderOut(nil)
         panel = nil
     }
