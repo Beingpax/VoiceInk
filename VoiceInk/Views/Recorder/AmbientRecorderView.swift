@@ -54,7 +54,6 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     var stateProvider: S
     var recorder: Recorder
 
-    @Environment(\.colorScheme) private var colorScheme
     @AppStorage(AmbientBackgroundMode.userDefaultsKey) private var backgroundMode =
         AmbientBackgroundMode.auto.rawValue
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
@@ -66,9 +65,13 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var hasShownContextForTake = false
     @State private var takeStartedAt: Date?
     @State private var geometry = AmbientGeometry.current()
+    @State private var background = AmbientBackgroundSensor()
 
     private var palette: AmbientPalette {
-        .resolve(colorScheme, mode: AmbientBackgroundMode(rawValue: backgroundMode) ?? .auto)
+        .resolve(
+            measuredLight: background.resolved,
+            mode: AmbientBackgroundMode(rawValue: backgroundMode) ?? .auto
+        )
     }
 
     private var stateColor: Color { palette.color(for: state) }
@@ -227,6 +230,9 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         takeStartedAt = .now
         meter.beginTake()
         geometry = .current()
+        // Once per take, off the main path. The window it lands in is the one the light will spend
+        // the take sitting on.
+        background.sample()
         var tick = 0
 
         while !Task.isCancelled {

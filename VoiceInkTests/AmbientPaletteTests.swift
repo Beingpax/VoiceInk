@@ -205,14 +205,14 @@ struct AmbientPaletteTests {
 
     // MARK: - Mode resolution
 
-    @Test func autoFollowsTheAppearance() {
-        #expect(AmbientPalette.resolve(.light, mode: .auto).isLight)
-        #expect(!AmbientPalette.resolve(.dark, mode: .auto).isLight)
+    @Test func autoFollowsTheMeasuredBackground() {
+        #expect(AmbientPalette.resolve(measuredLight: true, mode: .auto).isLight)
+        #expect(!AmbientPalette.resolve(measuredLight: false, mode: .auto).isLight)
     }
 
-    @Test func anExplicitChoiceOverridesTheAppearance() {
-        // The whole point of the override: a dark-mode system full of white documents.
-        #expect(AmbientPalette.resolve(.dark, mode: .light).isLight)
-        #expect(!AmbientPalette.resolve(.light, mode: .dark).isLight)
+    @Test func anExplicitChoiceOverridesTheMeasurement() {
+        // Both directions, because the measurement can be unavailable or simply unwanted.
+        #expect(AmbientPalette.resolve(measuredLight: false, mode: .light).isLight)
+        #expect(!AmbientPalette.resolve(measuredLight: true, mode: .dark).isLight)
     }
 }

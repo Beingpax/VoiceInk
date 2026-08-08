@@ -2,10 +2,9 @@ import SwiftUI
 
 /// How the ambient light should be drawn for the background it is sitting on.
 ///
-/// Follows the app's appearance by default, and can be forced. The appearance setting is a proxy —
-/// reading the actual pixels underneath would mean capturing the screen continuously, which needs
-/// Screen Recording permission and is a wildly disproportionate ask for a colour choice — so the
-/// override exists for when the proxy is wrong, such as a dark-mode system full of white documents.
+/// `auto` now *measures* the background rather than inferring it — see `AmbientBackgroundSensor`.
+/// The override remains for when the measurement is unavailable (no Screen Recording permission) or
+/// simply not what you want.
 enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
     case auto
     case dark
@@ -17,7 +16,7 @@ enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .auto: return String(localized: "Match appearance")
+        case .auto: return String(localized: "Match background")
         case .dark: return String(localized: "Tuned for dark backgrounds")
         case .light: return String(localized: "Tuned for light backgrounds")
         }
@@ -51,13 +50,18 @@ enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
 struct AmbientPalette {
     let isLight: Bool
 
+    /// - Parameter measuredLight: what the background actually is, when it could be measured.
+    ///   Deliberately *not* the app's `colorScheme`: that reflects the appearance preference for
+    ///   VoiceInk's own windows, and wanting dark app chrome on a Light Mode Mac says nothing about
+    ///   the white document the light is drawn over. Reading it here is what put the mint green on
+    ///   a white page.
     static func resolve(
-        _ colorScheme: ColorScheme, mode: AmbientBackgroundMode = .stored
+        measuredLight: Bool, mode: AmbientBackgroundMode = .stored
     ) -> AmbientPalette {
         switch mode {
         case .dark: return AmbientPalette(isLight: false)
         case .light: return AmbientPalette(isLight: true)
-        case .auto: return AmbientPalette(isLight: colorScheme == .light)
+        case .auto: return AmbientPalette(isLight: measuredLight)
         }
     }
 
