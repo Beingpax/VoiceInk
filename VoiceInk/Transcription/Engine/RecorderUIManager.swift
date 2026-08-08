@@ -33,6 +33,8 @@ protocol RecorderPanelPresenting: AnyObject {
     func dismissRecorderPanel() async
     /// Re-presents the panel after delivery has dismissed it, so it can carry the result peek.
     func presentPanelForResult()
+    /// Stops the take in progress, as if the shortcut had been pressed again.
+    func toggleRecorderPanel(modeId: UUID?) async
 }
 
 @MainActor

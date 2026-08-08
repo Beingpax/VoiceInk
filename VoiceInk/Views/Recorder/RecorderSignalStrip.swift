@@ -160,13 +160,18 @@ struct RecorderSignalStrip: View {
     let health: RecorderInputHealth
     let context: RecorderContextSummary
     let deviceName: String?
+    /// When counting down to an auto-stop, that replaces the health chip — it is strictly more
+    /// urgent than the condition that caused it.
+    var silenceCountdown: Int?
+    var onKeepRecording: () -> Void = {}
 
     /// A healthy take with nothing attached earns no space. Degradation does.
     static func shouldRender(
         health: RecorderInputHealth,
-        context: RecorderContextSummary
+        context: RecorderContextSummary,
+        silenceCountdown: Int? = nil
     ) -> Bool {
-        health.isProblem || !context.isEmpty
+        silenceCountdown != nil || health.isProblem || !context.isEmpty
     }
 
     var body: some View {
@@ -199,7 +204,12 @@ struct RecorderSignalStrip: View {
 
     @ViewBuilder
     private var healthSide: some View {
-        if let label = health.label {
+        if let silenceCountdown {
+            RecorderSilenceCountdown(
+                secondsRemaining: silenceCountdown,
+                onKeepRecording: onKeepRecording
+            )
+        } else if let label = health.label {
             SignalChip(text: label, tint: health.tint, isFilled: health.isProblem)
         }
     }

@@ -200,7 +200,8 @@ final class TranscriptionDelivery {
             hasEnhancement: transcription.enhancedText != nil,
             duration: transcription.duration,
             modeName: transcription.modeName,
-            targetBundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            targetBundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+            appliedVocabularyTerms: WordReplacementService.shared.lastAppliedTerms
         )
     }
 

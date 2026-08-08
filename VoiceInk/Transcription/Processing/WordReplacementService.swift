@@ -7,7 +7,13 @@ class WordReplacementService {
 
     private init() {}
 
+    /// Terms applied by the most recent call, so the result peek can confirm the dictionary did
+    /// something. Replacements ran on every transcript with no feedback at all, which left people
+    /// adding entries and never learning whether they worked.
+    private(set) var lastAppliedTerms: [String] = []
+
     func applyReplacements(to text: String, using context: ModelContext) -> String {
+        lastAppliedTerms = []
         let descriptor = FetchDescriptor<WordReplacement>(
             predicate: #Predicate { $0.isEnabled }
         )
@@ -50,20 +56,33 @@ class WordReplacementService {
                     let pattern = "(?<!\(wordChar))\(escaped)(?!\(wordChar))"
                     if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
                         let range = NSRange(modifiedText.startIndex..., in: modifiedText)
+                        let matchCount = regex.numberOfMatches(
+                            in: modifiedText, options: [], range: range)
                         modifiedText = regex.stringByReplacingMatches(
                             in: modifiedText,
                             options: [],
                             range: range,
                             withTemplate: replacementText
                         )
+                        if matchCount > 0 {
+                            lastAppliedTerms.append(replacementText)
+                        }
                     }
                 } else {
                     // Fallback substring replace for non-spaced scripts
+                    let before = modifiedText
                     modifiedText = modifiedText.replacingOccurrences(
                         of: original, with: replacementText, options: .caseInsensitive)
+                    if before != modifiedText {
+                        lastAppliedTerms.append(replacementText)
+                    }
                 }
             }
         }
+
+        // The same term can match through several variants; report it once.
+        var seen = Set<String>()
+        lastAppliedTerms = lastAppliedTerms.filter { seen.insert($0).inserted }
 
         return modifiedText
     }

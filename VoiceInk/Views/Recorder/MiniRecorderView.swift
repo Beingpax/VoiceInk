@@ -12,6 +12,8 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var densityJudge = RecorderDensityJudge()
     @State private var isModeRowExpanded = false
     @State private var processingEstimate = RecorderProcessingEstimate()
+    @State private var silenceWatch = RecorderSilenceWatch()
+    @State private var dragOffset: CGFloat = 0
 
     // MARK: - Layout Constants
 
@@ -81,7 +83,9 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                 RecorderSignalStrip(
                     health: healthMonitor.health,
                     context: stateProvider.contextSummary,
-                    deviceName: AudioDeviceManager.shared.currentInputDeviceName
+                    deviceName: AudioDeviceManager.shared.currentInputDeviceName,
+                    silenceCountdown: silenceWatch.secondsRemaining,
+                    onKeepRecording: { silenceWatch.reset() }
                 )
             }
         }
@@ -92,6 +96,9 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                 rimState: presentation.rimState
             )
         )
+        .offset(x: dragOffset)
+        .opacity(1 - min(abs(dragOffset) / cancelDragDistance, 1) * 0.55)
+        .gesture(cancelDragGesture(isRecording: presentation.recordingState == .recording))
         .animation(AppTheme.Motion.standard, value: presentation.displayState)
         .animation(AppTheme.Motion.quick, value: isModeRowExpanded)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -116,6 +123,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             guard state == .recording else {
                 healthMonitor.reset()
                 densityJudge.endTake()
+                silenceWatch.reset()
                 return
             }
             // 10Hz sampling, scoped to the take and cancelled with it.
@@ -124,9 +132,38 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             while !Task.isCancelled {
                 healthMonitor.ingest(recorder.audioMeterSnapshot())
                 judgeDensity()
+
+                if silenceWatch.ingest(isSilent: healthMonitor.health == .silent) {
+                    await stateProvider.stopTakeFromPanel()
+                    return
+                }
+
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
+    }
+
+    /// How far the pill must travel before the take is abandoned.
+    private let cancelDragDistance: CGFloat = 90
+
+    /// Drag the pill sideways to abandon the take — the gesture messaging apps already taught
+    /// everyone, replacing a double-press of Escape that nothing on screen advertised.
+    /// Resistance grows with distance so the pill visibly fights back, which is what makes the
+    /// gesture discoverable by accident.
+    private func cancelDragGesture(isRecording: Bool) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                guard isRecording else { return }
+                let raw = value.translation.width
+                dragOffset = raw.sign == .minus
+                    ? -sqrt(abs(raw)) * 7 : sqrt(raw) * 7
+            }
+            .onEnded { _ in
+                let shouldCancel = abs(dragOffset) >= cancelDragDistance
+                withAnimation(AppTheme.Motion.quick) { dragOffset = 0 }
+                guard shouldCancel else { return }
+                Task { await stateProvider.cancelTakeFromPanel() }
+            }
     }
 
     private var isProcessing: Bool {
@@ -139,7 +176,8 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
             && densityJudge.density >= .standard
             && RecorderSignalStrip.shouldRender(
                 health: healthMonitor.health,
-                context: stateProvider.contextSummary
+                context: stateProvider.contextSummary,
+                silenceCountdown: silenceWatch.secondsRemaining
             )
     }
 

@@ -16,6 +16,9 @@ struct RecorderResultPeek: Equatable, Identifiable {
     /// which pulls focus away — without restoring it first, Cmd+Z lands on the panel instead of
     /// the editor and Undo silently does nothing.
     let targetBundleIdentifier: String?
+    /// Dictionary terms that actually fired on this transcript. Confirms the dictionary is doing
+    /// something — previously replacements ran invisibly.
+    var appliedVocabularyTerms: [String] = []
 
     var wordCount: Int {
         pastedText.split(whereSeparator: \.isWhitespace).count
@@ -52,6 +55,14 @@ struct RecorderResultPeekView: View {
         )
         if let modeName = peek.modeName {
             parts.append(modeName)
+        }
+        if !peek.appliedVocabularyTerms.isEmpty {
+            parts.append(
+                String(
+                    format: String(localized: "%lld dictionary terms"),
+                    Int64(peek.appliedVocabularyTerms.count)
+                )
+            )
         }
         return parts.joined(separator: " · ")
     }

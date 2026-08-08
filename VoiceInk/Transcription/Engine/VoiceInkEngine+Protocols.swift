@@ -14,6 +14,16 @@ extension VoiceInkEngine: RecorderStateProvider {
         )?.model.name
     }
 
+    /// Stops and processes the take, as if the shortcut had been pressed again.
+    func stopTakeFromPanel() async {
+        await recorderUIManager?.toggleRecorderPanel(modeId: nil)
+    }
+
+    /// Discards the take entirely.
+    func cancelTakeFromPanel() async {
+        await cancelRecording()
+    }
+
     var contextSummary: RecorderContextSummary {
         guard let snapshot = activeRecordingContextSnapshot else { return .empty }
         return RecorderContextSummary(snapshot: snapshot)

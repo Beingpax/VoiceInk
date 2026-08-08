@@ -21,4 +21,8 @@ protocol RecorderStateProvider: AnyObject {
     func retryResultPeek()
     func dismissResultPeek()
     func setResultPeekHovered(_ isHovered: Bool)
+
+    /// Ends the take in progress — used by silence auto-stop and slide-to-cancel.
+    func stopTakeFromPanel() async
+    func cancelTakeFromPanel() async
 }
