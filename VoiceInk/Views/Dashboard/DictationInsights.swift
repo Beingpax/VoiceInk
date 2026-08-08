@@ -1,16 +1,5 @@
 import Foundation
 
-/// One take, reduced to what the insights need. Everything here is already recorded on
-/// `SessionMetric`; none of it was being shown.
-struct DictationSessionFact: Sendable, Equatable {
-    let day: Date
-    let words: Int
-    let audioDuration: TimeInterval
-    let transcriptionDuration: TimeInterval?
-    let enhancementDuration: TimeInterval?
-    let modeName: String?
-}
-
 /// What the numbers say about how you actually dictate.
 ///
 /// The dashboard already counted words, minutes and sessions. Those are scoreboard figures — they
@@ -168,5 +157,40 @@ struct DictationInsights: Codable, Equatable, Sendable {
             cursor = previous
         }
         return length
+    }
+}
+
+
+/// Everything the insights screen shows, computed together so the views stay dumb.
+struct DashboardInsightBundle: Codable, Equatable, Sendable {
+    static let empty = DashboardInsightBundle()
+
+    var dictation: DictationInsights = .empty
+    var reliability: ReliabilitySummary = .empty
+    var enhancement: EnhancementImpactSummary = .empty
+    var redictation: RedictationSummary = .empty
+    var destinations: DestinationSummary = .empty
+    var models: ModelLeaderboard = .empty
+    var dictionary: DictionarySummary = .empty
+    var library: LibrarySummary = .empty
+
+    static func make(
+        sessions: [DictationSessionFact],
+        transcripts: [TranscriptFact],
+        windowDays: Int,
+        today: Date,
+        calendar: Calendar = .current
+    ) -> DashboardInsightBundle {
+        DashboardInsightBundle(
+            dictation: .make(
+                from: sessions, windowDays: windowDays, today: today, calendar: calendar),
+            reliability: .make(from: transcripts),
+            enhancement: .make(from: transcripts),
+            redictation: .make(from: sessions),
+            destinations: .make(from: sessions),
+            models: .make(sessions: sessions, transcripts: transcripts),
+            dictionary: .make(from: sessions),
+            library: .make(from: transcripts)
+        )
     }
 }

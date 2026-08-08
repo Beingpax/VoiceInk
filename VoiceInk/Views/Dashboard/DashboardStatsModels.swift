@@ -277,7 +277,7 @@ struct DashboardStatsSummary: Codable, Equatable, Sendable {
     var allTimePeakHours: DashboardPeakHoursSummary = .empty
     /// Derived over the last 30 days — recent enough to describe how you work now, long enough to
     /// have something behind it.
-    var dictationInsights: DictationInsights = .empty
+    var insights: DashboardInsightBundle = .empty
 }
 
 extension DashboardStatsSummary {

@@ -134,7 +134,11 @@ enum DashboardStatsLoader {
                                 audioDuration: metric.audioDuration,
                                 transcriptionDuration: metric.transcriptionDuration,
                                 enhancementDuration: metric.enhancementDuration,
-                                modeName: metric.modeName
+                                modeName: metric.modeName,
+                                transcriptionModelName: metric.transcriptionModelName,
+                                targetBundleIdentifier: metric.targetBundleIdentifier,
+                                wasUndone: metric.wasUndone,
+                                dictionaryHitCount: metric.dictionaryHitCount
                             )
                         )
                     }
@@ -248,8 +252,31 @@ enum DashboardStatsLoader {
                 )
             }()
 
-            let dictationInsights = DictationInsights.make(
-                from: insightFacts,
+            // Transcripts are a separate fetch because they answer questions session metrics
+            // cannot: a metric is only written for a take that completed, so failure, cancellation
+            // and what enhancement actually changed all live here instead.
+            try Task.checkCancellation()
+            let windowStart = windows.recentThirtyDayInterval.start
+            let transcriptDescriptor = FetchDescriptor<Transcription>(
+                predicate: #Predicate<Transcription> { $0.timestamp >= windowStart }
+            )
+            let transcripts = (try? backgroundContext.fetch(transcriptDescriptor)) ?? []
+
+            let transcriptFacts = transcripts.map { transcription in
+                TranscriptFact(
+                    timestamp: transcription.timestamp,
+                    status: transcription.transcriptionStatus,
+                    rawText: transcription.text,
+                    enhancedText: transcription.enhancedText,
+                    promptName: transcription.promptName,
+                    modelName: transcription.transcriptionModelName,
+                    audioFileBytes: audioFileBytes(for: transcription.audioFileURL)
+                )
+            }
+
+            let insights = DashboardInsightBundle.make(
+                sessions: insightFacts,
+                transcripts: transcriptFacts,
                 windowDays: 30,
                 today: windows.now,
                 calendar: calendar
@@ -324,7 +351,7 @@ enum DashboardStatsLoader {
                 lastThirtyDayPeakHours: Self.peakHoursSummary(from: lastThirtyDayPeakHours),
                 thisYearPeakHours: Self.peakHoursSummary(from: thisYearPeakHours),
                 allTimePeakHours: Self.peakHoursSummary(from: allTimePeakHours),
-                dictationInsights: dictationInsights
+                insights: insights
             )
         }
 
@@ -685,4 +712,18 @@ private func sanitizedModelName(_ name: String?) -> String? {
 
     let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
     return trimmed.isEmpty ? nil : trimmed
+}
+
+
+/// Size on disk of a retained recording, or nil when the file is gone.
+///
+/// Stat-ing every file in the window is a real cost, but it is bounded by 30 days of takes and runs
+/// on the same detached utility task as the rest of the load. Storing the size at record time would
+/// have been cheaper and wrong — it goes stale the moment a file is cleaned up behind the app.
+private func audioFileBytes(for path: String?) -> Int64? {
+    guard let path, !path.isEmpty else { return nil }
+    let url = path.hasPrefix("file://") ? URL(string: path) : URL(fileURLWithPath: path)
+    guard let url else { return nil }
+    let values = try? url.resourceValues(forKeys: [.fileSizeKey])
+    return values?.fileSize.map(Int64.init)
 }

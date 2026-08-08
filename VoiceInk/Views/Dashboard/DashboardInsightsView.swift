@@ -6,7 +6,7 @@ struct DashboardInsightsView: View {
     let peakHoursSummary: DashboardPeakHoursSummary
     let isPeakHoursLocked: Bool
     let timeSavedSummary: DashboardTimeSavedSummary
-    let dictationInsights: DictationInsights
+    let insights: DashboardInsightBundle
     let modelUsage: ModelUsageSummary
     let modelPerformanceSummaries: [ModelPerformanceSummary]
     let updatedAtText: String
@@ -32,7 +32,7 @@ struct DashboardInsightsView: View {
                 onRefreshStats: onRefreshStats
             )
 
-            DashboardDictationInsightsCard(insights: dictationInsights)
+            DashboardDictationInsightsCard(insights: insights.dictation)
 
             insightSummaryCards
 
