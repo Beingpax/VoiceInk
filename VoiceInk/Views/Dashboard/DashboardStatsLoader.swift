@@ -36,6 +36,7 @@ enum DashboardStatsLoader {
             var thisYearEnhancementPerformance: [String: ModelPerformanceAccumulator] = [:]
             var allTimeTranscriptionPerformance: [String: ModelPerformanceAccumulator] = [:]
             var allTimeEnhancementPerformance: [String: ModelPerformanceAccumulator] = [:]
+            var insightFacts: [DictationSessionFact] = []
             var todayTranscriptionPerformance: [String: ModelPerformanceAccumulator] = [:]
             var todayEnhancementPerformance: [String: ModelPerformanceAccumulator] = [:]
             var lastSevenDayTranscriptionAudioUsage: [String: TranscriptionAudioUsageAccumulator] = [:]
@@ -125,6 +126,17 @@ enum DashboardStatsLoader {
                         lastThirtyDayCount += 1
                         lastThirtyDayWords += metric.wordCount
                         lastThirtyDayDuration += metric.audioDuration
+
+                        insightFacts.append(
+                            DictationSessionFact(
+                                day: metric.timestamp,
+                                words: metric.wordCount,
+                                audioDuration: metric.audioDuration,
+                                transcriptionDuration: metric.transcriptionDuration,
+                                enhancementDuration: metric.enhancementDuration,
+                                modeName: metric.modeName
+                            )
+                        )
                     }
 
                     if windows.thisYearInterval.contains(metric.timestamp) {
@@ -236,6 +248,13 @@ enum DashboardStatsLoader {
                 )
             }()
 
+            let dictationInsights = DictationInsights.make(
+                from: insightFacts,
+                windowDays: 30,
+                today: windows.now,
+                calendar: calendar
+            )
+
             return DashboardStatsSummary(
                 totalCount: count,
                 totalWords: words,
@@ -304,7 +323,8 @@ enum DashboardStatsLoader {
                 lastSevenDayPeakHours: Self.peakHoursSummary(from: lastSevenDayPeakHours),
                 lastThirtyDayPeakHours: Self.peakHoursSummary(from: lastThirtyDayPeakHours),
                 thisYearPeakHours: Self.peakHoursSummary(from: thisYearPeakHours),
-                allTimePeakHours: Self.peakHoursSummary(from: allTimePeakHours)
+                allTimePeakHours: Self.peakHoursSummary(from: allTimePeakHours),
+                dictationInsights: dictationInsights
             )
         }
 

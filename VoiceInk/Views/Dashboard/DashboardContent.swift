@@ -532,6 +532,7 @@ struct DashboardContent: View {
             peakHoursSummary: selectedPeakHours,
             isPeakHoursLocked: shouldLockPeakHours,
             timeSavedSummary: selectedTimeSavedSummary,
+            dictationInsights: statsSummary.dictationInsights,
             modelUsage: selectedModelUsage,
             modelPerformanceSummaries: selectedModelPerformance,
             updatedAtText: statsUpdatedAtText,
