@@ -89,25 +89,38 @@ final class AmbientPassthroughHostingView<Content: View>: NSHostingView<Content>
 @MainActor
 final class AmbientWindowManager {
     private var panel: AmbientRecorderPanel?
-    private let makeView: () -> AnyView
+    private let makeView: (@escaping (Bool) -> Void) -> AnyView
 
     private var isShowing = false
     private var observers: [NSObjectProtocol] = []
     private var watchdog: Task<Void, Never>?
 
-    init(engine: VoiceInkEngine, recorder: Recorder) {
-        var setInteractive: (Bool) -> Void = { _ in }
-        self.makeView = {
+    /// - Parameter content: builds the hosted view, handed the callback it should fire when
+    ///   clickable content appears or leaves. Injected rather than built inline so the window's
+    ///   lifecycle can be tested without standing up the engine — the bug that cost a whole
+    ///   afternoon lived in that lifecycle and nothing was watching it.
+    init(content: @escaping (_ onInteractiveChange: @escaping (Bool) -> Void) -> AnyView) {
+        self.makeView = content
+    }
+
+    convenience init(engine: VoiceInkEngine, recorder: Recorder) {
+        self.init { onInteractiveChange in
             AnyView(
                 AmbientRecorderView(
                     stateProvider: engine,
                     recorder: recorder,
-                    onInteractiveChange: { setInteractive($0) }
+                    onInteractiveChange: onInteractiveChange
                 )
             )
         }
-        setInteractive = { [weak self] value in self?.setInteractive(value) }
     }
+
+    // MARK: - Visible to tests
+
+    var isPanelOnScreen: Bool { panel?.isVisible ?? false }
+    var panelExists: Bool { panel != nil }
+    var panelIgnoresMouseEvents: Bool? { panel?.ignoresMouseEvents }
+    var panelCanBecomeKey: Bool? { panel?.canBecomeKey }
 
     deinit {
         watchdog?.cancel()
@@ -242,7 +255,8 @@ final class AmbientWindowManager {
         let screenFrame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let newPanel = AmbientRecorderPanel(contentRect: screenFrame)
 
-        let host = AmbientPassthroughHostingView(rootView: makeView())
+        let host = AmbientPassthroughHostingView(
+            rootView: makeView { [weak self] value in self?.setInteractive(value) })
         host.frame = NSRect(origin: .zero, size: screenFrame.size)
         host.autoresizingMask = [.width, .height]
         newPanel.contentView = host
