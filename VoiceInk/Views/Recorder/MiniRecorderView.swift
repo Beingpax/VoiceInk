@@ -133,7 +133,7 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
                 healthMonitor.ingest(recorder.audioMeterSnapshot())
                 judgeDensity()
 
-                if silenceWatch.ingest(isSilent: healthMonitor.health == .silent) {
+                if silenceWatch.ingest(isSilent: healthMonitor.isQuiet) {
                     await stateProvider.stopTakeFromPanel()
                     return
                 }

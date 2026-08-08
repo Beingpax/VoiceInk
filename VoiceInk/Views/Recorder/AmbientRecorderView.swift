@@ -240,6 +240,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
 
         hasShownContextForTake = false
         takeStartedAt = .now
+        // Without this a silence carried over from the last take can stop this one immediately.
+        silenceWatch.reset()
         meter.beginTake()
         geometry = .current()
         // Once per take, off the main path. The window it lands in is the one the light will spend
@@ -264,7 +266,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             // the envelope is folded to a fixed size anyway.
             meter.recordTakeSample(sample.averagePower)
 
-            if silenceWatch.ingest(isSilent: healthMonitor.health == .silent) {
+            if silenceWatch.ingest(isSilent: healthMonitor.isQuiet) {
                 await stateProvider.stopTakeFromPanel()
                 return
             }

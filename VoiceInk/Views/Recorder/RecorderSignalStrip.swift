@@ -60,6 +60,17 @@ enum RecorderInputHealth: Equatable {
 final class RecorderInputHealthMonitor {
     private(set) var health: RecorderInputHealth = .unknown
 
+    /// Whether nobody is currently speaking. Distinct from `.silent`, and the distinction matters:
+    /// `.silent` answers "is this microphone dead", `isQuiet` answers "has this person stopped
+    /// talking". Auto-stop needs the second and was wired to the first, which is why it never
+    /// fired — `.silent` demands that *every* average in a three-second window sit under 0.06, and
+    /// a fan, a keystroke or a voice two rooms away is enough to keep it out of that state forever.
+    ///
+    /// Peaks are the right signal here. Speech is loud in the peaks even when the average is low —
+    /// a whisper still reaches 0.41 — while room tone stays far below. So one word anywhere in the
+    /// window is enough to say someone is still talking.
+    private(set) var isQuiet = false
+
     /// Above this a sample counts as hot. Sits above the 0.88 ceiling of normal speech and below
     /// the 0.91 floor of shouting.
     private let loudSampleThreshold: Double = 0.90
@@ -67,6 +78,9 @@ final class RecorderInputHealthMonitor {
     private let loudFractionTrigger: Double = 0.35
     /// Below this a sample counts as effectively silent.
     private let silentSampleThreshold: Double = 0.06
+    /// Peak below which nothing in the window can have been speech. Sits well under the 0.41 floor
+    /// measured for a whisper, and well above ordinary room tone.
+    private let speechPeakThreshold: Double = 0.15
 
     /// 3 seconds at the 10Hz sample rate. Long enough to ignore one loud word, short enough to
     /// react while the take is still running.
@@ -91,6 +105,7 @@ final class RecorderInputHealthMonitor {
             )
         }
         health = .unknown
+        isQuiet = false
         peakWindow.removeAll()
         averageWindow.removeAll()
         observedPeakMax = 0
@@ -108,6 +123,8 @@ final class RecorderInputHealthMonitor {
         observedPeakMax = max(observedPeakMax, meter.peakPower)
 
         guard peakWindow.count >= minimumSamplesBeforeJudging else { return }
+
+        isQuiet = (peakWindow.max() ?? 0) < speechPeakThreshold
 
         let loudFraction =
             Double(peakWindow.filter { $0 >= loudSampleThreshold }.count) / Double(peakWindow.count)

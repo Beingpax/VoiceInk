@@ -76,6 +76,78 @@ struct RecorderInputHealthMonitorTests {
         #expect(monitor.health == .unknown)
     }
 
+    // MARK: - Has this person stopped talking
+    //
+    // Separate from `.silent`, which asks whether the microphone is dead. Auto-stop was wired to
+    // `.silent` and therefore never fired: that state needs every average in a three-second window
+    // under 0.06, and any stray sound at all keeps it out of that state indefinitely.
+
+    @Test func nothingIsJudgedQuietBeforeTheWindowFills() {
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.01, average: 0.0, times: 5)
+        #expect(!monitor.isQuiet)
+    }
+
+    @Test func roomToneCountsAsQuiet() {
+        // The case that matters: a room that is not silent, but where nobody is speaking. Averages
+        // here sit above the `.silent` threshold, so `.silent` stays false — and auto-stop still
+        // has to work.
+        // Averages deliberately above the 0.06 silent threshold — this is a room with a fan in
+        // it, not a dead microphone — while peaks stay well under anything speech reaches.
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.12, average: 0.08, times: 30)
+        #expect(monitor.isQuiet)
+        #expect(monitor.health == .clear)
+    }
+
+    @Test func aDeadMicrophoneIsAlsoQuiet() {
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.0, average: 0.0, times: 30)
+        #expect(monitor.isQuiet)
+        #expect(monitor.health == .silent)
+    }
+
+    @Test func aWhisperIsNotQuiet() {
+        // Whispering is still talking, and stopping the take mid-whisper would be the worst
+        // possible failure. Measured whisper peaks start around 0.41, far above the threshold.
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.42, average: 0.15, times: 30)
+        #expect(!monitor.isQuiet)
+    }
+
+    @Test func normalSpeechIsNotQuiet() {
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.82, average: 0.45, times: 30)
+        #expect(!monitor.isQuiet)
+    }
+
+    @Test func oneWordInAnOtherwiseQuietWindowCountsAsSpeaking() {
+        // Peaks are read as a maximum rather than a proportion, so a single utterance holds the
+        // take open for the whole window. Pausing between sentences must not start a countdown.
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.05, average: 0.01, times: 27)
+        feed(monitor, peak: 0.70, average: 0.30, times: 3)
+        #expect(!monitor.isQuiet)
+    }
+
+    @Test func quietResumesOnceTheSpeechLeavesTheWindow() {
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.80, average: 0.45, times: 30)
+        #expect(!monitor.isQuiet)
+
+        feed(monitor, peak: 0.05, average: 0.01, times: 30)
+        #expect(monitor.isQuiet)
+    }
+
+    @Test func resetClearsQuiet() {
+        let monitor = RecorderInputHealthMonitor()
+        feed(monitor, peak: 0.02, average: 0.0, times: 30)
+        #expect(monitor.isQuiet)
+
+        monitor.reset()
+        #expect(!monitor.isQuiet)
+    }
+
     @Test func onlyProblemsCountAsProblems() {
         #expect(RecorderInputHealth.tooLoud.isProblem)
         #expect(RecorderInputHealth.silent.isProblem)
