@@ -2,8 +2,9 @@ import SwiftUI
 
 /// What the ambient light is saying, when light alone cannot say it.
 ///
-/// Three things genuinely need words: an instruction you must act on, a decision about what leaves
-/// your machine, and a result you might want to take back. Everything else the glow already covers.
+/// Four things genuinely need words: an instruction you must act on, a decision about what leaves
+/// your machine, how long a wait has left to run, and a result you might want to take back.
+/// Everything else the glow already covers.
 enum AmbientCaptionKind: Equatable {
     case problem(String)
     case context(String)
@@ -12,6 +13,8 @@ enum AmbientCaptionKind: Equatable {
     /// The take as it is being transcribed. Unlike the others this is continuous rather than an
     /// announcement, so it holds the slot for as long as the take runs.
     case liveTranscript(String)
+    /// Where the wait is up to. `remaining` is nil when this model has no history to predict from.
+    case processing(title: LocalizedStringKey, remaining: TimeInterval?, basis: String?)
 
     var isInteractive: Bool {
         if case .result = self { return true }
@@ -38,30 +41,14 @@ struct AmbientCaption: View {
     let onRetry: () -> Void
     let onKeepRecording: () -> Void
 
+    @State private var showingOriginal = false
+
     var body: some View {
         VStack(spacing: 7) {
             content
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 12)
-        .background(bloom)
+        .ambientTextBloom(tint: tint)
         .fixedSize()
-    }
-
-    /// Light behind the words rather than a surface under them. An ellipse blurred well past its
-    /// own bounds has no discernible edge, which is what stops it becoming a container.
-    private var bloom: some View {
-        ZStack {
-            Ellipse()
-                .fill(Color.black.opacity(0.55))
-                .blur(radius: 26)
-                .padding(-14)
-
-            Ellipse()
-                .fill(tint.opacity(0.16))
-                .blur(radius: 22)
-                .padding(-6)
-        }
     }
 
     @ViewBuilder
@@ -76,67 +63,123 @@ struct AmbientCaption: View {
         case .liveTranscript(let transcript):
             AmbientLiveTranscript(text: transcript, tint: tint)
 
+        case .processing(let title, let remaining, let basis):
+            processing(title: title, remaining: remaining, basis: basis)
+
         case .countdown(let seconds):
             captionText(
                 String(format: String(localized: "Silent — stopping in %lld"), Int64(seconds)),
                 weight: .medium
             )
-            AmbientCaptionButton(title: "Keep recording", tint: tint, action: onKeepRecording)
+            AmbientTextButton(title: "Keep recording", tint: tint, action: onKeepRecording)
 
         case .result(let peek):
-            Text(peek.pastedText)
-                .font(.system(size: 13, weight: .regular))
+            result(peek)
+        }
+    }
+
+    // MARK: - Processing
+
+    /// The number is the point. An indeterminate spinner and a predicted wait cost the same amount
+    /// of screen, and only one of them lets you decide whether to sit and watch it.
+    @ViewBuilder
+    private func processing(
+        title: LocalizedStringKey, remaining: TimeInterval?, basis: String?
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.92))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(maxWidth: 460)
-                .shadow(color: tint.opacity(0.5), radius: 9)
 
-            HStack(spacing: 14) {
-                Text(peek.duration.formatTiming())
-                    .font(.system(size: 10))
+            if let remaining, remaining > 0.4 {
+                Text(String(format: String(localized: "~%@ left"), remaining.formatTiming()))
+                    .font(.system(size: 12))
                     .monospacedDigit()
-                    .foregroundStyle(Color.white.opacity(0.4))
-
-                AmbientCaptionButton(title: "Undo", tint: tint, action: onUndo)
-                AmbientCaptionButton(title: "Retry", tint: tint, action: onRetry)
+                    .foregroundStyle(tint)
             }
         }
+        .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+        .shadow(color: tint.opacity(0.45), radius: 9)
+
+        // Provenance, so the estimate is attributable rather than mysterious.
+        if let basis {
+            Text(basis)
+                .font(.system(size: 9.5))
+                .foregroundStyle(Color.white.opacity(0.45))
+                .lineLimit(1)
+        }
+    }
+
+    // MARK: - Result
+
+    /// The moment the take lands is the one moment there is something to say about it, so this is
+    /// the one caption allowed to be more than a line. It also sits under the finished waveform,
+    /// which is what stops it reading as a stray tooltip once the light has stopped moving.
+    @ViewBuilder
+    private func result(_ peek: RecorderResultPeek) -> some View {
+        Text(showingOriginal ? peek.originalText : peek.pastedText)
+            .font(.system(size: 13, weight: .regular))
+            .foregroundStyle(Color.white.opacity(0.94))
+            .multilineTextAlignment(.center)
+            .lineLimit(3)
+            .frame(maxWidth: 560)
+            .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+            .shadow(color: tint.opacity(0.4), radius: 9)
+
+        Text(summary(for: peek))
+            .font(.system(size: 10))
+            .monospacedDigit()
+            .foregroundStyle(Color.white.opacity(0.5))
+            .lineLimit(1)
+
+        HStack(spacing: 16) {
+            AmbientTextButton(title: "Undo", tint: tint, action: onUndo)
+            AmbientTextButton(title: "Retry", tint: tint, action: onRetry)
+
+            // Only offered when enhancement actually changed something — otherwise it toggles
+            // between two identical strings and teaches the user the control is broken.
+            if peek.canShowOriginal {
+                AmbientTextButton(
+                    title: showingOriginal ? "Show enhanced" : "Show original",
+                    tint: tint,
+                    weight: .medium
+                ) {
+                    showingOriginal.toggle()
+                }
+            }
+        }
+    }
+
+    /// Everything already recorded about the take and never shown here: how long it ran, how much
+    /// came back, which mode produced it, and whether the dictionary fired.
+    private func summary(for peek: RecorderResultPeek) -> String {
+        var parts: [String] = [
+            peek.duration.formatTiming(),
+            String(format: String(localized: "%lld words"), Int64(peek.wordCount)),
+        ]
+        if let modeName = peek.modeName {
+            parts.append(modeName)
+        }
+        if peek.hasEnhancement {
+            parts.append(String(localized: "enhanced"))
+        }
+        if !peek.appliedVocabularyTerms.isEmpty {
+            parts.append(
+                String(
+                    format: String(localized: "%lld dictionary terms"),
+                    Int64(peek.appliedVocabularyTerms.count)
+                )
+            )
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func captionText(_ message: String, weight: Font.Weight) -> some View {
         Text(message)
             .font(.system(size: 12.5, weight: weight))
             .foregroundStyle(Color.white.opacity(0.9))
-            .shadow(color: tint.opacity(0.65), radius: 10)
+            .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+            .shadow(color: tint.opacity(0.6), radius: 10)
             .lineLimit(1)
-    }
-}
-
-/// Text that happens to be tappable. No capsule, no fill — an underline on hover is enough to say
-/// it is a control, and anything more would start rebuilding the panel this design removes.
-private struct AmbientCaptionButton: View {
-    let title: LocalizedStringKey
-    let tint: Color
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(tint)
-                .shadow(color: tint.opacity(0.7), radius: isHovering ? 10 : 5)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(tint.opacity(isHovering ? 0.8 : 0))
-                        .frame(height: 1)
-                        .offset(y: 3)
-                }
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-        .animation(AppTheme.Motion.quick, value: isHovering)
     }
 }

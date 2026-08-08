@@ -16,6 +16,10 @@ enum AmbientState: Equatable {
     case working
     /// Listening, healthy.
     case listening
+    /// The take has landed and is being offered back. Not a working state — nothing is happening —
+    /// but the light staying on is what keeps the result from reading as a stray tooltip on an
+    /// otherwise dark screen.
+    case settled
 
     /// One message at a time, chosen by priority rather than combined.
     static func resolve(
@@ -40,7 +44,7 @@ enum AmbientState: Equatable {
         case .hidden: return .clear
         case .problem: return Color(red: 0.97, green: 0.42, blue: 0.36)
         case .working: return Color(red: 0.98, green: 0.72, blue: 0.35)
-        case .listening: return Color(red: 0.38, green: 0.86, blue: 0.68)
+        case .listening, .settled: return Color(red: 0.38, green: 0.86, blue: 0.68)
         }
     }
 
@@ -48,6 +52,9 @@ enum AmbientState: Equatable {
     var intensity: Double {
         switch self {
         case .hidden: return 0
+        // Quieter than listening on purpose: the take is done, and this is an afterglow rather
+        // than an instrument.
+        case .settled: return 0.5
         case .listening: return 0.72
         case .working: return 0.88
         case .problem: return 1.0
@@ -72,6 +79,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var takeSamples: [Double] = []
     @State private var takeEnvelope: [Double] = []
     @State private var processingEstimate = RecorderProcessingEstimate()
+    @State private var indeterminateSweep: Double = 0
+    @State private var elapsed: TimeInterval = 0
 
     /// Width of the light band at silence and at full level. Most of the band is positioned
     /// off-screen, so what you actually see is its inward falloff — light seeping in from the
@@ -135,7 +144,12 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     }
 
     private var state: AmbientState {
-        AmbientState.resolve(
+        // The peek outlives the pipeline, so it has to be checked before the engine's own state,
+        // which by then reads as idle.
+        if stateProvider.resultPeek != nil, stateProvider.recordingState == .idle {
+            return .settled
+        }
+        return AmbientState.resolve(
             recordingState: stateProvider.recordingState,
             health: healthMonitor.health
         )
@@ -161,14 +175,17 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                     Group {
                         if hasNotch {
                             notchGlow(in: geo.size)
-                        } else if state == .working, !showsReplayCrest {
+                        } else if state == .working, !hasTakeEnvelope {
                             perimeterProgress(in: geo.size)
                         }
 
                         if state == .listening || state == .problem {
                             voiceCrest(in: geo.size, progress: nil)
-                        } else if showsReplayCrest {
-                            voiceCrest(in: geo.size, progress: processingEstimate.progress)
+                        } else if hasTakeEnvelope, state == .working {
+                            voiceCrest(in: geo.size, progress: processingSweep)
+                        } else if hasTakeEnvelope, state == .settled {
+                            // Fully lit and still: the finished shape of what you just said.
+                            voiceCrest(in: geo.size, progress: 1)
                         }
                     }
                     .allowsHitTesting(false)
@@ -192,8 +209,25 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                     }
 
                     if stateProvider.recordingState == .recording {
-                        AmbientModeStrip(tint: state.color)
-                            .transition(.opacity.combined(with: .offset(y: -6)))
+                        HStack(spacing: 16) {
+                            AmbientModeStrip(tint: state.color)
+
+                            Rectangle()
+                                .fill(Color.white.opacity(0.18))
+                                .frame(width: 1, height: 13)
+
+                            AmbientTakeBar(
+                                elapsed: elapsed,
+                                isEnhancementEnabled: isEnhancementEnabled,
+                                deviceName: healthMonitor.health.isProblem
+                                    ? AudioDeviceManager.shared.currentInputDeviceName : nil,
+                                tint: state.color,
+                                onCancel: { Task { await stateProvider.cancelTakeFromPanel() } }
+                            )
+                        }
+                        .ambientTextBloom(tint: state.color, opacity: 0.42)
+                        .fixedSize()
+                        .transition(.opacity.combined(with: .offset(y: -6)))
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -218,9 +252,14 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                         modelName: stateProvider.activeTranscriptionModelName
                     )
                 }
+                let startedAt = Date()
                 while !Task.isCancelled {
                     processingEstimate.tick()
-                    try? await Task.sleep(for: .milliseconds(120))
+                    // Only consulted when there is no prediction to sweep by.
+                    indeterminateSweep =
+                        Date().timeIntervalSince(startedAt)
+                        .truncatingRemainder(dividingBy: 2.6) / 2.6
+                    try? await Task.sleep(for: .milliseconds(80))
                 }
                 return
             }
@@ -234,6 +273,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             }
             hasShownContextForTake = false
             takeStartedAt = .now
+            elapsed = 0
             trace = []
             takeSamples = []
             takeEnvelope = []
@@ -265,6 +305,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
 
                 // The context line is an acknowledgement, not a status field — it says its piece
                 // at the start of the take and then gets out of the way.
+                elapsed = Date().timeIntervalSince(takeStartedAt ?? .now)
+
                 if !hasShownContextForTake, contextMessage != nil,
                     Date().timeIntervalSince(takeStartedAt ?? .now) > 3
                 {
@@ -295,15 +337,29 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         .position(x: size.width / 2, y: (crestExtent + 40) / 2)
     }
 
-    /// Below the crest's full reach, so a loud passage never washes over the words.
+    /// Deliberately measured against a *typical* crest rather than its maximum reach. Clearing the
+    /// loudest possible moment left a gap of dead screen most of the time and the caption floated
+    /// unattached; sitting where the light usually ends means a loud passage laps over the top of
+    /// the words, which reads as the text being inside the glow rather than beneath it.
     private var captionY: CGFloat {
-        crestExtent + 26
+        (hasNotch ? notchHeight : 0) + crestBaseDepth + crestPeakDepth * 0.42 + 12
     }
 
-    /// The crest replaces the indeterminate lap only when there is a real prediction behind it.
-    /// Without one there is nothing honest to sweep, so the lap stays.
-    private var showsReplayCrest: Bool {
-        state == .working && processingEstimate.hasEstimate && takeEnvelope.count > 2
+    private var hasTakeEnvelope: Bool { takeEnvelope.count > 2 }
+
+    /// How far out the replay has travelled.
+    ///
+    /// With history behind it this is the real predicted progress. Without, it is a repeating
+    /// outward sweep — the earlier build showed nothing at all in that case, which meant most
+    /// people never saw the processing crest, because a model needs three prior takes before it
+    /// can be predicted from. An honest indeterminate sweep beats an empty screen; it just does
+    /// not get to claim a duration, which is why the caption's countdown stays absent.
+    private var processingSweep: Double {
+        processingEstimate.hasEstimate ? processingEstimate.progress : indeterminateSweep
+    }
+
+    private var isEnhancementEnabled: Bool {
+        ModeManager.shared.currentEffectiveConfiguration?.isAIEnhancementEnabled ?? false
     }
 
     private var captionTint: Color {
@@ -315,6 +371,15 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     private var caption: AmbientCaptionKind? {
         if let peek = stateProvider.resultPeek {
             return .result(peek)
+        }
+        if stateProvider.recordingState == .transcribing
+            || stateProvider.recordingState == .enhancing
+        {
+            return .processing(
+                title: stateProvider.recordingState == .enhancing ? "Enhancing" : "Transcribing",
+                remaining: processingEstimate.remaining,
+                basis: processingEstimate.basis
+            )
         }
         if let seconds = silenceWatch.secondsRemaining {
             return .countdown(seconds)
@@ -350,6 +415,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         case .problem: return 3
         case .context: return 4
         case .liveTranscript: return 5
+        case .processing: return 6
         }
     }
 

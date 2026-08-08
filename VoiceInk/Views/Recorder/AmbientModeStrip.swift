@@ -60,26 +60,32 @@ private struct AmbientModeItem: View {
 
     @State private var isHovering = false
 
+    /// The inactive floor used to be 0.45, which over a bright window was not readable at all — a
+    /// control you cannot see is not a control. Dimming still marks the active one; it just no
+    /// longer does it by making the others disappear.
     private var nameOpacity: Double {
         if isActive { return 1 }
-        return isHovering ? 0.85 : 0.45
+        return isHovering ? 1 : 0.78
     }
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Text(verbatim: "⌥\(shortcutNumber)")
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(Color.white.opacity(isActive ? 0.6 : 0.3))
+                    .foregroundStyle(Color.white.opacity(isActive ? 0.75 : 0.5))
 
                 Text(mode.name)
-                    .font(.system(size: 11.5, weight: isActive ? .semibold : .regular))
+                    .font(.system(size: 12, weight: isActive ? .semibold : .medium))
                     .foregroundStyle(isActive ? tint : Color.white.opacity(nameOpacity))
             }
             .lineLimit(1)
-            .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
-            .shadow(color: tint.opacity(isActive ? 0.55 : 0), radius: 8)
+            // Dark and tight before anything coloured: these sit over arbitrary content, and
+            // contrast is what makes glyphs sharp where glow only makes them foggy.
+            .shadow(color: .black.opacity(0.9), radius: 2, y: 1)
+            .shadow(color: .black.opacity(0.5), radius: 6)
+            .shadow(color: tint.opacity(isActive ? 0.5 : 0), radius: 8)
         }
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
