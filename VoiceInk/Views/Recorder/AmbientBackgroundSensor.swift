@@ -63,10 +63,27 @@ final class AmbientBackgroundSensor {
         UserDefaults.standard.string(forKey: lastReadingKey)
     }
 
-    /// Falls back to the system appearance — deliberately not the app's, which is a preference
-    /// about VoiceInk's own windows and has nothing to do with what is behind the light.
-    static var systemPrefersLight: Bool {
+    nonisolated static var systemPrefersLight: Bool {
         UserDefaults.standard.string(forKey: "AppleInterfaceStyle")?.lowercased() != "dark"
+    }
+
+    /// What to assume when the window cannot be measured.
+    ///
+    /// This used to be the system theme alone, and it was consistently wrong for anyone whose Mac
+    /// is in Light Mode but who works in dark apps: every take got the light scheme regardless.
+    ///
+    /// VoiceInk's own Appearance setting is the better guess. It is not a statement about any
+    /// particular window — which is why it must never outrank a real measurement, and reading it as
+    /// the primary signal is what put mint green on a white page in the first place. But someone
+    /// who has explicitly set this app to Dark has said something about the world they work in, and
+    /// as a *fallback* that beats asking the OS. `System` means they have not said, so the OS
+    /// answers.
+    nonisolated static var fallbackPrefersLight: Bool {
+        switch AppAppearancePreference.stored {
+        case .light: return true
+        case .dark: return false
+        case .system: return systemPrefersLight
+        }
     }
 
     func reset() {
@@ -75,7 +92,7 @@ final class AmbientBackgroundSensor {
 
     /// Best answer available right now, without blocking on anything.
     var resolved: Bool {
-        isLightBackground ?? Self.systemPrefersLight
+        isLightBackground ?? Self.fallbackPrefersLight
     }
 
     /// Measures the background if it can. Safe to call on every take; does nothing when a sample is
@@ -89,9 +106,9 @@ final class AmbientBackgroundSensor {
                 String(
                     format: String(
                         localized:
-                            "Screen Recording is off, so the window can't be read — following the system theme (%@)"
+                            "Screen Recording is off, so the window can't be read — using %@ colours, from VoiceInk's Appearance setting"
                     ),
-                    Self.systemPrefersLight
+                    Self.fallbackPrefersLight
                         ? String(localized: "light") : String(localized: "dark")
                 )
             )
