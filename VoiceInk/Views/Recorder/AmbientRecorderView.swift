@@ -68,6 +68,42 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     private let minBloom: CGFloat = 26
     private let maxBloom: CGFloat = 62
 
+    /// On a notched Mac the eye already goes to the cutout, so that becomes the focal point and
+    /// the screen edge drops back to a supporting wash. Lighting the whole perimeter equally on a
+    /// display that has a notch wastes the one place the user is already looking.
+    private var hasNotch: Bool {
+        (NSScreen.main?.safeAreaInsets.top ?? 0) > 0
+    }
+
+    private var notchWidth: CGFloat {
+        guard let screen = NSScreen.main else { return 180 }
+        if let left = screen.auxiliaryTopLeftArea?.width,
+            let right = screen.auxiliaryTopRightArea?.width
+        {
+            return screen.frame.width - left - right
+        }
+        return 180
+    }
+
+    private var notchHeight: CGFloat {
+        guard let screen = NSScreen.main else { return 37 }
+        if screen.safeAreaInsets.top > 0 { return screen.safeAreaInsets.top }
+        return NSApplication.shared.mainMenu?.menuBarHeight ?? NSStatusBar.system.thickness
+    }
+
+    /// Halo width around the cutout. Smaller range than the screen edge — the notch is a much
+    /// tighter object and the same 62pt bloom would swallow it.
+    private var notchHalo: CGFloat {
+        guard state != .hidden else { return 0 }
+        guard !reduceMotion else { return 16 }
+        return 9 + 16 * CGFloat(level)
+    }
+
+    /// The edge wash steps back when the notch is carrying the signal.
+    private var edgeIntensity: Double {
+        hasNotch ? state.intensity * 0.35 : state.intensity
+    }
+
     /// macOS does not expose the display's physical corner radius. A squared-off glow fights the
     /// rounded corners badly, and this is close enough that the light appears to hug the bezel.
     private var displayCornerRadius: CGFloat {
@@ -96,7 +132,10 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             ZStack {
                 if state != .hidden {
                     frame
-                    if state == .working {
+
+                    if hasNotch {
+                        notchGlow(in: geo.size)
+                    } else if state == .working {
                         perimeterProgress(in: geo.size)
                     }
                 }
@@ -133,14 +172,64 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     private var frame: some View {
         ZStack {
             shape
-                .stroke(state.color.opacity(0.85 * state.intensity), lineWidth: bloomWidth)
+                .stroke(state.color.opacity(0.85 * edgeIntensity), lineWidth: bloomWidth)
                 .blur(radius: bloomWidth * 0.5)
                 .padding(-bloomWidth / 2)
 
             shape
-                .stroke(state.color.opacity(0.5 * state.intensity), lineWidth: 1)
+                .stroke(state.color.opacity(0.5 * edgeIntensity), lineWidth: 1)
                 .blur(radius: 0.5)
         }
+    }
+
+    /// Light spilling around the camera housing, hugging the cutout's own contour.
+    ///
+    /// This is the notch-appropriate form of the same idea: the border is still the instrument,
+    /// but on a notched display the instrument is the notch. The cutout is physically black and
+    /// unlit, so a halo around it reads as the hardware itself glowing — which the screen edge
+    /// cannot do, because it has content behind it.
+    private func notchGlow(in size: CGSize) -> some View {
+        let shape = NotchShape(topCornerRadius: 6, bottomCornerRadius: 13)
+        let width = notchWidth
+        let height = notchHeight
+
+        return ZStack {
+            // Soft bloom bleeding outward from the cutout edge.
+            shape
+                .stroke(state.color.opacity(0.9 * state.intensity), lineWidth: notchHalo)
+                .blur(radius: notchHalo * 0.55)
+
+            // Crisp contour so the halo has a defined source.
+            shape
+                .stroke(state.color.opacity(0.85 * state.intensity), lineWidth: 1.5)
+                .blur(radius: 0.6)
+
+            // Progress laps the cutout rather than the whole screen — a far shorter circuit, so
+            // the same duration reads as a much more legible rate of travel.
+            if state == .working {
+                TimelineView(.animation(paused: reduceMotion)) { context in
+                    let position =
+                        context.date.timeIntervalSinceReferenceDate
+                        .truncatingRemainder(dividingBy: 2.4) / 2.4
+
+                    ZStack {
+                        shape
+                            .trim(from: position, to: min(position + 0.18, 1))
+                            .stroke(
+                                state.color.opacity(0.75),
+                                style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .blur(radius: 5)
+
+                        shape
+                            .trim(from: position, to: min(position + 0.07, 1))
+                            .stroke(state.color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .blur(radius: 0.8)
+                    }
+                }
+            }
+        }
+        .frame(width: width, height: height)
+        .position(x: size.width / 2, y: height / 2)
     }
 
     /// A light completing one lap of the perimeter, where the lap *is* the predicted wait.
