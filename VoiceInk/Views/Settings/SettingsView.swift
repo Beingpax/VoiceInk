@@ -230,6 +230,10 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
+                if recorderUIManager.recorderPanelStyle == .ambient {
+                    AmbientExclusionsSettings()
+                }
+
                 Toggle(isOn: $showLiveTranscript) {
                     HStack(spacing: 4) {
                         Text("Live Text Display")

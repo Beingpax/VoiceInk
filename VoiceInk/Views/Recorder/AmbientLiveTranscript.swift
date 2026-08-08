@@ -19,6 +19,7 @@ import SwiftUI
 struct AmbientLiveTranscript: View {
     let text: String
     let tint: Color
+    var palette = AmbientPalette(isLight: false)
 
     /// Past this the tail is not being read anyway, and the line starts competing with the work
     /// underneath it.
@@ -33,8 +34,8 @@ struct AmbientLiveTranscript: View {
             .multilineTextAlignment(.center)
             .frame(maxWidth: 760)
             // Dark first and tight — this is the one doing the work of making the glyphs readable.
-            .shadow(color: .black.opacity(0.9), radius: 2, y: 1)
-            .shadow(color: .black.opacity(0.5), radius: 6)
+            .shadow(color: palette.textShadow, radius: 2, y: 1)
+            .shadow(color: palette.textShadow.opacity(0.5), radius: 6)
             // Then a restrained amount of the state colour, so the line still belongs to the light.
             .shadow(color: tint.opacity(0.3), radius: 7)
             .animation(.easeOut(duration: 0.16), value: text)
@@ -55,7 +56,9 @@ struct AmbientLiveTranscript: View {
                 run.foregroundColor = tint
             } else {
                 let age = Double(index) / Double(max(newest, 1))
-                run.foregroundColor = Color.white.opacity(0.42 + 0.53 * pow(age, 1.2))
+                let floor = palette.transcriptFadeFloor
+                run.foregroundColor = palette.textPrimary.opacity(
+                    floor + (1 - floor) * pow(age, 1.2))
             }
             line.append(run)
         }

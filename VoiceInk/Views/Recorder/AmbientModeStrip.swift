@@ -16,6 +16,7 @@ import SwiftUI
 /// the time the ambient window is entirely transparent to the mouse.
 struct AmbientModeStrip: View {
     let tint: Color
+    var palette = AmbientPalette(isLight: false)
 
     private let modeManager = ModeManager.shared
 
@@ -38,7 +39,8 @@ struct AmbientModeStrip: View {
                         mode: mode,
                         shortcutNumber: index + 1,
                         isActive: mode.id == activeModeID,
-                        tint: tint
+                        tint: tint,
+                        palette: palette
                     ) {
                         modeManager.setActiveConfiguration(mode)
                     }
@@ -56,6 +58,7 @@ private struct AmbientModeItem: View {
     let shortcutNumber: Int
     let isActive: Bool
     let tint: Color
+    let palette: AmbientPalette
     let action: () -> Void
 
     @State private var isHovering = false
@@ -74,17 +77,17 @@ private struct AmbientModeItem: View {
                 Text(verbatim: "⌥\(shortcutNumber)")
                     .font(.system(size: 10, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(Color.white.opacity(isActive ? 0.75 : 0.5))
+                    .foregroundStyle(palette.textPrimary.opacity(isActive ? 0.75 : 0.5))
 
                 Text(mode.name)
                     .font(.system(size: 12, weight: isActive ? .semibold : .medium))
-                    .foregroundStyle(isActive ? tint : Color.white.opacity(nameOpacity))
+                    .foregroundStyle(isActive ? tint : palette.textPrimary.opacity(nameOpacity))
             }
             .lineLimit(1)
             // Dark and tight before anything coloured: these sit over arbitrary content, and
             // contrast is what makes glyphs sharp where glow only makes them foggy.
-            .shadow(color: .black.opacity(0.9), radius: 2, y: 1)
-            .shadow(color: .black.opacity(0.5), radius: 6)
+            .shadow(color: palette.textShadow, radius: 2, y: 1)
+            .shadow(color: palette.textShadow.opacity(0.5), radius: 6)
             .shadow(color: tint.opacity(isActive ? 0.5 : 0), radius: 8)
         }
         .buttonStyle(.plain)

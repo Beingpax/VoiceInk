@@ -37,6 +37,7 @@ enum AmbientCaptionKind: Equatable {
 struct AmbientCaption: View {
     let kind: AmbientCaptionKind
     let tint: Color
+    var palette = AmbientPalette(isLight: false)
     let onUndo: () -> Void
     let onRetry: () -> Void
     let onKeepRecording: () -> Void
@@ -47,7 +48,7 @@ struct AmbientCaption: View {
         VStack(spacing: 7) {
             content
         }
-        .ambientTextBloom(tint: tint)
+        .ambientTextBloom(tint: tint, fill: palette.bloomFill, opacity: palette.isLight ? 0.82 : 0.55)
         .fixedSize()
     }
 
@@ -61,7 +62,7 @@ struct AmbientCaption: View {
             captionText(message, weight: .regular)
 
         case .liveTranscript(let transcript):
-            AmbientLiveTranscript(text: transcript, tint: tint)
+            AmbientLiveTranscript(text: transcript, tint: tint, palette: palette)
 
         case .processing(let title, let remaining, let basis):
             processing(title: title, remaining: remaining, basis: basis)
@@ -89,7 +90,7 @@ struct AmbientCaption: View {
         HStack(spacing: 8) {
             Text(title)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.92))
+                .foregroundStyle(palette.textPrimary)
 
             if let remaining, remaining > 0.4 {
                 Text(String(format: String(localized: "~%@ left"), remaining.formatTiming()))
@@ -98,14 +99,14 @@ struct AmbientCaption: View {
                     .foregroundStyle(tint)
             }
         }
-        .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+        .shadow(color: palette.textShadow, radius: 2, y: 1)
         .shadow(color: tint.opacity(0.45), radius: 9)
 
         // Provenance, so the estimate is attributable rather than mysterious.
         if let basis {
             Text(basis)
                 .font(.system(size: 9.5))
-                .foregroundStyle(Color.white.opacity(0.45))
+                .foregroundStyle(palette.textTertiary)
                 .lineLimit(1)
         }
     }
@@ -119,17 +120,17 @@ struct AmbientCaption: View {
     private func result(_ peek: RecorderResultPeek) -> some View {
         Text(showingOriginal ? peek.originalText : peek.pastedText)
             .font(.system(size: 13, weight: .regular))
-            .foregroundStyle(Color.white.opacity(0.94))
+            .foregroundStyle(palette.textPrimary)
             .multilineTextAlignment(.center)
             .lineLimit(3)
             .frame(maxWidth: 560)
-            .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+            .shadow(color: palette.textShadow, radius: 2, y: 1)
             .shadow(color: tint.opacity(0.4), radius: 9)
 
         Text(summary(for: peek))
             .font(.system(size: 10))
             .monospacedDigit()
-            .foregroundStyle(Color.white.opacity(0.5))
+            .foregroundStyle(palette.textSecondary)
             .lineLimit(1)
 
         HStack(spacing: 16) {
@@ -177,8 +178,8 @@ struct AmbientCaption: View {
     private func captionText(_ message: String, weight: Font.Weight) -> some View {
         Text(message)
             .font(.system(size: 12.5, weight: weight))
-            .foregroundStyle(Color.white.opacity(0.9))
-            .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+            .foregroundStyle(palette.textPrimary)
+            .shadow(color: palette.textShadow, radius: 2, y: 1)
             .shadow(color: tint.opacity(0.6), radius: 10)
             .lineLimit(1)
     }

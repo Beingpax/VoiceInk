@@ -21,32 +21,8 @@ enum AmbientState: Equatable {
     /// otherwise dark screen.
     case settled
 
-    /// One message at a time, chosen by priority rather than combined.
-    static func resolve(
-        recordingState: RecordingState,
-        health: RecorderInputHealth
-    ) -> AmbientState {
-        switch recordingState {
-        case .recording:
-            return health.isProblem ? .problem : .listening
-        case .transcribing, .enhancing:
-            return .working
-        case .idle, .starting, .busy:
-            return .hidden
-        }
-    }
-
-    /// Light, not UI colour. `systemGreen` and friends are tuned to sit inside controls against a
-    /// known background; spread across a whole display edge they read as a coloured rectangle
-    /// rather than something glowing. These are lighter and less saturated.
-    var color: Color {
-        switch self {
-        case .hidden: return .clear
-        case .problem: return Color(red: 0.97, green: 0.42, blue: 0.36)
-        case .working: return Color(red: 0.98, green: 0.72, blue: 0.35)
-        case .listening, .settled: return Color(red: 0.38, green: 0.86, blue: 0.68)
-        }
-    }
+    // Colour lives in AmbientPalette, which has to answer differently on a light background, and
+    // the priority arbiter lives in AmbientPresentation so it can be tested.
 
     /// The common case should be calm. A problem is allowed to be louder than "recording fine".
     var intensity: Double {
@@ -62,28 +38,23 @@ enum AmbientState: Equatable {
     }
 }
 
-/// What the crest is currently drawing. Each is a separate view identity, which is what lets the
-/// change between them cross-dissolve: the sample array is swapped wholesale at every boundary and
-/// an array cannot be interpolated, so without two crests briefly coexisting the shape snaps.
-private enum AmbientCrestPhase: Equatable {
-    /// Live meter, newest audio under the notch.
-    case live
-    /// The take being read back while it is transcribed.
-    case replay
-    /// The finished take, lit and still, while the result is offered.
-    case settled
-}
-
 struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     /// Arriving should feel immediate — it is feedback that a key press worked. Leaving should not:
     /// nothing is urgent about the light going away, and a quick cut reads as a glitch.
-    private static var appear: Animation { .easeOut(duration: 0.24) }
-    private static var depart: Animation { .easeInOut(duration: 0.55) }
+    /// Every change of stage is a plain cross-dissolve, quick in both directions. Scale and offset
+    /// were doing too much: at this size a caption that also grows and slides reads as busy, and
+    /// the point of the surface is that state changes register without demanding attention.
+    private static var fadeIn: Animation { .easeOut(duration: 0.18) }
+    private static var fadeOut: Animation { .easeInOut(duration: 0.24) }
 
     var stateProvider: S
     var recorder: Recorder
 
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+
+    private var palette: AmbientPalette { .resolve(colorScheme) }
+    private var stateColor: Color { palette.color(for: state) }
 
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var silenceWatch = RecorderSilenceWatch()
@@ -160,26 +131,38 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         (NSScreen.main?.safeAreaInsets.top ?? 0) > 0 ? 12 : 8
     }
 
-    private var state: AmbientState {
-        // The peek outlives the pipeline, so it has to be checked before the engine's own state,
-        // which by then reads as idle.
-        if stateProvider.resultPeek != nil, stateProvider.recordingState == .idle {
-            return .settled
-        }
-        return AmbientState.resolve(
-            recordingState: stateProvider.recordingState,
-            health: healthMonitor.health
+    private var presentation: AmbientPresentation {
+        AmbientPresentation.resolve(
+            AmbientInputs(
+                recordingState: stateProvider.recordingState,
+                health: healthMonitor.health,
+                hasResultPeek: stateProvider.resultPeek != nil,
+                silenceCountdown: silenceWatch.secondsRemaining,
+                hasLiveTranscript: showLiveTranscript
+                    && !stateProvider.partialTranscript.isEmpty,
+                hasContextMessage: contextMessage != nil,
+                hasShownContext: hasShownContextForTake,
+                hasTake: hasTake
+            )
         )
     }
+
+    private var state: AmbientState { presentation.state }
+    private var crestPhase: AmbientCrestPhase? { presentation.crestPhase }
 
     /// Damped hard, and flattened entirely under Reduce Motion: a full-screen border pulsing with
     /// audio is close to a migraine trigger.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Quantised to 3pt steps on purpose. This drives a blurred stroke the size of the display,
+    /// which is the most expensive thing drawn here, and at 30Hz it was being re-rendered for
+    /// changes far below the threshold of sight. Snapping to steps cuts those re-renders by roughly
+    /// an order of magnitude and looks identical.
     private var bloomWidth: CGFloat {
         guard state != .hidden else { return 0 }
         guard !reduceMotion else { return (minBloom + maxBloom) / 2 }
-        return minBloom + (maxBloom - minBloom) * CGFloat(level)
+        let exact = minBloom + (maxBloom - minBloom) * CGFloat(level)
+        return (exact / 3).rounded() * 3
     }
 
     var body: some View {
@@ -211,6 +194,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                         AmbientCaption(
                             kind: caption,
                             tint: captionTint,
+                            palette: palette,
                             onUndo: { Task { await stateProvider.undoResultPeek() } },
                             onRetry: { stateProvider.retryResultPeek() },
                             onKeepRecording: { silenceWatch.reset() }
@@ -219,25 +203,15 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                         // two overlap and dissolve. Without this SwiftUI keeps one view and swaps
                         // its contents, and the text pops while the bloom jumps to its new size.
                         .id(captionIdentity)
-                        .transition(
-                            .asymmetric(
-                                // Grows out of the notch rather than opening like a window.
-                                insertion: .scale(scale: 0.9, anchor: .top)
-                                    .combined(with: .opacity)
-                                    .combined(with: .offset(y: -8)),
-                                // Leaves by fading only. Shrinking back up while its replacement
-                                // grows down reads as two things fighting for the same spot.
-                                removal: .opacity
-                            )
-                        )
+                        .transition(.opacity)
                     }
 
                     if stateProvider.recordingState == .recording {
                         HStack(spacing: 16) {
-                            AmbientModeStrip(tint: state.color)
+                            AmbientModeStrip(tint: stateColor, palette: palette)
 
                             Rectangle()
-                                .fill(Color.white.opacity(0.18))
+                                .fill(palette.separator.opacity(0.7))
                                 .frame(width: 1, height: 13)
 
                             AmbientTakeBar(
@@ -245,22 +219,25 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                                 isEnhancementEnabled: isEnhancementEnabled,
                                 deviceName: healthMonitor.health.isProblem
                                     ? AudioDeviceManager.shared.currentInputDeviceName : nil,
-                                tint: state.color,
+                                tint: stateColor,
+                                palette: palette,
                                 onCancel: { Task { await stateProvider.cancelTakeFromPanel() } }
                             )
                         }
-                        .ambientTextBloom(tint: state.color, opacity: 0.42)
+                        .ambientTextBloom(
+                            tint: stateColor, fill: palette.bloomFill, opacity: 0.78
+                        )
                         .fixedSize()
-                        .transition(.opacity.combined(with: .offset(y: -6)))
+                        .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.top, captionY)
             }
             .animation(.easeOut(duration: 0.14), value: bloomWidth)
-            .animation(state == .hidden ? Self.depart : Self.appear, value: state)
-            .animation(caption == nil ? Self.depart : Self.appear, value: captionIdentity)
-            .animation(Self.appear, value: stateProvider.recordingState)
+            .animation(state == .hidden ? Self.fadeOut : Self.fadeIn, value: state)
+            .animation(caption == nil ? Self.fadeOut : Self.fadeIn, value: captionIdentity)
+            .animation(Self.fadeIn, value: stateProvider.recordingState)
         }
         .ignoresSafeArea()
         .task(id: stateProvider.recordingState) {
@@ -283,7 +260,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                     // Only consulted when there is no prediction to sweep by.
                     indeterminateSweep =
                         Date().timeIntervalSince(startedAt)
-                        .truncatingRemainder(dividingBy: 2.6) / 2.6
+                        .truncatingRemainder(dividingBy: 1.7) / 1.7
                     try? await Task.sleep(for: .milliseconds(80))
                 }
                 return
@@ -351,14 +328,15 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         let progress: Double? =
             switch phase {
             case .live: nil
-            case .replay: processingSweep
+            case .replay: motionlessCrest && !processingEstimate.hasEstimate ? 1 : processingSweep
             case .settled: 1
             }
 
         return AmbientVoiceCrest(
-            samples: phase == .live ? trace : replayEnvelope,
-            tint: state.color,
+            samples: motionlessCrest ? [] : (phase == .live ? trace : replayEnvelope),
+            tint: stateColor,
             intensity: state.intensity,
+            palette: palette,
             notchDrop: hasNotch ? notchHeight : 0,
             notchWidth: notchWidth,
             baseDepth: crestBaseDepth,
@@ -369,7 +347,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         .position(x: size.width / 2, y: (crestExtent + 40) / 2)
         // The sweep is pushed from a task at ~12Hz. Interpolating between those pushes is the
         // difference between a travelling light and a row of jumps.
-        .animation(.linear(duration: 0.1), value: progress)
+        .animation(motionlessCrest ? nil : .linear(duration: 0.1), value: progress)
     }
 
     /// Deliberately measured against a *typical* crest rather than its maximum reach. Clearing the
@@ -378,15 +356,6 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     /// the words, which reads as the text being inside the glow rather than beneath it.
     private var captionY: CGFloat {
         (hasNotch ? notchHeight : 0) + crestBaseDepth + crestPeakDepth * 0.42 + 12
-    }
-
-    private var crestPhase: AmbientCrestPhase? {
-        switch state {
-        case .listening, .problem: return .live
-        case .working: return hasTake ? .replay : nil
-        case .settled: return hasTake ? .settled : nil
-        case .hidden: return nil
-        }
     }
 
     private var hasTake: Bool { takeEnvelope.count > 2 || takeSamples.count > 2 }
@@ -410,50 +379,42 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         processingEstimate.hasEstimate ? processingEstimate.progress : indeterminateSweep
     }
 
+    /// Reduce Motion turns the crest into a static band and stops the sweep travelling. A light
+    /// rippling across the whole display is exactly the kind of motion that setting exists to
+    /// switch off, and the sweep still communicates without animating.
+    private var motionlessCrest: Bool { reduceMotion }
+
     private var isEnhancementEnabled: Bool {
         ModeManager.shared.currentEffectiveConfiguration?.isAIEnhancementEnabled ?? false
     }
 
     private var captionTint: Color {
-        state == .hidden ? AmbientState.working.color : state.color
+        state == .hidden ? palette.color(for: .working) : stateColor
     }
 
-    /// Words only for the three cases light cannot carry, in priority order. Everything else stays
-    /// wordless, which is what keeps the caption meaningful when it does appear.
+    /// Words only for the cases light cannot carry. Which one wins is decided by
+    /// `AmbientPresentation`; this only supplies the payload.
     private var caption: AmbientCaptionKind? {
-        if let peek = stateProvider.resultPeek {
-            return .result(peek)
-        }
-        if stateProvider.recordingState == .transcribing
-            || stateProvider.recordingState == .enhancing
-        {
+        switch presentation.captionSlot {
+        case .none:
+            return nil
+        case .result:
+            return stateProvider.resultPeek.map { .result($0) }
+        case .processing:
             return .processing(
                 title: stateProvider.recordingState == .enhancing ? "Enhancing" : "Transcribing",
                 remaining: processingEstimate.remaining,
                 basis: processingEstimate.basis
             )
-        }
-        if let seconds = silenceWatch.secondsRemaining {
-            return .countdown(seconds)
-        }
-        if stateProvider.recordingState == .recording, healthMonitor.health.isProblem,
-            let label = healthMonitor.health.problemMessage
-        {
-            return .problem(label)
-        }
-        if stateProvider.recordingState == .recording, !hasShownContextForTake,
-            let summary = contextMessage
-        {
-            return .context(summary)
-        }
-        // Lowest priority deliberately. The transcript runs for the whole take, so anything that
-        // needs saying at a particular moment has to be able to interrupt it.
-        if stateProvider.recordingState == .recording, showLiveTranscript,
-            !stateProvider.partialTranscript.isEmpty
-        {
+        case .countdown:
+            return silenceWatch.secondsRemaining.map { .countdown($0) }
+        case .problem:
+            return healthMonitor.health.problemMessage.map { .problem($0) }
+        case .context:
+            return contextMessage.map { .context($0) }
+        case .liveTranscript:
             return .liveTranscript(stateProvider.partialTranscript)
         }
-        return nil
     }
 
     /// What kind of caption is showing, ignoring its contents. The container transition animates on
@@ -498,12 +459,12 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     private var frame: some View {
         ZStack {
             shape
-                .stroke(state.color.opacity(0.85 * edgeIntensity), lineWidth: bloomWidth)
+                .stroke(stateColor.opacity(0.85 * edgeIntensity), lineWidth: bloomWidth)
                 .blur(radius: bloomWidth * 0.5)
                 .padding(-bloomWidth / 2)
 
             shape
-                .stroke(state.color.opacity(0.5 * edgeIntensity), lineWidth: 1)
+                .stroke(stateColor.opacity(0.5 * edgeIntensity), lineWidth: 1)
                 .blur(radius: 0.5)
         }
     }
@@ -522,13 +483,13 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         return ZStack {
             // Soft bloom bleeding outward from the cutout edge.
             shape
-                .stroke(state.color.opacity(0.45 * state.intensity), lineWidth: notchHalo)
+                .stroke(stateColor.opacity(0.45 * state.intensity), lineWidth: notchHalo)
                 .blur(radius: notchHalo * 0.7)
 
             // Crisp contour so the halo has a defined source, kept faint — at full strength it
             // outlined the cutout like a sticker instead of lighting it.
             shape
-                .stroke(state.color.opacity(0.40 * state.intensity), lineWidth: 1)
+                .stroke(stateColor.opacity(0.40 * state.intensity), lineWidth: 1)
                 .blur(radius: 0.8)
 
             // Progress laps the cutout rather than the whole screen — a far shorter circuit, so
@@ -543,13 +504,13 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                         shape
                             .trim(from: position, to: min(position + 0.18, 1))
                             .stroke(
-                                state.color.opacity(0.75),
+                                stateColor.opacity(0.75),
                                 style: StrokeStyle(lineWidth: 8, lineCap: .round))
                             .blur(radius: 5)
 
                         shape
                             .trim(from: position, to: min(position + 0.07, 1))
-                            .stroke(state.color, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .stroke(stateColor, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                             .blur(radius: 0.8)
                     }
                 }
@@ -572,7 +533,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                 shape
                     .trim(from: position, to: min(position + 0.14, 1))
                     .stroke(
-                        state.color.opacity(0.7),
+                        stateColor.opacity(0.7),
                         style: StrokeStyle(lineWidth: 16, lineCap: .round)
                     )
                     .blur(radius: 9)
@@ -580,7 +541,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                 shape
                     .trim(from: position, to: min(position + 0.05, 1))
                     .stroke(
-                        state.color,
+                        stateColor,
                         style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
                     )
                     .blur(radius: 1.2)

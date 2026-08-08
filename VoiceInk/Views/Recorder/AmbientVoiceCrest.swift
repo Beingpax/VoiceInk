@@ -38,6 +38,8 @@ struct AmbientVoiceCrest: View {
     let samples: [Double]
     let tint: Color
     let intensity: Double
+    /// On a light background the weighting flips: less spread, more edge. Bloom over white is haze.
+    var palette = AmbientPalette(isLight: false)
 
     /// Height of the hardware cutout, or 0 on a display without one. The band's upper boundary
     /// traces this, so the light appears to be cast by the bezel itself.
@@ -115,18 +117,18 @@ struct AmbientVoiceCrest: View {
         size: CGSize,
         scale: Double
     ) {
-        let alpha = intensity * scale
+        let alpha = intensity * scale * palette.alphaScale
 
         // 1. Bloom, well outside the band. This is the layer that overlaps the edge wash and the
         //    notch halo, so the three read as one light source rather than three.
         var bloom = context
-        bloom.addFilter(.blur(radius: 18))
+        bloom.addFilter(.blur(radius: 18 * palette.blurScale))
         bloom.fill(band, with: .color(tint.opacity(0.34 * alpha)))
 
         // 2. Body — brightest against the bezel and falling away downward, the same direction the
         //    frame's own wash falls. Light seeping in, not a shape sitting on the screen.
         var core = context
-        core.addFilter(.blur(radius: 2.5))
+        core.addFilter(.blur(radius: 2.5 * palette.blurScale))
         core.fill(
             band,
             with: .linearGradient(
@@ -147,8 +149,9 @@ struct AmbientVoiceCrest: View {
         rim.addFilter(.blur(radius: 0.7))
         rim.stroke(
             contour,
-            with: .color(tint.opacity(0.75 * alpha)),
-            style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round)
+            with: .color(tint.opacity(min(0.75 * alpha * palette.rimScale, 1))),
+            style: StrokeStyle(
+                lineWidth: 1.2 * palette.rimScale, lineCap: .round, lineJoin: .round)
         )
     }
 

@@ -7,6 +7,9 @@ import SwiftUI
 /// to read, formless enough not to be a panel.
 struct AmbientTextBloom: ViewModifier {
     var tint: Color = .clear
+    /// Dark under white text, light under black text. Passed in rather than derived so the caption
+    /// and the take bar cannot disagree about which scheme they are in.
+    var fill: Color = Color.black
     var opacity: Double = 0.55
 
     func body(content: Content) -> some View {
@@ -16,7 +19,7 @@ struct AmbientTextBloom: ViewModifier {
             .background {
                 ZStack {
                     Ellipse()
-                        .fill(Color.black.opacity(opacity))
+                        .fill(fill.opacity(opacity))
                         .blur(radius: 26)
                         .padding(-14)
 
@@ -30,8 +33,10 @@ struct AmbientTextBloom: ViewModifier {
 }
 
 extension View {
-    func ambientTextBloom(tint: Color = .clear, opacity: Double = 0.55) -> some View {
-        modifier(AmbientTextBloom(tint: tint, opacity: opacity))
+    func ambientTextBloom(
+        tint: Color = .clear, fill: Color = Color.black, opacity: Double = 0.55
+    ) -> some View {
+        modifier(AmbientTextBloom(tint: tint, fill: fill, opacity: opacity))
     }
 }
 
@@ -51,6 +56,7 @@ struct AmbientTakeBar: View {
     /// the rest of the time the name is noise.
     let deviceName: String?
     let tint: Color
+    var palette = AmbientPalette(isLight: false)
     let onCancel: () -> Void
 
     var body: some View {
@@ -58,7 +64,7 @@ struct AmbientTakeBar: View {
             Text(clock)
                 .font(.system(size: 11, weight: .medium))
                 .monospacedDigit()
-                .foregroundStyle(Color.white.opacity(0.85))
+                .foregroundStyle(palette.textPrimary.opacity(0.9))
 
             separator
 
@@ -69,13 +75,13 @@ struct AmbientTakeBar: View {
             }
             .font(.system(size: 10.5, weight: .medium))
             .labelStyle(.titleAndIcon)
-            .foregroundStyle(isEnhancementEnabled ? tint : Color.white.opacity(0.6))
+            .foregroundStyle(isEnhancementEnabled ? tint : palette.textSecondary)
 
             if let deviceName {
                 separator
                 Text(deviceName)
                     .font(.system(size: 10.5))
-                    .foregroundStyle(Color.white.opacity(0.6))
+                    .foregroundStyle(palette.textSecondary)
                     .lineLimit(1)
             }
 
@@ -83,7 +89,7 @@ struct AmbientTakeBar: View {
 
             AmbientTextButton(title: "⎋ Cancel", tint: tint, action: onCancel)
         }
-        .shadow(color: .black.opacity(0.85), radius: 2, y: 1)
+        .shadow(color: palette.textShadow, radius: 2, y: 1)
     }
 
     private var clock: String {
@@ -93,7 +99,7 @@ struct AmbientTakeBar: View {
 
     private var separator: some View {
         Circle()
-            .fill(Color.white.opacity(0.28))
+            .fill(palette.separator)
             .frame(width: 2.5, height: 2.5)
     }
 }
