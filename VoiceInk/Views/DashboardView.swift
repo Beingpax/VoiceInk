@@ -4,7 +4,8 @@ import SwiftUI
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(RecordingShortcutManager.self) private var recordingShortcutManager
-    @State private var licenseViewModel = LicenseViewModel()
+    private let licenseViewModel = LicenseViewModel.shared
+    @ObservedObject private var starPrompt = GitHubStarPromptCoordinator.shared
 
     var body: some View {
         DashboardContent(
@@ -12,9 +13,22 @@ struct DashboardView: View {
             licenseState: licenseViewModel.licenseState,
             onAddLicenseKey: navigateToLicenseManagement
         )
-        .onReceive(NotificationCenter.default.publisher(for: .licenseStatusChanged)) { _ in
-            licenseViewModel.refreshLicenseState()
+        .overlay(alignment: .bottomTrailing) {
+            if starPrompt.isVisible {
+                GitHubStarPromptCard(
+                    isBusy: starPrompt.isStarring,
+                    completionState: starPrompt.completionState,
+                    openFailed: starPrompt.openFailed,
+                    onStar: { starPrompt.star() },
+                    onLater: { starPrompt.later() }
+                )
+                // True corner anchor, sitting over Copy System Info rather than making room for it.
+                .padding(.trailing, 16)
+                .padding(.bottom, 16)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
+        .animation(.easeOut(duration: 0.25), value: starPrompt.isVisible)
     }
 
     private func navigateToLicenseManagement() {

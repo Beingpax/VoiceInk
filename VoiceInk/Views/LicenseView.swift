@@ -1,14 +1,15 @@
 import SwiftUI
 
 struct LicenseView: View {
-    @State private var licenseViewModel = LicenseViewModel()
+    private let licenseViewModel = LicenseViewModel.shared
+    @State private var licenseKeyDraft = ""
 
     var body: some View {
         VStack(spacing: 15) {
             Text("License Management")
                 .font(.headline)
 
-            if case .licensed = licenseViewModel.licenseState {
+            if licenseViewModel.hasVerifiedLicense {
                 VStack(spacing: 10) {
                     Text("Premium Features Activated")
                         .foregroundColor(AppTheme.Status.positive)
@@ -24,13 +25,13 @@ struct LicenseView: View {
                     .disabled(licenseViewModel.isDeactivating)
                 }
             } else {
-                TextField("Enter License Key", text: $licenseViewModel.licenseKey)
+                TextField("Enter License Key", text: $licenseKeyDraft)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .frame(maxWidth: 300)
 
                 Button(action: {
                     Task {
-                        await licenseViewModel.validateLicense()
+                        await licenseViewModel.validateLicense(licenseKeyDraft)
                     }
                 }) {
                     if licenseViewModel.isValidating {
@@ -51,6 +52,9 @@ struct LicenseView: View {
             }
         }
         .padding()
+        .onChange(of: licenseViewModel.hasVerifiedLicense) { _, _ in
+            licenseKeyDraft = ""
+        }
     }
 }
 

@@ -2,15 +2,16 @@ import SwiftUI
 
 struct OnboardingLicenseScreen: View {
     var licenseViewModel: LicenseViewModel
+    @Binding var licenseKeyDraft: String
 
     let onBack: () -> Void
     let onPurchase: () -> Void
     let onStartTrial: () -> Void
-    let onActivate: () -> Void
+    let onActivate: (String) -> Void
     let onFinish: () -> Void
 
     var body: some View {
-        if case .licensed = licenseViewModel.licenseState {
+        if licenseViewModel.hasVerifiedLicense {
             verificationSuccessScreen
         } else {
             setupScreen
@@ -24,6 +25,7 @@ struct OnboardingLicenseScreen: View {
         ) {
             OnboardingLicenseSetupCard(
                 licenseViewModel: licenseViewModel,
+                licenseKey: $licenseKeyDraft,
                 onPurchase: onPurchase,
                 onStartTrial: onStartTrial,
                 onActivate: onActivate

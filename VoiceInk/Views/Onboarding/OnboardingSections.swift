@@ -82,8 +82,6 @@ struct OnboardingBottomBar: View {
     var placement: OnboardingBottomBarPlacement = .split
     let onLeading: (() -> Void)?
     let onPrimary: () -> Void
-    var skipTitle: String? = nil
-    var onSkip: (() -> Void)? = nil
 
     private enum Metrics {
         static let controlButtonWidth: CGFloat = 132
@@ -98,8 +96,6 @@ struct OnboardingBottomBar: View {
             HStack(spacing: 0) {
                 leadingSlot
                     .frame(maxWidth: .infinity, alignment: .leading)
-                skipButton
-                    .frame(maxWidth: .infinity, alignment: .center)
                 primaryButton
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
@@ -127,24 +123,6 @@ struct OnboardingBottomBar: View {
             AppTheme.Surface.clear
                 .frame(width: Metrics.controlButtonWidth, height: Metrics.buttonHeight)
                 .accessibilityHidden(true)
-        }
-    }
-
-    @ViewBuilder
-    private var skipButton: some View {
-        if let skipTitle, let onSkip {
-            Button(action: onSkip) {
-                Text(LocalizedStringKey(skipTitle))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(AppTheme.Text.secondary)
-                    .padding(.horizontal, 4)
-                    .frame(height: 20)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .allowsTightening(true)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
         }
     }
 

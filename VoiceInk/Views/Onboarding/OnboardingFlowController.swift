@@ -143,6 +143,7 @@ final class OnboardingFlowController {
     func continueFromContextAwarenessStep(enhancementService: AIEnhancementService) {
         let nextIndex = coordinator.normalizedExperienceStepIndex + 1
         guard coordinator.activeExperienceSteps.indices.contains(nextIndex) else {
+            coordinator.storedStage = OnboardingStage.trust.rawValue
             return
         }
 
@@ -160,9 +161,17 @@ final class OnboardingFlowController {
         }
 
         let previousIndex = max(coordinator.activeExperienceSteps.count - 1, 0)
-        coordinator.storedStage = OnboardingStage.experience.rawValue
         coordinator.experienceStepIndex = previousIndex
         coordinator.isExperienceInIntroPhase = false
+
+        // Mirrors the forward path back through Context Awareness.
+        if coordinator.activeExperienceSteps.last?.showsContextAwarenessAfterCompletion == true {
+            activateCleanTranscriptionMode()
+            coordinator.storedStage = OnboardingStage.contextAwareness.rawValue
+            return
+        }
+
+        coordinator.storedStage = OnboardingStage.experience.rawValue
         installExperienceMode(at: previousIndex, enhancementService: enhancementService)
         activateExperienceModeForDemo()
         refreshExperienceModeState(enhancementService: enhancementService)
@@ -225,16 +234,19 @@ final class OnboardingFlowController {
         isTranscriptionSetupReady: Bool,
         onComplete: () -> Void
     ) {
-        coordinator.licenseViewModel.startTrial()
+        guard coordinator.licenseViewModel.startTrial() else { return }
         completeOnboarding(
             isTranscriptionSetupReady: isTranscriptionSetupReady,
             onComplete: onComplete
         )
     }
 
-    func activateLicense() {
+    func activateLicense(_ licenseKey: String) {
         Task { @MainActor in
-            await coordinator.licenseViewModel.validateLicense()
+            await coordinator.licenseViewModel.validateLicense(licenseKey)
+            if coordinator.licenseViewModel.hasVerifiedLicense {
+                coordinator.licenseKeyDraft = ""
+            }
         }
     }
 

@@ -32,6 +32,7 @@ struct DashboardContent: View {
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
     private let modeManager = ModeManager.shared
+    @ObservedObject private var starPrompt = GitHubStarPromptCoordinator.shared
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
@@ -558,8 +559,34 @@ struct DashboardContent: View {
         )
     }
 
+    @ViewBuilder
+    private var footerStarButtonLabel: some View {
+        if starPrompt.openFailed {
+            footerActionLabel(icon: "exclamationmark.triangle.fill", title: "Couldn't open — try again", color: .orange)
+        } else {
+            switch starPrompt.completionState {
+            case .starred:
+                footerActionLabel(icon: "checkmark", title: "Starred — thank you!", color: AppTheme.Sidebar.license)
+            case .opened:
+                footerActionLabel(icon: "arrow.up.right", title: "GitHub opened", color: AppTheme.Sidebar.fallback)
+            case .none:
+                footerActionLabel(icon: "star", title: "Star on GitHub", color: AppTheme.Sidebar.fallback)
+            }
+        }
+    }
+
     private var footerActionsView: some View {
         HStack(alignment: .center, spacing: 12) {
+            if starPrompt.showsFooterStarButton {
+                Button(action: { starPrompt.star() }) {
+                    footerStarButtonLabel
+                }
+                .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: true)
+                .disabled(starPrompt.isStarring || starPrompt.completionState != .none)
+                .animation(.easeInOut(duration: 0.15), value: starPrompt.openFailed)
+            }
+
             Button(action: copySystemInfo) {
                 footerActionLabel(
                     icon: isSystemInfoCopied ? "checkmark" : "doc.on.doc",
@@ -584,7 +611,7 @@ struct DashboardContent: View {
                 .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, 14)
-        .frame(height: 36)
+        .frame(height: DashboardLayout.footerButtonHeight)
         .background(AppCardBackground(cornerRadius: 18))
     }
 

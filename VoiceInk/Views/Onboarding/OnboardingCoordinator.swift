@@ -3,7 +3,8 @@ import SwiftUI
 @MainActor
 @Observable
 final class OnboardingCoordinator {
-    let licenseViewModel = LicenseViewModel()
+    let licenseViewModel = LicenseViewModel.shared
+    var licenseKeyDraft = ""
 
     var storedStage: String {
         didSet {
@@ -176,8 +177,9 @@ final class OnboardingCoordinator {
     }
 
     var shouldShowContextAwarenessAfterCurrentExperience: Bool {
+        guard experienceStep.showsContextAwarenessAfterCompletion else { return false }
         let nextIndex = normalizedExperienceStepIndex + 1
-        return experienceStep.showsContextAwarenessAfterCompletion && activeExperienceSteps.indices.contains(nextIndex)
+        return activeExperienceSteps.indices.contains(nextIndex) || isLastExperienceStep
     }
 
     var shouldShowContextAwarenessBeforeCurrentExperience: Bool {
@@ -319,14 +321,11 @@ final class OnboardingCoordinator {
 
     private var contextAwarenessInsertionIndices: [Int] {
         activeExperienceSteps.indices.compactMap { index in
-            let nextIndex = index + 1
-            guard activeExperienceSteps[index].showsContextAwarenessAfterCompletion,
-                activeExperienceSteps.indices.contains(nextIndex)
-            else {
+            guard activeExperienceSteps[index].showsContextAwarenessAfterCompletion else {
                 return nil
             }
 
-            return nextIndex
+            return index + 1
         }
     }
 

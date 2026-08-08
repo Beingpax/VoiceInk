@@ -1,8 +1,18 @@
 import Foundation
-import IOKit
 import os
 
-final class PolarService: Sendable {
+/// Sendable because callers await it from the main actor: without the constraint, strict
+/// concurrency has to assume an arbitrary conformer is unsafe to hand across the boundary.
+protocol PolarServicing: Sendable {
+    func checkLicenseRequiresActivation(_ key: String) async throws -> (
+        isValid: Bool, requiresActivation: Bool, activationsLimit: Int?
+    )
+    func activateLicenseKey(_ key: String) async throws -> (activationId: String, activationsLimit: Int)
+    func deactivateLicenseKey(_ key: String, activationId: String) async throws
+    func validateLicenseKeyWithActivation(_ key: String, activationId: String) async throws -> Bool
+}
+
+final class PolarService: PolarServicing, Sendable {
     private let organizationId = "6f3d781d-a630-4435-9dba-058486f2d936"
     private let baseURL = "https://api.polar.sh"
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "PolarService")
@@ -41,11 +51,6 @@ final class PolarService: Sendable {
     struct LicenseKeyInfo: Codable {
         let limit_activations: Int?
         let status: String
-    }
-
-    // Generate a unique device identifier using shared logic
-    private func getDeviceIdentifier() -> String {
-        return Obfuscator.getDeviceIdentifier()
     }
 
     // Check if a license key requires activation
@@ -94,14 +99,13 @@ final class PolarService: Sendable {
     func activateLicenseKey(_ key: String) async throws -> (activationId: String, activationsLimit: Int) {
         var request = createRequest(endpoint: "/v1/customer-portal/license-keys/activate")
 
-        let deviceId = getDeviceIdentifier()
         let hostname = Host.current().localizedName ?? "Unknown Mac"
 
         let activationRequest = ActivationRequest(
             key: key,
             organization_id: organizationId,
             label: hostname,
-            meta: ["device_id": deviceId]
+            meta: [:]
         )
 
         request.httpBody = try JSONEncoder().encode(activationRequest)

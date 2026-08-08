@@ -2,14 +2,15 @@ import AppKit
 import SwiftUI
 
 struct OnboardingLicenseSetupCard: View {
-    @Bindable var licenseViewModel: LicenseViewModel
+    var licenseViewModel: LicenseViewModel
+    @Binding var licenseKey: String
 
     let onPurchase: () -> Void
     let onStartTrial: () -> Void
-    let onActivate: () -> Void
+    let onActivate: (String) -> Void
 
     private var canActivateLicense: Bool {
-        !licenseViewModel.licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !licenseKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !licenseViewModel.isValidating
     }
 
@@ -24,7 +25,7 @@ struct OnboardingLicenseSetupCard: View {
     private var activationPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                TextField("License key", text: $licenseViewModel.licenseKey)
+                TextField("License key", text: $licenseKey)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13, weight: .medium, design: .monospaced))
                     .textCase(.uppercase)
@@ -40,7 +41,7 @@ struct OnboardingLicenseSetupCard: View {
                     )
                     .onSubmit {
                         if canActivateLicense {
-                            onActivate()
+                            onActivate(licenseKey)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -50,7 +51,7 @@ struct OnboardingLicenseSetupCard: View {
                     systemImage: "key.fill",
                     isLoading: licenseViewModel.isValidating,
                     isEnabled: canActivateLicense,
-                    action: onActivate
+                    action: { onActivate(licenseKey) }
                 )
                 .frame(width: 118)
             }

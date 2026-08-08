@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Security
 import os
 
 private enum LicenseStorageError: Error {
@@ -8,7 +9,7 @@ private enum LicenseStorageError: Error {
 
 @MainActor
 @Observable
-class LicenseViewModel {
+final class LicenseViewModel {
     enum LicenseState: Equatable {
         case unlicensed
         case trial(daysRemaining: Int)
@@ -16,92 +17,137 @@ class LicenseViewModel {
         case licensed
     }
 
+    static let shared = LicenseViewModel()
+
     private(set) var licenseState: LicenseState = .unlicensed
-    var licenseKey: String = ""
+    private(set) var licenseKey = ""
     var isValidating = false
     private(set) var isDeactivating = false
     var validationMessage: String?
-    var validationSuccess: Bool = false
-    private(set) var activationsLimit: Int = 0
+    var validationSuccess = false
+    private(set) var activationsLimit = 0
 
     private let trialPeriodDays = 7
-    private let polarService = PolarService()
+    private let polarService: any PolarServicing
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LicenseViewModel")
-    private let userDefaults = UserDefaults.standard
-    private let licenseManager = LicenseManager.shared
+    private let userDefaults: UserDefaults
+    private let licenseManager: any LicenseStoring
+    private let now: () -> Date
+    private let automaticallyRetriesStorage: Bool
+    private let automaticallyRefreshesTime: Bool
 
-    init() {
-        #if LOCAL_BUILD
-            licenseState = .licensed
-        #else
-            loadLicenseState()
-        #endif
+    private var storedLicenseKey: String?
+    private var activationId: String?
+    private var trialStartDate: Date?
+    private var requiresActivation = false
+    private var isPersistentStateAvailable = false
+    private var persistentStateErrorStatus: OSStatus?
+    private var validationMessageIsStorageRelated = false
+    // `deinit` is nonisolated under Swift 6 and cannot touch main-actor state, but these still
+    // have to be cancelled when the object goes away. `Task.cancel()` is explicitly safe to call
+    // from any thread, which makes this one of the few places the escape hatch is the right answer
+    // rather than a shortcut.
+    nonisolated(unsafe) private var retryTask: Task<Void, Never>?
+    nonisolated(unsafe) private var stateRefreshTask: Task<Void, Never>?
+
+    private let pendingRemovalKey = "VoiceInkLicenseRemovalPending"
+
+    private convenience init() {
+        self.init(
+            polarService: PolarService(),
+            licenseManager: LicenseManager.shared,
+            userDefaults: .standard,
+            now: Date.init,
+            automaticallyRetriesStorage: true,
+            automaticallyRefreshesTime: true
+        )
     }
 
-    func startTrial() {
-        let didStartTrial = licenseManager.startTrialIfNeeded()
-        refreshTrialState()
-        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+    init(
+        polarService: any PolarServicing,
+        licenseManager: any LicenseStoring,
+        userDefaults: UserDefaults,
+        now: @escaping () -> Date,
+        automaticallyRetriesStorage: Bool = false,
+        automaticallyRefreshesTime: Bool = false
+    ) {
+        self.polarService = polarService
+        self.licenseManager = licenseManager
+        self.userDefaults = userDefaults
+        self.now = now
+        self.automaticallyRetriesStorage = automaticallyRetriesStorage
+        self.automaticallyRefreshesTime = automaticallyRefreshesTime
 
-        if didStartTrial {
+        loadPersistentState()
+    }
+
+    deinit {
+        retryTask?.cancel()
+        stateRefreshTask?.cancel()
+    }
+
+    @discardableResult
+    func startTrial() -> Bool {
+        clearValidationMessage()
+
+        if trialStartDate != nil {
+            refreshTimeDependentState()
+            return true
+        }
+
+        guard isPersistentStateAvailable else {
+            setStorageError(keychainUnavailableMessage)
+            retryPersistentStateLoad()
+            return false
+        }
+
+        let startDate = now()
+        switch licenseManager.startTrialIfNeeded(at: startDate) {
+        case .started(let storedDate):
+            trialStartDate = storedDate
+            refreshTimeDependentState()
             requestLicenseCelebration()
-        }
-    }
-
-    private func loadLicenseState() {
-        // Check for existing license key
-        if let storedLicenseKey = licenseManager.licenseKey {
-            self.licenseKey = storedLicenseKey
-
-            // If we have a license key, trust that it's licensed
-            // Skip server validation on startup
-            if licenseManager.activationId != nil || !userDefaults.bool(forKey: "VoiceInkLicenseRequiresActivation") {
-                licenseState = .licensed
-                activationsLimit = userDefaults.activationsLimit
-                return
-            }
-        }
-
-        if let trialStartDate = licenseManager.trialStartDate {
-            refreshTrialState(from: trialStartDate)
-        } else {
-            setUnlicensedState()
+            return true
+        case .existing(let storedDate):
+            trialStartDate = storedDate
+            refreshTimeDependentState()
+            return true
+        case .unavailable:
+            setStorageError(
+                String(
+                    localized: "VoiceInk couldn't start the trial because the macOS Keychain is unavailable. Quit and reopen VoiceInk. If the problem continues, restart your Mac."
+                )
+            )
+            return false
         }
     }
 
     func refreshLicenseState() {
-        loadLicenseState()
+        if !isPersistentStateAvailable {
+            retryPersistentStateLoad()
+        } else {
+            refreshTimeDependentState()
+        }
+    }
+
+    func retryPersistentStateLoad() {
+        guard !isPersistentStateAvailable else { return }
+        loadPersistentState()
+    }
+
+    func refreshTimeDependentState() {
+        guard isPersistentStateAvailable else { return }
+        licenseState = resolvedState(at: now())
+        scheduleStateRefreshIfNeeded()
     }
 
     var isLicensed: Bool {
-        if case .licensed = licenseState {
-            return true
-        }
-
-        return false
+        licenseState == .licensed
     }
 
-    private func setUnlicensedState() {
-        licenseState = .unlicensed
-    }
-
-    private func refreshTrialState() {
-        guard let trialStartDate = licenseManager.trialStartDate else {
-            setUnlicensedState()
-            return
-        }
-
-        refreshTrialState(from: trialStartDate)
-    }
-
-    private func refreshTrialState(from trialStartDate: Date) {
-        let daysSinceTrialStart = Calendar.current.dateComponents([.day], from: trialStartDate, to: Date()).day ?? 0
-
-        if daysSinceTrialStart >= trialPeriodDays {
-            licenseState = .trialExpired
-        } else {
-            licenseState = .trial(daysRemaining: trialPeriodDays - daysSinceTrialStart)
-        }
+    var hasVerifiedLicense: Bool {
+        guard isPersistentStateAvailable else { return false }
+        return storedLicenseKey != nil && licenseState == .licensed
     }
 
     var canUseApp: Bool {
@@ -125,43 +171,68 @@ class LicenseViewModel {
         }
     }
 
+    var diagnosticLicenseStatus: String {
+        if userDefaults.bool(forKey: pendingRemovalKey) {
+            return "License Removed (Local Cleanup Pending)"
+        }
+
+        guard isPersistentStateAvailable else {
+            if let persistentStateErrorStatus {
+                return "License Status Unavailable (Temporary Access, OSStatus \(persistentStateErrorStatus))"
+            }
+            return "License Status Unavailable (Temporary Access)"
+        }
+
+        switch licenseState {
+        case .licensed:
+            return "Licensed (Pro)"
+        case .unlicensed, .trial, .trialExpired:
+            return "Not Licensed"
+        }
+    }
+
     func openPurchaseLink() {
         if let url = URL(string: "https://tryvoiceink.com/buy") {
             NSWorkspace.shared.open(url)
         }
     }
 
-    func validateLicense() async {
-        let normalizedLicenseKey = licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    func validateLicense(_ submittedKey: String) async {
+        guard !isValidating else { return }
+
+        if !isPersistentStateAvailable {
+            retryPersistentStateLoad()
+            guard isPersistentStateAvailable else {
+                setStorageError(keychainUnavailableMessage)
+                return
+            }
+        }
+
+        let normalizedLicenseKey = submittedKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !normalizedLicenseKey.isEmpty else {
             validationSuccess = false
             validationMessage = String(localized: "Please enter a license key")
+            validationMessageIsStorageRelated = false
             return
         }
 
-        licenseKey = normalizedLicenseKey
         isValidating = true
         defer { isValidating = false }
-        validationSuccess = false
-        validationMessage = nil
+        clearValidationMessage()
 
         do {
-            // First, check if the license is valid and if it requires activation
             let licenseCheck = try await polarService.checkLicenseRequiresActivation(normalizedLicenseKey)
 
             if !licenseCheck.isValid {
-                validationSuccess = false
                 validationMessage = String(
                     localized: "This license has been revoked or disabled. Please contact support.")
                 return
             }
 
-            // Handle based on whether activation is required
             if licenseCheck.requiresActivation {
-                // If we already have an activation ID, try to validate with it first
-                if let existingActivationId = licenseManager.activationId,
-                    licenseManager.licenseKey == normalizedLicenseKey
+                if let existingActivationId = activationId,
+                    storedLicenseKey == normalizedLicenseKey
                 {
                     let isValid = try await validateExistingActivation(
                         key: normalizedLicenseKey,
@@ -170,63 +241,54 @@ class LicenseViewModel {
 
                     if isValid {
                         let limit = licenseCheck.activationsLimit ?? userDefaults.activationsLimit
+                        requiresActivation = true
                         userDefaults.set(true, forKey: "VoiceInkLicenseRequiresActivation")
                         activationsLimit = limit
                         userDefaults.activationsLimit = limit
                         completeSuccessfulValidation(message: String(localized: "License activated successfully!"))
                         return
                     }
-                    // Activation is stale (deleted from portal) — clear it and create a new one
+
+                    // Replace an activation that was removed in the portal.
                     try persistLicense(key: normalizedLicenseKey, activationId: nil)
                 }
 
-                // Need to create a new activation
                 let limit = try await activateAndPersistLicense(normalizedLicenseKey)
+                requiresActivation = true
                 userDefaults.set(true, forKey: "VoiceInkLicenseRequiresActivation")
-                self.activationsLimit = limit
+                activationsLimit = limit
                 userDefaults.activationsLimit = limit
-
             } else {
-                // This license doesn't require activation (unlimited devices)
                 let limit = licenseCheck.activationsLimit ?? 0
                 try persistLicense(key: normalizedLicenseKey, activationId: nil)
+                requiresActivation = false
                 userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
-                self.activationsLimit = limit
+                activationsLimit = limit
                 userDefaults.activationsLimit = limit
-
-                // Update the license state for unlimited license
                 completeSuccessfulValidation(message: String(localized: "License validated successfully!"))
                 return
             }
 
-            // Update the license state for activated license
             completeSuccessfulValidation(message: String(localized: "License activated successfully!"))
-
         } catch LicenseError.keyNotFound {
-            validationSuccess = false
             validationMessage = String(localized: "License key not found. Please double-check your key and try again.")
         } catch LicenseError.activationLimitReached {
-            validationSuccess = false
             validationMessage = String(
                 localized:
                     "This license has reached its device limit. Visit the License Management Portal to deactivate other devices."
             )
         } catch LicenseError.serverError(let code) {
-            validationSuccess = false
             validationMessage = String(
                 format: String(localized: "Server error (%d). Please try again later or contact support."),
                 code
             )
         } catch LicenseStorageError.failed {
-            validationSuccess = false
-            validationMessage = String(localized: "VoiceInk couldn't save the license. Please try again.")
+            setStorageError(String(localized: "VoiceInk couldn't save the license. Please try again."))
         } catch let urlError as URLError {
-            validationSuccess = false
             logger.error("🔑 License network error: \(urlError, privacy: .public)")
             validationMessage = String(
                 localized: "Could not reach the server. Please check your internet connection and try again.")
         } catch {
-            validationSuccess = false
             logger.error("🔑 Unexpected license error: \(error, privacy: .public)")
             validationMessage = String(
                 format: String(localized: "An unexpected error occurred. Please try again or contact support at %@"),
@@ -244,14 +306,14 @@ class LicenseViewModel {
     }
 
     private func activateAndPersistLicense(_ key: String) async throws -> Int {
-        let (activationId, limit) = try await polarService.activateLicenseKey(key)
+        let (newActivationId, limit) = try await polarService.activateLicenseKey(key)
 
         do {
-            try persistLicense(key: key, activationId: activationId)
+            try persistLicense(key: key, activationId: newActivationId)
             return limit
         } catch {
             do {
-                try await polarService.deactivateLicenseKey(key, activationId: activationId)
+                try await polarService.deactivateLicenseKey(key, activationId: newActivationId)
             } catch {
                 logger.error("🔑 Failed to roll back unsaved license activation: \(error, privacy: .public)")
             }
@@ -263,13 +325,22 @@ class LicenseViewModel {
         guard licenseManager.storeLicense(key: key, activationId: activationId) else {
             throw LicenseStorageError.failed
         }
+
+        storedLicenseKey = key
+        self.activationId = activationId
+        licenseKey = key
+        isPersistentStateAvailable = true
+        persistentStateErrorStatus = nil
+        userDefaults.set(false, forKey: pendingRemovalKey)
     }
 
     private func completeSuccessfulValidation(message: String) {
         licenseState = .licensed
         validationSuccess = true
         validationMessage = message
-        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+        validationMessageIsStorageRelated = false
+        stateRefreshTask?.cancel()
+        stateRefreshTask = nil
         requestLicenseCelebration()
     }
 
@@ -280,20 +351,31 @@ class LicenseViewModel {
     func deactivateLicense() async {
         guard !isDeactivating else { return }
 
+        if !isPersistentStateAvailable {
+            retryPersistentStateLoad()
+            guard isPersistentStateAvailable else {
+                setStorageError(keychainUnavailableMessage)
+                return
+            }
+        }
+
         isDeactivating = true
-        validationMessage = nil
+        clearValidationMessage()
+        let deactivationDate = now()
         defer { isDeactivating = false }
 
         do {
-            if let key = licenseManager.licenseKey,
-                let activationId = licenseManager.activationId
-            {
-                try await polarService.deactivateLicenseKey(key, activationId: activationId)
+            if let key = storedLicenseKey, let activationId {
+                do {
+                    try await polarService.deactivateLicenseKey(key, activationId: activationId)
+                } catch LicenseError.keyNotFound {
+                    // Treat an already removed portal activation as deactivated.
+                    logger.info("License activation was already absent from Polar; continuing local removal")
+                }
             }
-            try clearStoredLicense()
+            try clearStoredLicense(resetTrialAt: deactivationDate)
         } catch LicenseStorageError.failed {
-            validationSuccess = false
-            validationMessage = String(localized: "VoiceInk couldn't remove the saved license. Please try again.")
+            setStorageError(String(localized: "VoiceInk couldn't remove the saved license. Please try again."))
         } catch {
             logger.error("🔑 License deactivation failed: \(error, privacy: .public)")
             validationSuccess = false
@@ -301,26 +383,197 @@ class LicenseViewModel {
         }
     }
 
-    private func clearStoredLicense() throws {
-        // Remove only the license credentials. Trial history stays intact.
-        guard licenseManager.removeStoredLicense() else {
+    private func clearStoredLicense(resetTrialAt date: Date) throws {
+        // A paid user receives a fresh seven-day trial after deactivating this Mac.
+        guard licenseManager.resetTrial(at: date) else {
             throw LicenseStorageError.failed
         }
+        trialStartDate = date
 
-        // Reset UserDefaults flags
+        let didRemoveStoredLicense = licenseManager.removeStoredLicense()
+        userDefaults.set(!didRemoveStoredLicense, forKey: pendingRemovalKey)
+        clearCachedLicense()
+
+        guard didRemoveStoredLicense else {
+            isPersistentStateAvailable = false
+            persistentStateErrorStatus = nil
+            scheduleStorageRetryIfNeeded()
+            throw LicenseStorageError.failed
+        }
+    }
+
+    private func clearCachedLicense() {
         userDefaults.set(false, forKey: "VoiceInkLicenseRequiresActivation")
         userDefaults.activationsLimit = 0
-
+        storedLicenseKey = nil
+        activationId = nil
         licenseKey = ""
+        requiresActivation = false
         validationMessage = nil
         validationSuccess = false
         activationsLimit = 0
-        loadLicenseState()
-        NotificationCenter.default.post(name: .licenseStatusChanged, object: nil)
+        licenseState = resolvedState(at: now())
+        scheduleStateRefreshIfNeeded()
     }
+
+    private func loadPersistentState() {
+        if userDefaults.bool(forKey: pendingRemovalKey) {
+            guard licenseManager.removeStoredLicense() else {
+                handlePendingRemovalFailure()
+                return
+            }
+            userDefaults.set(false, forKey: pendingRemovalKey)
+        }
+
+        switch licenseManager.loadStoredState() {
+        case .loaded(let storedState):
+            storedLicenseKey = storedState.licenseKey
+            activationId = storedState.activationId
+            trialStartDate = storedState.trialStartDate
+            licenseKey = storedLicenseKey ?? ""
+            requiresActivation = userDefaults.bool(forKey: "VoiceInkLicenseRequiresActivation")
+            activationsLimit = userDefaults.activationsLimit
+            isPersistentStateAvailable = true
+            persistentStateErrorStatus = nil
+            licenseState = resolvedState(at: now())
+            retryTask?.cancel()
+            retryTask = nil
+            scheduleStateRefreshIfNeeded()
+
+            if validationMessageIsStorageRelated {
+                clearValidationMessage()
+            }
+        case .unavailable(let status):
+            isPersistentStateAvailable = false
+            persistentStateErrorStatus = status
+            logger.error("License state is temporarily unavailable [Keychain status: \(status, privacy: .public)]")
+            licenseState = .licensed
+            setStorageError(keychainUnavailableMessage)
+            stateRefreshTask?.cancel()
+            stateRefreshTask = nil
+            scheduleStorageRetryIfNeeded()
+        }
+    }
+
+    private func resolvedState(at date: Date) -> LicenseState {
+        if storedLicenseKey != nil,
+            activationId != nil || !requiresActivation
+        {
+            return .licensed
+        }
+
+        guard let trialStartDate else {
+            return .unlicensed
+        }
+
+        let rawDays = Calendar.current.dateComponents([.day], from: trialStartDate, to: date).day ?? 0
+        let daysSinceTrialStart = max(0, rawDays)
+
+        if daysSinceTrialStart >= trialPeriodDays {
+            return .trialExpired
+        }
+
+        return .trial(daysRemaining: min(trialPeriodDays, trialPeriodDays - daysSinceTrialStart))
+    }
+
+    private func scheduleStorageRetryIfNeeded() {
+        guard automaticallyRetriesStorage, retryTask == nil else { return }
+
+        retryTask = Task { [weak self] in
+            let delays: [UInt64] = [1, 2, 5, 15, 30]
+
+            for delay in delays {
+                do {
+                    try await Task.sleep(for: .seconds(delay))
+                } catch {
+                    return
+                }
+
+                guard let self, !self.isPersistentStateAvailable else { return }
+                self.loadPersistentState()
+            }
+
+            self?.retryTask = nil
+        }
+    }
+
+    private func scheduleStateRefreshIfNeeded() {
+        stateRefreshTask?.cancel()
+        stateRefreshTask = nil
+
+        guard automaticallyRefreshesTime,
+            storedLicenseKey == nil,
+            let trialStartDate,
+            licenseState != .trialExpired
+        else {
+            return
+        }
+
+        let currentDate = now()
+        let elapsedDays = max(
+            0,
+            Calendar.current.dateComponents([.day], from: trialStartDate, to: currentDate).day ?? 0
+        )
+        let nextDay = min(elapsedDays + 1, trialPeriodDays)
+
+        guard let nextRefreshDate = Calendar.current.date(
+            byAdding: .day,
+            value: nextDay,
+            to: trialStartDate
+        ) else {
+            return
+        }
+
+        let delay = max(0, nextRefreshDate.timeIntervalSince(currentDate))
+        stateRefreshTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+
+            self?.refreshTimeDependentState()
+        }
+    }
+
+    private func handlePendingRemovalFailure() {
+        storedLicenseKey = nil
+        activationId = nil
+        licenseKey = ""
+        requiresActivation = false
+        activationsLimit = 0
+        isPersistentStateAvailable = false
+        persistentStateErrorStatus = nil
+        licenseState = resolvedState(at: now())
+        logger.error("License removal is pending because local Keychain cleanup failed")
+        scheduleStorageRetryIfNeeded()
+    }
+
+    private func clearValidationMessage() {
+        validationSuccess = false
+        validationMessage = nil
+        validationMessageIsStorageRelated = false
+    }
+
+    private func setStorageError(_ message: String) {
+        validationSuccess = false
+        validationMessage = message
+        validationMessageIsStorageRelated = true
+    }
+
+    private var keychainUnavailableMessage: String {
+        let recoveryMessage = String(
+            localized:
+                "VoiceInk couldn't access the macOS Keychain. Quit and reopen VoiceInk. If the problem continues, restart your Mac."
+        )
+
+        guard let persistentStateErrorStatus else { return recoveryMessage }
+        return "\(recoveryMessage)\n\(persistentStateErrorStatus)"
+    }
+
 }
 
-// UserDefaults extension for non-sensitive license settings
+// UserDefaults extension for non-sensitive license settings.
 extension UserDefaults {
     var activationsLimit: Int {
         get { integer(forKey: "VoiceInkActivationsLimit") }

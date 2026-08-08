@@ -3,7 +3,7 @@ import AppKit
 import Foundation
 
 @MainActor
-class SystemInfoService {
+final class SystemInfoService {
     static let shared = SystemInfoService()
 
     private init() {}
@@ -206,18 +206,7 @@ class SystemInfoService {
     }
 
     private func getLicenseStatus() -> String {
-        let licenseManager = LicenseManager.shared
-
-        // Check for existing license key and activation
-        if licenseManager.licenseKey != nil {
-            if licenseManager.activationId != nil
-                || !UserDefaults.standard.bool(forKey: "VoiceInkLicenseRequiresActivation")
-            {
-                return "Licensed (Pro)"
-            }
-        }
-
-        return "Not Licensed"
+        LicenseViewModel.shared.diagnosticLicenseStatus
     }
 
     private func getCurrentLanguage() -> String {

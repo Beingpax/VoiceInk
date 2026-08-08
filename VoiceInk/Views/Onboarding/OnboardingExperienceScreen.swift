@@ -13,7 +13,6 @@ struct OnboardingExperienceScreen: View {
     let onContinueIntro: () -> Void
     let onBackFromPractice: () -> Void
     let onAdvance: () -> Void
-    let onSkip: () -> Void
     let onShortcutChanged: () -> Void
     let onAppear: () -> Void
 
@@ -52,9 +51,7 @@ struct OnboardingExperienceScreen: View {
                 primaryTitle: "Continue",
                 isPrimaryEnabled: hasShortcut,
                 onLeading: onBackFromIntro,
-                onPrimary: onContinueIntro,
-                skipTitle: "Skip This Step",
-                onSkip: onSkip
+                onPrimary: onContinueIntro
             )
         }
     }
@@ -80,9 +77,7 @@ struct OnboardingExperienceScreen: View {
                 primaryTitle: isLastStep ? "Continue" : "Next",
                 isPrimaryEnabled: isReady && isComplete,
                 onLeading: onBackFromPractice,
-                onPrimary: onAdvance,
-                skipTitle: isComplete ? nil : "Skip This Step",
-                onSkip: isComplete ? nil : onSkip
+                onPrimary: onAdvance
             )
         }
     }
