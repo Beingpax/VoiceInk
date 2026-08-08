@@ -10,11 +10,21 @@ import SwiftUI
 /// Screen capture is handled separately and needs no setting: the panel sets `sharingType = .none`,
 /// so it is already absent from recordings and shared screens.
 struct AmbientExclusionsSettings: View {
+    @AppStorage(AmbientBackgroundMode.userDefaultsKey) private var backgroundMode =
+        AmbientBackgroundMode.auto.rawValue
     @State private var bundleIdentifiers: [String] = AmbientAppExclusions.bundleIdentifiers
     @State private var isPickingApp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Picker("Ambient Light", selection: $backgroundMode) {
+                ForEach(AmbientBackgroundMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode.rawValue)
+                }
+            }
+            .pickerStyle(.menu)
+
+            Divider().padding(.vertical, 2)
             HStack {
                 Text("Hide ambient light in")
                     .font(.system(size: 13))

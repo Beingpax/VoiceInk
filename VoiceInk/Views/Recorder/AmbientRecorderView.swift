@@ -51,9 +51,13 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     var recorder: Recorder
 
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage(AmbientBackgroundMode.userDefaultsKey) private var backgroundMode =
+        AmbientBackgroundMode.auto.rawValue
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
 
-    private var palette: AmbientPalette { .resolve(colorScheme) }
+    private var palette: AmbientPalette {
+        .resolve(colorScheme, mode: AmbientBackgroundMode(rawValue: backgroundMode) ?? .auto)
+    }
     private var stateColor: Color { palette.color(for: state) }
 
     @State private var healthMonitor = RecorderInputHealthMonitor()
@@ -260,7 +264,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                     // Only consulted when there is no prediction to sweep by.
                     indeterminateSweep =
                         Date().timeIntervalSince(startedAt)
-                        .truncatingRemainder(dividingBy: 1.7) / 1.7
+                        .truncatingRemainder(dividingBy: 0.5) / 0.5
                     try? await Task.sleep(for: .milliseconds(80))
                 }
                 return
@@ -458,6 +462,17 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     /// hard-edged stroke — which is what this was — reads as a rendering error rather than a glow.
     private var frame: some View {
         ZStack {
+            // Borrowed darkness, for grounds that cannot carry a glow. See AmbientPalette.
+            if palette.vignette > 0 {
+                shape
+                    .stroke(
+                        Color.black.opacity(palette.vignette * edgeIntensity),
+                        lineWidth: bloomWidth * 1.2
+                    )
+                    .blur(radius: bloomWidth * 0.55)
+                    .padding(-bloomWidth / 2)
+            }
+
             shape
                 .stroke(stateColor.opacity(0.85 * edgeIntensity), lineWidth: bloomWidth)
                 .blur(radius: bloomWidth * 0.5)
@@ -481,6 +496,15 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         let height = notchHeight
 
         return ZStack {
+            if palette.vignette > 0 {
+                shape
+                    .stroke(
+                        Color.black.opacity(palette.vignette * state.intensity),
+                        lineWidth: notchHalo * 1.3
+                    )
+                    .blur(radius: notchHalo * 0.8)
+            }
+
             // Soft bloom bleeding outward from the cutout edge.
             shape
                 .stroke(stateColor.opacity(0.45 * state.intensity), lineWidth: notchHalo)

@@ -85,6 +85,14 @@ struct AmbientVoiceCrest: View {
             let contour = curve(through: lower)
             let deepest = lower.map(\.y).max() ?? size.height
 
+            // The darkness the colour is lit against, on backgrounds too bright to light. Once,
+            // underneath everything — paint() runs twice while replaying and this must not stack.
+            if palette.vignette > 0 {
+                var shade = context
+                shade.addFilter(.blur(radius: 22 * palette.blurScale))
+                shade.fill(band, with: .color(.black.opacity(palette.vignette * intensity)))
+            }
+
             guard let progress else {
                 paint(band, contour: contour, into: context, deepest: deepest, size: size, scale: 1)
                 return
@@ -146,7 +154,7 @@ struct AmbientVoiceCrest: View {
         //    notch halo already draws. Without this, loud passages merge into one bright mass and
         //    individual syllables stop being readable.
         var rim = context
-        rim.addFilter(.blur(radius: 0.7))
+        rim.addFilter(.blur(radius: 0.7 * palette.blurScale))
         rim.stroke(
             contour,
             with: .color(tint.opacity(min(0.75 * alpha * palette.rimScale, 1))),
