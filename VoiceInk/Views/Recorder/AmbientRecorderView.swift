@@ -222,25 +222,29 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         }
     }
 
-    /// Hangs off the notch's straight bottom edge — the one line the hardware already draws — or
-    /// under the top edge of the display when there is no cutout.
+    /// Centred on the notch, spreading well past it on both sides. The trace radiates outward from
+    /// the middle, so it needs room to resolve to nothing — cramped to the cutout's own width it
+    /// would end while still visibly tall, which is the clipped-chart look this design avoids.
     private func voiceTrace(in size: CGSize) -> some View {
-        let width = hasNotch ? notchWidth + 120 : min(size.width * 0.42, 620)
-        let y = hasNotch ? notchHeight + 9 : 30
+        let width =
+            hasNotch
+            ? min(notchWidth + 300, size.width * 0.62)
+            : min(size.width * 0.46, 680)
+        let y = (hasNotch ? notchHeight : 24) + 17
 
         return AmbientVoiceTrace(
             samples: trace,
             tint: state.color,
             intensity: state.intensity
         )
-        .frame(width: width, height: 26)
+        .frame(width: width, height: 46)
         .position(x: size.width / 2, y: y)
     }
 
     /// Sits just below the cutout, or below the menu bar on a display without one.
     private var captionY: CGFloat {
         // Clears the voice trace rather than sitting on top of it.
-        (hasNotch ? notchHeight : 24) + 62
+        (hasNotch ? notchHeight : 24) + 72
     }
 
     private var captionTint: Color {
