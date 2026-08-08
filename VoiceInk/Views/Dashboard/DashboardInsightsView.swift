@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct DashboardInsightsView: View {
+    /// Nil on the overview; set while a topic's detail is open. Drill-in rather than tabs because
+    /// the overview itself is the most useful screen — most visits end there, having answered the
+    /// question at a glance.
+    @State private var openTopic: InsightTopic?
+
     @Binding var selectedPeriod: DashboardInsightPeriod
     let productivityPoints: [DashboardProductivityPoint]
     let peakHoursSummary: DashboardPeakHoursSummary
@@ -17,8 +22,26 @@ struct DashboardInsightsView: View {
     let onViewModelPerformance: () -> Void
 
     var body: some View {
+        if let openTopic {
+            InsightDetailView(
+                topic: openTopic,
+                insights: insights,
+                onBack: { self.openTopic = nil }
+            )
+            .transition(.opacity)
+        } else {
+            overview
+                .transition(.opacity)
+        }
+    }
+
+    private var overview: some View {
         VStack(alignment: .leading, spacing: 22) {
             header
+
+            InsightOverviewGrid(insights: insights) { topic in
+                withAnimation(.easeOut(duration: 0.16)) { openTopic = topic }
+            }
 
             DashboardProductivitySummaryStrip(
                 summary: timeSavedSummary
@@ -31,8 +54,6 @@ struct DashboardInsightsView: View {
                 isRefreshingStats: isRefreshingStats,
                 onRefreshStats: onRefreshStats
             )
-
-            DashboardDictationInsightsCard(insights: insights.dictation)
 
             insightSummaryCards
 
