@@ -14,11 +14,38 @@ enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Named by the colours they produce, not by the background they suit.
+    ///
+    /// "Tuned for dark backgrounds" was ambiguous in the worst way — it reads as *when* the light
+    /// appears rather than *how* it is drawn, so the obvious guess is that it hides the light on
+    /// light backgrounds. It never did. Every option always shows the light; they differ only in
+    /// which palette it uses.
     var displayName: String {
         switch self {
         case .auto: return String(localized: "Match the app I'm dictating into")
-        case .dark: return String(localized: "Tuned for dark backgrounds")
-        case .light: return String(localized: "Tuned for light backgrounds")
+        case .dark: return String(localized: "Always bright — mint, amber, red")
+        case .light: return String(localized: "Always deep — cobalt, bronze, wine")
+        }
+    }
+
+    /// One line under the picker explaining what the choice actually does.
+    var explanation: String {
+        switch self {
+        case .auto:
+            return String(
+                localized:
+                    "Reads the window you're dictating into and picks the palette that will show up on it."
+            )
+        case .dark:
+            return String(
+                localized:
+                    "Bright, glowing colours. Made for dark apps — they fade out against a white page."
+            )
+        case .light:
+            return String(
+                localized:
+                    "Deep, inked colours with a sharper edge. Made for white pages — they look heavy on a dark app."
+            )
         }
     }
 

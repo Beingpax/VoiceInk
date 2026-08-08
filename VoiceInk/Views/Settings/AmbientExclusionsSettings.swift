@@ -25,6 +25,11 @@ struct AmbientExclusionsSettings: View {
             }
             .pickerStyle(.menu)
 
+            Text((AmbientBackgroundMode(rawValue: backgroundMode) ?? .auto).explanation)
+                .font(.system(size: 10.5))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             // What the sensor last decided, and why. Without this there is no way to tell a
             // measurement you disagree with from a measurement that never happened.
             if backgroundMode == AmbientBackgroundMode.auto.rawValue {
