@@ -31,7 +31,7 @@ struct DashboardContent: View {
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
-    @ObservedObject private var modeManager = ModeManager.shared
+    private let modeManager = ModeManager.shared
     @ObservedObject private var starPrompt = GitHubStarPromptCoordinator.shared
     @State private var isSystemInfoCopied = false
     @State private var isEditingDisplayName = false
