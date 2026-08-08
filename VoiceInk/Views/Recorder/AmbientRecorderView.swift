@@ -62,7 +62,24 @@ enum AmbientState: Equatable {
     }
 }
 
+/// What the crest is currently drawing. Each is a separate view identity, which is what lets the
+/// change between them cross-dissolve: the sample array is swapped wholesale at every boundary and
+/// an array cannot be interpolated, so without two crests briefly coexisting the shape snaps.
+private enum AmbientCrestPhase: Equatable {
+    /// Live meter, newest audio under the notch.
+    case live
+    /// The take being read back while it is transcribed.
+    case replay
+    /// The finished take, lit and still, while the result is offered.
+    case settled
+}
+
 struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
+    /// Arriving should feel immediate — it is feedback that a key press worked. Leaving should not:
+    /// nothing is urgent about the light going away, and a quick cut reads as a glitch.
+    private static var appear: Animation { .easeOut(duration: 0.24) }
+    private static var depart: Animation { .easeInOut(duration: 0.55) }
+
     var stateProvider: S
     var recorder: Recorder
 
@@ -170,22 +187,20 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             ZStack {
                 if state != .hidden {
                     frame
+                        .transition(.opacity)
                         .allowsHitTesting(false)
 
                     Group {
                         if hasNotch {
                             notchGlow(in: geo.size)
-                        } else if state == .working, !hasTakeEnvelope {
+                        } else if state == .working, crestPhase == nil {
                             perimeterProgress(in: geo.size)
                         }
 
-                        if state == .listening || state == .problem {
-                            voiceCrest(in: geo.size, progress: nil)
-                        } else if hasTakeEnvelope, state == .working {
-                            voiceCrest(in: geo.size, progress: processingSweep)
-                        } else if hasTakeEnvelope, state == .settled {
-                            // Fully lit and still: the finished shape of what you just said.
-                            voiceCrest(in: geo.size, progress: 1)
+                        if let crestPhase {
+                            voiceCrest(in: geo.size, phase: crestPhase)
+                                .id(crestPhase)
+                                .transition(.opacity)
                         }
                     }
                     .allowsHitTesting(false)
@@ -200,11 +215,20 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                             onRetry: { stateProvider.retryResultPeek() },
                             onKeepRecording: { silenceWatch.reset() }
                         )
-                        // Grows out of the notch rather than opening like a window.
+                        // Identity per kind, so a change of kind is an insert plus a remove — the
+                        // two overlap and dissolve. Without this SwiftUI keeps one view and swaps
+                        // its contents, and the text pops while the bloom jumps to its new size.
+                        .id(captionIdentity)
                         .transition(
-                            .scale(scale: 0.86, anchor: .top)
-                                .combined(with: .opacity)
-                                .combined(with: .offset(y: -10))
+                            .asymmetric(
+                                // Grows out of the notch rather than opening like a window.
+                                insertion: .scale(scale: 0.9, anchor: .top)
+                                    .combined(with: .opacity)
+                                    .combined(with: .offset(y: -8)),
+                                // Leaves by fading only. Shrinking back up while its replacement
+                                // grows down reads as two things fighting for the same spot.
+                                removal: .opacity
+                            )
                         )
                     }
 
@@ -234,8 +258,9 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                 .padding(.top, captionY)
             }
             .animation(.easeOut(duration: 0.14), value: bloomWidth)
-            .animation(AppTheme.Motion.standard, value: state)
-            .animation(AppTheme.Motion.standard, value: captionIdentity)
+            .animation(state == .hidden ? Self.depart : Self.appear, value: state)
+            .animation(caption == nil ? Self.depart : Self.appear, value: captionIdentity)
+            .animation(Self.appear, value: stateProvider.recordingState)
         }
         .ignoresSafeArea()
         .task(id: stateProvider.recordingState) {
@@ -322,9 +347,16 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
 
     /// Spans the whole display. The crest *is* the top edge of the frame, so it has to run corner
     /// to corner and arrive at both of them at the same depth as the side wash.
-    private func voiceCrest(in size: CGSize, progress: Double?) -> some View {
-        AmbientVoiceCrest(
-            samples: progress == nil ? trace : takeEnvelope,
+    private func voiceCrest(in size: CGSize, phase: AmbientCrestPhase) -> some View {
+        let progress: Double? =
+            switch phase {
+            case .live: nil
+            case .replay: processingSweep
+            case .settled: 1
+            }
+
+        return AmbientVoiceCrest(
+            samples: phase == .live ? trace : replayEnvelope,
             tint: state.color,
             intensity: state.intensity,
             notchDrop: hasNotch ? notchHeight : 0,
@@ -335,6 +367,9 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         )
         .frame(width: size.width, height: crestExtent + 40)
         .position(x: size.width / 2, y: (crestExtent + 40) / 2)
+        // The sweep is pushed from a task at ~12Hz. Interpolating between those pushes is the
+        // difference between a travelling light and a row of jumps.
+        .animation(.linear(duration: 0.1), value: progress)
     }
 
     /// Deliberately measured against a *typical* crest rather than its maximum reach. Clearing the
@@ -345,7 +380,24 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         (hasNotch ? notchHeight : 0) + crestBaseDepth + crestPeakDepth * 0.42 + 12
     }
 
-    private var hasTakeEnvelope: Bool { takeEnvelope.count > 2 }
+    private var crestPhase: AmbientCrestPhase? {
+        switch state {
+        case .listening, .problem: return .live
+        case .working: return hasTake ? .replay : nil
+        case .settled: return hasTake ? .settled : nil
+        case .hidden: return nil
+        }
+    }
+
+    private var hasTake: Bool { takeEnvelope.count > 2 || takeSamples.count > 2 }
+
+    /// The processing task fills `takeEnvelope` a frame after the state flips. Folding inline for
+    /// that one frame is what stops the crest blinking out and back on every take.
+    private var replayEnvelope: [Double] {
+        takeEnvelope.isEmpty
+            ? AmbientTakeEnvelope.downsample(takeSamples, to: 110)
+            : takeEnvelope
+    }
 
     /// How far out the replay has travelled.
     ///
