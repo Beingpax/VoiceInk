@@ -62,6 +62,16 @@ struct AmbientPalette {
     }
 
     // MARK: - State colours
+    //
+    // Measured, not eyeballed. The dark set averages 10.5:1 against black. The first light set was
+    // chosen by saturation and averaged 3.4:1 against white — the amber sat at 2.48:1, which is
+    // close to invisible. Saturation is not what makes a colour visible on white; *low luminance*
+    // is, and those two pull in opposite directions. A vivid orange is a bright orange.
+    //
+    // So the light set is deep ink rather than bright pigment: forest, bronze, oxblood. They are
+    // less lively in isolation and far more legible in place, and on a white page a restrained
+    // dark edge reads as considered where a vivid one reads as an error. AmbientPaletteTests holds
+    // both sets above 4.5:1 against their own ground so this cannot quietly regress.
 
     func color(for state: AmbientState) -> Color {
         switch state {
@@ -69,16 +79,16 @@ struct AmbientPalette {
             return .clear
         case .problem:
             return isLight
-                ? Color(red: 0.86, green: 0.16, blue: 0.12)
-                : Color(red: 0.97, green: 0.42, blue: 0.36)
+                ? Color(red: 0.66, green: 0.09, blue: 0.11)  // oxblood     7.47:1
+                : Color(red: 0.97, green: 0.42, blue: 0.36)  // salmon      7.23:1
         case .working:
             return isLight
-                ? Color(red: 0.94, green: 0.55, blue: 0.05)
-                : Color(red: 0.98, green: 0.72, blue: 0.35)
+                ? Color(red: 0.60, green: 0.35, blue: 0.04)  // bronze      5.53:1
+                : Color(red: 0.98, green: 0.72, blue: 0.35)  // amber      12.03:1
         case .listening, .settled:
             return isLight
-                ? Color(red: 0.05, green: 0.66, blue: 0.47)
-                : Color(red: 0.38, green: 0.86, blue: 0.68)
+                ? Color(red: 0.05, green: 0.40, blue: 0.31)  // forest      6.93:1
+                : Color(red: 0.38, green: 0.86, blue: 0.68)  // mint       12.28:1
         }
     }
 
@@ -89,7 +99,7 @@ struct AmbientPalette {
 
     /// A tight dark shadow directly beneath the contour, so the edge reads as sitting above the
     /// page. Localised on purpose — spread across the whole band it is just a grey smudge.
-    var contourShadow: Double { isLight ? 0.34 : 0 }
+    var contourShadow: Double { isLight ? 0.22 : 0 }
     /// Multiplier on every blur radius. Light grounds cannot carry spread; it becomes haze.
     var blurScale: Double { isLight ? 0.4 : 1 }
     /// How wide the light band is. Narrower on light, where density does the work width cannot.
@@ -98,7 +108,7 @@ struct AmbientPalette {
     var rimScale: Double { isLight ? 2.4 : 1 }
 
     /// The wide outer bloom. Nearly pointless on white, so it mostly steps aside.
-    var haloAlpha: Double { isLight ? 0.18 : 0.34 }
+    var haloAlpha: Double { isLight ? 0.14 : 0.34 }
     /// The band's own body, against the bezel and where it fades out.
     var coreAlphaTop: Double { isLight ? 0.98 : 0.80 }
     var coreAlphaMid: Double { isLight ? 0.62 : 0.34 }
@@ -133,7 +143,9 @@ struct AmbientPalette {
     /// The scrim behind text. Dark under white text, light under black text — in both cases it is
     /// blurred well past its own bounds so it never resolves into a container.
     var bloomFill: Color {
-        isLight ? Color.white.opacity(0.9) : Color.black.opacity(0.55)
+        // Not pure white: over a white page a white scrim is invisible, and the caption needs a
+        // pool it can be seen to sit in rather than text floating on the document.
+        isLight ? Color(white: 0.97).opacity(0.94) : Color.black.opacity(0.55)
     }
 
     /// The shadow that makes glyphs sharp. Contrast does this job; glow only makes it foggy.
