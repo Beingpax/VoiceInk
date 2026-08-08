@@ -132,12 +132,30 @@ final class AmbientWindowManager {
         panel?.ignoresMouseEvents = !isInteractive
     }
 
+    /// Tears the window down without yanking SwiftUI's floor out from under it.
+    ///
+    /// Releasing the panel synchronously crashes: `GraphHost` can already have an async transaction
+    /// queued, and when it lands it calls `NSHostingView.setNeedsUpdate` →
+    /// `setNeedsUpdateConstraints` → `_postWindowNeedsUpdateConstraints`, which throws on a window
+    /// that is going away. It is a pre-existing race — it is in crash reports from before any of
+    /// this — but destroying the panel on a style change made it easy to hit rather than rare.
+    ///
+    /// So the window is ordered out now and released on the next turn of the run loop, with its
+    /// SwiftUI content detached first. Anything already queued drains against a window that is
+    /// still valid.
     func destroyWindow() {
         isShowing = false
         stopObserving()
-        panel?.ignoresMouseEvents = true
-        panel?.orderOut(nil)
+
+        guard let doomed = panel else { return }
         panel = nil
+
+        doomed.ignoresMouseEvents = true
+        doomed.orderOut(nil)
+
+        DispatchQueue.main.async {
+            doomed.contentView = NSView(frame: .zero)
+        }
     }
 
     // MARK: - Staying on the right screen
