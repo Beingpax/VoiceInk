@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import OSLog
 import ScreenCaptureKit
 
 /// Works out whether the ambient light is sitting on a light or dark background — by looking at
@@ -41,6 +42,12 @@ final class AmbientBackgroundSensor {
     private let hysteresis = 0.08
     private var isSampling = false
 
+    /// Left on permanently rather than behind a debug flag. It fires once per take, and when this
+    /// picks the wrong scheme there is no way to tell from the outside whether it measured
+    /// something and disagreed with you, or never measured at all and fell back.
+    private nonisolated static let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink", category: "AmbientBackground")
+
     /// Falls back to the system appearance — deliberately not the app's, which is a preference
     /// about VoiceInk's own windows and has nothing to do with what is behind the light.
     static var systemPrefersLight: Bool {
@@ -63,6 +70,9 @@ final class AmbientBackgroundSensor {
         // Preflight only — never request. See the note above.
         guard CGPreflightScreenCaptureAccess() else {
             isLightBackground = nil
+            Self.logger.notice(
+                "no screen recording permission — falling back to the system theme (\(Self.systemPrefersLight ? "light" : "dark", privacy: .public))"
+            )
             return
         }
 
@@ -87,6 +97,9 @@ final class AmbientBackgroundSensor {
                 case nil: self.lightThreshold
                 }
             self.isLightBackground = measured > threshold
+            Self.logger.notice(
+                "measured luminance \(measured, format: .fixed(precision: 3)) vs threshold \(threshold, format: .fixed(precision: 2)) — using \(self.isLightBackground == true ? "light" : "dark", privacy: .public) scheme"
+            )
         }
     }
 
@@ -119,6 +132,9 @@ final class AmbientBackgroundSensor {
                 contentFilter: filter, configuration: configuration)
             return meanLuminance(of: image)
         } catch {
+            logger.notice(
+                "capture failed, keeping previous scheme: \(error.localizedDescription, privacy: .public)"
+            )
             return nil
         }
     }
