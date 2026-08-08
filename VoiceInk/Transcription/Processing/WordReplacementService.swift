@@ -12,6 +12,11 @@ class WordReplacementService {
     /// adding entries and never learning whether they worked.
     private(set) var lastAppliedTerms: [String] = []
 
+    /// How many replacements fired on the most recent call. Distinct from `lastAppliedTerms.count`
+    /// only in intent: this is the figure the dashboard aggregates to answer whether the dictionary
+    /// is earning its keep.
+    var lastAppliedCount: Int { lastAppliedTerms.count }
+
     func applyReplacements(to text: String, using context: ModelContext) -> String {
         lastAppliedTerms = []
         let descriptor = FetchDescriptor<WordReplacement>(

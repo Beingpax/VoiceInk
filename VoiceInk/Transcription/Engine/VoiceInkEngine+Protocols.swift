@@ -33,8 +33,14 @@ extension VoiceInkEngine: RecorderStateProvider {
     /// makes it feel native, and also why it cannot be guaranteed — an app without undo support,
     /// or one typed into since, will not restore cleanly.
     func undoResultPeek() async {
+        let transcriptionID = resultPeek?.transcriptionID
         dismissResultPeek()
         _ = await CursorPaster.undoLastPaste()
+
+        // Recorded rather than merely acted on: taking a result back is the strongest signal the
+        // app ever gets that a take went wrong, and until now it left no trace at all.
+        guard let transcriptionID else { return }
+        SessionMetricRecorder.markUndone(transcriptionID: transcriptionID, in: modelContext)
     }
 
     /// Re-runs the AI enhancement over the same transcript and replaces what was pasted.

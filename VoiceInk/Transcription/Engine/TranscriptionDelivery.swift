@@ -195,6 +195,7 @@ final class TranscriptionDelivery {
         guard let request = pendingPeekSource else { return nil }
         let transcription = request.transcription
         return RecorderResultPeek(
+            transcriptionID: transcription.id,
             pastedText: pastedText,
             originalText: transcription.text,
             hasEnhancement: transcription.enhancedText != nil,

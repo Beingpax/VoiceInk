@@ -18,6 +18,15 @@ final class SessionMetric {
     var enhancementDuration: TimeInterval?
     var enhancementEstimatedTokenCount: Int?
 
+    /// Where the text actually landed. Captured at record time: the recorder panels are all
+    /// non-activating, so the frontmost app is still the one about to receive the paste.
+    var targetBundleIdentifier: String?
+    /// Set later, if the result is taken back. The only signal in the app for "that came out wrong".
+    var wasUndone: Bool = false
+    /// How many dictionary replacements fired. Nil means the take predates this being recorded,
+    /// which is different from zero and has to stay distinguishable.
+    var dictionaryHitCount: Int?
+
     init(
         transcriptionId: UUID,
         timestamp: Date = Date(),
@@ -30,7 +39,9 @@ final class SessionMetric {
         modeName: String?,
         aiEnhancementModelName: String?,
         enhancementDuration: TimeInterval?,
-        enhancementEstimatedTokenCount: Int? = nil
+        enhancementEstimatedTokenCount: Int? = nil,
+        targetBundleIdentifier: String? = nil,
+        dictionaryHitCount: Int? = nil
     ) {
         self.id = UUID()
         self.transcriptionId = transcriptionId
@@ -45,5 +56,8 @@ final class SessionMetric {
         self.aiEnhancementModelName = aiEnhancementModelName
         self.enhancementDuration = enhancementDuration
         self.enhancementEstimatedTokenCount = enhancementEstimatedTokenCount
+        self.targetBundleIdentifier = targetBundleIdentifier
+        self.wasUndone = false
+        self.dictionaryHitCount = dictionaryHitCount
     }
 }

@@ -7,6 +7,8 @@ import SwiftUI
 /// app or came back mangled could only be fixed by dictating the whole thing again.
 struct RecorderResultPeek: Equatable, Identifiable {
     let id = UUID()
+    /// Which take this came from, so undoing it can be recorded against the right session.
+    var transcriptionID: UUID?
     let pastedText: String
     let originalText: String
     let hasEnhancement: Bool

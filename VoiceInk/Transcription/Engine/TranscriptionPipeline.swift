@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftData
 import os
@@ -70,6 +71,9 @@ class TranscriptionPipeline {
         var responseError: String?
         var outputForDelivery: OutputRuntimeConfiguration?
         var responseConfig: EnhancementRuntimeConfiguration?
+        /// Declared out here so the save closure below can still see it — the replacements run
+        /// deep inside the transcription branch.
+        var dictionaryHitCount: Int?
 
         func finishCanceledTranscription() async {
             await onCancel()
@@ -140,6 +144,7 @@ class TranscriptionPipeline {
             }
 
             text = WordReplacementService.shared.applyReplacements(to: text, using: modelContext)
+            dictionaryHitCount = WordReplacementService.shared.lastAppliedCount
             let cleanedText = text
 
             let actualDuration = await AudioFileMetadata.duration(for: audioURL)
@@ -249,7 +254,12 @@ class TranscriptionPipeline {
                     didInsertSessionMetric = try SessionMetricRecorder.recordRecorderSession(
                         transcription: transcription,
                         model: model,
-                        in: modelContext
+                        in: modelContext,
+                        // Every recorder panel is non-activating, so whatever is frontmost here is
+                        // the app the text is about to land in.
+                        targetBundleIdentifier: NSWorkspace.shared.frontmostApplication?
+                            .bundleIdentifier,
+                        dictionaryHitCount: dictionaryHitCount
                     )
                 } catch {
                     logger.error("Failed to record session metric: \(error, privacy: .public)")
