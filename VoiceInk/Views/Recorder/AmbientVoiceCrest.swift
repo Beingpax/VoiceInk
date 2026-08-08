@@ -36,7 +36,10 @@ enum AmbientTakeEnvelope {
 struct AmbientVoiceCrest: View {
     /// While listening: newest sample last. While processing: the take from start to end.
     let samples: [Double]
+    /// The contour colour — the measured, legible one.
     let tint: Color
+    /// The body colour. Equal to `tint` on dark grounds; vivid inside a deep rim on light ones.
+    var core: Color?
     let intensity: Double
     /// On a light background the weighting flips: less spread, more edge. Bloom over white is haze.
     var palette = AmbientPalette(isLight: false)
@@ -136,20 +139,22 @@ struct AmbientVoiceCrest: View {
         // 1. Bloom, well outside the band. This is the layer that overlaps the edge wash and the
         //    notch halo, so the three read as one light source rather than three.
         var bloom = context
-        bloom.addFilter(.blur(radius: 18 * palette.blurScale))
-        bloom.fill(band, with: .color(tint.opacity(palette.haloAlpha * alpha)))
+        let body = core ?? tint
+        bloom.addFilter(.blur(radius: 18 * palette.crestBlurScale))
+        bloom.fill(band, with: .color(body.opacity(palette.haloAlpha * alpha)))
 
         // 2. Body — brightest against the bezel and falling away downward, the same direction the
         //    frame's own wash falls. Light seeping in, not a shape sitting on the screen.
-        var core = context
-        core.addFilter(.blur(radius: 2.5 * palette.blurScale))
-        core.fill(
+        _ = 0
+        var fill = context
+        fill.addFilter(.blur(radius: 2.5 * palette.crestBlurScale))
+        fill.fill(
             band,
             with: .linearGradient(
                 Gradient(stops: [
-                    .init(color: tint.opacity(palette.coreAlphaTop * alpha), location: 0.0),
-                    .init(color: tint.opacity(palette.coreAlphaMid * alpha), location: 0.55),
-                    .init(color: tint.opacity(0), location: 1.0),
+                    .init(color: body.opacity(palette.coreAlphaTop * alpha), location: 0.0),
+                    .init(color: body.opacity(palette.coreAlphaMid * alpha), location: 0.55),
+                    .init(color: body.opacity(0), location: 1.0),
                 ]),
                 startPoint: CGPoint(x: size.width / 2, y: 0),
                 endPoint: CGPoint(x: size.width / 2, y: deepest)

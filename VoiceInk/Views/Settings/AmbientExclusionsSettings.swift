@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import SwiftUI
 
 /// Picks the apps where the ambient light should stay off.
@@ -27,10 +28,31 @@ struct AmbientExclusionsSettings: View {
             // What the sensor last decided, and why. Without this there is no way to tell a
             // measurement you disagree with from a measurement that never happened.
             if backgroundMode == AmbientBackgroundMode.auto.rawValue {
-                Text(AmbientBackgroundSensor.lastReading ?? String(localized: "Not measured yet — record once to see"))
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(
+                        AmbientBackgroundSensor.lastReading
+                            ?? String(localized: "Not measured yet — record once to see")
+                    )
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                    // Screen Recording is granted per binary, so it goes stale every time the app
+                    // updates — the toggle still reads as on while the new build is not actually
+                    // allowed. Removing and re-adding VoiceInk in that pane is the only fix, and
+                    // nothing in the app can do it, so the least we can do is open the right page.
+                    if !CGPreflightScreenCaptureAccess() {
+                        Button("Open Settings…") {
+                            if let url = URL(
+                                string:
+                                    "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+                            ) {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                }
             }
 
             Divider().padding(.vertical, 2)

@@ -106,6 +106,27 @@ struct AmbientPalette {
         }
     }
 
+    /// The colour the crest's *body* is filled with, as opposed to its contour.
+    ///
+    /// The deep ink set is right for the frame and the rim, where the job is legibility against
+    /// white. It is wrong for the waveform, which has a different job — a voice should look alive,
+    /// and a dark blue at 7:1 contrast simply sits there. Mint works on black precisely because it
+    /// is *bright*; the light scheme lost that when everything went deep.
+    ///
+    /// So the crest is two-tone on light backgrounds: a vivid core inside a deep contour. The rim
+    /// still carries the legibility — it is the measured colour, unchanged — while the fill is free
+    /// to be luminous, because it is bounded by something that is not.
+    func crestCore(for state: AmbientState) -> Color {
+        guard isLight else { return color(for: state) }
+
+        switch state {
+        case .hidden: return .clear
+        case .problem: return Color(red: 0.92, green: 0.16, blue: 0.30)
+        case .working: return Color(red: 0.97, green: 0.62, blue: 0.06)
+        case .listening, .settled: return Color(red: 0.13, green: 0.45, blue: 0.98)
+        }
+    }
+
     // MARK: - How the light behaves
     //
     // On a dark ground the effect is mostly bloom with a faint rim. On a light one that reads as
@@ -122,10 +143,13 @@ struct AmbientPalette {
     var rimScale: Double { isLight ? 2.4 : 1 }
 
     /// The wide outer bloom. Nearly pointless on white, so it mostly steps aside.
-    var haloAlpha: Double { isLight ? 0.14 : 0.34 }
+    var haloAlpha: Double { isLight ? 0.30 : 0.34 }
     /// The band's own body, against the bezel and where it fades out.
-    var coreAlphaTop: Double { isLight ? 0.98 : 0.80 }
-    var coreAlphaMid: Double { isLight ? 0.62 : 0.34 }
+    var coreAlphaTop: Double { isLight ? 0.95 : 0.80 }
+    var coreAlphaMid: Double { isLight ? 0.55 : 0.34 }
+    /// The crest is the one element allowed to keep its spread on a light ground — it is the thing
+    /// being looked at, and tightening it to match the frame is what made it lifeless.
+    var crestBlurScale: Double { isLight ? 0.8 : 1 }
     var rimAlpha: Double { isLight ? 0.95 : 0.75 }
 
     /// The screen-edge wash and the notch halo, which are SwiftUI strokes rather than Canvas.

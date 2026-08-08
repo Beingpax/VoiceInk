@@ -318,6 +318,7 @@ struct AmbientCrestLayer: View {
                 // whole display is exactly the motion that setting exists to switch off.
                 samples: reduceMotion ? [] : (phase == .live ? meter.trace : meter.replayEnvelope),
                 tint: tint,
+                core: palette.crestCore(for: state),
                 intensity: state.intensity,
                 palette: palette,
                 notchDrop: geometry.hasNotch ? geometry.notchHeight : 0,
