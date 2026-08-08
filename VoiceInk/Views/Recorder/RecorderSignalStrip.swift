@@ -44,9 +44,11 @@ final class RecorderInputHealthMonitor {
     /// and then EMA-smooths it. Thresholds have to be expressed in the same units — an earlier dBFS
     /// version tripped clipping on every take, because any peak is trivially above −1.5.
     ///
-    /// 0.96 ≈ −2.4 dB (genuinely hot), 0.10 ≈ −54 dB (barely above the noise floor).
-    private let clipThreshold: Double = 0.96
-    private let quietThreshold: Double = 0.10
+    /// Calibrated against the EMA smoothing (0.6 old / 0.4 new), which pulls sustained peaks well
+    /// below their instantaneous value — 0.96 was effectively unreachable and never fired.
+    /// 0.90 ≈ −6 dB (genuinely hot), 0.16 ≈ −50 dB (barely above the noise floor).
+    private let clipThreshold: Double = 0.90
+    private let quietThreshold: Double = 0.16
     private let sustainedSampleCount = 12  // ~1.2s at the 10Hz sample rate below
 
     private var clipRun = 0

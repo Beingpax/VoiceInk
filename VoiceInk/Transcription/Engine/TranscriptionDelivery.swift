@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import os
 
@@ -198,7 +199,8 @@ final class TranscriptionDelivery {
             originalText: transcription.text,
             hasEnhancement: transcription.enhancedText != nil,
             duration: transcription.duration,
-            modeName: transcription.modeName
+            modeName: transcription.modeName,
+            targetBundleIdentifier: NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         )
     }
 

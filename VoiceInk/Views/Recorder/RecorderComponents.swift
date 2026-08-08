@@ -166,14 +166,16 @@ struct RecorderRecordButton: View {
 
     private var buttonFace: some View {
         ZStack {
-            // Hold modes get an outer ring: idle it reads as "press and hold me", recording it
-            // reads as sustained pressure. Toggle keeps the plain disc — a steady state.
+            // Hold modes get a detached outer ring with a clear gap, so the control reads as
+            // something you press *into* rather than a switch you flip. Toggle keeps the plain
+            // filled disc. An earlier version drew a 1pt ring flush against the disc, which was
+            // too subtle to notice at 21pt.
             if isHoldStyle {
                 Circle()
                     .strokeBorder(
                         visualState == .recording
-                            ? colors.surface.opacity(0.9) : AppTheme.Recorder.labelDisabled,
-                        lineWidth: visualState == .recording ? 1.6 : 1
+                            ? colors.surface : AppTheme.Recorder.labelInactive,
+                        lineWidth: visualState == .recording ? 2 : 1.2
                     )
                     .frame(width: 21, height: 21)
             }
@@ -184,10 +186,10 @@ struct RecorderRecordButton: View {
                     Circle()
                         .strokeBorder(colors.border, lineWidth: 0.6)
                 )
-                .frame(width: isHoldStyle ? 15 : 21, height: isHoldStyle ? 15 : 21)
+                .frame(width: isHoldStyle ? 12 : 21, height: isHoldStyle ? 12 : 21)
 
             stateMark
-                .scaleEffect(isHoldStyle ? 0.72 : 1)
+                .scaleEffect(isHoldStyle ? 0.58 : 1)
         }
         .frame(width: 21, height: 21)
         .contentShape(Circle())
@@ -474,12 +476,15 @@ private struct RecorderModeChip: View {
                 Text(mode.name)
                     .font(.system(size: 10, weight: .medium))
                     .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: 78, alignment: .leading)
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundStyle(
                         isActive ? AppTheme.Recorder.label : AppTheme.Recorder.labelSecondary
                     )
             }
-            .padding(.horizontal, 6)
-            .frame(height: 18)
+            .padding(.horizontal, 7)
+            .frame(height: 20)
             .background(
                 Capsule().fill(
                     isActive ? AppTheme.Recorder.bubbleUser : AppTheme.Recorder.controlFill

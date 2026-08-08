@@ -23,7 +23,8 @@ struct MiniRecorderView<S: RecorderStateProvider & Observable>: View {
     private func panelWidth(for presentation: RecorderPresentation) -> CGFloat {
         let base = width(for: presentation.widthClass)
         guard isModeRowExpanded else { return base }
-        return max(base, 330)
+        // Four chips at ~86pt each plus the record button and padding. 330 clipped the last two.
+        return max(base, 470)
     }
 
     /// Width grammar — each width means exactly one thing.

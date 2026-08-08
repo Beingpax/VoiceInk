@@ -12,6 +12,10 @@ struct RecorderResultPeek: Equatable, Identifiable {
     let hasEnhancement: Bool
     let duration: TimeInterval
     let modeName: String?
+    /// The app the text was pasted into. Clicking a peek button makes the recorder panel key,
+    /// which pulls focus away — without restoring it first, Cmd+Z lands on the panel instead of
+    /// the editor and Undo silently does nothing.
+    let targetBundleIdentifier: String?
 
     var wordCount: Int {
         pastedText.split(whereSeparator: \.isWhitespace).count

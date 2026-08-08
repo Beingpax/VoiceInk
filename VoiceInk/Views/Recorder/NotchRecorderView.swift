@@ -64,8 +64,9 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
         notchWidth + max(sideExpansion, isModeRowExpanded ? modeRowSideExpansion : 0) * 2
     }
 
-    /// Room for the expanded mode row, which the recording expansion alone cannot fit.
-    private let modeRowSideExpansion: CGFloat = 150
+    /// Room for the expanded mode row. The host window reserves 240pt per side, so this is the
+    /// practical ceiling before the pill would be clipped by its own window.
+    private let modeRowSideExpansion: CGFloat = 230
 
     private let signalStripHeight: CGFloat = 26
     private let resultPanelHeight: CGFloat = 92
