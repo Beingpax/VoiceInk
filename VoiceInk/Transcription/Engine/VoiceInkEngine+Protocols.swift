@@ -17,62 +17,71 @@ extension VoiceInkEngine: RecorderStateProvider {
         _ = await CursorPaster.undoLastPaste()
     }
 
-    /// Re-transcribes the same audio and pastes the new result.
+    /// Re-runs the AI enhancement over the same transcript and replaces what was pasted.
     ///
-    /// Deliberately not `LastTranscriptionService.retryLastTranscription`, which only copies to the
-    /// clipboard — correct for a keyboard shortcut fired from anywhere, wrong for a button on a
-    /// peek that is sitting next to text the user expects to be replaced.
+    /// Re-transcribing was the obvious reading of "retry" and the wrong one: the same audio through
+    /// the same model returns the same words, so the button appeared to do nothing. Enhancement is
+    /// the step that can actually produce a different — and usually better — result, because the
+    /// model samples afresh each time.
     func retryResultPeek() {
         guard resultPeek != nil else { return }
         dismissResultPeek()
 
         Task { @MainActor in
-            guard let audioURLString = LastTranscriptionService
-                .getLastTranscription(from: modelContext)?.audioFileURL,
-                let audioURL = URL(string: audioURLString),
-                FileManager.default.fileExists(atPath: audioURL.path)
+            guard let last = LastTranscriptionService.getLastTranscription(from: modelContext) else {
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "Nothing to retry"), type: .error)
+                return
+            }
+
+            guard let enhancementService,
+                let aiService = enhancementService.getAIService()
             else {
                 NotificationManager.shared.showNotification(
-                    title: String(localized: "Cannot retry: audio file not found"),
-                    type: .error
+                    title: String(localized: "Enable AI enhancement on this mode to retry"),
+                    type: .info
                 )
                 return
             }
 
-            guard let configuration = ModeRuntimeResolver.transcriptionConfiguration(
-                transcriptionModelManager: transcriptionModelManager
-            ) else {
-                NotificationManager.shared.showNotification(
-                    title: String(localized: "No transcription model selected"),
-                    type: .error
-                )
-                return
-            }
-
-            let service = AudioTranscriptionService(
-                modelContext: modelContext,
-                serviceRegistry: serviceRegistry,
-                enhancementService: enhancementService
+            let configuration = ModeRuntimeResolver.currentEnhancementConfiguration(
+                mode: ModeManager.shared.currentEffectiveConfiguration,
+                enhancementService: enhancementService,
+                aiService: aiService
             )
 
-            do {
-                let result = try await service.retranscribeAudio(
-                    from: audioURL, using: configuration.model)
-                let retried = result.transcription
-                let text =
-                    result.enhancementFailure == nil && retried.enhancedText?.isEmpty == false
-                    ? retried.enhancedText! : retried.text
+            guard configuration.isEnabled else {
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "Enable AI enhancement on this mode to retry"),
+                    type: .info
+                )
+                return
+            }
 
-                // Remove the first result before inserting the new one, otherwise retry appends
-                // and you end up with the sentence twice.
+            do {
+                let result = try await enhancementService.enhance(
+                    last.text,
+                    configuration: configuration,
+                    contextSnapshot: activeRecordingContextSnapshot
+                )
+
+                let enhanced = result.text
+                guard !enhanced.isEmpty else {
+                    NotificationManager.shared.showNotification(
+                        title: String(localized: "Retry produced no text"), type: .error)
+                    return
+                }
+
+                last.enhancedText = enhanced
+                try? modelContext.save()
+
+                // Replace rather than append: undo the first result, then paste the new one.
                 _ = await CursorPaster.undoLastPaste()
                 try? await Task.sleep(for: .milliseconds(120))
-                _ = await CursorPaster.startPasteAtCursor(text).value
+                _ = await CursorPaster.startPasteAtCursor(enhanced).value
             } catch {
                 NotificationManager.shared.showNotification(
-                    title: String(localized: "Retry failed"),
-                    type: .error
-                )
+                    title: String(localized: "Retry failed"), type: .error)
             }
         }
     }

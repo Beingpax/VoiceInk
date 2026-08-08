@@ -191,7 +191,15 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                         action: onRecordButtonTapped
                     )
                 }
-                RecorderModeButton(buttonSize: 20, padding: EdgeInsets(), isExpanded: $isModeRowExpanded)
+                if isModeRowExpanded {
+                    RecorderModeChips(
+                        modes: RecorderNotchModeSplit.columns().leading,
+                        activeModeID: ModeManager.shared.currentEffectiveConfiguration?.id
+                    )
+                } else {
+                    RecorderModeButton(
+                        buttonSize: 20, padding: EdgeInsets(), isExpanded: $isModeRowExpanded)
+                }
                 Spacer(minLength: 0)
             }
             .padding(.leading, sideEdgePadding)
@@ -203,13 +211,23 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
                 value: displayState
             )
 
-            HStack(spacing: 0) {
+            HStack(spacing: 4) {
                 Spacer(minLength: 0)
-                RecorderStatusDisplay(
-                    currentState: stateProvider.recordingState,
-                    audioMeterProvider: recorder.audioMeterSnapshot,
-                    menuBarHeight: notchHeight
-                )
+
+                // While the mode row is open the remaining chips live on this side of the cutout,
+                // so the row is never drawn underneath the camera housing.
+                if isModeRowExpanded {
+                    RecorderModeChips(
+                        modes: RecorderNotchModeSplit.columns().trailing,
+                        activeModeID: ModeManager.shared.currentEffectiveConfiguration?.id
+                    )
+                } else {
+                    RecorderStatusDisplay(
+                        currentState: stateProvider.recordingState,
+                        audioMeterProvider: recorder.audioMeterSnapshot,
+                        menuBarHeight: notchHeight
+                    )
+                }
             }
             .padding(.trailing, sideEdgePadding)
             .frame(width: controlColumnWidth)
@@ -221,6 +239,11 @@ struct NotchRecorderView<S: RecorderStateProvider & Observable>: View {
             )
         }
         .frame(height: mainRowHeight)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            guard !hovering else { return }
+            isModeRowExpanded = false
+        }
     }
 
     /// The strip earns its space only when it has something non-obvious to report.

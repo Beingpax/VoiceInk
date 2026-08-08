@@ -118,22 +118,6 @@ struct RecorderRecordButton: View {
     let recordingState: RecordingState
     let action: () -> Void
 
-    /// Push-to-talk and toggle used to render identically, so there was no way to tell whether
-    /// releasing the key would stop the take. Read from the same defaults key the shortcut
-    /// manager writes, rather than threading the manager into the panel.
-    /// Defaults to `.hybrid` to match `ShortcutMigration.migrateShortcutMode`, which is what the
-    /// app actually runs when the user has never opened the setting. Defaulting to `.toggle` here
-    /// meant the hold affordance never appeared for anyone on the stock configuration.
-    @AppStorage("primaryRecordingShortcutMode") private var shortcutModeRaw =
-        RecordingShortcutManager.Mode.hybrid.rawValue
-
-    private var isHoldStyle: Bool {
-        switch RecordingShortcutManager.Mode(rawValue: shortcutModeRaw) {
-        case .pushToTalk, .hybrid: return true
-        case .toggle, nil: return false
-        }
-    }
-
     private var visualState: VisualState {
         switch recordingState {
         case .idle, .starting, .busy:
@@ -166,35 +150,18 @@ struct RecorderRecordButton: View {
 
     private var buttonFace: some View {
         ZStack {
-            // Hold modes get a detached outer ring with a clear gap, so the control reads as
-            // something you press *into* rather than a switch you flip. Toggle keeps the plain
-            // filled disc. An earlier version drew a 1pt ring flush against the disc, which was
-            // too subtle to notice at 21pt.
-            if isHoldStyle {
-                Circle()
-                    .strokeBorder(
-                        visualState == .recording
-                            ? colors.surface : AppTheme.Recorder.labelInactive,
-                        lineWidth: visualState == .recording ? 2 : 1.2
-                    )
-                    .frame(width: 21, height: 21)
-            }
-
             Circle()
                 .fill(colors.surface)
                 .overlay(
                     Circle()
                         .strokeBorder(colors.border, lineWidth: 0.6)
                 )
-                .frame(width: isHoldStyle ? 12 : 21, height: isHoldStyle ? 12 : 21)
 
             stateMark
-                .scaleEffect(isHoldStyle ? 0.58 : 1)
         }
         .frame(width: 21, height: 21)
         .contentShape(Circle())
         .animation(.easeOut(duration: 0.16), value: visualState)
-        .animation(AppTheme.Motion.quick, value: isHoldStyle)
     }
 
     private var colors: StateColors {
@@ -440,17 +407,43 @@ struct RecorderModeButton: View {
 
     private var modeRow: some View {
         HStack(spacing: 4) {
-            ForEach(Array(inlineModes.enumerated()), id: \.element.id) { index, mode in
-                RecorderModeChip(
-                    mode: mode,
-                    shortcutNumber: index + 1,
-                    isActive: mode.id == activeModeID
-                ) {
-                    modeManager.setActiveConfiguration(mode)
-                }
-            }
+            RecorderModeChips(modes: Array(inlineModes.enumerated()), activeModeID: activeModeID)
         }
         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .trailing)))
+    }
+}
+
+/// The chips, separated from the button so the notch recorder can split them across the camera
+/// cutout instead of running the whole row underneath it.
+struct RecorderModeChips: View {
+    let modes: [(offset: Int, element: ModeConfig)]
+    let activeModeID: UUID?
+
+    private let modeManager = ModeManager.shared
+
+    var body: some View {
+        ForEach(modes, id: \.element.id) { index, mode in
+            RecorderModeChip(
+                mode: mode,
+                shortcutNumber: index + 1,
+                isActive: mode.id == activeModeID
+            ) {
+                modeManager.setActiveConfiguration(mode)
+            }
+        }
+    }
+}
+
+/// Splits the enabled modes into the two columns either side of the notch.
+@MainActor
+enum RecorderNotchModeSplit {
+    static func columns(
+        limit: Int = 4
+    ) -> (leading: [(offset: Int, element: ModeConfig)], trailing: [(offset: Int, element: ModeConfig)]) {
+        let modes = Array(ModeManager.shared.enabledConfigurations.prefix(limit).enumerated())
+            .map { (offset: $0.offset, element: $0.element) }
+        let split = (modes.count + 1) / 2
+        return (Array(modes.prefix(split)), Array(modes.dropFirst(split)))
     }
 }
 

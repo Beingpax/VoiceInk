@@ -10,97 +10,107 @@ import SwiftUI
 enum RecorderInputHealth: Equatable {
     case unknown
     case clear
-    case quiet
-    case clipping
+    /// Nothing usable is reaching the microphone.
+    case silent
+    /// Consistently hot enough to risk distortion. In practice this is shouting or a mic too close.
+    case tooLoud
 
-    var isProblem: Bool { self == .quiet || self == .clipping }
+    var isProblem: Bool { self == .silent || self == .tooLoud }
 
     var label: LocalizedStringKey? {
         switch self {
         case .unknown: return nil
         case .clear: return "Clear"
-        case .quiet: return "Barely hearing you"
-        case .clipping: return "Clipping — move back"
+        case .silent: return "Not hearing you"
+        case .tooLoud: return "Too loud — ease off"
         }
     }
 
     var tint: Color {
         switch self {
         case .unknown, .clear: return AppTheme.Recorder.healthOK
-        case .quiet, .clipping: return AppTheme.Recorder.healthBad
+        case .silent, .tooLoud: return AppTheme.Recorder.healthBad
         }
     }
 }
 
-/// Samples the audio meter over a short window and classifies it.
+/// Classifies the microphone signal over a rolling window.
 ///
-/// Deliberately slow to alarm and quick to clear: a single loud syllable is not clipping, and a
-/// pause for breath is not a dead microphone.
+/// Calibrated from logged takes on real hardware rather than assumed:
+///
+///     whisper / quiet   peak max 0.41 – 0.47
+///     normal speech     peak max 0.75 – 0.88
+///     shouting          peak max 0.91 – 1.00
+///
+/// Two earlier attempts failed for the same structural reason: they required N *consecutive*
+/// samples above a threshold. Speech is bursty, so peaks touch the top for a moment and never
+/// sustain, and the condition never fired. This counts the *proportion* of loud samples in a
+/// window instead, which is what "shouting" actually looks like in the data.
 @MainActor
 @Observable
 final class RecorderInputHealthMonitor {
     private(set) var health: RecorderInputHealth = .unknown
 
-    /// `AudioMeter` reports **normalized 0…1**, not dBFS: `Recorder` maps −60…0 dB onto that range
-    /// and then EMA-smooths it. Thresholds have to be expressed in the same units — an earlier dBFS
-    /// version tripped clipping on every take, because any peak is trivially above −1.5.
-    ///
-    /// Calibrated against the EMA smoothing (0.6 old / 0.4 new), which pulls sustained peaks well
-    /// below their instantaneous value — 0.96 was effectively unreachable and never fired.
-    /// 0.90 ≈ −6 dB (genuinely hot), 0.16 ≈ −50 dB (barely above the noise floor).
-    private let clipThreshold: Double = 0.90
-    private let quietThreshold: Double = 0.16
-    private let sustainedSampleCount = 12  // ~1.2s at the 10Hz sample rate below
+    /// Above this a sample counts as hot. Sits above the 0.88 ceiling of normal speech and below
+    /// the 0.91 floor of shouting.
+    private let loudSampleThreshold: Double = 0.90
+    /// Shouting keeps peaks hot much of the time; a single emphatic word does not.
+    private let loudFractionTrigger: Double = 0.35
+    /// Below this a sample counts as effectively silent.
+    private let silentSampleThreshold: Double = 0.06
 
-    private var clipRun = 0
-    private var quietRun = 0
-    private var sawAnySignal = false
+    /// 3 seconds at the 10Hz sample rate. Long enough to ignore one loud word, short enough to
+    /// react while the take is still running.
+    private let windowSize = 30
+    /// Do not judge anything until the window has filled, so the opening silence of every take is
+    /// not immediately reported as a dead microphone.
+    private let minimumSamplesBeforeJudging = 20
 
-    /// Observed extremes for the current take. Two rounds of guessing thresholds blind was two
-    /// rounds too many — set `RecorderMeterDebug` in defaults and the real numbers get logged, so
-    /// the next calibration is measured rather than assumed.
-    private var observedPeakMax: Double = 0
-    private var observedAverageMin: Double = 1
+    private var peakWindow: [Double] = []
+    private var averageWindow: [Double] = []
+
     private static let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink", category: "RecorderInputHealth")
     private static let isDebugEnabled = UserDefaults.standard.bool(forKey: "RecorderMeterDebug")
+    private var observedPeakMax: Double = 0
+    private var observedLoudFraction: Double = 0
 
     func reset() {
         if Self.isDebugEnabled, observedPeakMax > 0 {
             Self.logger.notice(
-                "take ended — peak max \(self.observedPeakMax, format: .fixed(precision: 3)), average min \(self.observedAverageMin, format: .fixed(precision: 3)), final \(String(describing: self.health), privacy: .public)"
+                "take ended — peak max \(self.observedPeakMax, format: .fixed(precision: 3)), loud fraction \(self.observedLoudFraction, format: .fixed(precision: 3)), final \(String(describing: self.health), privacy: .public)"
             )
         }
         health = .unknown
-        clipRun = 0
-        quietRun = 0
-        sawAnySignal = false
+        peakWindow.removeAll()
+        averageWindow.removeAll()
         observedPeakMax = 0
-        observedAverageMin = 1
+        observedLoudFraction = 0
     }
 
     func ingest(_ meter: AudioMeter) {
+        peakWindow.append(meter.peakPower)
+        averageWindow.append(meter.averagePower)
+        if peakWindow.count > windowSize {
+            peakWindow.removeFirst()
+            averageWindow.removeFirst()
+        }
+
         observedPeakMax = max(observedPeakMax, meter.peakPower)
-        observedAverageMin = min(observedAverageMin, meter.averagePower)
 
-        if meter.peakPower >= clipThreshold {
-            clipRun += 1
+        guard peakWindow.count >= minimumSamplesBeforeJudging else { return }
+
+        let loudFraction =
+            Double(peakWindow.filter { $0 >= loudSampleThreshold }.count) / Double(peakWindow.count)
+        observedLoudFraction = max(observedLoudFraction, loudFraction)
+
+        let hasAnySignal = averageWindow.contains { $0 > silentSampleThreshold }
+
+        if loudFraction >= loudFractionTrigger {
+            health = .tooLoud
+        } else if !hasAnySignal {
+            health = .silent
         } else {
-            clipRun = 0
-        }
-
-        if meter.averagePower <= quietThreshold {
-            quietRun += 1
-        } else {
-            quietRun = 0
-            sawAnySignal = true
-        }
-
-        if clipRun >= sustainedSampleCount {
-            health = .clipping
-        } else if quietRun >= sustainedSampleCount {
-            health = .quiet
-        } else if sawAnySignal {
             health = .clear
         }
     }
