@@ -48,8 +48,8 @@ enum AmbientState: Equatable {
     var intensity: Double {
         switch self {
         case .hidden: return 0
-        case .listening: return 0.55
-        case .working: return 0.75
+        case .listening: return 0.72
+        case .working: return 0.88
         case .problem: return 1.0
         }
     }
@@ -58,6 +58,8 @@ enum AmbientState: Equatable {
 struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     var stateProvider: S
     var recorder: Recorder
+
+    @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
 
     @State private var healthMonitor = RecorderInputHealthMonitor()
     @State private var silenceWatch = RecorderSilenceWatch()
@@ -70,8 +72,13 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     /// Width of the light band at silence and at full level. Most of the band is positioned
     /// off-screen, so what you actually see is its inward falloff — light seeping in from the
     /// bezel rather than a line drawn on top of your work.
-    private let minBloom: CGFloat = 26
-    private let maxBloom: CGFloat = 62
+    private let minBloom: CGFloat = 30
+    private let maxBloom: CGFloat = 78
+
+    /// Depth of the top-edge crest at rest and at full voice. The resting depth is what the crest
+    /// hands off to the side edges at the corners, so it is deliberately close to `minBloom`.
+    private let crestBaseDepth: CGFloat = 24
+    private let crestPeakDepth: CGFloat = 52
 
     /// On a notched Mac the eye already goes to the cutout, so that becomes the focal point and
     /// the screen edge drops back to a supporting wash. Lighting the whole perimeter equally on a
@@ -104,9 +111,17 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         return 6 + 11 * CGFloat(level)
     }
 
-    /// The edge wash steps back when the notch is carrying the signal.
+    /// The edge wash steps back when the notch is carrying the signal — but only a little. At the
+    /// old 0.35 the edges were three times dimmer than the crest, and the two stopped reading as
+    /// the same light.
     private var edgeIntensity: Double {
-        hasNotch ? state.intensity * 0.35 : state.intensity
+        hasNotch ? state.intensity * 0.62 : state.intensity
+    }
+
+    /// How far below the hardware edge the crest can reach at full voice. Everything that has to
+    /// sit clear of the light measures from here.
+    private var crestExtent: CGFloat {
+        (hasNotch ? notchHeight : 0) + crestBaseDepth + crestPeakDepth
     }
 
     /// macOS does not expose the display's physical corner radius. A squared-off glow fights the
@@ -147,7 +162,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                         }
 
                         if state == .listening || state == .problem {
-                            voiceTrace(in: geo.size)
+                            voiceCrest(in: geo.size)
                         }
                     }
                     .allowsHitTesting(false)
@@ -172,7 +187,7 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             }
             .animation(.easeOut(duration: 0.14), value: bloomWidth)
             .animation(AppTheme.Motion.standard, value: state)
-            .animation(AppTheme.Motion.standard, value: caption)
+            .animation(AppTheme.Motion.standard, value: captionIdentity)
         }
         .ignoresSafeArea()
         .task(id: stateProvider.recordingState) {
@@ -222,29 +237,25 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         }
     }
 
-    /// Centred on the notch, spreading well past it on both sides. The trace radiates outward from
-    /// the middle, so it needs room to resolve to nothing — cramped to the cutout's own width it
-    /// would end while still visibly tall, which is the clipped-chart look this design avoids.
-    private func voiceTrace(in size: CGSize) -> some View {
-        let width =
-            hasNotch
-            ? min(notchWidth + 300, size.width * 0.62)
-            : min(size.width * 0.46, 680)
-        let y = (hasNotch ? notchHeight : 24) + 17
-
-        return AmbientVoiceTrace(
+    /// Spans the whole display. The crest *is* the top edge of the frame, so it has to run corner
+    /// to corner and arrive at both of them at the same depth as the side wash.
+    private func voiceCrest(in size: CGSize) -> some View {
+        AmbientVoiceCrest(
             samples: trace,
             tint: state.color,
-            intensity: state.intensity
+            intensity: state.intensity,
+            notchDrop: hasNotch ? notchHeight : 0,
+            notchWidth: notchWidth,
+            baseDepth: crestBaseDepth,
+            peakDepth: crestPeakDepth
         )
-        .frame(width: width, height: 46)
-        .position(x: size.width / 2, y: y)
+        .frame(width: size.width, height: crestExtent + 40)
+        .position(x: size.width / 2, y: (crestExtent + 40) / 2)
     }
 
-    /// Sits just below the cutout, or below the menu bar on a display without one.
+    /// Below the crest's full reach, so a loud passage never washes over the words.
     private var captionY: CGFloat {
-        // Clears the voice trace rather than sitting on top of it.
-        (hasNotch ? notchHeight : 24) + 72
+        crestExtent + 42
     }
 
     private var captionTint: Color {
@@ -270,7 +281,28 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         {
             return .context(summary)
         }
+        // Lowest priority deliberately. The transcript runs for the whole take, so anything that
+        // needs saying at a particular moment has to be able to interrupt it.
+        if stateProvider.recordingState == .recording, showLiveTranscript,
+            !stateProvider.partialTranscript.isEmpty
+        {
+            return .liveTranscript(stateProvider.partialTranscript)
+        }
         return nil
+    }
+
+    /// What kind of caption is showing, ignoring its contents. The container transition animates on
+    /// this rather than on `caption` — otherwise every word of the live transcript would re-run the
+    /// grow-out-of-the-notch animation.
+    private var captionIdentity: Int {
+        switch caption {
+        case .none: return 0
+        case .result: return 1
+        case .countdown: return 2
+        case .problem: return 3
+        case .context: return 4
+        case .liveTranscript: return 5
+        }
     }
 
     /// Named explicitly rather than as chips: without a panel there is no room for a legend, so

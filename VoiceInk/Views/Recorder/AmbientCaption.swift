@@ -9,6 +9,9 @@ enum AmbientCaptionKind: Equatable {
     case context(String)
     case countdown(Int)
     case result(RecorderResultPeek)
+    /// The take as it is being transcribed. Unlike the others this is continuous rather than an
+    /// announcement, so it holds the slot for as long as the take runs.
+    case liveTranscript(String)
 
     var isInteractive: Bool {
         if case .result = self { return true }
@@ -69,6 +72,9 @@ struct AmbientCaption: View {
 
         case .context(let message):
             captionText(message, weight: .regular)
+
+        case .liveTranscript(let transcript):
+            AmbientLiveTranscript(text: transcript, tint: tint)
 
         case .countdown(let seconds):
             captionText(
