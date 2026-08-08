@@ -125,6 +125,58 @@ struct AmbientPaletteTests {
         }
     }
 
+    /// Approximates how a deuteranope (red-green colour blind, ~6% of men) sees a colour, by
+    /// collapsing the M cone onto L in LMS space.
+    private func deuteranope(_ color: Color) -> Color {
+        guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return color }
+        func linear(_ c: CGFloat) -> Double {
+            let v = Double(c)
+            return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4)
+        }
+        let r = linear(srgb.redComponent)
+        let g = linear(srgb.greenComponent)
+        let b = linear(srgb.blueComponent)
+
+        let l = 17.8824 * r + 43.5161 * g + 4.11935 * b
+        let s = 0.0299566 * r + 0.184309 * g + 1.46709 * b
+        let m = 0.494207 * l + 1.24827 * s
+
+        func encode(_ v: Double) -> Double {
+            let clamped = min(max(v, 0), 1)
+            return clamped <= 0.0031308
+                ? 12.92 * clamped : 1.055 * pow(clamped, 1 / 2.4) - 0.055
+        }
+        return Color(
+            red: encode(0.080944 * l - 0.130504 * m + 0.116721 * s),
+            green: encode(-0.0102485 * l + 0.0540194 * m - 0.113615 * s),
+            blue: encode(-0.000365294 * l - 0.00412163 * m + 0.693513 * s)
+        )
+    }
+
+    @Test func theStatesSurviveColourBlindness() {
+        // Green/amber/red is the classic trap, and the light scheme walked straight into it: a deep
+        // bronze and a pure oxblood measured 11.6 dE for a deuteranope — the same colour, in
+        // practice. Both light colours now carry blue, which is the channel that survives.
+        //
+        // Redundancy elsewhere is still the real defence — a problem always writes the reason —
+        // but colour is the fastest channel, and it should not be actively misleading.
+        for palette in [AmbientPalette(isLight: true), AmbientPalette(isLight: false)] {
+            let distinct: [AmbientState] = [.listening, .working, .problem]
+            for (index, first) in distinct.enumerated() {
+                for second in distinct.dropFirst(index + 1) {
+                    let distance = perceptualDistance(
+                        deuteranope(palette.color(for: first)),
+                        deuteranope(palette.color(for: second))
+                    )
+                    #expect(
+                        distance >= 20,
+                        "\(first) and \(second) collapse to \(distance) dE for a deuteranope in \(palette.isLight ? "light" : "dark")"
+                    )
+                }
+            }
+        }
+    }
+
     @Test func textAndItsScrimAgree() {
         // The scrim is what the caption is read against, so they have to be opposites. Getting
         // this backwards produces white text on a white pool, which is invisible rather than ugly.

@@ -68,10 +68,20 @@ struct AmbientPalette {
     // close to invisible. Saturation is not what makes a colour visible on white; *low luminance*
     // is, and those two pull in opposite directions. A vivid orange is a bright orange.
     //
-    // So the light set is deep ink rather than bright pigment: forest, bronze, oxblood. They are
-    // less lively in isolation and far more legible in place, and on a white page a restrained
-    // dark edge reads as considered where a vivid one reads as an error. AmbientPaletteTests holds
-    // both sets above 4.5:1 against their own ground so this cannot quietly regress.
+    // So the light set is deep ink rather than bright pigment. AmbientPaletteTests holds both sets
+    // above 4.5:1 against their own ground so this cannot quietly regress.
+    //
+    // The first deep set used a forest green for listening and it looked murky, for a reason worth
+    // keeping: **green is the hue that loses the most when you darken it.** Green carries 71% of
+    // perceived luminance, so a green dark enough to read on white has had its green channel
+    // crushed, and what is left is a dark slate. Measured as chroma: forest came out at 31 while
+    // sitting at the same lightness where cobalt reaches 69. Blue contributes only 7% of luminance,
+    // so it can be deep and still be intensely blue — it is the one hue that survives this.
+    //
+    // Blue also breaks the green/amber/red axis, which is the one that collapses under red-green
+    // colour blindness. That is not a side benefit; it is why `problem` gained a blue lean too.
+    // Bronze against a pure oxblood measured 11.6 dE for a deuteranope — near-identical — and the
+    // wine-red below takes that to 26.6.
 
     func color(for state: AmbientState) -> Color {
         switch state {
@@ -79,15 +89,15 @@ struct AmbientPalette {
             return .clear
         case .problem:
             return isLight
-                ? Color(red: 0.66, green: 0.09, blue: 0.11)  // oxblood     7.47:1
+                ? Color(red: 0.70, green: 0.05, blue: 0.24)  // wine        6.93:1
                 : Color(red: 0.97, green: 0.42, blue: 0.36)  // salmon      7.23:1
         case .working:
             return isLight
-                ? Color(red: 0.60, green: 0.35, blue: 0.04)  // bronze      5.53:1
+                ? Color(red: 0.62, green: 0.36, blue: 0.02)  // bronze      5.27:1
                 : Color(red: 0.98, green: 0.72, blue: 0.35)  // amber      12.03:1
         case .listening, .settled:
             return isLight
-                ? Color(red: 0.05, green: 0.40, blue: 0.31)  // forest      6.93:1
+                ? Color(red: 0.10, green: 0.28, blue: 0.72)  // cobalt      7.95:1
                 : Color(red: 0.38, green: 0.86, blue: 0.68)  // mint       12.28:1
         }
     }
