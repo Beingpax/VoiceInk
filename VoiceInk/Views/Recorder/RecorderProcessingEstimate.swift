@@ -26,14 +26,30 @@ final class RecorderProcessingEstimate {
     var hasEstimate: Bool { expectedDuration != nil }
 
     func begin(audioDuration: TimeInterval, modelName: String?) {
-        startedAt = .now
+        begin(
+            audioDuration: audioDuration,
+            modelName: modelName,
+            performance: modelName.flatMap(Self.performance(for:)),
+            now: .now
+        )
+    }
+
+    /// Seam for tests: the history lookup and the clock are the two things that make the estimate
+    /// untestable in place, so both are injectable.
+    func begin(
+        audioDuration: TimeInterval,
+        modelName: String?,
+        performance: ModelPerformanceSummary?,
+        now: Date
+    ) {
+        startedAt = now
         progress = 0
         remaining = nil
         expectedDuration = nil
         basis = nil
 
         guard let modelName,
-            let performance = Self.performance(for: modelName),
+            let performance,
             performance.sessionCount >= Self.minimumSessionsForEstimate
         else { return }
 
@@ -61,10 +77,10 @@ final class RecorderProcessingEstimate {
     }
 
     /// Called from the panel's existing sample loop.
-    func tick() {
+    func tick(now: Date = .now) {
         guard let startedAt, let expectedDuration, expectedDuration > 0 else { return }
 
-        let elapsed = Date().timeIntervalSince(startedAt)
+        let elapsed = now.timeIntervalSince(startedAt)
         // Cap just short of complete: a bar that sits at 100% while still working reads as stuck.
         progress = min(elapsed / expectedDuration, 0.97)
         remaining = max(expectedDuration - elapsed, 0)

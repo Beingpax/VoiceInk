@@ -16,7 +16,7 @@ PACKAGE_VALIDATION_FLAGS := -skipPackagePluginValidation -skipMacroValidation
 LOCAL_SIGN_IDENTITY := $(shell security find-identity -v -p codesigning 2>/dev/null \
 	| grep -q "VoiceInk Local Dev" && echo "VoiceInk Local Dev" || echo "-")
 
-.PHONY: all clean whisper setup build local local-cert check healthcheck help dev run release release-setup
+.PHONY: all clean whisper setup build local local-cert test check healthcheck help dev run release release-setup
 
 # Default target
 all: check build
@@ -56,6 +56,23 @@ setup: whisper
 build: setup
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		$(PACKAGE_VALIDATION_FLAGS) CODE_SIGN_IDENTITY="" build
+
+# Unit tests. Signs the same way `local` does — the test host is the real app bundle, so it
+# needs entitlements that do not demand a provisioning profile.
+test: setup
+	xcodebuild test -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
+		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
+		-xcconfig LocalBuild.xcconfig \
+		-destination 'platform=macOS,arch=arm64' \
+		-only-testing:VoiceInkTests \
+		$(PACKAGE_VALIDATION_FLAGS) \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=YES \
+		DEVELOPMENT_TEAM="" \
+		CODE_SIGN_STYLE=Manual \
+		PROVISIONING_PROFILE_SPECIFIER="" \
+		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoiceInk/VoiceInk.local.entitlements" \
+		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD'
 
 # One-time setup: a stable self-signed identity so macOS keeps privacy grants across rebuilds
 local-cert:
@@ -149,6 +166,7 @@ help:
 	@echo "  setup              Copy whisper XCFramework to VoiceInk project"
 	@echo "  build              Build the VoiceInk Xcode project"
 	@echo "  local              Build for local use (no Apple Developer certificate needed)"
+	@echo "  test               Run the unit test suite"
 	@echo "  run                Launch the built VoiceInk app"
 	@echo "  dev                Build and run the app (for development)"
 	@echo "  release            Build DMG and Appcast using release-notes/<version>.html"
