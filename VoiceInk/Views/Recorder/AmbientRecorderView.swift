@@ -66,8 +66,12 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var level: Double = 0
     @State private var hasShownContextForTake = false
     @State private var takeStartedAt: Date?
-    /// Rolling voice history for the trace. ~2s at the 30Hz sample rate below.
+    /// Rolling voice history for the crest. ~2s at the 30Hz sample rate below.
     @State private var trace: [Double] = []
+    /// The whole take, kept so the crest can replay it while it is being transcribed.
+    @State private var takeSamples: [Double] = []
+    @State private var takeEnvelope: [Double] = []
+    @State private var processingEstimate = RecorderProcessingEstimate()
 
     /// Width of the light band at silence and at full level. Most of the band is positioned
     /// off-screen, so what you actually see is its inward falloff — light seeping in from the
@@ -157,33 +161,43 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                     Group {
                         if hasNotch {
                             notchGlow(in: geo.size)
-                        } else if state == .working {
+                        } else if state == .working, !showsReplayCrest {
                             perimeterProgress(in: geo.size)
                         }
 
                         if state == .listening || state == .problem {
-                            voiceCrest(in: geo.size)
+                            voiceCrest(in: geo.size, progress: nil)
+                        } else if showsReplayCrest {
+                            voiceCrest(in: geo.size, progress: processingEstimate.progress)
                         }
                     }
                     .allowsHitTesting(false)
                 }
 
-                if let caption {
-                    AmbientCaption(
-                        kind: caption,
-                        tint: captionTint,
-                        onUndo: { Task { await stateProvider.undoResultPeek() } },
-                        onRetry: { stateProvider.retryResultPeek() },
-                        onKeepRecording: { silenceWatch.reset() }
-                    )
-                    .position(x: geo.size.width / 2, y: captionY)
-                    // Grows out of the notch rather than opening like a window.
-                    .transition(
-                        .scale(scale: 0.86, anchor: .top)
-                            .combined(with: .opacity)
-                            .combined(with: .offset(y: -10))
-                    )
+                VStack(spacing: 12) {
+                    if let caption {
+                        AmbientCaption(
+                            kind: caption,
+                            tint: captionTint,
+                            onUndo: { Task { await stateProvider.undoResultPeek() } },
+                            onRetry: { stateProvider.retryResultPeek() },
+                            onKeepRecording: { silenceWatch.reset() }
+                        )
+                        // Grows out of the notch rather than opening like a window.
+                        .transition(
+                            .scale(scale: 0.86, anchor: .top)
+                                .combined(with: .opacity)
+                                .combined(with: .offset(y: -10))
+                        )
+                    }
+
+                    if stateProvider.recordingState == .recording {
+                        AmbientModeStrip(tint: state.color)
+                            .transition(.opacity.combined(with: .offset(y: -6)))
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, captionY)
             }
             .animation(.easeOut(duration: 0.14), value: bloomWidth)
             .animation(AppTheme.Motion.standard, value: state)
@@ -191,7 +205,29 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         }
         .ignoresSafeArea()
         .task(id: stateProvider.recordingState) {
-            guard stateProvider.recordingState == .recording else {
+            let recordingState = stateProvider.recordingState
+
+            if recordingState == .transcribing || recordingState == .enhancing {
+                // Fold the take down once, here, rather than every frame in the Canvas.
+                if takeEnvelope.isEmpty {
+                    takeEnvelope = AmbientTakeEnvelope.downsample(takeSamples, to: 110)
+                }
+                if !processingEstimate.hasEstimate {
+                    processingEstimate.begin(
+                        audioDuration: stateProvider.lastTakeAudioDuration,
+                        modelName: stateProvider.activeTranscriptionModelName
+                    )
+                }
+                while !Task.isCancelled {
+                    processingEstimate.tick()
+                    try? await Task.sleep(for: .milliseconds(120))
+                }
+                return
+            }
+
+            processingEstimate.end()
+
+            guard recordingState == .recording else {
                 healthMonitor.reset()
                 level = 0
                 return
@@ -199,6 +235,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             hasShownContextForTake = false
             takeStartedAt = .now
             trace = []
+            takeSamples = []
+            takeEnvelope = []
             var tick = 0
 
             while !Task.isCancelled {
@@ -216,6 +254,9 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                 }
 
                 healthMonitor.ingest(meter)
+                // Decimated to the same 10Hz the monitor sees: a minute of speech is 600 values,
+                // and the envelope is folded to a fixed size anyway.
+                takeSamples.append(meter.averagePower)
 
                 if silenceWatch.ingest(isSilent: healthMonitor.health == .silent) {
                     await stateProvider.stopTakeFromPanel()
@@ -239,15 +280,16 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
 
     /// Spans the whole display. The crest *is* the top edge of the frame, so it has to run corner
     /// to corner and arrive at both of them at the same depth as the side wash.
-    private func voiceCrest(in size: CGSize) -> some View {
+    private func voiceCrest(in size: CGSize, progress: Double?) -> some View {
         AmbientVoiceCrest(
-            samples: trace,
+            samples: progress == nil ? trace : takeEnvelope,
             tint: state.color,
             intensity: state.intensity,
             notchDrop: hasNotch ? notchHeight : 0,
             notchWidth: notchWidth,
             baseDepth: crestBaseDepth,
-            peakDepth: crestPeakDepth
+            peakDepth: crestPeakDepth,
+            progress: progress
         )
         .frame(width: size.width, height: crestExtent + 40)
         .position(x: size.width / 2, y: (crestExtent + 40) / 2)
@@ -255,7 +297,13 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
 
     /// Below the crest's full reach, so a loud passage never washes over the words.
     private var captionY: CGFloat {
-        crestExtent + 42
+        crestExtent + 26
+    }
+
+    /// The crest replaces the indeterminate lap only when there is a real prediction behind it.
+    /// Without one there is nothing honest to sweep, so the lap stays.
+    private var showsReplayCrest: Bool {
+        state == .working && processingEstimate.hasEstimate && takeEnvelope.count > 2
     }
 
     private var captionTint: Color {
