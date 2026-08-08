@@ -24,6 +24,15 @@ struct AmbientExclusionsSettings: View {
             }
             .pickerStyle(.menu)
 
+            // What the sensor last decided, and why. Without this there is no way to tell a
+            // measurement you disagree with from a measurement that never happened.
+            if backgroundMode == AmbientBackgroundMode.auto.rawValue {
+                Text(AmbientBackgroundSensor.lastReading ?? String(localized: "Not measured yet — record once to see"))
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Divider().padding(.vertical, 2)
             HStack {
                 Text("Hide ambient light in")

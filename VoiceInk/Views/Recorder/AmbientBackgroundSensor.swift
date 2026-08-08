@@ -42,11 +42,26 @@ final class AmbientBackgroundSensor {
     private let hysteresis = 0.08
     private var isSampling = false
 
-    /// Left on permanently rather than behind a debug flag. It fires once per take, and when this
-    /// picks the wrong scheme there is no way to tell from the outside whether it measured
-    /// something and disagreed with you, or never measured at all and fell back.
     private nonisolated static let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink", category: "AmbientBackground")
+
+    /// The last thing this decided, in plain words, surfaced in Settings.
+    ///
+    /// When the colours come out wrong there is otherwise no way to tell whether the sensor
+    /// measured something and disagreed with you, or never measured at all and quietly fell back to
+    /// the system theme — and those need opposite fixes. Persisted rather than kept in memory
+    /// because the ambient panel is built and destroyed around takes, while Settings is a different
+    /// view entirely.
+    nonisolated static let lastReadingKey = "AmbientBackgroundLastReading"
+
+    private nonisolated static func record(_ reading: String) {
+        UserDefaults.standard.set(reading, forKey: lastReadingKey)
+        logger.notice("\(reading, privacy: .public)")
+    }
+
+    nonisolated static var lastReading: String? {
+        UserDefaults.standard.string(forKey: lastReadingKey)
+    }
 
     /// Falls back to the system appearance — deliberately not the app's, which is a preference
     /// about VoiceInk's own windows and has nothing to do with what is behind the light.
@@ -70,8 +85,15 @@ final class AmbientBackgroundSensor {
         // Preflight only — never request. See the note above.
         guard CGPreflightScreenCaptureAccess() else {
             isLightBackground = nil
-            Self.logger.notice(
-                "no screen recording permission — falling back to the system theme (\(Self.systemPrefersLight ? "light" : "dark", privacy: .public))"
+            Self.record(
+                String(
+                    format: String(
+                        localized:
+                            "Screen Recording is off, so the window can't be read — following the system theme (%@)"
+                    ),
+                    Self.systemPrefersLight
+                        ? String(localized: "light") : String(localized: "dark")
+                )
             )
             return
         }
@@ -97,8 +119,13 @@ final class AmbientBackgroundSensor {
                 case nil: self.lightThreshold
                 }
             self.isLightBackground = measured > threshold
-            Self.logger.notice(
-                "measured luminance \(measured, format: .fixed(precision: 3)) vs threshold \(threshold, format: .fixed(precision: 2)) — using \(self.isLightBackground == true ? "light" : "dark", privacy: .public) scheme"
+            Self.record(
+                String(
+                    format: String(localized: "Last take: window brightness %.2f — using %@ colours"),
+                    measured,
+                    self.isLightBackground == true
+                        ? String(localized: "light") : String(localized: "dark")
+                )
             )
         }
     }
@@ -132,8 +159,11 @@ final class AmbientBackgroundSensor {
                 contentFilter: filter, configuration: configuration)
             return meanLuminance(of: image)
         } catch {
-            logger.notice(
-                "capture failed, keeping previous scheme: \(error.localizedDescription, privacy: .public)"
+            record(
+                String(
+                    format: String(localized: "Couldn't read the window (%@) — kept the last choice"),
+                    error.localizedDescription
+                )
             )
             return nil
         }
