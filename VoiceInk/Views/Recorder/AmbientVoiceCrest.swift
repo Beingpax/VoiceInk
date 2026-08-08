@@ -85,12 +85,18 @@ struct AmbientVoiceCrest: View {
             let contour = curve(through: lower)
             let deepest = lower.map(\.y).max() ?? size.height
 
-            // The darkness the colour is lit against, on backgrounds too bright to light. Once,
-            // underneath everything — paint() runs twice while replaying and this must not stack.
-            if palette.vignette > 0 {
+            // A tight shadow under the contour, so on a light ground the edge sits above the page
+            // rather than staining it. Drawn once — paint() runs twice while replaying, and a
+            // stacked shadow made the finished half of the take visibly murkier than the rest.
+            if palette.contourShadow > 0 {
                 var shade = context
-                shade.addFilter(.blur(radius: 22 * palette.blurScale))
-                shade.fill(band, with: .color(.black.opacity(palette.vignette * intensity)))
+                shade.addFilter(.blur(radius: 6))
+                shade.translateBy(x: 0, y: 2)
+                shade.stroke(
+                    contour,
+                    with: .color(.black.opacity(palette.contourShadow * intensity)),
+                    style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round)
+                )
             }
 
             guard let progress else {
@@ -125,13 +131,13 @@ struct AmbientVoiceCrest: View {
         size: CGSize,
         scale: Double
     ) {
-        let alpha = intensity * scale * palette.alphaScale
+        let alpha = intensity * scale
 
         // 1. Bloom, well outside the band. This is the layer that overlaps the edge wash and the
         //    notch halo, so the three read as one light source rather than three.
         var bloom = context
         bloom.addFilter(.blur(radius: 18 * palette.blurScale))
-        bloom.fill(band, with: .color(tint.opacity(0.34 * alpha)))
+        bloom.fill(band, with: .color(tint.opacity(palette.haloAlpha * alpha)))
 
         // 2. Body — brightest against the bezel and falling away downward, the same direction the
         //    frame's own wash falls. Light seeping in, not a shape sitting on the screen.
@@ -141,8 +147,8 @@ struct AmbientVoiceCrest: View {
             band,
             with: .linearGradient(
                 Gradient(stops: [
-                    .init(color: tint.opacity(0.80 * alpha), location: 0.0),
-                    .init(color: tint.opacity(0.34 * alpha), location: 0.55),
+                    .init(color: tint.opacity(palette.coreAlphaTop * alpha), location: 0.0),
+                    .init(color: tint.opacity(palette.coreAlphaMid * alpha), location: 0.55),
                     .init(color: tint.opacity(0), location: 1.0),
                 ]),
                 startPoint: CGPoint(x: size.width / 2, y: 0),
@@ -157,7 +163,7 @@ struct AmbientVoiceCrest: View {
         rim.addFilter(.blur(radius: 0.7 * palette.blurScale))
         rim.stroke(
             contour,
-            with: .color(tint.opacity(min(0.75 * alpha * palette.rimScale, 1))),
+            with: .color(tint.opacity(min(palette.rimAlpha * alpha, 1))),
             style: StrokeStyle(
                 lineWidth: 1.2 * palette.rimScale, lineCap: .round, lineJoin: .round)
         )

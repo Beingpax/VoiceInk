@@ -39,15 +39,15 @@ enum AmbientBackgroundMode: String, CaseIterable, Identifiable {
 /// the band from invisible haze to an opaque coloured rectangle, which is the exact thing this
 /// design exists to avoid. A glow cannot be added to something already at full brightness.
 ///
-/// So the light scheme does not try to add light. It **borrows darkness first**: a soft dark
-/// vignette is laid down in the same shape, and the colour goes on top of that. The colour now has
-/// something darker than itself to be light against, which is the condition the dark scheme gets
-/// for free from the screen. Locally, the edge of the display becomes a dark surround with a lit
-/// edge inside it — the same instrument, working the same way, on ground that could not otherwise
-/// carry it.
+/// So the light scheme stops trying to be a glow. It becomes **ink**: narrower, denser and much
+/// sharper. The band contracts, the blur tightens hard, the colour goes to near-full strength
+/// against the bezel, and the contour — nearly decorative on black — becomes the main event, with a
+/// tight dark shadow beneath it so the edge sits *above* the page rather than staining it.
 ///
-/// The rim also does much more work here. A bloom is nearly meaningless on white; a defined contour
-/// is not, so the hairline roughly doubles and the blur tightens.
+/// A first attempt at this laid a wide dark vignette over the whole band and put colour on top. It
+/// is the right instinct — the colour does need something darker than itself — but at that radius
+/// the darkness reads as a grey smudge across the top of the screen. Localising it to a few points
+/// under the contour gives the same lift with none of the haze.
 struct AmbientPalette {
     let isLight: Bool
 
@@ -87,16 +87,29 @@ struct AmbientPalette {
     // On a dark ground the effect is mostly bloom with a faint rim. On a light one that reads as
     // haze, so the weighting flips: less spread, more edge.
 
-    /// The darkness the colour is lit against. Drawn in the same shape, underneath everything, and
-    /// the single reason the light scheme reads at all. Zero on a dark background, which already
-    /// supplies its own.
-    var vignette: Double { isLight ? 0.30 : 0 }
-    /// Multiplier on every alpha.
-    var alphaScale: Double { isLight ? 1.2 : 1 }
-    /// Multiplier on every blur radius. Tighter on light, where spread becomes haze.
-    var blurScale: Double { isLight ? 0.62 : 1 }
-    /// Multiplier on the contour hairline, which is what carries the shape on a light ground.
-    var rimScale: Double { isLight ? 2.2 : 1 }
+    /// A tight dark shadow directly beneath the contour, so the edge reads as sitting above the
+    /// page. Localised on purpose — spread across the whole band it is just a grey smudge.
+    var contourShadow: Double { isLight ? 0.34 : 0 }
+    /// Multiplier on every blur radius. Light grounds cannot carry spread; it becomes haze.
+    var blurScale: Double { isLight ? 0.4 : 1 }
+    /// How wide the light band is. Narrower on light, where density does the work width cannot.
+    var bandScale: Double { isLight ? 0.62 : 1 }
+    /// Multiplier on the contour hairline, the main event on a light ground.
+    var rimScale: Double { isLight ? 2.4 : 1 }
+
+    /// The wide outer bloom. Nearly pointless on white, so it mostly steps aside.
+    var haloAlpha: Double { isLight ? 0.18 : 0.34 }
+    /// The band's own body, against the bezel and where it fades out.
+    var coreAlphaTop: Double { isLight ? 0.98 : 0.80 }
+    var coreAlphaMid: Double { isLight ? 0.62 : 0.34 }
+    var rimAlpha: Double { isLight ? 0.95 : 0.75 }
+
+    /// The screen-edge wash and the notch halo, which are SwiftUI strokes rather than Canvas.
+    var frameCoreAlpha: Double { isLight ? 1.0 : 0.85 }
+    var frameRimAlpha: Double { isLight ? 0.95 : 0.5 }
+    var frameRimWidth: CGFloat { isLight ? 2 : 1 }
+    var notchHaloAlpha: Double { isLight ? 0.72 : 0.45 }
+    var notchRimAlpha: Double { isLight ? 0.95 : 0.40 }
 
     // MARK: - Text
 

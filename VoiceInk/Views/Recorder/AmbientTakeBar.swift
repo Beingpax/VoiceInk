@@ -49,8 +49,10 @@ extension View {
 ///
 /// It reads as one sentence of small type rather than a row of controls, because a row of controls
 /// is a toolbar, and a toolbar is the thing this surface exists to avoid.
-struct AmbientTakeBar: View {
-    let elapsed: TimeInterval
+struct AmbientTakeBar<Clock: View>: View {
+    /// Passed in rather than taking a TimeInterval: the clock ticks 10 times a second, and as a
+    /// stored property that tick invalidated the enhancement label and the cancel button with it.
+    @ViewBuilder var clock: () -> Clock
     let isEnhancementEnabled: Bool
     /// Named only when the input is failing — a quiet or dead mic is usually the wrong device, and
     /// the rest of the time the name is noise.
@@ -61,10 +63,7 @@ struct AmbientTakeBar: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(clock)
-                .font(.system(size: 11, weight: .medium))
-                .monospacedDigit()
-                .foregroundStyle(palette.textPrimary.opacity(0.9))
+            clock()
 
             separator
 
@@ -90,11 +89,6 @@ struct AmbientTakeBar: View {
             AmbientTextButton(title: "⎋ Cancel", tint: tint, action: onCancel)
         }
         .shadow(color: palette.textShadow, radius: 2, y: 1)
-    }
-
-    private var clock: String {
-        let total = Int(elapsed.rounded())
-        return String(format: "%d:%02d", total / 60, total % 60)
     }
 
     private var separator: some View {
