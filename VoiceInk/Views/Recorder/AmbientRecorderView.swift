@@ -60,7 +60,10 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     var recorder: Recorder
 
     @State private var healthMonitor = RecorderInputHealthMonitor()
+    @State private var silenceWatch = RecorderSilenceWatch()
     @State private var level: Double = 0
+    @State private var hasShownContextForTake = false
+    @State private var takeStartedAt: Date?
 
     /// Width of the light band at silence and at full level. Most of the band is positioned
     /// off-screen, so what you actually see is its inward falloff — light seeping in from the
@@ -95,8 +98,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     /// tighter object and the same 62pt bloom would swallow it.
     private var notchHalo: CGFloat {
         guard state != .hidden else { return 0 }
-        guard !reduceMotion else { return 16 }
-        return 9 + 16 * CGFloat(level)
+        guard !reduceMotion else { return 11 }
+        return 6 + 11 * CGFloat(level)
     }
 
     /// The edge wash steps back when the notch is carrying the signal.
@@ -132,34 +135,119 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             ZStack {
                 if state != .hidden {
                     frame
+                        .allowsHitTesting(false)
 
-                    if hasNotch {
-                        notchGlow(in: geo.size)
-                    } else if state == .working {
-                        perimeterProgress(in: geo.size)
+                    Group {
+                        if hasNotch {
+                            notchGlow(in: geo.size)
+                        } else if state == .working {
+                            perimeterProgress(in: geo.size)
+                        }
                     }
+                    .allowsHitTesting(false)
+                }
+
+                if let caption {
+                    AmbientCaption(
+                        kind: caption,
+                        tint: captionTint,
+                        onUndo: { Task { await stateProvider.undoResultPeek() } },
+                        onRetry: { stateProvider.retryResultPeek() },
+                        onKeepRecording: { silenceWatch.reset() }
+                    )
+                    .position(x: geo.size.width / 2, y: captionY)
+                    // Grows out of the notch rather than opening like a window.
+                    .transition(
+                        .scale(scale: 0.86, anchor: .top)
+                            .combined(with: .opacity)
+                            .combined(with: .offset(y: -10))
+                    )
                 }
             }
             .animation(.easeOut(duration: 0.14), value: bloomWidth)
             .animation(AppTheme.Motion.standard, value: state)
+            .animation(AppTheme.Motion.standard, value: caption)
         }
         .ignoresSafeArea()
-        .allowsHitTesting(false)
         .task(id: stateProvider.recordingState) {
             guard stateProvider.recordingState == .recording else {
                 healthMonitor.reset()
                 level = 0
                 return
             }
+            hasShownContextForTake = false
+            takeStartedAt = .now
+
             while !Task.isCancelled {
                 let meter = recorder.audioMeterSnapshot()
                 healthMonitor.ingest(meter)
+
+                if silenceWatch.ingest(isSilent: healthMonitor.health == .silent) {
+                    await stateProvider.stopTakeFromPanel()
+                    return
+                }
+
+                // The context line is an acknowledgement, not a status field — it says its piece
+                // at the start of the take and then gets out of the way.
+                if !hasShownContextForTake, contextMessage != nil,
+                    Date().timeIntervalSince(takeStartedAt ?? .now) > 3
+                {
+                    hasShownContextForTake = true
+                }
                 // Damped: track rises quickly, fall back slowly, so the border does not strobe.
                 let target = meter.averagePower
                 level = target > level ? level * 0.5 + target * 0.5 : level * 0.85 + target * 0.15
                 try? await Task.sleep(for: .milliseconds(100))
             }
         }
+    }
+
+    /// Sits just below the cutout, or below the menu bar on a display without one.
+    private var captionY: CGFloat {
+        (hasNotch ? notchHeight : 24) + 46
+    }
+
+    private var captionTint: Color {
+        state == .hidden ? AmbientState.working.color : state.color
+    }
+
+    /// Words only for the three cases light cannot carry, in priority order. Everything else stays
+    /// wordless, which is what keeps the caption meaningful when it does appear.
+    private var caption: AmbientCaptionKind? {
+        if let peek = stateProvider.resultPeek {
+            return .result(peek)
+        }
+        if let seconds = silenceWatch.secondsRemaining {
+            return .countdown(seconds)
+        }
+        if stateProvider.recordingState == .recording, healthMonitor.health.isProblem,
+            let label = healthMonitor.health.problemMessage
+        {
+            return .problem(label)
+        }
+        if stateProvider.recordingState == .recording, !hasShownContextForTake,
+            let summary = contextMessage
+        {
+            return .context(summary)
+        }
+        return nil
+    }
+
+    /// Named explicitly rather than as chips: without a panel there is no room for a legend, so
+    /// the sentence has to carry its own meaning.
+    private var contextMessage: String? {
+        let context = stateProvider.contextSummary
+        guard !context.isEmpty else { return nil }
+
+        var parts: [String] = []
+        if let words = context.selectedWordCount {
+            parts.append(String(format: String(localized: "selection · %lld words"), Int64(words)))
+        }
+        if context.hasScreenText { parts.append(String(localized: "screen")) }
+        if context.hasClipboardText { parts.append(String(localized: "clipboard")) }
+        guard !parts.isEmpty else { return nil }
+
+        return String(format: String(localized: "Sending %@"), parts.joined(separator: " · "))
     }
 
     private var shape: RoundedRectangle {
@@ -196,13 +284,14 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
         return ZStack {
             // Soft bloom bleeding outward from the cutout edge.
             shape
-                .stroke(state.color.opacity(0.9 * state.intensity), lineWidth: notchHalo)
-                .blur(radius: notchHalo * 0.55)
+                .stroke(state.color.opacity(0.45 * state.intensity), lineWidth: notchHalo)
+                .blur(radius: notchHalo * 0.7)
 
-            // Crisp contour so the halo has a defined source.
+            // Crisp contour so the halo has a defined source, kept faint — at full strength it
+            // outlined the cutout like a sticker instead of lighting it.
             shape
-                .stroke(state.color.opacity(0.85 * state.intensity), lineWidth: 1.5)
-                .blur(radius: 0.6)
+                .stroke(state.color.opacity(0.40 * state.intensity), lineWidth: 1)
+                .blur(radius: 0.8)
 
             // Progress laps the cutout rather than the whole screen — a far shorter circuit, so
             // the same duration reads as a much more legible rate of travel.

@@ -23,7 +23,10 @@ final class AmbientRecorderPanel: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = false
-        ignoresMouseEvents = true
+        // Not ignoring mouse events outright: the caption has buttons. Pass-through is handled
+        // precisely by the hosting view below, which returns nil everywhere the SwiftUI content is
+        // not hit-testable, so clicks fall to whatever is underneath.
+        ignoresMouseEvents = false
         canHide = false
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
@@ -32,6 +35,19 @@ final class AmbientRecorderPanel: NSPanel {
     func positionOnActiveScreen() {
         guard let screen = NSScreen.main else { return }
         setFrame(screen.frame, display: true)
+    }
+}
+
+/// A full-screen hosting view that only claims the clicks it actually draws something for.
+///
+/// `NSHostingView` returns itself for a hit anywhere in its bounds, which for a display-sized
+/// window means swallowing every click on the machine. Returning nil when SwiftUI's own hit-test
+/// resolves to the host itself lets AppKit pass the event to the window below.
+@MainActor
+final class AmbientPassthroughHostingView<Content: View>: NSHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let result = super.hitTest(point)
+        return result === self ? nil : result
     }
 }
 
@@ -65,7 +81,7 @@ final class AmbientWindowManager {
         let screenFrame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let newPanel = AmbientRecorderPanel(contentRect: screenFrame)
 
-        let host = NSHostingView(rootView: makeView())
+        let host = AmbientPassthroughHostingView(rootView: makeView())
         host.frame = NSRect(origin: .zero, size: screenFrame.size)
         host.autoresizingMask = [.width, .height]
         newPanel.contentView = host

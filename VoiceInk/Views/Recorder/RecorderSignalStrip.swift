@@ -32,6 +32,15 @@ enum RecorderInputHealth: Equatable {
         case .silent, .tooLoud: return AppTheme.Recorder.healthBad
         }
     }
+
+    /// Plain string for the ambient caption, which has no chip to put a LocalizedStringKey in.
+    var problemMessage: String? {
+        switch self {
+        case .silent: return String(localized: "Not hearing you")
+        case .tooLoud: return String(localized: "Too loud — ease off")
+        case .unknown, .clear: return nil
+        }
+    }
 }
 
 /// Classifies the microphone signal over a rolling window.
