@@ -64,6 +64,8 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
     @State private var level: Double = 0
     @State private var hasShownContextForTake = false
     @State private var takeStartedAt: Date?
+    /// Rolling voice history for the trace. ~2s at the 30Hz sample rate below.
+    @State private var trace: [Double] = []
 
     /// Width of the light band at silence and at full level. Most of the band is positioned
     /// off-screen, so what you actually see is its inward falloff — light seeping in from the
@@ -143,6 +145,10 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                         } else if state == .working {
                             perimeterProgress(in: geo.size)
                         }
+
+                        if state == .listening || state == .problem {
+                            voiceTrace(in: geo.size)
+                        }
                     }
                     .allowsHitTesting(false)
                 }
@@ -177,9 +183,23 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
             }
             hasShownContextForTake = false
             takeStartedAt = .now
+            trace = []
+            var tick = 0
 
             while !Task.isCancelled {
                 let meter = recorder.audioMeterSnapshot()
+
+                trace.append(meter.averagePower)
+                if trace.count > 64 { trace.removeFirst() }
+
+                tick += 1
+                // Every third tick: the monitor's windows are counted in samples and calibrated at
+                // 10Hz, so it must keep seeing that rate.
+                guard tick % 3 == 0 else {
+                    try? await Task.sleep(for: .milliseconds(33))
+                    continue
+                }
+
                 healthMonitor.ingest(meter)
 
                 if silenceWatch.ingest(isSilent: healthMonitor.health == .silent) {
@@ -197,14 +217,30 @@ struct AmbientRecorderView<S: RecorderStateProvider & Observable>: View {
                 // Damped: track rises quickly, fall back slowly, so the border does not strobe.
                 let target = meter.averagePower
                 level = target > level ? level * 0.5 + target * 0.5 : level * 0.85 + target * 0.15
-                try? await Task.sleep(for: .milliseconds(100))
+                try? await Task.sleep(for: .milliseconds(33))
             }
         }
     }
 
+    /// Hangs off the notch's straight bottom edge — the one line the hardware already draws — or
+    /// under the top edge of the display when there is no cutout.
+    private func voiceTrace(in size: CGSize) -> some View {
+        let width = hasNotch ? notchWidth + 120 : min(size.width * 0.42, 620)
+        let y = hasNotch ? notchHeight + 9 : 30
+
+        return AmbientVoiceTrace(
+            samples: trace,
+            tint: state.color,
+            intensity: state.intensity
+        )
+        .frame(width: width, height: 26)
+        .position(x: size.width / 2, y: y)
+    }
+
     /// Sits just below the cutout, or below the menu bar on a display without one.
     private var captionY: CGFloat {
-        (hasNotch ? notchHeight : 24) + 46
+        // Clears the voice trace rather than sitting on top of it.
+        (hasNotch ? notchHeight : 24) + 62
     }
 
     private var captionTint: Color {
