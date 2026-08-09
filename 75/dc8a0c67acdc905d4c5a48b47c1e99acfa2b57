@@ -1,0 +1,40 @@
+VoiceInk/Info.plist
+  s_b704eee06aa1c5::t_9a0a5e88b03943 14
+VoiceInk/Services/UpdaterViewModel.swift
+  s_b704eee06aa1c5::t_e0a88d76219e3b 55,130,135,138,142,150
+  s_b704eee06aa1c5::t_849ab6f751181c 4,152-160
+  s_b704eee06aa1c5::t_47e639946f9030 58,75,121-126
+  s_b704eee06aa1c5::t_0d96dac0c43603 1-3,5-13,16-28,30-34,36-50,53,56-57,59-61,76-103,105-120,127-129,131-134,137,139-140,143-145,151,161-162
+  s_b704eee06aa1c5::t_ad0e4f4bc417bf 14-15
+  s_b704eee06aa1c5::t_7c66f2a46b9fcf 149
+  s_b704eee06aa1c5::t_56e9f7c2f06770 29,35,51-52,54,62-69,74,104,141
+  s_b704eee06aa1c5::t_db625560694642 70-73,146-148
+  s_b704eee06aa1c5::t_d7c3282e3e1b95 136
+VoiceInk/Localizable.xcstrings
+  s_b704eee06aa1c5::t_ad0e4f4bc417bf 3581-3596
+  s_b704eee06aa1c5::t_d38a85a03a86d2 12096-12111,12128-12143,17608-17619
+VoiceInk/Views/Settings/SettingsView.swift
+  s_b704eee06aa1c5::t_56e9f7c2f06770 249,251-252
+VoiceInk/Views/Dashboard/DashboardContent.swift
+  s_b704eee06aa1c5::t_b85c8c5985d9d0 595
+  s_b704eee06aa1c5::t_56e9f7c2f06770 96-99
+  s_b704eee06aa1c5::t_9a0a5e88b03943 34,581-585,587-593,596
+  s_b704eee06aa1c5::t_0b91e1d3fac55f 586,610
+  s_b704eee06aa1c5::t_703ab750acb448 594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "75dc8a0c67acdc905d4c5a48b47c1e99acfa2b57",
+  "prompts": {},
+  "sessions": {
+    "s_b704eee06aa1c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe76b-a0e8-7da3-8abc-cd6910bcb6c4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
