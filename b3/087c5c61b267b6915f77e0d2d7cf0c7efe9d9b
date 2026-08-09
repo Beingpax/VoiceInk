@@ -1,0 +1,39 @@
+VoiceInk/Services/ModelPrewarmService.swift
+  s_2ff208db45d820::t_12cc028fd4b34a 115
+  s_2ff208db45d820::t_a44a814c2fdc8e 125
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppModelManager.swift
+  s_2ff208db45d820::t_8531914ebaca99 18-20,22-28,31-35,41,43-45,63-67,69,75,80,94-96,98-102,104-108,110-116,118,121-133,137-140,142,144-158,168-170,173-174,188,204,207-208,211,223-258
+  s_2ff208db45d820::t_12cc028fd4b34a 120,373,503
+  s_2ff208db45d820::t_d2964880b1c978 21,29-30,171-172,176-185,187,425,496
+  s_2ff208db45d820::t_5d14aa28da4bd8 325,329,338-344,346-350,352-353,359,363-370,372,390,400,402,426-427,429,440,469-474,476,485-489
+  s_2ff208db45d820::t_4f74bc022815a1 504
+  s_2ff208db45d820::t_71e1d38bc319c5 422-424,490-495,497-502
+  s_2ff208db45d820::t_0aec6427a8c16c 12-17,62,135
+  s_2ff208db45d820::t_0f530b92f69267 194-198,264,326-327,330-335,379-380,391-399,401,403-421,428,430-439,441
+  s_2ff208db45d820::t_45b0837a2ebdde 447
+  s_2ff208db45d820::t_c6994cc226ae63 134,136
+VoiceInk/Transcription/TranscribeCpp/Cohere/CohereTranscriptionService.swift
+  s_2ff208db45d820::t_a44a814c2fdc8e 25,87,104,142,145-148,164,175-183,237-244,246,278,292-301
+  s_2ff208db45d820::t_d2964880b1c978 86,102,291
+  s_2ff208db45d820::t_45afa3ef082f75 31,105-106,247-249,262-263,265-272,274-277
+  s_2ff208db45d820::t_12cc028fd4b34a 174,264,323
+  s_2ff208db45d820::t_4f74bc022815a1 363-366,368
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppModelCatalog.swift
+  s_2ff208db45d820::t_71e1d38bc319c5 36,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b3087c5c61b267b6915f77e0d2d7cf0c7efe9d9b",
+  "prompts": {},
+  "sessions": {
+    "s_2ff208db45d820": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe4b7-69f8-7940-b53e-0fdb7effd931",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
