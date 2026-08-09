@@ -1,0 +1,19 @@
+VoiceInk/Transcription/FluidAudio/FluidAudioModelManager.swift
+  s_2ff208db45d820::t_d3bbc4c29809f9 24-25,42,53-56,112-115,127-137,161-162,177-182,184-185,206-209,217-219,225,232-233,235-241,254-262,308,315-330,403-404,424-450,484-488,528-543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c603d91aad66ddef490b0ee2b4049d70d2978b3a",
+  "prompts": {},
+  "sessions": {
+    "s_2ff208db45d820": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe4b7-69f8-7940-b53e-0fdb7effd931",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
