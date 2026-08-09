@@ -1,0 +1,23 @@
+Makefile
+  s_2ff208db45d820::t_c05be558f56a4b 4,28,41-42,119
+BUILDING.md
+  s_2ff208db45d820::t_c05be558f56a4b 15,35,47-49,103-105,118-120,137
+.gitignore
+  s_2ff208db45d820::t_5e0a2238e47470 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ee22d5ae25f9b8e36c08f59e5dc2c5c81124d20",
+  "prompts": {},
+  "sessions": {
+    "s_2ff208db45d820": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe4b7-69f8-7940-b53e-0fdb7effd931",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
