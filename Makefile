@@ -1,7 +1,7 @@
 # Define a directory for dependencies in the user's home folder
 DEPS_DIR := $(HOME)/VoiceInk-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
-FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
+WHISPER_FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
 
 .PHONY: all clean whisper setup build local check healthcheck help dev run release release-setup
@@ -18,6 +18,7 @@ check:
 	@command -v git >/dev/null 2>&1 || { echo "git is not installed"; exit 1; }
 	@command -v xcodebuild >/dev/null 2>&1 || { echo "xcodebuild is not installed (need Xcode)"; exit 1; }
 	@command -v swift >/dev/null 2>&1 || { echo "swift is not installed"; exit 1; }
+	@command -v cmake >/dev/null 2>&1 || { echo "cmake is not installed (run: brew install cmake ninja)"; exit 1; }
 	@echo "Prerequisites OK"
 
 healthcheck: check
@@ -25,7 +26,7 @@ healthcheck: check
 # Build process
 whisper:
 	@mkdir -p $(DEPS_DIR)
-	@if [ ! -d "$(FRAMEWORK_PATH)" ]; then \
+	@if [ ! -d "$(WHISPER_FRAMEWORK_PATH)" ]; then \
 		echo "Building whisper.xcframework in $(DEPS_DIR)..."; \
 		if [ ! -d "$(WHISPER_CPP_DIR)" ]; then \
 			git clone https://github.com/ggerganov/whisper.cpp.git $(WHISPER_CPP_DIR); \
@@ -38,8 +39,8 @@ whisper:
 	fi
 
 setup: whisper
-	@echo "Whisper framework is ready at $(FRAMEWORK_PATH)"
-	@echo "Please ensure your Xcode project references the framework from this new location."
+	@echo "Whisper framework is ready at $(WHISPER_FRAMEWORK_PATH)"
+	@echo "Swift package dependencies are resolved by Xcode."
 
 build: setup
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" build
@@ -116,7 +117,7 @@ help:
 	@echo "Available targets:"
 	@echo "  check/healthcheck  Check if required CLI tools are installed"
 	@echo "  whisper            Clone and build whisper.cpp XCFramework"
-	@echo "  setup              Copy whisper XCFramework to VoiceInk project"
+	@echo "  setup              Prepare the local Whisper framework"
 	@echo "  build              Build the VoiceInk Xcode project"
 	@echo "  local              Build for local use (no Apple Developer certificate needed)"
 	@echo "  run                Launch the built VoiceInk app"

@@ -32,6 +32,7 @@ playground.xcworkspace
 .build/
 build/
 .local-build/
+*.profraw
 
 # CocoaPods
 #
@@ -99,4 +100,4 @@ Icon
 .AppleDesktop
 Network Trash Folder
 Temporary Items
-.apdisk 
+.apdisk

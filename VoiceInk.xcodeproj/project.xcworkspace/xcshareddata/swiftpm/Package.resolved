@@ -1,5 +1,5 @@
 {
-  "originHash" : "92f23ea9771bf7c4e072587ae3f8c003da396a7e6291a65c2ad4acb671979963",
+  "originHash" : "a16b09e2c0e3fee7d86fbd260972eb0b946296e1771f315691d250410632fd8c",
   "pins" : [
     {
       "identity" : "axswift",
@@ -228,10 +228,10 @@
     {
       "identity" : "transcribe-cpp-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/altic-dev/transcribe-cpp-swift.git",
+      "location" : "https://github.com/Beingpax/Transcribe-cpp-swift.git",
       "state" : {
-        "revision" : "a16df2905f9c715344374fd2d8dd97c2712a6d96",
-        "version" : "0.1.2"
+        "revision" : "fb1c1ad99e8939a69fcfb613417d9635fb77ef42",
+        "version" : "0.2.0-dev.856d7c1"
       }
     },
     {

@@ -9,10 +9,11 @@ Before you begin, ensure you have:
 - Xcode (latest version recommended)
 - Swift (latest version recommended)
 - Git (for cloning repositories)
+- CMake (`brew install cmake`)
 
 ## Quick Start with Makefile (Recommended)
 
-The easiest way to build VoiceInk is using the included Makefile, which automates the entire build process including building and linking the whisper framework.
+The easiest way to build VoiceInk is using the included Makefile. It builds the local Whisper framework; Xcode resolves Swift packages automatically.
 
 ### Simple Build Commands
 
@@ -32,7 +33,7 @@ make dev
 
 - `make check` or `make healthcheck` - Verify all required tools are installed
 - `make whisper` - Clone and build whisper.cpp XCFramework automatically
-- `make setup` - Prepare the whisper framework for linking
+- `make setup` - Prepare the local Whisper framework
 - `make build` - Build the VoiceInk Xcode project
 - `make local` - Build for local use (no Apple Developer certificate needed)
 - `make run` - Launch the built VoiceInk app
@@ -44,9 +45,9 @@ make dev
 ### How the Makefile Helps
 
 The Makefile automatically:
-1. **Manages Dependencies**: Creates a dedicated `~/VoiceInk-Dependencies` directory for all external frameworks
-2. **Builds Whisper Framework**: Clones whisper.cpp and builds the XCFramework with the correct configuration
-3. **Handles Framework Linking**: Sets up the whisper.xcframework in the proper location for Xcode to find
+1. **Manages Whisper**: Creates `~/VoiceInk-Dependencies` for the local framework
+2. **Builds Whisper**: Clones whisper.cpp and builds its XCFramework
+3. **Uses SwiftPM**: Xcode downloads and verifies package dependencies, including TranscribeCpp
 4. **Verifies Prerequisites**: Checks that git, xcodebuild, and swift are installed before building
 5. **Streamlines Development**: Provides convenient shortcuts for common development tasks
 
@@ -78,6 +79,30 @@ Your normal `make all` / `make build` commands are completely unaffected.
 
 ---
 
+## Transcription dependencies
+
+Whisper is built locally outside the source checkout:
+
+```text
+~/VoiceInk-Dependencies/whisper.cpp
+```
+
+Prepare it with:
+
+```bash
+make setup
+```
+
+TranscribeCpp is a remote Swift package pinned by the Xcode project:
+
+```text
+https://github.com/Beingpax/Transcribe-cpp-swift.git
+0.2.0-dev.856d7c1
+```
+
+SwiftPM downloads the checksummed native artifact automatically. No local
+transcribe.cpp checkout or manual framework setup is required.
+
 ## Manual Build Process (Alternative)
 
 If you prefer to build manually or need more control over the build process, follow these steps:
@@ -100,9 +125,8 @@ git clone https://github.com/Beingpax/VoiceInk.git
 cd VoiceInk
 ```
 
-2. Add the whisper.xcframework to your project:
-   - Drag and drop `../whisper.cpp/build-apple/whisper.xcframework` into the project navigator, or
-   - Add it manually in the "Frameworks, Libraries, and Embedded Content" section of project settings
+2. Run `make setup` for Whisper. Xcode resolves TranscribeCpp and the remaining
+   Swift packages; no drag-and-drop setup is required.
 
 3. Build and Run
    - Build the project using Cmd+B or Product > Build
@@ -115,9 +139,8 @@ cd VoiceInk
    - Install any required Xcode Command Line Tools
 
 2. **Dependencies**
-   - The project uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) for transcription
-   - Ensure the whisper.xcframework is properly linked in your Xcode project
-   - Test the whisper.cpp installation independently before proceeding
+   - The project uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) and [TranscribeCpp for Swift](https://github.com/Beingpax/Transcribe-cpp-swift)
+   - Ensure Whisper is built and Xcode has resolved Swift packages
 
 3. **Building for Development**
    - Use the Debug configuration for development
@@ -134,6 +157,6 @@ If you encounter any build issues:
 2. Clean the build cache (Cmd+Shift+K twice)
 3. Check Xcode and macOS versions
 4. Verify all dependencies are properly installed
-5. Make sure whisper.xcframework is properly built and linked
+5. Run `make setup` to rebuild Whisper and reset Xcode package caches if needed
 
 For more help, please check the [issues](https://github.com/Beingpax/VoiceInk/issues) section or create a new issue.
