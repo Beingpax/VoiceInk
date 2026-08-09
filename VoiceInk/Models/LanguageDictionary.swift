@@ -130,6 +130,10 @@ enum LanguageDictionary {
         "zh-CN": "Mandarin Chinese",
     ]
 
+    static let cohereTranscribe = forCodes([
+        "ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh",
+    ])
+
     private static func languages(matching codes: Set<String>) -> [String: String] {
         all.filter { codes.contains($0.key) }
     }

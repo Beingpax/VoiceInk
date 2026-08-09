@@ -112,7 +112,8 @@ final class ModelPrewarmService: ObservableObject {
             return false
         }
 
-        // Only prewarm local models (Parakeet and Whisper need ANE compilation)
+        // Only prewarm local models. This prepares their runtime before the user
+        // starts a transcription, while each service remains responsible for cleanup.
         guard
             let model = ModeRuntimeResolver.transcriptionConfiguration(
                 transcriptionModelManager: transcriptionModelManager
@@ -122,7 +123,7 @@ final class ModelPrewarmService: ObservableObject {
         }
 
         switch model.provider {
-        case .whisper, .fluidAudio:
+        case .whisper, .fluidAudio, .transcribeCpp:
             return true
         default:
             logger.notice("Skipping prewarm - cloud models don't need it")

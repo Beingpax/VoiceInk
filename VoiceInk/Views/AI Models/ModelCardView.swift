@@ -42,6 +42,10 @@ struct ModelCardView: View {
                         fluidAudioModelManager: fluidAudioModelManager
                     )
                 }
+            case .transcribeCpp:
+                if let transcribeCppModel = model as? TranscribeCppModel {
+                    TranscribeCppModelCardView(model: transcribeCppModel)
+                }
             case .nativeApple:
                 if let nativeAppleModel = model as? NativeAppleModel {
                     NativeAppleModelCardView(

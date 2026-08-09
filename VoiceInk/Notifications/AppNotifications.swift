@@ -7,6 +7,7 @@ extension Notification.Name {
     static let toggleRecorderPanel = Notification.Name("toggleRecorderPanel")
     static let dismissRecorderPanel = Notification.Name("dismissRecorderPanel")
     static let didChangeModel = Notification.Name("didChangeModel")
+    static let transcribeCppModelDeleted = Notification.Name("transcribeCppModelDeleted")
     static let aiProviderKeyChanged = Notification.Name("aiProviderKeyChanged")
     static let licenseCelebrationRequested = Notification.Name("licenseCelebrationRequested")
     static let navigateToDestination = Notification.Name("navigateToDestination")

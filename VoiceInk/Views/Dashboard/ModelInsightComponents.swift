@@ -348,6 +348,9 @@ private struct ModelProviderIdentity {
         if let model = TranscriptionModelRegistry.models.first(where: { model in
             namesMatch(model.displayName, trimmedName) || namesMatch(model.name, trimmedName)
         }) {
+            if let transcribeCppModel = model as? TranscribeCppModel {
+                return transcribeCppIdentity(publisher: transcribeCppModel.publisher)
+            }
             return identity(for: model.provider)
         }
 
@@ -355,6 +358,10 @@ private struct ModelProviderIdentity {
             || trimmedName.localizedCaseInsensitiveContains("nemotron")
         {
             return identity(for: .fluidAudio)
+        }
+
+        if trimmedName.localizedCaseInsensitiveContains("cohere") {
+            return transcribeCppIdentity(publisher: "Cohere")
         }
 
         if trimmedName.localizedCaseInsensitiveContains("apple") {
@@ -429,6 +436,10 @@ private struct ModelProviderIdentity {
             displayName = "Parakeet"
             providerKey = "Parakeet"
             fallbackSystemImage = "waveform"
+        case .transcribeCpp:
+            displayName = "On-Device"
+            providerKey = "On-Device"
+            fallbackSystemImage = "waveform.badge.magnifyingglass"
         case .nativeApple:
             displayName = "Apple Speech"
             providerKey = "Native Apple"
@@ -452,6 +463,14 @@ private struct ModelProviderIdentity {
                 cloudProvider: cloudProvider
             ),
             fallbackSystemImage: fallbackSystemImage
+        )
+    }
+
+    private static func transcribeCppIdentity(publisher: String) -> ModelProviderIdentity {
+        ModelProviderIdentity(
+            providerName: publisher,
+            descriptor: descriptor(displayName: publisher, providerKey: publisher),
+            fallbackSystemImage: "waveform.badge.magnifyingglass"
         )
     }
 

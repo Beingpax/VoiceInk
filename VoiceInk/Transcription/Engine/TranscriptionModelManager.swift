@@ -9,6 +9,7 @@ class TranscriptionModelManager: ObservableObject {
 
     private weak var whisperModelManager: WhisperModelManager?
     private weak var fluidAudioModelManager: FluidAudioModelManager?
+    private let transcribeCppModelManager = TranscribeCppModelManager.shared
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionModelManager")
 
@@ -23,12 +24,18 @@ class TranscriptionModelManager: ObservableObject {
         fluidAudioModelManager.onModelDeleted = { [weak self] modelName in
             self?.handleModelDeleted(modelName)
         }
+        transcribeCppModelManager.onModelDeleted = { [weak self] modelName in
+            self?.handleModelDeleted(modelName)
+        }
 
         // Wire up "models changed" callbacks so this manager rebuilds allAvailableModels.
         whisperModelManager.onModelsChanged = { [weak self] in
             self?.refreshAllAvailableModels()
         }
         fluidAudioModelManager.onModelsChanged = { [weak self] in
+            self?.refreshAllAvailableModels()
+        }
+        transcribeCppModelManager.onModelsChanged = { [weak self] in
             self?.refreshAllAvailableModels()
         }
     }
@@ -42,6 +49,8 @@ class TranscriptionModelManager: ObservableObject {
                 return whisperModelManager?.availableModels.contains { $0.name == model.name } ?? false
             case .fluidAudio:
                 return fluidAudioModelManager?.isFluidAudioModelDownloaded(named: model.name) ?? false
+            case .transcribeCpp:
+                return transcribeCppModelManager.isModelDownloaded(named: model.name)
             case .nativeApple:
                 if #available(macOS 26, *) { return true } else { return false }
             case .custom:
@@ -146,7 +155,7 @@ class TranscriptionModelManager: ObservableObject {
 
     // MARK: - Handle model deletion callback
 
-    /// Called by WhisperModelManager.onModelDeleted or FluidAudioModelManager.onModelDeleted.
+    /// Called when one of the local model managers deletes a model.
     func handleModelDeleted(_ modelName: String) {
         if currentTranscriptionModel?.name == modelName {
             currentTranscriptionModel = nil

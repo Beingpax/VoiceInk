@@ -17458,19 +17458,19 @@
         }
       }
     },
-    "Turn this on if transcriptions with local models are taking longer than expected. Runs silent background transcription on app launch and wake to trigger optimization." : {
+    "Turn this on if local transcriptions take longer than expected. It prepares the selected model in the background when the app launches or wakes." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aktiviere diese Option, wenn Transkriptionen mit lokalen Modellen länger als erwartet dauern. Führt beim App-Start und Aufwachen im Hintergrund stille Transkriptionen aus, um die Optimierung anzustoßen."
+            "value" : "Aktiviere diese Option, wenn lokale Transkriptionen länger als erwartet dauern. Das ausgewählte Modell wird beim Start oder Aufwachen der App im Hintergrund vorbereitet."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "如果本地模型转写耗时超出预期，请开启此选项。App 在启动和唤醒时会静默运行后台转写，以触发优化。"
+            "value" : "如果本地转写耗时超出预期，请开启此选项。App 启动或唤醒时会在后台准备所选模型。"
           }
         }
       }

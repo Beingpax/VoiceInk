@@ -17,6 +17,16 @@ class TranscriptionServiceRegistry {
     private(set) lazy var cloudTranscriptionService = CloudTranscriptionService(modelContext: modelContext)
     private(set) lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private(set) lazy var fluidAudioTranscriptionService = FluidAudioTranscriptionService()
+    private var cachedTranscribeCppTranscriptionService: TranscribeCppTranscriptionService?
+
+    var transcribeCppTranscriptionService: TranscribeCppTranscriptionService {
+        if let cachedTranscribeCppTranscriptionService {
+            return cachedTranscribeCppTranscriptionService
+        }
+        let service = TranscribeCppTranscriptionService()
+        cachedTranscribeCppTranscriptionService = service
+        return service
+    }
 
     init(modelProvider: any WhisperModelProvider, modelsDirectory: URL, modelContext: ModelContext) {
         self.modelProvider = modelProvider
@@ -30,6 +40,8 @@ class TranscriptionServiceRegistry {
             return localTranscriptionService
         case .fluidAudio:
             return fluidAudioTranscriptionService
+        case .transcribeCpp:
+            return transcribeCppTranscriptionService
         case .nativeApple:
             return nativeAppleTranscriptionService
         default:
@@ -73,5 +85,6 @@ class TranscriptionServiceRegistry {
 
     func cleanup() async {
         await fluidAudioTranscriptionService.cleanup()
+        cachedTranscribeCppTranscriptionService?.cleanup()
     }
 }

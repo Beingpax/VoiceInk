@@ -4,6 +4,7 @@ import Foundation
 enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case whisper = "Whisper"
     case fluidAudio = "Parakeet"
+    case transcribeCpp = "TranscribeCpp"
     case groq = "Groq"
     case elevenLabs = "ElevenLabs"
     case deepgram = "Deepgram"
@@ -20,9 +21,13 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let raw = try container.decode(String.self)
-        // "Local" was the raw value before renaming to "Whisper"
+        // Preserve previously stored provider values across provider renames.
         if raw == "Local" {
             self = .whisper
+            return
+        }
+        if raw == "Cohere" {
+            self = .transcribeCpp
             return
         }
         guard let value = ModelProvider(rawValue: raw) else {
@@ -101,6 +106,23 @@ struct FluidAudioModel: TranscriptionModel {
         self.supportsStreaming = supportsStreaming
         self.supportedLanguages = supportedLanguages
     }
+}
+
+/// A local GGUF transcription model served by the reusable transcribe.cpp backend.
+struct TranscribeCppModel: TranscriptionModel, Sendable {
+    let id = UUID()
+    let name: String
+    let displayName: String
+    let description: String
+    let provider: ModelProvider = .transcribeCpp
+    let size: String
+    let speed: Double
+    let accuracy: Double
+    let ramUsage: Double
+    let publisher: String
+    let supportedLanguages: [String: String]
+
+    var isMultilingualModel: Bool { supportedLanguages.count > 1 }
 }
 
 // A new struct for cloud models

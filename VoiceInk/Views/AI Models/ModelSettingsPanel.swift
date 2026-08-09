@@ -166,7 +166,7 @@ private struct AdvancedModelSettingsSection: View {
                 HStack(spacing: 4) {
                     Text("Prewarm model (Experimental)")
                     InfoTip(
-                        "Turn this on if transcriptions with local models are taking longer than expected. Runs silent background transcription on app launch and wake to trigger optimization."
+                        "Turn this on if local transcriptions take longer than expected. It prepares the selected model in the background when the app launches or wakes."
                     )
                 }
             }

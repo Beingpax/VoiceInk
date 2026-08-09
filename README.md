@@ -91,6 +91,7 @@ If you encounter any issues or have questions, please:
 ### Core Technology
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - High-performance inference of OpenAI's Whisper model
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) - Used for Parakeet model implementation
+- [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) - Local GGUF inference for Cohere Transcribe
 
 ### Essential Dependencies
 - [Sparkle](https://github.com/sparkle-project/Sparkle) - Keeping VoiceInk up to date

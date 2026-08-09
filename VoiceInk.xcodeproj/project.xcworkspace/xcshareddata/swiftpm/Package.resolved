@@ -226,6 +226,15 @@
       }
     },
     {
+      "identity" : "transcribe-cpp-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/altic-dev/transcribe-cpp-swift.git",
+      "state" : {
+        "revision" : "a16df2905f9c715344374fd2d8dd97c2712a6d96",
+        "version" : "0.1.2"
+      }
+    },
+    {
       "identity" : "yyjson",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ibireme/yyjson.git",
