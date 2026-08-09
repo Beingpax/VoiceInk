@@ -1,0 +1,20 @@
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppModelManager.swift
+  s_2ff208db45d820::t_dd882a8cd846be 12,17,36-37,41,50,59-77,80-81,97-106,110,115,117,119,122,127,129,131
+  s_2ff208db45d820::t_5bfc9bb6f8df24 140,263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35ed6674b6f1e62f5f13b6bcd2f6de34062d515e",
+  "prompts": {},
+  "sessions": {
+    "s_2ff208db45d820": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe4b7-69f8-7940-b53e-0fdb7effd931",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
