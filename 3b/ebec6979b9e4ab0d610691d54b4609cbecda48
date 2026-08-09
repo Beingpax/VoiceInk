@@ -1,0 +1,19 @@
+VoiceInk/WindowManager.swift
+  s_b704eee06aa1c5::t_127a85c425c3d3 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3bebec6979b9e4ab0d610691d54b4609cbecda48",
+  "prompts": {},
+  "sessions": {
+    "s_b704eee06aa1c5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe76b-a0e8-7da3-8abc-cd6910bcb6c4",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
