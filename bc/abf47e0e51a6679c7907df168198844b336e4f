@@ -1,0 +1,19 @@
+VoiceInk/Transcription/TranscribeCpp/Cohere/CohereTranscriptionService.swift
+  s_2ff208db45d820::t_c5e2f44fbdf5f0 363
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bcabf47e0e51a6679c7907df168198844b336e4f",
+  "prompts": {},
+  "sessions": {
+    "s_2ff208db45d820": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe4b7-69f8-7940-b53e-0fdb7effd931",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
