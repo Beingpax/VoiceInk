@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 
+@MainActor
 enum StarterModeFactory {
     static let defaultTranscriptionModelName = "parakeet-tdt-0.6b-v3"
 

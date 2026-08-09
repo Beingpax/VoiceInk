@@ -102,6 +102,7 @@ private final class BackupOptions: NSObject {
     }
 }
 
+@MainActor
 class ImportExportService {
     static let shared = ImportExportService()
     private let currentSettingsVersion: String

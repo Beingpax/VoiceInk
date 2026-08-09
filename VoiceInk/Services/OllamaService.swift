@@ -2,25 +2,26 @@ import Foundation
 import LLMkit
 import SwiftUI
 
-class OllamaService: ObservableObject {
+@Observable
+final class OllamaService: @unchecked Sendable {
     static let defaultBaseURL = "http://localhost:11434"
 
     // MARK: - Published Properties
-    @Published var baseURL: String {
+    var baseURL: String {
         didSet {
             UserDefaults.standard.set(baseURL, forKey: "ollamaBaseURL")
         }
     }
 
-    @Published var selectedModel: String {
+    var selectedModel: String {
         didSet {
             UserDefaults.standard.set(selectedModel, forKey: "ollamaSelectedModel")
         }
     }
 
-    @Published var availableModels: [OllamaModel] = []
-    @Published var isConnected: Bool = false
-    @Published var isLoadingModels: Bool = false
+    var availableModels: [OllamaModel] = []
+    var isConnected: Bool = false
+    var isLoadingModels: Bool = false
 
     private let defaultTemperature: Double = 0.3
 

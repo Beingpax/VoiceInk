@@ -111,7 +111,9 @@ actor VoiceInkRefineInferenceEngine {
             let maximumOutputTokens = Self.maximumOutputTokens(
                 forInputTokenCount: inputTokenCount
             )
-            let session = makeSession(
+            // ChatSession is not Sendable, but this one is created, used and discarded entirely
+            // within this actor's serial execution and never escapes.
+            nonisolated(unsafe) let session = makeSession(
                 using: modelContainer,
                 systemPrompt: systemPrompt,
                 maximumOutputTokens: maximumOutputTokens
@@ -190,7 +192,9 @@ actor VoiceInkRefineInferenceEngine {
 
             guard !isWarmed else { return }
 
-            let warmupSession = makeSession(
+            // ChatSession is not Sendable, but this one is created, used and discarded entirely
+            // within this actor's serial execution and never escapes.
+            nonisolated(unsafe) let warmupSession = makeSession(
                 using: container,
                 systemPrompt: systemPrompt,
                 maximumOutputTokens: 1

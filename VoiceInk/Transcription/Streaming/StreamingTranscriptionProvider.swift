@@ -42,7 +42,7 @@ enum StreamingTranscriptionError: LocalizedError {
 }
 
 /// Protocol for streaming transcription providers.
-protocol StreamingTranscriptionProvider: AnyObject {
+protocol StreamingTranscriptionProvider: AnyObject, Sendable {
     /// Provider-specific decision made when the user stops recording.
     var stopDisposition: StreamingStopDisposition { get }
 

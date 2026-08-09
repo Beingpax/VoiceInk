@@ -1,6 +1,8 @@
 import Foundation
 
-final class VoiceInkRefineXPCService: NSObject, VoiceInkRefineXPCProtocol {
+/// All mutable state is guarded by `taskLock`, so this is safe to hand across isolation
+/// boundaries — which XPC requires, since connections are serviced off the main actor.
+final class VoiceInkRefineXPCService: NSObject, VoiceInkRefineXPCProtocol, @unchecked Sendable {
     private let engine = VoiceInkRefineInferenceEngine()
     private let taskLock = NSLock()
     private var activeTasks: [UUID: Task<Void, Never>] = [:]
@@ -11,6 +13,8 @@ final class VoiceInkRefineXPCService: NSObject, VoiceInkRefineXPCProtocol {
         _ requestData: NSData,
         withReply reply: @escaping (NSError?) -> Void
     ) {
+        // XPC reply blocks are safe to call once from any thread; the ObjC import cannot express that.
+        nonisolated(unsafe) let reply = reply
         let request: VoiceInkRefinePrepareRequest
         do {
             request = try JSONDecoder().decode(
@@ -59,6 +63,8 @@ final class VoiceInkRefineXPCService: NSObject, VoiceInkRefineXPCProtocol {
         _ requestData: NSData,
         withReply reply: @escaping (NSData?, NSError?) -> Void
     ) {
+        // XPC reply blocks are safe to call once from any thread; the ObjC import cannot express that.
+        nonisolated(unsafe) let reply = reply
         let request: VoiceInkRefineEnhanceRequest
         do {
             request = try JSONDecoder().decode(
@@ -113,6 +119,7 @@ final class VoiceInkRefineXPCService: NSObject, VoiceInkRefineXPCProtocol {
     }
 
     func shutdown(withReply reply: @escaping () -> Void) {
+        nonisolated(unsafe) let reply = reply
         let shutdownTask = beginShutdownIfNeeded(cancelActiveTasks: false)
         Task(priority: .utility) {
             await shutdownTask.value

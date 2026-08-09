@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct VoiceInkRefineModelCardView: View {
-    @ObservedObject var service: VoiceInkRefineService
+    var service: VoiceInkRefineService
     let deleteAction: () -> Void
 
     var body: some View {

@@ -2,6 +2,8 @@ import Foundation
 
 enum TranscriptionModelRegistry {
 
+    /// Reads `CustomCloudModelManager`, which is main-actor isolated.
+    @MainActor
     static var models: [any TranscriptionModel] {
         return predefinedModels + CustomCloudModelManager.shared.customModels
     }

@@ -1,7 +1,8 @@
 import Foundation
 import SwiftData
 
-class LastTranscriptionService: ObservableObject {
+@Observable
+class LastTranscriptionService {
 
     static func getLastTranscription(from modelContext: ModelContext) -> Transcription? {
         var descriptor = FetchDescriptor<Transcription>(
@@ -98,6 +99,7 @@ class LastTranscriptionService: ObservableObject {
         }
     }
 
+    @MainActor
     static func retryLastTranscription(
         from modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager,
         serviceRegistry: TranscriptionServiceRegistry, enhancementService: AIEnhancementService?

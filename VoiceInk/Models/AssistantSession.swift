@@ -22,9 +22,10 @@ enum AssistantPhase: Equatable {
 }
 
 @MainActor
-final class AssistantSession: ObservableObject {
-    @Published private(set) var phase: AssistantPhase = .inactive
-    @Published private(set) var messages: [AssistantDisplayMessage] = []
+@Observable
+final class AssistantSession {
+    private(set) var phase: AssistantPhase = .inactive
+    private(set) var messages: [AssistantDisplayMessage] = []
 
     private(set) var provider: AIProvider?
     private(set) var modelName: String?

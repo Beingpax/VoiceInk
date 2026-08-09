@@ -2,13 +2,13 @@ import SwiftUI
 
 struct AppCardBackground: View {
     var isSelected: Bool = false
-    var cornerRadius: CGFloat = 12
+    var cornerRadius: CGFloat = AppTheme.Radius.card
 
     var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(AppTheme.Surface.card)
             .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(
                         isSelected ? AppTheme.Selection.border : AppTheme.Border.subtle,
                         lineWidth: isSelected ? 1.5 : 1
@@ -19,7 +19,7 @@ struct AppCardBackground: View {
 
 struct AppMaterialCardBackground: View {
     var isSelected: Bool = false
-    var cornerRadius: CGFloat = 12
+    var cornerRadius: CGFloat = AppTheme.Radius.card
 
     static let fill = AppTheme.Surface.materialCard
 
@@ -32,10 +32,10 @@ struct AppMaterialCardBackground: View {
     }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius)
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(Self.fill)
             .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(
                         Self.border(for: isSelected),
                         lineWidth: Self.lineWidth(for: isSelected)

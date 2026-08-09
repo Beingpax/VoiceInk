@@ -38,7 +38,7 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
 }
 
 // A unified protocol for any transcription model
-protocol TranscriptionModel: Identifiable, Hashable {
+protocol TranscriptionModel: Identifiable, Hashable, Sendable {
     var id: UUID { get }
     var name: String { get }
     var displayName: String { get }

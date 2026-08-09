@@ -5,7 +5,7 @@ import os
 @MainActor
 protocol TranscriptionSession: AnyObject {
     /// Prepares the session. Returns an audio chunk callback for streaming, or nil for file-based.
-    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)?
+    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> (@Sendable (Data) -> Void)?
 
     /// Called after recording stops. Returns the final transcribed text.
     func transcribe(audioURL: URL) async throws -> String
@@ -27,7 +27,7 @@ final class FileTranscriptionSession: TranscriptionSession {
         self.service = service
     }
 
-    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)? {
+    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> (@Sendable (Data) -> Void)? {
         self.model = configuration.model
         self.context = configuration.requestContext.scoped(to: configuration.model)
         return nil
@@ -64,7 +64,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
         self.fallbackService = fallbackService
     }
 
-    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)? {
+    func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> (@Sendable (Data) -> Void)? {
         let model = configuration.model
         let context = configuration.requestContext.scoped(to: model)
 
@@ -74,7 +74,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         // Return callback immediately; WebSocket connects in background
         let service = streamingService
-        let callback: (Data) -> Void = { [weak service] data in
+        let callback: @Sendable (Data) -> Void = { [weak service] data in
             service?.sendAudioChunk(data)
         }
 

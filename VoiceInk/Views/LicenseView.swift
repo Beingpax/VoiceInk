@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LicenseView: View {
-    @ObservedObject private var licenseViewModel = LicenseViewModel.shared
+    private let licenseViewModel = LicenseViewModel.shared
     @State private var licenseKeyDraft = ""
 
     var body: some View {

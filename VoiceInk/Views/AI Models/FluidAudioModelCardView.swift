@@ -3,11 +3,11 @@ import SwiftUI
 
 struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
-    @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
+    var fluidAudioModelManager: FluidAudioModelManager
 
     init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager) {
         self.model = model
-        _fluidAudioModelManager = ObservedObject(wrappedValue: fluidAudioModelManager)
+        self.fluidAudioModelManager = fluidAudioModelManager
     }
 
     var isDownloaded: Bool {

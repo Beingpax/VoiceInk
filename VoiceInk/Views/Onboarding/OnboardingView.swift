@@ -3,11 +3,13 @@ import SwiftUI
 
 struct OnboardingView: View {
     @Binding var hasCompletedOnboardingV2: Bool
-    @EnvironmentObject var fluidAudioModelManager: FluidAudioModelManager
-    @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject var aiService: AIService
-    @EnvironmentObject var enhancementService: AIEnhancementService
-    @StateObject private var coordinator = OnboardingCoordinator()
+    @Environment(FluidAudioModelManager.self) var fluidAudioModelManager
+    @Environment(TranscriptionModelManager.self) var transcriptionModelManager
+    @Environment(AIService.self) var aiService
+    @Environment(AIEnhancementService.self) var enhancementService
+    @State private var coordinator = OnboardingCoordinator()
+    @State private var isShowingSkipOnboardingConfirmation = false
+
     let contentMaxWidth: CGFloat = 560
 
     var body: some View {

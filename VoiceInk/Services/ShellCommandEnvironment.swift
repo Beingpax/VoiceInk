@@ -3,7 +3,8 @@ import Foundation
 
 enum ShellCommandEnvironment {
     private static let shellPathQueue = DispatchQueue(label: "com.prakashjoshipax.voiceink.shell.path")
-    private static var cachedPreferredPATH: String?
+    // Guarded by `shellPathQueue`; the compiler cannot see the queue discipline.
+    nonisolated(unsafe) private static var cachedPreferredPATH: String?
     private static let inheritedEnvironmentKeys = [
         "HOME",
         "USER",

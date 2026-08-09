@@ -9,7 +9,8 @@ import os
 
 // Meet Whisper C++ constraint: Don't access from more than one thread at a time.
 actor WhisperContext {
-    private var context: OpaquePointer?
+    // Owned for the actor's lifetime and freed in deinit, which carries no isolation.
+    nonisolated(unsafe) private var context: OpaquePointer?
     private var language: String?
     private var languageCString: [CChar]?
     private var prompt: String?

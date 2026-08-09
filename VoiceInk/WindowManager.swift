@@ -2,8 +2,14 @@ import AppKit
 import SwiftUI
 
 enum AppWindowLayout {
+    /// Size the window opens at. Not a constraint — the window is freely resizable from here.
     static let width: CGFloat = 950
-    static let minimumHeight: CGFloat = 730
+    static let defaultHeight: CGFloat = 730
+
+    /// Smallest size every surface is laid out to survive. Below roughly 820pt the mode grid and
+    /// the dashboard insight cards start colliding.
+    static let minimumWidth: CGFloat = 820
+    static let minimumHeight: CGFloat = 560
 }
 
 enum AppWindowID {
@@ -42,6 +48,7 @@ enum AppPresentationPolicy {
     }
 }
 
+@MainActor
 class WindowManager: NSObject {
     static let shared = WindowManager()
 
@@ -88,8 +95,7 @@ class WindowManager: NSObject {
         window.level = .normal
         window.isOpaque = false
         window.isMovableByWindowBackground = false
-        window.minSize = NSSize(width: AppWindowLayout.width, height: AppWindowLayout.minimumHeight)
-        window.maxSize = NSSize(width: AppWindowLayout.width, height: CGFloat.greatestFiniteMagnitude)
+        window.minSize = NSSize(width: AppWindowLayout.minimumWidth, height: AppWindowLayout.minimumHeight)
         window.setFrameAutosaveName(Self.mainWindowAutosaveName)
         applyInitialPlacementIfNeeded(to: window)
         registerMainWindowIfNeeded(window)
@@ -152,18 +158,23 @@ class WindowManager: NSObject {
         didApplyInitialPlacement = true
     }
 
+    /// Brings a restored frame up to the minimum size if needed. A window the user has sized
+    /// larger keeps its dimensions — this only clamps, it never resets to the default size.
     private func enforceMainWindowFrameIfNeeded(on window: NSWindow, preserveRestoredOrigin: Bool) {
         let currentFrame = window.frame
-        guard currentFrame.width != AppWindowLayout.width || currentFrame.height < AppWindowLayout.minimumHeight else {
+        let restoredWidth = preserveRestoredOrigin ? currentFrame.width : AppWindowLayout.width
+        let width = max(restoredWidth, AppWindowLayout.minimumWidth)
+        let height = max(currentFrame.height, AppWindowLayout.minimumHeight)
+
+        guard width != currentFrame.width || height != currentFrame.height else {
             return
         }
 
-        let height = max(currentFrame.height, AppWindowLayout.minimumHeight)
-        let x = preserveRestoredOrigin ? currentFrame.origin.x : currentFrame.midX - (AppWindowLayout.width / 2)
+        let x = preserveRestoredOrigin ? currentFrame.origin.x : currentFrame.midX - (width / 2)
         let frame = NSRect(
             x: x,
             y: currentFrame.maxY - height,
-            width: AppWindowLayout.width,
+            width: width,
             height: height
         )
         window.setFrame(frame, display: true)

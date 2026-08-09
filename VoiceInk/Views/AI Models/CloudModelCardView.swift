@@ -6,7 +6,7 @@ import SwiftUI
 struct CloudModelCardView: View {
     let model: CloudModel
 
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
     @State private var isExpanded = false
     @State private var apiKey = ""
 

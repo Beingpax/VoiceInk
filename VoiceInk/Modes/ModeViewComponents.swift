@@ -50,9 +50,9 @@ struct ModeEmptyStateView: View {
 }
 
 struct ModeConfigurationsGrid: View {
-    @ObservedObject var modeManager: ModeManager
+    @Bindable var modeManager: ModeManager
     let onEditConfig: (ModeConfig) -> Void
-    @EnvironmentObject var enhancementService: AIEnhancementService
+    @Environment(AIEnhancementService.self) var enhancementService
 
     var body: some View {
         LazyVStack(spacing: 12) {
@@ -107,8 +107,8 @@ struct ConfigurationRow: View {
     let isEditing: Bool
     let modeManager: ModeManager
     let onEditConfig: (ModeConfig) -> Void
-    @EnvironmentObject var enhancementService: AIEnhancementService
-    @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
+    @Environment(AIEnhancementService.self) var enhancementService
+    @Environment(TranscriptionModelManager.self) var transcriptionModelManager
     @State private var isHovering = false
 
     private let maxAppIconsToShow = 5

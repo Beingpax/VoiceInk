@@ -6,7 +6,9 @@ enum LicenseKeychainKeys {
     static let activationId = "voiceink.license.activationId"
 }
 
-struct LicenseKeychainAccessibilityMigration {
+/// Both stored dependencies are thread-safe; neither `UserDefaults` nor `KeychainService` can say
+/// so in the type system, which is the same gap already bridged for `KeychainService` itself.
+struct LicenseKeychainAccessibilityMigration: @unchecked Sendable {
     private let keychain: KeychainService
     private let defaults: UserDefaults
     private let migrationKey = "VoiceInkLicenseAccessibilityMigrationV1"

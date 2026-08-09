@@ -22,14 +22,14 @@ enum ModelFilter: String, CaseIterable, Identifiable {
 }
 
 struct ModelManagementView: View {
-    @EnvironmentObject private var aiService: AIService
-    @EnvironmentObject private var whisperModelManager: WhisperModelManager
-    @EnvironmentObject private var fluidAudioModelManager: FluidAudioModelManager
-    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
-    @StateObject private var customModelManager = CustomCloudModelManager.shared
-    @StateObject private var customAIProviderManager = CustomAIProviderManager.shared
-    @ObservedObject private var warmupCoordinator = WhisperModelWarmupCoordinator.shared
-    @ObservedObject private var voiceInkRefineService = VoiceInkRefineService.shared
+    @Environment(AIService.self) private var aiService
+    @Environment(WhisperModelManager.self) private var whisperModelManager
+    @Environment(FluidAudioModelManager.self) private var fluidAudioModelManager
+    @Environment(TranscriptionModelManager.self) private var transcriptionModelManager
+    private let customModelManager = CustomCloudModelManager.shared
+    private let customAIProviderManager = CustomAIProviderManager.shared
+    private let warmupCoordinator = WhisperModelWarmupCoordinator.shared
+    private let voiceInkRefineService = VoiceInkRefineService.shared
 
     @State private var selectedFilter: ModelFilter = .local
     @State private var activePanel: ModelManagementPanel?
@@ -133,8 +133,8 @@ struct ModelManagementView: View {
             settingsPanelContent
         case .cloudProvider(let descriptor):
             ProviderDetailPanel(descriptor: descriptor, onClose: closePanel)
-                .environmentObject(aiService)
-                .environmentObject(transcriptionModelManager)
+                .environment(aiService)
+                .environment(transcriptionModelManager)
                 .id(descriptor.id)
         case .customTranscriptionModel(let model):
             CustomTranscriptionModelEditorPanel(
@@ -178,8 +178,8 @@ struct ModelManagementView: View {
                     selectedProviderID: selectedCloudProviderID,
                     onSelectProvider: openCloudProviderPanel
                 )
-                .environmentObject(aiService)
-                .environmentObject(transcriptionModelManager)
+                .environment(aiService)
+                .environment(transcriptionModelManager)
             case .custom:
                 CustomProviderManagementView(
                     customModelManager: customModelManager,
@@ -259,7 +259,7 @@ struct ModelManagementView: View {
             importLocalModelButton
 
             LocalEnhancementServiceManagementView()
-                .environmentObject(aiService)
+                .environment(aiService)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

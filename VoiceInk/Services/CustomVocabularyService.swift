@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-class CustomVocabularyService {
+final class CustomVocabularyService: Sendable {
     static let shared = CustomVocabularyService()
 
     private init() {}

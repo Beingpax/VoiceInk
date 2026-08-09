@@ -3,7 +3,9 @@ import LLMkit
 import SwiftData
 
 /// AssemblyAI streaming provider wrapping `LLMkit.AssemblyAIStreamingClient`.
-final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider, @unchecked Sendable {
 
     private let client = LLMkit.AssemblyAIStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?

@@ -34,15 +34,26 @@ enum GitHubCLIStarService {
 
     // MARK: - gh binary resolution
 
-    private static var cachedGhPath: String?
-    private static var didResolveGhPath = false
+    /// Resolved once and remembered. Isolated to an actor rather than left as bare statics, which
+    /// this branch's strict concurrency correctly rejects: two concurrent callers would otherwise
+    /// race on the cache. The search itself still runs off the actor.
+    private actor GhPathCache {
+        static let shared = GhPathCache()
+
+        private var cached: String?
+        private var didResolve = false
+
+        func path() async -> String? {
+            if didResolve { return cached }
+            let resolved = await GitHubCLIStarService.findGhPath()
+            cached = resolved
+            didResolve = true
+            return resolved
+        }
+    }
 
     private static func resolveGhPath() async -> String? {
-        if didResolveGhPath { return cachedGhPath }
-        let resolved = await findGhPath()
-        cachedGhPath = resolved
-        didResolveGhPath = true
-        return resolved
+        await GhPathCache.shared.path()
     }
 
     private static func findGhPath() async -> String? {

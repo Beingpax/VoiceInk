@@ -36,7 +36,9 @@ enum CloudTranscriptionError: Error, LocalizedError {
     }
 }
 
-class CloudTranscriptionService: TranscriptionService {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class CloudTranscriptionService: TranscriptionService, @unchecked Sendable {
     private let modelContext: ModelContext
     private lazy var openAICompatibleService = OpenAICompatibleTranscriptionService()
 

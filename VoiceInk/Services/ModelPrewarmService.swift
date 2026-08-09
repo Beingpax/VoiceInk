@@ -4,11 +4,14 @@ import SwiftData
 import os
 
 @MainActor
-final class ModelPrewarmService: ObservableObject {
+@Observable
+final class ModelPrewarmService {
     private let transcriptionModelManager: TranscriptionModelManager
     private let whisperModelManager: WhisperModelManager
     private let modelContext: ModelContext
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ModelPrewarm")
+    // Not observable state — the macro cannot synthesize storage for a `lazy` property.
+    @ObservationIgnored
     private lazy var serviceRegistry = TranscriptionServiceRegistry(
         modelProvider: whisperModelManager,
         modelsDirectory: whisperModelManager.modelsDirectory,

@@ -8,7 +8,8 @@ private enum LicenseStorageError: Error {
 }
 
 @MainActor
-final class LicenseViewModel: ObservableObject {
+@Observable
+final class LicenseViewModel {
     enum LicenseState: Equatable {
         case unlicensed
         case trial(daysRemaining: Int)
@@ -18,13 +19,13 @@ final class LicenseViewModel: ObservableObject {
 
     static let shared = LicenseViewModel()
 
-    @Published private(set) var licenseState: LicenseState = .unlicensed
-    @Published private(set) var licenseKey = ""
-    @Published var isValidating = false
-    @Published private(set) var isDeactivating = false
-    @Published var validationMessage: String?
-    @Published var validationSuccess = false
-    @Published private(set) var activationsLimit = 0
+    private(set) var licenseState: LicenseState = .unlicensed
+    private(set) var licenseKey = ""
+    var isValidating = false
+    private(set) var isDeactivating = false
+    var validationMessage: String?
+    var validationSuccess = false
+    private(set) var activationsLimit = 0
 
     private let trialPeriodDays = 7
     private let polarService: any PolarServicing
@@ -42,8 +43,12 @@ final class LicenseViewModel: ObservableObject {
     private var isPersistentStateAvailable = false
     private var persistentStateErrorStatus: OSStatus?
     private var validationMessageIsStorageRelated = false
-    private var retryTask: Task<Void, Never>?
-    private var stateRefreshTask: Task<Void, Never>?
+    // `deinit` is nonisolated under Swift 6 and cannot touch main-actor state, but these still
+    // have to be cancelled when the object goes away. `Task.cancel()` is explicitly safe to call
+    // from any thread, which makes this one of the few places the escape hatch is the right answer
+    // rather than a shortcut.
+    nonisolated(unsafe) private var retryTask: Task<Void, Never>?
+    nonisolated(unsafe) private var stateRefreshTask: Task<Void, Never>?
 
     private let pendingRemovalKey = "VoiceInkLicenseRemovalPending"
 

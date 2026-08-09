@@ -2,19 +2,19 @@ import SwiftUI
 
 struct MenuBarView: View {
     @Environment(\.openWindow) private var openWindow
-    @EnvironmentObject var engine: VoiceInkEngine
-    @EnvironmentObject var recorderUIManager: RecorderUIManager
-    @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
-    @EnvironmentObject var whisperModelManager: WhisperModelManager
-    @EnvironmentObject var recordingShortcutManager: RecordingShortcutManager
-    @EnvironmentObject var menuBarManager: MenuBarManager
-    @EnvironmentObject var mainWindowNavigation: MainWindowNavigation
-    @EnvironmentObject var updaterViewModel: UpdaterViewModel
-    @EnvironmentObject var enhancementService: AIEnhancementService
-    @EnvironmentObject var aiService: AIService
-    @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
-    @ObservedObject private var modeManager = ModeManager.shared
-    @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
+    @Environment(VoiceInkEngine.self) var engine
+    @Environment(RecorderUIManager.self) var recorderUIManager
+    @Environment(TranscriptionModelManager.self) var transcriptionModelManager
+    @Environment(WhisperModelManager.self) var whisperModelManager
+    @Environment(RecordingShortcutManager.self) var recordingShortcutManager
+    @Environment(MenuBarManager.self) var menuBarManager
+    @Environment(MainWindowNavigation.self) var mainWindowNavigation
+    @Environment(UpdaterViewModel.self) var updaterViewModel
+    @Environment(AIEnhancementService.self) var enhancementService
+    @Environment(AIService.self) var aiService
+    private let launchAtLoginManager = LaunchAtLoginManager.shared
+    private let modeManager = ModeManager.shared
+    let audioDeviceManager = AudioDeviceManager.shared
     @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
 
     var body: some View {

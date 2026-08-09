@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OnboardingAPIScreen: View {
-    @ObservedObject var aiService: AIService
+    var aiService: AIService
 
     let contentMaxWidth: CGFloat
     let providerOptions: [AIProvider]

@@ -20,6 +20,7 @@ enum ShortcutStore {
         return rawShortcut(for: action)
     }
 
+    @MainActor
     static func setShortcut(_ shortcut: Shortcut?, for action: ShortcutAction) {
         guard action.isStored else {
             return
@@ -49,6 +50,7 @@ enum ShortcutStore {
         )
     }
 
+    @MainActor
     static func seedShortcut(
         _ shortcut: Shortcut,
         for action: ShortcutAction,
@@ -64,6 +66,7 @@ enum ShortcutStore {
         setShortcut(shortcut, for: action)
     }
 
+    @MainActor
     static func removeShortcutStorage(for action: ShortcutAction) {
         guard action.isStored else {
             return

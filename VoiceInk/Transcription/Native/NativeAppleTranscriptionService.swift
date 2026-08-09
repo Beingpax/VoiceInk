@@ -8,7 +8,9 @@ import os
 
 /// Transcription service that leverages the new SpeechAnalyzer / SpeechTranscriber API available on macOS 26 (Tahoe).
 /// Falls back with an unsupported-provider error on earlier OS versions so the application can gracefully degrade.
-class NativeAppleTranscriptionService: TranscriptionService {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class NativeAppleTranscriptionService: TranscriptionService, @unchecked Sendable {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NativeAppleTranscriptionService")
 
     enum ServiceError: Error, LocalizedError {
@@ -107,9 +109,12 @@ class NativeAppleTranscriptionService: TranscriptionService {
 
             let modules: [any SpeechModule] = [assetContext.transcriber]
             let analyzer = SpeechAnalyzer(modules: modules)
+            // The transcriber is consumed by exactly one task; the Speech framework types are
+            // not marked Sendable, so hoist it explicitly rather than capturing assetContext.
+            nonisolated(unsafe) let transcriber = assetContext.transcriber
             let resultTask = Task<String, Error> {
                 var transcript = ""
-                for try await result in assetContext.transcriber.results {
+                for try await result in transcriber.results {
                     transcript += String(result.text.characters)
                 }
                 return transcript

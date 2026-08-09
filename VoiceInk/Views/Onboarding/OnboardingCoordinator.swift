@@ -1,72 +1,76 @@
 import SwiftUI
 
 @MainActor
-final class OnboardingCoordinator: ObservableObject {
+@Observable
+final class OnboardingCoordinator {
     let licenseViewModel = LicenseViewModel.shared
-    @Published var licenseKeyDraft = ""
+    var licenseKeyDraft = ""
 
-    @Published var storedStage: String {
+    var storedStage: String {
         didSet {
             defaults.set(storedStage, forKey: OnboardingStorageKeys.stage)
         }
     }
 
-    @Published var storedActivePermission: String {
+    var storedActivePermission: String {
         didSet {
             defaults.set(storedActivePermission, forKey: OnboardingStorageKeys.activePermission)
         }
     }
 
-    @Published var hasRequestedScreenRecording: Bool {
+    var hasRequestedScreenRecording: Bool {
         didSet {
             defaults.set(hasRequestedScreenRecording, forKey: OnboardingStorageKeys.requestedScreenRecording)
         }
     }
 
-    @Published var experienceStepIndex: Int {
+    var experienceStepIndex: Int {
         didSet {
             defaults.set(experienceStepIndex, forKey: OnboardingStorageKeys.experienceIndex)
         }
     }
 
-    @Published var storedOnboardingAIProvider: String {
+    var storedOnboardingAIProvider: String {
         didSet {
             defaults.set(storedOnboardingAIProvider, forKey: OnboardingStorageKeys.aiProvider)
         }
     }
 
-    @Published var storedTranscriptionSetupKind: String {
+    var storedTranscriptionSetupKind: String {
         didSet {
             defaults.set(storedTranscriptionSetupKind, forKey: OnboardingStorageKeys.transcriptionSetupKind)
         }
     }
 
-    @Published var storedOnboardingTranscriptionProvider: String {
+    var storedOnboardingTranscriptionProvider: String {
         didSet {
             defaults.set(storedOnboardingTranscriptionProvider, forKey: OnboardingStorageKeys.transcriptionProvider)
         }
     }
 
-    @Published var hasSkippedAPISetup: Bool {
+    var hasSkippedAPISetup: Bool {
         didSet {
             defaults.set(hasSkippedAPISetup, forKey: OnboardingStorageKeys.skippedAPISetup)
         }
     }
 
-    @Published var permissionStatuses: [OnboardingPermissionKind: OnboardingPermissionStatus] = [:]
-    @Published var isSelectedTranscriptionProviderVerified = false
-    @Published var isSelectedAPIProviderVerified = false
-    @Published var isShowingSkipAPISetupWarning = false
-    @Published var hasExperienceModeShortcut = false
-    @Published var isExperienceModeInstalled = false
-    @Published var experienceTextByKind: [OnboardingExperienceKind: String] = [:]
-    @Published var isExperienceInIntroPhase = true
-    @Published var clearedExperienceShortcutActions: Set<ShortcutAction> = []
+    var permissionStatuses: [OnboardingPermissionKind: OnboardingPermissionStatus] = [:]
+    var isSelectedTranscriptionProviderVerified = false
+    var isSelectedAPIProviderVerified = false
+    var isShowingSkipAPISetupWarning = false
+    var hasExperienceModeShortcut = false
+    var isExperienceModeInstalled = false
+    var experienceTextByKind: [OnboardingExperienceKind: String] = [:]
+    var isExperienceInIntroPhase = true
+    var clearedExperienceShortcutActions: Set<ShortcutAction> = []
 
     let defaults: UserDefaults
-    var refreshTask: Task<Void, Never>?
-    lazy var flow = OnboardingFlowController(coordinator: self)
-    lazy var permissions = OnboardingPermissionController(coordinator: self)
+
+    // Lifecycle handle and lazily-built sub-controllers: none are observable state, and the
+    // macro cannot synthesize storage for `lazy` properties.
+    @ObservationIgnored var refreshTask: Task<Void, Never>?
+    @ObservationIgnored lazy var flow = OnboardingFlowController(coordinator: self)
+    @ObservationIgnored lazy var permissions = OnboardingPermissionController(coordinator: self)
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults

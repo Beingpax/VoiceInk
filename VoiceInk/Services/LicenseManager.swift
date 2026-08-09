@@ -19,7 +19,9 @@ enum TrialStartResult: Equatable {
     case unavailable
 }
 
-protocol LicenseStoring {
+/// Sendable for the same reason as `PolarServicing`: it is held by a main-actor view model and the
+/// conforming storage is itself thread-safe.
+protocol LicenseStoring: Sendable {
     func loadStoredState() -> LicenseStorageLoadResult
     func storeLicense(key: String, activationId: String?) -> Bool
     func startTrialIfNeeded(at date: Date) -> TrialStartResult
@@ -28,7 +30,7 @@ protocol LicenseStoring {
 }
 
 /// Persists license data in the device-local Data Protection Keychain.
-final class LicenseManager: LicenseStoring {
+final class LicenseManager: LicenseStoring, Sendable {
     static let shared = LicenseManager()
 
     private let keychain = KeychainService.shared

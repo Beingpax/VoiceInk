@@ -16,12 +16,17 @@ enum AudioInputMode: String, CaseIterable {
     case prioritized = "Prioritized"
 }
 
-class AudioDeviceManager: ObservableObject {
+@MainActor
+@Observable
+class AudioDeviceManager {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AudioDeviceManager")
-    @Published var availableDevices: [(id: AudioDeviceID, uid: String, name: String)] = []
-    @Published var selectedDeviceID: AudioDeviceID?
-    @Published var inputMode: AudioInputMode = .custom
-    @Published var prioritizedDevices: [PrioritizedDevice] = []
+    /// Reachable from the nonisolated CoreAudio listener setup.
+    nonisolated static let staticLogger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink", category: "AudioDeviceManager")
+    var availableDevices: [(id: AudioDeviceID, uid: String, name: String)] = []
+    var selectedDeviceID: AudioDeviceID?
+    var inputMode: AudioInputMode = .custom
+    var prioritizedDevices: [PrioritizedDevice] = []
 
     var isRecordingActive: Bool = false
 
@@ -387,7 +392,11 @@ class AudioDeviceManager: ObservableObject {
         fallbackToDefaultDevice()
     }
 
-    private func setupDeviceChangeNotifications() {
+    /// Must be `nonisolated`: the listener below is invoked by CoreAudio on its own dispatch
+    /// queue. When this function was main-actor isolated the closure inherited that isolation and
+    /// the runtime asserted it on every device change, trapping in
+    /// `_swift_task_checkIsolatedSwift` whenever headphones were plugged or unplugged.
+    nonisolated private func setupDeviceChangeNotifications() {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
             mScope: kAudioObjectPropertyScopeGlobal,
@@ -400,8 +409,10 @@ class AudioDeviceManager: ObservableObject {
             systemObjectID,
             &address,
             { (_, _, _, userData) -> OSStatus in
-                let manager = Unmanaged<AudioDeviceManager>.fromOpaque(userData!).takeUnretainedValue()
-                DispatchQueue.main.async {
+                guard let userData else { return noErr }
+                let manager = Unmanaged<AudioDeviceManager>.fromOpaque(userData).takeUnretainedValue()
+                // Arrives on a CoreAudio queue — hop explicitly rather than assuming isolation.
+                Task { @MainActor in
                     manager.handleDeviceListChange()
                 }
                 return noErr
@@ -410,7 +421,7 @@ class AudioDeviceManager: ObservableObject {
         )
 
         if status != noErr {
-            logger.error("Failed to add device change listener: \(status, privacy: .public)")
+            Self.staticLogger.error("Failed to add device change listener: \(status, privacy: .public)")
         }
     }
 

@@ -50,9 +50,10 @@ struct CustomPrompt: Identifiable, Codable, Equatable {
 
 // MARK: - UI Extensions
 extension CustomPrompt {
+    @MainActor
     func promptIcon(
-        isSelected: Bool, onTap: @escaping () -> Void, onEdit: ((CustomPrompt) -> Void)? = nil,
-        onDelete: ((CustomPrompt) -> Void)? = nil
+        isSelected: Bool, onTap: @escaping () -> Void, onEdit: (@MainActor (CustomPrompt) -> Void)? = nil,
+        onDelete: (@MainActor (CustomPrompt) -> Void)? = nil
     ) -> some View {
         HStack(spacing: 6) {
             Text(title)

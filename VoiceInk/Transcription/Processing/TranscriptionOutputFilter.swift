@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 struct TranscriptionOutputFilter {
     private static let hallucinationPatterns = [
         #"\[.*?\]"#,  // []

@@ -153,9 +153,9 @@ final class OnboardingPermissionController {
     }
 
     private func requestAccessibility() {
-        let options: NSDictionary = [
-            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
-        ]
+        // `kAXTrustedCheckOptionPrompt` imports as a mutable global, which Swift 6 rejects. The
+        // key's value is stable API, so use it directly.
+        let options: NSDictionary = ["AXTrustedCheckOptionPrompt": true]
         AXIsProcessTrustedWithOptions(options)
         openPrivacySettings(.accessibility)
         startPollingPermissionStatus()

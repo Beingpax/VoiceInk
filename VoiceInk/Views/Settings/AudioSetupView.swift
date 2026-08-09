@@ -2,9 +2,9 @@ import CoreAudio
 import SwiftUI
 
 struct AudioSetupView: View {
-    @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
-    @ObservedObject private var mediaController = MediaController.shared
-    @ObservedObject private var playbackController = PlaybackController.shared
+    private let audioDeviceManager = AudioDeviceManager.shared
+    @Bindable private var mediaController = MediaController.shared
+    @Bindable private var playbackController = PlaybackController.shared
     @State private var microphoneSourceBeforePriorityOrder: MicrophoneSourceSelection = .systemDefault
     @State private var refreshIconRotation = 0.0
 

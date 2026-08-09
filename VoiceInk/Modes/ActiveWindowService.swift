@@ -2,9 +2,11 @@ import AppKit
 import Foundation
 import os
 
-class ActiveWindowService: ObservableObject {
+@MainActor
+@Observable
+class ActiveWindowService {
     static let shared = ActiveWindowService()
-    @Published var currentApplication: NSRunningApplication?
+    var currentApplication: NSRunningApplication?
     private let browserURLService = BrowserURLService.shared
 
     private let logger = Logger(

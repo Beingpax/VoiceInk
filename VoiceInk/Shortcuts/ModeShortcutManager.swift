@@ -5,7 +5,7 @@ class ModeShortcutManager {
     private let shortcutMonitor = ShortcutMonitor()
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
-    private var shortcutChangeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var shortcutChangeObserver: NSObjectProtocol?
 
     init(
         modeProvider: @escaping @MainActor () -> RecordingShortcutManager.Mode,

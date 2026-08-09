@@ -2,10 +2,11 @@ import Combine
 import Foundation
 
 @MainActor
-final class WhisperModelWarmupCoordinator: ObservableObject {
+@Observable
+final class WhisperModelWarmupCoordinator {
     static let shared = WhisperModelWarmupCoordinator()
 
-    @Published private(set) var warmingModels: Set<String> = []
+    private(set) var warmingModels: Set<String> = []
 
     private init() {}
 

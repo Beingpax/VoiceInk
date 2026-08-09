@@ -3,7 +3,9 @@ import LLMkit
 import SwiftData
 
 /// Cartesia Ink 2 streaming provider wrapping `LLMkit.CartesiaStreamingClient`.
-final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
+/// Conforms to a `Sendable` protocol: instances are handed between the engine's isolation
+/// domains, and internal mutable state is guarded by locks or confined to one task.
+final class CartesiaStreamingProvider: StreamingTranscriptionProvider, @unchecked Sendable {
 
     private let client = LLMkit.CartesiaStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?

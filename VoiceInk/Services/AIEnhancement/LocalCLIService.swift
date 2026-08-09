@@ -32,7 +32,7 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
     }
 }
 
-final class LocalCLIService {
+final class LocalCLIService: @unchecked Sendable {
     static let commandTemplateKey = "localCLICommandTemplate"
     static let selectedTemplateKey = "localCLISelectedTemplate"
     static let timeoutSecondsKey = "localCLITimeoutSeconds"

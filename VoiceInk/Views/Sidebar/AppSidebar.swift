@@ -1,58 +1,37 @@
 import SwiftUI
 
+enum AppSidebarLayout {
+    static let minimumWidth: CGFloat = 200
+    static let idealWidth: CGFloat = 220
+    static let maximumWidth: CGFloat = 280
+}
+
 struct AppSidebar: View {
     @Binding var selectedView: ViewType
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            sidebarBackground
-            sidebarDivider
-            sidebarContent
-        }
-        .frame(width: 220)
-        .frame(maxHeight: .infinity)
-        .onAppear {
-            ViewType.assertSidebarItemsCoverAllCases()
-        }
-    }
+        // A real List rather than a VStack: this is what gives the app keyboard navigation
+        // between destinations, and what lets detail views host .searchable and .toolbar.
+        List(selection: $selectedView) {
+            Section {
+                ForEach(ViewType.primaryItems) { viewType in
+                    SidebarItemLabel(viewType: viewType, isSelected: selectedView == viewType)
+                        .tag(viewType)
+                }
+            }
 
-    private var sidebarContent: some View {
-        VStack(spacing: 0) {
-            sidebarSection(ViewType.primaryItems)
-                .padding(.top, 10)
-
-            Spacer(minLength: 16)
-
-            sidebarSection(ViewType.secondaryItems)
-                .padding(.bottom, 14)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var sidebarBackground: some View {
-        VisualEffectView(material: .sidebar, blendingMode: .behindWindow)
-            .ignoresSafeArea(.container, edges: .top)
-    }
-
-    private var sidebarDivider: some View {
-        Rectangle()
-            .fill(AppTheme.Border.control.opacity(0.55))
-            .frame(width: 1)
-            .ignoresSafeArea(.container, edges: .top)
-    }
-
-    private func sidebarSection(_ items: [ViewType]) -> some View {
-        VStack(spacing: 3) {
-            ForEach(items) { viewType in
-                SidebarItemButton(
-                    viewType: viewType,
-                    isSelected: selectedView == viewType
-                ) {
-                    selectedView = viewType
+            Section {
+                ForEach(ViewType.secondaryItems) { viewType in
+                    SidebarItemLabel(viewType: viewType, isSelected: selectedView == viewType)
+                        .tag(viewType)
                 }
             }
         }
-        .padding(.horizontal, 10)
+        .listStyle(.sidebar)
+        .environment(\.defaultMinListRowHeight, 38)
+        .onAppear {
+            ViewType.assertSidebarItemsCoverAllCases()
+        }
     }
 }
 
@@ -111,11 +90,11 @@ private extension ViewType {
         case .models:
             return .init(background: AppTheme.Sidebar.models)
         case .audio:
-            return .init(background: AppTheme.Sidebar.fallback)
+            return .init(background: AppTheme.Sidebar.audio)
         case .dictionary:
             return .init(background: AppTheme.Sidebar.dictionary)
         case .history:
-            return .init(background: AppTheme.Sidebar.audio)
+            return .init(background: AppTheme.Sidebar.history)
         case .transcribeAudio:
             return .init(background: AppTheme.Sidebar.transcribeAudio)
         case .settings:
@@ -131,63 +110,29 @@ private struct SidebarIconStyle {
     var foreground: Color = .white
 }
 
-private struct SidebarItemButton: View {
+/// The row content. Selection highlight comes from the enclosing `List`, so this only draws the
+/// icon tile and title — that keeps VoiceInk's colored-tile identity while inheriting native
+/// selection, hover and keyboard behaviour.
+private struct SidebarItemLabel: View {
     let viewType: ViewType
     let isSelected: Bool
-    let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 9) {
-                SidebarIconTile(
-                    systemName: viewType.icon,
-                    style: viewType.sidebarIconStyle
-                )
+        HStack(spacing: 9) {
+            SidebarIconTile(
+                systemName: viewType.icon,
+                style: viewType.sidebarIconStyle
+            )
 
-                Text(viewType.title)
-                    .font(.system(size: 13.5, weight: isSelected ? .semibold : .medium))
-                    .lineLimit(1)
+            Text(viewType.title)
+                .font(AppTheme.Typography.label.weight(isSelected ? .semibold : .medium))
+                .lineLimit(1)
 
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(isSelected ? selectedForegroundColor : Color.primary)
-            .padding(.leading, 8)
-            .padding(.trailing, 10)
-            .frame(height: 38)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(rowBackground)
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 2)
         .help(viewType.title)
         .accessibilityLabel(viewType.title)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .animation(.easeInOut(duration: 0.12), value: isSelected)
-    }
-
-    private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(rowBackgroundColor)
-            .overlay {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(rowBorderColor, lineWidth: 1)
-            }
-    }
-
-    private var rowBackgroundColor: Color {
-        if isSelected {
-            return Color(nsColor: .selectedContentBackgroundColor)
-        }
-
-        return .clear
-    }
-
-    private var rowBorderColor: Color {
-        isSelected ? selectedForegroundColor.opacity(0.18) : .clear
-    }
-
-    private var selectedForegroundColor: Color {
-        Color(nsColor: .alternateSelectedControlTextColor)
     }
 }
 

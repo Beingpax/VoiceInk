@@ -2,8 +2,8 @@ import LLMkit
 import SwiftUI
 
 struct APIKeyManagementView: View {
-    @EnvironmentObject private var aiService: AIService
-    @ObservedObject private var customAIProviderManager = CustomAIProviderManager.shared
+    @Environment(AIService.self) private var aiService
+    private let customAIProviderManager = CustomAIProviderManager.shared
     @State private var apiKey: String = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -31,6 +31,8 @@ struct APIKeyManagementView: View {
     }
 
     var body: some View {
+        @Bindable var aiService = aiService
+
         Section("AI Provider Integration") {
             HStack {
                 Picker("Provider", selection: $aiService.selectedProvider) {

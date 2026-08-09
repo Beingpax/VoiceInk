@@ -31,6 +31,11 @@ final class Transcription {
     var modeEmoji: String?
     var transcriptionStatus: String?
 
+    /// Pinned transcripts sort ahead of everything else in History and survive age-based cleanup.
+    /// Defaulted so SwiftData can migrate existing stores without a versioned schema.
+    var isPinned: Bool = false
+    var tags: [String] = []
+
     init(
         text: String,
         duration: TimeInterval,
@@ -63,6 +68,27 @@ final class Transcription {
         self.modeName = modeName
         self.modeEmoji = modeEmoji
         self.transcriptionStatus = transcriptionStatus.rawValue
+        self.isPinned = false
+        self.tags = []
+    }
+
+    // MARK: - Organisation
+
+    var normalizedTags: [String] {
+        tags
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    func addTag(_ tag: String) {
+        let normalized = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return }
+        guard !tags.contains(where: { $0.caseInsensitiveCompare(normalized) == .orderedSame }) else { return }
+        tags.append(normalized)
+    }
+
+    func removeTag(_ tag: String) {
+        tags.removeAll { $0.caseInsensitiveCompare(tag) == .orderedSame }
     }
 
     func markAsCanceledTranscription(

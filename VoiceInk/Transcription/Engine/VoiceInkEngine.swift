@@ -8,7 +8,7 @@ import os
 private final class RealtimeAudioChunkGate: @unchecked Sendable {
     private struct State {
         var bufferedChunks: [Data] = []
-        var callback: ((Data) -> Void)?
+        var callback: (@Sendable (Data) -> Void)?
         var isActive = false
         var droppedChunks = 0
     }
@@ -17,7 +17,7 @@ private final class RealtimeAudioChunkGate: @unchecked Sendable {
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     func receive(_ data: Data) {
-        let callback = state.withLock { state -> ((Data) -> Void)? in
+        let callback = state.withLock { state -> (@Sendable (Data) -> Void)? in
             guard state.isActive else {
                 if state.bufferedChunks.count < maxBufferedChunks {
                     state.bufferedChunks.append(data)
@@ -31,7 +31,7 @@ private final class RealtimeAudioChunkGate: @unchecked Sendable {
         callback?(data)
     }
 
-    func activate(_ callback: @escaping (Data) -> Void) -> Int {
+    func activate(_ callback: @escaping @Sendable (Data) -> Void) -> Int {
         let initialState = state.withLock { state -> (chunks: [Data], droppedChunks: Int) in
             state.callback = callback
             state.isActive = false
@@ -82,7 +82,8 @@ private final class RealtimeAudioChunkGate: @unchecked Sendable {
 }
 
 @MainActor
-class VoiceInkEngine: NSObject, ObservableObject {
+@Observable
+class VoiceInkEngine: NSObject {
     private enum RecordingUseCase {
         case newSession
         case assistantFollowUp
@@ -92,9 +93,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
     }
 
-    @Published var recordingState: RecordingState = .idle
-    @Published var shouldCancelRecording = false
-    @Published var partialTranscript: String = ""
+    var recordingState: RecordingState = .idle
+    var shouldCancelRecording = false
+    var partialTranscript: String = ""
     var currentSession: TranscriptionSession?
     private var currentSessionTranscriptionConfiguration: TranscriptionRuntimeConfiguration?
     private var activeRecordingStartID: UUID?

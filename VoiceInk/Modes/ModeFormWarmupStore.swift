@@ -1,4 +1,3 @@
-import Combine
 import Foundation
 
 struct ModeFormWarmupSnapshot {
@@ -65,6 +64,7 @@ struct ModeFormWarmupSnapshot {
         aiModelsByProvider[provider] ?? []
     }
 
+    @MainActor
     func selectedModel(for provider: AIProvider) -> String {
         selectedAIModelsByProvider[provider] ?? provider.defaultModel
     }
@@ -80,20 +80,22 @@ struct ModeFormWarmupSnapshot {
 }
 
 @MainActor
-final class ModeFormWarmupStore: ObservableObject {
+@Observable
+final class ModeFormWarmupStore {
     static let shared = ModeFormWarmupStore()
 
-    @Published private(set) var snapshot = ModeFormWarmupSnapshot.empty
-    @Published private(set) var installedApps: [InstalledAppInfo] = []
-    @Published private(set) var isLoadingInstalledApps = false
+    private(set) var snapshot = ModeFormWarmupSnapshot.empty
+    private(set) var installedApps: [InstalledAppInfo] = []
+    private(set) var isLoadingInstalledApps = false
 
     private weak var aiService: AIService?
     private weak var enhancementService: AIEnhancementService?
     private weak var transcriptionModelManager: TranscriptionModelManager?
 
-    private var cancellables = Set<AnyCancellable>()
-    private var notificationObservers: [NSObjectProtocol] = []
-    private var pendingSnapshotRefresh: DispatchWorkItem?
+    // Lifecycle handles, not observable state — deinit must reach them directly.
+    nonisolated(unsafe) private var snapshotObserver: ObservationBridge?
+    nonisolated(unsafe) private var notificationObservers: [NSObjectProtocol] = []
+    nonisolated(unsafe) private var pendingSnapshotRefresh: DispatchWorkItem?
     private var hasSnapshot = false
 
     private init() {}
@@ -118,9 +120,7 @@ final class ModeFormWarmupStore: ObservableObject {
 
         if dependenciesChanged {
             installChangeObservers()
-        }
-
-        if dependenciesChanged || !hasSnapshot {
+        } else if !hasSnapshot {
             refreshSnapshot()
         }
         loadInstalledAppsIfNeeded()
@@ -174,33 +174,16 @@ final class ModeFormWarmupStore: ObservableObject {
     }
 
     private func installChangeObservers() {
-        cancellables.removeAll()
+        snapshotObserver?.cancel()
         notificationObservers.forEach(NotificationCenter.default.removeObserver)
         notificationObservers.removeAll()
 
-        aiService?.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.scheduleSnapshotRefresh()
-                }
-            }
-            .store(in: &cancellables)
-
-        enhancementService?.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.scheduleSnapshotRefresh()
-                }
-            }
-            .store(in: &cancellables)
-
-        transcriptionModelManager?.objectWillChange
-            .sink { [weak self] _ in
-                Task { @MainActor in
-                    self?.scheduleSnapshotRefresh()
-                }
-            }
-            .store(in: &cancellables)
+        // Observation tracks exactly the properties the snapshot reads, so this both builds the
+        // snapshot and re-arms on the next relevant change — narrower and cheaper than the three
+        // `objectWillChange` subscriptions it replaces.
+        snapshotObserver = ObservationBridge { [weak self] in
+            self?.refreshSnapshot()
+        }
 
         let notificationNames: [Notification.Name] = [
             .AppSettingsDidChange,
