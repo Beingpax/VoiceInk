@@ -1,0 +1,28 @@
+VoiceInk/Modes/ModePopover.swift
+  s_8a4dc0e82dcfbd::t_347ee706f904a7 21,26,34,37,66,79-83,87,104
+  s_8a4dc0e82dcfbd::t_13c1131ca58a2a 67
+VoiceInk/Views/Recorder/EnhancementPromptPopover.swift
+  s_8a4dc0e82dcfbd::t_13c1131ca58a2a 73
+  s_8a4dc0e82dcfbd::t_347ee706f904a7 36,46,72,102,119
+VoiceInk/Views/AudioPlayerView.swift
+  s_8a4dc0e82dcfbd::t_347ee706f904a7 529,534,545,554,578
+  s_8a4dc0e82dcfbd::t_13c1131ca58a2a 579
+VoiceInk/Services/AppAppearancePreference.swift
+  s_8a4dc0e82dcfbd::t_13c1131ca58a2a 70-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cd2da7b9021d41a746ab7b9e4817d9645db28d75",
+  "prompts": {},
+  "sessions": {
+    "s_8a4dc0e82dcfbd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fe562-1951-7a63-ab09-34b75ddeb2e2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
