@@ -1,0 +1,26 @@
+VoiceInk/Recorder.swift
+  s_80185a6ec382ad::t_3e16f14abecb98 59
+VoiceInk/Recorder+RecordingDeviceSetup.swift
+  s_80185a6ec382ad::t_3e16f14abecb98 63,105-108,110,113
+VoiceInk/Localizable.xcstrings
+  s_80185a6ec382ad::t_d308e3d77abcf8 11623-11638
+VoiceInk/Transcription/Engine/VoiceInkEngine+AudioInputFailure.swift
+  s_80185a6ec382ad::t_3e16f14abecb98 3-14,16-26,33,38-39,41
+  s_80185a6ec382ad::t_183b2f8c017431 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e36cdd178a4106ec5480b6b3928e16ec49688dbf",
+  "prompts": {},
+  "sessions": {
+    "s_80185a6ec382ad": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff1ba-2f12-72d3-ae96-8d1235a76056",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
