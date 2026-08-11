@@ -1,0 +1,22 @@
+VoiceInk/Services/AIEnhancement/AIService.swift
+  s_e4ce125e813db2::t_7805cab3d25d68 71,531-532
+  s_e4ce125e813db2::t_8e396375065884 530
+VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_e4ce125e813db2::t_0178109d6fc206 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ab5b23c2ae235d742adbbbe2516ebf0a1081f06c",
+  "prompts": {},
+  "sessions": {
+    "s_e4ce125e813db2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff0e7-a2b6-7e21-886b-fb1b95c826c0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
