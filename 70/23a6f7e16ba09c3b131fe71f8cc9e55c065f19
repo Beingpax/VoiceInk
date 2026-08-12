@@ -1,0 +1,23 @@
+release-notes/2.11.html
+  s_3b27c814d6e3d3::t_69862fbd263b4e 1-5,7
+appcast.xml
+  s_3b27c814d6e3d3::t_1c6b1b56e320e8 6-9,11-15,17-19,22
+VoiceInk.xcodeproj/project.pbxproj
+  s_3b27c814d6e3d3::t_69862fbd263b4e 626,642,661,677,760,772,788,800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7023a6f7e16ba09c3b131fe71f8cc9e55c065f19",
+  "prompts": {},
+  "sessions": {
+    "s_3b27c814d6e3d3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff623-8ee3-7772-9620-541fd5e5ab57",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
