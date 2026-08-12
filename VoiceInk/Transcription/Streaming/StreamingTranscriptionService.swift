@@ -388,6 +388,10 @@ class StreamingTranscriptionService {
                 case .error(let error):
                     await MainActor.run {
                         self.logger.error("Streaming event error: \(error, privacy: .public)")
+                        // Mark the session dead so stopAndFinalize refuses it and the caller
+                        // re-transcribes the complete recording instead of returning a
+                        // truncated transcript from a session that stopped producing text.
+                        self.state = .failed
                     }
                 }
             }
