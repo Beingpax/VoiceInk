@@ -1799,6 +1799,12 @@
             "state" : "translated",
             "value" : "Es muss ein Transkriptionsmodell ausgewählt werden."
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "必须选择一个转写模型。"
+          }
         }
       }
     },
@@ -3356,6 +3362,12 @@
             "state" : "translated",
             "value" : "Etwa %@ Tokens"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "约 %@ 个令牌"
+          }
         }
       }
     },
@@ -3926,6 +3938,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Basis-URL muss HTTPS verwenden (reines HTTP ist nur für localhost erlaubt)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "基础 URL 必须使用 HTTPS（仅 localhost 可使用普通 HTTP）"
           }
         }
       }
@@ -7044,6 +7062,12 @@
             "state" : "translated",
             "value" : "Der Endpunkt muss HTTPS verwenden (reines HTTP ist nur für localhost erlaubt)"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "端点必须使用 HTTPS（仅 localhost 可使用普通 HTTP）"
+          }
         }
       }
     },
@@ -7055,6 +7079,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Endpunkt nicht gefunden (HTTP 404) – überprüfe die API-Endpunkt-URL"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未找到端点（HTTP 404）— 请检查 API 端点 URL"
           }
         }
       }
@@ -8779,6 +8809,12 @@
             "state" : "new",
             "value" : "HTTP %1$lld: %2$@"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTTP %1$lld：%2$@"
+          }
         }
       }
     },
@@ -9098,6 +9134,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ungültiger API-Schlüssel"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "API 密钥无效"
           }
         }
       }
@@ -11074,6 +11116,12 @@
             "state" : "translated",
             "value" : "In diesem Zeitraum noch keine diktierten Wörter"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "此时间段内还没有听写字数"
+          }
         }
       }
     },
@@ -11121,6 +11169,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Fehlermeldung"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无错误信息"
           }
         }
       }
@@ -11619,6 +11673,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Für den Modus „%@“ ist kein Transkriptionsmodell ausgewählt"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "“%@”模式未选择转写模型"
           }
         }
       }
@@ -16195,6 +16255,12 @@
             "state" : "translated",
             "value" : "Test erfolgreich"
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "测试成功"
+          }
         }
       }
     },
@@ -16238,6 +16304,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Test läuft…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在测试…"
           }
         }
       }
@@ -16736,6 +16808,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das für den Modus „%@“ ausgewählte Transkriptionsmodell ist nicht verfügbar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为“%@”模式选择的转写模型不可用"
           }
         }
       }
@@ -17280,6 +17358,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die Token-Anzahl wird aus dem Anfragetext geschätzt."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "令牌数量根据请求文本估算。"
           }
         }
       }
@@ -17850,6 +17934,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unerwartete Antwort vom Server"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "服务器返回了意外响应"
           }
         }
       }
