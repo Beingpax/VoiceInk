@@ -16,17 +16,6 @@ private struct TranscriptionSweepResult: Sendable {
 
 private struct TranscriptionBatchSaveError: Error {
     let audioFileErrorCount: Int
-    let underlyingError: Error
-}
-
-private func stageAudioFile(at url: URL) throws -> URL {
-    let stagedURL = url.appendingPathExtension("cleanup")
-    try FileManager.default.moveItem(at: url, to: stagedURL)
-    return stagedURL
-}
-
-private func restoreAudioFile(from stagedURL: URL, to originalURL: URL) {
-    try? FileManager.default.moveItem(at: stagedURL, to: originalURL)
 }
 
 @ModelActor
@@ -59,15 +48,13 @@ private actor TranscriptionCleanupWorker {
                     let transcriptions = try batchContext.fetch(descriptor)
                     var deletedIDs = Set<UUID>()
                     var audioFileErrorCount = 0
-                    var stagedAudioFiles = [(original: URL, staged: URL)]()
 
                     for transcription in transcriptions {
                         if let audioURL = transcription.audioFileURL.flatMap(URL.init(string:)),
                             FileManager.default.fileExists(atPath: audioURL.path)
                         {
                             do {
-                                let stagedURL = try stageAudioFile(at: audioURL)
-                                stagedAudioFiles.append((audioURL, stagedURL))
+                                try FileManager.default.removeItem(at: audioURL)
                             } catch {
                                 audioFileErrorCount += 1
                                 logger.error(
@@ -85,18 +72,13 @@ private actor TranscriptionCleanupWorker {
                         do {
                             try batchContext.save()
                         } catch {
-                            for file in stagedAudioFiles {
-                                restoreAudioFile(from: file.staged, to: file.original)
-                            }
+                            logger.error(
+                                "Failed to save a transcript cleanup batch: \(error, privacy: .public)"
+                            )
                             throw TranscriptionBatchSaveError(
-                                audioFileErrorCount: audioFileErrorCount,
-                                underlyingError: error
+                                audioFileErrorCount: audioFileErrorCount
                             )
                         }
-                    }
-
-                    for file in stagedAudioFiles {
-                        try? FileManager.default.removeItem(at: file.staged)
                     }
 
                     return (transcriptions.count, deletedIDs, audioFileErrorCount)
@@ -111,9 +93,6 @@ private actor TranscriptionCleanupWorker {
                 }
             } catch let error as TranscriptionBatchSaveError {
                 result.audioFileErrorCount += error.audioFileErrorCount
-                logger.error(
-                    "Failed to save a transcript cleanup batch: \(error.underlyingError, privacy: .public)"
-                )
                 result.errorMessage = String(
                     localized: "VoiceInk couldn't finish deleting transcript history. Try again or export logs from Settings."
                 )
@@ -249,10 +228,9 @@ final class TranscriptionAutoCleanupService {
         let audioURL = transcription.audioFileURL.flatMap(URL.init(string:))
         let transcriptionID = transcription.id
 
-        var stagedAudioURL: URL?
         if let audioURL, FileManager.default.fileExists(atPath: audioURL.path) {
             do {
-                stagedAudioURL = try stageAudioFile(at: audioURL)
+                try FileManager.default.removeItem(at: audioURL)
             } catch {
                 logger.error("Failed to delete audio file: \(error, privacy: .public)")
                 return
@@ -262,15 +240,9 @@ final class TranscriptionAutoCleanupService {
         modelContext.delete(transcription)
         do {
             try modelContext.save()
-            if let stagedAudioURL {
-                try? FileManager.default.removeItem(at: stagedAudioURL)
-            }
             Notification.postTranscriptionDeleted(ids: [transcriptionID])
         } catch {
             modelContext.rollback()
-            if let audioURL, let stagedAudioURL {
-                restoreAudioFile(from: stagedAudioURL, to: audioURL)
-            }
             logger.error("Failed to save after transcription deletion: \(error, privacy: .public)")
         }
     }

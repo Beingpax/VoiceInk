@@ -95,11 +95,13 @@ struct HistorySettingsPanel: View {
             Button("Done", role: .cancel) {}
         } message: {
             if let errorMessage = transcriptCleanupResult.errorMessage {
-                let resultMessage = transcriptCleanupResult.audioFileErrorCount > 0
-                    ? partialTranscriptCleanupMessage
-                    : transcriptCleanupResult.deletedCount > 0
-                        ? successfulTranscriptCleanupMessage : ""
-                Text([resultMessage, errorMessage].filter { !$0.isEmpty }.joined(separator: " "))
+                Text(
+                    transcriptCleanupResult.audioFileErrorCount > 0
+                        ? partialTranscriptCleanupMessage
+                        : transcriptCleanupResult.deletedCount > 0
+                            ? successfulTranscriptCleanupMessage + " " + errorMessage
+                            : errorMessage
+                )
             } else if transcriptCleanupResult.audioFileErrorCount > 0 {
                 Text(partialTranscriptCleanupMessage)
             } else if transcriptCleanupResult.deletedCount == 0 {
