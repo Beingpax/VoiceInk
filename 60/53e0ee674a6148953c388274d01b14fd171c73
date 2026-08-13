@@ -1,0 +1,19 @@
+VoiceInk/Services/TranscriptionAutoCleanupService.swift
+  s_335a6da1cea7ed::t_4e2e1594f894e5 43-46,53-57,59,61,63,78,211-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6053e0ee674a6148953c388274d01b14fd171c73",
+  "prompts": {},
+  "sessions": {
+    "s_335a6da1cea7ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffa40-e962-7680-8e11-b536c3afdc68",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
