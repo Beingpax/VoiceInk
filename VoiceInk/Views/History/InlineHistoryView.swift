@@ -15,6 +15,7 @@ struct InlineHistoryView: View {
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
     @State private var isViewCurrentlyVisible = false
+    @State private var historyReloadTask: Task<Void, Never>?
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -122,25 +123,26 @@ struct InlineHistoryView: View {
         }
         .onAppear {
             isViewCurrentlyVisible = true
-            Task { await loadInitialContent() }
+            scheduleHistoryReload()
         }
         .onDisappear {
             isViewCurrentlyVisible = false
+            historyReloadTask?.cancel()
+            historyReloadTask = nil
         }
         .onChange(of: searchText) { _, _ in
-            Task {
-                await resetPagination()
-                await loadInitialContent()
-            }
+            scheduleHistoryReload()
         }
         .onChange(of: latestTranscriptionIndicator.first?.id) { oldId, newId in
             guard isViewCurrentlyVisible else { return }
             if newId != oldId {
-                Task {
-                    await resetPagination()
-                    await loadInitialContent()
-                }
+                scheduleHistoryReload()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .transcriptionDeleted)) { _ in
+            guard isViewCurrentlyVisible else { return }
+            clearStateAfterStoreDeletion()
+            scheduleHistoryReload()
         }
     }
 
@@ -380,6 +382,34 @@ struct InlineHistoryView: View {
         isLoading = false
     }
 
+    @MainActor
+    private func reloadHistory() async {
+        resetPagination()
+        await loadInitialContent()
+    }
+
+    private func clearStateAfterStoreDeletion() {
+        selectedTranscriptions.removeAll()
+        expandedId = nil
+
+        switch panelMode {
+        case .info, .analysis:
+            panelTranscriptionId = nil
+            closePanel()
+        case .historySettings:
+            break
+        }
+    }
+
+    private func scheduleHistoryReload() {
+        historyReloadTask?.cancel()
+        historyReloadTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled, isViewCurrentlyVisible else { return }
+            await reloadHistory()
+        }
+    }
+
     // MARK: - Selection & Deletion
 
     private func toggleSelection(_ transcription: Transcription) {
@@ -424,7 +454,6 @@ struct InlineHistoryView: View {
             do {
                 try modelContext.save()
                 NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                await loadInitialContent()
             } catch {
                 print("Error saving deletion: \(error.localizedDescription)")
                 await loadInitialContent()

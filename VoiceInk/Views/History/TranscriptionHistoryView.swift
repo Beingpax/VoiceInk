@@ -16,6 +16,7 @@ struct TranscriptionHistoryView: View {
     @State private var isLoading = false
     @State private var hasMoreContent = true
     @State private var lastTimestamp: Date?
+    @State private var historyReloadTask: Task<Void, Never>?
 
     private let exportService = VoiceInkCSVExportService()
     private let pageSize = 20
@@ -143,27 +144,26 @@ struct TranscriptionHistoryView: View {
         }
         .onAppear {
             isViewCurrentlyVisible = true
-            Task {
-                await loadInitialContent()
-            }
+            scheduleHistoryReload()
         }
         .onDisappear {
             isViewCurrentlyVisible = false
+            historyReloadTask?.cancel()
+            historyReloadTask = nil
         }
         .onChange(of: searchText) { _, _ in
-            Task {
-                await resetPagination()
-                await loadInitialContent()
-            }
+            scheduleHistoryReload()
         }
         .onChange(of: latestTranscriptionIndicator.first?.id) { oldId, newId in
             guard isViewCurrentlyVisible else { return }
             if newId != oldId {
-                Task {
-                    await resetPagination()
-                    await loadInitialContent()
-                }
+                scheduleHistoryReload()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .transcriptionDeleted)) { _ in
+            guard isViewCurrentlyVisible else { return }
+            clearStateAfterStoreDeletion()
+            scheduleHistoryReload()
         }
     }
 
@@ -438,6 +438,28 @@ struct TranscriptionHistoryView: View {
         isLoading = false
     }
 
+    @MainActor
+    private func reloadHistory() async {
+        resetPagination()
+        await loadInitialContent()
+    }
+
+    private func clearStateAfterStoreDeletion() {
+        selectedTranscriptions.removeAll()
+        selectedTranscription = nil
+        closeInfoPanel()
+        closeAnalysisPanel()
+    }
+
+    private func scheduleHistoryReload() {
+        historyReloadTask?.cancel()
+        historyReloadTask = Task { @MainActor in
+            await Task.yield()
+            guard !Task.isCancelled, isViewCurrentlyVisible else { return }
+            await reloadHistory()
+        }
+    }
+
     private func performDeletion(for transcription: Transcription) {
         if let urlString = transcription.audioFileURL,
             let url = URL(string: urlString),
@@ -462,7 +484,6 @@ struct TranscriptionHistoryView: View {
         do {
             try modelContext.save()
             NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-            await loadInitialContent()
         } catch {
             print("Error saving deletion: \(error.localizedDescription)")
             await loadInitialContent()

@@ -33,6 +33,90 @@
         }
       }
     },
+    "Delete Old Transcript History?" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alten Transkriptverlauf löschen?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除旧的转写历史记录？" } }
+      }
+    },
+    "Delete Old Transcripts" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Alte Transkripte löschen" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除旧转写记录" } }
+      }
+    },
+    "Deleted 1 transcript." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "1 Transkript wurde gelöscht." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已删除 1 条转写记录。" } }
+      }
+    },
+    "Deleted 1 transcript, but couldn't delete its saved audio file. Try again or export logs from Settings." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "1 Transkript wurde gelöscht, die zugehörige Audiodatei konnte jedoch nicht gelöscht werden. Versuche es erneut oder exportiere die Protokolle in den Einstellungen." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已删除 1 条转写记录，但无法删除其保存的音频文件。请重试或从“设置”中导出日志。" } }
+      }
+    },
+    "Deleted %lld transcripts." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld Transkripte wurden gelöscht." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已删除 %lld 条转写记录。" } }
+      }
+    },
+    "Deleted %1$lld transcripts, but couldn't delete %2$lld saved audio files. Try again or export logs from Settings." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "%1$lld Transkripte wurden gelöscht, %2$lld gespeicherte Audiodateien konnten jedoch nicht gelöscht werden. Versuche es erneut oder exportiere die Protokolle in den Einstellungen." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已删除 %1$lld 条转写记录，但无法删除 %2$lld 个保存的音频文件。请重试或从“设置”中导出日志。" } }
+      }
+    },
+    "Deleting Transcript History..." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Transkriptverlauf wird gelöscht …" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在删除转写历史记录…" } }
+      }
+    },
+    "Enable Auto-Delete" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Automatisches Löschen aktivieren" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "启用自动删除" } }
+      }
+    },
+    "Enable Transcript Auto-Delete?" : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Transkripte automatisch löschen?" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "启用转写记录自动删除？" } }
+      }
+    },
+    "Existing transcripts older than the selected retention period and their saved audio files will be permanently deleted. This action cannot be undone." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Vorhandene Transkripte, die älter als die gewählte Aufbewahrungsfrist sind, und die zugehörigen Audiodateien werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "超过所选保留期限的现有转写记录及其保存的音频文件将被永久删除。此操作无法撤销。" } }
+      }
+    },
+    "No transcripts were old enough to delete." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Keine Transkripte sind alt genug, um gelöscht zu werden." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有达到删除期限的转写记录。" } }
+      }
+    },
+    "This will permanently delete transcripts older than the selected retention period and their saved audio files. This action cannot be undone." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Dadurch werden Transkripte, die älter als die gewählte Aufbewahrungsfrist sind, und die zugehörigen Audiodateien dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "这将永久删除超过所选保留期限的转写记录及其保存的音频文件。此操作无法撤销。" } }
+      }
+    },
+    "Transcript auto-delete is turned off." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Das automatische Löschen von Transkripten ist deaktiviert." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写记录自动删除已关闭。" } }
+      }
+    },
+    "VoiceInk couldn't delete transcript history. Try again or export logs from Settings." : {
+      "localizations" : {
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "VoiceInk konnte den Transkriptverlauf nicht löschen. Versuche es erneut oder exportiere die Protokolle in den Einstellungen." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "VoiceInk 无法删除转写历史记录。请重试或从“设置”中导出日志。" } }
+      }
+    },
     " (drag to reorder)" : {
       "localizations" : {
         "de" : {

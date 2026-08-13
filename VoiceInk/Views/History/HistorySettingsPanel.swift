@@ -17,6 +17,14 @@ struct HistorySettingsPanel: View {
     @State private var showAudioCleanupResult = false
     @State private var audioCleanupResult: (deletedCount: Int, errorCount: Int) = (0, 0)
     @State private var showTranscriptCleanupResult = false
+    @State private var transcriptCleanupResult = TranscriptionCleanupResult(
+        deletedCount: 0,
+        audioFileErrorCount: 0,
+        errorMessage: nil
+    )
+    @State private var isPerformingTranscriptCleanup = false
+    @State private var showEnableTranscriptCleanupConfirmation = false
+    @State private var showManualTranscriptCleanupConfirmation = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,7 +32,8 @@ struct HistorySettingsPanel: View {
 
             Form {
                 Section {
-                    Toggle("Auto-delete Transcript History", isOn: $isTranscriptionCleanupEnabled)
+                    Toggle("Auto-delete Transcript History", isOn: transcriptCleanupEnabledBinding)
+                        .disabled(isPerformingTranscriptCleanup)
 
                     if isTranscriptionCleanupEnabled {
                         Picker("Delete After", selection: $transcriptionRetentionMinutes) {
@@ -34,16 +43,14 @@ struct HistorySettingsPanel: View {
                             Text("3 days").tag(3 * 24 * 60)
                             Text("7 days").tag(7 * 24 * 60)
                         }
+                        .disabled(isPerformingTranscriptCleanup)
 
-                        Button("Run Cleanup Now") {
-                            Task {
-                                await TranscriptionAutoCleanupService.shared.runManualCleanup(
-                                    modelContext: modelContext)
-                                await MainActor.run {
-                                    showTranscriptCleanupResult = true
-                                }
-                            }
+                        Button {
+                            showManualTranscriptCleanupConfirmation = true
+                        } label: {
+                            Text(isPerformingTranscriptCleanup ? "Deleting Transcript History..." : "Run Cleanup Now")
                         }
+                        .disabled(isPerformingTranscriptCleanup)
                     }
                 } header: {
                     sectionHeader(
@@ -85,9 +92,33 @@ struct HistorySettingsPanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .alert("Transcript Cleanup", isPresented: $showTranscriptCleanupResult) {
-            Button("OK", role: .cancel) {}
+            Button("Done", role: .cancel) {}
         } message: {
-            Text("Cleanup complete.")
+            if let errorMessage = transcriptCleanupResult.errorMessage {
+                Text(errorMessage)
+            } else if transcriptCleanupResult.audioFileErrorCount > 0 {
+                Text(partialTranscriptCleanupMessage)
+            } else if transcriptCleanupResult.deletedCount == 0 {
+                Text("No transcripts were old enough to delete.")
+            } else {
+                Text(successfulTranscriptCleanupMessage)
+            }
+        }
+        .alert("Enable Transcript Auto-Delete?", isPresented: $showEnableTranscriptCleanupConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Enable Auto-Delete", role: .destructive) {
+                enableTranscriptCleanup()
+            }
+        } message: {
+            Text("Existing transcripts older than the selected retention period and their saved audio files will be permanently deleted. This action cannot be undone.")
+        }
+        .alert("Delete Old Transcript History?", isPresented: $showManualTranscriptCleanupConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Old Transcripts", role: .destructive) {
+                runTranscriptCleanup()
+            }
+        } message: {
+            Text("This will permanently delete transcripts older than the selected retention period and their saved audio files. This action cannot be undone.")
         }
         .alert("Audio Cleanup", isPresented: $isShowingAudioConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -120,14 +151,6 @@ struct HistorySettingsPanel: View {
                 Text(String(localized: "Deleted \(audioCleanupResult.deletedCount) audio files."))
             }
         }
-        .onChange(of: isTranscriptionCleanupEnabled) { _, newValue in
-            if newValue {
-                isAudioCleanupEnabled = false
-                AudioCleanupManager.shared.stopAutomaticCleanup()
-            } else if isAudioCleanupEnabled {
-                AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
-            }
-        }
         .onChange(of: isAudioCleanupEnabled) { _, newValue in
             guard !isTranscriptionCleanupEnabled else {
                 if newValue {
@@ -142,6 +165,62 @@ struct HistorySettingsPanel: View {
             } else {
                 AudioCleanupManager.shared.stopAutomaticCleanup()
             }
+        }
+    }
+
+    private var transcriptCleanupEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { isTranscriptionCleanupEnabled },
+            set: { newValue in
+                if newValue {
+                    showEnableTranscriptCleanupConfirmation = true
+                } else {
+                    isTranscriptionCleanupEnabled = false
+                    if isAudioCleanupEnabled {
+                        AudioCleanupManager.shared.startAutomaticCleanup(modelContext: modelContext)
+                    }
+                }
+            }
+        )
+    }
+
+    private func enableTranscriptCleanup() {
+        isAudioCleanupEnabled = false
+        AudioCleanupManager.shared.stopAutomaticCleanup()
+        isTranscriptionCleanupEnabled = true
+        runTranscriptCleanup()
+    }
+
+    private var successfulTranscriptCleanupMessage: String {
+        if transcriptCleanupResult.deletedCount == 1 {
+            return String(localized: "Deleted 1 transcript.")
+        }
+        return String(
+            localized: "Deleted \(transcriptCleanupResult.deletedCount) transcripts."
+        )
+    }
+
+    private var partialTranscriptCleanupMessage: String {
+        if transcriptCleanupResult.deletedCount == 1 && transcriptCleanupResult.audioFileErrorCount == 1 {
+            return String(
+                localized:
+                    "Deleted 1 transcript, but couldn't delete its saved audio file. Try again or export logs from Settings."
+            )
+        }
+        return String(
+            localized:
+                "Deleted \(transcriptCleanupResult.deletedCount) transcripts, but couldn't delete \(transcriptCleanupResult.audioFileErrorCount) saved audio files. Try again or export logs from Settings."
+        )
+    }
+
+    private func runTranscriptCleanup() {
+        isPerformingTranscriptCleanup = true
+        Task { @MainActor in
+            transcriptCleanupResult = await TranscriptionAutoCleanupService.shared.runManualCleanup(
+                modelContext: modelContext
+            )
+            isPerformingTranscriptCleanup = false
+            showTranscriptCleanupResult = true
         }
     }
 
