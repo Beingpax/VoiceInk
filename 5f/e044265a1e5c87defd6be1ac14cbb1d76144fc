@@ -1,0 +1,21 @@
+VoiceInk/Services/TranscriptionAutoCleanupService.swift
+  s_335a6da1cea7ed::t_86a7a6b3175cab 57,75-77,79,233
+VoiceInk/Views/History/HistorySettingsPanel.swift
+  s_335a6da1cea7ed::t_86a7a6b3175cab 98-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5fe044265a1e5c87defd6be1ac14cbb1d76144fc",
+  "prompts": {},
+  "sessions": {
+    "s_335a6da1cea7ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffa40-e962-7680-8e11-b536c3afdc68",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
