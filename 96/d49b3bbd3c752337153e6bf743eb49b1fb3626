@@ -1,0 +1,68 @@
+VoiceInk/Localizable.xcstrings
+  s_9f14fe21e292ab::t_bfa57d7e19a88a 48,50-51,60,62-63
+  s_d83f43d469b958::t_8d68db25d76d1c 36-47,49,52-59,61,64-119
+VoiceInk/Views/History/InlineHistoryView.swift
+  s_9f14fe21e292ab::t_c5be12eaa5c087 144
+  s_9f14fe21e292ab::t_1531007e93851b 18,126,130-131,134,139,145,401-408
+  s_d83f43d469b958::t_80f5799e6430af 142-143,146
+  s_9f14fe21e292ab::t_bfa57d7e19a88a 385,387-388,390,394,397-398,410
+  s_9f14fe21e292ab::t_494f72effd0de7 386,389,391-393,395-396,399-400,409
+VoiceInk/Views/History/TranscriptionHistoryView.swift
+  s_d83f43d469b958::t_80f5799e6430af 163-164,167
+  s_9f14fe21e292ab::t_c5be12eaa5c087 165
+  s_9f14fe21e292ab::t_494f72effd0de7 442,445,447-451,459
+  s_9f14fe21e292ab::t_1531007e93851b 19,147,151-152,155,160,166,452-458
+  s_9f14fe21e292ab::t_bfa57d7e19a88a 441,443-444,446,460
+VoiceInk/Views/History/HistorySettingsPanel.swift
+  s_9f14fe21e292ab::t_bfa57d7e19a88a 196,199
+  s_d83f43d469b958::t_c009d85d9f7407 20-24,99
+  s_d83f43d469b958::t_6edbbbf9fa69f8 100,104,192-195,197-198,200-213
+  s_d83f43d469b958::t_2cc793dcd84aab 25,48,50,97-98,101-103
+  s_d83f43d469b958::t_522549ae287693 26-27,36,46,49,51,53,107-110,113,115-119,121,176,187-191
+  s_d83f43d469b958::t_252e98a3c51917 35,95,105-106,111-112,114,120,171-175,177-186,214-217,220-221
+  s_335a6da1cea7ed::t_9a419303b8de89 218-219,222-223
+VoiceInk/Services/TranscriptionAutoCleanupService.swift
+  s_d83f43d469b958::t_522549ae287693 182
+  s_9f14fe21e292ab::t_4d34c35b954e83 11,83,285
+  s_9f14fe21e292ab::t_f01ba80970b1bf 85,89,91-93,99,103,105,108,125
+  s_9f14fe21e292ab::t_6b4a34f05a3b14 159,171,219,225-231
+  s_d83f43d469b958::t_2cc793dcd84aab 5-6,8-10,151,183,193,204,206,238,240-241,243-244,268-269,271-272
+  s_9f14fe21e292ab::t_494f72effd0de7 13,15,22-23,25,27-33,35-39,41-60,62-71,76
+  s_9f14fe21e292ab::t_a9374160a44d71 12,16-20,24,34,40,72-74,77-82,84,113,115-116,118,122-123,126-150,155-156,256-259,262-263,284
+  s_335a6da1cea7ed::t_9a419303b8de89 21,26,61,75,152,252-253,282-283
+  s_d83f43d469b958::t_c009d85d9f7407 7,242,261,264-265,270
+  s_9f14fe21e292ab::t_115dc1cd1f2e14 14,86-88,90,94-97,100-102,104,106-107,110,112,114,117,119-121,124
+  s_9f14fe21e292ab::t_37f45fb6ac7adc 98,109,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96d49b3bbd3c752337153e6bf743eb49b1fb3626",
+  "prompts": {},
+  "sessions": {
+    "s_335a6da1cea7ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffa40-e962-7680-8e11-b536c3afdc68",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    },
+    "s_9f14fe21e292ab": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffa20-7e21-72f2-bfae-7de43c4c8c57",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    },
+    "s_d83f43d469b958": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff642-f573-74c1-9f9b-fdffb3adb0c8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
