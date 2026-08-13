@@ -1,0 +1,19 @@
+VoiceInk/Localizable.xcstrings
+  s_edcc58e2a8ae8c::t_2e4aa3b4bd5434 1802-1807,3365-3370,3942-3947,7065-7070,7083-7088,8812-8817,9138-9143,11119-11124,11173-11178,11677-11682,16258-16263,16308-16313,16812-16817,17362-17367,17938-17942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb5d0b30c1b0940cce6ff581cd85d70fba597542",
+  "prompts": {},
+  "sessions": {
+    "s_edcc58e2a8ae8c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb47-41b6-7692-9430-cd3e1fcd816e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
