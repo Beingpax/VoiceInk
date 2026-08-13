@@ -71,7 +71,7 @@
     },
     "Deleting Transcript History..." : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Transkriptverlauf wird gelöscht …" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Transkriptverlauf wird gelöscht …" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在删除转写历史记录…" } }
       }
     },
@@ -111,10 +111,10 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写记录自动删除已关闭。" } }
       }
     },
-    "VoiceInk couldn't delete transcript history. Try again or export logs from Settings." : {
+    "VoiceInk couldn't finish deleting transcript history. Try again or export logs from Settings." : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "VoiceInk konnte den Transkriptverlauf nicht löschen. Versuche es erneut oder exportiere die Protokolle in den Einstellungen." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "VoiceInk 无法删除转写历史记录。请重试或从“设置”中导出日志。" } }
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "VoiceInk konnte das Löschen des Transkriptverlaufs nicht abschließen. Versuche es erneut oder exportiere die Protokolle in den Einstellungen." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "VoiceInk 无法完成转写历史记录的删除。请重试或从“设置”中导出日志。" } }
       }
     },
     " (drag to reorder)" : {

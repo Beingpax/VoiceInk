@@ -160,9 +160,11 @@ struct TranscriptionHistoryView: View {
                 scheduleHistoryReload()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .transcriptionDeleted)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .transcriptionDeleted)) { notification in
             guard isViewCurrentlyVisible else { return }
-            clearStateAfterStoreDeletion()
+            if let deletedIDs = notification.deletedTranscriptionIDs {
+                clearStateAfterStoreDeletion(ids: deletedIDs)
+            }
             scheduleHistoryReload()
         }
     }
@@ -444,11 +446,19 @@ struct TranscriptionHistoryView: View {
         await loadInitialContent()
     }
 
-    private func clearStateAfterStoreDeletion() {
-        selectedTranscriptions.removeAll()
-        selectedTranscription = nil
-        closeInfoPanel()
-        closeAnalysisPanel()
+    private func clearStateAfterStoreDeletion(ids deletedIDs: Set<UUID>) {
+        selectedTranscriptions = Set(
+            selectedTranscriptions.filter { !deletedIDs.contains($0.id) }
+        )
+
+        if let selectedTranscription, deletedIDs.contains(selectedTranscription.id) {
+            self.selectedTranscription = nil
+            closeInfoPanel()
+        }
+
+        if isAnalysisPanelPresented && selectedTranscriptions.isEmpty {
+            closeAnalysisPanel()
+        }
     }
 
     private func scheduleHistoryReload() {
@@ -474,16 +484,17 @@ struct TranscriptionHistoryView: View {
 
         if selectedTranscription == transcription {
             selectedTranscription = nil
+            closeInfoPanel()
         }
 
         selectedTranscriptions.remove(transcription)
         modelContext.delete(transcription)
     }
 
-    private func saveAndReload() async {
+    private func saveAndReload(deletedIDs: Set<UUID>) async {
         do {
             try modelContext.save()
-            NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
+            Notification.postTranscriptionDeleted(ids: deletedIDs)
         } catch {
             print("Error saving deletion: \(error.localizedDescription)")
             await loadInitialContent()
@@ -491,13 +502,14 @@ struct TranscriptionHistoryView: View {
     }
 
     private func deleteSelectedTranscriptions() {
+        let deletedIDs = Set(selectedTranscriptions.map(\.id))
         for transcription in selectedTranscriptions {
             performDeletion(for: transcription)
         }
         selectedTranscriptions.removeAll()
 
         Task {
-            await saveAndReload()
+            await saveAndReload(deletedIDs: deletedIDs)
         }
     }
 

@@ -22,3 +22,21 @@ extension Notification.Name {
     static let openFileForTranscription = Notification.Name("openFileForTranscription")
     static let recordingDeviceChangeRequired = Notification.Name("recordingDeviceChangeRequired")
 }
+
+extension Notification {
+    private static let deletedTranscriptionIDsKey = "deletedTranscriptionIDs"
+
+    static func postTranscriptionDeleted(ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        NotificationCenter.default.post(
+            name: .transcriptionDeleted,
+            object: nil,
+            userInfo: [deletedTranscriptionIDsKey: Array(ids)]
+        )
+    }
+
+    var deletedTranscriptionIDs: Set<UUID>? {
+        guard let ids = userInfo?[Self.deletedTranscriptionIDsKey] as? [UUID] else { return nil }
+        return Set(ids)
+    }
+}

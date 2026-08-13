@@ -139,9 +139,11 @@ struct InlineHistoryView: View {
                 scheduleHistoryReload()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .transcriptionDeleted)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .transcriptionDeleted)) { notification in
             guard isViewCurrentlyVisible else { return }
-            clearStateAfterStoreDeletion()
+            if let deletedIDs = notification.deletedTranscriptionIDs {
+                clearStateAfterStoreDeletion(ids: deletedIDs)
+            }
             scheduleHistoryReload()
         }
     }
@@ -388,14 +390,25 @@ struct InlineHistoryView: View {
         await loadInitialContent()
     }
 
-    private func clearStateAfterStoreDeletion() {
-        selectedTranscriptions.removeAll()
-        expandedId = nil
+    private func clearStateAfterStoreDeletion(ids deletedIDs: Set<UUID>) {
+        selectedTranscriptions = Set(
+            selectedTranscriptions.filter { !deletedIDs.contains($0.id) }
+        )
+
+        if let expandedId, deletedIDs.contains(expandedId) {
+            self.expandedId = nil
+        }
 
         switch panelMode {
-        case .info, .analysis:
-            panelTranscriptionId = nil
-            closePanel()
+        case .info:
+            if let panelTranscriptionId, deletedIDs.contains(panelTranscriptionId) {
+                self.panelTranscriptionId = nil
+                closePanel()
+            }
+        case .analysis:
+            if selectedTranscriptions.isEmpty {
+                closePanel()
+            }
         case .historySettings:
             break
         }
@@ -445,6 +458,7 @@ struct InlineHistoryView: View {
     }
 
     private func deleteSelectedTranscriptions() {
+        let deletedIDs = Set(selectedTranscriptions.map(\.id))
         for transcription in selectedTranscriptions {
             performDeletion(for: transcription)
         }
@@ -453,7 +467,7 @@ struct InlineHistoryView: View {
         Task {
             do {
                 try modelContext.save()
-                NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
+                Notification.postTranscriptionDeleted(ids: deletedIDs)
             } catch {
                 print("Error saving deletion: \(error.localizedDescription)")
                 await loadInitialContent()

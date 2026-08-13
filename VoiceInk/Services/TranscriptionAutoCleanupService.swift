@@ -8,110 +8,117 @@ struct TranscriptionCleanupResult: Sendable {
     let errorMessage: String?
 }
 
+private struct TranscriptionSweepResult: Sendable {
+    var deletedIDs = Set<UUID>()
+    var audioFileErrorCount = 0
+    var errorMessage: String?
+}
+
+private struct TranscriptionBatchSaveError: Error {
+    let audioFileErrorCount: Int
+}
+
 @ModelActor
 private actor TranscriptionCleanupWorker {
     private static let batchSize = 1_000
-    private static let referenceBatchSize = 10_000
 
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",
         category: "TranscriptionAutoCleanupService"
     )
 
-    func sweep(cutoffDate: Date) throws -> (deletedCount: Int, audioFileErrorCount: Int) {
-        var deletedCount = 0
-        var audioFileErrorCount = 0
+    func sweep(cutoffDate: Date) -> TranscriptionSweepResult {
+        var result = TranscriptionSweepResult()
+        var failedRecordCount = 0
 
         while true {
-            let batchResult = try autoreleasepool { () throws -> (deletedCount: Int, audioFileErrorCount: Int) in
-                let batchContext = ModelContext(modelContainer)
-                var descriptor = FetchDescriptor<Transcription>(
-                    predicate: #Predicate<Transcription> { transcription in
-                        transcription.timestamp < cutoffDate
+            do {
+                let batchResult = try autoreleasepool {
+                    () throws -> (fetchedCount: Int, deletedIDs: Set<UUID>, audioFileErrorCount: Int) in
+                    let batchContext = ModelContext(modelContainer)
+                    var descriptor = FetchDescriptor<Transcription>(
+                        predicate: #Predicate<Transcription> { transcription in
+                            transcription.timestamp < cutoffDate
+                        },
+                        sortBy: [SortDescriptor(\.id)]
+                    )
+                    descriptor.fetchLimit = Self.batchSize
+                    descriptor.fetchOffset = failedRecordCount
+
+                    let transcriptions = try batchContext.fetch(descriptor)
+                    var deletedIDs = Set<UUID>()
+                    var audioFileErrorCount = 0
+
+                    for transcription in transcriptions {
+                        if let audioURL = transcription.audioFileURL.flatMap(URL.init(string:)),
+                            FileManager.default.fileExists(atPath: audioURL.path)
+                        {
+                            do {
+                                try FileManager.default.removeItem(at: audioURL)
+                            } catch {
+                                audioFileErrorCount += 1
+                                logger.error(
+                                    "Failed to delete audio file during transcript cleanup: \(error, privacy: .public)"
+                                )
+                                continue
+                            }
+                        }
+
+                        deletedIDs.insert(transcription.id)
+                        batchContext.delete(transcription)
                     }
-                )
-                descriptor.fetchLimit = Self.batchSize
 
-                let transcriptions = try batchContext.fetch(descriptor)
-                let audioURLs = transcriptions.compactMap { transcription -> URL? in
-                    guard let urlString = transcription.audioFileURL else { return nil }
-                    return URL(string: urlString)
-                }
-
-                for transcription in transcriptions {
-                    batchContext.delete(transcription)
-                }
-
-                if !transcriptions.isEmpty {
-                    try batchContext.save()
-                }
-
-                var batchAudioFileErrorCount = 0
-                for audioURL in audioURLs where FileManager.default.fileExists(atPath: audioURL.path) {
-                    do {
-                        try FileManager.default.removeItem(at: audioURL)
-                    } catch {
-                        batchAudioFileErrorCount += 1
-                        logger.error(
-                            "Failed to delete audio file during transcript cleanup: \(error, privacy: .public)"
-                        )
+                    if !deletedIDs.isEmpty {
+                        do {
+                            try batchContext.save()
+                        } catch {
+                            throw TranscriptionBatchSaveError(
+                                audioFileErrorCount: audioFileErrorCount
+                            )
+                        }
                     }
+
+                    return (transcriptions.count, deletedIDs, audioFileErrorCount)
                 }
 
-                return (
-                    deletedCount: transcriptions.count,
-                    audioFileErrorCount: batchAudioFileErrorCount
+                result.deletedIDs.formUnion(batchResult.deletedIDs)
+                result.audioFileErrorCount += batchResult.audioFileErrorCount
+                failedRecordCount += batchResult.audioFileErrorCount
+
+                if batchResult.fetchedCount < Self.batchSize {
+                    return result
+                }
+            } catch let error as TranscriptionBatchSaveError {
+                result.audioFileErrorCount += error.audioFileErrorCount
+                logger.error("Failed to save a transcript cleanup batch: \(error, privacy: .public)")
+                result.errorMessage = String(
+                    localized: "VoiceInk couldn't finish deleting transcript history. Try again or export logs from Settings."
                 )
-            }
-
-            deletedCount += batchResult.deletedCount
-            audioFileErrorCount += batchResult.audioFileErrorCount
-
-            if batchResult.deletedCount < Self.batchSize {
-                break
+                return result
+            } catch {
+                logger.error("Failed to fetch a transcript cleanup batch: \(error, privacy: .public)")
+                result.errorMessage = String(
+                    localized: "VoiceInk couldn't finish deleting transcript history. Try again or export logs from Settings."
+                )
+                return result
             }
         }
-
-        return (
-            deletedCount: deletedCount,
-            audioFileErrorCount: audioFileErrorCount
-        )
     }
 
     /// Removes only stale, unreferenced recordings. The age check protects active recordings
     /// and files that have been created for an in-progress transcription.
     func cleanupOrphanAudioFiles(in recordingsDirectory: URL, olderThan cutoffDate: Date) {
         do {
-            var referencedFiles = Set<String>()
-            var fetchOffset = 0
-
-            while true {
-                let batch = try autoreleasepool { () throws -> (fetchedCount: Int, fileNames: [String]) in
-                    let batchContext = ModelContext(modelContainer)
-                    var descriptor = FetchDescriptor<Transcription>(
-                        sortBy: [SortDescriptor(\.id)]
-                    )
-                    descriptor.propertiesToFetch = [\.audioFileURL]
-                    descriptor.fetchLimit = Self.referenceBatchSize
-                    descriptor.fetchOffset = fetchOffset
-
-                    let transcriptions = try batchContext.fetch(descriptor)
-                    let fileNames = transcriptions.compactMap { transcription in
-                        guard let urlString = transcription.audioFileURL,
-                            let url = URL(string: urlString)
-                        else { return nil }
-                        return url.lastPathComponent
-                    }
-                    return (transcriptions.count, fileNames)
-                }
-
-                referencedFiles.formUnion(batch.fileNames)
-                fetchOffset += batch.fetchedCount
-
-                if batch.fetchedCount < Self.referenceBatchSize {
-                    break
-                }
-            }
+            let referenceContext = ModelContext(modelContainer)
+            var descriptor = FetchDescriptor<Transcription>()
+            descriptor.propertiesToFetch = [\.audioFileURL]
+            let transcriptions = try referenceContext.fetch(descriptor)
+            let referencedFiles = Set(transcriptions.compactMap { transcription -> String? in
+                guard let urlString = transcription.audioFileURL,
+                    let url = URL(string: urlString)
+                else { return nil }
+                return url.lastPathComponent
+            })
 
             guard FileManager.default.fileExists(atPath: recordingsDirectory.path) else { return }
             guard let files = FileManager.default.enumerator(
@@ -123,19 +130,19 @@ private actor TranscriptionCleanupWorker {
             var deletedCount = 0
             for case let fileURL as URL in files
             where !referencedFiles.contains(fileURL.lastPathComponent) {
-                let values = try fileURL.resourceValues(
-                    forKeys: [.contentModificationDateKey, .creationDateKey, .isRegularFileKey]
-                )
-                guard values.isRegularFile == true,
-                    let fileDate = values.contentModificationDate ?? values.creationDate,
-                    fileDate < cutoffDate
-                else { continue }
-
                 do {
+                    let values = try fileURL.resourceValues(
+                        forKeys: [.contentModificationDateKey, .creationDateKey, .isRegularFileKey]
+                    )
+                    guard values.isRegularFile == true,
+                        let fileDate = values.contentModificationDate ?? values.creationDate,
+                        fileDate < cutoffDate
+                    else { continue }
+
                     try FileManager.default.removeItem(at: fileURL)
                     deletedCount += 1
                 } catch {
-                    logger.error("Failed to delete orphan audio file: \(error, privacy: .public)")
+                    logger.error("Failed to inspect or delete orphan audio file: \(error, privacy: .public)")
                 }
             }
 
@@ -217,20 +224,23 @@ final class TranscriptionAutoCleanupService {
         }
 
         let audioURL = transcription.audioFileURL.flatMap(URL.init(string:))
+        let transcriptionID = transcription.id
+
+        if let audioURL, FileManager.default.fileExists(atPath: audioURL.path) {
+            do {
+                try FileManager.default.removeItem(at: audioURL)
+            } catch {
+                logger.error("Failed to delete audio file: \(error, privacy: .public)")
+                return
+            }
+        }
 
         modelContext.delete(transcription)
-
         do {
             try modelContext.save()
-            if let audioURL, FileManager.default.fileExists(atPath: audioURL.path) {
-                do {
-                    try FileManager.default.removeItem(at: audioURL)
-                } catch {
-                    logger.error("Failed to delete audio file: \(error, privacy: .public)")
-                }
-            }
-            NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
+            Notification.postTranscriptionDeleted(ids: [transcriptionID])
         } catch {
+            modelContext.rollback()
             logger.error("Failed to save after transcription deletion: \(error, privacy: .public)")
         }
     }
@@ -252,25 +262,16 @@ final class TranscriptionAutoCleanupService {
         let worker = cleanupWorker ?? TranscriptionCleanupWorker(modelContainer: modelContext.container)
         cleanupWorker = worker
 
-        do {
-            let result = try await worker.sweep(cutoffDate: cutoffDate)
-            if result.deletedCount > 0 {
-                logger.notice("Cleaned up \(result.deletedCount, privacy: .public) old transcription(s)")
-                NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-            }
-            return TranscriptionCleanupResult(
-                deletedCount: result.deletedCount,
-                audioFileErrorCount: result.audioFileErrorCount,
-                errorMessage: nil
-            )
-        } catch {
-            logger.error("Failed during transcription cleanup: \(error, privacy: .public)")
-            return TranscriptionCleanupResult(
-                deletedCount: 0,
-                audioFileErrorCount: 0,
-                errorMessage: String(localized: "VoiceInk couldn't delete transcript history. Try again or export logs from Settings.")
-            )
+        let result = await worker.sweep(cutoffDate: cutoffDate)
+        if !result.deletedIDs.isEmpty {
+            logger.notice("Cleaned up \(result.deletedIDs.count, privacy: .public) old transcription(s)")
+            Notification.postTranscriptionDeleted(ids: result.deletedIDs)
         }
+        return TranscriptionCleanupResult(
+            deletedCount: result.deletedIDs.count,
+            audioFileErrorCount: result.audioFileErrorCount,
+            errorMessage: result.errorMessage
+        )
     }
 
     /// Deletes audio files in Recordings directory that have no corresponding Transcription record
