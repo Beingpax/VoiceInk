@@ -288,6 +288,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.activeRecordingStartID == startID,
                                 !self.shouldCancelRecording
                             else {
+                                self.clearActiveRecordingContext()
                                 return
                             }
 

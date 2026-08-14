@@ -117,17 +117,25 @@ class ScreenCaptureService: ObservableObject {
 
             let title = window.title ?? window.owningApplication?.applicationName ?? "Unknown"
             let appName = window.owningApplication?.applicationName ?? "Unknown"
-            let filter: SCContentFilter
-            if let display = content.displays.first(where: { $0.frame.intersects(window.frame) }) ?? content.displays.first {
-                filter = SCContentFilter(display: display, including: [window])
-            } else {
-                filter = SCContentFilter(desktopIndependentWindow: window)
-            }
-
             let configuration = SCStreamConfiguration()
             let captureScale = captureScale(for: window.frame.size)
             configuration.width = max(1, Int(window.frame.width * captureScale))
             configuration.height = max(1, Int(window.frame.height * captureScale))
+
+            let filter: SCContentFilter
+            if let display = content.displays.first(where: { $0.frame.intersects(window.frame) }) ?? content.displays.first {
+                filter = SCContentFilter(display: display, including: [window])
+                let relativeX = max(0, window.frame.origin.x - display.frame.origin.x)
+                let relativeY = max(0, window.frame.origin.y - display.frame.origin.y)
+                configuration.sourceRect = CGRect(
+                    x: relativeX,
+                    y: relativeY,
+                    width: window.frame.width,
+                    height: window.frame.height
+                )
+            } else {
+                filter = SCContentFilter(desktopIndependentWindow: window)
+            }
 
             let cgImage = try await SCScreenshotManager.captureImage(
                 contentFilter: filter, configuration: configuration)
