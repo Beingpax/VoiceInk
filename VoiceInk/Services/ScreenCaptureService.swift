@@ -123,7 +123,15 @@ class ScreenCaptureService: ObservableObject {
             configuration.height = max(1, Int(window.frame.height * captureScale))
 
             let filter: SCContentFilter
-            if let display = content.displays.first(where: { $0.frame.intersects(window.frame) }) ?? content.displays.first {
+            let bestDisplay = content.displays.max(by: { d1, d2 in
+                let r1 = d1.frame.intersection(window.frame)
+                let area1 = r1.isNull ? 0 : r1.width * r1.height
+                let r2 = d2.frame.intersection(window.frame)
+                let area2 = r2.isNull ? 0 : r2.width * r2.height
+                return area1 < area2
+            }) ?? content.displays.first
+
+            if let display = bestDisplay {
                 filter = SCContentFilter(display: display, including: [window])
                 let relativeX = max(0, window.frame.origin.x - display.frame.origin.x)
                 let relativeY = max(0, window.frame.origin.y - display.frame.origin.y)
