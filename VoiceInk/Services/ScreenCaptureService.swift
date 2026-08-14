@@ -3,9 +3,11 @@ import ApplicationServices
 import Foundation
 import ScreenCaptureKit
 import Vision
+import os
 
 @MainActor
 class ScreenCaptureService: ObservableObject {
+    private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ScreenCaptureService")
     @Published var isCapturing = false
     @Published var lastCapturedText: String?
 
@@ -109,13 +111,18 @@ class ScreenCaptureService: ObservableObject {
                     currentPID: currentPID
                 )
             else {
+                logger.info("ScreenCaptureService: no suitable active window found among \(content.windows.count) windows")
                 return nil
             }
 
             let title = window.title ?? window.owningApplication?.applicationName ?? "Unknown"
             let appName = window.owningApplication?.applicationName ?? "Unknown"
-
-            let filter = SCContentFilter(desktopIndependentWindow: window)
+            let filter: SCContentFilter
+            if let display = content.displays.first(where: { $0.frame.intersects(window.frame) }) ?? content.displays.first {
+                filter = SCContentFilter(display: display, including: [window])
+            } else {
+                filter = SCContentFilter(desktopIndependentWindow: window)
+            }
 
             let configuration = SCStreamConfiguration()
             let captureScale = captureScale(for: window.frame.size)
@@ -133,14 +140,17 @@ class ScreenCaptureService: ObservableObject {
 
             let extractedText = extractText(from: cgImage)
             if let extractedText, !extractedText.isEmpty {
+                logger.info("ScreenCaptureService: extracted \(extractedText.count) chars of OCR text")
                 contextText += "Window Content:\n\(extractedText)"
             } else {
+                logger.info("ScreenCaptureService: no text detected in OCR")
                 contextText += "Window Content:\nNo text detected via OCR"
             }
 
             return contextText
 
         } catch {
+            logger.error("ScreenCaptureService error: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
