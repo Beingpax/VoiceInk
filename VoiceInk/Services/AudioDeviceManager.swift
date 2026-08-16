@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreAudio
 import Foundation
+import IOKit.audio
 import os
 
 struct PrioritizedDevice: Codable, Identifiable {
@@ -562,6 +563,42 @@ class AudioDeviceManager: ObservableObject {
         )
         guard status == noErr else { return nil }
         return property
+    }
+
+    /// The MacBook's internal microphone is physically disconnected when the lid closes.
+    /// A headset-jack microphone also uses the built-in codec, so transport alone cannot identify lid-dependent inputs.
+    func isInternalMicrophone(_ deviceID: AudioDeviceID) -> Bool {
+        guard
+            getUInt32DeviceProperty(
+                deviceID: deviceID,
+                selector: kAudioDevicePropertyTransportType
+            ) == kAudioDeviceTransportTypeBuiltIn
+        else {
+            return false
+        }
+
+        let uid = getDeviceUID(deviceID: deviceID)
+        let dataSource = getUInt32DeviceProperty(
+            deviceID: deviceID,
+            selector: kAudioDevicePropertyDataSource,
+            scope: kAudioDevicePropertyScopeInput
+        )
+        let internalMicrophoneSource = UInt32(kIOAudioSelectorControlSelectionValueInternalMicrophone)
+        let externalMicrophoneSource = UInt32(kIOAudioSelectorControlSelectionValueExternalMicrophone)
+
+        if dataSource == externalMicrophoneSource {
+            return false
+        }
+        if dataSource == internalMicrophoneSource {
+            return true
+        }
+
+        // Older Apple drivers may not implement data-source controls. Keep the known system
+        // device UIDs only as a final compatibility fallback and fail open for unknown inputs.
+        if uid == "BuiltInHeadphoneInputDevice" {
+            return false
+        }
+        return uid == "BuiltInMicrophoneDevice"
     }
 
     func notifyDeviceChange() {

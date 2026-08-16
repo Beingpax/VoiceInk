@@ -40,7 +40,7 @@ extension Recorder {
             return
         }
 
-        if resolution.fellBackFromClosedBuiltInMicrophone {
+        if resolution.fellBackFromClosedInternalMicrophone {
             NotificationManager.shared.showNotification(
                 title: String(format: String(localized: "Using: %@"), deviceName),
                 type: .info
@@ -104,7 +104,7 @@ extension Recorder {
 
     private func showNoFallbackNotification(reason: RecordingDeviceChangeReason) {
         let presentation = AudioInputFailurePresentation.noUsableMicrophone(
-            builtInBlockedByClosedLid: reason == .closedLid
+            internalMicrophoneBlockedByClosedLid: reason == .closedLid
         )
         NotificationManager.shared.showNotification(
             title: presentation.title,

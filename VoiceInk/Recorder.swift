@@ -30,7 +30,7 @@ class Recorder: NSObject, ObservableObject {
 
     enum RecorderError: Error {
         case couldNotStartRecording
-        case noUsableMicrophone(builtInBlockedByClosedLid: Bool)
+        case noUsableMicrophone(internalMicrophoneBlockedByClosedLid: Bool)
     }
 
     override init() {
@@ -58,7 +58,7 @@ class Recorder: NSObject, ObservableObject {
         guard var deviceID = resolution.deviceID else {
             onAudioChunk = nil
             throw RecorderError.noUsableMicrophone(
-                builtInBlockedByClosedLid: resolution.builtInBlockedByClosedLid
+                internalMicrophoneBlockedByClosedLid: resolution.internalMicrophoneBlockedByClosedLid
             )
         }
 
@@ -79,7 +79,7 @@ class Recorder: NSObject, ObservableObject {
             } catch {
                 let retryResolution = deviceManager.resolveCurrentRecordingDevice(excluding: deviceID)
                 guard deviceManager.isClamshellClosed,
-                    deviceManager.isBuiltInDevice(deviceID),
+                    deviceManager.isInternalMicrophone(deviceID),
                     let fallbackDeviceID = retryResolution.deviceID
                 else {
                     throw error
