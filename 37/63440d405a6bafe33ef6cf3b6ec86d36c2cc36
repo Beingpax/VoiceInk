@@ -1,0 +1,34 @@
+VoiceInk/Services/KeychainService.swift
+  s_f7e6f7ba4aefdd::t_d7a26d16e92d47 27-28,31-33,64,82,222-228,232-237,245
+  s_f7e6f7ba4aefdd::t_8da75f1b4ecef3 241
+  s_f7e6f7ba4aefdd::t_c2a93b2371a241 5,69,87,95,184,242
+  s_f7e6f7ba4aefdd::t_342b95748ba4b3 29-30,161-167,203-208,238-240,243-244
+VoiceInk/Views/Onboarding/OnboardingCoordinator.swift
+  s_f7e6f7ba4aefdd::t_c2a93b2371a241 97-102,147-151
+VoiceInk/Models/LicenseViewModel.swift
+  s_f7e6f7ba4aefdd::t_443a56b1dd0b71 76,79,81,149-153,462,464
+  s_f7e6f7ba4aefdd::t_072bd79c915322 77-78,80,463,465
+Makefile
+  s_f7e6f7ba4aefdd::t_c3ec55a0b89df4 6,48,52-63,67-68,134-135
+LocalBuild.xcconfig
+  s_f7e6f7ba4aefdd::t_0e27a6cf51e2c5 2
+  s_f7e6f7ba4aefdd::t_c3ec55a0b89df4 5
+VoiceInk/Views/Onboarding/OnboardingView.swift
+  s_f7e6f7ba4aefdd::t_c2a93b2371a241 168-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3763440d405a6bafe33ef6cf3b6ec86d36c2cc36",
+  "prompts": {},
+  "sessions": {
+    "s_f7e6f7ba4aefdd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00006-db9a-7ef2-96c7-508f25c59d65",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
