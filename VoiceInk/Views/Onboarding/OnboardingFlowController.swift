@@ -344,9 +344,14 @@ final class OnboardingFlowController {
         isTranscriptionSetupReady: Bool,
         onComplete: () -> Void
     ) {
+        #if LOCAL_BUILD
+            let isFinalStage = coordinator.stage == .license || coordinator.stage == .trust
+        #else
+            let isFinalStage = coordinator.stage == .license
+        #endif
+
         guard
-            coordinator.stage == .license
-                || coordinator.isCurrentExperienceReady(isTranscriptionSetupReady: isTranscriptionSetupReady)
+            isFinalStage || coordinator.isCurrentExperienceReady(isTranscriptionSetupReady: isTranscriptionSetupReady)
         else {
             return
         }

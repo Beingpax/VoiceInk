@@ -51,7 +51,13 @@ local: check setup
 	@rm -rf "$(LOCAL_DERIVED_DATA)"
 	@SIGNING_IDENTITY="$(LOCAL_CODESIGN_IDENTITY)"; \
 	if [ -z "$$SIGNING_IDENTITY" ]; then \
-		SIGNING_IDENTITY=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2; exit }'); \
+		SIGNING_IDENTITIES=$$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Apple Development: / { print $$2 }'); \
+		SIGNING_IDENTITY_COUNT=$$(printf '%s\n' "$$SIGNING_IDENTITIES" | awk 'NF { count++ } END { print count + 0 }'); \
+		if [ "$$SIGNING_IDENTITY_COUNT" -eq 1 ]; then \
+			SIGNING_IDENTITY=$$(printf '%s\n' "$$SIGNING_IDENTITIES" | awk 'NF { print; exit }'); \
+		elif [ "$$SIGNING_IDENTITY_COUNT" -gt 1 ]; then \
+			echo "Multiple Apple Development identities found; set LOCAL_CODESIGN_IDENTITY to choose one; using ad-hoc signing"; \
+		fi; \
 	fi; \
 	if [ -n "$$SIGNING_IDENTITY" ] && [ "$$SIGNING_IDENTITY" != "-" ]; then \
 		SIGNING_REQUIRED=YES; \
@@ -59,7 +65,7 @@ local: check setup
 	else \
 		SIGNING_IDENTITY="-"; \
 		SIGNING_REQUIRED=NO; \
-		echo "No Apple Development identity found; using ad-hoc signing (permissions may need approval after rebuilds)"; \
+		echo "Using ad-hoc signing (permissions may need approval after rebuilds)"; \
 	fi; \
 	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
 		-derivedDataPath "$(LOCAL_DERIVED_DATA)" \
