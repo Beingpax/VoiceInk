@@ -7,9 +7,9 @@ struct AudioInputFailurePresentation {
 
     @MainActor
     static func noUsableMicrophone(
-        builtInBlockedByClosedLid: Bool
+        internalMicrophoneBlockedByClosedLid: Bool
     ) -> AudioInputFailurePresentation {
-        let title = builtInBlockedByClosedLid
+        let title = internalMicrophoneBlockedByClosedLid
             ? String(
                 localized:
                     "No usable microphone is available. Open the lid or connect an external microphone."
@@ -30,13 +30,13 @@ extension VoiceInkEngine {
         for error: Error
     ) -> (title: String, actionLabel: String, action: () -> Void)? {
         guard let recorderError = error as? Recorder.RecorderError,
-            case .noUsableMicrophone(let builtInBlockedByClosedLid) = recorderError
+            case .noUsableMicrophone(let internalMicrophoneBlockedByClosedLid) = recorderError
         else {
             return nil
         }
 
         let presentation = AudioInputFailurePresentation.noUsableMicrophone(
-            builtInBlockedByClosedLid: builtInBlockedByClosedLid
+            internalMicrophoneBlockedByClosedLid: internalMicrophoneBlockedByClosedLid
         )
         return (presentation.title, presentation.actionLabel, presentation.action)
     }

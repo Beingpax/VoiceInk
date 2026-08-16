@@ -4,8 +4,8 @@ import os
 
 struct RecordingDeviceResolution {
     let deviceID: AudioDeviceID?
-    let builtInBlockedByClosedLid: Bool
-    let fellBackFromClosedBuiltInMicrophone: Bool
+    let internalMicrophoneBlockedByClosedLid: Bool
+    let fellBackFromClosedInternalMicrophone: Bool
 }
 
 struct RecordingDeviceSession {
@@ -57,8 +57,8 @@ extension AudioDeviceManager {
     ) -> RecordingDeviceResolution {
         let preferredCandidates = preferredRecordingDeviceIDs()
         let preferredAvailableDevice = preferredCandidates.first(where: isOperationalInputDevice)
-        let builtInBlockedByClosedLid = isClamshellClosed
-            && preferredAvailableDevice.map(isBuiltInDevice) == true
+        let internalMicrophoneBlockedByClosedLid = isClamshellClosed
+            && preferredAvailableDevice.map(isInternalMicrophone) == true
 
         var seen = Set<AudioDeviceID>()
         let candidates = (preferredCandidates + fallbackRecordingDeviceIDs()).filter { deviceID in
@@ -69,8 +69,8 @@ extension AudioDeviceManager {
 
         return RecordingDeviceResolution(
             deviceID: resolvedDeviceID,
-            builtInBlockedByClosedLid: builtInBlockedByClosedLid,
-            fellBackFromClosedBuiltInMicrophone: builtInBlockedByClosedLid
+            internalMicrophoneBlockedByClosedLid: internalMicrophoneBlockedByClosedLid,
+            fellBackFromClosedInternalMicrophone: internalMicrophoneBlockedByClosedLid
                 && resolvedDeviceID != preferredAvailableDevice
         )
     }
@@ -83,17 +83,9 @@ extension AudioDeviceManager {
         fallbackRecordingDeviceIDs().first(where: isDeviceUsableForRecording)
     }
 
-    func isBuiltInDevice(_ deviceID: AudioDeviceID) -> Bool {
-        let transportType = getUInt32DeviceProperty(
-            deviceID: deviceID,
-            selector: kAudioDevicePropertyTransportType
-        )
-        return transportType == kAudioDeviceTransportTypeBuiltIn
-    }
-
     func isDeviceUsableForRecording(_ deviceID: AudioDeviceID) -> Bool {
         isOperationalInputDevice(deviceID)
-            && !(isClamshellClosed && isBuiltInDevice(deviceID))
+            && !(isClamshellClosed && isInternalMicrophone(deviceID))
     }
 
     private func preferredRecordingDeviceIDs() -> [AudioDeviceID] {
@@ -116,9 +108,9 @@ extension AudioDeviceManager {
     }
 
     private func fallbackRecordingDeviceIDs() -> [AudioDeviceID] {
-        let builtIn = availableDevices.filter { isBuiltInDevice($0.id) }.map { $0.id }
-        let external = availableDevices.filter { !isBuiltInDevice($0.id) }.map { $0.id }
-        return isClamshellClosed ? external + builtIn : builtIn + external
+        let internalMicrophones = availableDevices.filter { isInternalMicrophone($0.id) }.map { $0.id }
+        let otherInputs = availableDevices.filter { !isInternalMicrophone($0.id) }.map { $0.id }
+        return isClamshellClosed ? otherInputs + internalMicrophones : internalMicrophones + otherInputs
     }
 
     func isOperationalInputDevice(_ deviceID: AudioDeviceID) -> Bool {
@@ -134,7 +126,7 @@ extension AudioDeviceManager {
         }
         guard isClosed,
             let activeRecordingDeviceID,
-            isBuiltInDevice(activeRecordingDeviceID)
+            isInternalMicrophone(activeRecordingDeviceID)
         else {
             return
         }
