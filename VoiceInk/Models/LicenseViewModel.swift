@@ -73,7 +73,12 @@ final class LicenseViewModel: ObservableObject {
         self.automaticallyRetriesStorage = automaticallyRetriesStorage
         self.automaticallyRefreshesTime = automaticallyRefreshesTime
 
-        loadPersistentState()
+        #if LOCAL_BUILD
+            isPersistentStateAvailable = true
+            licenseState = .licensed
+        #else
+            loadPersistentState()
+        #endif
     }
 
     deinit {
@@ -141,8 +146,11 @@ final class LicenseViewModel: ObservableObject {
     }
 
     var hasVerifiedLicense: Bool {
-        guard isPersistentStateAvailable else { return false }
-        return storedLicenseKey != nil && licenseState == .licensed
+        #if LOCAL_BUILD
+            true
+        #else
+            isPersistentStateAvailable && storedLicenseKey != nil && licenseState == .licensed
+        #endif
     }
 
     var canUseApp: Bool {
@@ -451,6 +459,10 @@ final class LicenseViewModel: ObservableObject {
     }
 
     private func resolvedState(at date: Date) -> LicenseState {
+        #if LOCAL_BUILD
+            return .licensed
+        #endif
+
         if storedLicenseKey != nil,
             activationId != nil || !requiresActivation
         {
