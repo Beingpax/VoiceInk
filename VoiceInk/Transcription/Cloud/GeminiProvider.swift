@@ -11,8 +11,8 @@ struct GeminiProvider: CloudProvider {
     var models: [CloudModel] {
         [
             CloudModel(
-                name: "gemini-3.6-flash",
-                displayName: "Gemini 3.6 Flash",
+                name: "gemini-3.7-flash",
+                displayName: "Gemini 3.7 Flash",
                 description: "Google's latest production model for high-quality transcription",
                 provider: .gemini,
                 speed: 0.92,
