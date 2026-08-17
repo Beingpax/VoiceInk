@@ -176,13 +176,13 @@ struct SettingsView: View {
                     HStack(spacing: 4) {
                         Text("Paste Method")
                         InfoTip(
-                            "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly."
+                            "Default uses simulated Cmd+V key events. AppleScript can help when custom keyboard layouts do not paste correctly. Direct Typing types character by character — use this when dictating into a remote desktop or virtual machine."
                         )
                     }
                 }
                 .pickerStyle(.menu)
                 .onChange(of: pasteMethodRawValue) { _, newValue in
-                    guard let method = PasteMethod(rawValue: newValue) else {
+                    guard let method = PasteMethod.resolve(newValue) else {
                         pasteMethodRawValue = PasteMethod.standard.rawValue
                         return
                     }
