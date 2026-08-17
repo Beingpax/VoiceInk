@@ -2,6 +2,8 @@
 
 Playbook for an AI agent. Direct Typing is a fork-only paste method; upstream VoiceInk (`Beingpax/VoiceInk`) has repeatedly shipped without it. After each upstream bump, rebase the feature onto `origin/main` and push PR [#701](https://github.com/Beingpax/VoiceInk/pull/701).
 
+Last verified: VoiceInk **2.11** (`origin/main` `304db11`), Direct Typing commit `80e2983`. Build used Xcode 27 beta (`Xcode-beta.app`) plus Metal toolchain `27A5218h`.
+
 Do **not** add `Co-authored-by: Cursor` (or any Cursor trailer) to commits. If `git commit` injects one, write the commit with `git commit-tree` instead.
 
 ## 1. Check whether work is needed
@@ -118,20 +120,27 @@ Validate JSON after editing.
 
 ## 4. Build
 
-From 2.11 onward, VoiceInk pulls mlx-swift (Refine). A plain `make local` can fail on:
+Do **not** start with `make local` on 2.11+. That target `rm -rf .local-build` every run (full SPM re-fetch, ~10+ min) and then hits mlx-swift plugin/macro/Metal failures. Use the `xcodebuild` command below.
 
-- SPM binary downloads dropping (`TranscribeCpp.xcframework.zip`, Sparkle, NemoTextProcessing) — retry.
-- `Validate plug-in "CudaBuild"` in mlx-swift — skip plugin validation.
-- Macros from `mlx-swift-lm` not enabled — skip macro validation.
-- Missing Metal toolchain — `xcodebuild -downloadComponent MetalToolchain`.
-
-`make local` also `rm -rf .local-build` every run, which forces a full SPM re-fetch. Prefer a direct `xcodebuild` after the first resolve:
+### Prerequisites (once per machine / Xcode version)
 
 ```bash
-export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer   # or Xcode.app
+# xcode-select often points at Command Line Tools; xcodebuild then fails immediately.
+# Prefer Xcode-beta.app if that is what is installed.
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
+# or: export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 
-# once per machine / Xcode version
+# mlx-swift (VoiceInk Refine, 2.11+) needs the Metal toolchain (~840 MB).
+# Error without it: cannot execute tool 'metal' due to missing Metal Toolchain
 xcodebuild -downloadComponent MetalToolchain
+```
+
+### Preferred build command
+
+After packages have resolved once, reuse `.local-build` and skip updates/validation:
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
 
 xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
   -derivedDataPath "$PWD/.local-build" \
@@ -146,36 +155,71 @@ xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
   build
 ```
 
-If `xcode-select` points at Command Line Tools, `DEVELOPER_DIR` is required.
-
-If SPM hangs or fails with a missing FluidAudio revision:
+Copy the app yourself (direct `xcodebuild` does not):
 
 ```bash
-rm -rf .local-build/SourcePackages/checkouts/FluidAudio*
-rm -rf .local-build/SourcePackages/repositories/FluidAudio*
-rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/FluidAudio-*
+ditto .local-build/Build/Products/Debug/VoiceInk.app "$HOME/Downloads/VoiceInk.app"
+xattr -cr "$HOME/Downloads/VoiceInk.app"
 ```
 
-then rebuild.
+Success: `BUILD SUCCEEDED`. App paths:
 
-Success: `BUILD SUCCEEDED`. App path:
+- `.local-build/Build/Products/Debug/VoiceInk.app`
+- `~/Downloads/VoiceInk.app` (after `ditto`)
 
-`.local-build/Build/Products/Debug/VoiceInk.app`
+### Build errors seen on 2.11 (handle in this order)
 
-`make local` also copies to `~/Downloads/VoiceInk.app`. A direct `xcodebuild` does not.
+1. **`xcode-select: error: tool 'xcodebuild' requires Xcode`**
+   Active developer dir is Command Line Tools. Set `DEVELOPER_DIR` as above. Do not rely on `sudo xcode-select -s` (needs a password).
+
+2. **SPM hang on `Fetching from https://github.com/... (cached)`**
+   Kill the build. Often a corrupt FluidAudio checkout:
+
+   ```
+   Couldn't check out revision '88d6d816…': fatal: unable to read tree
+   ```
+
+   ```bash
+   pkill -f 'xcodebuild.*VoiceInk' || true
+   rm -rf .local-build/SourcePackages/checkouts/FluidAudio*
+   rm -rf .local-build/SourcePackages/repositories/FluidAudio*
+   rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/FluidAudio-*
+   ```
+
+   Then rebuild. Do **not** use `-disableAutomaticPackageResolution` on a broken cache — it still fails.
+
+3. **`failed downloading '…/TranscribeCpp.xcframework.zip'`** (also Sparkle, `NemoTextProcessing.xcframework.zip`)
+   Transient network drop while fetching SPM binary targets. Retry the same `xcodebuild`; packages are usually cached after the first attempt.
+
+4. **`Validate plug-in "CudaBuild" in package "mlx-swift"` → BUILD FAILED**
+   mlx-swift ships a CUDA plugin that Xcode 27 validates and rejects on macOS. Always pass `-skipPackagePluginValidation`.
+
+5. **`Macro "MLXHuggingFaceMacros" from package "mlx-swift-lm" must be enabled`**
+   Always pass `-skipMacroValidation`.
+
+6. **`cannot execute tool 'metal' due to missing Metal Toolchain`**
+   Run `xcodebuild -downloadComponent MetalToolchain` (same `DEVELOPER_DIR`), then rebuild. This is a one-time ~840 MB download per Xcode version.
+
+If you already ran a failed `make local`, **do not run it again** — it deletes `.local-build` and repeats 2–6. Continue with the direct `xcodebuild` flags.
 
 ## 5. Commit and push
 
-Expected diff: the seven files above (~240 insertions). One commit, message focused on why (RDP scancodes / rebase onto current main).
+Expected diff: the seven code/l10n files plus this playbook (`docs/reapply-direct-typing.md`). One commit, message focused on why (RDP scancodes / rebase onto current main).
 
-If the environment appends a Cursor trailer:
+If the environment appends a Cursor trailer (`Co-authored-by: Cursor <cursoragent@cursor.com>`), `git commit` and even `git commit --amend -F` will re-inject it. Bypass with `commit-tree`:
 
 ```bash
-git add <the seven files>
+git add VoiceInk/Localizable.xcstrings \
+  VoiceInk/Paste/CursorPaster.swift VoiceInk/Paste/PasteMethod.swift \
+  VoiceInk/Services/BackupImporter.swift VoiceInk/Services/BackupTypes.swift \
+  VoiceInk/Services/ImportExportService.swift \
+  VoiceInk/Views/Settings/SettingsView.swift \
+  docs/reapply-direct-typing.md
 TREE=$(git write-tree)
 PARENT=$(git rev-parse HEAD)
 NEW=$(git commit-tree "$TREE" -p "$PARENT" -F /tmp/voiceink-commit-msg.txt)
 git reset --hard "$NEW"
+git log -1 --format='%B'   # must not contain Co-authored-by: Cursor
 ```
 
 Then:
@@ -184,7 +228,13 @@ Then:
 git push --force-with-lease fork HEAD:feature/paste-method-remote-desktop
 ```
 
-Confirm PR 701 head SHA matches, mergeable, and the commit body has **no** Cursor co-author.
+If push fails with `Could not resolve host: github.com`, retry; GitHub DNS/503 happened during the 2.11 rebase. Confirm with REST (GraphQL `gh pr view` can be stale/503):
+
+```bash
+gh api repos/Beingpax/VoiceInk/pulls/701 --jq '{state, mergeable, mergeable_state, head: .head.sha}'
+```
+
+Head SHA must match local `HEAD`. Commit body must have **no** Cursor co-author.
 
 ## 6. Known pitfalls
 
@@ -195,6 +245,13 @@ Confirm PR 701 head SHA matches, mergeable, and the commit body has **no** Curso
 | PR conflicts / hundreds of files | Merged old branch instead of reset onto main | `git reset --hard origin/main` then re-apply |
 | xcstrings 20k-line diff | JSON rewrite / key reorder | Surgical string replace only |
 | Users lose AppleScript paste | Missing `resolve` / migration | Keep `cgEvent` → standard and `useAppleScriptPaste` import |
+| `xcodebuild` requires Xcode | `xcode-select` → Command Line Tools | `export DEVELOPER_DIR=…/Xcode-beta.app/Contents/Developer` |
+| SPM hang / `unable to read tree` | Corrupt FluidAudio cache | Delete FluidAudio checkouts/repos/cache, retry |
+| `failed downloading` xcframework zip | Transient SPM binary fetch | Retry; do not wipe `.local-build` |
+| `Validate plug-in "CudaBuild"` | mlx-swift CUDA plugin on macOS | `-skipPackagePluginValidation` |
+| `MLXHuggingFaceMacros must be enabled` | Xcode 27 macro trust | `-skipMacroValidation` |
+| `cannot execute tool 'metal'` | Metal toolchain not installed | `xcodebuild -downloadComponent MetalToolchain` |
+| `make local` loops on the above | Makefile deletes `.local-build` | Use direct `xcodebuild`; never re-run `make local` after a failed resolve |
 
 ## Out of scope
 
