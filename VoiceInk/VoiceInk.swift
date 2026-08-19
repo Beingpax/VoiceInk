@@ -46,6 +46,10 @@ struct VoiceInkApp: App {
         AppAppearancePreference.applyStored()
         OnboardingV2Migration.prepareIfNeeded()
 
+        // Start the diagnostic session at app launch. Initializing this lazily from
+        // the Export button would exclude the recording failure that preceded it.
+        _ = LogExporter.shared
+
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
         // Keep existing model order stable; append new models after synced entities.
         let schema = Schema([
