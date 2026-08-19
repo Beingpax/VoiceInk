@@ -1,0 +1,36 @@
+VoiceInk/Services/BackupImporter.swift
+  s_b0d11ea22560d8::t_99e639f4e35493 207-212
+PRODUCT.md
+  s_b0d11ea22560d8::t_eb9ecba69a4665 1-33
+VoiceInk/Views/Dictionary/DictionarySettingsPanel.swift
+  s_b0d11ea22560d8::t_4f8fe8b5722872 129-131,151
+  s_b0d11ea22560d8::t_fcb17f25f42fb8 132
+  s_b0d11ea22560d8::t_99e639f4e35493 5-11,27-28,47,50,57-60,67-69,71-94,96-122,124-128,133-149,154-155
+  s_b0d11ea22560d8::t_df7e060e9e4032 1,61,70,95
+  s_b0d11ea22560d8::t_8a7c9ca057fd6b 29-46,48-49,152-153
+  s_b0d11ea22560d8::t_62a42c73ed5f0c 123
+  s_b0d11ea22560d8::t_78b3102853fbe4 150
+VoiceInk/Services/DictionaryImportExportService.swift
+  s_b0d11ea22560d8::t_99e639f4e35493 7-18,22-38,42-65,69-94,99-199,201-216,218-233,235-245,247-258,260-264,266-278,280-422
+  s_b0d11ea22560d8::t_df7e060e9e4032 1-5,19-20,39-41,95-98,200,217,234,259,265,279,423
+  s_b0d11ea22560d8::t_77237ce88872b9 6,21,66-68
+  s_b0d11ea22560d8::t_09dbf871031c59 246
+VoiceInk/Localizable.xcstrings
+  s_b0d11ea22560d8::t_8a7c9ca057fd6b 8898-8899
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4d4990211652c33a0627f195ddbb26d13e9c53b",
+  "prompts": {},
+  "sessions": {
+    "s_b0d11ea22560d8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a019f3-4b92-7a92-bc32-17483344ce95",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
