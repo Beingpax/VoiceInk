@@ -1,0 +1,82 @@
+VoiceInk/Paste/CursorPaster.swift
+  s_527fe670011521::t_6705d90edc63a6 66-73,75-78
+VoiceInk/Services/AutoLearn/AutoLearnTypes.swift
+  s_527fe670011521::t_e3ac5c1902a0b1 1-9,31-50,52,54-60
+  s_527fe670011521::t_d02fec004811f0 10-30,51
+  s_527fe670011521::t_33a029e2b008d9 53
+VoiceInk/Services/BackupTypes.swift
+  s_527fe670011521::t_5cb8eefd2804ac 101
+VoiceInk/Services/ImportExportService.swift
+  s_527fe670011521::t_5cb8eefd2804ac 189-190
+VoiceInk/Services/BackupImporter.swift
+  s_527fe670011521::t_2eaf79dcd5c69d 255-257,264
+  s_527fe670011521::t_5cb8eefd2804ac 212-217
+  s_527fe670011521::t_c858c4e8f8596c 254,258,263,265,270,274-279
+VoiceInk/Notifications/AppNotifications.swift
+  s_527fe670011521::t_5cb8eefd2804ac 22
+VoiceInk/Transcription/Engine/TranscriptionDelivery.swift
+  s_527fe670011521::t_6705d90edc63a6 172
+VoiceInk/Views/Dictionary/EditReplacementSheet.swift
+  s_527fe670011521::t_c858c4e8f8596c 127,139,141-142,144,153
+VoiceInk/Transcription/Processing/WordReplacementService.swift
+  s_527fe670011521::t_5cb8eefd2804ac 21-22,29-34,39,43-44,51-55,57,77-80
+  s_527fe670011521::t_c858c4e8f8596c 20,23-28,35-38,40-42,46-49,58-68,70-73,75
+  s_527fe670011521::t_260b14ae20bc8b 69,74
+VoiceInk/Services/AutoLearn/AutoLearnFocusObserver.swift
+  s_527fe670011521::t_ed80886c639fac 1-152
+VoiceInk/Services/DictionaryService.swift
+  s_527fe670011521::t_5cb8eefd2804ac 131,136,139,145-148
+VoiceInk/VoiceInk.swift
+  s_527fe670011521::t_6705d90edc63a6 92-94
+VoiceInk/Transcription/Engine/VoiceInkEngine.swift
+  s_527fe670011521::t_94794e8fe7358b 225-228
+VoiceInk/Transcription/Processing/WordReplacementVariants.swift
+  s_527fe670011521::t_5cb8eefd2804ac 1-48
+VoiceInk/Services/AutoLearn/AutoLearnAXRuntime.swift
+  s_527fe670011521::t_10ce12d246aa8e 115-121
+  s_527fe670011521::t_012e2ddf91a551 13-14,82-83,92,97-101,105-111
+  s_527fe670011521::t_7a38df8e85771f 134-139
+  s_527fe670011521::t_bedfc31ebd8b23 7,49,62,64-69,133,140
+  s_527fe670011521::t_bcdcb6b1a6b4b2 77,127-130
+  s_527fe670011521::t_e8f3031fb77ab6 1-6,8-12,15-48,50-61,63,70-76,78-81,84-91,93-96,102-104,112-114,122-126,131-132,141-238
+VoiceInk/AppDefaults.swift
+  s_527fe670011521::t_5cb8eefd2804ac 15-22,52
+VoiceInk/Views/Settings/SettingsView.swift
+  s_527fe670011521::t_5cb8eefd2804ac 26,37-52
+VoiceInk/Services/AutoLearn/CorrectionDiffEngine.swift
+  s_527fe670011521::t_e3ac5c1902a0b1 1-46,58-235
+  s_527fe670011521::t_72d1c34663942e 47-57
+VoiceInk/Services/AutoLearn/AutoLearnService.swift
+  s_527fe670011521::t_70c85eda14166a 204-207
+  s_527fe670011521::t_dfcf1bb0934e64 1-9,11-12,14,19-28,31-32,38,44,52,60,63-69,71-74,76,78-80,83-85,96-97,99-106,117-118,126-130,132,138,142-144,147,154-155,159-165,179-180,182,184-188,190-203,208-219
+  s_527fe670011521::t_d9283c39659cfd 17,33,36-37,39-40,75,77,98,119-125,133-134,150,181,183,189
+  s_527fe670011521::t_6a042db9c05085 10,16,18,62,70,88-95,107-116,135-137,140,146,149,151-153,166-178
+  s_527fe670011521::t_b44b7f3f33c0e9 13,15,29,34,41-42,45-51,53,57-59,61,81,86,139,145,148,156-158
+  s_527fe670011521::t_cd9b32e7f4bba7 30,35,43,82,87,131,141
+  s_527fe670011521::t_b577b447cf7b64 54-56
+VoiceInk/Services/AutoLearn/FinalSnapshotDiffEngine.swift
+  s_527fe670011521::t_b1dfe93d1c7f48 35-37,44-46,80,82,116-118,126-133,144-146,155-162,166-181
+  s_527fe670011521::t_c2fd99d3398a18 1-21,23-26,33-34,38-42,47-79,91,93,96,102-110,112-115,119-123,134-135,137-142,147-151,163-164,182-208
+  s_527fe670011521::t_ad1d88e9adb3a6 81
+  s_527fe670011521::t_a57c985c46053f 22,27-32,43,83-90,92,94-95,97-101,111,124-125,136,143,152-154,165
+VoiceInk/Services/AutoLearn/WordReplacementStore.swift
+  s_527fe670011521::t_fec3936f469cec 1-183
+PRODUCT.md
+  s_527fe670011521::t_81f7a2eff5f688 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "51385ece6826621b2f3ac3359b2c11035b699f56",
+  "prompts": {},
+  "sessions": {
+    "s_527fe670011521": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01a77-c769-7551-bb1a-dfb544df456f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
