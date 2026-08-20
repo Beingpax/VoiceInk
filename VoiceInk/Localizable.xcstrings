@@ -3634,22 +3634,6 @@
         }
       }
     },
-    "Automatically Check for Updates" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatisch nach Updates suchen"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动检查更新"
-          }
-        }
-      }
-    },
     "Auto-delete Audio Files" : {
       "localizations" : {
         "de" : {
@@ -3696,6 +3680,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "自动检测"
+          }
+        }
+      }
+    },
+    "Automatically Check for Updates" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch nach Updates suchen"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动检查更新"
           }
         }
       }
@@ -4287,6 +4287,9 @@
         }
       }
     },
+    "Choose a VoiceInk dictionary JSON file." : {
+
+    },
     "Choose Files" : {
       "localizations" : {
         "de" : {
@@ -4334,6 +4337,9 @@
           }
         }
       }
+    },
+    "Choose where to save your VoiceInk dictionary." : {
+
     },
     "Claude, Codex, scripts, or any command" : {
       "localizations" : {
@@ -6232,6 +6238,9 @@
         }
       }
     },
+    "Dictionary exported to %@." : {
+
+    },
     "Dictionary Settings" : {
       "localizations" : {
         "de" : {
@@ -7597,6 +7606,9 @@
         }
       }
     },
+    "Export Dictionary" : {
+
+    },
     "Export Error" : {
       "localizations" : {
         "de" : {
@@ -8096,6 +8108,7 @@
       }
     },
     "Failed to save imported %@: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -8882,6 +8895,9 @@
         }
       }
     },
+    "Import & Export" : {
+
+    },
     "Import Canceled" : {
       "localizations" : {
         "de" : {
@@ -8897,6 +8913,9 @@
           }
         }
       }
+    },
+    "Import Dictionary" : {
+
     },
     "Import Error" : {
       "localizations" : {
@@ -9022,6 +9041,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已导入 %@"
+          }
+        }
+      }
+    },
+    "Imported %lld new vocabulary items, updated %lld vocabulary items, added %lld replacement originals, and updated %lld replacement originals." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Imported %1$lld new vocabulary items, updated %2$lld vocabulary items, added %3$lld replacement originals, and updated %4$lld replacement originals."
           }
         }
       }
@@ -13999,6 +14028,12 @@
         }
       }
     },
+    "Replacement %lld has empty replacement text." : {
+
+    },
+    "Replacement %lld must contain at least one original." : {
+
+    },
     "Replacement text" : {
       "localizations" : {
         "de" : {
@@ -16720,6 +16755,9 @@
         }
       }
     },
+    "The original ‘%@’ contains a comma. Put each original in its own array item." : {
+
+    },
     "The provided API key is invalid." : {
       "localizations" : {
         "de" : {
@@ -18502,6 +18540,9 @@
           }
         }
       }
+    },
+    "Vocabulary item %lld is empty." : {
+
     },
     "Vocabulary Words" : {
       "extractionState" : "manual",

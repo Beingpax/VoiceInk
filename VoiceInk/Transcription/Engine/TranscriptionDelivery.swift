@@ -169,6 +169,7 @@ final class TranscriptionDelivery {
 
             if autoSendKey.isEnabled {
                 try? await Task.sleep(nanoseconds: 500_000_000)
+                await AutoLearnService.shared.cancelForAutoSend()
                 CursorPaster.performAutoSend(autoSendKey)
             }
         }

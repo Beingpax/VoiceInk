@@ -209,6 +209,12 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
+        if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
+            UserDefaults.standard.set(autoLearnEnabled, forKey: AutoLearnSettings.isEnabledKey)
+            Task {
+                await AutoLearnService.shared.settingDidChange(isEnabled: autoLearnEnabled)
+            }
+        }
 
         print("Successfully imported general settings.")
     }
@@ -245,24 +251,32 @@ enum BackupImporter {
 
             var existingKeys = Set<String>()
             for existing in existingReplacements {
-                existingKeys.formUnion(tokens(from: existing.originalText))
+                existingKeys.formUnion(
+                    WordReplacementVariants.parse(existing.originalText).map {
+                        WordReplacementVariants.key(for: $0)
+                    }
+                )
             }
 
             for (original, replacement) in replacements {
-                let trimmedOriginal = original.trimmingCharacters(in: .whitespacesAndNewlines)
                 let trimmedReplacement = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
-                let importTokens = tokens(from: trimmedOriginal)
-                guard !importTokens.isEmpty, !trimmedReplacement.isEmpty else {
+                let importVariants = WordReplacementVariants.parse(original)
+                let importKeys = importVariants.map { WordReplacementVariants.key(for: $0) }
+                guard !importVariants.isEmpty, !trimmedReplacement.isEmpty else {
                     skippedInvalidReplacements += 1
                     continue
                 }
 
-                let hasConflict = importTokens.contains { existingKeys.contains($0) }
+                let hasConflict = importKeys.contains { existingKeys.contains($0) }
 
                 if !hasConflict {
                     modelContext.insert(
-                        WordReplacement(originalText: trimmedOriginal, replacementText: trimmedReplacement))
-                    existingKeys.formUnion(importTokens)
+                        WordReplacement(
+                            originalText: WordReplacementVariants.serialize(importVariants),
+                            replacementText: trimmedReplacement
+                        )
+                    )
+                    existingKeys.formUnion(importKeys)
                     insertedReplacements += 1
                 }
             }
@@ -310,10 +324,4 @@ enum BackupImporter {
         print("Successfully imported \(models.count) custom model definitions.")
     }
 
-    private static func tokens(from text: String) -> [String] {
-        text
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-            .filter { !$0.isEmpty }
-    }
 }

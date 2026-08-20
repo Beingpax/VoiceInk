@@ -23,6 +23,7 @@ struct SettingsView: View {
     @AppStorage(AppLanguagePreference.userDefaultsKey) private var appLanguagePreference = AppLanguagePreference
         .systemValue
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+    @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
     @State private var showResetOnboardingAlert = false
     @State private var showLanguageRestartAlert = false
     @State private var hasCancelRecordingShortcut = ShortcutStore.shortcut(for: .cancelRecorder) != nil
@@ -33,6 +34,22 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Auto Learn") {
+                Toggle(isOn: $isAutoLearnDictionaryEnabled) {
+                    HStack(spacing: 4) {
+                        Text("Auto Learn Dictionary")
+                        InfoTip(
+                            "Learns word and phrase replacements when you correct text just pasted by VoiceInk. Only substitutions inside that pasted text are considered."
+                        )
+                    }
+                }
+                .onChange(of: isAutoLearnDictionaryEnabled) { _, isEnabled in
+                    Task {
+                        await AutoLearnService.shared.settingDidChange(isEnabled: isEnabled)
+                    }
+                }
+            }
+
             Section {
                 LabeledContent("Primary Shortcut") {
                     HStack(spacing: 8) {

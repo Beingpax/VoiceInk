@@ -12,6 +12,14 @@ enum RecorderDisplaySettingsKeys {
     static let showLiveTranscript = "ShowLiveTranscript"
 }
 
+enum AutoLearnSettings {
+    static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
+
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: isEnabledKey)
+    }
+}
+
 enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -41,6 +49,7 @@ enum AppDefaults {
             "AppendTrailingSpace": true,
             "RecorderType": "mini",
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
+            AutoLearnSettings.isEnabledKey: true,
 
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,

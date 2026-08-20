@@ -98,6 +98,7 @@ struct GeneralBackup: Codable {
     let isExperimentalFeaturesEnabled: Bool?
     let restoreClipboardAfterPaste: Bool?
     let clipboardRestoreDelay: Double?
+    let isAutoLearnDictionaryEnabled: Bool?
 }
 
 struct WordBackup: Codable {
