@@ -72,7 +72,8 @@ actor AutoLearnService {
         }
 
         let task = Task { [weak self] in
-            await self?.waitForFinalSnapshot(token: token)
+            guard let self else { return }
+            await self.waitForFinalSnapshot(token: token)
         }
         deadlineTask = task
     }
