@@ -89,6 +89,9 @@ struct VoiceInkApp: App {
         }
 
         container = resolvedContainer
+        Task {
+            await AutoLearnService.shared.configure(modelContainer: resolvedContainer)
+        }
         DictionaryService.removeExactDuplicateContent(context: resolvedContainer.mainContext, source: "launch")
 
         // Initialize services with proper sharing of instances
