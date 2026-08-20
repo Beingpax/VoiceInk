@@ -1,0 +1,19 @@
+VoiceInk/Services/AutoLearn/AutoLearnService.swift
+  s_234288a3179cb5::t_0d0c8354d62cc7 75-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "398a21742f575c6b2ea20e5659c777dd461b7cc8",
+  "prompts": {},
+  "sessions": {
+    "s_234288a3179cb5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01aed-aeb1-7370-b40e-98d140fd5170",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
