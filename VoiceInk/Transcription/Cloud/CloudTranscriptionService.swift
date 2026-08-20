@@ -57,7 +57,8 @@ class CloudTranscriptionService: TranscriptionService {
                     throw CloudTranscriptionError.unsupportedProvider
                 }
                 return try await openAICompatibleService.transcribe(
-                    audioURL: audioURL, model: customModel, context: context)
+                    audioURL: audioURL, model: customModel, context: context,
+                    customVocabulary: getCustomDictionaryTerms())
             }
 
             guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
