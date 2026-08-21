@@ -54,13 +54,27 @@ class Recorder: NSObject, ObservableObject {
     }
 
     func startRecording(toOutputFile url: URL) async throws {
+        RecordingDiagnostics.shared.mark(
+            "recorder-start-entered",
+            details: "file=\(url.lastPathComponent) inputMode=\(deviceManager.inputMode.rawValue) selectedDeviceID=\(deviceManager.selectedDeviceID.map(String.init) ?? "none") systemDefaultDeviceID=\(deviceManager.getSystemDefaultDevice().map(String.init) ?? "none") clamshellClosed=\(deviceManager.isClamshellClosed)"
+        )
         var resolution = deviceManager.resolveCurrentRecordingDevice()
         guard var deviceID = resolution.deviceID else {
+            RecordingDiagnostics.shared.mark(
+                "recorder-device-resolution-failed",
+                details: "internalMicrophoneBlockedByClosedLid=\(resolution.internalMicrophoneBlockedByClosedLid)"
+            )
             onAudioChunk = nil
             throw RecorderError.noUsableMicrophone(
                 internalMicrophoneBlockedByClosedLid: resolution.internalMicrophoneBlockedByClosedLid
             )
         }
+
+        let initialDevice = deviceManager.availableDevices.first(where: { $0.id == deviceID })
+        RecordingDiagnostics.shared.mark(
+            "recorder-device-selected",
+            details: "deviceID=\(deviceID) name=\(initialDevice?.name ?? "unknown") uid=\(initialDevice?.uid ?? "unknown") modelUID=\(deviceManager.getDeviceModelUID(deviceID: deviceID) ?? "unknown") fellBackFromClosedInternalMicrophone=\(resolution.fellBackFromClosedInternalMicrophone)"
+        )
 
         deviceManager.beginRecordingSetup(deviceID: deviceID)
 
@@ -77,6 +91,10 @@ class Recorder: NSObject, ObservableObject {
             do {
                 try await startHardwareRecording(coreAudioRecorder, to: url, deviceID: deviceID)
             } catch {
+                RecordingDiagnostics.shared.mark(
+                    "recorder-initial-device-start-failed",
+                    details: "deviceID=\(deviceID) error=\(String(describing: error))"
+                )
                 let retryResolution = deviceManager.resolveCurrentRecordingDevice(excluding: deviceID)
                 guard deviceManager.isClamshellClosed,
                     deviceManager.isInternalMicrophone(deviceID),
@@ -87,15 +105,27 @@ class Recorder: NSObject, ObservableObject {
 
                 deviceID = fallbackDeviceID
                 resolution = retryResolution
+                RecordingDiagnostics.shared.mark(
+                    "recorder-fallback-device-selected",
+                    details: "deviceID=\(fallbackDeviceID)"
+                )
                 deviceManager.beginRecordingSetup(deviceID: fallbackDeviceID)
                 try await startHardwareRecording(coreAudioRecorder, to: url, deviceID: fallbackDeviceID)
             }
 
             deviceManager.recordingDidStart(deviceID: deviceID)
+            RecordingDiagnostics.shared.mark(
+                "recorder-start-completed",
+                details: "deviceID=\(deviceID)"
+            )
             showRecordingDeviceNotification(for: deviceID, resolution: resolution)
             UserDefaults.standard.set(String(deviceID), forKey: "lastUsedMicrophoneDeviceID")
             resetAudioMeter()
         } catch {
+            RecordingDiagnostics.shared.mark(
+                "recorder-start-failed",
+                details: "deviceID=\(deviceID) error=\(String(describing: error))"
+            )
             logger.error(
                 "Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)"
             )
@@ -105,6 +135,10 @@ class Recorder: NSObject, ObservableObject {
     }
 
     func stopRecording() async {
+        RecordingDiagnostics.shared.mark(
+            "recorder-stop-entered",
+            details: "coreAudioRecording=\(recorder?.isCurrentlyRecording ?? false)"
+        )
         audioMuteTask?.cancel()
         audioMuteTask = nil
         mediaPauseTask?.cancel()
@@ -114,7 +148,9 @@ class Recorder: NSObject, ObservableObject {
 
         await withCheckedContinuation { continuation in
             audioSetupQueue.async {
+                RecordingDiagnostics.shared.mark("hardware-stop-queue-began")
                 currentRecorder?.stopRecording()
+                RecordingDiagnostics.shared.mark("hardware-stop-queue-completed")
                 continuation.resume()
             }
         }
@@ -128,23 +164,37 @@ class Recorder: NSObject, ObservableObject {
             await playbackController.resumeMedia()
         }
         deviceManager.recordingDidStop()
+        RecordingDiagnostics.shared.mark("recorder-stop-completed")
     }
 
     private func muteSystemAudio() {
+        RecordingDiagnostics.shared.mark(
+            "system-audio-mute-scheduled",
+            details: "delayMs=\(Double(recordingAudioActionDelayNanoseconds) / 1_000_000.0) enabled=\(UserDefaults.standard.bool(forKey: "isSystemMuteEnabled"))"
+        )
         audioMuteTask?.cancel()
         audioMuteTask = Task { [weak self] in
             guard let self else { return }
             try? await Task.sleep(nanoseconds: self.recordingAudioActionDelayNanoseconds)
             guard !Task.isCancelled else { return }
-            _ = await self.mediaController.muteSystemAudio()
+            let result = await self.mediaController.muteSystemAudio()
+            RecordingDiagnostics.shared.mark(
+                "system-audio-mute-completed",
+                details: "result=\(String(describing: result))"
+            )
         }
     }
 
     private func pauseMedia() {
+        RecordingDiagnostics.shared.mark(
+            "media-pause-scheduled",
+            details: "enabled=\(UserDefaults.standard.bool(forKey: "isPauseMediaEnabled"))"
+        )
         mediaPauseTask?.cancel()
         mediaPauseTask = Task { [weak self] in
             guard let self else { return }
             await self.playbackController.pauseMedia()
+            RecordingDiagnostics.shared.mark("media-pause-call-completed")
         }
     }
 

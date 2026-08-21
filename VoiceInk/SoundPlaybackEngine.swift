@@ -79,7 +79,13 @@ final class SoundPlaybackEngine: @unchecked Sendable {
                 player = self.escSound
             }
 
-            player?.play()
+            let started = player?.play() ?? false
+            if case .start = sound {
+                RecordingDiagnostics.shared.mark(
+                    "start-sound-playback-attempted",
+                    details: "playerAvailable=\(player != nil) playReturned=\(started)"
+                )
+            }
         }
     }
 

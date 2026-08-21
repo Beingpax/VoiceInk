@@ -30,7 +30,9 @@ final class SystemInfoService {
             AUDIO SETTINGS:
             Input Mode: \(getAudioInputMode())
             Current Audio Device: \(getCurrentAudioDevice())
+            System Default Input Device: \(getSystemDefaultAudioDevice())
             Available Audio Devices: \(getAvailableAudioDevices())
+            Clamshell Closed: \(AudioDeviceManager.shared.isClamshellClosed)
 
             HOTKEY SETTINGS:
             Primary Shortcut: \(getPrimaryShortcut())
@@ -135,10 +137,19 @@ final class SystemInfoService {
     private func getCurrentAudioDevice() -> String {
         let audioManager = AudioDeviceManager.shared
         let deviceID = audioManager.getCurrentDevice()
-        if deviceID != 0, let deviceName = audioManager.getDeviceName(deviceID: deviceID) {
-            return deviceName
+        if deviceID != 0,
+            let device = audioManager.availableDevices.first(where: { $0.id == deviceID })
+        {
+            return "name=\(device.name), id=\(device.id), uid=\(device.uid), modelUID=\(audioManager.getDeviceModelUID(deviceID: device.id) ?? "Unknown")"
         }
         return "Unknown"
+    }
+
+    private func getSystemDefaultAudioDevice() -> String {
+        let audioManager = AudioDeviceManager.shared
+        guard let deviceID = audioManager.getSystemDefaultDevice() else { return "Unknown" }
+        let device = audioManager.availableDevices.first(where: { $0.id == deviceID })
+        return "name=\(device?.name ?? "Unknown"), id=\(deviceID), uid=\(device?.uid ?? "Unknown"), modelUID=\(audioManager.getDeviceModelUID(deviceID: deviceID) ?? "Unknown")"
     }
 
     private func getAvailableAudioDevices() -> String {
@@ -146,7 +157,10 @@ final class SystemInfoService {
         if devices.isEmpty {
             return "None detected"
         }
-        return devices.map { $0.name }.joined(separator: ", ")
+        let audioManager = AudioDeviceManager.shared
+        return devices.map { device in
+            "[name=\(device.name), id=\(device.id), uid=\(device.uid), modelUID=\(audioManager.getDeviceModelUID(deviceID: device.id) ?? "Unknown")]"
+        }.joined(separator: ", ")
     }
 
     private func getPrimaryShortcut() -> String {
