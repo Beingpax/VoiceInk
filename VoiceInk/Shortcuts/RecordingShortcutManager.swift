@@ -418,12 +418,20 @@ final class RecordingShortcutModeHandler {
 
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
+                RecordingDiagnostics.shared.begin(
+                    trigger: "keyboard-shortcut",
+                    details: "action=\(action.storageName) mode=\(mode.rawValue) modeId=\(modeId?.uuidString ?? "none") eventTime=\(eventTime)"
+                )
                 await toggleRecorderPanel(modeId)
             }
 
         case .pushToTalk:
             if !isRecorderVisible() {
                 guard canHandleShortcutAction() else { return }
+                RecordingDiagnostics.shared.begin(
+                    trigger: "keyboard-shortcut",
+                    details: "action=\(action.storageName) mode=\(mode.rawValue) modeId=\(modeId?.uuidString ?? "none") eventTime=\(eventTime)"
+                )
                 await toggleRecorderPanel(modeId)
             }
         }
@@ -436,6 +444,10 @@ final class RecordingShortcutModeHandler {
         modeId: UUID? = nil
     ) async {
         guard isShortcutPressed, activeRecordingShortcutAction == action else { return }
+        RecordingDiagnostics.shared.mark(
+            "shortcut-key-up",
+            details: "action=\(action.storageName) mode=\(mode.rawValue) eventTime=\(eventTime) pressDuration=\(shortcutPressStartTime.map { eventTime - $0 } ?? -1)"
+        )
         isShortcutPressed = false
         activeRecordingShortcutAction = nil
         activeShortcutCanCancelAccidentalStart = false
