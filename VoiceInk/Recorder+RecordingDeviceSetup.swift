@@ -20,12 +20,28 @@ extension Recorder {
         to url: URL,
         deviceID: AudioDeviceID
     ) async throws {
+        RecordingDiagnostics.shared.mark(
+            "hardware-start-queued",
+            details: "deviceID=\(deviceID) file=\(url.lastPathComponent)"
+        )
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             audioSetupQueue.async {
+                RecordingDiagnostics.shared.mark(
+                    "hardware-start-queue-began",
+                    details: "deviceID=\(deviceID)"
+                )
                 do {
                     try recorder.startRecording(toOutputFile: url, deviceID: deviceID)
+                    RecordingDiagnostics.shared.mark(
+                        "hardware-start-queue-completed",
+                        details: "deviceID=\(deviceID)"
+                    )
                     continuation.resume()
                 } catch {
+                    RecordingDiagnostics.shared.mark(
+                        "hardware-start-queue-failed",
+                        details: "deviceID=\(deviceID) error=\(String(describing: error))"
+                    )
                     continuation.resume(throwing: error)
                 }
             }
@@ -58,6 +74,10 @@ extension Recorder {
 
     private func handleRecordingDeviceChange(_ notification: Notification) async {
         guard let request = notification.object as? RecordingDeviceChangeRequest else { return }
+        RecordingDiagnostics.shared.mark(
+            "recording-device-change-requested",
+            details: "reason=\(String(describing: request.reason)) fallbackDeviceID=\(request.fallbackDeviceID.map(String.init) ?? "none")"
+        )
         guard let fallbackDeviceID = request.fallbackDeviceID else {
             deviceManager.recordingDeviceChangeFinished()
             showNoFallbackNotification(reason: request.reason)
@@ -81,6 +101,10 @@ extension Recorder {
             }
 
             deviceManager.recordingDeviceChangeFinished(activeDeviceID: fallbackDeviceID)
+            RecordingDiagnostics.shared.mark(
+                "recording-device-change-completed",
+                details: "activeDeviceID=\(fallbackDeviceID)"
+            )
             UserDefaults.standard.set(
                 String(fallbackDeviceID),
                 forKey: "lastUsedMicrophoneDeviceID"
@@ -93,6 +117,10 @@ extension Recorder {
             }
         } catch {
             deviceManager.recordingDeviceChangeFinished()
+            RecordingDiagnostics.shared.mark(
+                "recording-device-change-failed",
+                details: "error=\(String(describing: error))"
+            )
             logger.error("Failed to switch recording devices: \(error, privacy: .public)")
             NotificationManager.shared.showNotification(
                 title: String(localized: "VoiceInk could not switch to another microphone."),

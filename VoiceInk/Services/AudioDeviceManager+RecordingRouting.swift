@@ -67,6 +67,11 @@ extension AudioDeviceManager {
         }
         let resolvedDeviceID = candidates.first(where: isDeviceUsableForRecording)
 
+        RecordingDiagnostics.shared.mark(
+            "device-routing-resolved",
+            details: "inputMode=\(inputMode.rawValue) preferredCandidates=\(preferredCandidates) fallbackCandidates=\(fallbackRecordingDeviceIDs()) excluded=\(excludedDeviceID.map(String.init) ?? "none") resolved=\(resolvedDeviceID.map(String.init) ?? "none") clamshellClosed=\(isClamshellClosed) internalPreferredBlocked=\(internalMicrophoneBlockedByClosedLid)"
+        )
+
         return RecordingDeviceResolution(
             deviceID: resolvedDeviceID,
             internalMicrophoneBlockedByClosedLid: internalMicrophoneBlockedByClosedLid,

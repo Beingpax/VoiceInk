@@ -77,6 +77,10 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     private func showRecorderPanel() {
         guard let engine = engine, let recorder = recorder else { return }
+        RecordingDiagnostics.shared.mark(
+            "recorder-panel-show-began",
+            details: "panelStyle=\(recorderPanelStyle.rawValue)"
+        )
 
         switch recorderPanelStyle {
         case .notch:
@@ -128,15 +132,24 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             }
             miniWindowManager?.show()
         }
+        RecordingDiagnostics.shared.mark(
+            "recorder-panel-show-returned",
+            details: "panelStyle=\(recorderPanelStyle.rawValue)"
+        )
     }
 
     private func hideRecorderPanel() {
+        RecordingDiagnostics.shared.mark(
+            "recorder-panel-hide-began",
+            details: "panelStyle=\(recorderPanelStyle.rawValue)"
+        )
         switch recorderPanelStyle {
         case .notch:
             notchWindowManager?.hide()
         case .mini:
             miniWindowManager?.hide()
         }
+        RecordingDiagnostics.shared.mark("recorder-panel-hide-returned")
     }
 
     private func rebuildVisiblePanel(previousStyle: RecorderPanelStyle) {
@@ -162,6 +175,11 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     func toggleRecorderPanel(modeId: UUID? = nil) async {
         guard let engine = engine else { return }
 
+        RecordingDiagnostics.shared.mark(
+            "ui-toggle-entered",
+            details: "panelVisible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState)) modeId=\(modeId?.uuidString ?? "none")"
+        )
+
         if isRecorderPanelVisible {
             switch engine.recordingState {
             case .recording:
@@ -170,7 +188,13 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                 await cancelRecording()
             case .idle:
                 if engine.assistantSession.canSendFollowUp {
+                    RecordingDiagnostics.shared.beginIfNeeded(
+                        trigger: "assistant-follow-up",
+                        details: "panelStyle=\(recorderPanelStyle.rawValue) modeId=\(modeId?.uuidString ?? "none")"
+                    )
+                    RecordingDiagnostics.shared.mark("start-sound-requested")
                     SoundManager.shared.playStartSound()
+                    RecordingDiagnostics.shared.mark("start-sound-call-returned")
                     await engine.toggleRecord(
                         modeId: modeId,
                         isAssistantFollowUp: true
@@ -182,8 +206,18 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                 await dismissRecorderPanel()
             }
         } else {
+            RecordingDiagnostics.shared.beginIfNeeded(
+                trigger: "recorder-ui",
+                details: "panelStyle=\(recorderPanelStyle.rawValue) modeId=\(modeId?.uuidString ?? "none")"
+            )
+            RecordingDiagnostics.shared.mark("start-sound-requested")
             SoundManager.shared.playStartSound()
+            RecordingDiagnostics.shared.mark("start-sound-call-returned")
             isRecorderPanelVisible = true
+            RecordingDiagnostics.shared.mark(
+                "recorder-panel-visible",
+                details: "panelStyle=\(recorderPanelStyle.rawValue)"
+            )
             await engine.toggleRecord(modeId: modeId)
         }
     }

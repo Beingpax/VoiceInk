@@ -34,7 +34,11 @@ class SoundManager: ObservableObject {
     }
 
     func playStartSound() {
-        guard CustomSoundManager.shared.isSoundEnabled(for: .start) else { return }
+        guard CustomSoundManager.shared.isSoundEnabled(for: .start) else {
+            RecordingDiagnostics.shared.mark("start-sound-skipped", details: "reason=disabled")
+            return
+        }
+        RecordingDiagnostics.shared.mark("start-sound-enqueued")
         playbackEngine.playStartSound()
     }
 
