@@ -129,6 +129,13 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                     logger.notice(
                         "Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
                     )
+                    // An empty transcript means the session died without reporting an error
+                    // (e.g. the commit acknowledgement timed out). Discarding the user's
+                    // recording is worse than paying for a batch pass over the same audio.
+                    if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        logger.error("Streaming returned an empty transcript, falling back to batch")
+                        break
+                    }
                     return text
                 case .requiresBatchFallback:
                     logger.notice("Streaming provider requested full batch transcription")
