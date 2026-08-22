@@ -12156,22 +12156,6 @@
         }
       }
     },
-    "Only local Whisper models use this. Add example text to guide spelling and style." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur lokale Whisper-Modelle verwenden dies. Beispieltext steuert Schreibweise und Stil."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅本地 Whisper 模型使用此内容。示例文本可引导拼写和风格。"
-          }
-        }
-      }
-    },
     "On timeout" : {
       "localizations" : {
         "de" : {
@@ -12200,6 +12184,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设备端"
+          }
+        }
+      }
+    },
+    "Only local Whisper models use this. Add example text to guide spelling and style." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur lokale Whisper-Modelle verwenden dies. Beispieltext steuert Schreibweise und Stil."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅本地 Whisper 模型使用此内容。示例文本可引导拼写和风格。"
           }
         }
       }
