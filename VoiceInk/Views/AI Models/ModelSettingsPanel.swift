@@ -71,8 +71,12 @@ private struct ModelSettingsTabBar: View {
 }
 
 private struct TranscriptionModelSettingsView: View {
+    @EnvironmentObject private var whisperModelManager: WhisperModelManager
+
     var body: some View {
         Form {
+            WhisperPromptSettingsSection(whisperPrompt: whisperModelManager.whisperPrompt)
+
             FillerWordsSettingsSection()
 
             AdvancedModelSettingsSection()
@@ -80,6 +84,115 @@ private struct TranscriptionModelSettingsView: View {
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct WhisperPromptSettingsSection: View {
+    @ObservedObject var whisperPrompt: WhisperPrompt
+    @State private var promptLanguage = "en"
+    @State private var draftPrompt = ""
+    @State private var isEditing = false
+
+    private var supportedLanguages: [String: String] {
+        LanguageDictionary.forProvider(isMultilingual: true, provider: .whisper)
+    }
+
+    private var savedPrompt: String {
+        whisperPrompt.getLanguagePrompt(for: promptLanguage)
+    }
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 10) {
+                Picker("Language", selection: $promptLanguage) {
+                    ForEach(sortedLanguages, id: \.key) { code, name in
+                        Text(name).tag(code)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .accessibilityLabel("Language")
+                .disabled(isEditing)
+
+                if promptLanguage != "auto", isEditing {
+                    TextEditor(text: $draftPrompt)
+                        .font(.body)
+                        .padding(6)
+                        .frame(height: 72)
+                        .scrollContentBackground(.hidden)
+                        .background(AppTheme.Surface.control)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.18))
+                        }
+                        .accessibilityLabel("Whisper Prompt")
+
+                    HStack(spacing: 10) {
+                        Spacer()
+
+                        Button("Cancel", role: .cancel) {
+                            draftPrompt = savedPrompt
+                            isEditing = false
+                        }
+
+                        Button("Save") {
+                            whisperPrompt.setCustomPrompt(draftPrompt, for: promptLanguage)
+                            isEditing = false
+                        }
+                        .keyboardShortcut(.defaultAction)
+                    }
+                    .controlSize(.small)
+                } else if promptLanguage != "auto" {
+                    if !savedPrompt.isEmpty {
+                        Text(savedPrompt)
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Button("Edit") {
+                        draftPrompt = savedPrompt
+                        isEditing = true
+                    }
+                }
+            }
+            .padding(.vertical, 2)
+        } header: {
+            HStack(spacing: 4) {
+                Text("Whisper Prompt")
+                InfoTip(
+                    LocalizedStringKey(
+                        "Only local Whisper models use this. Add example text to guide spelling and style."
+                    ),
+                    learnMoreURL: "https://cookbook.openai.com/examples/whisper_prompting_guide#comparison-with-gpt-prompting"
+                )
+            }
+        }
+        .onAppear {
+            selectCurrentTranscriptionLanguage()
+        }
+        .onChange(of: promptLanguage) { _, _ in
+            draftPrompt = savedPrompt
+            isEditing = false
+        }
+    }
+
+    private var sortedLanguages: [(key: String, value: String)] {
+        supportedLanguages.sorted { first, second in
+            if first.key == "auto" { return true }
+            if second.key == "auto" { return false }
+            return first.value.localizedCaseInsensitiveCompare(second.value) == .orderedAscending
+        }
+    }
+
+    private func selectCurrentTranscriptionLanguage() {
+        let activeLanguage =
+            ModeManager.shared.currentEffectiveConfiguration?.selectedLanguage
+            ?? UserDefaults.standard.string(forKey: "SelectedLanguage")
+            ?? "en"
+
+        promptLanguage = supportedLanguages[activeLanguage] == nil ? "en" : activeLanguage
     }
 }
 
