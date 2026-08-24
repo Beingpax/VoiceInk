@@ -1,0 +1,19 @@
+VoiceInk/Transcription/Processing/WordReplacementService.swift
+  s_a55e349cd44903::t_1201b356692d7f 3,8-12,20-30,33-36,66-75,78-81,83,99-100,102-107,115-119,123,125-131,135-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f0f867efd65333267b90a95b1506fa23a76d7489",
+  "prompts": {},
+  "sessions": {
+    "s_a55e349cd44903": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a031c8-5cb7-7e50-8a30-71437ad99acf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
