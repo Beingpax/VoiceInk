@@ -1,8 +1,14 @@
 import Foundation
 import SwiftData
+import os
 
 class WordReplacementService {
     static let shared = WordReplacementService()
+
+    private let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink",
+        category: "WordReplacementService"
+    )
 
     private init() {}
 
@@ -11,9 +17,22 @@ class WordReplacementService {
             predicate: #Predicate { $0.isEnabled }
         )
 
-        guard let replacements = try? context.fetch(descriptor), !replacements.isEmpty else {
-            return text  // No replacements to apply
+        let replacements: [WordReplacement]
+        do {
+            replacements = try context.fetch(descriptor)
+        } catch {
+            logger.error("Could not load enabled word replacements: \(error, privacy: .public)")
+            return text
         }
+
+        guard !replacements.isEmpty else {
+            logger.debug("Word replacement skipped: no enabled rules")
+            return text
+        }
+
+        logger.debug(
+            "Starting word replacement selection with \(replacements.count, privacy: .public) enabled rule(s)"
+        )
 
         var modifiedText = text
 
@@ -44,11 +63,24 @@ class WordReplacementService {
             }
 
         var seenSources = Set<String>()
-        let rules = sortedRules.filter {
-            seenSources.insert(WordReplacementVariants.key(for: $0.original)).inserted
+        let rules = sortedRules.filter { rule in
+            let wasSelected = seenSources.insert(
+                WordReplacementVariants.key(for: rule.original)
+            ).inserted
+            if !wasSelected {
+                logger.debug(
+                    "Skipping duplicate word replacement variant \(rule.original, privacy: .private); an earlier longest-first rule already owns this trigger"
+                )
+            }
+            return wasSelected
         }
 
+        logger.debug(
+            "Prepared \(rules.count, privacy: .public) unique variant(s) from \(sortedRules.count, privacy: .public) candidate(s)"
+        )
+
         // Apply individual variants longest-first so appending a grouped variant never changes precedence.
+        var matchedRuleCount = 0
         for rule in rules {
             let original = rule.original
             let replacementText = rule.replacement
@@ -64,8 +96,15 @@ class WordReplacementService {
                 // U+30FC (Script=Common, scx=Hira Kana) stay exempt too.
                 let wordChar = "[[\\p{L}\\p{M}\\p{N}]-[\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{scx=Thai}]]"
                 let pattern = "(?<!\(wordChar))\(escaped)(?!\(wordChar))"
-                if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                do {
+                    let regex = try NSRegularExpression(pattern: pattern, options: .caseInsensitive)
                     let range = NSRange(modifiedText.startIndex..., in: modifiedText)
+                    let matchCount = regex.numberOfMatches(in: modifiedText, options: [], range: range)
+                    guard matchCount > 0 else { continue }
+
+                    logger.debug(
+                        "Applying boundary-aware word replacement \(original, privacy: .private) -> \(replacementText, privacy: .private), matches=\(matchCount, privacy: .public)"
+                    )
                     let literalReplacement = NSRegularExpression.escapedTemplate(for: replacementText)
                     modifiedText = regex.stringByReplacingMatches(
                         in: modifiedText,
@@ -73,13 +112,29 @@ class WordReplacementService {
                         range: range,
                         withTemplate: literalReplacement
                     )
+                    matchedRuleCount += 1
+                } catch {
+                    logger.error(
+                        "Could not build matcher for word replacement \(original, privacy: .private): \(error, privacy: .public)"
+                    )
                 }
             } else {
                 // Fallback substring replace for non-spaced scripts
-                modifiedText = modifiedText.replacingOccurrences(
+                let replacedText = modifiedText.replacingOccurrences(
                     of: original, with: replacementText, options: .caseInsensitive)
+                guard replacedText != modifiedText else { continue }
+
+                logger.debug(
+                    "Applying substring word replacement \(original, privacy: .private) -> \(replacementText, privacy: .private)"
+                )
+                modifiedText = replacedText
+                matchedRuleCount += 1
             }
         }
+
+        logger.debug(
+            "Finished word replacement: \(matchedRuleCount, privacy: .public) rule(s) matched; output changed=\(modifiedText != text, privacy: .public)"
+        )
 
         return modifiedText
     }
