@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import os
 
 class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -10,11 +11,13 @@ class NotchRecorderPanel: KeyablePanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    init(contentRect: NSRect) {
-        let metrics = NotchRecorderPanel.calculateWindowMetrics()
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NotchRecorderPanel")
 
+    init(contentRect: NSRect) {
+        // Previously this initializer ignored `contentRect` and recomputed the metrics itself.
+        // The only caller passes the metrics it just computed, so behaviour is unchanged.
         super.init(
-            contentRect: metrics.frame,
+            contentRect: contentRect,
             styleMask: [.nonactivatingPanel, .fullSizeContentView, .hudWindow],
             backing: .buffered,
             defer: false
@@ -36,19 +39,12 @@ class NotchRecorderPanel: KeyablePanel {
         self.titleVisibility = .hidden
         self.standardWindowButton(.closeButton)?.isHidden = true
         self.isMovable = false
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleScreenParametersChange),
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
     }
 
-    static func calculateWindowMetrics() -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat) {
-        guard let screen = NSScreen.main else {
-            return (NSRect(x: 0, y: 0, width: 280, height: 24), 280, 24)
-        }
+    /// Returns `nil` when there is no screen at all, so callers can skip showing the panel
+    /// instead of placing it at the global origin.
+    static func calculateWindowMetrics() -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat)? {
+        guard let screen = RecorderScreenResolver.resolve() else { return nil }
 
         let safeAreaInsets = screen.safeAreaInsets
         let notchHeight: CGFloat = safeAreaInsets.top > 0 ? safeAreaInsets.top : NSStatusBar.system.thickness
@@ -74,22 +70,24 @@ class NotchRecorderPanel: KeyablePanel {
         return (frame, notchWidth, notchHeight)
     }
 
-    func show() {
-        let metrics = NotchRecorderPanel.calculateWindowMetrics()
+    @discardableResult
+    func show() -> Bool {
+        guard let metrics = NotchRecorderPanel.calculateWindowMetrics() else {
+            logger.error("Notch panel show skipped: no screen available")
+            return false
+        }
+
         setFrame(metrics.frame, display: true)
         orderFrontRegardless()
-    }
 
-    @objc private func handleScreenParametersChange() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self else { return }
-            let metrics = NotchRecorderPanel.calculateWindowMetrics()
-            self.setFrame(metrics.frame, display: true)
-        }
+        logger.notice(
+            "Notch panel frame=\(NSStringFromRect(self.frame), privacy: .public) notch=\(metrics.notchWidth, privacy: .public)x\(metrics.notchHeight, privacy: .public) screens=\(NSScreen.screens.count, privacy: .public) onActiveSpace=\(self.isOnActiveSpace, privacy: .public)"
+        )
+        return true
     }
 
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        logger.debug("Notch panel deallocated")
     }
 }
 
