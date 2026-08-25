@@ -6,13 +6,13 @@ import Foundation
 final class LifecycleObserver {
     static let shared = LifecycleObserver()
 
-    enum Event: Hashable {
-        case audioDeviceChanged
-        case systemWillSleep
-        case systemDidWake
-        case displaysDidWake
-        case applicationDidBecomeActive
-        case screenConfigurationChanged
+    enum Event: String, Hashable {
+        case audioDeviceChanged = "device-changed"
+        case systemWillSleep = "system-will-sleep"
+        case systemDidWake = "system-did-wake"
+        case displaysDidWake = "displays-did-wake"
+        case applicationDidBecomeActive = "application-did-become-active"
+        case screenConfigurationChanged = "screen-configuration-changed"
     }
 
     private let events = PassthroughSubject<Event, Never>()

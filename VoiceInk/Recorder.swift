@@ -38,9 +38,9 @@ class Recorder: NSObject, ObservableObject {
         super.init()
         lifecycleCancellable = LifecycleObserver.shared.publisher(
             for: [.audioDeviceChanged, .systemWillSleep, .systemDidWake]
-        ).sink { [weak self] _ in
+        ).sink { [weak self] event in
             Task { @MainActor in
-                self?.invalidatePreparedAudioUnit()
+                self?.invalidatePreparedAudioUnit(reason: event.rawValue)
             }
         }
         setupRecordingDeviceChangeObserver()
@@ -218,10 +218,10 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    private func invalidatePreparedAudioUnit() {
+    private func invalidatePreparedAudioUnit(reason: String) {
         guard let coreAudioRecorder = recorder else { return }
         audioSetupQueue.async {
-            coreAudioRecorder.invalidatePreparation()
+            coreAudioRecorder.invalidatePreparation(reason: reason)
         }
     }
 
