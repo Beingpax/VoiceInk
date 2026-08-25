@@ -6,30 +6,10 @@ final class LogExporter {
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LogExporter")
     private let subsystem = "com.prakashjoshipax.voiceink"
-    private let maxSessionsToKeep = 3
-    private let sessionsKey = "logExporter.sessionStartDates.v1"
-
-    private(set) var sessionStartDates: [Date] = []
+    private let exportWindow: TimeInterval = 30 * 60
 
     private init() {
-        var loadedDates: [Date] = []
-        if let data = UserDefaults.standard.data(forKey: sessionsKey),
-            let dates = try? JSONDecoder().decode([Date].self, from: data)
-        {
-            loadedDates = dates
-        }
-
-        sessionStartDates = [Date()] + loadedDates
-        sessionStartDates = Array(sessionStartDates.prefix(maxSessionsToKeep))
-        saveSessions()
-
-        logger.notice("🎙️ LogExporter initialized, \(self.sessionStartDates.count, privacy: .public) session(s) tracked")
-    }
-
-    private func saveSessions() {
-        if let data = try? JSONEncoder().encode(sessionStartDates) {
-            UserDefaults.standard.set(data, forKey: sessionsKey)
-        }
+        logger.notice("🎙️ LogExporter initialized with a 30-minute export window")
     }
 
     func exportLogs() async throws -> URL {
@@ -43,9 +23,17 @@ final class LogExporter {
     }
 
     private func fetchLogs() async throws -> [String] {
-        let systemInfo = await MainActor.run {
-            SystemInfoService.shared.getSystemInfoString()
+        let diagnosticContext = await MainActor.run {
+            ShortcutDiagnostics.logHealthReport(reason: "log-export-requested")
+            return (
+                systemInfo: SystemInfoService.shared.getSystemInfoString(),
+                shortcutHealth: ShortcutDiagnostics.healthReport(),
+                shortcutEnvironment: ShortcutDiagnostics.environmentSnapshot().summary
+            )
         }
+
+        let rangeEnd = Date()
+        let rangeStart = rangeEnd.addingTimeInterval(-exportWindow)
 
         let store = try OSLogStore(scope: .system)
         let predicate = NSPredicate(format: "subsystem == %@", subsystem)
@@ -55,66 +43,46 @@ final class LogExporter {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
 
         logLines.append("=== VoiceInk Diagnostic Logs ===")
-        logLines.append("Export Date: \(dateFormatter.string(from: Date()))")
+        logLines.append("Export Date: \(dateFormatter.string(from: rangeEnd))")
         logLines.append("Subsystem: \(subsystem)")
-        logLines.append("Total Sessions: \(sessionStartDates.count)")
+        logLines.append("Log Range Start: \(dateFormatter.string(from: rangeStart))")
+        logLines.append("Log Range End: \(dateFormatter.string(from: rangeEnd))")
+        logLines.append("Log Window: Most recent 30 minutes")
         logLines.append("================================")
         logLines.append("")
-        logLines.append(systemInfo)
+        logLines.append(diagnosticContext.systemInfo)
+        logLines.append("")
+        logLines.append("=== SHORTCUT RUNTIME HEALTH AT EXPORT ===")
+        logLines.append(diagnosticContext.shortcutHealth)
+        logLines.append("Environment: \(diagnosticContext.shortcutEnvironment)")
+        logLines.append("=== END SHORTCUT RUNTIME HEALTH ===")
+        logLines.append("")
+        logLines.append("--- Unified Logs (Most Recent 30 Minutes) ---")
         logLines.append("")
 
-        // Build session ranges with labels
-        let totalSessions = sessionStartDates.count
-        var sessionRanges: [(label: String, start: Date, end: Date?)] = []
+        let position = store.position(date: rangeStart)
+        let entries = try store.getEntries(at: position, matching: predicate)
 
-        for i in 0..<totalSessions {
-            let start = sessionStartDates[i]
-            let end: Date? = (i == 0) ? nil : sessionStartDates[i - 1]
-            let sessionNumber = totalSessions - i
+        var exportedLogCount = 0
+        for entry in entries {
+            guard let logEntry = entry as? OSLogEntryLog else { continue }
+            guard logEntry.date >= rangeStart else { continue }
+            if logEntry.date > rangeEnd { break }
 
-            let label: String
-            if totalSessions == 1 {
-                label = "Session 1 (Current)"
-            } else if i == 0 {
-                label = "Session \(sessionNumber) (Current)"
-            } else if i == totalSessions - 1 {
-                label = "Session 1 (Oldest)"
-            } else {
-                label = "Session \(sessionNumber)"
-            }
+            let timestamp = dateFormatter.string(from: logEntry.date)
+            let level = logLevelString(logEntry.level)
+            let category = logEntry.category
+            let message = logEntry.composedMessage
 
-            sessionRanges.append((label, start, end))
+            logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
+            exportedLogCount += 1
         }
 
-        // Fetch logs for each session (oldest first for chronological order)
-        for (label, startDate, endDate) in sessionRanges.reversed() {
-            logLines.append("--- \(label) ---")
-            logLines.append("")
-
-            let position = store.position(date: startDate)
-            let entries = try store.getEntries(at: position, matching: predicate)
-
-            var sessionLogCount = 0
-            for entry in entries {
-                guard let logEntry = entry as? OSLogEntryLog else { continue }
-
-                if let endDate, logEntry.date >= endDate { break }
-
-                let timestamp = dateFormatter.string(from: logEntry.date)
-                let level = logLevelString(logEntry.level)
-                let category = logEntry.category
-                let message = logEntry.composedMessage
-
-                logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
-                sessionLogCount += 1
-            }
-
-            if sessionLogCount == 0 {
-                logLines.append("No logs found for this session.")
-            }
-
-            logLines.append("")
+        if exportedLogCount == 0 {
+            logLines.append("No VoiceInk unified logs found in the most recent 30 minutes.")
         }
+        logLines.append("")
+        logLines.append("Exported Unified Log Entries: \(exportedLogCount)")
 
         return logLines
     }

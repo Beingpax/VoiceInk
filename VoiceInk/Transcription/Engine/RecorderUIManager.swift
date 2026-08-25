@@ -35,6 +35,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     @Published var recorderPanelStyle: RecorderPanelStyle = .stored {
         didSet {
             guard oldValue != recorderPanelStyle else { return }
+            ShortcutDiagnostics.notice(
+                "recorder-ui style-changed old=\(oldValue.rawValue) new=\(recorderPanelStyle.rawValue) visible=\(isRecorderPanelVisible)"
+            )
             rebuildVisiblePanel(previousStyle: oldValue)
             UserDefaults.standard.set(recorderPanelStyle.rawValue, forKey: "RecorderType")
         }
@@ -48,6 +51,10 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     @Published var isRecorderPanelVisible = false {
         didSet {
             guard oldValue != isRecorderPanelVisible else { return }
+
+            ShortcutDiagnostics.notice(
+                "recorder-ui visibility-changed old=\(oldValue) new=\(isRecorderPanelVisible) style=\(recorderPanelStyle.rawValue) engineState=\(engine.map { String(describing: $0.recordingState) } ?? "engine-unavailable")"
+            )
 
             if isRecorderPanelVisible {
                 showRecorderPanel()
@@ -79,12 +86,26 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         self.engine = engine
         self.recorder = recorder
         setupNotifications()
+        ShortcutDiagnostics.notice(
+            "recorder-ui configured style=\(recorderPanelStyle.rawValue) visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
     }
 
     // MARK: - Recorder Panel Management
 
     private func showRecorderPanel() {
-        guard let engine = engine, let recorder = recorder else { return }
+        guard let engine = engine else {
+            ShortcutDiagnostics.error("recorder-ui show result=rejected reason=engine-unavailable")
+            return
+        }
+        guard let recorder = recorder else {
+            ShortcutDiagnostics.error("recorder-ui show result=rejected reason=recorder-unavailable")
+            return
+        }
+
+        ShortcutDiagnostics.notice(
+            "recorder-ui show begin style=\(recorderPanelStyle.rawValue) engineState=\(String(describing: engine.recordingState)) screens=\(NSScreen.screens.count)"
+        )
 
         let shown: Bool
 
@@ -141,11 +162,17 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
         if shown {
             logger.notice("Showed recorder panel style=\(self.recorderPanelStyle.rawValue, privacy: .public)")
+            ShortcutDiagnostics.notice(
+                "recorder-ui show result=success style=\(recorderPanelStyle.rawValue) visibleFlag=\(isRecorderPanelVisible)"
+            )
         } else {
             // Only reachable with no screens at all. Recording still works, so the session is
             // left running rather than cancelled, but it runs without any UI — say so loudly,
             // because this is exactly the symptom users report.
             logger.error("Recorder panel could not be shown style=\(self.recorderPanelStyle.rawValue, privacy: .public) screens=\(NSScreen.screens.count, privacy: .public)")
+            ShortcutDiagnostics.error(
+                "recorder-ui show result=failed style=\(recorderPanelStyle.rawValue) screens=\(NSScreen.screens.count) visibleFlag=\(isRecorderPanelVisible)"
+            )
         }
     }
 
@@ -153,6 +180,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         // `dismissRecorderPanel()` calls this directly and then clears the flag, which calls it
         // again, so this deliberately stays at debug level.
         logger.debug("Hiding recorder panel style=\(self.recorderPanelStyle.rawValue, privacy: .public)")
+        ShortcutDiagnostics.notice(
+            "recorder-ui hide style=\(recorderPanelStyle.rawValue) visibleFlag=\(isRecorderPanelVisible) engineState=\(engine.map { String(describing: $0.recordingState) } ?? "engine-unavailable")"
+        )
         switch recorderPanelStyle {
         case .notch:
             notchWindowManager?.hide()
@@ -219,55 +249,102 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     // MARK: - Recorder Panel Management
 
     func toggleRecorderPanel(modeId: UUID? = nil) async {
-        guard let engine = engine else { return }
+        guard let engine = engine else {
+            ShortcutDiagnostics.error(
+                "recorder-ui toggle result=rejected reason=engine-unavailable modeId=\(modeId?.uuidString ?? "none")"
+            )
+            return
+        }
+
+        ShortcutDiagnostics.notice(
+            "recorder-ui toggle begin modeId=\(modeId?.uuidString ?? "none") visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState)) assistantCanFollowUp=\(engine.assistantSession.canSendFollowUp)"
+        )
 
         if isRecorderPanelVisible {
             switch engine.recordingState {
             case .recording:
+                ShortcutDiagnostics.notice("recorder-ui toggle decision=stop-recording")
                 await engine.toggleRecord(modeId: modeId)
             case .starting, .transcribing, .enhancing:
+                ShortcutDiagnostics.notice(
+                    "recorder-ui toggle decision=cancel-current-operation engineState=\(String(describing: engine.recordingState))"
+                )
                 await cancelRecording()
             case .idle:
                 if engine.assistantSession.canSendFollowUp {
+                    ShortcutDiagnostics.notice("recorder-ui toggle decision=start-assistant-follow-up")
                     SoundManager.shared.playStartSound()
                     await engine.toggleRecord(
                         modeId: modeId,
                         isAssistantFollowUp: true
                     )
                 } else {
+                    ShortcutDiagnostics.notice("recorder-ui toggle decision=dismiss-idle-panel")
                     await dismissRecorderPanel()
                 }
             case .busy:
+                ShortcutDiagnostics.notice("recorder-ui toggle decision=dismiss-busy-panel")
                 await dismissRecorderPanel()
             }
         } else {
+            ShortcutDiagnostics.notice("recorder-ui toggle decision=start-new-recording")
             SoundManager.shared.playStartSound()
             isRecorderPanelVisible = true
             await engine.toggleRecord(modeId: modeId)
         }
+        ShortcutDiagnostics.notice(
+            "recorder-ui toggle end modeId=\(modeId?.uuidString ?? "none") visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
     }
 
     func dismissRecorderPanel() async {
-        guard let engine = engine else { return }
+        guard let engine = engine else {
+            ShortcutDiagnostics.error("recorder-ui dismiss result=rejected reason=engine-unavailable")
+            return
+        }
 
+        ShortcutDiagnostics.notice(
+            "recorder-ui dismiss begin visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
         hideRecorderPanel()
         isRecorderPanelVisible = false
         engine.assistantSession.reset()
+        ShortcutDiagnostics.notice(
+            "recorder-ui dismiss end visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
     }
 
     func resetOnLaunch() async {
-        guard let engine = engine else { return }
+        guard let engine = engine else {
+            ShortcutDiagnostics.error("recorder-ui reset-on-launch result=rejected reason=engine-unavailable")
+            return
+        }
         logger.notice("Resetting recording state on launch")
+        ShortcutDiagnostics.notice(
+            "recorder-ui reset-on-launch begin visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
         await engine.resetRecordingSession()
         hideRecorderPanel()
         isRecorderPanelVisible = false
         engine.assistantSession.reset()
+        ShortcutDiagnostics.notice(
+            "recorder-ui reset-on-launch end visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
     }
 
     func cancelRecording() async {
-        guard let engine = engine else { return }
+        guard let engine = engine else {
+            ShortcutDiagnostics.error("recorder-ui cancel result=rejected reason=engine-unavailable")
+            return
+        }
+        ShortcutDiagnostics.notice(
+            "recorder-ui cancel begin visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
         await engine.cancelRecording()
         await dismissRecorderPanel()
+        ShortcutDiagnostics.notice(
+            "recorder-ui cancel end visible=\(isRecorderPanelVisible) engineState=\(String(describing: engine.recordingState))"
+        )
     }
 
     // MARK: - Notification Handling
