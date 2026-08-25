@@ -41,6 +41,9 @@ final class SystemInfoService {
             Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
             Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
+            SHORTCUT RUNTIME HEALTH:
+            \(ShortcutDiagnostics.healthReport())
+
             MODE CONFIGURATION:
             \(modeConfigurationInfo)
 
