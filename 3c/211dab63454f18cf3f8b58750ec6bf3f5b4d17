@@ -1,0 +1,28 @@
+"VoiceInk/Views/AI Models/LanguageSelectionView.swift"
+  s_ce78bd9d9e2391::t_0b775ba88a8e66 30,34,124,147,193
+VoiceInk/Transcription/Cloud/DeepgramProvider.swift
+  s_ce78bd9d9e2391::t_4c496b3b9ada9e 19-20,31-36,48
+  s_ce78bd9d9e2391::t_5791b5abd15c48 8,11-18,21-29,59,67,72-73
+VoiceInk/Transcription/Streaming/DeepgramStreamingProvider.swift
+  s_ce78bd9d9e2391::t_5791b5abd15c48 33-35,43,111
+VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_ce78bd9d9e2391::t_69af1dcf9b3b91 46
+VoiceInk/Models/LanguageDictionary.swift
+  s_ce78bd9d9e2391::t_5791b5abd15c48 179,182-197,211,213,218,220,228,236,240,256,261,281,287,291-292,306,312,327-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c211dab63454f18cf3f8b58750ec6bf3f5b4d17",
+  "prompts": {},
+  "sessions": {
+    "s_ce78bd9d9e2391": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a038b8-fad4-7911-bb9c-c37bcd85dae7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
