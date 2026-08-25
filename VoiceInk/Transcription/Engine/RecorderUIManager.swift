@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 import os
@@ -58,6 +59,8 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     private var notchWindowManager: NotchWindowManager?
     private var miniWindowManager: MiniWindowManager?
+    private var panelInvalidationTask: Task<Void, Never>?
+    private var didSetupNotifications = false
 
     private weak var engine: VoiceInkEngine?
     private var recorder: Recorder?
@@ -65,6 +68,11 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "RecorderUIManager")
 
     init() {}
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+    }
 
     /// Call after VoiceInkEngine is created to break the circular init dependency.
     func configure(engine: VoiceInkEngine, recorder: Recorder) {
@@ -77,6 +85,8 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     private func showRecorderPanel() {
         guard let engine = engine, let recorder = recorder else { return }
+
+        let shown: Bool
 
         switch recorderPanelStyle {
         case .notch:
@@ -102,7 +112,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                     }
                 )
             }
-            notchWindowManager?.show()
+            shown = notchWindowManager?.show() ?? false
         case .mini:
             if miniWindowManager == nil {
                 miniWindowManager = MiniWindowManager(
@@ -126,17 +136,65 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
                     }
                 )
             }
-            miniWindowManager?.show()
+            shown = miniWindowManager?.show() ?? false
+        }
+
+        if shown {
+            logger.notice("Showed recorder panel style=\(self.recorderPanelStyle.rawValue, privacy: .public)")
+        } else {
+            // Only reachable with no screens at all. Recording still works, so the session is
+            // left running rather than cancelled, but it runs without any UI — say so loudly,
+            // because this is exactly the symptom users report.
+            logger.error("Recorder panel could not be shown style=\(self.recorderPanelStyle.rawValue, privacy: .public) screens=\(NSScreen.screens.count, privacy: .public)")
         }
     }
 
     private func hideRecorderPanel() {
+        // `dismissRecorderPanel()` calls this directly and then clears the flag, which calls it
+        // again, so this deliberately stays at debug level.
+        logger.debug("Hiding recorder panel style=\(self.recorderPanelStyle.rawValue, privacy: .public)")
         switch recorderPanelStyle {
         case .notch:
             notchWindowManager?.hide()
         case .mini:
             miniWindowManager?.hide()
         }
+    }
+
+    // MARK: - Panel Invalidation
+
+    /// Recorder panels must not outlive a sleep/wake cycle or a display reconfiguration.
+    ///
+    /// `NotchWindowManager.show()` already rebuilds a panel that is not on screen, so the work
+    /// here is only about the panel that is currently *hidden but retained*: dropping it frees
+    /// the window early and keeps `destroyWindow()` on a path that actually runs. When a
+    /// dictation is in progress the panel stays put and is only repositioned, so an active
+    /// session never loses its UI.
+    ///
+    /// `didChangeScreenParameters` fires several times per reconfiguration and displays need a
+    /// moment to settle afterwards, so the work is debounced and re-armed on every event
+    /// instead of guessing a single settle delay.
+    private func invalidatePanels(reason: String) {
+        panelInvalidationTask?.cancel()
+        panelInvalidationTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.applyPanelInvalidation(reason: reason)
+        }
+    }
+
+    private func applyPanelInvalidation(reason: String) {
+        guard isRecorderPanelVisible else {
+            logger.notice("Discarding idle recorder panels (\(reason, privacy: .public))")
+            notchWindowManager?.destroyWindow()
+            notchWindowManager = nil
+            miniWindowManager?.destroyWindow()
+            miniWindowManager = nil
+            return
+        }
+
+        logger.notice("Repositioning visible recorder panel (\(reason, privacy: .public))")
+        showRecorderPanel()
     }
 
     private func rebuildVisiblePanel(previousStyle: RecorderPanelStyle) {
@@ -153,7 +211,8 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 50_000_000)
-            showRecorderPanel()
+            guard self.isRecorderPanelVisible else { return }
+            self.showRecorderPanel()
         }
     }
 
@@ -214,6 +273,9 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     // MARK: - Notification Handling
 
     private func setupNotifications() {
+        guard !didSetupNotifications else { return }
+        didSetupNotifications = true
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleToggleRecorderPanelNotification),
@@ -226,6 +288,44 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             name: .dismissRecorderPanel,
             object: nil
         )
+        // System sleep and display-only sleep are separate notifications, and a laptop hits
+        // display sleep far more often than system sleep.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleSystemDidWake),
+            name: NSWorkspace.didWakeNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(handleScreensDidWake),
+            name: NSWorkspace.screensDidWakeNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleScreenParametersChange),
+            name: NSApplication.didChangeScreenParametersNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleSystemDidWake() {
+        Task { @MainActor in
+            self.invalidatePanels(reason: "system wake")
+        }
+    }
+
+    @objc private func handleScreensDidWake() {
+        Task { @MainActor in
+            self.invalidatePanels(reason: "displays wake")
+        }
+    }
+
+    @objc private func handleScreenParametersChange() {
+        Task { @MainActor in
+            self.invalidatePanels(reason: "screen parameters changed")
+        }
     }
 
     @objc public func handleToggleRecorderPanelNotification() {
