@@ -39,6 +39,9 @@ final class SystemInfoService {
             Primary Shortcut: \(getPrimaryShortcut())
             Secondary Shortcut: \(getSecondaryShortcut())
 
+            SHORTCUT RUNTIME HEALTH:
+            \(ShortcutDiagnostics.healthReport())
+
             MODE CONFIGURATION:
             \(modeConfigurationInfo)
 

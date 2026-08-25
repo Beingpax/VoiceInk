@@ -24,12 +24,17 @@ struct DiagnosticsSettingsView: View {
                 .disabled(isExportingLogs)
             }
         } label: {
-            HStack(spacing: 4) {
-                if isExportingLogs {
-                    ProgressView()
-                        .controlSize(.small)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    if isExportingLogs {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Text("Export Logs")
                 }
-                Text("Export Logs")
+                Text("Exports VoiceInk logs from the most recent 30 minutes.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .alert("Export Failed", isPresented: $showLogExportError) {

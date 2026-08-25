@@ -24,11 +24,17 @@ final class LogExporter {
     }
 
     private func fetchLogs() async throws -> [String] {
-        let exportDate = Date()
-        let startDate = exportDate.addingTimeInterval(-exportWindow)
-        let systemInfo = await MainActor.run {
-            SystemInfoService.shared.getSystemInfoString()
+        let diagnosticContext = await MainActor.run {
+            ShortcutDiagnostics.logHealthReport(reason: "log-export-requested")
+            return (
+                systemInfo: SystemInfoService.shared.getSystemInfoString(),
+                shortcutHealth: ShortcutDiagnostics.healthReport(),
+                shortcutEnvironment: ShortcutDiagnostics.environmentSnapshot().summary
+            )
         }
+
+        let rangeEnd = Date()
+        let rangeStart = rangeEnd.addingTimeInterval(-exportWindow)
 
         let store = try OSLogStore(scope: .system)
         let predicate = NSPredicate(format: "subsystem == %@", subsystem)
@@ -38,24 +44,31 @@ final class LogExporter {
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
 
         logLines.append("=== VoiceInk Diagnostic Logs ===")
-        logLines.append("Export Date: \(dateFormatter.string(from: exportDate))")
+        logLines.append("Export Date: \(dateFormatter.string(from: rangeEnd))")
         logLines.append("Subsystem: \(subsystem)")
-        logLines.append("Log Window: Last 30 minutes")
-        logLines.append("From: \(dateFormatter.string(from: startDate))")
-        logLines.append("To: \(dateFormatter.string(from: exportDate))")
+        logLines.append("Log Range Start: \(dateFormatter.string(from: rangeStart))")
+        logLines.append("Log Range End: \(dateFormatter.string(from: rangeEnd))")
+        logLines.append("Log Window: Most recent 30 minutes")
         logLines.append("================================")
         logLines.append("")
-        logLines.append(systemInfo)
+        logLines.append(diagnosticContext.systemInfo)
+        logLines.append("")
+        logLines.append("=== SHORTCUT RUNTIME HEALTH AT EXPORT ===")
+        logLines.append(diagnosticContext.shortcutHealth)
+        logLines.append("Environment: \(diagnosticContext.shortcutEnvironment)")
+        logLines.append("=== END SHORTCUT RUNTIME HEALTH ===")
+        logLines.append("")
+        logLines.append("--- Unified Logs (Most Recent 30 Minutes) ---")
         logLines.append("")
 
-        let position = store.position(date: startDate)
+        let position = store.position(date: rangeStart)
         let entries = try store.getEntries(at: position, matching: predicate)
-        var logCount = 0
 
+        var exportedLogCount = 0
         for entry in entries {
             guard let logEntry = entry as? OSLogEntryLog else { continue }
-            guard logEntry.date >= startDate else { continue }
-            if logEntry.date > exportDate { break }
+            guard logEntry.date >= rangeStart else { continue }
+            if logEntry.date > rangeEnd { break }
 
             let timestamp = dateFormatter.string(from: logEntry.date)
             let level = logLevelString(logEntry.level)
@@ -63,12 +76,14 @@ final class LogExporter {
             let message = logEntry.composedMessage
 
             logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
-            logCount += 1
+            exportedLogCount += 1
         }
 
-        if logCount == 0 {
-            logLines.append("No VoiceInk logs found in the last 30 minutes.")
+        if exportedLogCount == 0 {
+            logLines.append("No VoiceInk unified logs found in the most recent 30 minutes.")
         }
+        logLines.append("")
+        logLines.append("Exported Unified Log Entries: \(exportedLogCount)")
 
         return logLines
     }

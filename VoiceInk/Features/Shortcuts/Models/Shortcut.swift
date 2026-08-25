@@ -28,6 +28,10 @@ struct Shortcut: Codable, Equatable {
         displayTokens.joined(separator: " + ")
     }
 
+    var diagnosticDescription: String {
+        "\(displayString) [kind=\(kind.rawValue) keyCode=\(keyCode) modifiers=0x\(String(modifierFlags.rawValue, radix: 16))]"
+    }
+
     var displayTokens: [String] {
         switch kind {
         case .key:

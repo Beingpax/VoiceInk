@@ -92,7 +92,14 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
     }
 
-    @Published var recordingState: RecordingState = .idle
+    @Published var recordingState: RecordingState = .idle {
+        didSet {
+            guard oldValue != recordingState else { return }
+            ShortcutDiagnostics.notice(
+                "engine-state transition old=\(String(describing: oldValue)) new=\(String(describing: recordingState)) recorderVisible=\(recorderUIManager?.isRecorderPanelVisible ?? false) activeStart=\(activeRecordingStartID?.uuidString ?? "none") activePipeline=\(activePipelineTranscriptionID?.uuidString ?? "none") shouldCancel=\(shouldCancelRecording)"
+            )
+        }
+    }
     @Published var shouldCancelRecording = false
     @Published var partialTranscript: String = ""
     var currentSession: TranscriptionSession?
@@ -176,12 +183,17 @@ class VoiceInkEngine: NSObject, ObservableObject {
     // MARK: - Toggle Record
 
     func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false, sendAfterPaste: Bool = false) async {
+        ShortcutDiagnostics.notice(
+            "engine-toggle begin modeId=\(modeId?.uuidString ?? "none") assistantFollowUpRequested=\(isAssistantFollowUp) state=\(String(describing: recordingState)) recorderVisible=\(recorderUIManager?.isRecorderPanelVisible ?? false)"
+        )
         if recordingState == .starting {
+            ShortcutDiagnostics.notice("engine-toggle decision=cancel-starting")
             await cancelRecording()
             return
         }
 
         if recordingState == .recording {
+            ShortcutDiagnostics.notice("engine-toggle decision=stop-and-transcribe")
             activePipelineUseCase = activeRecordingUseCase
             activeRecordingUseCase = .newSession
             activeRecordingStartID = nil
@@ -219,6 +231,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 await cleanupResources()
             }
         } else {
+            ShortcutDiagnostics.notice("engine-toggle decision=begin-recording-request")
             let canContinueAssistantSession = isAssistantFollowUp && assistantSession.canSendFollowUp
             let recordingUseCase: RecordingUseCase = canContinueAssistantSession ? .assistantFollowUp : .newSession
 
@@ -233,9 +246,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
             }
 
             requestRecordPermission { [self] granted in
+                ShortcutDiagnostics.notice("engine-record-permission result=\(granted)")
                 if granted {
                     Task { @MainActor [self] in
                         guard await self.passesRecordingPreflight() else {
+                            ShortcutDiagnostics.notice("engine-toggle result=rejected reason=recording-preflight")
                             return
                         }
 
@@ -256,6 +271,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             self.recorder.onAudioChunk = realtimeAudioGate.receive
 
                             self.recordingState = .starting
+                            ShortcutDiagnostics.notice(
+                                "engine-record-start attempt startId=\(startID.uuidString) outputFilePrepared=true"
+                            )
 
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
@@ -263,6 +281,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.recorderUIManager?.isRecorderPanelVisible ?? false,
                                 !self.shouldCancelRecording
                             else {
+                                ShortcutDiagnostics.notice(
+                                    "engine-record-start result=aborted startId=\(startID.uuidString) activeStartMatches=\(self.activeRecordingStartID == startID) recorderVisible=\(self.recorderUIManager?.isRecorderPanelVisible ?? false) shouldCancel=\(self.shouldCancelRecording)"
+                                )
                                 activeModeTask.cancel()
                                 let shouldKeepRecordingFile = self.shouldCancelRecording
                                 if self.activeRecordingStartID == startID {
@@ -277,6 +298,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .recording
+                            ShortcutDiagnostics.notice(
+                                "engine-record-start result=recording startId=\(startID.uuidString)"
+                            )
 
                             // Only retire the previous paste session once recording
                             // has actually started. Preflight/permission failures
@@ -397,6 +421,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         } catch {
                             activeModeTask.cancel()
                             self.logger.error("Recording failed to start: \(error, privacy: .public)")
+                            ShortcutDiagnostics.error(
+                                "engine-record-start result=failed error=\(error.localizedDescription)"
+                            )
                             let audioFailure = self.recordingAudioFailure(for: error)
                             if audioFailure == nil {
                                 await self.recorder.stopRecording()
@@ -426,6 +453,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     }
                 } else {
                     logger.error("Recording permission denied")
+                    ShortcutDiagnostics.error("engine-toggle result=rejected reason=record-permission")
                 }
             }
         }
@@ -480,6 +508,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
     /// Checks requirements that do not depend on asynchronous app and URL mode resolution.
     @MainActor
     private func passesRecordingPreflight() async -> Bool {
+        ShortcutDiagnostics.notice(
+            "engine-preflight begin hasEnabledMode=\(ModeManager.shared.hasEnabledConfiguration)"
+        )
         if !ModeManager.shared.hasEnabledConfiguration {
             await failRecordingPreflight(
                 title: String(localized: "No mode configured"),
@@ -489,6 +520,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             return false
         }
 
+        ShortcutDiagnostics.notice("engine-preflight result=passed")
         return true
     }
 
@@ -499,6 +531,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
         action: @escaping () -> Void
     ) async {
         logger.error("❌ Recording preflight failed: \(title, privacy: .public)")
+        ShortcutDiagnostics.error("engine-preflight result=failed title=\(title)")
         recordingState = .idle
         NotificationManager.shared.showNotification(
             title: title,
@@ -533,10 +566,16 @@ class VoiceInkEngine: NSObject, ObservableObject {
         contextStore: RecordingContextSnapshotStore?,
         sendAfterPaste: Bool
     ) async {
+        ShortcutDiagnostics.notice(
+            "engine-pipeline begin transcriptionId=\(transcription.id.uuidString) state=\(String(describing: recordingState)) hasSession=\(currentSession != nil)"
+        )
         guard
             let transcriptionConfiguration = currentSessionTranscriptionConfiguration
                 ?? ModeRuntimeResolver.transcriptionConfiguration(transcriptionModelManager: transcriptionModelManager)
         else {
+            ShortcutDiagnostics.error(
+                "engine-pipeline result=rejected reason=no-transcription-configuration transcriptionId=\(transcription.id.uuidString)"
+            )
             transcription.text = String(localized: "Transcription Failed: No model selected")
             transcription.transcriptionStatus = TranscriptionStatus.failed.rawValue
             try? modelContext.save()
@@ -644,6 +683,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
         {
             recordingState = .idle
         }
+        ShortcutDiagnostics.notice(
+            "engine-pipeline end transcriptionId=\(transcriptionID.uuidString) didFinishActive=\(didFinishActivePipeline) state=\(String(describing: recordingState))"
+        )
     }
 
     private func selectTriggerWordModeIfNeeded(for text: String) -> String? {
@@ -658,6 +700,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
     // MARK: - Cancellation
 
     func cancelRecording() async {
+        ShortcutDiagnostics.notice(
+            "engine-cancel begin state=\(String(describing: recordingState)) activeStart=\(activeRecordingStartID?.uuidString ?? "none") activePipeline=\(activePipelineTranscriptionID?.uuidString ?? "none")"
+        )
         let shouldFinishSessionImmediately: Bool
         switch recordingState {
         case .starting, .recording:
@@ -679,9 +724,15 @@ class VoiceInkEngine: NSObject, ObservableObject {
         if shouldFinishSessionImmediately {
             await finishRecorderSession()
         }
+        ShortcutDiagnostics.notice(
+            "engine-cancel end state=\(String(describing: recordingState)) shouldFinishImmediately=\(shouldFinishSessionImmediately)"
+        )
     }
 
     func resetRecordingSession() async {
+        ShortcutDiagnostics.notice(
+            "engine-reset begin state=\(String(describing: recordingState)) activeStart=\(activeRecordingStartID?.uuidString ?? "none") activePipeline=\(activePipelineTranscriptionID?.uuidString ?? "none")"
+        )
         cancelCurrentSession()
         activeRecordingStartID = nil
         activePipelineTranscriptionID = nil
@@ -696,6 +747,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
         recordedFile = nil
         recordingState = .idle
         await cleanupResources()
+        ShortcutDiagnostics.notice("engine-reset end state=\(String(describing: recordingState))")
     }
 
     private func requestRecordingCancellation() {

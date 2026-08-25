@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 class ModeShortcutManager {
-    private let shortcutMonitor = ShortcutMonitor()
+    private let shortcutMonitor = ShortcutMonitor(ownerLabel: "Mode")
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
@@ -15,7 +15,8 @@ class ModeShortcutManager {
         self.modeProvider = modeProvider
         self.shortcutModeHandler = shortcutModeHandler
 
-        refreshModeShortcuts()
+        ShortcutDiagnostics.notice("mode-manager init")
+        refreshModeShortcuts(reason: "initialization")
 
         shortcutChangeObserver = NotificationCenter.default.addObserver(
             forName: ShortcutStore.shortcutDidChange,
@@ -30,7 +31,7 @@ class ModeShortcutManager {
             }
 
             Task { @MainActor in
-                self?.refreshModeShortcuts()
+                self?.refreshModeShortcuts(reason: "shortcut-store-notification.\(action.storageName)")
             }
         }
 
@@ -48,13 +49,14 @@ class ModeShortcutManager {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
         }
         MainActor.assumeIsolated {
-            shortcutMonitor.stop()
+            ShortcutDiagnostics.notice("mode-manager deinit")
+            shortcutMonitor.stop(reason: "mode-manager-deinit")
         }
     }
 
     @objc private func modeShortcutAvailabilityDidChange() {
         Task { @MainActor in
-            refreshModeShortcuts()
+            refreshModeShortcuts(reason: "mode-availability-notification")
         }
     }
 
@@ -62,26 +64,44 @@ class ModeShortcutManager {
         shortcutMonitor.updateStandaloneModifierActions(standaloneModifierActions)
     }
 
-    private func refreshModeShortcuts() {
+    private func refreshModeShortcuts(reason: String) {
         shortcutModeHandler.clearPendingModeDoubleTaps()
-        let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) {
-            result, config in
+        let enabledConfigurations = ModeManager.shared.enabledConfigurations
+        var missingShortcutModeIDs: [String] = []
+        let shortcuts = enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) { result, config in
             let action = ShortcutAction.mode(config.id)
             if let shortcut = ShortcutStore.shortcut(for: action) {
                 result[action] = shortcut
+            } else {
+                missingShortcutModeIDs.append(config.id.uuidString)
             }
         }
         monitoredActions = Set(shortcuts.keys)
 
-        shortcutMonitor.start(
+        let summary = shortcuts.map { "\($0.key.storageName)=\($0.value.diagnosticDescription)" }.sorted().joined(separator: " | ")
+        ShortcutDiagnostics.notice(
+            "mode-manager refresh begin reason=\(reason) enabledModeCount=\(enabledConfigurations.count) registeredCount=\(shortcuts.count) missingShortcutModeIDs=\(missingShortcutModeIDs.sorted().joined(separator: ",")) shortcuts={\(summary.isEmpty ? "none" : summary)}"
+        )
+
+        let didStart = shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: Set(shortcuts.keys),
             standaloneModifierActions: standaloneModifierActions,
             onShortcutDown: { [weak self] action, eventTime in
+                ShortcutDiagnostics.notice(
+                    "mode-manager dispatch-received action=\(action.storageName) transition=keyDown eventUptime=\(eventTime)"
+                )
                 Task { @MainActor in
-                    guard let self,
-                        let modeId = self.modeId(for: action)
-                    else {
+                    guard let self else {
+                        ShortcutDiagnostics.notice(
+                            "mode-manager dispatch-dropped action=\(action.storageName) transition=keyDown reason=manager-released"
+                        )
+                        return
+                    }
+                    guard let modeId = self.modeId(for: action) else {
+                        ShortcutDiagnostics.notice(
+                            "mode-manager dispatch-dropped action=\(action.storageName) transition=keyDown reason=mode-unavailable"
+                        )
                         return
                     }
 
@@ -94,10 +114,20 @@ class ModeShortcutManager {
                 }
             },
             onShortcutUp: { [weak self] action, eventTime in
+                ShortcutDiagnostics.notice(
+                    "mode-manager dispatch-received action=\(action.storageName) transition=keyUp eventUptime=\(eventTime)"
+                )
                 Task { @MainActor in
-                    guard let self,
-                        case .mode(let modeId) = action
-                    else {
+                    guard let self else {
+                        ShortcutDiagnostics.notice(
+                            "mode-manager dispatch-dropped action=\(action.storageName) transition=keyUp reason=manager-released"
+                        )
+                        return
+                    }
+                    guard case .mode(let modeId) = action else {
+                        ShortcutDiagnostics.notice(
+                            "mode-manager dispatch-dropped action=\(action.storageName) transition=keyUp reason=not-mode-action"
+                        )
                         return
                     }
 
@@ -110,8 +140,22 @@ class ModeShortcutManager {
                 }
             },
             onShortcutInterrupted: { [weak self] action, _ in
+                ShortcutDiagnostics.notice(
+                    "mode-manager dispatch-received action=\(action.storageName) transition=interrupted"
+                )
                 Task { @MainActor in
-                    guard let self, case .mode = action else { return }
+                    guard let self else {
+                        ShortcutDiagnostics.notice(
+                            "mode-manager dispatch-dropped action=\(action.storageName) transition=interrupted reason=manager-released"
+                        )
+                        return
+                    }
+                    guard case .mode = action else {
+                        ShortcutDiagnostics.notice(
+                            "mode-manager dispatch-dropped action=\(action.storageName) transition=interrupted reason=not-mode-action"
+                        )
+                        return
+                    }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
             },
@@ -121,6 +165,7 @@ class ModeShortcutManager {
                 }
             }
         )
+        ShortcutDiagnostics.notice("mode-manager refresh end reason=\(reason) monitorStarted=\(didStart)")
     }
 
     private var standaloneModifierActions: Set<ShortcutAction> {
@@ -128,14 +173,24 @@ class ModeShortcutManager {
     }
 
     private func modeId(for action: ShortcutAction) -> UUID? {
-        guard case .mode(let modeId) = action,
-            let config = ModeManager.shared.getConfiguration(with: modeId),
-            config.isEnabled,
-            ShortcutStore.shortcut(for: .mode(config.id)) != nil
-        else {
+        guard case .mode(let modeId) = action else {
+            ShortcutDiagnostics.notice("mode-manager resolve action=\(action.storageName) result=not-mode-action")
+            return nil
+        }
+        guard let config = ModeManager.shared.getConfiguration(with: modeId) else {
+            ShortcutDiagnostics.notice("mode-manager resolve action=\(action.storageName) result=configuration-missing")
+            return nil
+        }
+        guard config.isEnabled else {
+            ShortcutDiagnostics.notice("mode-manager resolve action=\(action.storageName) result=configuration-disabled")
+            return nil
+        }
+        guard ShortcutStore.shortcut(for: .mode(config.id)) != nil else {
+            ShortcutDiagnostics.notice("mode-manager resolve action=\(action.storageName) result=shortcut-missing")
             return nil
         }
 
+        ShortcutDiagnostics.notice("mode-manager resolve action=\(action.storageName) result=available")
         return modeId
     }
 }

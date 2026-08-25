@@ -4,8 +4,18 @@ enum ShortcutStore {
     static let shortcutDidChange = Notification.Name("ShortcutStoreShortcutDidChange")
 
     static func rawShortcut(for action: ShortcutAction) -> Shortcut? {
-        shortcutData(for: action)
-            .flatMap { try? JSONDecoder().decode(Shortcut.self, from: $0) }
+        guard let data = shortcutData(for: action) else {
+            return nil
+        }
+
+        do {
+            return try JSONDecoder().decode(Shortcut.self, from: data)
+        } catch {
+            ShortcutDiagnostics.error(
+                "shortcut-store read action=\(action.storageName) result=decode-failed bytes=\(data.count) error=\(error.localizedDescription)"
+            )
+            return nil
+        }
     }
 
     static func shortcut(for action: ShortcutAction) -> Shortcut? {
@@ -25,7 +35,10 @@ enum ShortcutStore {
             return
         }
 
-        if let shortcut, ShortcutValidator.validationError(for: shortcut, action: action) != nil {
+        if let shortcut, let validationError = ShortcutValidator.validationError(for: shortcut, action: action) {
+            ShortcutDiagnostics.error(
+                "shortcut-store write action=\(action.storageName) result=validation-rejected reason=\(String(describing: validationError)) shortcut=\(shortcut.diagnosticDescription)"
+            )
             return
         }
 
@@ -36,11 +49,15 @@ enum ShortcutStore {
             UserDefaults.standard.removeObject(forKey: clearedUserDefaultsKey(for: action))
             ShortcutMigration.removeLegacyCustomRecordingShortcut(for: action)
             ShortcutMigration.removeLegacyKeyboardShortcut(for: action)
+            ShortcutDiagnostics.notice(
+                "shortcut-store write action=\(action.storageName) result=saved shortcut=\(shortcut.diagnosticDescription)"
+            )
         } else {
             UserDefaults.standard.removeObject(forKey: action.userDefaultsKey)
             UserDefaults.standard.set(true, forKey: clearedUserDefaultsKey(for: action))
             ShortcutMigration.removeLegacyCustomRecordingShortcut(for: action)
             ShortcutMigration.removeLegacyKeyboardShortcut(for: action)
+            ShortcutDiagnostics.notice("shortcut-store write action=\(action.storageName) result=cleared")
         }
 
         NotificationCenter.default.post(
@@ -58,9 +75,15 @@ enum ShortcutStore {
             rawShortcut(for: action) == nil,
             replacingCleared || !isShortcutCleared(for: action)
         else {
+            ShortcutDiagnostics.notice(
+                "shortcut-store seed action=\(action.storageName) result=skipped replacingCleared=\(replacingCleared) hasRaw=\(rawShortcut(for: action) != nil) isCleared=\(isShortcutCleared(for: action))"
+            )
             return
         }
 
+        ShortcutDiagnostics.notice(
+            "shortcut-store seed action=\(action.storageName) result=attempt shortcut=\(shortcut.diagnosticDescription)"
+        )
         setShortcut(shortcut, for: action)
     }
 
@@ -73,6 +96,7 @@ enum ShortcutStore {
         UserDefaults.standard.removeObject(forKey: clearedUserDefaultsKey(for: action))
         ShortcutMigration.removeLegacyCustomRecordingShortcut(for: action)
         ShortcutMigration.removeLegacyKeyboardShortcut(for: action)
+        ShortcutDiagnostics.notice("shortcut-store remove action=\(action.storageName) result=storage-removed")
         NotificationCenter.default.post(
             name: shortcutDidChange,
             object: action

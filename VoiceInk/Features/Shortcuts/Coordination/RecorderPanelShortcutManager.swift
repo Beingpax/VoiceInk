@@ -11,7 +11,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var settingsChangeObserver: NSObjectProtocol?
     private var recordingStateCancellable: AnyCancellable?
     private var observedSendKey: FinishAndSendKey
-    private let visibleRecorderMonitor = ShortcutMonitor()
+    private let visibleRecorderMonitor = ShortcutMonitor(ownerLabel: "RecorderPanel")
 
     // Double-tap Escape handling
     private var firstEscapePressTime: Date? = nil
@@ -29,6 +29,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
     init(recorderUIManager: RecorderUIManager) {
         self.recorderUIManager = recorderUIManager
         self.observedSendKey = FinishAndSendSettings.selectedKey
+        ShortcutDiagnostics.notice(
+            "panel-shortcut-manager init recorderVisible=\(recorderUIManager.isRecorderPanelVisible)"
+        )
         setupShortcutChangeObserver()
         settingsChangeObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
@@ -40,12 +43,12 @@ final class RecorderPanelShortcutManager: ObservableObject {
                 let sendKey = FinishAndSendSettings.selectedKey
                 guard sendKey != self.observedSendKey else { return }
                 self.observedSendKey = sendKey
-                self.refreshVisibleShortcuts()
+                self.refreshVisibleShortcuts(reason: "finish-and-send-key-changed")
             }
         }
         setupVisibilityObserver()
         recordingStateCancellable = recorderUIManager.recordingStatePublisher?.sink { [weak self] _ in
-            Task { @MainActor in self?.refreshVisibleShortcuts() }
+            Task { @MainActor in self?.refreshVisibleShortcuts(reason: "recording-state-changed") }
         }
     }
 
@@ -64,7 +67,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
             Task { @MainActor in
                 self?.resetEscapeState()
-                self?.refreshVisibleShortcuts()
+                self?.refreshVisibleShortcuts(reason: "cancel-shortcut-changed")
             }
         }
     }
@@ -72,10 +75,11 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private func setupVisibilityObserver() {
         visibilityTask = Task { @MainActor in
             for await isVisible in recorderUIManager.$isRecorderPanelVisible.values {
+                ShortcutDiagnostics.notice("panel-shortcut-manager visibility-changed visible=\(isVisible)")
                 if isVisible {
-                    refreshVisibleShortcuts()
+                    refreshVisibleShortcuts(reason: "recorder-became-visible")
                 } else {
-                    visibleRecorderMonitor.stop()
+                    visibleRecorderMonitor.stop(reason: "recorder-became-hidden")
                     resetEscapeState()
                 }
             }
@@ -87,6 +91,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
     }
 
     private func resetEscapeState() {
+        if firstEscapePressTime != nil || escapeTimeoutTask != nil {
+            ShortcutDiagnostics.notice("panel-shortcut-manager escape-state reset")
+        }
         firstEscapePressTime = nil
         activeEscapePressID = nil
         escapeTimeoutTask?.cancel()
@@ -98,9 +105,12 @@ final class RecorderPanelShortcutManager: ObservableObject {
         }
     }
 
-    private func refreshVisibleShortcuts() {
+    private func refreshVisibleShortcuts(reason: String) {
         guard recorderUIManager.isRecorderPanelVisible else {
-            visibleRecorderMonitor.stop()
+            ShortcutDiagnostics.notice(
+                "panel-shortcut-manager refresh reason=\(reason) result=stopped-recorder-hidden"
+            )
+            visibleRecorderMonitor.stop(reason: "refresh-hidden.\(reason)")
             resetEscapeState()
             return
         }
@@ -124,23 +134,46 @@ final class RecorderPanelShortcutManager: ObservableObject {
             }
         }
 
-        visibleRecorderMonitor.start(
+        let summary = shortcuts.map { "\($0.key.storageName)=\($0.value.diagnosticDescription)" }.sorted().joined(separator: " | ")
+        ShortcutDiagnostics.notice(
+            "panel-shortcut-manager refresh begin reason=\(reason) storedCancelConfigured=\(ShortcutStore.shortcut(for: .cancelRecorder) != nil) canUseModeShortcuts=\(canUseModeShortcuts) shortcutCount=\(shortcuts.count) shortcuts={\(summary.isEmpty ? "none" : summary)}"
+        )
+        let didStart = visibleRecorderMonitor.start(
             shortcuts: shortcuts,
             onShortcutDown: { [weak self] action, _ in
+                ShortcutDiagnostics.notice(
+                    "panel-shortcut-manager dispatch-received action=\(action.storageName) transition=keyDown"
+                )
                 Task { @MainActor in
                     await self?.handleRecorderPanelShortcut(action)
                 }
             },
             onShortcutUp: { _, _ in }
         )
+        ShortcutDiagnostics.notice(
+            "panel-shortcut-manager refresh end reason=\(reason) monitorStarted=\(didStart)"
+        )
     }
 
     private func handleRecorderPanelShortcut(_ action: ShortcutAction) async {
-        guard recorderUIManager.isRecorderPanelVisible else { return }
+        guard recorderUIManager.isRecorderPanelVisible else {
+            ShortcutDiagnostics.notice(
+                "panel-shortcut-manager handle action=\(action.storageName) result=rejected reason=recorder-hidden"
+            )
+            return
+        }
+
+        ShortcutDiagnostics.notice("panel-shortcut-manager handle action=\(action.storageName) begin")
 
         switch action {
         case .cancelRecorder:
-            guard ShortcutStore.shortcut(for: .cancelRecorder) != nil else { return }
+            guard ShortcutStore.shortcut(for: .cancelRecorder) != nil else {
+                ShortcutDiagnostics.notice(
+                    "panel-shortcut-manager handle action=\(action.storageName) result=rejected reason=stored-cancel-missing"
+                )
+                return
+            }
+            ShortcutDiagnostics.notice("panel-shortcut-manager handle action=\(action.storageName) result=cancel-recording")
             await recorderUIManager.cancelRecording()
         case .recorderPanelEscape:
             await handleEscapeShortcut()
@@ -151,6 +184,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
         case .recorderPanelMode(let index):
             handleModeSelectionShortcut(index: index)
         default:
+            ShortcutDiagnostics.notice(
+                "panel-shortcut-manager handle action=\(action.storageName) result=no-handler"
+            )
             break
         }
     }
@@ -163,12 +199,14 @@ final class RecorderPanelShortcutManager: ObservableObject {
             now.timeIntervalSince(firstTime) <= escapeDoublePressThreshold
         {
             resetEscapeState()
+            ShortcutDiagnostics.notice("panel-shortcut-manager escape result=cancel-recording secondPress=true")
             await recorderUIManager.cancelRecording()
             return
         }
 
         let escapePressID = UUID()
         firstEscapePressTime = now
+        ShortcutDiagnostics.notice("panel-shortcut-manager escape result=waiting-for-second-press")
         activeEscapePressID = escapePressID
         showEscapeConfirmationHintIfNeeded()
         escapeTimeoutTask = Task { [weak self] in
@@ -182,6 +220,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
             await MainActor.run {
                 guard self?.activeEscapePressID == escapePressID else { return }
+                ShortcutDiagnostics.notice("panel-shortcut-manager escape result=second-press-timeout")
                 self?.firstEscapePressTime = nil
                 self?.activeEscapePressID = nil
                 self?.escapeTimeoutTask = nil
@@ -204,14 +243,27 @@ final class RecorderPanelShortcutManager: ObservableObject {
     }
 
     private func handleModeSelectionShortcut(index: Int) {
-        guard canUseModeShortcuts else { return }
+        guard canUseModeShortcuts else {
+            ShortcutDiagnostics.notice(
+                "panel-shortcut-manager mode-select index=\(index) result=rejected reason=no-enabled-modes"
+            )
+            return
+        }
 
         let modeManager = ModeManager.shared
         let availableConfigurations = modeManager.enabledConfigurations
 
-        guard index < availableConfigurations.count else { return }
+        guard index < availableConfigurations.count else {
+            ShortcutDiagnostics.notice(
+                "panel-shortcut-manager mode-select index=\(index) result=rejected reason=index-out-of-range availableCount=\(availableConfigurations.count)"
+            )
+            return
+        }
 
         let selectedConfig = availableConfigurations[index]
+        ShortcutDiagnostics.notice(
+            "panel-shortcut-manager mode-select index=\(index) result=selected modeId=\(selectedConfig.id.uuidString)"
+        )
         modeManager.setActiveConfiguration(selectedConfig)
     }
 
@@ -225,7 +277,8 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
         visibilityTask?.cancel()
         MainActor.assumeIsolated {
-            visibleRecorderMonitor.stop()
+            ShortcutDiagnostics.notice("panel-shortcut-manager deinit")
+            visibleRecorderMonitor.stop(reason: "panel-shortcut-manager-deinit")
             resetEscapeState()
         }
     }

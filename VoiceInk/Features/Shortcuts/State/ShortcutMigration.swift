@@ -31,13 +31,18 @@ struct ShortcutBackup: Codable {
 
 enum ShortcutMigration {
     static func migrateLegacyShortcutsIfNeeded() {
+        ShortcutDiagnostics.notice("shortcut-migration begin")
         discardLegacyCustomRecordingShortcutsIfNeeded()
         migrateLegacyKeyboardShortcutsIfNeeded()
+        ShortcutDiagnostics.notice(
+            "shortcut-migration end primary=\(ShortcutStore.rawShortcut(for: .primaryRecording)?.diagnosticDescription ?? "none") secondary=\(ShortcutStore.rawShortcut(for: .secondaryRecording)?.diagnosticDescription ?? "none")"
+        )
     }
 
     static func migrateLegacyKeyboardShortcutsIfNeeded() {
         let migrationKey = "Shortcut_LegacyKeyboardShortcutsMigrated"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else {
+            ShortcutDiagnostics.notice("shortcut-migration keyboard-shortcuts result=already-completed")
             return
         }
 
@@ -50,6 +55,7 @@ enum ShortcutMigration {
         }
 
         UserDefaults.standard.set(true, forKey: migrationKey)
+        ShortcutDiagnostics.notice("shortcut-migration keyboard-shortcuts result=completed")
     }
 
     static func migrateShortcutSelection(
@@ -169,6 +175,9 @@ enum ShortcutMigration {
         }
 
         guard !isRecordingShortcutAction(action) else {
+            ShortcutDiagnostics.notice(
+                "shortcut-migration keyboard-shortcut action=\(action.storageName) result=skipped-recording-action"
+            )
             return
         }
 
@@ -181,11 +190,15 @@ enum ShortcutMigration {
         }
 
         ShortcutStore.setShortcut(shortcut, for: action)
+        ShortcutDiagnostics.notice(
+            "shortcut-migration keyboard-shortcut action=\(action.storageName) result=migrated shortcut=\(shortcut.diagnosticDescription)"
+        )
     }
 
     private static func discardLegacyCustomRecordingShortcutsIfNeeded() {
         let migrationKey = "Shortcut_LegacyCustomRecordingShortcutsMigrated"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else {
+            ShortcutDiagnostics.notice("shortcut-migration legacy-recording result=already-completed")
             return
         }
 
@@ -194,6 +207,7 @@ enum ShortcutMigration {
         }
 
         UserDefaults.standard.set(true, forKey: migrationKey)
+        ShortcutDiagnostics.notice("shortcut-migration legacy-recording result=discarded-legacy-storage")
     }
 
     private static func legacyPresetShortcut(for rawValue: String) -> Shortcut? {

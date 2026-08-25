@@ -182,10 +182,16 @@ final class ShortcutRecorderModel: ObservableObject {
         self.onCapture = onCapture
         isRecording = true
         previewShortcut = nil
+        ShortcutDiagnostics.notice("shortcut-capture start action=\(action.storageName)")
         installRecordingMonitor()
     }
 
     func cancel() {
+        if isRecording {
+            ShortcutDiagnostics.notice(
+                "shortcut-capture cancel action=\(activeAction?.storageName ?? "unknown") pending=\(pendingModifierShortcut?.diagnosticDescription ?? "none")"
+            )
+        }
         removeRecordingMonitor()
         resetRecordingState()
     }
@@ -197,12 +203,18 @@ final class ShortcutRecorderModel: ObservableObject {
         }
 
         if let validationError = ShortcutValidator.validationError(for: shortcut, action: activeAction) {
+            ShortcutDiagnostics.notice(
+                "shortcut-capture finish action=\(activeAction.storageName) result=rejected reason=\(String(describing: validationError)) shortcut=\(shortcut.diagnosticDescription)"
+            )
             cancel()
             showErrorNotification(validationError.notificationTitle(for: shortcut))
             return
         }
 
         let capture = onCapture
+        ShortcutDiagnostics.notice(
+            "shortcut-capture finish action=\(activeAction.storageName) result=accepted shortcut=\(shortcut.diagnosticDescription)"
+        )
         removeRecordingMonitor()
         resetRecordingState()
 
@@ -236,12 +248,16 @@ final class ShortcutRecorderModel: ObservableObject {
             let shouldConsume = self.handleRecordingEvent(event)
             return shouldConsume ? nil : event
         }
+        ShortcutDiagnostics.notice(
+            "shortcut-capture local-monitor result=\(localMonitor == nil ? "failed" : "installed")"
+        )
     }
 
     private func removeRecordingMonitor() {
         if let localMonitor {
             NSEvent.removeMonitor(localMonitor)
             self.localMonitor = nil
+            ShortcutDiagnostics.notice("shortcut-capture local-monitor result=removed")
         }
     }
 
@@ -268,9 +284,13 @@ final class ShortcutRecorderModel: ObservableObject {
         if keyCode == UInt16(kVK_Escape), modifiers.isEmpty {
             if activeAction == .cancelRecorder {
                 let shortcut = Shortcut.key(keyCode: keyCode, modifierFlags: modifiers)
+                ShortcutDiagnostics.notice(
+                    "shortcut-capture event=keyDown keyCode=\(keyCode) result=capture-cancel-shortcut candidate=\(shortcut.diagnosticDescription)"
+                )
                 previewShortcut = shortcut
                 finish(with: shortcut)
             } else {
+                ShortcutDiagnostics.notice("shortcut-capture event=keyDown result=cancel keyCode=\(keyCode)")
                 cancel()
             }
             return true
@@ -281,6 +301,9 @@ final class ShortcutRecorderModel: ObservableObject {
         }
 
         let shortcut = Shortcut.key(keyCode: keyCode, modifierFlags: modifiers)
+        ShortcutDiagnostics.notice(
+            "shortcut-capture event=keyDown keyCode=\(keyCode) modifiers=0x\(String(modifiers.rawValue, radix: 16)) candidate=\(shortcut.diagnosticDescription)"
+        )
         previewShortcut = shortcut
         finish(with: shortcut)
         return true
@@ -325,10 +348,16 @@ final class ShortcutRecorderModel: ObservableObject {
 
             pendingModifierShortcut = shortcut
             previewShortcut = shortcut
+            ShortcutDiagnostics.notice(
+                "shortcut-capture event=flagsChanged keyCode=\(keyCode) modifiers=0x\(String(modifiers.rawValue, radix: 16)) result=pending candidate=\(shortcut.diagnosticDescription)"
+            )
             return true
         }
 
         if let pendingModifierShortcut {
+            ShortcutDiagnostics.notice(
+                "shortcut-capture event=flagsChanged result=modifier-released candidate=\(pendingModifierShortcut.diagnosticDescription)"
+            )
             finish(with: pendingModifierShortcut)
         }
 
