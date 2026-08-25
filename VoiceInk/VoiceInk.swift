@@ -7,6 +7,14 @@ import SwiftUI
 
 @main
 struct VoiceInkApp: App {
+    private static let menuBarImage: NSImage = {
+        let image = NSImage(named: "menuBarIcon")!.copy() as! NSImage
+        let ratio = image.size.height / image.size.width
+        image.size.height = 22
+        image.size.width = 22 / ratio
+        return image
+    }()
+
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let container: ModelContainer
 
@@ -386,14 +394,7 @@ struct VoiceInkApp: App {
                 .environmentObject(aiService)
                 .environmentObject(enhancementService)
         } label: {
-            let image: NSImage = {
-                let ratio = $0.size.height / $0.size.width
-                $0.size.height = 22
-                $0.size.width = 22 / ratio
-                return $0
-            }(NSImage(named: "menuBarIcon")!)
-
-            Image(nsImage: image)
+            Image(nsImage: Self.menuBarImage)
                 .background(MainWindowRequestBridge(menuBarManager: menuBarManager))
         }
         .menuBarExtraStyle(.menu)
