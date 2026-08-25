@@ -8,7 +8,7 @@ class Recorder: NSObject, ObservableObject {
     var recorder: CoreAudioRecorder?
     let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Recorder")
     let deviceManager = AudioDeviceManager.shared
-    private var audioDeviceChangedObserver: NSObjectProtocol?
+    private var lifecycleObserver: LifecycleObserver?
     var recordingDeviceChangeObserver: NSObjectProtocol?
     private let mediaController = MediaController.shared
     private let playbackController = PlaybackController.shared
@@ -35,22 +35,11 @@ class Recorder: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        setupAudioDeviceChangedObserver()
+        lifecycleObserver = LifecycleObserver { [weak self] event in
+            self?.invalidatePreparedAudioUnit(reason: event.rawValue)
+        }
         setupRecordingDeviceChangeObserver()
         schedulePrepareForCurrentDevice(reason: "init")
-    }
-
-    private func setupAudioDeviceChangedObserver() {
-        audioDeviceChangedObserver = NotificationCenter.default.addObserver(
-            forName: Notification.Name("AudioDeviceChanged"),
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                guard let self, !self.deviceManager.isRecordingActive else { return }
-                self.schedulePrepareForCurrentDevice(reason: "device-changed")
-            }
-        }
     }
 
     func startRecording(toOutputFile url: URL) async throws {
@@ -224,6 +213,13 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
+    private func invalidatePreparedAudioUnit(reason: String) {
+        guard let coreAudioRecorder = recorder else { return }
+        audioSetupQueue.async {
+            coreAudioRecorder.invalidatePreparation(reason: reason)
+        }
+    }
+
     func audioMeterSnapshot() -> AudioMeter {
         guard let recorder else {
             return AudioMeter(averagePower: 0, peakPower: 0)
@@ -281,9 +277,6 @@ class Recorder: NSObject, ObservableObject {
         audioMuteTask?.cancel()
         mediaPauseTask?.cancel()
         audioRestorationTask?.cancel()
-        if let observer = audioDeviceChangedObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
         if let observer = recordingDeviceChangeObserver {
             NotificationCenter.default.removeObserver(observer)
         }
