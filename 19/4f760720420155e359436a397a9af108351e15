@@ -1,0 +1,19 @@
+VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_a2498a6fa275a7::t_aa5d226766f8d4 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "194f760720420155e359436a397a9af108351e15",
+  "prompts": {},
+  "sessions": {
+    "s_a2498a6fa275a7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03878-a03d-7c73-89be-e59adf0a5d2e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
