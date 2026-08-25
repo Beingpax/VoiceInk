@@ -30,6 +30,9 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
         }
 
         let vocabulary = getCustomVocabularyTerms()
+        let deepgramLanguage = model.name == "nova-3" && (language == nil || language == "auto")
+            ? "multi"
+            : language
 
         // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
@@ -37,7 +40,7 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
 
         do {
             try await client.connect(
-                apiKey: apiKey, model: model.name, language: language, customVocabulary: vocabulary)
+                apiKey: apiKey, model: model.name, language: deepgramLanguage, customVocabulary: vocabulary)
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
@@ -105,7 +108,7 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
                 unique.append(trimmed)
             }
         }
-        return Array(unique.prefix(50))
+        return Array(unique.prefix(100))
     }
 
     private func mapError(_ error: Error) -> Error {

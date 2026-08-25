@@ -5,15 +5,34 @@ import SwiftData
 struct DeepgramProvider: CloudProvider {
     let modelProvider: ModelProvider = .deepgram
     let providerKey: String = "Deepgram"
-    let languageCodes: [String]? = [
-        "ar", "be", "bg", "bn", "bs", "ca", "cs", "da", "de", "el",
-        "en", "en-US", "en-AU", "en-GB", "en-IN", "en-NZ",
-        "es", "et", "fa", "fi", "fr", "he", "hi", "hr", "hu",
-        "id", "it", "ja", "kn", "ko", "lt", "lv", "mk", "mr", "ms",
-        "nl", "no", "pl", "pt", "ro", "ru", "sk", "sl", "sr", "sv",
-        "ta", "te", "th", "tl", "tr", "uk", "ur", "vi", "zh",
-    ]
+    let languageCodes: [String]? = Self.nova3LanguageCodes
     let includesAutoDetect: Bool = true
+
+    /// Nova-3 languages documented by Deepgram for hosted batch and streaming transcription.
+    /// `auto` is presented by VoiceInk and translated to Deepgram's `language=multi` mode.
+    private static let nova3LanguageCodes = [
+        "af", "af-ZA",
+        "ar", "ar-AE", "ar-SA", "ar-QA", "ar-KW", "ar-SY", "ar-LB", "ar-PS", "ar-JO", "ar-EG",
+        "ar-SD", "ar-TD", "ar-MA", "ar-DZ", "ar-TN", "ar-IQ", "ar-IR",
+        "hy", "be", "bn", "bs", "bg", "ca",
+        "zh-HK", "zh", "zh-CN", "zh-Hans", "zh-TW", "zh-Hant",
+        "hr", "cs", "da", "da-DK", "nl", "en", "en-US", "en-AU", "en-GB", "en-IN", "en-NZ", "et",
+        "fi", "nl-BE", "fr", "fr-CA", "ka", "ka-GE", "de", "de-CH",
+        "el", "gu", "gu-IN", "he", "hi", "hu", "id", "it", "ja", "kn", "ko", "ko-KR", "lv",
+        "lt", "mk", "ms", "mr", "ne", "no", "fa", "pl", "pt", "pt-BR", "pt-PT", "pa", "pa-IN",
+        "ro", "ru", "sr", "sk", "sl", "es", "es-419", "sv", "sv-SE", "tl", "ta", "te", "th",
+        "th-TH", "tr", "uk", "ur", "vi",
+    ]
+
+    private static let nova3MedicalLanguageCodes = [
+        "en", "en-US", "en-AU", "en-CA", "en-GB", "en-IE", "en-IN", "en-NZ",
+    ]
+
+    private static var nova3SupportedLanguages: [String: String] {
+        var languages = LanguageDictionary.forCodes(nova3LanguageCodes)
+        languages["auto"] = "Multilingual (10 languages)"
+        return languages
+    }
 
     var models: [CloudModel] {
         [
@@ -26,7 +45,7 @@ struct DeepgramProvider: CloudProvider {
                 accuracy: 0.96,
                 isMultilingual: true,
                 supportsStreaming: true,
-                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .deepgram)
+                supportedLanguages: Self.nova3SupportedLanguages
             ),
             CloudModel(
                 name: "nova-3-medical",
@@ -37,7 +56,7 @@ struct DeepgramProvider: CloudProvider {
                 accuracy: 0.96,
                 isMultilingual: false,
                 supportsStreaming: true,
-                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .deepgram)
+                supportedLanguages: LanguageDictionary.forCodes(Self.nova3MedicalLanguageCodes)
             ),
         ]
     }
@@ -45,11 +64,13 @@ struct DeepgramProvider: CloudProvider {
     func transcribe(
         audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
     ) async throws -> String {
+        let deepgramLanguage = model == "nova-3" && language == nil ? "multi" : language
         return try await DeepgramClient.transcribe(
             audioData: audioData,
             apiKey: apiKey,
             model: model,
-            language: language
+            language: deepgramLanguage,
+            customVocabulary: Array(customVocabulary.prefix(100))
         )
     }
 
