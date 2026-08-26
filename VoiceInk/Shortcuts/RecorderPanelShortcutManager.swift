@@ -13,6 +13,13 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var firstEscapePressTime: Date? = nil
     private let escapeDoublePressThreshold: TimeInterval = 1.5
     private var escapeTimeoutTask: Task<Void, Never>?
+    private var isEscapeConfirmationHintVisible = false
+
+    private static let escapeConfirmationHintShownKey = "hasShownEscapeCancelConfirmationHint"
+
+    static func resetEscapeConfirmationHint() {
+        UserDefaults.standard.removeObject(forKey: escapeConfirmationHintShownKey)
+    }
 
     init(recorderUIManager: RecorderUIManager) {
         self.recorderUIManager = recorderUIManager
@@ -34,6 +41,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
             }
 
             Task { @MainActor in
+                self?.resetEscapeState()
                 self?.refreshVisibleShortcuts()
             }
         }
@@ -60,6 +68,11 @@ final class RecorderPanelShortcutManager: ObservableObject {
         firstEscapePressTime = nil
         escapeTimeoutTask?.cancel()
         escapeTimeoutTask = nil
+
+        if isEscapeConfirmationHintVisible {
+            isEscapeConfirmationHintVisible = false
+            NotificationManager.shared.dismissNotification()
+        }
     }
 
     private func refreshVisibleShortcuts() {
@@ -124,17 +137,35 @@ final class RecorderPanelShortcutManager: ObservableObject {
         }
 
         firstEscapePressTime = now
+        showEscapeConfirmationHintIfNeeded()
+        escapeTimeoutTask = Task { [weak self] in
+            do {
+                try await Task.sleep(
+                    nanoseconds: UInt64((self?.escapeDoublePressThreshold ?? 1.5) * 1_000_000_000)
+                )
+            } catch {
+                return
+            }
+
+            await MainActor.run {
+                self?.firstEscapePressTime = nil
+                self?.escapeTimeoutTask = nil
+                self?.isEscapeConfirmationHintVisible = false
+            }
+        }
+    }
+
+    private func showEscapeConfirmationHintIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: Self.escapeConfirmationHintShownKey) else { return }
+
+        defaults.set(true, forKey: Self.escapeConfirmationHintShownKey)
+        isEscapeConfirmationHintVisible = true
         NotificationManager.shared.showNotification(
             title: String(localized: "Press Esc again to cancel"),
             type: .info,
             duration: escapeDoublePressThreshold
         )
-        escapeTimeoutTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64((self?.escapeDoublePressThreshold ?? 1.5) * 1_000_000_000))
-            await MainActor.run {
-                self?.firstEscapePressTime = nil
-            }
-        }
     }
 
     private func handleModeSelectionShortcut(index: Int) {
