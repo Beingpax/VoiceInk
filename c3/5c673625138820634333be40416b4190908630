@@ -1,0 +1,28 @@
+VoiceInk/Shortcuts/ShortcutRecorder.swift
+  s_e647d0213de226::t_de3818841882e2 263-269
+VoiceInk/Shortcuts/ShortcutValidator.swift
+  s_e647d0213de226::t_de3818841882e2 26,45-48,53-59
+VoiceInk/Views/Settings/SettingsView.swift
+  s_e647d0213de226::t_71cb46a1617e87 105,122,124
+  s_e647d0213de226::t_011d5598e2cb9f 123
+  s_e647d0213de226::t_de3818841882e2 100,110,119-121,125
+VoiceInk/Shortcuts/RecorderPanelShortcutManager.swift
+  s_e647d0213de226::t_415bf65a1e7f0a 142-149
+  s_e647d0213de226::t_de3818841882e2 16-22,44,71-75,140,152-153,158-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c35c673625138820634333be40416b4190908630",
+  "prompts": {},
+  "sessions": {
+    "s_e647d0213de226": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03f43-0b48-7ec0-8ff4-f5d0c5f9f626",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
