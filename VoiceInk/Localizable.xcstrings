@@ -3669,23 +3669,6 @@
         }
       }
     },
-    "Autodetected" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatisch erkannt"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动检测"
-          }
-        }
-      }
-    },
     "Automatically Check for Updates" : {
       "localizations" : {
         "de" : {
@@ -9403,23 +9386,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "语言：%@"
-          }
-        }
-      }
-    },
-    "Language: Autodetected" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sprache: Automatisch erkannt"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "语言：自动检测"
           }
         }
       }
@@ -16811,23 +16777,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置导入操作已取消。"
-          }
-        }
-      }
-    },
-    "The transcription language is automatically detected by the model." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Transkriptionssprache wird vom Modell automatisch erkannt."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "转写语言由模型自动检测。"
           }
         }
       }
