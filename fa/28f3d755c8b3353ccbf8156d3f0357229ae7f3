@@ -1,0 +1,30 @@
+VoiceInk/Models/LanguageDictionary.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 137-141
+README.md
+  s_1eab389b1e7849::t_7f7163ec37e75d 94-95
+VoiceInk/Models/TranscriptionModelRegistry.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 88-98
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppModelCatalog.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 11,77,83-96,98-99
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppTranscriptionService.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 3,5,8,11,27,30-34,38
+VoiceInk/Transcription/TranscribeCpp/OfflineTranscribeCppService.swift
+  s_1eab389b1e7849::t_d5f8c488c73b8f 144
+  s_1eab389b1e7849::t_3d99b648f4e3f4 1-143,145-412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa28f3d755c8b3353ccbf8156d3f0357229ae7f3",
+  "prompts": {},
+  "sessions": {
+    "s_1eab389b1e7849": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a041c3-c4b9-7ef1-9cd7-9afa707fe65c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
