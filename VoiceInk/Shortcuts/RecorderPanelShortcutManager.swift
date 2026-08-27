@@ -13,6 +13,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var firstEscapePressTime: Date? = nil
     private let escapeDoublePressThreshold: TimeInterval = 1.5
     private var escapeTimeoutTask: Task<Void, Never>?
+    private var activeEscapePressID: UUID?
     private var isEscapeConfirmationHintVisible = false
 
     private static let escapeConfirmationHintShownKey = "hasShownEscapeCancelConfirmationHint"
@@ -66,6 +67,7 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
     private func resetEscapeState() {
         firstEscapePressTime = nil
+        activeEscapePressID = nil
         escapeTimeoutTask?.cancel()
         escapeTimeoutTask = nil
 
@@ -136,7 +138,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
             return
         }
 
+        let escapePressID = UUID()
         firstEscapePressTime = now
+        activeEscapePressID = escapePressID
         showEscapeConfirmationHintIfNeeded()
         escapeTimeoutTask = Task { [weak self] in
             do {
@@ -148,7 +152,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
             }
 
             await MainActor.run {
+                guard self?.activeEscapePressID == escapePressID else { return }
                 self?.firstEscapePressTime = nil
+                self?.activeEscapePressID = nil
                 self?.escapeTimeoutTask = nil
                 self?.isEscapeConfirmationHintVisible = false
             }
