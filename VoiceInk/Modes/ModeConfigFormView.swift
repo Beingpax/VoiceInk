@@ -216,11 +216,7 @@ struct ModeConfigFormView: View {
                         let model = warmupSnapshot.transcriptionModel(named: modelName)
                     {
                         draft.isRealtimeTranscriptionEnabled = TranscriptionRealtimeSupport.isAvailable(for: model)
-                        if model.provider == .gemini {
-                            draft.selectedLanguage = "auto"
-                        } else {
-                            draft.useCompatibleLanguage(for: model)
-                        }
+                        draft.useCompatibleLanguage(for: model)
                     }
                 }
 
@@ -263,15 +259,7 @@ struct ModeConfigFormView: View {
 
     @ViewBuilder
     private var languagePicker: some View {
-        if languageSelectionDisabled() {
-            LabeledContent("Language") {
-                Text("Autodetected")
-                    .foregroundColor(.secondary)
-            }
-            .onAppear {
-                draft.selectedLanguage = "auto"
-            }
-        } else if let selectedModel = effectiveModelName,
+        if let selectedModel = effectiveModelName,
             let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
             modelInfo.isMultilingualModel
         {
@@ -699,13 +687,6 @@ struct ModeConfigFormView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
         }
-    }
-
-    private func languageSelectionDisabled() -> Bool {
-        guard let selectedModelName = effectiveModelName,
-            let model = warmupSnapshot.transcriptionModel(named: selectedModelName)
-        else { return false }
-        return model.provider == .gemini
     }
 
     private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {

@@ -1,5 +1,5 @@
 {
-  "originHash" : "ef9eb8e09cc8ad47145fb9d97103e7267e9dd9e5ee5b02f0ceb041eb1eb8f85c",
+  "originHash" : "36a14f273cedd455935e54109427ec0c39e0577d60902a4811ccfcfdb29c6546",
   "pins" : [
     {
       "identity" : "axswift",
@@ -42,8 +42,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Beingpax/LLMkit.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "1ae6e0d8fb7809bbccc3c03bfd5ee0af9819df51"
+        "revision" : "95b29c2e1ad22754c2f21495aafb483874c8f06c"
       }
     },
     {
@@ -67,7 +66,7 @@
     {
       "identity" : "mlx-swift-lm",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ml-explore/mlx-swift-lm",
+      "location" : "https://github.com/ml-explore/mlx-swift-lm.git",
       "state" : {
         "revision" : "cd1ab3dd98ceb02d095490aa25e61298ea3e2f5b"
       }

@@ -4,6 +4,7 @@ import SwiftData
 
 enum CloudTranscriptionError: Error, LocalizedError {
     case unsupportedProvider
+    case unsupportedModel(String)
     case missingAPIKey
     case invalidAPIKey
     case audioFileNotFound
@@ -16,6 +17,8 @@ enum CloudTranscriptionError: Error, LocalizedError {
         switch self {
         case .unsupportedProvider:
             return String(localized: "The model provider is not supported by this service.")
+        case .unsupportedModel(let model):
+            return String(format: String(localized: "The selected model is not supported: %@"), model)
         case .missingAPIKey:
             return String(localized: "API key for this service is missing. Please configure it in the settings.")
         case .invalidAPIKey:
@@ -135,6 +138,8 @@ class CloudTranscriptionService: TranscriptionService {
             return .networkError(NSError(domain: "LLMkit", code: -1, userInfo: [NSLocalizedDescriptionKey: detail]))
         case .invalidURL, .decodingError, .timeout:
             return .networkError(error)
+        case .unsupportedModel(let model):
+            return .unsupportedModel(model)
         }
     }
 }

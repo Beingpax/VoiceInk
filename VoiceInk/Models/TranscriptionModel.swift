@@ -62,6 +62,7 @@ extension TranscriptionModel {
     }
 
     var supportsStreaming: Bool { false }
+
 }
 
 // A new struct for Apple's native models
@@ -132,24 +133,19 @@ struct CloudModel: TranscriptionModel {
     let displayName: String
     let description: String
     let provider: ModelProvider
-    let speed: Double
-    let accuracy: Double
     let isMultilingualModel: Bool
     let supportsStreaming: Bool
     let supportedLanguages: [String: String]
 
     init(
         id: UUID = UUID(), name: String, displayName: String, description: String, provider: ModelProvider,
-        speed: Double, accuracy: Double, isMultilingual: Bool, supportsStreaming: Bool = false,
-        supportedLanguages: [String: String]
+        isMultilingual: Bool, supportsStreaming: Bool = false, supportedLanguages: [String: String]
     ) {
         self.id = id
         self.name = name
         self.displayName = displayName
         self.description = description
         self.provider = provider
-        self.speed = speed
-        self.accuracy = accuracy
         self.isMultilingualModel = isMultilingual
         self.supportsStreaming = supportsStreaming
         self.supportedLanguages = supportedLanguages

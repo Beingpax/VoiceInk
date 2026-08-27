@@ -60,8 +60,13 @@ protocol StreamingTranscriptionProvider: AnyObject {
 
     /// Stream of transcription events from the provider
     var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent> { get }
+
+    /// Provider-confirmed full transcript emitted only after all submitted audio has been finalized.
+    /// Providers without a distinct end-of-stream acknowledgement use the shared committed-event behavior.
+    var finalizationEvents: AsyncStream<String>? { get }
 }
 
 extension StreamingTranscriptionProvider {
     var stopDisposition: StreamingStopDisposition { .finalizeStreaming }
+    var finalizationEvents: AsyncStream<String>? { nil }
 }

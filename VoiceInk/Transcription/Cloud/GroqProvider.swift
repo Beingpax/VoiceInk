@@ -15,8 +15,6 @@ struct GroqProvider: CloudProvider {
                 displayName: "Whisper Large v3 Turbo",
                 description: "Whisper Large v3 Turbo model with Groq's lightning-speed inference",
                 provider: .groq,
-                speed: 0.65,
-                accuracy: 0.95,
                 isMultilingual: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .groq)
             )

@@ -16,8 +16,6 @@ struct CartesiaProvider: CloudProvider {
                 displayName: "Ink 2",
                 description: "Cartesia's fastest streaming speech to text model. With English only support.",
                 provider: .cartesia,
-                speed: 0.99,
-                accuracy: 0.98,
                 isMultilingual: false,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: false, provider: .cartesia)

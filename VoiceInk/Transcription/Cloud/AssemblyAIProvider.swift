@@ -15,8 +15,6 @@ struct AssemblyAIProvider: CloudProvider {
                 displayName: "Universal-3.5 Pro",
                 description: "Highest-accuracy multilingual transcription with realtime support.",
                 provider: .assemblyAI,
-                speed: 0.94,
-                accuracy: 0.98,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: Languages.universal35
@@ -26,8 +24,6 @@ struct AssemblyAIProvider: CloudProvider {
                 displayName: "Universal-2",
                 description: "Balanced multilingual transcription with 90+ language support.",
                 provider: .assemblyAI,
-                speed: 0.90,
-                accuracy: 0.92,
                 isMultilingual: true,
                 supportsStreaming: false,
                 supportedLanguages: Languages.universal2

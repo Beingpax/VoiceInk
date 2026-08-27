@@ -2,13 +2,12 @@ import Foundation
 import LLMkit
 import SwiftData
 
-/// Deepgram streaming provider wrapping `LLMkit.DeepgramStreamingClient`.
-final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
-
-    private let client = LLMkit.DeepgramStreamingClient()
+/// Gemini streaming provider wrapping `LLMkit.GeminiStreamingClient`.
+final class GeminiStreamingProvider: StreamingTranscriptionProvider {
+    private let client = LLMkit.GeminiStreamingClient()
+    private let modelContext: ModelContext
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
-    private let modelContext: ModelContext
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
     var finalizationEvents: AsyncStream<String>? { client.finalizationEvents }
@@ -26,26 +25,24 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
     }
 
     func connect(model: any TranscriptionModel, language: String?) async throws {
-        guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "Deepgram"), !apiKey.isEmpty else {
+        guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "Gemini"), !apiKey.isEmpty else {
             throw StreamingTranscriptionError.missingAPIKey
         }
 
-        let vocabulary = getCustomVocabularyTerms()
-        let deepgramLanguage = model.name == "nova-3" && (language == nil || language == "auto")
-            ? "multi"
-            : language
-
-        // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
         startEventForwarding()
 
         do {
             try await client.connect(
-                apiKey: apiKey, model: model.name, language: deepgramLanguage, customVocabulary: vocabulary)
+                apiKey: apiKey,
+                model: model.name,
+                language: language,
+                customVocabulary: customVocabularyTerms()
+            )
         } catch {
-            // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
             forwardingTask = nil
+            await client.disconnect()
             throw mapError(error)
         }
     }
@@ -73,8 +70,6 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
         eventsContinuation?.finish()
     }
 
-    // MARK: - Private
-
     private func startEventForwarding() {
         forwardingTask = Task { [weak self] in
             guard let self else { return }
@@ -93,23 +88,23 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
         }
     }
 
-    private func getCustomVocabularyTerms() -> [String] {
+    private func customVocabularyTerms() -> [String] {
         let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
         guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
             return []
         }
+
         var seen = Set<String>()
         var unique: [String] = []
         for word in vocabularyWords {
             let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
             let key = trimmed.lowercased()
-            if !seen.contains(key) {
-                seen.insert(key)
-                unique.append(trimmed)
-            }
+            guard seen.insert(key).inserted else { continue }
+            unique.append(trimmed)
+            if unique.count == 1_000 { break }
         }
-        return Array(unique.prefix(100))
+        return unique
     }
 
     private func mapError(_ error: Error) -> Error {
@@ -121,6 +116,8 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
             return StreamingTranscriptionError.serverError(message)
         case .networkError(let detail):
             return StreamingTranscriptionError.connectionFailed(detail)
+        case .timeout:
+            return StreamingTranscriptionError.timeout
         default:
             return StreamingTranscriptionError.serverError(llmError.localizedDescription ?? "Unknown error")
         }
