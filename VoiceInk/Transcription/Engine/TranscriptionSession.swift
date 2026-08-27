@@ -125,11 +125,18 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                 logger.notice("Streaming stop/transcribe started model=\(model.displayName, privacy: .public)")
                 let result = try await streamingService.stopAndFinalize()
                 switch result {
-                case .finalized(let text):
+                case .finalized(let text)
+                where !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty:
                     logger.notice(
                         "Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
                     )
                     return text
+                case .finalized:
+                    // The session finalized with nothing to show for it, e.g. it stopped
+                    // producing text and the commit acknowledgement timed out. Take the same
+                    // batch path as .requiresBatchFallback rather than discarding a recording
+                    // that is still on disk.
+                    logger.error("Streaming finalized an empty transcript, falling back to batch")
                 case .requiresBatchFallback:
                     logger.notice("Streaming provider requested full batch transcription")
                 }
