@@ -30,7 +30,7 @@ struct DeepgramProvider: CloudProvider {
 
     private static var nova3SupportedLanguages: [String: String] {
         var languages = LanguageDictionary.forCodes(nova3LanguageCodes)
-        languages["auto"] = "Multilingual (10 languages)"
+        languages["auto"] = "Auto"
         return languages
     }
 

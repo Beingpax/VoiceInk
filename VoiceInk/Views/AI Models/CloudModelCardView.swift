@@ -84,25 +84,27 @@ struct CloudModelCardView: View {
                 .foregroundColor(Color(.secondaryLabelColor))
                 .lineLimit(1)
 
-            // Speed
-            HStack(spacing: 3) {
-                Text("Speed")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                progressDotsWithNumber(value: model.speed * 10)
-            }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+            if model.speed > 0 || model.accuracy > 0 {
+                // Speed
+                HStack(spacing: 3) {
+                    Text("Speed")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(.secondaryLabelColor))
+                    progressDotsWithNumber(value: model.speed * 10)
+                }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
-            // Accuracy
-            HStack(spacing: 3) {
-                Text("Accuracy")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(.secondaryLabelColor))
-                progressDotsWithNumber(value: model.accuracy * 10)
+                // Accuracy
+                HStack(spacing: 3) {
+                    Text("Accuracy")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color(.secondaryLabelColor))
+                    progressDotsWithNumber(value: model.accuracy * 10)
+                }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
             }
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
         }
         .lineLimit(1)
     }

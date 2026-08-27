@@ -62,6 +62,7 @@ extension TranscriptionModel {
     }
 
     var supportsStreaming: Bool { false }
+
 }
 
 // A new struct for Apple's native models
