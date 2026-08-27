@@ -1,0 +1,35 @@
+VoiceInk/Services/AIEnhancement/AIEnhancementService.swift
+  s_f147c99ab8e436::t_87b0f67b16f5a8 396-397
+VoiceInk/Services/OllamaService.swift
+  s_f147c99ab8e436::t_87b0f67b16f5a8 125-126
+VoiceInk/Transcription/Cloud/CloudTranscriptionService.swift
+  s_f147c99ab8e436::t_87b0f67b16f5a8 7,20-21,141-142
+"VoiceInk/Views/AI Models/ModelCardView.swift"
+  s_905538e20fedda::t_df6ecc39c7b326 55
+VoiceInk/Models/TranscriptionModel.swift
+  s_905538e20fedda::t_df6ecc39c7b326 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "789ae0e193949e686367321279f88de457f9872a",
+  "prompts": {},
+  "sessions": {
+    "s_905538e20fedda": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a042c8-fdf9-73a3-aa10-fcef193fa79c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    },
+    "s_f147c99ab8e436": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a043ed-8536-71c1-886d-a956c5d83e4f",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
