@@ -1,16 +1,14 @@
 import Foundation
 
-/// Routes transcribe.cpp-backed models to their model-specific service.
+/// Routes catalog-backed models through the shared transcribe.cpp runtime.
 final class TranscribeCppTranscriptionService: TranscriptionService, @unchecked Sendable {
-    private let cohereService = CohereTranscriptionService()
+    private let offlineService = OfflineTranscribeCppService()
 
     func loadModel(for model: TranscribeCppModel) async throws {
-        switch model.name {
-        case TranscribeCppModelCatalog.cohereTranscribe.modelName:
-            try await cohereService.loadModel(for: model)
-        default:
+        guard TranscribeCppModelCatalog.artifact(for: model.name) != nil else {
             throw unsupportedModelError(model.name)
         }
+        try await offlineService.loadModel(for: model)
     }
 
     func transcribe(
@@ -26,20 +24,18 @@ final class TranscribeCppTranscriptionService: TranscriptionService, @unchecked 
             )
         }
 
-        switch transcribeCppModel.name {
-        case TranscribeCppModelCatalog.cohereTranscribe.modelName:
-            return try await cohereService.transcribe(
-                audioURL: audioURL,
-                model: transcribeCppModel,
-                context: context
-            )
-        default:
+        guard TranscribeCppModelCatalog.artifact(for: transcribeCppModel.name) != nil else {
             throw unsupportedModelError(transcribeCppModel.name)
         }
+        return try await offlineService.transcribe(
+            audioURL: audioURL,
+            model: transcribeCppModel,
+            context: context
+        )
     }
 
     func cleanup() {
-        cohereService.cleanup()
+        offlineService.cleanup()
     }
 
     private func unsupportedModelError(_ modelName: String) -> NSError {

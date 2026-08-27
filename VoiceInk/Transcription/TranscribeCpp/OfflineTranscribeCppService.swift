@@ -4,7 +4,8 @@ import Foundation
 import TranscribeCpp
 import os
 
-final class CohereTranscriptionService: TranscriptionService, @unchecked Sendable {
+/// Shared offline runtime for catalog-backed transcribe.cpp model families.
+final class OfflineTranscribeCppService: TranscriptionService, @unchecked Sendable {
     private struct LoadedState {
         let modelName: String
         let model: Model
@@ -34,7 +35,7 @@ final class CohereTranscriptionService: TranscriptionService, @unchecked Sendabl
     private let audioConverter = AudioConverter()
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",
-        category: "CohereTranscriptionService"
+        category: "OfflineTranscribeCppService"
     )
 
     init() {
@@ -94,7 +95,7 @@ final class CohereTranscriptionService: TranscriptionService, @unchecked Sendabl
     ) async throws -> String {
         guard let transcribeCppModel = model as? TranscribeCppModel else {
             throw NSError(
-                domain: "CohereTranscriptionService",
+                domain: "OfflineTranscribeCppService",
                 code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "Unsupported transcription model"]
             )
@@ -107,16 +108,25 @@ final class CohereTranscriptionService: TranscriptionService, @unchecked Sendabl
 
         let samples = try audioConverter.resampleAudioFile(audioURL)
         let language = selectedLanguage(context.language, for: transcribeCppModel)
-        let options = RunOptions(timestamps: .none, language: language)
+        let options = RunOptions(
+            timestamps: .none,
+            itn: artifact.enablesInverseTextNormalization ? .on : .default,
+            language: language,
+            keepSpecialTags: false
+        )
+        let maximumChunkSeconds = effectiveMaximumChunkSeconds(
+            configuredMaximum: artifact.maximumChunkSeconds,
+            capabilitiesMaximumMilliseconds: nativeModel.capabilities.maxAudioMs
+        )
         let chunks = samples.energyAwareChunks(
-            maximumCount: artifact.maximumChunkSeconds * 16_000,
+            maximumCount: maximumChunkSeconds * 16_000,
             boundarySearchCount: artifact.boundarySearchSeconds * 16_000,
             energyWindowCount: artifact.boundaryEnergyWindowSamples
         )
 
         let startedAt = ContinuousClock.now
-        var texts: [String] = []
-        texts.reserveCapacity(chunks.count)
+        var chunkTranscripts: [(text: String, language: String?)] = []
+        chunkTranscripts.reserveCapacity(chunks.count)
 
         for chunk in chunks {
             try Task.checkCancellation()
@@ -124,14 +134,14 @@ final class CohereTranscriptionService: TranscriptionService, @unchecked Sendabl
             let transcript = try await session.run(chunk, options: options)
             let text = transcript.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if !text.isEmpty {
-                texts.append(text)
+                chunkTranscripts.append((text: text, language: transcript.language ?? language))
             }
         }
 
         logger.notice(
             "\(transcribeCppModel.displayName, privacy: .public) completed in \(startedAt.duration(to: .now).formatted(.units(allowed: [.seconds], width: .narrow)), privacy: .public) for \(samples.count, privacy: .public) samples"
         )
-        return TextNormalizer.shared.normalizeSentence(texts.joined(separator: languageUsesSpaces(language) ? " " : ""))
+        return joinedText(from: chunkTranscripts)
     }
 
     func cleanup() {
@@ -289,25 +299,44 @@ final class CohereTranscriptionService: TranscriptionService, @unchecked Sendabl
     }
 
     private func resolveArtifact(for model: TranscribeCppModel) throws -> TranscribeCppModelArtifact {
-        guard let artifact = TranscribeCppModelCatalog.artifact(for: model.name),
-            artifact.modelName == TranscribeCppModelCatalog.cohereTranscribe.modelName
-        else {
+        guard let artifact = TranscribeCppModelCatalog.artifact(for: model.name) else {
             throw NSError(
-                domain: "CohereTranscriptionService",
+                domain: "OfflineTranscribeCppService",
                 code: -2,
-                userInfo: [NSLocalizedDescriptionKey: "Unsupported Cohere transcription model"]
+                userInfo: [NSLocalizedDescriptionKey: "Unsupported transcribe.cpp model"]
             )
         }
         return artifact
     }
 
-    private func selectedLanguage(_ language: String?, for model: TranscribeCppModel) -> String {
+    private func selectedLanguage(_ language: String?, for model: TranscribeCppModel) -> String? {
         let compatibleLanguage = TranscriptionLanguageSupport.validLanguageOrFallback(language, for: model)
-        return compatibleLanguage.split(separator: "-").first.map(String.init)?.lowercased() ?? "en"
+        guard compatibleLanguage != "auto" else { return nil }
+        return compatibleLanguage.split(separator: "-").first.map(String.init)?.lowercased()
     }
 
-    private func languageUsesSpaces(_ language: String) -> Bool {
-        language != "ja" && language != "zh"
+    private func effectiveMaximumChunkSeconds(
+        configuredMaximum: Int,
+        capabilitiesMaximumMilliseconds: Int64
+    ) -> Int {
+        guard capabilitiesMaximumMilliseconds > 0 else { return configuredMaximum }
+        let capabilitiesMaximum = Swift.max(1, Int(capabilitiesMaximumMilliseconds / 1_000))
+        return Swift.min(configuredMaximum, capabilitiesMaximum)
+    }
+
+    private func joinedText(from chunks: [(text: String, language: String?)]) -> String {
+        chunks.enumerated().reduce(into: "") { result, entry in
+            let (index, chunk) = entry
+            if index > 0, languageUsesSpaces(chunk.language) {
+                result.append(" ")
+            }
+            result.append(chunk.text)
+        }
+    }
+
+    private func languageUsesSpaces(_ language: String?) -> Bool {
+        guard let language else { return true }
+        return language != "ja" && language != "yue" && language != "zh"
     }
 
     private static func initializeBackendsIfNeeded() throws {
@@ -320,7 +349,7 @@ final class CohereTranscriptionService: TranscriptionService, @unchecked Sendabl
 }
 
 private extension Array where Element == Float {
-    /// Matches Cohere's long-form splitter, using the chunk tail for boundary search rather than overlap.
+    /// Splits long-form audio near low-energy boundaries without overlapping samples.
     func energyAwareChunks(
         maximumCount: Int,
         boundarySearchCount: Int,
