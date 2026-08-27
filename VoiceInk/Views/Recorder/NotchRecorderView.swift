@@ -141,7 +141,7 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         }
         .animation(pillAnimation, value: displayState)
         .onReceive(
-            NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
+            LifecycleObserver.shared.publisher(for: .screenConfigurationChanged)
         ) { _ in
             screenGeneration += 1
         }

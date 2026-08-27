@@ -241,7 +241,7 @@ struct OnboardingView: View {
         .onDisappear {
             coordinator.permissions.cancelRefreshTask()
         }
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+        .onReceive(LifecycleObserver.shared.publisher(for: .applicationDidBecomeActive)) { _ in
             coordinator.permissions.refreshPermissionStatuses()
             coordinator.flow.refreshTranscriptionSetupVerification()
             let refreshedTranscriptionSetupReady = coordinator.isTranscriptionSetupReady(

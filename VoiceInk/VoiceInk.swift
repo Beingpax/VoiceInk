@@ -354,10 +354,11 @@ struct VoiceInkApp: App {
                 }
             }
             .confettiCelebrationPresenter()
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                licenseViewModel.refreshLicenseState()
-            }
-            .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)) { _ in
+            .onReceive(
+                LifecycleObserver.shared.publisher(
+                    for: [.applicationDidBecomeActive, .systemDidWake]
+                )
+            ) { _ in
                 licenseViewModel.refreshLicenseState()
             }
         }

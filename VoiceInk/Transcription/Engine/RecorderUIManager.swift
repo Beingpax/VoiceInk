@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import SwiftUI
 import os
@@ -61,6 +62,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     private var miniWindowManager: MiniWindowManager?
     private var panelInvalidationTask: Task<Void, Never>?
     private var didSetupNotifications = false
+    private var lifecycleCancellable: AnyCancellable?
 
     private weak var engine: VoiceInkEngine?
     private var recorder: Recorder?
@@ -71,7 +73,6 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
     }
 
     /// Call after VoiceInkEngine is created to break the circular init dependency.
@@ -288,43 +289,22 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
             name: .dismissRecorderPanel,
             object: nil
         )
-        // System sleep and display-only sleep are separate notifications, and a laptop hits
-        // display sleep far more often than system sleep.
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(handleSystemDidWake),
-            name: NSWorkspace.didWakeNotification,
-            object: nil
-        )
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(handleScreensDidWake),
-            name: NSWorkspace.screensDidWakeNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleScreenParametersChange),
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
-    }
-
-    @objc private func handleSystemDidWake() {
-        Task { @MainActor in
-            self.invalidatePanels(reason: "system wake")
-        }
-    }
-
-    @objc private func handleScreensDidWake() {
-        Task { @MainActor in
-            self.invalidatePanels(reason: "displays wake")
-        }
-    }
-
-    @objc private func handleScreenParametersChange() {
-        Task { @MainActor in
-            self.invalidatePanels(reason: "screen parameters changed")
+        lifecycleCancellable = LifecycleObserver.shared.publisher(
+            for: [.systemDidWake, .displaysDidWake, .screenConfigurationChanged]
+        ).sink { [weak self] event in
+            Task { @MainActor in
+                guard let self else { return }
+                switch event {
+                case .systemDidWake:
+                    self.invalidatePanels(reason: "system wake")
+                case .displaysDidWake:
+                    self.invalidatePanels(reason: "displays wake")
+                case .screenConfigurationChanged:
+                    self.invalidatePanels(reason: "screen parameters changed")
+                default:
+                    break
+                }
+            }
         }
     }
 
