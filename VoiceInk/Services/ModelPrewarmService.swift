@@ -1,4 +1,4 @@
-import AppKit
+import Combine
 import Foundation
 import SwiftData
 import os
@@ -16,6 +16,7 @@ final class ModelPrewarmService: ObservableObject {
     )
     private let prewarmAudioURL = Bundle.main.url(forResource: "sound7", withExtension: "wav")
     private let prewarmEnabledKey = "PrewarmModelOnWake"
+    private var lifecycleCancellable: AnyCancellable?
 
     init(
         transcriptionModelManager: TranscriptionModelManager, whisperModelManager: WhisperModelManager,
@@ -24,24 +25,13 @@ final class ModelPrewarmService: ObservableObject {
         self.transcriptionModelManager = transcriptionModelManager
         self.whisperModelManager = whisperModelManager
         self.modelContext = modelContext
-        setupNotifications()
+        lifecycleCancellable = LifecycleObserver.shared.publisher(for: .systemDidWake).sink {
+            [weak self] _ in
+            Task { @MainActor in
+                self?.schedulePrewarm()
+            }
+        }
         schedulePrewarmOnAppLaunch()
-    }
-
-    // MARK: - Notification Setup
-
-    private func setupNotifications() {
-        let center = NSWorkspace.shared.notificationCenter
-
-        // Trigger on wake from sleep
-        center.addObserver(
-            self,
-            selector: #selector(schedulePrewarm),
-            name: NSWorkspace.didWakeNotification,
-            object: nil
-        )
-
-        logger.notice("ModelPrewarmService initialized - listening for wake and app launch")
     }
 
     // MARK: - Trigger Handlers
@@ -56,7 +46,7 @@ final class ModelPrewarmService: ObservableObject {
     }
 
     /// Trigger on wake from sleep or screen unlock
-    @objc private func schedulePrewarm() {
+    private func schedulePrewarm() {
         logger.notice("Mac activity detected (wake/unlock), scheduling prewarm")
         Task {
             try? await Task.sleep(for: .seconds(3))
@@ -130,8 +120,4 @@ final class ModelPrewarmService: ObservableObject {
         }
     }
 
-    deinit {
-        NSWorkspace.shared.notificationCenter.removeObserver(self)
-        logger.notice("ModelPrewarmService deinitialized")
-    }
 }

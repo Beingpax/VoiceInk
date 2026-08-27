@@ -30,17 +30,4 @@ class AudioDeviceConfiguration {
         }
         return defaultDeviceID
     }
-
-    /// Creates a device change observer that calls handler on the specified queue
-    static func createDeviceChangeObserver(
-        handler: @escaping () -> Void,
-        queue: OperationQueue = .main
-    ) -> NSObjectProtocol {
-        return NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("AudioDeviceChanged"),
-            object: nil,
-            queue: queue,
-            using: { _ in handler() }
-        )
-    }
 }

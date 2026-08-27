@@ -167,6 +167,16 @@ final class CoreAudioRecorder: @unchecked Sendable {
         }
     }
 
+    /// Discards an idle prepared AUHAL so the next recording creates a fresh connection.
+    /// Active recordings keep their existing device-switching lifecycle.
+    func invalidatePreparation() {
+        guard !isRecording, audioUnit != nil else { return }
+
+        teardownPreparedAudioUnit()
+        currentDeviceID = 0
+        resetMeters()
+    }
+
     /// Starts recording from the specified device to the given URL (WAV format)
     func startRecording(toOutputFile url: URL, deviceID: AudioDeviceID) throws {
         // Stop any existing recording
