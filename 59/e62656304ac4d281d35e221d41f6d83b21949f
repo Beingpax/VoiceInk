@@ -1,0 +1,19 @@
+VoiceInk/Shortcuts/RecorderPanelShortcutManager.swift
+  s_e647d0213de226::t_b9396a25429014 16,70,141,143,155,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59e62656304ac4d281d35e221d41f6d83b21949f",
+  "prompts": {},
+  "sessions": {
+    "s_e647d0213de226": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03f43-0b48-7ec0-8ff4-f5d0c5f9f626",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
