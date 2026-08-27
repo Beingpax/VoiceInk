@@ -1,0 +1,23 @@
+VoiceInk/Transcription/Streaming/StreamingTranscriptionService.swift
+  s_905538e20fedda::t_c10a7ecea0234f 110-114,225-228,232,248-250,258-259
+VoiceInk/Transcription/Streaming/GeminiStreamingProvider.swift
+  s_905538e20fedda::t_c10a7ecea0234f 45,119-120
+VoiceInk/Models/LanguageDictionary.swift
+  s_905538e20fedda::t_c10a7ecea0234f 205,225,239,241,245,255,261,265,271,284,286,294,296,339,347,355,357,366,372,390,393,399
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "154e486d30d17878ec7754c3402dca8335a86780",
+  "prompts": {},
+  "sessions": {
+    "s_905538e20fedda": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a042c8-fdf9-73a3-aa10-fcef193fa79c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
