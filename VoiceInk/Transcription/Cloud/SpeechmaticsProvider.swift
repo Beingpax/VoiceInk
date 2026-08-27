@@ -23,8 +23,6 @@ struct SpeechmaticsProvider: CloudProvider {
                 description:
                     "Speechmatics enhanced accuracy transcription with real-time streaming and 50+ language support",
                 provider: .speechmatics,
-                speed: 0.99,
-                accuracy: 0.98,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .speechmatics)

@@ -22,8 +22,6 @@ struct SonioxProvider: CloudProvider {
                 displayName: "Soniox V5",
                 description: "Soniox transcription model v5 with improved accuracy and structured data formatting",
                 provider: .soniox,
-                speed: 0.99,
-                accuracy: 0.98,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .soniox)

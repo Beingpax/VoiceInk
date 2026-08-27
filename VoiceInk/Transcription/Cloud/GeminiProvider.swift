@@ -31,8 +31,6 @@ struct GeminiProvider: CloudProvider {
                 displayName: "Gemini 3.5 Transcribe",
                 description: "Google's dedicated Verbatim transcription model with real-time support",
                 provider: .gemini,
-                speed: 0,
-                accuracy: 0,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: Self.transcribeSupportedLanguages

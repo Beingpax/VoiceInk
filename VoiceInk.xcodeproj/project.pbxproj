@@ -857,14 +857,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
-			requirement = {
-				kind = revision;
-				revision = 95b29c2e1ad22754c2f21495aafb483874c8f06c;
-			};
-		};
 		E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/apple/swift-atomics.git";
@@ -911,6 +903,14 @@
 			requirement = {
 				branch = master;
 				kind = branch;
+			};
+		};
+		E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
+			requirement = {
+				kind = revision;
+				revision = 95b29c2e1ad22754c2f21495aafb483874c8f06c;
 			};
 		};
 		E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */ = {

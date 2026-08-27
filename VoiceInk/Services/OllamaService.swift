@@ -122,6 +122,8 @@ class OllamaService: ObservableObject {
             return .invalidResponse
         case .timeout:
             return .timeout
+        case .unsupportedModel:
+            return .modelNotFound
         }
     }
 }

@@ -12,7 +12,6 @@ struct ModelCardView: View {
     // Actions
     var deleteAction: () -> Void
     var downloadAction: () -> Void
-    var editAction: ((CustomCloudModel) -> Void)?
     var body: some View {
         Group {
             switch model.provider {
@@ -52,20 +51,8 @@ struct ModelCardView: View {
                         model: nativeAppleModel
                     )
                 }
-            case .custom:
-                if let customModel = model as? CustomCloudModel {
-                    CustomModelCardView(
-                        model: customModel,
-                        deleteAction: deleteAction,
-                        editAction: editAction ?? { _ in }
-                    )
-                }
             default:
-                if let cloudModel = model as? CloudModel {
-                    CloudModelCardView(
-                        model: cloudModel
-                    )
-                }
+                EmptyView()
             }
         }
     }

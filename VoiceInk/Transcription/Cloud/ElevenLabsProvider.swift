@@ -25,8 +25,6 @@ struct ElevenLabsProvider: CloudProvider {
                 displayName: "Scribe V2",
                 description: "ElevenLabs' Scribe V2 model for the most accurate transcription",
                 provider: .elevenLabs,
-                speed: 0.99,
-                accuracy: 0.98,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)

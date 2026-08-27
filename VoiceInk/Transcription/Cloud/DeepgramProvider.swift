@@ -41,8 +41,6 @@ struct DeepgramProvider: CloudProvider {
                 displayName: "Nova 3",
                 description: "Deepgram's latest Nova 3 model for fast, accurate transcription",
                 provider: .deepgram,
-                speed: 0.99,
-                accuracy: 0.96,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: Self.nova3SupportedLanguages
@@ -52,8 +50,6 @@ struct DeepgramProvider: CloudProvider {
                 displayName: "Nova 3 Medical",
                 description: "Specialized medical transcription model optimized for clinical environments",
                 provider: .deepgram,
-                speed: 0.99,
-                accuracy: 0.96,
                 isMultilingual: false,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forCodes(Self.nova3MedicalLanguageCodes)

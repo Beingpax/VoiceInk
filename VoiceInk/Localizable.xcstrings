@@ -3669,6 +3669,7 @@
       }
     },
     "Autodetected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -9404,6 +9405,7 @@
       }
     },
     "Language: Autodetected" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -16806,6 +16808,7 @@
       }
     },
     "The transcription language is automatically detected by the model." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

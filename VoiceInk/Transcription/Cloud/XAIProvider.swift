@@ -19,8 +19,6 @@ struct XAIProvider: CloudProvider {
                 displayName: "Grok",
                 description: "xAI's Grok speech-to-text with real-time streaming and batch transcription",
                 provider: .xai,
-                speed: 0.99,
-                accuracy: 0.98,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .xai)

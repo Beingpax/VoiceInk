@@ -393,6 +393,8 @@ class AIEnhancementService: ObservableObject {
             return .timeout
         case .invalidURL, .decodingError, .encodingError:
             return .customError(error.localizedDescription ?? "An unknown error occurred.")
+        case .unsupportedModel(let model):
+            return .customError("Unsupported model: \(model)")
         }
     }
 

@@ -15,8 +15,6 @@ struct MistralProvider: CloudProvider {
                 displayName: "Voxtral",
                 description: "Mistral's Voxtral model for fast and accurate transcription",
                 provider: .mistral,
-                speed: 0.99,
-                accuracy: 0.98,
                 isMultilingual: true,
                 supportsStreaming: true,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .mistral)
