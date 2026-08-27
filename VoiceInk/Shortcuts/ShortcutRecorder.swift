@@ -260,7 +260,13 @@ final class ShortcutRecorderModel: ObservableObject {
         let modifiers = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: keyCode)
 
         if keyCode == UInt16(kVK_Escape), modifiers.isEmpty {
-            cancel()
+            if activeAction == .cancelRecorder {
+                let shortcut = Shortcut.key(keyCode: keyCode, modifierFlags: modifiers)
+                previewShortcut = shortcut
+                finish(with: shortcut)
+            } else {
+                cancel()
+            }
             return true
         }
 

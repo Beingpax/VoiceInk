@@ -23,7 +23,7 @@ enum ShortcutValidationError: Equatable {
 
 enum ShortcutValidator {
     static func validationError(for shortcut: Shortcut, action: ShortcutAction) -> ShortcutValidationError? {
-        if let error = userRecordingShortcutError(for: shortcut) {
+        if let error = userRecordingShortcutError(for: shortcut, action: action) {
             return error
         }
 
@@ -42,11 +42,21 @@ enum ShortcutValidator {
         return nil
     }
 
-    private static func userRecordingShortcutError(for shortcut: Shortcut) -> ShortcutValidationError? {
+    private static func userRecordingShortcutError(
+        for shortcut: Shortcut,
+        action: ShortcutAction
+    ) -> ShortcutValidationError? {
         switch shortcut.kind {
         case .modifierOnly:
             return shortcut.modifierFlags.isEmpty ? .plainKeyRequiresModifier : nil
         case .key:
+            if action == .cancelRecorder,
+                shortcut.keyCode == UInt16(kVK_Escape),
+                shortcut.modifierFlags.isEmpty
+            {
+                return nil
+            }
+
             if Shortcut.isFunctionKeyCode(shortcut.keyCode) {
                 return nil
             }
