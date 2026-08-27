@@ -8,6 +8,7 @@ struct TranscribeCppModelArtifact: Sendable {
     let expectedFileSize: Int64
     let expectedSHA256: String
     let architectureHint: String?
+    let enablesInverseTextNormalization: Bool
     let maximumChunkSeconds: Int
     let boundarySearchSeconds: Int
     let boundaryEnergyWindowSamples: Int
@@ -73,13 +74,29 @@ enum TranscribeCppModelCatalog {
         expectedFileSize: 1_558_162_944,
         expectedSHA256: "0ea56826d8bd5d74b7143a4a04e022dc1bb75452cfae49d98b6acb0c1d16a1fb",
         architectureHint: "cohere",
+        enablesInverseTextNormalization: false,
         maximumChunkSeconds: 35,
         boundarySearchSeconds: 5,
         boundaryEnergyWindowSamples: 1_600
     )
 
+    static let senseVoiceSmall = TranscribeCppModelArtifact(
+        modelName: "sensevoice-small",
+        fileName: "SenseVoiceSmall-Q8_0.gguf",
+        repository: "handy-computer/SenseVoiceSmall-gguf",
+        repositoryRevision: "4a08b8e900b38a977e32eb08d5d0697d6e72ba04",
+        expectedFileSize: 252_684_608,
+        expectedSHA256: "6c759ee4c9748c9b3f7a5a60ca74f0f7e685fb9d45d1378fce7cfd62f59adf29",
+        architectureHint: "sensevoice",
+        enablesInverseTextNormalization: true,
+        maximumChunkSeconds: 30,
+        boundarySearchSeconds: 3,
+        boundaryEnergyWindowSamples: 1_600
+    )
+
     private static let artifactsByModelName = [
-        cohereTranscribe.modelName: cohereTranscribe
+        cohereTranscribe.modelName: cohereTranscribe,
+        senseVoiceSmall.modelName: senseVoiceSmall,
     ]
 
     static func artifact(for modelName: String) -> TranscribeCppModelArtifact? {

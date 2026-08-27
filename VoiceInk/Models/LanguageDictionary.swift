@@ -134,6 +134,11 @@ enum LanguageDictionary {
         "ar", "de", "el", "en", "es", "fr", "it", "ja", "ko", "nl", "pl", "pt", "vi", "zh",
     ])
 
+    static let senseVoiceSmall = forCodes(
+        ["en", "ja", "ko", "yue", "zh"],
+        includesAutoDetect: true
+    )
+
     private static func languages(matching codes: Set<String>) -> [String: String] {
         all.filter { codes.contains($0.key) }
     }
