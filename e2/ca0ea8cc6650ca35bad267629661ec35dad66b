@@ -1,0 +1,34 @@
+VoiceInk/Localizable.xcstrings
+  s_1eab389b1e7849::t_595eee668eb41b 20082
+  s_1eab389b1e7849::t_9e33c8249f12dc 3620-3635,4113-4128,4241-4252,9325-9340,9438-9449
+  s_1eab389b1e7849::t_b09fd1a837ea23 7584
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppTranscriptionService.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 143
+  s_1eab389b1e7849::t_595eee668eb41b 1-2,4-5,7,9-12,14-64,66-88,103,105-138,140-142,144,148,151-410
+README.md
+  s_1eab389b1e7849::t_7f7163ec37e75d 94-95
+VoiceInk/Transcription/TranscribeCpp/TranscribeCppModelCatalog.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 11,77,83-96,98-99
+VoiceInk/Models/LanguageDictionary.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 145
+  s_1eab389b1e7849::t_dc5c3c366f0089 137-144
+VoiceInk/Models/TranscriptionModelRegistry.swift
+  s_1eab389b1e7849::t_7f7163ec37e75d 88-90,92-98
+  s_1eab389b1e7849::t_e384a3df206d82 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e2ca0ea8cc6650ca35bad267629661ec35dad66b",
+  "prompts": {},
+  "sessions": {
+    "s_1eab389b1e7849": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a041c3-c4b9-7ef1-9cd7-9afa707fe65c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}
