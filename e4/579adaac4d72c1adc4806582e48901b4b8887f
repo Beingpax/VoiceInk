@@ -1,0 +1,45 @@
+VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_905538e20fedda::t_fc6d8ae193f2ec 45
+VoiceInk/Transcription/Streaming/StreamingTranscriptionProvider.swift
+  s_905538e20fedda::t_a0847986e3d0b9 63-66,71
+VoiceInk/Transcription/Cloud/GeminiProvider.swift
+  s_905538e20fedda::t_30a9161ee0bcf2 11-26,30-32,34-35,37-38,49-54,58-60
+VoiceInk/Transcription/Streaming/DeepgramStreamingProvider.swift
+  s_905538e20fedda::t_a0847986e3d0b9 14
+VoiceInk.xcodeproj/project.pbxproj
+  s_905538e20fedda::t_1795546388c787 391,860-864,866-867,996,998
+  s_905538e20fedda::t_fc6d8ae193f2ec 865
+VoiceInk/Transcription/Cloud/DeepgramProvider.swift
+  s_905538e20fedda::t_eb766abebd746c 33
+VoiceInk/Modes/ModeConfigEditorView.swift
+  s_905538e20fedda::t_a7b009dd15d985 108
+"VoiceInk/Views/AI Models/LanguageSelectionView.swift"
+  s_905538e20fedda::t_a7b009dd15d985 106,167
+VoiceInk/Modes/ModeConfigFormView.swift
+  s_905538e20fedda::t_a7b009dd15d985 219,262
+VoiceInk/Models/LanguageDictionary.swift
+  s_905538e20fedda::t_37d76c4a9425a0 185,187,189-194,197,199-200,202,204-206,208-209,211,213,215,217-218,220-227,229-237,241,246,248,252-256,260-266,269,271,274,278-282,286-289,291,293,298-299,301-302,304,306-307,309-310,312-314,316-322,325,327,330,332-333,337-339,343-345,347,351,353-354,356-357,360-363,365,367,370,372,375,377,379
+  s_905538e20fedda::t_6554750d030ca1 95,98,105,108,113,119,126,149-152,156,160-161,165-168,170,175-178
+VoiceInk/Transcription/Streaming/StreamingTranscriptionService.swift
+  s_905538e20fedda::t_a0847986e3d0b9 218-227,241-255,452-475
+VoiceInk/Transcription/Streaming/GeminiStreamingProvider.swift
+  s_905538e20fedda::t_a0847986e3d0b9 1-122
+"VoiceInk/Views/AI Models/CloudModelCardView.swift"
+  s_905538e20fedda::t_a7b009dd15d985 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4579adaac4d72c1adc4806582e48901b4b8887f",
+  "prompts": {},
+  "sessions": {
+    "s_905538e20fedda": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a042c8-fdf9-73a3-aa10-fcef193fa79c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
