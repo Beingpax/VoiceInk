@@ -1,0 +1,19 @@
+appcast.xml
+  s_28d4b49e2733fd::t_dcdd953cf03177 6-9,11,13-18,21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d6eb8c279f8dbc8dd300f602b31470ebcdaa1563",
+  "prompts": {},
+  "sessions": {
+    "s_28d4b49e2733fd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0440c-ba6e-7332-8668-ed7c6a471366",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
