@@ -107,6 +107,11 @@ enum StreamingStopResult {
     case requiresBatchFallback
 }
 
+private enum StreamingFinalizationWait {
+    case provider(AsyncStream<String>)
+    case committedEvent(AsyncStream<Void>)
+}
+
 /// Manages a streaming transcription lifecycle: buffers audio chunks, sends them to the provider, and collects the final text.
 @MainActor
 class StreamingTranscriptionService {
@@ -217,13 +222,14 @@ class StreamingTranscriptionService {
 
         // Providers with a documented terminal acknowledgement expose an authoritative
         // full-transcript stream. All other providers retain the existing committed-event behavior.
-        let explicitFinalizationEvents = provider.finalizationEvents
-        var committedSignalStream: AsyncStream<Void>?
-        if explicitFinalizationEvents == nil {
+        let finalizationWait: StreamingFinalizationWait
+        if let finalizationEvents = provider.finalizationEvents {
+            finalizationWait = .provider(finalizationEvents)
+        } else {
             // Set up the commit signal BEFORE sending commit to avoid a race with the response.
             let (signalStream, signalContinuation) = AsyncStream.makeStream(of: Void.self)
             self.commitSignal = signalContinuation
-            committedSignalStream = signalStream
+            finalizationWait = .committedEvent(signalStream)
         }
 
         // Send commit to finalize any remaining audio
@@ -239,8 +245,9 @@ class StreamingTranscriptionService {
         }
 
         let finalText: String
-        if let explicitFinalizationEvents {
-            let finalization = await waitForExplicitFinalization(events: explicitFinalizationEvents)
+        switch finalizationWait {
+        case .provider(let events):
+            let finalization = await waitForExplicitFinalization(events: events)
             guard finalization.received else {
                 logger.warning("Provider did not confirm full stream finalization; using batch fallback")
                 state = .done
@@ -248,10 +255,8 @@ class StreamingTranscriptionService {
                 return .requiresBatchFallback
             }
             finalText = finalization.text
-        } else if let committedSignalStream {
-            finalText = await waitForFinalCommit(signalStream: committedSignalStream)
-        } else {
-            finalText = ""
+        case .committedEvent(let signalStream):
+            finalText = await waitForFinalCommit(signalStream: signalStream)
         }
         if let stopStartedAt {
             logger.notice(

@@ -42,6 +42,7 @@ final class GeminiStreamingProvider: StreamingTranscriptionProvider {
         } catch {
             forwardingTask?.cancel()
             forwardingTask = nil
+            await client.disconnect()
             throw mapError(error)
         }
     }
@@ -115,6 +116,8 @@ final class GeminiStreamingProvider: StreamingTranscriptionProvider {
             return StreamingTranscriptionError.serverError(message)
         case .networkError(let detail):
             return StreamingTranscriptionError.connectionFailed(detail)
+        case .timeout:
+            return StreamingTranscriptionError.timeout
         default:
             return StreamingTranscriptionError.serverError(llmError.localizedDescription ?? "Unknown error")
         }
