@@ -1,0 +1,40 @@
+VoiceInk/Modes/ModeConfigEditorView.swift
+  s_905538e20fedda::t_6ca7b9d19d77f1 109
+VoiceInk/Transcription/Streaming/GeminiStreamingProvider.swift
+  s_905538e20fedda::t_6ca7b9d19d77f1 1-73,75-76,78,80,82,84-121
+  s_905538e20fedda::t_36c48db2ab9cb6 74,77,79,81,83
+VoiceInk/Modes/ModeConfigFormView.swift
+  s_905538e20fedda::t_6ca7b9d19d77f1 219,221-222,708
+VoiceInk/Transcription/Cloud/GeminiProvider.swift
+  s_905538e20fedda::t_6ca7b9d19d77f1 11-26,29-41,45,50,62-67,71-73
+"VoiceInk/Views/AI Models/LanguageSelectionView.swift"
+  s_905538e20fedda::t_6ca7b9d19d77f1 38,41
+VoiceInk/Models/TranscriptionModel.swift
+  s_905538e20fedda::t_6ca7b9d19d77f1 51,66-69,144-145,151,163-164
+"VoiceInk/Views/AI Models/CloudModelCardView.swift"
+  s_905538e20fedda::t_6ca7b9d19d77f1 87-106
+VoiceInk/Models/LanguageDictionary.swift
+  s_905538e20fedda::t_8b6756335a11cf 333-381
+VoiceInk/Views/Dictionary/DictionarySettingsView.swift
+  s_905538e20fedda::t_8b6756335a11cf 7,18
+VoiceInk/Localizable.xcstrings
+  s_905538e20fedda::t_8b6756335a11cf 18511,18516,18522,19502,19507,19513,20001
+VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_905538e20fedda::t_c0d8ba80bdad0c 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "26341974c8265b97e29088e3ce8fded28733f103",
+  "prompts": {},
+  "sessions": {
+    "s_905538e20fedda": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a042c8-fdf9-73a3-aa10-fcef193fa79c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
