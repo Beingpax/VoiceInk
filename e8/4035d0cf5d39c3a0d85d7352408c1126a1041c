@@ -1,0 +1,19 @@
+VoiceInk/Models/TranscriptionModelRegistry.swift
+  s_1eab389b1e7849::t_5e466636d9b0f7 91,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e84035d0cf5d39c3a0d85d7352408c1126a1041c",
+  "prompts": {},
+  "sessions": {
+    "s_1eab389b1e7849": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a041c3-c4b9-7ef1-9cd7-9afa707fe65c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
