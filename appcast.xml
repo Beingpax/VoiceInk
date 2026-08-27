@@ -3,20 +3,22 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>2.11</title>
-            <pubDate>Wed, 12 Aug 2026 19:25:57 +0545</pubDate>
-            <sparkle:version>211</sparkle:version>
-            <sparkle:shortVersionString>2.11</sparkle:shortVersionString>
+            <title>2.13</title>
+            <pubDate>Thu, 27 Aug 2026 22:54:28 +0545</pubDate>
+            <sparkle:version>213</sparkle:version>
+            <sparkle:shortVersionString>2.13</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h3>What's New in VoiceInk 2.11</h3>
+            <description><![CDATA[<h3>What's New in VoiceInk 2.13</h3>
 <ul>
-  <li>✨ Added VoiceInk Refine for private, on-device transcription enhancement</li>
-  <li>🗣️ Added experimental Cohere Transcribe support</li>
-  <li>🎙️ Fixed microphone issues when using a MacBook with the lid closed</li>
-  <li>🛠️ Minor improvements and bug fixes</li>
+  <li>✨ Added Gemini 3.5 Transcribe support</li>
+  <li>✨ Added SenseVoice Small support</li>
+  <li>⌨️ Improved cancellation handling</li>
+  <li>🎙️ Fixed the recorder panel issue — by @AlexSarbu</li>
+  <li>🎧 Fixed microphone routing issue in clamshell mode</li>
+  <li>🐛 Minor bug fixes and improvements</li>
 </ul>
 ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.11/VoiceInk.dmg" length="48763949" type="application/octet-stream" sparkle:edSignature="qREL4bqQ9wJCFiQ+Yb0/7OWQdZJ/yjUt2RltciRHXM9LMULnKQZRaaVQ6G35a8lsUjVgJdQs4LffBl8OBkp+Dg=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.13/VoiceInk.dmg" length="50174451" type="application/octet-stream" sparkle:edSignature="EZyhSWJgi1u+VLfXBrlEci/V9T4bolvqsBIO2+1vHICIdb5gnq4IwSkk0FN9wagAm+f3v2UfIBEfQSSDC8OhAA=="/>
         </item>
     </channel>
 </rss>
