@@ -3,9 +3,11 @@ import ApplicationServices
 import Foundation
 import ScreenCaptureKit
 import Vision
+import os
 
 @MainActor
 class ScreenCaptureService: ObservableObject {
+    private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ScreenCaptureService")
     @Published var isCapturing = false
     @Published var lastCapturedText: String?
 
@@ -109,18 +111,39 @@ class ScreenCaptureService: ObservableObject {
                     currentPID: currentPID
                 )
             else {
+                logger.info("ScreenCaptureService: no suitable active window found among \(content.windows.count) windows")
                 return nil
             }
 
             let title = window.title ?? window.owningApplication?.applicationName ?? "Unknown"
             let appName = window.owningApplication?.applicationName ?? "Unknown"
-
-            let filter = SCContentFilter(desktopIndependentWindow: window)
-
             let configuration = SCStreamConfiguration()
             let captureScale = captureScale(for: window.frame.size)
             configuration.width = max(1, Int(window.frame.width * captureScale))
             configuration.height = max(1, Int(window.frame.height * captureScale))
+
+            let filter: SCContentFilter
+            let bestDisplay = content.displays.max(by: { d1, d2 in
+                let r1 = d1.frame.intersection(window.frame)
+                let area1 = r1.isNull ? 0 : r1.width * r1.height
+                let r2 = d2.frame.intersection(window.frame)
+                let area2 = r2.isNull ? 0 : r2.width * r2.height
+                return area1 < area2
+            }) ?? content.displays.first
+
+            if let display = bestDisplay {
+                filter = SCContentFilter(display: display, including: [window])
+                let relativeX = max(0, window.frame.origin.x - display.frame.origin.x)
+                let relativeY = max(0, window.frame.origin.y - display.frame.origin.y)
+                configuration.sourceRect = CGRect(
+                    x: relativeX,
+                    y: relativeY,
+                    width: window.frame.width,
+                    height: window.frame.height
+                )
+            } else {
+                filter = SCContentFilter(desktopIndependentWindow: window)
+            }
 
             let cgImage = try await SCScreenshotManager.captureImage(
                 contentFilter: filter, configuration: configuration)
@@ -133,14 +156,17 @@ class ScreenCaptureService: ObservableObject {
 
             let extractedText = extractText(from: cgImage)
             if let extractedText, !extractedText.isEmpty {
+                logger.info("ScreenCaptureService: extracted \(extractedText.count) chars of OCR text")
                 contextText += "Window Content:\n\(extractedText)"
             } else {
+                logger.info("ScreenCaptureService: no text detected in OCR")
                 contextText += "Window Content:\nNo text detected via OCR"
             }
 
             return contextText
 
         } catch {
+            logger.error("ScreenCaptureService error: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }

@@ -280,6 +280,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .recording
+                            self.startRecordingContextCapture()
 
                             await activeModeTask.value
 
@@ -287,10 +288,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.activeRecordingStartID == startID,
                                 !self.shouldCancelRecording
                             else {
+                                self.clearActiveRecordingContext()
                                 return
                             }
-
-                            self.startRecordingContextCapture()
 
                             let modelResolution = ModeRuntimeResolver.transcriptionModelResolution(
                                 transcriptionModelManager: self.transcriptionModelManager
