@@ -1,8 +1,10 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
-    func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String
-    {
+    func transcribe(
+        audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext,
+        customVocabulary: [String] = []
+    ) async throws -> String {
         guard let url = URL(string: model.apiEndpoint) else {
             throw NSError(
                 domain: "CustomWhisperTranscriptionService", code: -1,
@@ -16,7 +18,8 @@ class OpenAICompatibleTranscriptionService {
         request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
 
         let body = try buildRequestBody(
-            audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
+            audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context,
+            customVocabulary: customVocabulary)
         // Ephemeral session per request: the shared session persists Alt-Svc and upgrades
         // new connections to HTTP/3, but QUIC bulk uploads blackhole behind VPNs that drop
         // full-size UDP datagrams (e.g. GlobalProtect), timing out large audio uploads.
@@ -41,7 +44,8 @@ class OpenAICompatibleTranscriptionService {
     }
 
     private func buildRequestBody(
-        audioURL: URL, modelName: String, boundary: String, context: TranscriptionRequestContext
+        audioURL: URL, modelName: String, boundary: String, context: TranscriptionRequestContext,
+        customVocabulary: [String]
     ) throws -> Data {
         guard let audioData = try? Data(contentsOf: audioURL) else {
             throw CloudTranscriptionError.audioFileNotFound
@@ -71,6 +75,11 @@ class OpenAICompatibleTranscriptionService {
 
         if selectedLanguage != "auto" && !selectedLanguage.isEmpty {
             field("language", selectedLanguage)
+        }
+
+        let promptText = VocabularyBiasingPrompt.build(existing: context.prompt, vocabulary: customVocabulary)
+        if !promptText.isEmpty {
+            field("prompt", promptText)
         }
 
         append("--\(boundary)--\(crlf)")
