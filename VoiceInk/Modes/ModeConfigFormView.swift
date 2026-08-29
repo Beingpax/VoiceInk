@@ -441,11 +441,7 @@ struct ModeConfigFormView: View {
                     }
                 )
 
-                Picker("AI Model", selection: modelBinding) {
-                    ForEach(models, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
-                }
+                SearchableModelPicker(title: "AI Model", models: models, selection: modelBinding)
 
                 if provider == .openRouter {
                     Button("Refresh Models") {
