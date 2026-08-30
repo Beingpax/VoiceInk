@@ -67,7 +67,6 @@ extension AIService {
             guard let baseURL = URL(string: provider.baseURL) else {
                 throw EnhancementError.notConfigured
             }
-            let temperature = resolvedModel.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
             let reasoningEffort = ReasoningConfig.getReasoningParameter(
                 for: provider,
                 modelName: resolvedModel
@@ -82,7 +81,7 @@ extension AIService {
                 model: resolvedModel,
                 messages: messages,
                 systemPrompt: systemPrompt,
-                temperature: temperature,
+                temperature: 0.3,
                 reasoningEffort: reasoningEffort,
                 extraBody: extraBody,
                 timeout: timeout
