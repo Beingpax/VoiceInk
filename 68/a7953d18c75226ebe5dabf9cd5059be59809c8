@@ -1,0 +1,21 @@
+VoiceInk/Services/AIEnhancement/AIChatCompletionService.swift
+  s_17e70c969f21b2::t_46a72ec0ee3332 84
+VoiceInk/Services/AIEnhancement/AIEnhancementService.swift
+  s_17e70c969f21b2::t_46a72ec0ee3332 342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "68a7953d18c75226ebe5dabf9cd5059be59809c8",
+  "prompts": {},
+  "sessions": {
+    "s_17e70c969f21b2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a04d12-db38-7e00-b095-9726afe36f81",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
