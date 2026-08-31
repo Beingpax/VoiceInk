@@ -192,11 +192,19 @@
 				E11473B22CBE0F0A00318EE4 /* VoiceInk */,
 				E1FA00022FA7000000000001 /* VoiceInkRefineXPC */,
 				E1FA00042FA7000000000001 /* Shared */,
-				E11473C62CBE0F0B00318EE4 /* VoiceInkTests */,
-				E11473D02CBE0F0B00318EE4 /* VoiceInkUITests */,
+				A63D21E830A49E0000000001 /* Tests */,
 				E114741C2CBE1DE200318EE4 /* Frameworks */,
 				E11473B12CBE0F0A00318EE4 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A63D21E830A49E0000000001 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				E11473C62CBE0F0B00318EE4 /* VoiceInkTests */,
+				E11473D02CBE0F0B00318EE4 /* VoiceInkUITests */,
+			);
+			path = Tests;
 			sourceTree = "<group>";
 		};
 		E11473B12CBE0F0A00318EE4 /* Products */ = {
