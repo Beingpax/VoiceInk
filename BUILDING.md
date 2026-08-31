@@ -15,7 +15,7 @@ make local
 open ~/Downloads/VoiceInk.app
 ```
 
-`make local` prepares `whisper.xcframework` in `~/VoiceInk-Dependencies`, builds in `.local-build`, and copies `VoiceInk.app` to `~/Downloads`.
+`make local` prepares `whisper.xcframework` in `~/VoiceInk-Dependencies`, builds Release in `.local-build`, and copies `VoiceInk.app` to `~/Downloads`.
 
 It uses `LocalBuild.xcconfig`, `VoiceInk.local.entitlements`, and the `LOCAL_BUILD` Swift flag. Without an override, it uses the only available Apple Development identity or falls back to ad-hoc signing when none or multiple are found.
 
@@ -31,14 +31,14 @@ Force ad-hoc signing:
 make local LOCAL_CODESIGN_IDENTITY=-
 ```
 
-Local builds do not include iCloud dictionary sync or automatic updates. Ad-hoc builds may require macOS permissions again after rebuilding. Normal project Debug and Release settings are unchanged.
+Local builds do not include iCloud dictionary sync or automatic updates. Ad-hoc builds may require macOS permissions again after rebuilding.
 
 ## Other Commands
 
 - `make check` — verify required tools
 - `make whisper` — prepare `whisper.xcframework`
 - `make build` — build the standard Debug configuration
-- `make dev` — build and launch the app
+- `make dev` — build and launch `VoiceInk Dev.app`
 - `make run` — launch `~/Downloads/VoiceInk.app`, or the first app found in DerivedData
 - `make release` — create the signed release package
 - `make release-setup` — configure release notarization credentials
@@ -52,7 +52,7 @@ make setup
 open VoiceInk.xcodeproj
 ```
 
-Select the `VoiceInk` scheme and use the Debug configuration. Xcode uses the project’s normal signing settings; `LOCAL_BUILD` applies only through `make local`.
+Select the `VoiceInk` scheme. Run builds `VoiceInk Dev.app`; Archive uses Release. `LOCAL_BUILD` applies only through `make local`.
 
 ## Troubleshooting
 
