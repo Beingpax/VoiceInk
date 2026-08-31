@@ -1,0 +1,12 @@
+VoiceInk/Services/AIEnhancement/AIChatCompletionService.swift
+  s_17e70c969f21b2::t_46a72ec0ee3332 84
+VoiceInk/Services/AIEnhancement/AIEnhancementService.swift
+  s_f147c99ab8e436::t_87b0f67b16f5a8 395-396
+  s_17e70c969f21b2::t_46a72ec0ee3332 342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "167110b8af4bbfa765747a7f8d488163dd461829",
+  "prompts": {}
+}
