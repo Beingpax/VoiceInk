@@ -59,8 +59,7 @@ final class FluidAudioNemotronStreamingProvider: StreamingTranscriptionProvider 
 
         let finalText = try await manager.finish()
         let text = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalized = TextNormalizer.shared.normalizeSentence(text)
-        eventsContinuation?.yield(.committed(text: normalized))
+        eventsContinuation?.yield(.committed(text: text))
     }
 
     func disconnect() async {

@@ -146,7 +146,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
 
             let speechAudio = try loadAudioSamples(from: audioURL)
             let text = try await unifiedAsrManager.transcribe(speechAudio)
-            return TextNormalizer.shared.normalizeSentence(text)
+            return text
         }
 
         if FluidAudioModelManager.isNemotronModel(named: model.name) {
@@ -172,7 +172,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
 
             _ = try await nemotronAsrManager.process(samples: speechAudio)
             let text = try await nemotronAsrManager.finish()
-            return TextNormalizer.shared.normalizeSentence(text)
+            return text
         }
 
         let targetVersion = version(for: model)
@@ -193,7 +193,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
             language: languageHint
         )
 
-        return TextNormalizer.shared.normalizeSentence(result.text)
+        return result.text
     }
 
     private func loadAudioSamples(from audioURL: URL) throws -> [Float] {
