@@ -9,6 +9,9 @@ final class SystemInfoService {
     private init() {}
 
     func getSystemInfoString() -> String {
+        let modeConfigurationInfo = getModeConfigurationInfo(
+            for: ModeManager.shared.currentEffectiveConfiguration
+        )
         let info = """
             === VOICEINK SYSTEM INFORMATION ===
             Generated: \(Self.englishTimestamp())
@@ -38,12 +41,8 @@ final class SystemInfoService {
             Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
             Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
-            TRANSCRIPTION SETTINGS:
-            Selected Model: \(getCurrentTranscriptionModel())
-            Selected Language: \(getCurrentLanguage())
-            AI Enhancement: \(getAIEnhancementStatus())
-            AI Provider: \(getAIProvider())
-            AI Model: \(getAIModel())
+            MODE CONFIGURATION:
+            \(modeConfigurationInfo)
 
             UI SETTINGS:
             Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
@@ -161,27 +160,63 @@ final class SystemInfoService {
         ShortcutStore.shortcut(for: action)?.displayString ?? ""
     }
 
-    private func getCurrentTranscriptionModel() -> String {
-        if let modelName = ModeManager.shared.currentEffectiveConfiguration?.selectedTranscriptionModelName {
-            if let model = TranscriptionModelRegistry.models.first(where: { $0.name == modelName }) {
-                return model.displayName
-            }
-            return modelName
+    private func getModeConfigurationInfo(for mode: ModeConfig?) -> String {
+        guard let mode else {
+            return "No enabled mode"
         }
-        return "No model selected"
+
+        let model = mode.selectedTranscriptionModelName.flatMap { modelName in
+            TranscriptionModelRegistry.models.first { $0.name == modelName }
+        }
+        let modelDescription = model?.displayName
+            ?? mode.selectedTranscriptionModelName
+            ?? "Not configured"
+        let languageDescription = getModeLanguageDescription(for: mode, model: model)
+        let enhancementDescription = getModeEnhancementDescription(for: mode)
+
+        return """
+            Mode: \(mode.name)
+            Transcription Model: \(modelDescription)
+            Language: \(languageDescription)
+            Enhancement: \(enhancementDescription)
+            """
     }
 
-    private func getAIEnhancementStatus() -> String {
-        ModeManager.shared.currentEffectiveConfiguration?.isAIEnhancementEnabled == true ? "Enabled" : "Disabled"
+    private func getModeLanguageDescription(for mode: ModeConfig, model: (any TranscriptionModel)?) -> String {
+        guard let model else {
+            return mode.selectedLanguage ?? "Not configured"
+        }
+
+        let language = TranscriptionLanguageSupport.validLanguageOrFallback(
+            mode.selectedLanguage,
+            for: model,
+            realtimeEnabled: mode.isRealtimeTranscriptionEnabled
+        )
+        let displayName = TranscriptionLanguageSupport.languages(
+            for: model,
+            realtimeEnabled: mode.isRealtimeTranscriptionEnabled
+        )[language]
+
+        guard let displayName, displayName.caseInsensitiveCompare(language) != .orderedSame else {
+            return language
+        }
+        return "\(displayName) (\(language))"
     }
 
-    private func getAIProvider() -> String {
-        ModeManager.shared.currentEffectiveConfiguration?.selectedAIProvider ?? "None selected"
+    private func getModeEnhancementDescription(for mode: ModeConfig) -> String {
+        guard mode.isAIEnhancementEnabled else {
+            return "Disabled"
+        }
+
+        let configuration = [mode.selectedAIProvider, mode.selectedAIModel]
+            .compactMap { value -> String? in
+                guard let value, !value.isEmpty else { return nil }
+                return value
+            }
+
+        return configuration.isEmpty ? "Enabled (Not configured)" : configuration.joined(separator: " — ")
     }
 
-    private func getAIModel() -> String {
-        ModeManager.shared.currentEffectiveConfiguration?.selectedAIModel ?? "None selected"
-    }
     private func getAccessibilityStatus() -> String {
         return AXIsProcessTrusted() ? "Granted" : "Not Granted"
     }
@@ -207,10 +242,6 @@ final class SystemInfoService {
 
     private func getLicenseStatus() -> String {
         LicenseViewModel.shared.diagnosticLicenseStatus
-    }
-
-    private func getCurrentLanguage() -> String {
-        return UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "en"
     }
 
     private static func englishTimestamp() -> String {
