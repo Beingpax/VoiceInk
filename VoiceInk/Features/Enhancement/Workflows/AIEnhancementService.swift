@@ -325,7 +325,6 @@ class AIEnhancementService: ObservableObject {
                     throw EnhancementError.customError(
                         "\(provider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
                 }
-                let temperature = modelName.lowercased().hasPrefix("gpt-5") ? 1.0 : 0.3
                 let reasoningEffort = ReasoningConfig.getReasoningParameter(
                     for: provider,
                     modelName: modelName
@@ -340,7 +339,7 @@ class AIEnhancementService: ObservableObject {
                     model: modelName,
                     messages: [.user(formattedText)],
                     systemPrompt: systemMessage,
-                    temperature: temperature,
+                    temperature: 0.3,
                     reasoningEffort: reasoningEffort,
                     extraBody: extraBody,
                     timeout: baseTimeout

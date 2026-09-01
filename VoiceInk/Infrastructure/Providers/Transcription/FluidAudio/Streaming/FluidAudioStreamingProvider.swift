@@ -196,12 +196,13 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
                 words: words, resultConfidence: result.confidence)
 
             if !agreementResult.newlyConfirmedText.isEmpty {
-                let normalizedConfirmed = TextNormalizer.shared.normalizeSentence(agreementResult.newlyConfirmedText)
-                if !normalizedConfirmed.isEmpty {
+                let confirmedText = agreementResult.newlyConfirmedText.trimmingCharacters(
+                    in: .whitespacesAndNewlines)
+                if !confirmedText.isEmpty {
                     confirmationLock.lock()
                     confirmedSegmentCount += 1
                     confirmationLock.unlock()
-                    eventsContinuation?.yield(.committed(text: normalizedConfirmed))
+                    eventsContinuation?.yield(.committed(text: confirmedText))
                 }
             }
             if !agreementResult.fullText.isEmpty {
@@ -261,7 +262,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             )
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
-            return TextNormalizer.shared.normalizeSentence(text)
+            return text
         } catch {
             logger.error("Final transcription failed: \(error, privacy: .public)")
             return nil

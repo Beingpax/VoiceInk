@@ -155,7 +155,7 @@ enum OnboardingExperienceCatalog {
             title: "Try a Simple Dictation",
             subtitle: String(localized: "Uses your configured transcription model for fast dictation."),
             sampleLabel: "Sample text",
-            sampleText: "Please send the calendar invite before lunch.",
+            sampleText: "Please share the meeting notes before lunch.",
             fieldPlaceholder: "Your dictated text will appear here."
         ),
         OnboardingExperienceStep(
@@ -187,7 +187,7 @@ enum OnboardingExperienceCatalog {
             subtitle: "Turn your spoken note into a clean email draft with VoiceInk.",
             sampleLabel: "Sample text",
             sampleText:
-                "Hi Morgan, um, I wanted to follow up on the proposal we discussed yesterday. I talked to Julie about it, and, like, like, she said you can call her at 555-0194 if you need the latest numbers. Thanks, Alex.",
+                "Hello Chris, could we move our meeting from Tuesday morning to Wednesday afternoon? Please confirm when you have a moment. Thanks, Jamie.",
             fieldPlaceholder: "Your formatted email will appear here."
         ),
     ]
