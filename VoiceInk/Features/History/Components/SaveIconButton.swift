@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct SaveIconButton: View {
     let textToSave: String
+    let suggestedBaseName: String
     @State private var saved = false
 
     var body: some View {
@@ -28,7 +29,7 @@ struct SaveIconButton: View {
     private func saveFile(as contentType: UTType, extension fileExtension: String) {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [contentType]
-        panel.nameFieldStringValue = "\(generateFileName()).\(fileExtension)"
+        panel.nameFieldStringValue = "\(suggestedBaseName).\(fileExtension)"
         panel.title = String(localized: "Save Transcription")
 
         if panel.runModal() == .OK {
@@ -44,28 +45,6 @@ struct SaveIconButton: View {
                 print("Failed to save file: \(error.localizedDescription)")
             }
         }
-    }
-
-    private func generateFileName() -> String {
-        let cleanedText =
-            textToSave
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: "\r", with: " ")
-
-        let words = cleanedText.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-        let wordCount = min(words.count, words.count <= 3 ? words.count : (words.count <= 6 ? 6 : 8))
-        let selectedWords = Array(words.prefix(wordCount))
-
-        if selectedWords.isEmpty { return "transcription" }
-
-        let fileName = selectedWords.joined(separator: "-")
-            .lowercased()
-            .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "--+", with: "-", options: .regularExpression)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-
-        return fileName.isEmpty ? "transcription" : String(fileName.prefix(50))
     }
 
     private func formatAsMarkdown(_ text: String) -> String {

@@ -15164,6 +15164,7 @@
       }
     },
     "Set how long to wait for batch cloud transcription to finish. This does not affect local or realtime transcription." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

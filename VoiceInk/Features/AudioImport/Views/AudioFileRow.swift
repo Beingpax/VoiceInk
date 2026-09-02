@@ -111,7 +111,10 @@ struct AudioFileRow: View {
             if let transcription = item.transcription {
                 HStack(spacing: 2) {
                     CopyIconButton(textToCopy: actionText)
-                    SaveIconButton(textToSave: actionText)
+                    SaveIconButton(
+                        textToSave: actionText,
+                        suggestedBaseName: item.url.deletingPathExtension().lastPathComponent
+                    )
                 }
 
                 if transcription.duration > 0 {
