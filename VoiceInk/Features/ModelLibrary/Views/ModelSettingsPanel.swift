@@ -256,6 +256,8 @@ private struct AdvancedModelSettingsSection: View {
     @AppStorage("IsVADEnabled") private var isVADEnabled = true
     @AppStorage("AppendTrailingSpace") private var appendTrailingSpace = true
     @AppStorage("PrewarmModelOnWake") private var prewarmModelOnWake = true
+    @AppStorage(CloudTranscriptionSettings.timeoutKey) private var cloudTimeout =
+        CloudTranscriptionSettings.defaultTimeout
 
     var body: some View {
         Section {
@@ -284,6 +286,25 @@ private struct AdvancedModelSettingsSection: View {
                 }
             }
             .toggleStyle(.switch)
+
+            Picker(selection: $cloudTimeout) {
+                Text("10 seconds").tag(10)
+                Text("30 seconds").tag(30)
+                Text("1 minute").tag(60)
+                Text("2 minutes").tag(120)
+                Text("5 minutes").tag(300)
+                Text("10 minutes").tag(600)
+                Text("20 minutes").tag(1_200)
+                Text("30 minutes").tag(1_800)
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Timeout")
+                    InfoTip(
+                        "Set how long to wait for batch cloud transcription to finish. This does not affect local or realtime transcription."
+                    )
+                }
+            }
+            .pickerStyle(.menu)
         } header: {
             Text("Advanced")
         }

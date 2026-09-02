@@ -12,6 +12,16 @@ enum RecorderDisplaySettingsKeys {
     static let showLiveTranscript = "ShowLiveTranscript"
 }
 
+enum CloudTranscriptionSettings {
+    static let timeoutKey = "CloudTranscriptionTimeout"
+    static let defaultTimeout = 30
+
+    static var timeout: TimeInterval {
+        let stored = UserDefaults.standard.integer(forKey: timeoutKey)
+        return TimeInterval(stored > 0 ? stored : defaultTimeout)
+    }
+}
+
 enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -41,6 +51,7 @@ enum AppDefaults {
             "AppendTrailingSpace": true,
             "RecorderType": "mini",
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
+            CloudTranscriptionSettings.timeoutKey: CloudTranscriptionSettings.defaultTimeout,
 
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,

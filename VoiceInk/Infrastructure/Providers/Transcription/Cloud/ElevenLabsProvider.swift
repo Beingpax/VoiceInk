@@ -33,7 +33,8 @@ struct ElevenLabsProvider: CloudProvider {
     }
 
     func transcribe(
-        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?,
+        customVocabulary: [String], timeout: TimeInterval
     ) async throws -> String {
         return try await ElevenLabsClient.transcribe(
             audioData: audioData,
@@ -41,7 +42,8 @@ struct ElevenLabsProvider: CloudProvider {
             apiKey: apiKey,
             model: model,
             language: language,
-            customVocabulary: customVocabulary
+            customVocabulary: customVocabulary,
+            timeout: timeout
         )
     }
 

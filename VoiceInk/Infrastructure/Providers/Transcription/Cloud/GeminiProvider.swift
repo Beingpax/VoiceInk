@@ -39,7 +39,8 @@ struct GeminiProvider: CloudProvider {
     }
 
     func transcribe(
-        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?,
+        customVocabulary: [String], timeout: TimeInterval
     ) async throws -> String {
         return try await GeminiTranscriptionClient.transcribe(
             audioData: audioData,
@@ -49,7 +50,7 @@ struct GeminiProvider: CloudProvider {
             language: language,
             customVocabulary: customVocabulary,
             mode: .verbatim,
-            timeout: 120
+            timeout: timeout
         )
     }
 

@@ -30,7 +30,8 @@ struct SonioxProvider: CloudProvider {
     }
 
     func transcribe(
-        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?,
+        customVocabulary: [String], timeout: TimeInterval
     ) async throws -> String {
         return try await SonioxClient.transcribe(
             audioData: audioData,
@@ -38,7 +39,9 @@ struct SonioxProvider: CloudProvider {
             apiKey: apiKey,
             model: model,
             language: language,
-            customVocabulary: customVocabulary
+            customVocabulary: customVocabulary,
+            maxWaitSeconds: timeout,
+            timeout: timeout
         )
     }
 

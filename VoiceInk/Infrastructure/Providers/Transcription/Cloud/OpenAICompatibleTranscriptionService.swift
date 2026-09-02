@@ -1,8 +1,9 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
-    func transcribe(audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext) async throws -> String
-    {
+    func transcribe(
+        audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext, timeout: TimeInterval
+    ) async throws -> String {
         guard let url = URL(string: model.apiEndpoint) else {
             throw NSError(
                 domain: "CustomWhisperTranscriptionService", code: -1,
@@ -12,6 +13,7 @@ class OpenAICompatibleTranscriptionService {
         let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.timeoutInterval = timeout
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
 

@@ -53,6 +53,7 @@ class CloudTranscriptionService: TranscriptionService {
         let audioData = try loadAudioData(from: audioURL)
         let fileName = audioURL.lastPathComponent
         let language = selectedLanguage(from: context)
+        let timeout = CloudTranscriptionSettings.timeout
 
         do {
             if model.provider == .custom {
@@ -60,7 +61,7 @@ class CloudTranscriptionService: TranscriptionService {
                     throw CloudTranscriptionError.unsupportedProvider
                 }
                 return try await openAICompatibleService.transcribe(
-                    audioURL: audioURL, model: customModel, context: context)
+                    audioURL: audioURL, model: customModel, context: context, timeout: timeout)
             }
 
             guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider) else {
@@ -73,7 +74,8 @@ class CloudTranscriptionService: TranscriptionService {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                customVocabulary: getCustomDictionaryTerms()
+                customVocabulary: getCustomDictionaryTerms(),
+                timeout: timeout
             )
         } catch let error as CloudTranscriptionError {
             throw error

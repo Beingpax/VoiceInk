@@ -58,7 +58,8 @@ struct DeepgramProvider: CloudProvider {
     }
 
     func transcribe(
-        audioData: Data, fileName: String, apiKey: String, model: String, language: String?, customVocabulary: [String]
+        audioData: Data, fileName: String, apiKey: String, model: String, language: String?,
+        customVocabulary: [String], timeout: TimeInterval
     ) async throws -> String {
         let deepgramLanguage = model == "nova-3" && language == nil ? "multi" : language
         return try await DeepgramClient.transcribe(
@@ -66,7 +67,8 @@ struct DeepgramProvider: CloudProvider {
             apiKey: apiKey,
             model: model,
             language: deepgramLanguage,
-            customVocabulary: Array(customVocabulary.prefix(100))
+            customVocabulary: Array(customVocabulary.prefix(100)),
+            timeout: timeout
         )
     }
 
