@@ -30,6 +30,8 @@ final class Transcription {
     @Attribute(originalName: "powerModeEmoji")
     var modeEmoji: String?
     var transcriptionStatus: String?
+    var wordTimingsJSON: Data?
+    var speakerUtterancesJSON: Data?
 
     init(
         text: String,
@@ -63,6 +65,57 @@ final class Transcription {
         self.modeName = modeName
         self.modeEmoji = modeEmoji
         self.transcriptionStatus = transcriptionStatus.rawValue
+    }
+
+    var wordTimings: [WordTiming]? {
+        get { wordTimingsJSON.flatMap { try? JSONDecoder().decode([WordTiming].self, from: $0) } }
+        set { wordTimingsJSON = newValue.flatMap { try? JSONEncoder().encode($0) } }
+    }
+
+    var speakerUtterances: [SpeakerUtterance]? {
+        get { speakerUtterancesJSON.flatMap { try? JSONDecoder().decode([SpeakerUtterance].self, from: $0) } }
+        set { speakerUtterancesJSON = newValue.flatMap { try? JSONEncoder().encode($0) } }
+    }
+
+    /// Markdown rendering of the speaker-attributed transcript, or nil when no
+    /// diarization data exists. Gaps where nobody speaks for at least
+    /// `silenceThreshold` (leading, between utterances, and trailing) are
+    /// rendered as Silence entries — useful for hold-time/dead-air review.
+    var speakerTranscriptMarkdown: String? {
+        guard let utterances = speakerUtterances, !utterances.isEmpty else { return nil }
+        func label(_ id: String) -> String {
+            Int(id) != nil ? "Speaker \(id)" : id.replacingOccurrences(of: "_", with: " ")
+        }
+        func time(_ t: TimeInterval) -> String {
+            String(format: "%d:%02d", Int(t) / 60, Int(t) % 60)
+        }
+
+        let silenceThreshold: TimeInterval = {
+            if let value = UserDefaults.standard.object(forKey: "TranscribeSilenceThreshold") as? Double {
+                return value
+            }
+            return 2.0
+        }()
+
+        func silenceLine(from start: TimeInterval, to end: TimeInterval) -> String {
+            "*Silence* (\(time(start))–\(time(end)), \(Int((end - start).rounded()))s)"
+        }
+
+        var lines: [String] = []
+        var cursor: TimeInterval = 0
+        for utterance in utterances {
+            if silenceThreshold > 0, utterance.start - cursor >= silenceThreshold {
+                lines.append(silenceLine(from: cursor, to: utterance.start))
+            }
+            lines.append(
+                "**\(label(utterance.speaker))** (\(time(utterance.start))–\(time(utterance.end))): \(utterance.text)"
+            )
+            cursor = max(cursor, utterance.end)
+        }
+        if silenceThreshold > 0, duration > 0, duration - cursor >= silenceThreshold {
+            lines.append(silenceLine(from: cursor, to: duration))
+        }
+        return lines.joined(separator: "\n\n")
     }
 
     func markAsCanceledTranscription(

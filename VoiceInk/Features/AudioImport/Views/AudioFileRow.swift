@@ -15,6 +15,8 @@ struct AudioFileRow: View {
             return item.transcription?.text ?? ""
         case .enhanced:
             return item.transcription?.enhancedText ?? ""
+        case .speakers:
+            return item.transcription?.speakerTranscriptMarkdown ?? ""
         }
     }
 
@@ -134,10 +136,16 @@ struct AudioFileRow: View {
         .onTapGesture { onToggleExpand() }
 
         if isExpanded, let transcription = item.transcription {
-            if transcription.enhancedText != nil {
+            let hasSpeakers = transcription.speakerUtterances?.isEmpty == false
+            if transcription.enhancedText != nil || hasSpeakers {
                 HStack(spacing: 4) {
                     tabButton(tab: .original)
-                    tabButton(tab: .enhanced)
+                    if transcription.enhancedText != nil {
+                        tabButton(tab: .enhanced)
+                    }
+                    if hasSpeakers {
+                        tabButton(tab: .speakers)
+                    }
                     Spacer()
                 }
             }

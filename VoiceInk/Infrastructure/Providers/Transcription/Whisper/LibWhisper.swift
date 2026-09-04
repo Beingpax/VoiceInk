@@ -15,6 +15,7 @@ actor WhisperContext {
     private var prompt: String?
     private var promptCString: [CChar]?
     private var vadModelPath: String?
+    private var preserveTimeline = false
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "WhisperContext")
 
     private init() {}
@@ -66,11 +67,15 @@ actor WhisperContext {
         params.no_context = true
         params.single_segment = false
         params.temperature = 0.2
+        params.token_timestamps = true
+        params.max_len = 0
 
         whisper_reset_timings(context)
 
-        // Configure VAD if enabled by user and model is available
-        let isVADEnabled = UserDefaults.standard.bool(forKey: "IsVADEnabled")
+        // Configure VAD if enabled by user and model is available.
+        // VAD strips silence, which compresses token timestamps relative to the
+        // original audio — unusable when the caller needs the real timeline.
+        let isVADEnabled = UserDefaults.standard.bool(forKey: "IsVADEnabled") && !preserveTimeline
         if isVADEnabled, let vadModelPath = self.vadModelPath {
             params.vad = true
             params.vad_model_path = (vadModelPath as NSString).utf8String
@@ -108,6 +113,46 @@ actor WhisperContext {
             transcription += String(cString: whisper_full_get_segment_text(context, i))
         }
         return transcription
+    }
+
+    /// Word-level timings harvested from whisper.cpp token data (t0/t1 are in
+    /// 10ms units). Tokens are grouped into words on their leading space.
+    func getWordTimings() -> [WordTiming] {
+        guard let context = context else { return [] }
+        var words: [WordTiming] = []
+        var current: WordTiming?
+        let endOfTextToken = whisper_token_eot(context)
+
+        for i in 0..<whisper_full_n_segments(context) {
+            for j in 0..<whisper_full_n_tokens(context, i) {
+                let tokenData = whisper_full_get_token_data(context, i, j)
+                guard tokenData.id < endOfTextToken else { continue }
+
+                let tokenText = String(cString: whisper_full_get_token_text(context, i, j))
+                let start = TimeInterval(tokenData.t0) * 0.01
+                let end = TimeInterval(tokenData.t1) * 0.01
+                let startsNewWord = tokenText.hasPrefix(" ") || current == nil
+
+                if startsNewWord {
+                    if let finished = current, !finished.text.isEmpty {
+                        words.append(finished)
+                    }
+                    current = WordTiming(
+                        text: tokenText.trimmingCharacters(in: .whitespaces),
+                        start: start,
+                        end: end
+                    )
+                } else {
+                    current?.text += tokenText
+                    current?.end = end
+                }
+            }
+            if let finished = current, !finished.text.isEmpty {
+                words.append(finished)
+            }
+            current = nil
+        }
+        return words.filter { !$0.text.isEmpty }
     }
 
     static func createContext(path: String) async throws -> WhisperContext {
@@ -161,6 +206,10 @@ actor WhisperContext {
 
     func setLanguage(_ language: String?) {
         self.language = language
+    }
+
+    func setPreserveTimeline(_ preserve: Bool) {
+        self.preserveTimeline = preserve
     }
 }
 
