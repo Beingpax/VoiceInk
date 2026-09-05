@@ -486,7 +486,20 @@ private struct HistoryCardRow: View {
             return transcription.text
         case .enhanced:
             return transcription.enhancedText ?? ""
+        case .speakers:
+            return transcription.speakerTranscriptMarkdown ?? ""
         }
+    }
+
+    private var availableTabs: [TranscriptionTab] {
+        var tabs: [TranscriptionTab] = [.original]
+        if transcription.enhancedText != nil {
+            tabs.append(.enhanced)
+        }
+        if transcription.speakerTranscriptMarkdown != nil {
+            tabs.append(.speakers)
+        }
+        return tabs
     }
 
     private var hasAudioFile: Bool {
@@ -548,9 +561,9 @@ private struct HistoryCardRow: View {
     private var expandedContent: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Tabs
-            if transcription.enhancedText != nil {
+            if availableTabs.count > 1 {
                 HStack(spacing: 4) {
-                    ForEach(TranscriptionTab.allCases, id: \.self) { tab in
+                    ForEach(availableTabs, id: \.self) { tab in
                         Button {
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedTab = tab

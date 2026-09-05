@@ -17,6 +17,12 @@ class WhisperTranscriptionService: TranscriptionService {
     func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
         -> String
     {
+        try await transcribeDetailed(audioURL: audioURL, model: model, context: context).text
+    }
+
+    func transcribeDetailed(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext)
+        async throws -> DetailedTranscriptionResult
+    {
         guard model.provider == .whisper else {
             throw VoiceInkEngineError.modelLoadFailed
         }
@@ -60,6 +66,7 @@ class WhisperTranscriptionService: TranscriptionService {
         // Set prompt
         await whisperContext.setLanguage(context.language)
         await whisperContext.setPrompt(context.prompt ?? "")
+        await whisperContext.setPreserveTimeline(context.preservesTimeline)
 
         // Transcribe
         let success = await whisperContext.fullTranscribe(samples: data)
@@ -70,6 +77,9 @@ class WhisperTranscriptionService: TranscriptionService {
         }
 
         let text = await whisperContext.getTranscription()
+        // Word timings are only trustworthy when VAD didn't compress the
+        // timeline; callers that don't preserve it (live dictation) get none.
+        let words = context.preservesTimeline ? await whisperContext.getWordTimings() : []
 
         logger.notice("Whisper transcription completed successfully.")
 
@@ -79,7 +89,7 @@ class WhisperTranscriptionService: TranscriptionService {
             self.whisperContext = nil
         }
 
-        return text
+        return DetailedTranscriptionResult(text: text, words: words.isEmpty ? nil : words)
     }
 
     private func readAudioSamples(_ url: URL) throws -> [Float] {
