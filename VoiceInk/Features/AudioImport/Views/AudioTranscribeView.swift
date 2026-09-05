@@ -234,11 +234,8 @@ struct AudioTranscribeView: View {
 
             if completedItems.count >= 2 {
                 Menu {
-                    Button("Save All Original as TXT") { saveAll(source: .original, fileExtension: "txt") }
-                    Button("Save All Original as MD") { saveAll(source: .original, fileExtension: "md") }
-                    Divider()
-                    Button("Save All Speakers as TXT") { saveAll(source: .speakers, fileExtension: "txt") }
-                    Button("Save All Speakers as MD") { saveAll(source: .speakers, fileExtension: "md") }
+                    Button("Save All as TXT") { saveAll(fileExtension: "txt") }
+                    Button("Save All as MD") { saveAll(fileExtension: "md") }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "square.and.arrow.down.on.square")
@@ -298,16 +295,11 @@ struct AudioTranscribeView: View {
         }
     }
 
-    private enum SaveAllSource {
-        case original
-        case speakers
-    }
-
     /// Batch-saves every completed transcription into a chosen folder, one file
-    /// per audio, named after the source file. Original saves the (enhanced)
-    /// text; Speakers saves the speaker-attributed transcript, falling back to
-    /// the original text for items without speaker data.
-    private func saveAll(source: SaveAllSource, fileExtension: String) {
+    /// per audio, named after the source file. Each item exports its primary
+    /// view — the speaker transcript when the item has speaker data, the
+    /// (enhanced) text otherwise — matching what the result row displays.
+    private func saveAll(fileExtension: String) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -334,18 +326,12 @@ struct AudioTranscribeView: View {
 
             let body: String
             let isSpeakerMarkdown: Bool
-            switch source {
-            case .original:
+            if let speakerBody = transcription.speakerTranscriptMarkdown {
+                body = speakerBody
+                isSpeakerMarkdown = true
+            } else {
                 body = transcription.enhancedText ?? transcription.text
                 isSpeakerMarkdown = false
-            case .speakers:
-                if let speakerBody = transcription.speakerTranscriptMarkdown {
-                    body = speakerBody
-                    isSpeakerMarkdown = true
-                } else {
-                    body = transcription.enhancedText ?? transcription.text
-                    isSpeakerMarkdown = false
-                }
             }
 
             let content: String
