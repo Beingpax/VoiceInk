@@ -486,13 +486,13 @@ class AudioTranscriptionManager: ObservableObject {
 
                 // Keep the persisted word data consistent with the visible
                 // transcript: drop words belonging to utterances that were
-                // filtered out entirely. Matching is by speaker and time, so a
-                // dropped utterance overlapping another speaker's surviving
-                // interval doesn't keep its words alive.
+                // filtered out entirely. Matching is strictly by speaker and
+                // time; words with no speaker sit outside every diarization
+                // segment and are dropped with the rest.
                 if let words = wordTimings {
                     wordTimings = words.filter { word in
                         surviving.contains { utterance in
-                            (word.speaker == nil || word.speaker == utterance.speaker)
+                            word.speaker == utterance.speaker
                                 && word.start >= utterance.start - 0.05
                                 && word.end <= utterance.end + 0.05
                         }
