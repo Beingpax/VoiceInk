@@ -273,7 +273,7 @@ class AudioProcessor {
         guard let audioFile = try? AVAudioFile(forReading: url) else { return nil }
 
         let format = audioFile.processingFormat
-        guard format.channelCount >= 2 else { return nil }
+        guard format.channelCount == 2 else { return nil }
 
         guard
             let outputFormat = AVAudioFormat(

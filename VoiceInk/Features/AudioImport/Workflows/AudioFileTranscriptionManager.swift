@@ -148,6 +148,20 @@ class AudioTranscriptionManager: ObservableObject {
 
     // MARK: - Private
 
+    /// Whether the model's engine emits word-level timestamps — the requirement
+    /// for any speaker attribution. Engines without them keep the plain
+    /// single-pass transcription path.
+    private static func engineSupportsWordTimings(_ model: any TranscriptionModel) -> Bool {
+        switch model.provider {
+        case .whisper, .nativeApple:
+            return true
+        case .fluidAudio:
+            return !FluidAudioModelManager.isParakeetUnifiedModel(named: model.name)
+        default:
+            return false
+        }
+    }
+
     /// Peak-normalizes one channel so a quiet call participant gets full ASR
     /// signal level regardless of how loud the other channel is.
     private static func normalized(_ samples: [Float]) -> [Float] {
@@ -225,25 +239,31 @@ class AudioTranscriptionManager: ObservableObject {
             let samples = try await audioProcessor.processAudioToSamples(item.url)
             try Task.checkCancellation()
 
-            // Diarization runs concurrently with transcription on the same 16kHz samples.
-            // Stereo files with one participant per channel (telephony recordings)
-            // get exact channel-based separation; everything else uses the neural
-            // diarizer. Channels are extracted here, while the security-scoped
-            // file access is still held.
-            // Speaker identification strategy:
+            // Speaker identification strategy — only for engines that emit word
+            // timestamps (without them there is nothing to attribute, and the
+            // old single-pass behavior is kept untouched):
             //  - stereo file with one participant per channel → one ASR pass per
             //    channel (exact attribution, and a quiet participant isn't
             //    masked by the loud one in the mono downmix)
             //  - otherwise → neural diarization, concurrent with transcription
             let diarizationMode = TranscribeDiarizationMode.current
-            let stereoChannels =
-                (diarizationMode == .auto || diarizationMode == .stereo)
-                ? audioProcessor.extractStereoChannels(item.url) : nil
-            if diarizationMode == .stereo, stereoChannels == nil {
+            let wantsSpeakers = diarizationMode != .off && Self.engineSupportsWordTimings(currentModel)
+            if diarizationMode != .off, !wantsSpeakers {
+                logger.notice(
+                    "Selected engine produces no word timestamps; transcribing without speaker identification")
+            }
+            let sourceURL = item.url
+            let stereoChannels: StereoChannelSamples? =
+                wantsSpeakers && (diarizationMode == .auto || diarizationMode == .stereo)
+                ? await Task.detached(priority: .userInitiated) {
+                    AudioProcessor().extractStereoChannels(sourceURL)
+                }.value
+                : nil
+            if wantsSpeakers, diarizationMode == .stereo, stereoChannels == nil {
                 logger.notice("Stereo diarization selected but file has no distinct channels; skipping")
             }
             let neuralDiarizationTask: Task<[SpeakerSegment], Error>? =
-                (diarizationMode == .voice || (diarizationMode == .auto && stereoChannels == nil))
+                wantsSpeakers && (diarizationMode == .voice || (diarizationMode == .auto && stereoChannels == nil))
                 ? Task.detached(priority: .userInitiated) {
                     try await SpeakerDiarizationService.shared.diarize(samples: samples)
                 }
@@ -311,10 +331,8 @@ class AudioTranscriptionManager: ObservableObject {
                 merged.sort { $0.start < $1.start }
 
                 if merged.isEmpty {
-                    // Engine without word timings: keep both sides, unattributed.
-                    text = [leftResult.text, rightResult.text]
-                        .filter { !$0.isEmpty }
-                        .joined(separator: "\n")
+                    // Both channels filtered down to silence; nothing to attribute.
+                    text = ""
                 } else {
                     wordTimings = merged
                     let utterances = SpeakerAlignment.channelUtterances(from: merged)
@@ -335,7 +353,13 @@ class AudioTranscriptionManager: ObservableObject {
                 if let neuralDiarizationTask {
                     item.status = .processing(phase: .diarizing)
                     do {
-                        let speakerSegments = try await neuralDiarizationTask.value
+                        // Cancel the detached diarization promptly when this task
+                        // is cancelled instead of waiting for it to finish.
+                        let speakerSegments = try await withTaskCancellationHandler {
+                            try await neuralDiarizationTask.value
+                        } onCancel: {
+                            neuralDiarizationTask.cancel()
+                        }
                         if let words = wordTimings, !words.isEmpty, !speakerSegments.isEmpty {
                             let assigned = SpeakerAlignment.assignSpeakers(words: words, segments: speakerSegments)
                             wordTimings = assigned
@@ -435,6 +459,19 @@ class AudioTranscriptionManager: ObservableObject {
                     modeName: modeMetadata.name,
                     modeEmoji: modeMetadata.emoji
                 )
+            }
+
+            // Keep the Speakers view consistent with the cleaned Original text:
+            // utterances go through the same hallucination filter and word
+            // replacements before being persisted.
+            if var utterances = speakerUtterances {
+                for index in utterances.indices {
+                    var utteranceText = TranscriptionOutputFilter.filter(utterances[index].text)
+                    utteranceText = WordReplacementService.shared.applyReplacements(
+                        to: utteranceText, using: modelContext)
+                    utterances[index].text = utteranceText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                speakerUtterances = utterances.filter { !$0.text.isEmpty }
             }
 
             transcription.wordTimings = wordTimings

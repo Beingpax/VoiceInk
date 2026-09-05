@@ -58,86 +58,6 @@ struct StereoChannelSamples: Sendable {
     let right: [Float]
 }
 
-/// Deterministic speaker separation for recordings that carry one participant
-/// per stereo channel (standard in telephony/call-center audio): each 100ms
-/// frame is attributed to the channel with more energy, no ML involved.
-enum ChannelDiarizer {
-    static func segments(from channels: StereoChannelSamples, sampleRate: Double = 16000) -> [SpeakerSegment] {
-        let frameSize = Int(sampleRate * 0.1)
-        let frameDuration = Double(frameSize) / sampleRate
-        let frameCount = min(channels.left.count, channels.right.count) / frameSize
-        guard frameCount > 0 else { return [] }
-
-        func rms(_ samples: [Float], frame: Int) -> Float {
-            let start = frame * frameSize
-            var sum: Float = 0
-            for i in start..<(start + frameSize) {
-                sum += samples[i] * samples[i]
-            }
-            return (sum / Float(frameSize)).squareRoot()
-        }
-
-        var leftRMS: [Float] = []
-        var rightRMS: [Float] = []
-        leftRMS.reserveCapacity(frameCount)
-        rightRMS.reserveCapacity(frameCount)
-        for frame in 0..<frameCount {
-            leftRMS.append(rms(channels.left, frame: frame))
-            rightRMS.append(rms(channels.right, frame: frame))
-        }
-
-        // Speech/silence threshold adapted to the recording's level, clamped so
-        // neither silence-only nor loud recordings break it.
-        let sortedRMS = (leftRMS + rightRMS).sorted()
-        let p90 = sortedRMS[Int(Double(sortedRMS.count - 1) * 0.9)]
-        let threshold = max(0.008, min(0.05, p90 * 0.15))
-
-        // 0 = left, 1 = right, nil = silence; each active frame goes to the
-        // louder channel.
-        var frameSpeaker: [Int?] = []
-        frameSpeaker.reserveCapacity(frameCount)
-        for frame in 0..<frameCount {
-            let l = leftRMS[frame]
-            let r = rightRMS[frame]
-            if l < threshold && r < threshold {
-                frameSpeaker.append(nil)
-            } else {
-                frameSpeaker.append(l >= r ? 0 : 1)
-            }
-        }
-
-        // Merge active frames into segments, bridging short pauses (≤1s) by the
-        // same speaker so segments don't fragment on every breath.
-        var segments: [SpeakerSegment] = []
-        var currentSpeaker: Int?
-        var segmentStart: TimeInterval = 0
-        var segmentEnd: TimeInterval = 0
-
-        func flush() {
-            if let speaker = currentSpeaker, segmentEnd - segmentStart >= 0.2 {
-                segments.append(
-                    SpeakerSegment(speakerId: "\(speaker + 1)", start: segmentStart, end: segmentEnd)
-                )
-            }
-        }
-
-        for (frame, speaker) in frameSpeaker.enumerated() {
-            guard let speaker else { continue }
-            let time = Double(frame) * frameDuration
-            if speaker == currentSpeaker, time - segmentEnd <= 1.0 {
-                segmentEnd = time + frameDuration
-            } else {
-                flush()
-                currentSpeaker = speaker
-                segmentStart = time
-                segmentEnd = time + frameDuration
-            }
-        }
-        flush()
-        return segments
-    }
-}
-
 enum SpeakerAlignment {
     /// Assigns a speaker to each word by maximum temporal overlap with the
     /// diarization segments, falling back to the nearest segment for words
@@ -203,16 +123,17 @@ enum SpeakerAlignment {
                 utterances.append(utterance)
             }
         }
-        return utterances.sorted { $0.start < $1.start }
+        return utterances.sorted { ($0.start, $0.speaker) < ($1.start, $1.speaker) }
     }
 
-    /// Groups consecutive words with the same speaker into utterances.
+    /// Groups consecutive words with the same speaker into utterances, splitting
+    /// on pauses longer than `maxGap` so silence stays visible between blocks.
     /// Words without a speaker inherit the previous utterance's speaker.
-    static func utterances(from words: [WordTiming]) -> [SpeakerUtterance] {
+    static func utterances(from words: [WordTiming], maxGap: TimeInterval = 1.5) -> [SpeakerUtterance] {
         var utterances: [SpeakerUtterance] = []
         for word in words {
             let speaker = word.speaker ?? utterances.last?.speaker ?? "Unknown"
-            if var current = utterances.last, current.speaker == speaker {
+            if var current = utterances.last, current.speaker == speaker, word.start - current.end <= maxGap {
                 current.text += " " + word.text
                 current.end = word.end
                 utterances[utterances.count - 1] = current

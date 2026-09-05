@@ -77,7 +77,9 @@ class WhisperTranscriptionService: TranscriptionService {
         }
 
         let text = await whisperContext.getTranscription()
-        let words = await whisperContext.getWordTimings()
+        // Word timings are only trustworthy when VAD didn't compress the
+        // timeline; callers that don't preserve it (live dictation) get none.
+        let words = context.preservesTimeline ? await whisperContext.getWordTimings() : []
 
         logger.notice("Whisper transcription completed successfully.")
 

@@ -163,7 +163,9 @@ struct AudioTranscribeView: View {
                         .font(.system(size: 12, weight: .medium))
                     Text("Add")
                         .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
                 }
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -190,7 +192,9 @@ struct AudioTranscribeView: View {
                             .font(.system(size: 10, weight: .medium))
                         Text("Cancel")
                             .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -210,7 +214,9 @@ struct AudioTranscribeView: View {
                             .font(.system(size: 10, weight: .medium))
                         Text("Start")
                             .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -228,8 +234,11 @@ struct AudioTranscribeView: View {
 
             if completedItems.count >= 2 {
                 Menu {
-                    Button("Save All as TXT") { saveAll(fileExtension: "txt") }
-                    Button("Save All as MD") { saveAll(fileExtension: "md") }
+                    Button("Save All Original as TXT") { saveAll(source: .original, fileExtension: "txt") }
+                    Button("Save All Original as MD") { saveAll(source: .original, fileExtension: "md") }
+                    Divider()
+                    Button("Save All Speakers as TXT") { saveAll(source: .speakers, fileExtension: "txt") }
+                    Button("Save All Speakers as MD") { saveAll(source: .speakers, fileExtension: "md") }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "square.and.arrow.down.on.square")
@@ -289,10 +298,16 @@ struct AudioTranscribeView: View {
         }
     }
 
+    private enum SaveAllSource {
+        case original
+        case speakers
+    }
+
     /// Batch-saves every completed transcription into a chosen folder, one file
-    /// per audio, named after the source file. MD keeps the speaker transcript
-    /// when available; TXT saves the plain (enhanced) text.
-    private func saveAll(fileExtension: String) {
+    /// per audio, named after the source file. Original saves the (enhanced)
+    /// text; Speakers saves the speaker-attributed transcript, falling back to
+    /// the original text for items without speaker data.
+    private func saveAll(source: SaveAllSource, fileExtension: String) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
@@ -302,26 +317,53 @@ struct AudioTranscribeView: View {
 
         guard panel.runModal() == .OK, let directory = panel.url else { return }
 
+        var usedNames = Set<String>()
         for item in completedItems {
             guard let transcription = item.transcription else { continue }
             let baseName = item.url.deletingPathExtension().lastPathComponent
-            let fileURL = directory.appendingPathComponent("\(baseName).\(fileExtension)")
-            let content: String
-            if fileExtension == "md" {
-                let body =
+            // Two queue items can share a basename (same file name in different
+            // folders); suffix duplicates so no transcript silently overwrites another.
+            var uniqueName = baseName
+            var counter = 2
+            while usedNames.contains(uniqueName.lowercased()) {
+                uniqueName = "\(baseName) \(counter)"
+                counter += 1
+            }
+            usedNames.insert(uniqueName.lowercased())
+            let fileURL = directory.appendingPathComponent("\(uniqueName).\(fileExtension)")
+
+            let body: String
+            switch source {
+            case .original:
+                body = transcription.enhancedText ?? transcription.text
+            case .speakers:
+                body =
                     transcription.speakerTranscriptMarkdown
                     ?? transcription.enhancedText
                     ?? transcription.text
+            }
+
+            let content: String
+            if fileExtension == "md" {
                 content = "# \(item.filename)\n\n\(body)"
             } else {
-                content = transcription.enhancedText ?? transcription.text
+                content = source == .speakers ? Self.plainText(fromMarkdown: body) : body
             }
+
             do {
                 try content.write(to: fileURL, atomically: true, encoding: .utf8)
             } catch {
                 print("Failed to save \(fileURL.lastPathComponent): \(error.localizedDescription)")
             }
         }
+    }
+
+    /// Strips the markdown emphasis used by the speaker transcript for TXT export.
+    private static func plainText(fromMarkdown markdown: String) -> String {
+        let silence = String(localized: "Silence")
+        return markdown
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "*\(silence)*", with: silence)
     }
 
     private var speakersPicker: some View {

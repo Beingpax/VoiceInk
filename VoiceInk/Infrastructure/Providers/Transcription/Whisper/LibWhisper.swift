@@ -147,10 +147,12 @@ actor WhisperContext {
                     current?.end = end
                 }
             }
-            if let finished = current, !finished.text.isEmpty {
-                words.append(finished)
-            }
-            current = nil
+            // The current word deliberately carries across segment boundaries:
+            // whisper can split a word between two segments, and it only ends
+            // when a token starts a new word (or the stream ends).
+        }
+        if let finished = current, !finished.text.isEmpty {
+            words.append(finished)
         }
         return words.filter { !$0.text.isEmpty }
     }

@@ -84,7 +84,9 @@ final class Transcription {
     var speakerTranscriptMarkdown: String? {
         guard let utterances = speakerUtterances, !utterances.isEmpty else { return nil }
         func label(_ id: String) -> String {
-            Int(id) != nil ? "Speaker \(id)" : id.replacingOccurrences(of: "_", with: " ")
+            Int(id) != nil
+                ? "\(String(localized: "Speaker")) \(id)"
+                : id.replacingOccurrences(of: "_", with: " ")
         }
         func time(_ t: TimeInterval) -> String {
             String(format: "%d:%02d", Int(t) / 60, Int(t) % 60)
@@ -98,7 +100,7 @@ final class Transcription {
         }()
 
         func silenceLine(from start: TimeInterval, to end: TimeInterval) -> String {
-            "*Silence* (\(time(start))–\(time(end)), \(Int((end - start).rounded()))s)"
+            "*\(String(localized: "Silence"))* (\(time(start))–\(time(end)), \(Int((end - start).rounded()))s)"
         }
 
         var lines: [String] = []
