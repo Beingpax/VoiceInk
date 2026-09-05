@@ -9,8 +9,27 @@ struct AudioFileRow: View {
 
     @State private var selectedTab: TranscriptionTab = .original
 
+    private var hasSpeakers: Bool {
+        item.transcription?.speakerUtterances?.isEmpty == false
+    }
+
+    /// Speaker transcriptions show the Speakers view as their primary text;
+    /// plain transcriptions show the Original. Enhanced appears alongside
+    /// whichever is primary.
+    private var availableTabs: [TranscriptionTab] {
+        var tabs: [TranscriptionTab] = [hasSpeakers ? .speakers : .original]
+        if item.transcription?.enhancedText != nil {
+            tabs.append(.enhanced)
+        }
+        return tabs
+    }
+
+    private var effectiveTab: TranscriptionTab {
+        availableTabs.contains(selectedTab) ? selectedTab : availableTabs[0]
+    }
+
     private var displayText: String {
-        switch selectedTab {
+        switch effectiveTab {
         case .original:
             return item.transcription?.text ?? ""
         case .enhanced:
@@ -136,15 +155,10 @@ struct AudioFileRow: View {
         .onTapGesture { onToggleExpand() }
 
         if isExpanded, let transcription = item.transcription {
-            let hasSpeakers = transcription.speakerUtterances?.isEmpty == false
-            if transcription.enhancedText != nil || hasSpeakers {
+            if availableTabs.count > 1 {
                 HStack(spacing: 4) {
-                    tabButton(tab: .original)
-                    if transcription.enhancedText != nil {
-                        tabButton(tab: .enhanced)
-                    }
-                    if hasSpeakers {
-                        tabButton(tab: .speakers)
+                    ForEach(availableTabs, id: \.self) { tab in
+                        tabButton(tab: tab)
                     }
                     Spacer()
                 }
@@ -180,13 +194,13 @@ struct AudioFileRow: View {
             selectedTab = tab
         } label: {
             Text(LocalizedStringKey(tab.rawValue))
-                .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
-                .foregroundColor(selectedTab == tab ? AppTheme.Accent.primary : .secondary)
+                .font(.subheadline.weight(effectiveTab == tab ? .semibold : .regular))
+                .foregroundColor(effectiveTab == tab ? AppTheme.Accent.primary : .secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(selectedTab == tab ? AppTheme.Accent.fill : Color.clear)
+                        .fill(effectiveTab == tab ? AppTheme.Accent.fill : Color.clear)
                 )
         }
         .buttonStyle(.plain)

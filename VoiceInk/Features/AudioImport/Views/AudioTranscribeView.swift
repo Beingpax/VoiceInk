@@ -333,21 +333,28 @@ struct AudioTranscribeView: View {
             let fileURL = directory.appendingPathComponent("\(uniqueName).\(fileExtension)")
 
             let body: String
+            let isSpeakerMarkdown: Bool
             switch source {
             case .original:
                 body = transcription.enhancedText ?? transcription.text
+                isSpeakerMarkdown = false
             case .speakers:
-                body =
-                    transcription.speakerTranscriptMarkdown
-                    ?? transcription.enhancedText
-                    ?? transcription.text
+                if let speakerBody = transcription.speakerTranscriptMarkdown {
+                    body = speakerBody
+                    isSpeakerMarkdown = true
+                } else {
+                    body = transcription.enhancedText ?? transcription.text
+                    isSpeakerMarkdown = false
+                }
             }
 
             let content: String
             if fileExtension == "md" {
                 content = "# \(item.filename)\n\n\(body)"
             } else {
-                content = source == .speakers ? Self.plainText(fromMarkdown: body) : body
+                // Only speaker markdown gets its markers stripped; fallback
+                // plain text may legitimately contain asterisks.
+                content = isSpeakerMarkdown ? Self.plainText(fromMarkdown: body) : body
             }
 
             do {

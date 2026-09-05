@@ -291,6 +291,7 @@ class AudioProcessor {
         var currentFrame: AVAudioFramePosition = 0
 
         while currentFrame < totalFrames {
+            if Task.isCancelled { return nil }
             let remainingFrames = totalFrames - currentFrame
             let framesToRead = min(chunkSize, AVAudioFrameCount(remainingFrames))
 

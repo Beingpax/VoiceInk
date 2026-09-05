@@ -253,12 +253,22 @@ class AudioTranscriptionManager: ObservableObject {
                     "Selected engine produces no word timestamps; transcribing without speaker identification")
             }
             let sourceURL = item.url
-            let stereoChannels: StereoChannelSamples? =
-                wantsSpeakers && (diarizationMode == .auto || diarizationMode == .stereo)
-                ? await Task.detached(priority: .userInitiated) {
+            let stereoChannels: StereoChannelSamples?
+            if wantsSpeakers, diarizationMode == .auto || diarizationMode == .stereo {
+                // Off the main actor, and cancelled promptly with the queue —
+                // the extraction loop aborts between chunks on cancellation.
+                let extraction = Task.detached(priority: .userInitiated) {
                     AudioProcessor().extractStereoChannels(sourceURL)
-                }.value
-                : nil
+                }
+                stereoChannels = await withTaskCancellationHandler {
+                    await extraction.value
+                } onCancel: {
+                    extraction.cancel()
+                }
+                try Task.checkCancellation()
+            } else {
+                stereoChannels = nil
+            }
             if wantsSpeakers, diarizationMode == .stereo, stereoChannels == nil {
                 logger.notice("Stereo diarization selected but file has no distinct channels; skipping")
             }
@@ -471,7 +481,17 @@ class AudioTranscriptionManager: ObservableObject {
                         to: utteranceText, using: modelContext)
                     utterances[index].text = utteranceText.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
-                speakerUtterances = utterances.filter { !$0.text.isEmpty }
+                let surviving = utterances.filter { !$0.text.isEmpty }
+                speakerUtterances = surviving
+
+                // Keep the persisted word data consistent with the visible
+                // transcript: drop words belonging to utterances that were
+                // filtered out entirely.
+                if let words = wordTimings {
+                    wordTimings = words.filter { word in
+                        surviving.contains { word.start >= $0.start - 0.05 && word.end <= $0.end + 0.05 }
+                    }
+                }
             }
 
             transcription.wordTimings = wordTimings
