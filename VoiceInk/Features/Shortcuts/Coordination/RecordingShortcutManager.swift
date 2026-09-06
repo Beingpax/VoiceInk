@@ -53,8 +53,12 @@ class RecordingShortcutManager: ObservableObject {
     private let shortcutMonitor = ShortcutMonitor(ownerLabel: "Recording")
     private var shortcutChangeObserver: NSObjectProtocol?
     private var lifecycleObservers: [NSObjectProtocol] = []
+    private var secureInputDiagnosticsTask: Task<Void, Never>?
+    private var lastSecureEventInputState: Bool?
+    private var secureEventInputStateObservedAt: Date?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
+    private static let secureInputDiagnosticsIntervalNanoseconds: UInt64 = 1_000_000_000
 
     enum Mode: String, CaseIterable {
         case toggle = "toggle"
@@ -389,10 +393,64 @@ class RecordingShortcutManager: ObservableObject {
             workspaceCenter.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main) { _ in
                 ShortcutDiagnostics.logHealthReport(reason: "session-did-become-active")
             })
+
+        startSecureInputTransitionDiagnostics()
+    }
+
+    private func startSecureInputTransitionDiagnostics() {
+        secureInputDiagnosticsTask?.cancel()
+        lastSecureEventInputState = ShortcutDiagnostics.secureEventInputEnabled()
+        secureEventInputStateObservedAt = Date()
+
+        secureInputDiagnosticsTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: Self.secureInputDiagnosticsIntervalNanoseconds)
+                } catch {
+                    return
+                }
+
+                guard let self else {
+                    return
+                }
+                self.logSecureInputTransitionIfNeeded()
+            }
+        }
+    }
+
+    private func logSecureInputTransitionIfNeeded() {
+        guard let previousState = lastSecureEventInputState else {
+            lastSecureEventInputState = ShortcutDiagnostics.secureEventInputEnabled()
+            secureEventInputStateObservedAt = Date()
+            return
+        }
+
+        let observedState = ShortcutDiagnostics.secureEventInputEnabled()
+        guard observedState != previousState else {
+            return
+        }
+
+        let snapshot = ShortcutDiagnostics.environmentSnapshot()
+        guard snapshot.secureEventInputEnabled != previousState else {
+            return
+        }
+
+        let transitionDate = Date()
+        let previousStateDuration = secureEventInputStateObservedAt.map {
+            transitionDate.timeIntervalSince($0)
+        }
+        let eventActivity = ShortcutDiagnostics.eventActivitySummary(owner: "Recording")
+        ShortcutDiagnostics.notice(
+            "secure-input-transition previous=\(previousState) current=\(snapshot.secureEventInputEnabled) observedPreviousStateDurationSeconds=\(previousStateDuration.map { String($0) } ?? "unknown") recordingEvents={\(eventActivity)} \(snapshot.summary)"
+        )
+
+        lastSecureEventInputState = snapshot.secureEventInputEnabled
+        secureEventInputStateObservedAt = transitionDate
     }
 
     deinit {
         MainActor.assumeIsolated {
+            secureInputDiagnosticsTask?.cancel()
             if let shortcutChangeObserver {
                 NotificationCenter.default.removeObserver(shortcutChangeObserver)
             }
@@ -509,6 +567,9 @@ final class RecordingShortcutModeHandler {
         }
 
         if mode == .doubleTap && (!canHandleShortcutAction() || recordingState() == .starting) {
+            ShortcutDiagnostics.notice(
+                "mode-handler keyDown action=\(action.storageName) result=rejected reason=double-tap-engine-state engineState=\(String(describing: recordingState()))"
+            )
             clearPendingDoubleTap(for: action)
             return
         }
@@ -670,19 +731,31 @@ final class RecordingShortcutModeHandler {
 
         case .doubleTap:
             guard canHandleShortcutAction(), recordingState() != .starting else {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=rejected reason=double-tap-engine-state engineState=\(String(describing: recordingState()))"
+                )
                 clearPendingDoubleTap(for: action)
                 break
             }
             let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
             if pressDuration < 0 || pressDuration > doubleTapThreshold {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=double-tap-cleared reason=press-duration duration=\(pressDuration) threshold=\(doubleTapThreshold)"
+                )
                 pendingDoubleTapReleaseTimes.removeValue(forKey: action)
             } else if let firstRelease = pendingDoubleTapReleaseTimes.removeValue(forKey: action),
                 eventTime - firstRelease >= 0,
                 eventTime - firstRelease <= doubleTapThreshold
             {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=toggle-recorder reason=double-tap interval=\(eventTime - firstRelease)"
+                )
                 await toggleRecorderPanel(modeId)
                 isHandsFreeRecording = isRecorderVisible()
             } else {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=waiting-for-second-tap releaseUptime=\(eventTime)"
+                )
                 pendingDoubleTapReleaseTimes[action] = eventTime
             }
         }
@@ -712,6 +785,9 @@ final class RecordingShortcutModeHandler {
         }
 
         if activeShortcutIsDoubleTap {
+            ShortcutDiagnostics.notice(
+                "mode-handler interruption action=\(action.storageName) result=double-tap-cleared"
+            )
             isShortcutPressed = false
             shortcutPressStartTime = nil
             activeRecordingShortcutAction = nil

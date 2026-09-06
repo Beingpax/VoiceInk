@@ -243,7 +243,7 @@ final class ShortcutMonitor {
 
         let eventTime = ProcessInfo.processInfo.systemUptime
         lastEventUptime = eventTime
-        ShortcutDiagnostics.recordEvent(owner: ownerLabel, matched: false)
+        ShortcutDiagnostics.recordEvent(owner: ownerLabel, type: type)
         let inputCode: UInt16
         switch eventKind {
         case .keyDown, .keyUp, .flagsChanged:
@@ -354,10 +354,15 @@ final class ShortcutMonitor {
 
             switch transition {
             case .none:
-                if kind == .keyDown, inputCode == state.shortcut.keyCode {
+                if kind == .keyDown, state.shortcut.kind == .key, inputCode == state.shortcut.keyCode {
                     let actualFlags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: inputCode)
                     ShortcutDiagnostics.notice(
                         "event-near-miss owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) kind=keyDown reason=modifier-mismatch keyCode=\(inputCode) actualModifiers=0x\(String(actualFlags.rawValue, radix: 16)) expected=\(state.shortcut.diagnosticDescription)"
+                    )
+                } else if kind == .mouseDown, state.shortcut.kind == .mouseButton, inputCode == state.shortcut.keyCode {
+                    let actualFlags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil)
+                    ShortcutDiagnostics.notice(
+                        "event-near-miss owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) kind=mouseDown reason=modifier-mismatch buttonNumber=\(inputCode) actualModifiers=0x\(String(actualFlags.rawValue, radix: 16)) expected=\(state.shortcut.diagnosticDescription)"
                     )
                 }
                 break
@@ -366,7 +371,7 @@ final class ShortcutMonitor {
                     shouldSuppress = true
                 }
                 ShortcutDiagnostics.notice(
-                    "event-suppressed owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) kind=\(kind) reason=already-down-or-flags-held"
+                    "event-suppress-transition owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) kind=\(kind) suppressed=\(kind != .flagsChanged) reason=already-down-or-flags-held"
                 )
             case .keyDown:
                 state.isDown = true
@@ -489,7 +494,7 @@ final class ShortcutMonitor {
                 state.requiresStandaloneRelease = false
                 shortcuts[action] = state
                 ShortcutDiagnostics.notice(
-                    "modifier-transition owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) transition=keyUp eventKeyCode=\(keyCode) expected=\(state.shortcut.diagnosticDescription)"
+                    "modifier-transition owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) transition=keyUp eventKeyCode=\(keyCode) standaloneTriggered=\(shouldTrigger) dispatchUp=\(shouldDispatchUp) expected=\(state.shortcut.diagnosticDescription)"
                 )
                 if shouldTrigger, let pressedAt {
                     dispatchShortcutDown(for: action, eventTime: pressedAt)
@@ -513,7 +518,7 @@ final class ShortcutMonitor {
             state.isInterrupted = state.requiresStandaloneRelease && !pressedKeyCodes.isEmpty
             shortcuts[action] = state
             ShortcutDiagnostics.notice(
-                "modifier-transition owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) transition=keyDown eventKeyCode=\(keyCode) expected=\(state.shortcut.diagnosticDescription)"
+                "modifier-transition owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) transition=keyDown eventKeyCode=\(keyCode) requiresStandaloneRelease=\(state.requiresStandaloneRelease) interrupted=\(state.isInterrupted) expected=\(state.shortcut.diagnosticDescription)"
             )
             if !state.requiresStandaloneRelease {
                 dispatchShortcutDown(for: action, eventTime: eventTime)
@@ -599,7 +604,7 @@ final class ShortcutMonitor {
 
     private func dispatchShortcutDown(for action: ShortcutAction, eventTime: TimeInterval) {
         lastMatchedEventUptime = eventTime
-        ShortcutDiagnostics.recordEvent(owner: ownerLabel, matched: true)
+        ShortcutDiagnostics.recordMatch(owner: ownerLabel)
         ShortcutDiagnostics.notice(
             "event-match owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) transition=keyDown eventUptime=\(eventTime)"
         )
@@ -619,7 +624,7 @@ final class ShortcutMonitor {
 
     private func dispatchShortcutUp(for action: ShortcutAction, eventTime: TimeInterval) {
         lastMatchedEventUptime = eventTime
-        ShortcutDiagnostics.recordEvent(owner: ownerLabel, matched: true)
+        ShortcutDiagnostics.recordMatch(owner: ownerLabel)
         ShortcutDiagnostics.notice(
             "event-match owner=\(ownerLabel) id=\(monitorID) action=\(action.storageName) transition=keyUp eventUptime=\(eventTime)"
         )
@@ -690,14 +695,19 @@ final class ShortcutMonitor {
                 }
 
                 let isEnabled = CGEvent.tapIsEnabled(tap: eventTap)
+                ShortcutDiagnostics.recordTapState(owner: self.ownerLabel, enabled: isEnabled)
+                guard !isEnabled else {
+                    continue
+                }
+
                 let currentUptime = ProcessInfo.processInfo.systemUptime
                 let lastEventAge = self.lastEventUptime.map { currentUptime - $0 }
                 let lastMatchAge = self.lastMatchedEventUptime.map { currentUptime - $0 }
-                ShortcutDiagnostics.recordTapState(owner: self.ownerLabel, enabled: isEnabled)
-                ShortcutDiagnostics.notice(
-                    "tap-watchdog owner=\(self.ownerLabel) id=\(self.monitorID) enabled=\(isEnabled) shortcutCount=\(self.shortcuts.count) pressedActions=\(self.pressedActionSummary) lastEventAgeSeconds=\(lastEventAge.map { String($0) } ?? "never") lastMatchAgeSeconds=\(lastMatchAge.map { String($0) } ?? "never")"
+                let eventActivity = ShortcutDiagnostics.eventActivitySummary(owner: self.ownerLabel)
+                ShortcutDiagnostics.error(
+                    "tap-watchdog owner=\(self.ownerLabel) id=\(self.monitorID) result=disabled shortcutCount=\(self.shortcuts.count) pressedActions=\(self.pressedActionSummary) lastEventAgeSeconds=\(lastEventAge.map { String($0) } ?? "never") lastMatchAgeSeconds=\(lastMatchAge.map { String($0) } ?? "never") eventTypes={\(eventActivity)}"
                 )
-                ShortcutDiagnostics.logEnvironment(reason: "tap-watchdog.\(self.ownerLabel)")
+                ShortcutDiagnostics.logEnvironment(reason: "tap-watchdog-disabled.\(self.ownerLabel)")
             }
         }
     }
