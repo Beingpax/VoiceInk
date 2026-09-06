@@ -66,8 +66,12 @@ class RecordingShortcutManager: ObservableObject {
     private let shortcutMonitor = ShortcutMonitor(ownerLabel: "Recording")
     private var shortcutChangeObserver: NSObjectProtocol?
     private var lifecycleObservers: [NSObjectProtocol] = []
+    private var secureInputDiagnosticsTask: Task<Void, Never>?
+    private var lastSecureEventInputState: Bool?
+    private var secureEventInputStateObservedAt: Date?
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
+    private static let secureInputDiagnosticsIntervalNanoseconds: UInt64 = 1_000_000_000
 
     // MARK: - Helper Properties
     private var canHandleShortcutAction: Bool {
@@ -467,10 +471,64 @@ class RecordingShortcutManager: ObservableObject {
             workspaceCenter.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main) { _ in
                 ShortcutDiagnostics.logHealthReport(reason: "session-did-become-active")
             })
+
+        startSecureInputTransitionDiagnostics()
+    }
+
+    private func startSecureInputTransitionDiagnostics() {
+        secureInputDiagnosticsTask?.cancel()
+        lastSecureEventInputState = ShortcutDiagnostics.secureEventInputEnabled()
+        secureEventInputStateObservedAt = Date()
+
+        secureInputDiagnosticsTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(nanoseconds: Self.secureInputDiagnosticsIntervalNanoseconds)
+                } catch {
+                    return
+                }
+
+                guard let self else {
+                    return
+                }
+                self.logSecureInputTransitionIfNeeded()
+            }
+        }
+    }
+
+    private func logSecureInputTransitionIfNeeded() {
+        guard let previousState = lastSecureEventInputState else {
+            lastSecureEventInputState = ShortcutDiagnostics.secureEventInputEnabled()
+            secureEventInputStateObservedAt = Date()
+            return
+        }
+
+        let observedState = ShortcutDiagnostics.secureEventInputEnabled()
+        guard observedState != previousState else {
+            return
+        }
+
+        let snapshot = ShortcutDiagnostics.environmentSnapshot()
+        guard snapshot.secureEventInputEnabled != previousState else {
+            return
+        }
+
+        let transitionDate = Date()
+        let previousStateDuration = secureEventInputStateObservedAt.map {
+            transitionDate.timeIntervalSince($0)
+        }
+        let eventActivity = ShortcutDiagnostics.eventActivitySummary(owner: "Recording")
+        ShortcutDiagnostics.notice(
+            "secure-input-transition previous=\(previousState) current=\(snapshot.secureEventInputEnabled) observedPreviousStateDurationSeconds=\(previousStateDuration.map { String($0) } ?? "unknown") recordingEvents={\(eventActivity)} \(snapshot.summary)"
+        )
+
+        lastSecureEventInputState = snapshot.secureEventInputEnabled
+        secureEventInputStateObservedAt = transitionDate
     }
 
     deinit {
         MainActor.assumeIsolated {
+            secureInputDiagnosticsTask?.cancel()
             if let shortcutChangeObserver {
                 NotificationCenter.default.removeObserver(shortcutChangeObserver)
             }
