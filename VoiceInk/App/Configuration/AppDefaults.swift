@@ -22,6 +22,14 @@ enum CloudTranscriptionSettings {
     }
 }
 
+enum AutoLearnSettings {
+    static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
+
+    static var isEnabled: Bool {
+        UserDefaults.standard.bool(forKey: isEnabledKey)
+    }
+}
+
 enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
@@ -52,6 +60,7 @@ enum AppDefaults {
             "RecorderType": "mini",
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
             CloudTranscriptionSettings.timeoutKey: CloudTranscriptionSettings.defaultTimeout,
+            AutoLearnSettings.isEnabledKey: true,
 
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,

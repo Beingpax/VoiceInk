@@ -128,28 +128,24 @@ enum DictionaryService {
         existing: [WordReplacement],
         context: ModelContext
     ) -> String? {
-        let tokens =
-            original
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let tokens = WordReplacementVariants.parse(original)
 
         guard !tokens.isEmpty, !replacement.isEmpty else { return nil }
 
         for existingEntry in existing {
-            let existingTokens = existingEntry.originalText
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-                .filter { !$0.isEmpty }
+            let existingTokens = WordReplacementVariants.parse(existingEntry.originalText)
 
             for token in tokens {
-                if existingTokens.contains(token.lowercased()) {
+                if WordReplacementVariants.contains(token, in: existingTokens) {
                     return String(format: String(localized: "'%@' already exists in word replacements"), token)
                 }
             }
         }
 
-        let entry = WordReplacement(originalText: original, replacementText: replacement)
+        let entry = WordReplacement(
+            originalText: WordReplacementVariants.serialize(tokens),
+            replacementText: replacement
+        )
         context.insert(entry)
         do {
             try context.save()

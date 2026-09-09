@@ -676,6 +676,33 @@ class AIService: ObservableObject {
         try await voiceInkRefineService.enhance(transcript: transcript)
     }
 
+    func generateWithVoiceInkRefine(transcript: String, systemPrompt: String) async throws -> String {
+        try await voiceInkRefineService.generate(transcript: transcript, systemPrompt: systemPrompt)
+    }
+
+    func reviewAutoLearnCandidates(
+        payload: String,
+        systemPrompt: String,
+        provider: AIProvider,
+        modelName: String?
+    ) async throws -> String {
+        if provider == .voiceInkRefine {
+            return try await generateWithVoiceInkRefine(
+                transcript: payload,
+                systemPrompt: systemPrompt
+            )
+        }
+
+        return try await performChatCompletion(
+            provider: provider,
+            modelName: modelName,
+            messages: [.user(payload)],
+            systemPrompt: systemPrompt,
+            localUserPrompt: payload,
+            timeout: EnhancementRequestSettings.timeout
+        ).text
+    }
+
     func updateOllamaBaseURL(_ newURL: String) {
         ollamaService.baseURL = newURL
         userDefaults.set(newURL, forKey: "ollamaBaseURL")

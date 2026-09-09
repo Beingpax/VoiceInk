@@ -124,16 +124,10 @@ struct EditReplacementSheet: View {
     private func saveChanges() {
         let newOriginal = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
         let newReplacement = replacementWord
-        let tokens =
-            newOriginal
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        let tokens = WordReplacementVariants.parse(newOriginal)
         guard !tokens.isEmpty, !newReplacement.isEmpty else { return }
 
         // Check for duplicates (excluding current replacement)
-        let newTokensPairs = tokens.map { (original: $0, lowercased: $0.lowercased()) }
-
         let descriptor = FetchDescriptor<WordReplacement>()
         if let allReplacements = try? modelContext.fetch(descriptor) {
             for existingReplacement in allReplacements {
@@ -142,15 +136,12 @@ struct EditReplacementSheet: View {
                     continue
                 }
 
-                let existingTokens = existingReplacement.originalText
-                    .split(separator: ",")
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-                    .filter { !$0.isEmpty }
+                let existingTokens = WordReplacementVariants.parse(existingReplacement.originalText)
 
-                for tokenPair in newTokensPairs {
-                    if existingTokens.contains(tokenPair.lowercased) {
+                for token in tokens {
+                    if WordReplacementVariants.contains(token, in: existingTokens) {
                         alertMessage = String(
-                            format: String(localized: "'%@' already exists in word replacements"), tokenPair.original)
+                            format: String(localized: "'%@' already exists in word replacements"), token)
                         showAlert = true
                         return
                     }
@@ -159,7 +150,7 @@ struct EditReplacementSheet: View {
         }
 
         // Update the replacement
-        replacement.originalText = newOriginal
+        replacement.originalText = WordReplacementVariants.serialize(tokens)
         replacement.replacementText = newReplacement
 
         do {

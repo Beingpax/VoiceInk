@@ -104,6 +104,13 @@ struct VoiceInkApp: App {
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
+        let autoLearnReviewer = AutoLearnAIReviewer(enhancementService: enhancementService)
+        Task {
+            await AutoLearnService.shared.configure(
+                modelContainer: resolvedContainer,
+                reviewer: autoLearnReviewer
+            )
+        }
 
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
