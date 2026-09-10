@@ -22,7 +22,9 @@ enum WordReplacementVariants {
     }
 
     static func destinationKey(for text: String) -> String {
-        key(for: text)
+        text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
     }
 
     static func contains(_ variant: String, in variants: [String]) -> Bool {

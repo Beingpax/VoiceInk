@@ -218,6 +218,7 @@ enum BackupImporter {
         var insertedWords = 0
         var insertedReplacements = 0
         var skippedInvalidReplacements = 0
+        var didMutateReplacements = false
 
         if let words = backup.vocabularyWords {
             let descriptor = FetchDescriptor<VocabularyWord>()
@@ -241,44 +242,95 @@ enum BackupImporter {
 
         if let replacements = backup.wordReplacements {
             let descriptor = FetchDescriptor<WordReplacement>()
-            let existingReplacements = try modelContext.fetch(descriptor)
+            var existingReplacements = try modelContext.fetch(descriptor)
 
-            var existingKeys = Set<String>()
+            var existingDestinationsBySource: [String: String] = [:]
             for existing in existingReplacements {
-                existingKeys.formUnion(
-                    WordReplacementVariants.parse(existing.originalText).map {
-                        WordReplacementVariants.key(for: $0)
-                    }
+                let destinationKey = WordReplacementVariants.destinationKey(
+                    for: existing.replacementText
                 )
+                for variant in WordReplacementVariants.parse(existing.originalText) {
+                    existingDestinationsBySource[WordReplacementVariants.key(for: variant)]
+                        = destinationKey
+                }
             }
 
             for (original, replacement) in replacements {
                 let trimmedReplacement = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
                 let importVariants = WordReplacementVariants.parse(original)
                 let importKeys = importVariants.map { WordReplacementVariants.key(for: $0) }
+                let destinationKey = WordReplacementVariants.destinationKey(for: trimmedReplacement)
                 guard !importVariants.isEmpty, !trimmedReplacement.isEmpty else {
                     skippedInvalidReplacements += 1
                     continue
                 }
 
-                let hasConflict = importKeys.contains { existingKeys.contains($0) }
+                let hasConflict = importKeys.contains { sourceKey in
+                    guard let existingDestination = existingDestinationsBySource[sourceKey] else {
+                        return false
+                    }
+                    return existingDestination != destinationKey
+                }
+                guard !hasConflict else {
+                    skippedInvalidReplacements += 1
+                    continue
+                }
 
-                if !hasConflict {
-                    modelContext.insert(
-                        WordReplacement(
-                            originalText: WordReplacementVariants.serialize(importVariants),
-                            replacementText: trimmedReplacement
-                        )
+                let newVariants = zip(importVariants, importKeys)
+                    .filter { existingDestinationsBySource[$0.1] == nil }
+                    .map(\.0)
+                let destinationMatches = existingReplacements
+                    .filter {
+                        WordReplacementVariants.destinationKey(for: $0.replacementText)
+                            == destinationKey
+                    }
+                    .sorted {
+                        if $0.dateAdded != $1.dateAdded { return $0.dateAdded < $1.dateAdded }
+                        return $0.id.uuidString < $1.id.uuidString
+                    }
+
+                if let canonical = destinationMatches.first {
+                    let consolidatedVariants = WordReplacementVariants.serialize(
+                        destinationMatches.flatMap {
+                            WordReplacementVariants.parse($0.originalText)
+                        } + importVariants
                     )
-                    existingKeys.formUnion(importKeys)
+                    if canonical.originalText != consolidatedVariants
+                        || canonical.replacementText != trimmedReplacement
+                        || !canonical.isEnabled
+                        || destinationMatches.count > 1
+                    {
+                        didMutateReplacements = true
+                    }
+                    canonical.originalText = consolidatedVariants
+                    canonical.replacementText = trimmedReplacement
+                    canonical.isEnabled = true
+                    for duplicate in destinationMatches.dropFirst() {
+                        modelContext.delete(duplicate)
+                        existingReplacements.removeAll { $0 === duplicate }
+                    }
+                    if !newVariants.isEmpty {
+                        insertedReplacements += 1
+                    }
+                } else {
+                    let entry = WordReplacement(
+                        originalText: WordReplacementVariants.serialize(importVariants),
+                        replacementText: trimmedReplacement
+                    )
+                    modelContext.insert(entry)
+                    existingReplacements.append(entry)
                     insertedReplacements += 1
+                    didMutateReplacements = true
+                }
+                for sourceKey in importKeys {
+                    existingDestinationsBySource[sourceKey] = destinationKey
                 }
             }
         } else {
             print("No word replacements found in the imported file. Existing replacements remain unchanged.")
         }
 
-        guard insertedWords > 0 || insertedReplacements > 0 else {
+        guard insertedWords > 0 || didMutateReplacements else {
             print("No new dictionary entries were imported.")
             if skippedInvalidReplacements > 0 {
                 print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")

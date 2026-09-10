@@ -130,29 +130,136 @@ enum DictionaryService {
     ) -> String? {
         let tokens = WordReplacementVariants.parse(original)
 
-        guard !tokens.isEmpty, !replacement.isEmpty else { return nil }
+        let destination = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tokens.isEmpty, !destination.isEmpty else { return nil }
+
+        let destinationKey = WordReplacementVariants.destinationKey(for: destination)
 
         for existingEntry in existing {
             let existingTokens = WordReplacementVariants.parse(existingEntry.originalText)
 
             for token in tokens {
-                if WordReplacementVariants.contains(token, in: existingTokens) {
+                if WordReplacementVariants.contains(token, in: existingTokens),
+                    WordReplacementVariants.destinationKey(for: existingEntry.replacementText)
+                        != destinationKey
+                {
                     return String(format: String(localized: "'%@' already exists in word replacements"), token)
                 }
             }
         }
 
-        let entry = WordReplacement(
-            originalText: WordReplacementVariants.serialize(tokens),
-            replacementText: replacement
-        )
-        context.insert(entry)
+        let destinationMatches = existing
+            .filter {
+                WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
+            }
+            .sorted {
+                if $0.dateAdded != $1.dateAdded { return $0.dateAdded < $1.dateAdded }
+                return $0.id.uuidString < $1.id.uuidString
+            }
+        let insertedEntry: WordReplacement?
+        if let canonical = destinationMatches.first {
+            canonical.originalText = WordReplacementVariants.serialize(
+                destinationMatches.flatMap {
+                    WordReplacementVariants.parse($0.originalText)
+                } + tokens
+            )
+            canonical.replacementText = destination
+            canonical.isEnabled = true
+            for duplicate in destinationMatches.dropFirst() {
+                context.delete(duplicate)
+            }
+            insertedEntry = nil
+        } else {
+            let entry = WordReplacement(
+                originalText: WordReplacementVariants.serialize(tokens),
+                replacementText: destination
+            )
+            context.insert(entry)
+            insertedEntry = entry
+        }
         do {
             try context.save()
             return nil
         } catch {
-            context.delete(entry)
+            if let insertedEntry {
+                context.delete(insertedEntry)
+            } else {
+                context.rollback()
+            }
             return String(format: String(localized: "Failed to add replacement: %@"), error.localizedDescription)
         }
+    }
+
+    /// Updates an existing replacement and consolidates rows with the same
+    /// case-sensitive, normalized destination.
+    @discardableResult
+    static func updateWordReplacement(
+        _ replacement: WordReplacement,
+        original: String,
+        replacementText: String,
+        existing: [WordReplacement],
+        context: ModelContext
+    ) -> String? {
+        let tokens = WordReplacementVariants.parse(original)
+        let destination = replacementText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tokens.isEmpty, !destination.isEmpty else { return nil }
+
+        let destinationKey = WordReplacementVariants.destinationKey(for: destination)
+        let otherReplacements = existing.filter {
+            $0.persistentModelID != replacement.persistentModelID
+        }
+
+        for existingEntry in otherReplacements {
+            let existingTokens = WordReplacementVariants.parse(existingEntry.originalText)
+            for token in tokens {
+                if WordReplacementVariants.contains(token, in: existingTokens),
+                    WordReplacementVariants.destinationKey(for: existingEntry.replacementText)
+                        != destinationKey
+                {
+                    return String(
+                        format: String(localized: "'%@' already exists in word replacements"),
+                        token
+                    )
+                }
+            }
+        }
+
+        let destinationMatches = otherReplacements
+            .filter {
+                WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
+            }
+            .sorted(by: replacementOrder)
+        if let canonical = destinationMatches.first {
+            canonical.originalText = WordReplacementVariants.serialize(
+                destinationMatches.flatMap {
+                    WordReplacementVariants.parse($0.originalText)
+                } + tokens
+            )
+            canonical.replacementText = destination
+            canonical.isEnabled = true
+            context.delete(replacement)
+            for duplicate in destinationMatches.dropFirst() {
+                context.delete(duplicate)
+            }
+        } else {
+            replacement.originalText = WordReplacementVariants.serialize(tokens)
+            replacement.replacementText = destination
+        }
+
+        do {
+            try context.save()
+            return nil
+        } catch {
+            context.rollback()
+            return String(
+                format: String(localized: "Failed to save changes: %@"),
+                error.localizedDescription
+            )
+        }
+    }
+
+    private static func replacementOrder(_ lhs: WordReplacement, _ rhs: WordReplacement) -> Bool {
+        if lhs.dateAdded != rhs.dateAdded { return lhs.dateAdded < rhs.dateAdded }
+        return lhs.id.uuidString < rhs.id.uuidString
     }
 }

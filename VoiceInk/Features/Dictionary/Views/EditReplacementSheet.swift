@@ -122,43 +122,28 @@ struct EditReplacementSheet: View {
 
     // MARK: – Actions
     private func saveChanges() {
-        let newOriginal = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        let newReplacement = replacementWord
-        let tokens = WordReplacementVariants.parse(newOriginal)
-        guard !tokens.isEmpty, !newReplacement.isEmpty else { return }
+        guard !WordReplacementVariants.parse(originalWord).isEmpty,
+            !replacementWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
 
-        // Check for duplicates (excluding current replacement)
         let descriptor = FetchDescriptor<WordReplacement>()
-        if let allReplacements = try? modelContext.fetch(descriptor) {
-            for existingReplacement in allReplacements {
-                // Skip checking against itself
-                if existingReplacement.persistentModelID == replacement.persistentModelID {
-                    continue
-                }
-
-                let existingTokens = WordReplacementVariants.parse(existingReplacement.originalText)
-
-                for token in tokens {
-                    if WordReplacementVariants.contains(token, in: existingTokens) {
-                        alertMessage = String(
-                            format: String(localized: "'%@' already exists in word replacements"), token)
-                        showAlert = true
-                        return
-                    }
-                }
-            }
-        }
-
-        // Update the replacement
-        replacement.originalText = WordReplacementVariants.serialize(tokens)
-        replacement.replacementText = newReplacement
-
-        do {
-            try modelContext.save()
-            dismiss()
-        } catch {
-            alertMessage = String(format: String(localized: "Failed to save changes: %@"), error.localizedDescription)
+        guard let allReplacements = try? modelContext.fetch(descriptor) else {
+            alertMessage = String(localized: "Failed to load word replacements")
             showAlert = true
+            return
         }
+
+        if let error = DictionaryService.updateWordReplacement(
+            replacement,
+            original: originalWord,
+            replacementText: replacementWord,
+            existing: allReplacements,
+            context: modelContext
+        ) {
+            alertMessage = error
+            showAlert = true
+            return
+        }
+        dismiss()
     }
 }

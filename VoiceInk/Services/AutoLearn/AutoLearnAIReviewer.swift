@@ -186,9 +186,15 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     private static let reviewPrompt = """
         Review corrections the user made to speech-to-text output. Each source and destination is a short window containing the changed text plus up to two unchanged terms on each side. changedSource and changedDestination identify the detected edit.
 
-        Accept only reusable personalized terminology: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, or other specialized vocabulary. The source must be a plausible speech-recognition, phonetic, spelling, capitalization, punctuation, or spacing error for the same term.
+        Accept only reusable corrections for the same lexical term: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, specialized vocabulary, or a word whose speech-recognition output was incorrectly joined or split. The source must be a plausible phonetic, spelling, capitalization, punctuation, or spacing error for that same term.
 
-        Reject ordinary wording, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions, and deliberate abbreviation or expansion transformations.
+        Accept joining or splitting word boundaries when meaning is unchanged, such as "data base" to "database" or "web hook" to "webhook".
+
+        Reject capitalization-only changes for ordinary words, such as "apple" to "Apple" or "sun" to "Sun". Accept capitalization or stylization when it identifies a proper name, brand, product, project, acronym, or specialized term, such as "open ai" to "OpenAI" or "get hub" to "GitHub".
+
+        Reject added or removed meaning, qualifiers, product editions, or specificity, even when both sides are related. For example, reject "GitHub" to "GitHub Enterprise", "Visual Studio" to "Visual Studio Code", and "PostgreSQL" to "PostgreSQL database".
+
+        Reject ordinary wording, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions, and deliberate abbreviation or expansion transformations. In particular, reject "application programming interface" to "API", "central processing unit" to "CPU", and "pull request" to "PR".
 
         For an accepted correction, return the exact complete term to store. Include unchanged nearby words only when they belong to the name or specialized term. The returned source must be a contiguous substring of source and contain changedSource. The returned destination must be a contiguous substring of destination and contain changedDestination. Copy text exactly; never invent or normalize it.
 

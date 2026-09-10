@@ -145,26 +145,35 @@ actor WordReplacementStore {
         let destination = rawDestination.trimmingCharacters(in: .whitespacesAndNewlines)
         let sourceKey = WordReplacementVariants.key(for: source)
         let destinationKey = WordReplacementVariants.destinationKey(for: destination)
+        let destinationSourceKey = WordReplacementVariants.key(for: destination)
 
         guard !source.isEmpty, !destination.isEmpty, !source.contains(","),
             !sourceKey.isEmpty, !destinationKey.isEmpty,
             source != destination,
             !existingSourceKeys.contains(sourceKey),
-            !wouldCreateCycle(sourceKey: sourceKey, destinationKey: destinationKey, entries: entries)
+            !wouldCreateCycle(
+                sourceKey: sourceKey,
+                destinationSourceKey: destinationSourceKey,
+                entries: entries
+            )
         else {
             return (false, false)
         }
 
         let destinationMatches = entries
             .filter {
-                $0.isEnabled
-                    && WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
+                WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
             }
             .sorted(by: destinationOrder)
         let canonical = destinationMatches.first
         var changed = false
 
         if let canonical {
+            if canonical.replacementText != destination || !canonical.isEnabled {
+                changed = true
+            }
+            canonical.replacementText = destination
+            canonical.isEnabled = true
             for duplicate in destinationMatches.dropFirst() {
                 let merged = WordReplacementVariants.serialize(
                     WordReplacementVariants.parse(canonical.originalText)
@@ -213,14 +222,14 @@ actor WordReplacementStore {
 
     private func wouldCreateCycle(
         sourceKey: String,
-        destinationKey: String,
+        destinationSourceKey: String,
         entries: [WordReplacement]
     ) -> Bool {
-        guard sourceKey != destinationKey else { return false }
+        guard sourceKey != destinationSourceKey else { return false }
 
         var graph: [String: String] = [:]
         for entry in entries.sorted(by: destinationOrder) {
-            let next = WordReplacementVariants.destinationKey(for: entry.replacementText)
+            let next = WordReplacementVariants.key(for: entry.replacementText)
             guard !next.isEmpty else { continue }
 
             for variant in WordReplacementVariants.parse(entry.originalText) {
@@ -230,7 +239,7 @@ actor WordReplacementStore {
             }
         }
 
-        var current = destinationKey
+        var current = destinationSourceKey
         var visited = Set<String>()
         while visited.insert(current).inserted, let next = graph[current] {
             if next == sourceKey {
