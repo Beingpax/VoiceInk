@@ -238,6 +238,7 @@ class AIService: ObservableObject {
     private lazy var ollamaService = OllamaService()
     private lazy var localCLIService = LocalCLIService()
     private var apiKeyChangeObserver: NSObjectProtocol?
+    private var settingsChangeObserver: NSObjectProtocol?
     private var voiceInkRefineObserver: AnyCancellable?
 
     @Published private var openRouterModels: [String] = []
@@ -348,6 +349,7 @@ class AIService: ObservableObject {
 
         loadSavedModelSelections()
         loadSavedOpenRouterModels()
+        initializeAutoLearnSelectionIfNeeded()
 
         voiceInkRefineObserver = voiceInkRefineService.objectWillChange.sink { [weak self] _ in
             DispatchQueue.main.async {
@@ -357,8 +359,11 @@ class AIService: ObservableObject {
                     let isAvailable = self.voiceInkRefineService.isAvailableInModes
                     if self.isAPIKeyValid != isAvailable {
                         self.isAPIKeyValid = isAvailable
-                        return
                     }
+                }
+
+                if self.voiceInkRefineService.isAvailableInModes {
+                    self.initializeAutoLearnSelectionIfNeeded()
                 }
 
                 self.objectWillChange.send()
@@ -371,14 +376,27 @@ class AIService: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             DispatchQueue.main.async {
-                self?.reloadSelectedProviderConfiguration()
+                guard let self else { return }
+                self.reloadSelectedProviderConfiguration()
+                self.initializeAutoLearnSelectionIfNeeded()
             }
+        }
+
+        settingsChangeObserver = NotificationCenter.default.addObserver(
+            forName: .AppSettingsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.initializeAutoLearnSelectionIfNeeded()
         }
     }
 
     deinit {
         if let apiKeyChangeObserver {
             NotificationCenter.default.removeObserver(apiKeyChangeObserver)
+        }
+        if let settingsChangeObserver {
+            NotificationCenter.default.removeObserver(settingsChangeObserver)
         }
         voiceInkRefineObserver?.cancel()
     }
@@ -414,6 +432,32 @@ class AIService: ObservableObject {
                 isAPIKeyValid = true
             }
         }
+    }
+
+    private func initializeAutoLearnSelectionIfNeeded() {
+        guard AutoLearnSettings.selectedProvider == nil else { return }
+
+        let availableProviders = connectedProviders
+        let provider = availableProviders.contains(selectedProvider)
+            ? selectedProvider
+            : availableProviders.first
+        guard let provider else { return }
+
+        AutoLearnSettings.initializeSelectionIfNeeded(
+            provider: provider,
+            model: initialAutoLearnModel(for: provider)
+        )
+    }
+
+    private func initialAutoLearnModel(for provider: AIProvider) -> String {
+        if provider == .localCLI { return "" }
+        if provider == .voiceInkRefine { return provider.defaultModel }
+
+        let selectedModel = selectedModel(for: provider)
+        let availableModels = availableModels(for: provider)
+        return availableModels.contains(selectedModel)
+            ? selectedModel
+            : availableModels.first ?? selectedModel
     }
 
     private func loadSavedModelSelections() {

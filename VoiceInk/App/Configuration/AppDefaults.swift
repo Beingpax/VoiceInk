@@ -44,6 +44,32 @@ enum AutoLearnSettings {
         return value?.isEmpty == false ? value : nil
     }
 
+    /// Adopts the first configured enhancement provider for Auto Learn.
+    /// Once a Dictionary selection exists, provider configuration changes do not replace it.
+    static func initializeSelectionIfNeeded(
+        provider: AIProvider,
+        model: String,
+        defaults: UserDefaults = .standard
+    ) {
+        if let storedProvider = defaults.string(forKey: providerKey),
+            AIProvider(rawValue: storedProvider) != nil
+        {
+            return
+        }
+
+        defaults.set(provider.rawValue, forKey: providerKey)
+        if provider == .localCLI {
+            defaults.removeObject(forKey: modelKey)
+        } else {
+            let selectedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+            if selectedModel.isEmpty {
+                defaults.removeObject(forKey: modelKey)
+            } else {
+                defaults.set(selectedModel, forKey: modelKey)
+            }
+        }
+    }
+
     static func recordFailure(_ error: Error) {
         let nsError = error as NSError
         var details = [nsError.localizedDescription]

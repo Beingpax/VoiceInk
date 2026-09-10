@@ -44,6 +44,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
 
         let connectedProviders = aiService.connectedProviders
+        // Respect the user's provider choice. Ollama keeps correction review on-device.
         guard let provider = AutoLearnSettings.selectedProvider ?? connectedProviders.first,
             connectedProviders.contains(provider)
         else {
