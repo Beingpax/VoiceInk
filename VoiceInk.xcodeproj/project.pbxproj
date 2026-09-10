@@ -10,8 +10,8 @@
 		E1342C1F2EB4844800CED8A2 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = E1342C1E2EB4844800CED8A2 /* Atomics */; };
 		E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = E13461EC2FD1CCCD005B6A81 /* MarkdownUI */; };
 		E161D4A12F41ECB90086F83D /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E161D4A02F41ECB90086F83D /* CloudKit.framework */; };
+		E1A931D6305296500049D973 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = E1A931D5305296500049D973 /* FluidAudio */; };
 		E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E1ADD45E2CC544F100303ECB /* Sparkle */; };
-		E1AF669B3031B7AA006D50FA /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = E1AF669A3031B7AA006D50FA /* FluidAudio */; };
 		E1C0A0022FA8000000000001 /* TranscribeCpp in Frameworks */ = {isa = PBXBuildFile; productRef = E1C0A0012FA8000000000001 /* TranscribeCpp */; };
 		E1D7EF992E35E16C00640029 /* MediaRemoteAdapter in Frameworks */ = {isa = PBXBuildFile; productRef = E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */; };
 		E1D7EF9A2E35E19B00640029 /* MediaRemoteAdapter in Embed Frameworks */ = {isa = PBXBuildFile; productRef = E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -149,7 +149,7 @@
 				E161D4A12F41ECB90086F83D /* CloudKit.framework in Frameworks */,
 				E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */,
 				E1C0A0022FA8000000000001 /* TranscribeCpp in Frameworks */,
-				E1AF669B3031B7AA006D50FA /* FluidAudio in Frameworks */,
+				E1A931D6305296500049D973 /* FluidAudio in Frameworks */,
 				E1DD1EE12FA1D7D30020AF3B /* Zip in Frameworks */,
 				E1E9B5B03040793C001126FE /* LLMkit in Frameworks */,
 				E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */,
@@ -267,8 +267,8 @@
 				E1C0A0012FA8000000000001 /* TranscribeCpp */,
 				E1F511032FA3B47000F00001 /* SelectedTextKit */,
 				E13461EC2FD1CCCD005B6A81 /* MarkdownUI */,
-				E1AF669A3031B7AA006D50FA /* FluidAudio */,
 				E1E9B5AF3040793C001126FE /* LLMkit */,
+				E1A931D5305296500049D973 /* FluidAudio */,
 			);
 			productName = VoiceInk;
 			productReference = E11473B02CBE0F0A00318EE4 /* VoiceInk Dev.app */;
@@ -395,8 +395,8 @@
 				E1F900022FA6000000000001 /* XCRemoteSwiftPackageReference "swift-huggingface" */,
 				E1F900032FA6000000000001 /* XCRemoteSwiftPackageReference "swift-transformers" */,
 				E1C0A0002FA8000000000001 /* XCRemoteSwiftPackageReference "Transcribe-cpp-swift" */,
-				E1AF66993031B7AA006D50FA /* XCRemoteSwiftPackageReference "FluidAudio" */,
 				E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */,
+				E1A931D4305296500049D973 /* XCLocalSwiftPackageReference "../FluidAudio" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E11473B12CBE0F0A00318EE4 /* Products */;
@@ -865,6 +865,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		E1A931D4305296500049D973 /* XCLocalSwiftPackageReference "../FluidAudio" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../FluidAudio;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -888,14 +895,6 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.6.4;
-			};
-		};
-		E1AF66993031B7AA006D50FA /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/FluidInference/FluidAudio";
-			requirement = {
-				branch = main;
-				kind = branch;
 			};
 		};
 		E1C0A0002FA8000000000001 /* XCRemoteSwiftPackageReference "Transcribe-cpp-swift" */ = {
@@ -977,15 +976,14 @@
 			package = E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
 		};
+		E1A931D5305296500049D973 /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FluidAudio;
+		};
 		E1ADD45E2CC544F100303ECB /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
-		};
-		E1AF669A3031B7AA006D50FA /* FluidAudio */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E1AF66993031B7AA006D50FA /* XCRemoteSwiftPackageReference "FluidAudio" */;
-			productName = FluidAudio;
 		};
 		E1C0A0012FA8000000000001 /* TranscribeCpp */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -81,14 +81,12 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.invalidResponse
         }
 
-        #if DEBUG || LOCAL_BUILD
-            let loggedModelName = modelName ?? "provider default"
-            logger.notice(
-                "Auto Learn AI request provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
-            )
-            logRawText(Self.reviewPrompt, label: "system prompt")
-            logRawText(requestText, label: "candidate payload")
-        #endif
+        let loggedModelName = modelName ?? "provider default"
+        logger.notice(
+            "Auto Learn AI request provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
+        )
+        logRawText(Self.reviewPrompt, label: "system prompt")
+        logRawText(requestText, label: "candidate payload")
 
         let responseText = try await aiService.reviewAutoLearnCandidates(
             payload: requestText,
@@ -96,9 +94,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             provider: provider,
             modelName: modelName
         )
-        #if DEBUG || LOCAL_BUILD
-            logRawText(responseText, label: "AI response")
-        #endif
+        logRawText(responseText, label: "AI response")
         let response = try decodeResponse(responseText)
         let expectedIDs = Set(candidates.map(\.id))
         let returnedIDs = response.decisions.map(\.id)
@@ -144,27 +140,25 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
     }
 
-    #if DEBUG || LOCAL_BUILD
-        private func logRawText(_ text: String, label: String) {
-            let characters = Array(text)
-            let chunkSize = 1_000
-            let chunkCount = max(1, Int(ceil(Double(characters.count) / Double(chunkSize))))
+    private func logRawText(_ text: String, label: String) {
+        let characters = Array(text)
+        let chunkSize = 1_000
+        let chunkCount = max(1, Int(ceil(Double(characters.count) / Double(chunkSize))))
 
-            if characters.isEmpty {
-                logger.notice("Auto Learn raw \(label, privacy: .public) [1/1]: <empty>")
-                return
-            }
-
-            for index in 0..<chunkCount {
-                let start = index * chunkSize
-                let end = min(start + chunkSize, characters.count)
-                let chunk = String(characters[start..<end])
-                logger.notice(
-                    "Auto Learn raw \(label, privacy: .public) [\(index + 1, privacy: .public)/\(chunkCount, privacy: .public)]: \(chunk, privacy: .public)"
-                )
-            }
+        if characters.isEmpty {
+            logger.notice("Auto Learn raw \(label, privacy: .public) [1/1]: <empty>")
+            return
         }
-    #endif
+
+        for index in 0..<chunkCount {
+            let start = index * chunkSize
+            let end = min(start + chunkSize, characters.count)
+            let chunk = String(characters[start..<end])
+            logger.notice(
+                "Auto Learn raw \(label, privacy: .public) [\(index + 1, privacy: .public)/\(chunkCount, privacy: .public)]: \(chunk, privacy: .public)"
+            )
+        }
+    }
 
     private func decodeResponse(_ text: String) throws -> ReviewResponse {
         var payload = text.trimmingCharacters(in: .whitespacesAndNewlines)

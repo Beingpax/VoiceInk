@@ -30,11 +30,6 @@ actor AutoLearnService {
         self.reviewer = reviewer
         do {
             try await pendingQueue.recoverInterruptedReviews()
-            #if DEBUG || LOCAL_BUILD
-                if try await installFailedReviewPreviewIfEnabled() {
-                    return
-                }
-            #endif
             schedulePendingReview()
         } catch {
             log(error, message: "Failed to recover queued Auto Learn reviews")
@@ -232,11 +227,9 @@ actor AutoLearnService {
         }
 
         guard let revision = FinalSnapshotDiffEngine.revision(from: snapshot) else { return }
-        #if DEBUG || LOCAL_BUILD
-            logger.notice(
-                "Auto Learn captured revision original=\(revision.original, privacy: .public) corrected=\(revision.corrected, privacy: .public)"
-            )
-        #endif
+        logger.notice(
+            "Auto Learn captured revision original=\(revision.original, privacy: .public) corrected=\(revision.corrected, privacy: .public)"
+        )
         let candidates = CorrectionDiffEngine.candidates(from: revision)
         guard !candidates.isEmpty else { return }
 
@@ -398,46 +391,6 @@ actor AutoLearnService {
             "\(message, privacy: .public) domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
         )
     }
-
-    #if DEBUG || LOCAL_BUILD
-        private struct FailedReviewPreview: Decodable {
-            struct Candidate: Decodable {
-                let source: String
-                let destination: String
-            }
-
-            let enabled: Bool
-            let status: String
-            let failureMessage: String
-            let candidates: [Candidate]
-        }
-
-        private func installFailedReviewPreviewIfEnabled() async throws -> Bool {
-            let resourceURL = Bundle.main.url(
-                forResource: "AutoLearnFailedPreview",
-                withExtension: "json",
-                subdirectory: "Resources"
-            ) ?? Bundle.main.url(forResource: "AutoLearnFailedPreview", withExtension: "json")
-            guard let resourceURL else { return false }
-
-            let data = try Data(contentsOf: resourceURL)
-            let preview = try JSONDecoder().decode(FailedReviewPreview.self, from: data)
-            guard preview.enabled, preview.status == "failed" else { return false }
-
-            let candidates = preview.candidates.map {
-                LearnedReplacementCandidate(source: $0.source, destination: $0.destination)
-            }
-            _ = try await pendingQueue.enqueue(candidates)
-            AutoLearnSettings.recordFailure(
-                NSError(
-                    domain: "AutoLearnPreview",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: preview.failureMessage]
-                )
-            )
-            return true
-        }
-    #endif
 
     private func sleep(nanoseconds: UInt64) async -> Bool {
         do {
