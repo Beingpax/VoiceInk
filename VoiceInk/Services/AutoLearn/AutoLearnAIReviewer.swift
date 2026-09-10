@@ -186,13 +186,15 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     private static let reviewPrompt = """
         Review corrections the user made to speech-to-text output. Each source and destination is a short window containing the changed text plus up to two unchanged terms on each side. changedSource and changedDestination identify the detected edit.
 
-        Accept only reusable corrections for the same lexical term: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, specialized vocabulary, or a word whose speech-recognition output was incorrectly joined or split. The source must be a plausible phonetic, spelling, capitalization, punctuation, or spacing error for that same term.
+        Accept only reusable corrections for the same spoken term: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, specialized vocabulary, or a word whose speech-recognition output was incorrectly joined or split. The source must be a plausible phonetic, spelling, capitalization, punctuation, or spacing transcription error for that same spoken term.
+
+        A phonetic transcription error may resemble a different ordinary word or name and may contain a different number of written words. Accept it when the complete source plausibly sounds like the complete destination and the destination is reusable terminology. For example, accept "Claudia" to "Claude AI", "get hub" to "GitHub", and "post gray sequel" to "PostgreSQL".
 
         Accept joining or splitting word boundaries when meaning is unchanged, such as "data base" to "database" or "web hook" to "webhook".
 
         Reject capitalization-only changes for ordinary words, such as "apple" to "Apple" or "sun" to "Sun". Accept capitalization or stylization when it identifies a proper name, brand, product, project, acronym, or specialized term, such as "open ai" to "OpenAI" or "get hub" to "GitHub".
 
-        Reject added or removed meaning, qualifiers, product editions, or specificity, even when both sides are related. For example, reject "GitHub" to "GitHub Enterprise", "Visual Studio" to "Visual Studio Code", and "PostgreSQL" to "PostgreSQL database".
+        Reject genuinely added or removed meaning, qualifiers, product editions, or specificity when the source already correctly names a term. For example, reject "Claude" to "Claude AI", "GitHub" to "GitHub Enterprise", "Visual Studio" to "Visual Studio Code", and "PostgreSQL" to "PostgreSQL database". Do not apply this rejection when the whole source is instead a phonetic misrecognition of the whole destination, such as "Claudia" to "Claude AI".
 
         Reject ordinary wording, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions, and deliberate abbreviation or expansion transformations. In particular, reject "application programming interface" to "API", "central processing unit" to "CPU", and "pull request" to "PR".
 
