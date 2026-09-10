@@ -57,6 +57,21 @@ enum DictionaryService {
         }
     }
 
+    @discardableResult
+    static func removeVocabularyWord(_ word: VocabularyWord, context: ModelContext) -> String? {
+        context.delete(word)
+        do {
+            try context.save()
+            return nil
+        } catch {
+            context.rollback()
+            return String(
+                format: String(localized: "Failed to remove word: %@"),
+                error.localizedDescription
+            )
+        }
+    }
+
     // MARK: - Duplicate Cleanup
 
     @discardableResult
@@ -197,12 +212,18 @@ enum DictionaryService {
         _ replacement: WordReplacement,
         original: String,
         replacementText: String,
-        existing: [WordReplacement],
         context: ModelContext
     ) -> String? {
         let tokens = WordReplacementVariants.parse(original)
         let destination = replacementText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tokens.isEmpty, !destination.isEmpty else { return nil }
+
+        let existing: [WordReplacement]
+        do {
+            existing = try context.fetch(FetchDescriptor<WordReplacement>())
+        } catch {
+            return String(localized: "Failed to load word replacements")
+        }
 
         let destinationKey = WordReplacementVariants.destinationKey(for: destination)
         let otherReplacements = existing.filter {
@@ -253,6 +274,21 @@ enum DictionaryService {
             context.rollback()
             return String(
                 format: String(localized: "Failed to save changes: %@"),
+                error.localizedDescription
+            )
+        }
+    }
+
+    @discardableResult
+    static func removeWordReplacement(_ replacement: WordReplacement, context: ModelContext) -> String? {
+        context.delete(replacement)
+        do {
+            try context.save()
+            return nil
+        } catch {
+            context.rollback()
+            return String(
+                format: String(localized: "Failed to remove replacement: %@"),
                 error.localizedDescription
             )
         }

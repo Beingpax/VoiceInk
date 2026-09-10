@@ -1,9 +1,24 @@
 import SwiftData
 import SwiftUI
 
-enum VocabularySortMode: String {
-    case wordAsc = "wordAsc"
-    case wordDesc = "wordDesc"
+private extension VocabularySortMode {
+    var label: LocalizedStringKey {
+        switch self {
+        case .wordAsc: "A–Z"
+        case .wordDesc: "Z–A"
+        case .newest: "Newest"
+        case .oldest: "Oldest"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .wordAsc: "arrow.up"
+        case .wordDesc: "arrow.down"
+        case .newest: "clock.arrow.circlepath"
+        case .oldest: "clock"
+        }
+    }
 }
 
 struct VocabularyView: View {
@@ -15,25 +30,17 @@ struct VocabularyView: View {
     @State private var sortMode: VocabularySortMode = .wordAsc
 
     init() {
-        if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
-            let mode = VocabularySortMode(rawValue: savedSort)
-        {
-            _sortMode = State(initialValue: mode)
-        }
+        _sortMode = State(initialValue: DictionarySortService.shared.savedVocabularyMode())
     }
 
     private var sortedItems: [VocabularyWord] {
-        switch sortMode {
-        case .wordAsc:
-            return vocabularyWords.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
-        case .wordDesc:
-            return vocabularyWords.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedDescending }
-        }
+        DictionarySortService.shared.sortVocabulary(vocabularyWords, by: sortMode)
     }
 
-    private func toggleSort() {
-        sortMode = (sortMode == .wordAsc) ? .wordDesc : .wordAsc
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "vocabularySortMode")
+    private func cycleSort() {
+        let service = DictionarySortService.shared
+        sortMode = service.nextVocabularyMode(after: sortMode)
+        service.saveVocabularyMode(sortMode)
     }
 
     var body: some View {
@@ -48,10 +55,10 @@ struct VocabularyView: View {
                         Spacer()
 
                         DictionaryEdgeActionButton(
-                            title: sortMode == .wordAsc ? "ASC" : "DESC",
-                            systemImage: sortMode == .wordAsc ? "chevron.up" : "chevron.down",
-                            help: "Sort alphabetically",
-                            action: toggleSort
+                            title: sortMode.label,
+                            systemImage: sortMode.iconName,
+                            help: "Change vocabulary sorting",
+                            action: cycleSort
                         )
                     }
 
@@ -108,14 +115,8 @@ struct VocabularyView: View {
     }
 
     private func removeWord(_ word: VocabularyWord) {
-        modelContext.delete(word)
-
-        do {
-            try modelContext.save()
-        } catch {
-            // Rollback the delete to restore UI consistency
-            modelContext.rollback()
-            alertMessage = String(format: String(localized: "Failed to remove word: %@"), error.localizedDescription)
+        if let error = DictionaryService.removeVocabularyWord(word, context: modelContext) {
+            alertMessage = error
             showAlert = true
         }
     }

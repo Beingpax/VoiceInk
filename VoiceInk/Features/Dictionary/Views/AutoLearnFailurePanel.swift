@@ -47,7 +47,7 @@ struct AutoLearnFailurePanel: View {
 
     private var errorDescription: String {
         failureMessage.isEmpty
-            ? "The selected provider or model could not review the pending corrections."
+            ? String(localized: "The selected provider or model could not review the pending corrections.")
             : failureMessage
     }
 

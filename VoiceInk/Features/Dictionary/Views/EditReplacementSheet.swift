@@ -126,18 +126,10 @@ struct EditReplacementSheet: View {
             !replacementWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return }
 
-        let descriptor = FetchDescriptor<WordReplacement>()
-        guard let allReplacements = try? modelContext.fetch(descriptor) else {
-            alertMessage = String(localized: "Failed to load word replacements")
-            showAlert = true
-            return
-        }
-
         if let error = DictionaryService.updateWordReplacement(
             replacement,
             original: originalWord,
             replacementText: replacementWord,
-            existing: allReplacements,
             context: modelContext
         ) {
             alertMessage = error

@@ -18,9 +18,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         var errorDescription: String? {
             switch self {
             case .unavailable:
-                return "The configured AI enhancement provider cannot review Auto Learn candidates."
+                return String(
+                    localized: "The configured AI enhancement provider cannot review Auto Learn candidates."
+                )
             case .invalidResponse:
-                return "The AI returned an invalid Auto Learn review response."
+                return String(localized: "The AI returned an invalid Auto Learn review response.")
             }
         }
     }

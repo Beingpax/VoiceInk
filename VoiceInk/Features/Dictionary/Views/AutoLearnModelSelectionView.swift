@@ -5,7 +5,9 @@ struct AutoLearnSectionHeader: View {
         HStack(spacing: 4) {
             Text("Auto Learn")
             InfoTip(
-                "Automatically learns corrections you make after dictation. Only correction pairs are sent to your selected AI provider; recordings and full text fields are never sent.",
+                LocalizedStringKey(
+                    "Automatically learns corrections you make after dictation. Only correction pairs are sent to your selected AI provider; recordings and full text fields are never sent."
+                ),
                 learnMoreURL: "https://tryvoiceink.com/docs/auto-learn-dictionary"
             )
             .accessibilityLabel("Learn about Dictionary Auto Learn")

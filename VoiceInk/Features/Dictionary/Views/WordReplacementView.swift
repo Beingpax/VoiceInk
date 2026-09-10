@@ -1,16 +1,26 @@
 import SwiftData
 import SwiftUI
 
-enum SortMode: String {
-    case originalAsc = "originalAsc"
-    case originalDesc = "originalDesc"
-    case replacementAsc = "replacementAsc"
-    case replacementDesc = "replacementDesc"
-}
+private extension WordReplacementSortMode {
+    var label: LocalizedStringKey {
+        switch self {
+        case .originalAsc: "Original A–Z"
+        case .originalDesc: "Original Z–A"
+        case .replacementAsc: "Replacement A–Z"
+        case .replacementDesc: "Replacement Z–A"
+        case .newest: "Newest"
+        case .oldest: "Oldest"
+        }
+    }
 
-enum SortColumn {
-    case original
-    case replacement
+    var iconName: String {
+        switch self {
+        case .originalAsc, .replacementAsc: "arrow.up"
+        case .originalDesc, .replacementDesc: "arrow.down"
+        case .newest: "clock.arrow.circlepath"
+        case .oldest: "clock"
+        }
+    }
 }
 
 struct WordReplacementView: View {
@@ -19,48 +29,23 @@ struct WordReplacementView: View {
     @State private var showAlert = false
     @State private var editingReplacement: WordReplacement? = nil
     @State private var alertMessage = ""
-    @State private var sortMode: SortMode = .originalAsc
+    @State private var sortMode: WordReplacementSortMode = .originalAsc
     @State private var originalWord = ""
     @State private var replacementWord = ""
     @State private var showInfoPopover = false
 
     init() {
-        if let savedSort = UserDefaults.standard.string(forKey: "wordReplacementSortMode"),
-            let mode = SortMode(rawValue: savedSort)
-        {
-            _sortMode = State(initialValue: mode)
-        }
+        _sortMode = State(initialValue: DictionarySortService.shared.savedWordReplacementMode())
     }
 
     private var sortedReplacements: [WordReplacement] {
-        switch sortMode {
-        case .originalAsc:
-            return wordReplacements.sorted {
-                $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedAscending
-            }
-        case .originalDesc:
-            return wordReplacements.sorted {
-                $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedDescending
-            }
-        case .replacementAsc:
-            return wordReplacements.sorted {
-                $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedAscending
-            }
-        case .replacementDesc:
-            return wordReplacements.sorted {
-                $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedDescending
-            }
-        }
+        DictionarySortService.shared.sortWordReplacements(wordReplacements, by: sortMode)
     }
 
-    private func toggleSort(for column: SortColumn) {
-        switch column {
-        case .original:
-            sortMode = (sortMode == .originalAsc) ? .originalDesc : .originalAsc
-        case .replacement:
-            sortMode = (sortMode == .replacementAsc) ? .replacementDesc : .replacementAsc
-        }
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
+    private func cycleSort() {
+        let service = DictionarySortService.shared
+        sortMode = service.nextWordReplacementMode(after: sortMode)
+        service.saveWordReplacementMode(sortMode)
     }
 
     var body: some View {
@@ -75,53 +60,29 @@ struct WordReplacementView: View {
                         Spacer()
 
                         DictionaryEdgeActionButton(
-                            title: isAscending ? "ASC" : "DESC",
-                            systemImage: isAscending ? "chevron.up" : "chevron.down",
-                            help: "Reverse sort order",
-                            action: toggleSortDirection
+                            title: sortMode.label,
+                            systemImage: sortMode.iconName,
+                            help: "Change word replacement sorting",
+                            action: cycleSort
                         )
                     }
                     .padding(.bottom, 4)
 
                     HStack(spacing: 8) {
-                        Button(action: { toggleSort(for: .original) }) {
-                            HStack(spacing: 4) {
-                                Text("Original")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(isSortingOriginal ? AppTheme.Text.primary : AppTheme.Text.secondary)
-
-                                if isSortingOriginal {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .semibold))
-                                        .foregroundStyle(AppTheme.Text.secondary)
-                                }
-                            }
+                        Text("Original")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppTheme.Text.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Sort by original")
 
                         Image(systemName: "arrow.right")
                             .foregroundColor(.secondary)
                             .font(.system(size: 10))
                             .frame(width: 10)
 
-                        Button(action: { toggleSort(for: .replacement) }) {
-                            HStack(spacing: 4) {
-                                Text("Replacement")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(isSortingOriginal ? AppTheme.Text.secondary : AppTheme.Text.primary)
-
-                                if !isSortingOriginal {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .semibold))
-                                        .foregroundStyle(AppTheme.Text.secondary)
-                                }
-                            }
+                        Text("Replacement")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(AppTheme.Text.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .help("Sort by replacement")
                     }
                     .padding(.horizontal, 4)
                     .padding(.vertical, 8)
@@ -217,34 +178,9 @@ struct WordReplacementView: View {
         replacementWord = ""
     }
 
-    private var isAscending: Bool {
-        sortMode == .originalAsc || sortMode == .replacementAsc
-    }
-
-    private var isSortingOriginal: Bool {
-        sortMode == .originalAsc || sortMode == .originalDesc
-    }
-
-    private func toggleSortDirection() {
-        switch sortMode {
-        case .originalAsc: sortMode = .originalDesc
-        case .originalDesc: sortMode = .originalAsc
-        case .replacementAsc: sortMode = .replacementDesc
-        case .replacementDesc: sortMode = .replacementAsc
-        }
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
-    }
-
     private func removeReplacement(_ replacement: WordReplacement) {
-        modelContext.delete(replacement)
-
-        do {
-            try modelContext.save()
-        } catch {
-            // Rollback the delete to restore UI consistency
-            modelContext.rollback()
-            alertMessage = String(
-                format: String(localized: "Failed to remove replacement: %@"), error.localizedDescription)
+        if let error = DictionaryService.removeWordReplacement(replacement, context: modelContext) {
+            alertMessage = error
             showAlert = true
         }
     }

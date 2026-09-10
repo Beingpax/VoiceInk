@@ -350,11 +350,11 @@ actor AutoLearnService {
         if corrections.count == 1, let correction = corrections.first {
             await MainActor.run {
                 NotificationManager.shared.showNotification(
-                    title: "Added “\(correction.destination)” to Dictionary",
+                    title: String(localized: "Added “\(correction.destination)” to Dictionary"),
                     type: .success,
                     duration: 4,
                     actionButton: (
-                        label: "Undo",
+                        label: String(localized: "Undo"),
                         action: {
                             Task {
                                 await AutoLearnService.shared.undo(correction)
@@ -366,7 +366,7 @@ actor AutoLearnService {
         } else {
             await MainActor.run {
                 NotificationManager.shared.showNotification(
-                    title: "Added \(corrections.count) words to Dictionary",
+                    title: String(localized: "Added \(corrections.count) words to Dictionary"),
                     type: .success
                 )
             }
