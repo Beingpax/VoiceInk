@@ -631,7 +631,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 213;
+				CURRENT_PROJECT_VERSION = 214;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
 				DEVELOPMENT_TEAM = V6J6A3VWY2;
@@ -647,7 +647,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.4;
-				MARKETING_VERSION = 2.13;
+				MARKETING_VERSION = 2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk.dev;
 				PRODUCT_MODULE_NAME = VoiceInk;
 				PRODUCT_NAME = "VoiceInk Dev";
@@ -667,7 +667,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 213;
+				CURRENT_PROJECT_VERSION = 214;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
 				DEVELOPMENT_TEAM = V6J6A3VWY2;
@@ -683,7 +683,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.4;
-				MARKETING_VERSION = 2.13;
+				MARKETING_VERSION = 2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "ENABLE_NATIVE_SPEECH_ANALYZER $(inherited)";
@@ -766,7 +766,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 213;
+				CURRENT_PROJECT_VERSION = 214;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -778,7 +778,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.4;
-				MARKETING_VERSION = 2.13;
+				MARKETING_VERSION = 2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk.RefineXPC;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -794,7 +794,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 213;
+				CURRENT_PROJECT_VERSION = 214;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -806,7 +806,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.4;
-				MARKETING_VERSION = 2.13;
+				MARKETING_VERSION = 2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk.RefineXPC;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
