@@ -1,3 +1,4 @@
+import CoreFoundation
 import Foundation
 import OSLog
 
@@ -7,8 +8,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         let candidates: [AutoLearnReviewCandidate]
     }
 
-    private struct ReviewResponse: Decodable {
-        let decisions: [AutoLearnReviewDecision]
+    private struct ParsedDecision {
+        let id: UUID
+        let accepted: Bool?
+        let source: String?
+        let destination: String?
     }
 
     private enum ReviewError: LocalizedError {
@@ -37,8 +41,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         self.enhancementService = enhancementService
     }
 
-    func review(_ candidates: [AutoLearnReviewCandidate]) async throws -> [AutoLearnReviewDecision] {
-        guard !candidates.isEmpty else { return [] }
+    func review(_ candidates: [AutoLearnReviewCandidate]) async throws -> AutoLearnReviewResult {
+        guard !candidates.isEmpty else {
+            return AutoLearnReviewResult(decisions: [], unresolvedIDs: [])
+        }
         guard let aiService = enhancementService.getAIService() else {
             throw ReviewError.unavailable
         }
@@ -98,28 +104,40 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             modelName: modelName
         )
         logRawText(responseText, label: "AI response")
-        let response = try decodeResponse(responseText)
+        let responseDecisions = try decodeResponse(responseText)
         let expectedIDs = Set(candidates.map(\.id))
-        let returnedIDs = response.decisions.map(\.id)
-        guard returnedIDs.count == Set(returnedIDs).count,
-            Set(returnedIDs) == expectedIDs
-        else {
-            throw ReviewError.invalidResponse
+        let decisionsByID = Dictionary(grouping: responseDecisions) { $0.id }
+        for unknownID in decisionsByID.keys where !expectedIDs.contains(unknownID) {
+            logger.warning(
+                "Ignoring Auto Learn decision with unknown id=\(unknownID.uuidString, privacy: .public)"
+            )
         }
 
-        let candidatesByID = Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, $0) })
-        return try response.decisions.map { decision in
-            guard decision.accepted else {
-                return AutoLearnReviewDecision(
-                    id: decision.id,
-                    accepted: false,
-                    source: nil,
-                    destination: nil
-                )
+        var decisions: [AutoLearnReviewDecision] = []
+        var unresolvedIDs = Set<UUID>()
+
+        for candidate in candidates {
+            guard let matches = decisionsByID[candidate.id], matches.count == 1,
+                let decision = matches.first,
+                let accepted = decision.accepted
+            else {
+                unresolvedIDs.insert(candidate.id)
+                continue
             }
 
-            guard let candidate = candidatesByID[decision.id],
-                let source = decision.source?.trimmingCharacters(in: .whitespacesAndNewlines),
+            guard accepted else {
+                decisions.append(
+                    AutoLearnReviewDecision(
+                        id: candidate.id,
+                        accepted: false,
+                        source: nil,
+                        destination: nil
+                    )
+                )
+                continue
+            }
+
+            guard let source = decision.source?.trimmingCharacters(in: .whitespacesAndNewlines),
                 let destination = decision.destination?.trimmingCharacters(in: .whitespacesAndNewlines),
                 !source.isEmpty,
                 !destination.isEmpty,
@@ -131,16 +149,24 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 source.range(of: candidate.changedSource, options: .literal) != nil,
                 destination.range(of: candidate.changedDestination, options: .literal) != nil
             else {
-                throw ReviewError.invalidResponse
+                unresolvedIDs.insert(candidate.id)
+                continue
             }
 
-            return AutoLearnReviewDecision(
-                id: decision.id,
-                accepted: true,
-                source: source,
-                destination: destination
+            decisions.append(
+                AutoLearnReviewDecision(
+                    id: candidate.id,
+                    accepted: true,
+                    source: source,
+                    destination: destination
+                )
             )
         }
+
+        return AutoLearnReviewResult(
+            decisions: decisions,
+            unresolvedIDs: unresolvedIDs
+        )
     }
 
     private func logRawText(_ text: String, label: String) {
@@ -163,7 +189,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
     }
 
-    private func decodeResponse(_ text: String) throws -> ReviewResponse {
+    private func decodeResponse(_ text: String) throws -> [ParsedDecision] {
         var payload = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if payload.hasPrefix("```") {
             let lines = payload.split(separator: "\n", omittingEmptySubsequences: false)
@@ -176,13 +202,35 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             payload = lines.dropFirst().dropLast().joined(separator: "\n")
         }
 
-        guard let data = payload.data(using: .utf8) else {
+        guard let data = payload.data(using: .utf8),
+            let jsonObject = try? JSONSerialization.jsonObject(with: data),
+            let root = jsonObject as? [String: Any],
+            let rawDecisions = root["decisions"] as? [Any]
+        else {
             throw ReviewError.invalidResponse
         }
-        do {
-            return try JSONDecoder().decode(ReviewResponse.self, from: data)
-        } catch {
-            throw ReviewError.invalidResponse
+
+        return rawDecisions.compactMap { rawDecision in
+            guard let object = rawDecision as? [String: Any],
+                let idText = object["id"] as? String,
+                let id = UUID(uuidString: idText)
+            else { return nil }
+
+            let accepted: Bool?
+            if let value = object["accepted"] as? NSNumber,
+                CFGetTypeID(value) == CFBooleanGetTypeID()
+            {
+                accepted = value.boolValue
+            } else {
+                accepted = nil
+            }
+
+            return ParsedDecision(
+                id: id,
+                accepted: accepted,
+                source: object["source"] as? String,
+                destination: object["destination"] as? String
+            )
         }
     }
 

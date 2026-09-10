@@ -64,6 +64,11 @@ struct AutoLearnReviewDecision: Codable, Sendable {
     let destination: String?
 }
 
+struct AutoLearnReviewResult: Sendable {
+    let decisions: [AutoLearnReviewDecision]
+    let unresolvedIDs: Set<UUID>
+}
+
 struct AutoLearnMutationSummary: Sendable {
     let createdCount: Int
     let updatedCount: Int

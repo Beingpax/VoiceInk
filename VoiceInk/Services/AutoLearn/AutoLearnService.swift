@@ -286,15 +286,15 @@ actor AutoLearnService {
         }
 
         let candidateIDs = Set(candidates.map(\.id))
-        let decisions: [AutoLearnReviewDecision]
+        let reviewResult: AutoLearnReviewResult
         do {
-            decisions = try await reviewer.review(candidates)
+            reviewResult = try await reviewer.review(candidates)
             AutoLearnSettings.clearFailure()
-            let acceptedCount = decisions.reduce(0) { count, decision in
+            let acceptedCount = reviewResult.decisions.reduce(0) { count, decision in
                 count + (decision.accepted ? 1 : 0)
             }
             logger.notice(
-                "Completed Auto Learn AI review accepted=\(acceptedCount, privacy: .public) rejected=\(decisions.count - acceptedCount, privacy: .public)"
+                "Completed Auto Learn AI review accepted=\(acceptedCount, privacy: .public) rejected=\(reviewResult.decisions.count - acceptedCount, privacy: .public) unresolved=\(reviewResult.unresolvedIDs.count, privacy: .public)"
             )
         } catch {
             try? await pendingQueue.release(candidateIDs)
@@ -313,8 +313,13 @@ actor AutoLearnService {
         }
 
         do {
-            let summary = try await replacementStore.apply(decisions, candidates: candidates)
-            try await pendingQueue.remove(candidateIDs)
+            let resolvedIDs = candidateIDs.subtracting(reviewResult.unresolvedIDs)
+            let summary = try await replacementStore.apply(
+                reviewResult.decisions,
+                candidates: candidates
+            )
+            try await pendingQueue.remove(resolvedIDs)
+            try await pendingQueue.release(reviewResult.unresolvedIDs)
             if summary.hasChanges {
                 logger.notice(
                     "Applied AI-reviewed Auto Learn results created=\(summary.createdCount, privacy: .public) updated=\(summary.updatedCount, privacy: .public) vocabulary=\(summary.vocabularyCount, privacy: .public)"
@@ -327,7 +332,10 @@ actor AutoLearnService {
                 logger.notice("Auto Learn review completed without adding dictionary entries")
             }
 
-            finishReviewTask(generation: generation, continueProcessing: true)
+            finishReviewTask(
+                generation: generation,
+                continueProcessing: reviewResult.unresolvedIDs.isEmpty
+            )
         } catch {
             try? await pendingQueue.release(candidateIDs)
             finishReviewTask(generation: generation)
