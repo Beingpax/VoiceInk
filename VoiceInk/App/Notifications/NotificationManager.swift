@@ -14,7 +14,7 @@ final class NotificationManager {
     func showNotification(
         title: String,
         type: AppNotificationView.NotificationType,
-        duration: TimeInterval = 3.0,
+        duration: TimeInterval = 5.0,
         onTap: (() -> Void)? = nil,
         actionButton: (label: String, action: () -> Void)? = nil
     ) {
