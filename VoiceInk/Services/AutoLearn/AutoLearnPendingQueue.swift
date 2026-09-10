@@ -35,12 +35,14 @@ actor AutoLearnPendingQueue {
 
     func recoverInterruptedReviews() throws {
         try loadIfNeeded()
+        let originalCount = records.count
         var changed = false
         for index in records.indices where records[index].status == .reviewing {
             records[index].status = .pending
             changed = true
         }
-        if changed {
+        trimToLimit()
+        if changed || records.count != originalCount {
             try save()
         }
     }
@@ -72,18 +74,17 @@ actor AutoLearnPendingQueue {
         }
 
         if insertedCount > 0 {
+            trimToLimit()
             try save()
         }
         return insertedCount
     }
 
-    func claimPending(limit: Int) throws -> [AutoLearnReviewCandidate] {
-        guard limit > 0 else { return [] }
+    func claimPending() throws -> [AutoLearnReviewCandidate] {
         try loadIfNeeded()
 
         let indices = records.indices
             .filter { records[$0].status == .pending }
-            .prefix(limit)
         guard !indices.isEmpty else { return [] }
 
         for index in indices {
@@ -143,5 +144,18 @@ actor AutoLearnPendingQueue {
     private func pairKey(source: String, destination: String) -> String {
         WordReplacementVariants.key(for: source) + "\u{0}"
             + WordReplacementVariants.destinationKey(for: destination)
+    }
+
+    private func trimToLimit() {
+        let overflow = records.count - AutoLearnLimits.maximumPendingCandidates
+        guard overflow > 0 else { return }
+
+        let removableIDs = Set(
+            records.lazy
+                .filter { $0.status == .pending }
+                .prefix(overflow)
+                .map(\.id)
+        )
+        records.removeAll { removableIDs.contains($0.id) }
     }
 }

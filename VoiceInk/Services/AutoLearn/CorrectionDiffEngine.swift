@@ -1,253 +1,328 @@
 import Foundation
-import NaturalLanguage
 
 enum CorrectionDiffEngine {
-    private struct WordToken {
+    private struct TextSegment: Equatable {
         let text: String
         let range: Range<String.Index>
+
+        static func == (lhs: TextSegment, rhs: TextSegment) -> Bool {
+            lhs.text == rhs.text
+        }
     }
 
-    private struct TokenHunk {
+    private struct SegmentHunk {
         let originalRange: Range<Int>
         let correctedRange: Range<Int>
     }
 
-    private struct CommonRun {
-        let originalRange: Range<Int>
-        let correctedRange: Range<Int>
-    }
+    private static let trailingSentencePunctuation: Set<Character> = [
+        ".", ",", "!", "?", ";", ":",
+    ]
+    private static let leadingWrappers: Set<Character> = [
+        "\"", "“", "‘", "(", "[", "{",
+    ]
+    private static let structuralSeparators: Set<Character> = [
+        ",", "!", "?", ";", ":", "…", "(", ")", "[", "]", "{", "}", "\"", "“", "”",
+    ]
 
     static func candidates(from revision: AutoLearnRevision) -> [LearnedReplacementCandidate] {
-        guard revision.original != revision.corrected else { return [] }
+        let original = revision.original.precomposedStringWithCanonicalMapping
+        let corrected = revision.corrected.precomposedStringWithCanonicalMapping
+        guard original != corrected else { return [] }
 
-        let originalTokens = tokens(in: revision.original)
-        let correctedTokens = tokens(in: revision.corrected)
-        guard originalTokens.count <= AutoLearnLimits.maximumDiffTokens,
-            correctedTokens.count <= AutoLearnLimits.maximumDiffTokens
+        let originalSegments = segments(in: original)
+        let correctedSegments = segments(in: corrected)
+        guard originalSegments.count <= AutoLearnLimits.maximumDiffSegments,
+            correctedSegments.count <= AutoLearnLimits.maximumDiffSegments
         else {
             return []
         }
 
-        var hunks: [TokenHunk] = []
-        collectHunks(
-            originalTokens: originalTokens,
-            correctedTokens: correctedTokens,
-            originalRange: 0..<originalTokens.count,
-            correctedRange: 0..<correctedTokens.count,
-            depth: 0,
-            into: &hunks
-        )
-
+        let hunks = segmentHunks(from: originalSegments, to: correctedSegments)
         var seen = Set<String>()
         var results: [LearnedReplacementCandidate] = []
 
         for hunk in hunks {
-            guard !hunk.originalRange.isEmpty, !hunk.correctedRange.isEmpty,
-                hunk.originalRange.count <= AutoLearnLimits.maximumCandidateTokens,
-                hunk.correctedRange.count <= AutoLearnLimits.maximumCandidateTokens
+            guard !hunk.originalRange.isEmpty,
+                !hunk.correctedRange.isEmpty,
+                hunk.originalRange.count <= AutoLearnLimits.maximumCandidateSegments,
+                hunk.correctedRange.count <= AutoLearnLimits.maximumCandidateSegments
             else {
                 continue
             }
 
             let touchesLeadingBoundary = hunk.originalRange.lowerBound == 0
                 || hunk.correctedRange.lowerBound == 0
-            let touchesTrailingBoundary = hunk.originalRange.upperBound == originalTokens.count
-                || hunk.correctedRange.upperBound == correctedTokens.count
-            // A field edge is ambiguous because text may have been added outside the
-            // paste. Still allow an edge correction when unchanged words on the other
-            // side anchor the hunk safely inside the pasted text.
+            let touchesTrailingBoundary = hunk.originalRange.upperBound == originalSegments.count
+                || hunk.correctedRange.upperBound == correctedSegments.count
             let hasLeadingAnchor = hunk.originalRange.lowerBound > 0
                 && hunk.correctedRange.lowerBound > 0
-            let hasTrailingAnchor = hunk.originalRange.upperBound < originalTokens.count
-                && hunk.correctedRange.upperBound < correctedTokens.count
-            let isSingleWordCorrection = originalTokens.count == 1
-                && correctedTokens.count == 1
-                && hunk.originalRange == originalTokens.indices
-                && hunk.correctedRange == correctedTokens.indices
+            let hasTrailingAnchor = hunk.originalRange.upperBound < originalSegments.count
+                && hunk.correctedRange.upperBound < correctedSegments.count
+            let isWholeTextCorrection = hunk.originalRange == originalSegments.indices
+                && hunk.correctedRange == correctedSegments.indices
+
             guard
                 !(
                     revision.hasAmbiguousLeadingBoundary && touchesLeadingBoundary
-                        && !hasTrailingAnchor && !isSingleWordCorrection
+                        && !hasTrailingAnchor && !isWholeTextCorrection
                 ),
                 !(
                     revision.hasAmbiguousTrailingBoundary && touchesTrailingBoundary
-                        && !hasLeadingAnchor && !isSingleWordCorrection
+                        && !hasLeadingAnchor && !isWholeTextCorrection
                 ),
                 let source = fragment(
-                    from: revision.original,
-                    tokens: originalTokens,
-                    tokenRange: hunk.originalRange
+                    from: original,
+                    segments: originalSegments,
+                    segmentRange: hunk.originalRange
                 ),
                 let destination = fragment(
-                    from: revision.corrected,
-                    tokens: correctedTokens,
-                    tokenRange: hunk.correctedRange
-                )
+                    from: corrected,
+                    segments: correctedSegments,
+                    segmentRange: hunk.correctedRange
+                ),
+                let pair = cleanedPair(source: source, destination: destination)
             else {
                 continue
             }
 
-            guard source != destination,
-                !source.contains(","),
-                source.count <= AutoLearnLimits.maximumCandidateCharacters,
-                destination.count <= AutoLearnLimits.maximumCandidateCharacters,
-                !containsControlCharacter(source),
-                !containsControlCharacter(destination)
+            guard pair.source != pair.destination,
+                !pair.source.contains(","),
+                pair.source.count <= AutoLearnLimits.maximumCandidateCharacters,
+                pair.destination.count <= AutoLearnLimits.maximumCandidateCharacters,
+                isWithinUnspacedPrivacyLimit(pair.source, pair.destination),
+                !containsControlCharacter(pair.source),
+                !containsControlCharacter(pair.destination)
             else {
                 continue
             }
 
-            let deduplicationKey =
-                source.precomposedStringWithCanonicalMapping + "\u{0}"
-                + destination.precomposedStringWithCanonicalMapping
+            let deduplicationKey = pair.source + "\u{0}" + pair.destination
             guard seen.insert(deduplicationKey).inserted else { continue }
 
-            results.append(LearnedReplacementCandidate(source: source, destination: destination))
+            results.append(
+                LearnedReplacementCandidate(
+                    source: pair.source,
+                    destination: pair.destination
+                ))
         }
 
         return results
     }
 
-    private static func tokens(in text: String) -> [WordToken] {
-        guard !text.isEmpty else { return [] }
+    private static func segments(in text: String) -> [TextSegment] {
+        var results: [TextSegment] = []
+        var segmentStart: String.Index?
+        var index = text.startIndex
 
-        let tokenizer = NLTokenizer(unit: .word)
-        tokenizer.string = text
-        return tokenizer.tokens(for: text.startIndex..<text.endIndex).map { range in
-            WordToken(text: String(text[range]), range: range)
-        }
-    }
-
-    private static func collectHunks(
-        originalTokens: [WordToken],
-        correctedTokens: [WordToken],
-        originalRange: Range<Int>,
-        correctedRange: Range<Int>,
-        depth: Int,
-        into hunks: inout [TokenHunk]
-    ) {
-        var originalStart = originalRange.lowerBound
-        var correctedStart = correctedRange.lowerBound
-        var originalEnd = originalRange.upperBound
-        var correctedEnd = correctedRange.upperBound
-
-        while originalStart < originalEnd,
-            correctedStart < correctedEnd,
-            originalTokens[originalStart].text == correctedTokens[correctedStart].text
-        {
-            originalStart += 1
-            correctedStart += 1
-        }
-
-        while originalStart < originalEnd,
-            correctedStart < correctedEnd,
-            originalTokens[originalEnd - 1].text == correctedTokens[correctedEnd - 1].text
-        {
-            originalEnd -= 1
-            correctedEnd -= 1
-        }
-
-        let trimmedOriginalRange = originalStart..<originalEnd
-        let trimmedCorrectedRange = correctedStart..<correctedEnd
-        guard !trimmedOriginalRange.isEmpty || !trimmedCorrectedRange.isEmpty else { return }
-
-        guard !trimmedOriginalRange.isEmpty, !trimmedCorrectedRange.isEmpty, depth < 64 else {
-            hunks.append(
-                TokenHunk(originalRange: trimmedOriginalRange, correctedRange: trimmedCorrectedRange))
-            return
-        }
-
-        let comparisonWork = trimmedOriginalRange.count * trimmedCorrectedRange.count
-        guard comparisonWork <= 1_000_000,
-            let commonRun = longestCommonRun(
-                originalTokens: originalTokens,
-                correctedTokens: correctedTokens,
-                originalRange: trimmedOriginalRange,
-                correctedRange: trimmedCorrectedRange
-            )
-        else {
-            hunks.append(
-                TokenHunk(originalRange: trimmedOriginalRange, correctedRange: trimmedCorrectedRange))
-            return
-        }
-
-        collectHunks(
-            originalTokens: originalTokens,
-            correctedTokens: correctedTokens,
-            originalRange: trimmedOriginalRange.lowerBound..<commonRun.originalRange.lowerBound,
-            correctedRange: trimmedCorrectedRange.lowerBound..<commonRun.correctedRange.lowerBound,
-            depth: depth + 1,
-            into: &hunks
-        )
-        collectHunks(
-            originalTokens: originalTokens,
-            correctedTokens: correctedTokens,
-            originalRange: commonRun.originalRange.upperBound..<trimmedOriginalRange.upperBound,
-            correctedRange: commonRun.correctedRange.upperBound..<trimmedCorrectedRange.upperBound,
-            depth: depth + 1,
-            into: &hunks
-        )
-    }
-
-    private static func longestCommonRun(
-        originalTokens: [WordToken],
-        correctedTokens: [WordToken],
-        originalRange: Range<Int>,
-        correctedRange: Range<Int>
-    ) -> CommonRun? {
-        var previous = Array(repeating: 0, count: correctedRange.count + 1)
-        var bestLength = 0
-        var bestOriginalEnd = originalRange.lowerBound
-        var bestCorrectedEnd = correctedRange.lowerBound
-
-        for originalOffset in 0..<originalRange.count {
-            var current = Array(repeating: 0, count: correctedRange.count + 1)
-            let originalIndex = originalRange.lowerBound + originalOffset
-
-            for correctedOffset in 0..<correctedRange.count {
-                let correctedIndex = correctedRange.lowerBound + correctedOffset
-                guard originalTokens[originalIndex].text == correctedTokens[correctedIndex].text else { continue }
-
-                let length = previous[correctedOffset] + 1
-                current[correctedOffset + 1] = length
-                if length > bestLength {
-                    bestLength = length
-                    bestOriginalEnd = originalIndex + 1
-                    bestCorrectedEnd = correctedIndex + 1
+        while index < text.endIndex {
+            let character = text[index]
+            if character.isWhitespace {
+                if let start = segmentStart {
+                    let range = start..<index
+                    results.append(TextSegment(text: String(text[range]), range: range))
+                    segmentStart = nil
                 }
+            } else if isStructuralSeparator(at: index, in: text) {
+                if let start = segmentStart {
+                    let range = start..<index
+                    results.append(TextSegment(text: String(text[range]), range: range))
+                    segmentStart = nil
+                }
+
+                let end = text.index(after: index)
+                let range = index..<end
+                results.append(TextSegment(text: String(text[range]), range: range))
+            } else if segmentStart == nil {
+                segmentStart = index
+            }
+            index = text.index(after: index)
+        }
+
+        if let start = segmentStart {
+            let range = start..<text.endIndex
+            results.append(TextSegment(text: String(text[range]), range: range))
+        }
+        return results
+    }
+
+    private static func isStructuralSeparator(
+        at index: String.Index,
+        in text: String
+    ) -> Bool {
+        let character = text[index]
+        if structuralSeparators.contains(character) { return true }
+
+        if character == "." {
+            let next = text.index(after: index)
+            return next == text.endIndex || text[next].isWhitespace
+        }
+
+        if character == "'" || character == "’" || character == "‘" {
+            guard index > text.startIndex else { return true }
+            let previous = text.index(before: index)
+            let next = text.index(after: index)
+            guard next < text.endIndex else { return true }
+            return text[previous].isWhitespace || text[next].isWhitespace
+        }
+
+        return false
+    }
+
+    private static func segmentHunks(
+        from original: [TextSegment],
+        to corrected: [TextSegment]
+    ) -> [SegmentHunk] {
+        let difference = corrected.difference(from: original)
+        let removedOffsets = Set(difference.removals.compactMap { change -> Int? in
+            guard case let .remove(offset, _, _) = change else { return nil }
+            return offset
+        })
+        let insertedOffsets = Set(difference.insertions.compactMap { change -> Int? in
+            guard case let .insert(offset, _, _) = change else { return nil }
+            return offset
+        })
+
+        var hunks: [SegmentHunk] = []
+        var originalIndex = 0
+        var correctedIndex = 0
+        var hunkStart: (original: Int, corrected: Int)?
+
+        func finishHunk() {
+            guard let hunkStart else { return }
+            hunks.append(
+                SegmentHunk(
+                    originalRange: hunkStart.original..<originalIndex,
+                    correctedRange: hunkStart.corrected..<correctedIndex
+                ))
+        }
+
+        while originalIndex < original.count || correctedIndex < corrected.count {
+            let originalWasRemoved = originalIndex < original.count
+                && removedOffsets.contains(originalIndex)
+            let correctedWasInserted = correctedIndex < corrected.count
+                && insertedOffsets.contains(correctedIndex)
+            let isUnchangedSegment = originalIndex < original.count
+                && correctedIndex < corrected.count
+                && !originalWasRemoved
+                && !correctedWasInserted
+                && original[originalIndex] == corrected[correctedIndex]
+
+            if isUnchangedSegment {
+                finishHunk()
+                hunkStart = nil
+                originalIndex += 1
+                correctedIndex += 1
+                continue
             }
 
-            previous = current
+            if hunkStart == nil {
+                hunkStart = (originalIndex, correctedIndex)
+            }
+
+            var advanced = false
+            if originalWasRemoved {
+                originalIndex += 1
+                advanced = true
+            }
+            if correctedWasInserted {
+                correctedIndex += 1
+                advanced = true
+            }
+
+            if !advanced {
+                if originalIndex < original.count { originalIndex += 1 }
+                if correctedIndex < corrected.count { correctedIndex += 1 }
+            }
         }
 
-        guard bestLength > 0 else { return nil }
-        return CommonRun(
-            originalRange: (bestOriginalEnd - bestLength)..<bestOriginalEnd,
-            correctedRange: (bestCorrectedEnd - bestLength)..<bestCorrectedEnd
-        )
+        finishHunk()
+        return hunks
     }
 
     private static func fragment(
         from text: String,
-        tokens: [WordToken],
-        tokenRange: Range<Int>
+        segments: [TextSegment],
+        segmentRange: Range<Int>
     ) -> String? {
-        guard let firstIndex = tokenRange.first,
-            let lastIndex = tokenRange.last,
-            tokens.indices.contains(firstIndex),
-            tokens.indices.contains(lastIndex)
+        guard let firstIndex = segmentRange.first,
+            let lastIndex = segmentRange.last,
+            segments.indices.contains(firstIndex),
+            segments.indices.contains(lastIndex)
         else {
             return nil
         }
 
-        let range = tokens[firstIndex].range.lowerBound..<tokens[lastIndex].range.upperBound
+        let range = segments[firstIndex].range.lowerBound..<segments[lastIndex].range.upperBound
         let value = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
+    }
+
+    private static func cleanedPair(
+        source: String,
+        destination: String
+    ) -> (source: String, destination: String)? {
+        var sourceCharacters = Array(source)
+        var destinationCharacters = Array(destination)
+
+        while let sourceLast = sourceCharacters.last,
+            let destinationLast = destinationCharacters.last,
+            sourceLast == destinationLast,
+            trailingSentencePunctuation.contains(sourceLast)
+        {
+            sourceCharacters.removeLast()
+            destinationCharacters.removeLast()
+        }
+
+        while let sourceFirst = sourceCharacters.first,
+            let destinationFirst = destinationCharacters.first,
+            sourceFirst == destinationFirst,
+            leadingWrappers.contains(sourceFirst)
+        {
+            sourceCharacters.removeFirst()
+            destinationCharacters.removeFirst()
+        }
+
+        let cleanedSource = String(sourceCharacters).trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanedDestination = String(destinationCharacters).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanedSource.isEmpty, !cleanedDestination.isEmpty else { return nil }
+        return (cleanedSource, cleanedDestination)
     }
 
     private static func containsControlCharacter(_ text: String) -> Bool {
         text.unicodeScalars.contains { scalar in
             CharacterSet.controlCharacters.contains(scalar)
+        }
+    }
+
+    private static func isWithinUnspacedPrivacyLimit(
+        _ source: String,
+        _ destination: String
+    ) -> Bool {
+        guard !source.contains(where: { $0.isWhitespace }),
+            !destination.contains(where: { $0.isWhitespace }),
+            source.unicodeScalars.contains(where: { isCompactScriptScalar($0) })
+                || destination.unicodeScalars.contains(where: { isCompactScriptScalar($0) })
+        else {
+            return true
+        }
+
+        return source.count <= AutoLearnLimits.maximumUnspacedCandidateCharacters
+            && destination.count <= AutoLearnLimits.maximumUnspacedCandidateCharacters
+    }
+
+    private static func isCompactScriptScalar(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x0E00...0x0EFF, // Thai and Lao
+            0x1000...0x109F, // Myanmar
+            0x1780...0x17FF, // Khmer
+            0x3040...0x30FF, // Hiragana and Katakana
+            0x3400...0x4DBF, // CJK Extension A
+            0x4E00...0x9FFF, // CJK Unified Ideographs
+            0x20000...0x2FA1F: // Additional CJK ideographs
+            return true
+        default:
+            return false
         }
     }
 }

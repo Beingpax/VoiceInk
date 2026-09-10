@@ -28,6 +28,8 @@ struct DashboardContent: View {
     @State private var dashboardStatsLoadGeneration = 0
     @State private var isModelPerformancePanelPresented = false
     @State private var isModelUsagePanelPresented = false
+    @State private var isAutoLearnFailurePanelPresented = false
+    @State private var autoLearnFailurePresentationTask: Task<Void, Never>?
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
@@ -38,6 +40,7 @@ struct DashboardContent: View {
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
     @AppStorage("dashboardDisplayName") private var dashboardDisplayName: String = ""
+    @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
     @FocusState private var isNameFieldFocused: Bool
     @Query(Self.recentTranscriptionsDescriptor()) private var recentTranscriptionCandidates: [Transcription]
 
@@ -96,6 +99,18 @@ struct DashboardContent: View {
         .onAppear {
             refreshAccessibilityStatus()
             updaterViewModel.checkForUpdatesIfDue()
+            if hasAutoLearnFailure {
+                scheduleAutoLearnFailurePresentation()
+            }
+        }
+        .onChange(of: hasAutoLearnFailure) { _, hasFailure in
+            if hasFailure {
+                scheduleAutoLearnFailurePresentation()
+            } else {
+                autoLearnFailurePresentationTask?.cancel()
+                autoLearnFailurePresentationTask = nil
+                isAutoLearnFailurePanelPresented = false
+            }
         }
         .onReceive(LifecycleObserver.shared.publisher(for: .applicationDidBecomeActive)) { _ in
             refreshAccessibilityStatus()
@@ -112,6 +127,8 @@ struct DashboardContent: View {
             dashboardStatsTask = nil
             dashboardStatsLoadGeneration += 1
             isDashboardStatsRefreshing = false
+            autoLearnFailurePresentationTask?.cancel()
+            autoLearnFailurePresentationTask = nil
         }
         .sidePanel(isPresented: $isModelPerformancePanelPresented) {
             ModelPerformancePanel(
@@ -126,6 +143,21 @@ struct DashboardContent: View {
             ) {
                 isModelUsagePanelPresented = false
             }
+        }
+        .sidePanel(isPresented: $isAutoLearnFailurePanelPresented) {
+            AutoLearnFailurePanel {
+                isAutoLearnFailurePanelPresented = false
+            }
+        }
+    }
+
+    private func scheduleAutoLearnFailurePresentation() {
+        autoLearnFailurePresentationTask?.cancel()
+        autoLearnFailurePresentationTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            guard !Task.isCancelled, hasAutoLearnFailure else { return }
+            isAutoLearnFailurePanelPresented = true
+            autoLearnFailurePresentationTask = nil
         }
     }
 

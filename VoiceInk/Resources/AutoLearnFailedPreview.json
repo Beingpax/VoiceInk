@@ -1,0 +1,31 @@
+{
+  "enabled": false,
+  "status": "failed",
+  "failureMessage": "The selected model could not review 24 pending corrections.",
+  "candidates": [
+    { "source": "voice ink", "destination": "VoiceInk" },
+    { "source": "post gray sequel", "destination": "PostgreSQL" },
+    { "source": "get hub", "destination": "GitHub" },
+    { "source": "swift you eye", "destination": "SwiftUI" },
+    { "source": "open ai", "destination": "OpenAI" },
+    { "source": "type script", "destination": "TypeScript" },
+    { "source": "java script", "destination": "JavaScript" },
+    { "source": "web hook", "destination": "webhook" },
+    { "source": "end point", "destination": "endpoint" },
+    { "source": "code base", "destination": "codebase" },
+    { "source": "pull request", "destination": "PR" },
+    { "source": "api", "destination": "API" },
+    { "source": "json", "destination": "JSON" },
+    { "source": "sql", "destination": "SQL" },
+    { "source": "my sequel", "destination": "MySQL" },
+    { "source": "pie torch", "destination": "PyTorch" },
+    { "source": "hugging face", "destination": "Hugging Face" },
+    { "source": "cloud flare", "destination": "Cloudflare" },
+    { "source": "mac os", "destination": "macOS" },
+    { "source": "i o s", "destination": "iOS" },
+    { "source": "x code", "destination": "Xcode" },
+    { "source": "ollama", "destination": "Ollama" },
+    { "source": "whisper flow", "destination": "Wispr Flow" },
+    { "source": "queen three", "destination": "Qwen3" }
+  ]
+}

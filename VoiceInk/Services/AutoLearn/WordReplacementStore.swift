@@ -27,6 +27,7 @@ actor WordReplacementStore {
         var createdCount = 0
         var updatedCount = 0
         var vocabularyCount = 0
+        var learnedCorrections: [AutoLearnAppliedCorrection] = []
 
         do {
             try modelContext.transaction {
@@ -46,28 +47,39 @@ actor WordReplacementStore {
                 let candidatesByID = Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, $0) })
 
                 for decision in decisions {
-                    guard let candidate = candidatesByID[decision.id] else { continue }
+                    guard decision.accepted,
+                        let candidate = candidatesByID[decision.id]
+                    else { continue }
 
-                    if decision.action == .replacement || decision.action == .both {
-                        let mutation = applyReplacement(
-                            source: candidate.source,
-                            destination: candidate.destination,
-                            entries: &entries,
-                            existingSourceKeys: &existingSourceKeys
+                    let mutation = applyReplacement(
+                        source: candidate.source,
+                        destination: candidate.destination,
+                        entries: &entries,
+                        existingSourceKeys: &existingSourceKeys
+                    )
+                    createdCount += mutation.created ? 1 : 0
+                    updatedCount += mutation.updated ? 1 : 0
+
+                    let vocabulary = candidate.destination.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let vocabularyKey = WordReplacementVariants.key(for: vocabulary)
+                    var vocabularyCreationDate: Date?
+                    if !vocabularyKey.isEmpty, vocabularyKeys.insert(vocabularyKey).inserted {
+                        let entry = VocabularyWord(word: vocabulary)
+                        modelContext.insert(entry)
+                        vocabularyCreationDate = entry.dateAdded
+                        vocabularyCount += 1
+                    }
+
+                    if mutation.created || mutation.updated || vocabularyCreationDate != nil {
+                        learnedCorrections.append(
+                            AutoLearnAppliedCorrection(
+                                source: candidate.source,
+                                destination: candidate.destination,
+                                replacementWasChanged: mutation.created || mutation.updated,
+                                vocabularyCreationDate: vocabularyCreationDate
+                            )
                         )
-                        createdCount += mutation.created ? 1 : 0
-                        updatedCount += mutation.updated ? 1 : 0
                     }
-
-                    if decision.action == .vocabulary || decision.action == .both {
-                        let vocabulary = candidate.destination.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let vocabularyKey = WordReplacementVariants.key(for: vocabulary)
-                        if !vocabularyKey.isEmpty, vocabularyKeys.insert(vocabularyKey).inserted {
-                            modelContext.insert(VocabularyWord(word: vocabulary))
-                            vocabularyCount += 1
-                        }
-                    }
-
                 }
             }
         } catch {
@@ -78,8 +90,47 @@ actor WordReplacementStore {
         return AutoLearnMutationSummary(
             createdCount: createdCount,
             updatedCount: updatedCount,
-            vocabularyCount: vocabularyCount
+            vocabularyCount: vocabularyCount,
+            learnedCorrections: learnedCorrections
         )
+    }
+
+    func undo(_ correction: AutoLearnAppliedCorrection) throws {
+        try modelContext.transaction {
+            if correction.replacementWasChanged {
+                let destinationKey = WordReplacementVariants.destinationKey(for: correction.destination)
+                let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+                if let entry = entries.first(where: {
+                    WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
+                        && WordReplacementVariants.contains(
+                            correction.source,
+                            in: WordReplacementVariants.parse($0.originalText)
+                        )
+                }) {
+                    var variants = WordReplacementVariants.parse(entry.originalText)
+                    variants.removeAll {
+                        WordReplacementVariants.key(for: $0)
+                            == WordReplacementVariants.key(for: correction.source)
+                    }
+                    if variants.isEmpty {
+                        modelContext.delete(entry)
+                    } else {
+                        entry.originalText = WordReplacementVariants.serialize(variants)
+                    }
+                }
+            }
+
+            if let creationDate = correction.vocabularyCreationDate {
+                let vocabularyKey = WordReplacementVariants.key(for: correction.destination)
+                let vocabulary = try modelContext.fetch(FetchDescriptor<VocabularyWord>())
+                if let entry = vocabulary.first(where: {
+                    $0.dateAdded == creationDate
+                        && WordReplacementVariants.key(for: $0.word) == vocabularyKey
+                }) {
+                    modelContext.delete(entry)
+                }
+            }
+        }
     }
 
     private func applyReplacement(

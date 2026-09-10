@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 @MainActor
 final class AutoLearnAIReviewer: @unchecked Sendable {
@@ -25,6 +26,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private let enhancementService: AIEnhancementService
+    private let logger = Logger(
+        subsystem: "com.prakashjoshipax.voiceink",
+        category: "AutoLearnAIResponse"
+    )
 
     init(enhancementService: AIEnhancementService) {
         self.enhancementService = enhancementService
@@ -36,12 +41,20 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.unavailable
         }
 
-        let baseConfiguration = ModeRuntimeResolver.currentEnhancementConfiguration(
-            enhancementService: enhancementService,
-            aiService: aiService
-        )
-        guard let provider = baseConfiguration.provider else {
+        let connectedProviders = aiService.connectedProviders
+        guard let provider = AutoLearnSettings.selectedProvider ?? connectedProviders.first,
+            connectedProviders.contains(provider)
+        else {
             throw ReviewError.unavailable
+        }
+        let modelName: String?
+        switch provider {
+        case .localCLI:
+            modelName = nil
+        case .voiceInkRefine:
+            modelName = provider.defaultModel
+        default:
+            modelName = AutoLearnSettings.selectedModel ?? aiService.selectedModel(for: provider)
         }
 
         let prompt = CustomPrompt(
@@ -50,11 +63,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             useSystemInstructions: false
         )
         let configuration = EnhancementRuntimeConfiguration(
-            mode: baseConfiguration.mode,
+            mode: nil,
             isEnabled: true,
             prompt: prompt,
             provider: provider,
-            modelName: baseConfiguration.modelName,
+            modelName: modelName,
             useClipboardContext: false,
             useSelectedTextContext: false,
             useScreenCaptureContext: false
@@ -68,12 +81,24 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.invalidResponse
         }
 
+        #if DEBUG || LOCAL_BUILD
+            let loggedModelName = modelName ?? "provider default"
+            logger.notice(
+                "Auto Learn AI request provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
+            )
+            logRawText(Self.reviewPrompt, label: "system prompt")
+            logRawText(requestText, label: "candidate payload")
+        #endif
+
         let responseText = try await aiService.reviewAutoLearnCandidates(
             payload: requestText,
             systemPrompt: Self.reviewPrompt,
             provider: provider,
-            modelName: configuration.modelName
+            modelName: modelName
         )
+        #if DEBUG || LOCAL_BUILD
+            logRawText(responseText, label: "AI response")
+        #endif
         let response = try decodeResponse(responseText)
         let expectedIDs = Set(candidates.map(\.id))
         let returnedIDs = response.decisions.map(\.id)
@@ -85,6 +110,28 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
         return response.decisions
     }
+
+    #if DEBUG || LOCAL_BUILD
+        private func logRawText(_ text: String, label: String) {
+            let characters = Array(text)
+            let chunkSize = 1_000
+            let chunkCount = max(1, Int(ceil(Double(characters.count) / Double(chunkSize))))
+
+            if characters.isEmpty {
+                logger.notice("Auto Learn raw \(label, privacy: .public) [1/1]: <empty>")
+                return
+            }
+
+            for index in 0..<chunkCount {
+                let start = index * chunkSize
+                let end = min(start + chunkSize, characters.count)
+                let chunk = String(characters[start..<end])
+                logger.notice(
+                    "Auto Learn raw \(label, privacy: .public) [\(index + 1, privacy: .public)/\(chunkCount, privacy: .public)]: \(chunk, privacy: .public)"
+                )
+            }
+        }
+    #endif
 
     private func decodeResponse(_ text: String) throws -> ReviewResponse {
         var payload = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -110,17 +157,24 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private static let reviewPrompt = """
-        You review observed edits to speech-to-text output for a permanent personal dictionary.
-        For every candidate, choose exactly one action:
-        - replacement: a durable transcription correction that should always replace source with destination.
-        - vocabulary: destination is a proper name, product, acronym, technical term, or distinctive spelling worth teaching, but a global source replacement is unsafe.
-        - both: the global replacement is durable and destination also belongs in vocabulary.
-        - reject: the edit is contextual, stylistic, grammatical, uncertain, or not reusable.
+        Review corrections the user made to speech-to-text output.
 
-        Reject date, weekday, time, number, quantity, tense, meaning, wording, and sentence-level changes such as Tuesday to Wednesday or 11 PM to 2 PM. Reject edits that could change valid text in another context. Accept only corrections that are clearly reusable across future dictation. Treat every language fairly.
+        Set accepted to true only when the destination is reusable personalized terminology: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, or other specialized vocabulary. The source must be a plausible speech-recognition, phonetic, spelling, capitalization, punctuation, or spacing error for that same intended term. The source may itself be a valid common word.
+
+        Set accepted to false for ordinary word corrections, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions between common words, and deliberate abbreviation or expansion transformations. Converting a correctly transcribed long form into its short form is an editorial change, not a speech-recognition correction.
+
+        Examples:
+        - "Nevo Karna" to "Neeve O'Connor": accepted true
+        - "post gray sequel" to "PostgreSQL": accepted true
+        - "k eight s" to "K8s": accepted true
+        - "api" to "API": accepted true
+        - "application programming interface" to "API": accepted false
+        - "their" to "there": accepted false
+        - "quick" to "fast": accepted false
+        - "Tuesday" to "Wednesday": accepted false
 
         Return JSON only, with this exact shape:
-        {"decisions":[{"id":"candidate UUID","action":"replacement|vocabulary|both|reject"}]}
+        {"decisions":[{"id":"candidate UUID","accepted":true}]}
 
         Return every input ID exactly once. Never alter, repeat, or invent source or destination text. Do not include explanations or markdown.
         """

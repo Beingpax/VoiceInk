@@ -30,6 +30,11 @@ actor AutoLearnService {
         self.reviewer = reviewer
         do {
             try await pendingQueue.recoverInterruptedReviews()
+            #if DEBUG || LOCAL_BUILD
+                if try await installFailedReviewPreviewIfEnabled() {
+                    return
+                }
+            #endif
             schedulePendingReview()
         } catch {
             log(error, message: "Failed to recover queued Auto Learn reviews")
@@ -46,6 +51,11 @@ actor AutoLearnService {
         }
         lifecycleGeneration &+= 1
         await discardActiveSession()
+    }
+
+    func retryPendingReviews() {
+        guard AutoLearnSettings.isEnabled else { return }
+        schedulePendingReview()
     }
 
     func recordingDidStart() async {
@@ -137,17 +147,10 @@ actor AutoLearnService {
                 await AutoLearnService.shared.focusMayHaveChanged(token: token)
             }
         }
-
-        guard await sleep(nanoseconds: AutoLearnLimits.observationDurationNanoseconds),
-            !Task.isCancelled,
-            activeToken == token,
-            AutoLearnSettings.isEnabled
-        else {
-            await discardSession(token: token)
-            return
-        }
-
-        await completeSession(token: token, persist: true)
+        scheduleDeadline(
+            token: token,
+            after: AutoLearnLimits.observationDurationNanoseconds
+        )
     }
 
     private func discardActiveSession() async {
@@ -204,6 +207,22 @@ actor AutoLearnService {
         await completeSession(token: token, persist: true)
     }
 
+    private func scheduleDeadline(token: AutoLearnPasteToken, after delay: UInt64) {
+        deadlineTask?.cancel()
+        deadlineTask = Task { [weak self] in
+            guard let self,
+                await self.sleep(nanoseconds: delay),
+                !Task.isCancelled
+            else { return }
+            await self.finalizeAtDeadline(token: token)
+        }
+    }
+
+    private func finalizeAtDeadline(token: AutoLearnPasteToken) async {
+        guard activeToken == token, AutoLearnSettings.isEnabled else { return }
+        await completeSession(token: token, persist: true)
+    }
+
     private func persistSnapshot(_ snapshot: AutoLearnFieldSnapshot?) async {
         guard AutoLearnSettings.isEnabled,
             let snapshot,
@@ -213,6 +232,11 @@ actor AutoLearnService {
         }
 
         guard let revision = FinalSnapshotDiffEngine.revision(from: snapshot) else { return }
+        #if DEBUG || LOCAL_BUILD
+            logger.notice(
+                "Auto Learn captured revision original=\(revision.original, privacy: .public) corrected=\(revision.corrected, privacy: .public)"
+            )
+        #endif
         let candidates = CorrectionDiffEngine.candidates(from: revision)
         guard !candidates.isEmpty else { return }
 
@@ -256,9 +280,7 @@ actor AutoLearnService {
 
         let candidates: [AutoLearnReviewCandidate]
         do {
-            candidates = try await pendingQueue.claimPending(
-                limit: AutoLearnLimits.maximumReviewBatchSize
-            )
+            candidates = try await pendingQueue.claimPending()
         } catch {
             finishReviewTask(generation: generation)
             log(error, message: "Failed to load queued Auto Learn candidates")
@@ -271,14 +293,33 @@ actor AutoLearnService {
         }
 
         let candidateIDs = Set(candidates.map(\.id))
+        let decisions: [AutoLearnReviewDecision]
         do {
-            let decisions = try await reviewer.review(candidates)
-            guard !Task.isCancelled, AutoLearnSettings.isEnabled else {
-                try await pendingQueue.release(candidateIDs)
-                finishReviewTask(generation: generation)
-                return
+            decisions = try await reviewer.review(candidates)
+            AutoLearnSettings.clearFailure()
+            let acceptedCount = decisions.reduce(0) { count, decision in
+                count + (decision.accepted ? 1 : 0)
             }
+            logger.notice(
+                "Completed Auto Learn AI review accepted=\(acceptedCount, privacy: .public) rejected=\(decisions.count - acceptedCount, privacy: .public)"
+            )
+        } catch {
+            try? await pendingQueue.release(candidateIDs)
+            if !Task.isCancelled {
+                AutoLearnSettings.recordFailure(error)
+            }
+            finishReviewTask(generation: generation)
+            log(error, message: "Auto Learn AI review failed; candidates remain queued")
+            return
+        }
 
+        guard !Task.isCancelled, AutoLearnSettings.isEnabled else {
+            try? await pendingQueue.release(candidateIDs)
+            finishReviewTask(generation: generation)
+            return
+        }
+
+        do {
             let summary = try await replacementStore.apply(decisions, candidates: candidates)
             try await pendingQueue.remove(candidateIDs)
             if summary.hasChanges {
@@ -288,13 +329,16 @@ actor AutoLearnService {
                 await MainActor.run {
                     NotificationCenter.default.post(name: .wordReplacementsDidChange, object: nil)
                 }
+                await showLearnedNotification(for: summary)
+            } else {
+                logger.notice("Auto Learn review completed without adding dictionary entries")
             }
 
             finishReviewTask(generation: generation, continueProcessing: true)
         } catch {
             try? await pendingQueue.release(candidateIDs)
             finishReviewTask(generation: generation)
-            log(error, message: "Auto Learn AI review failed; candidates remain queued")
+            log(error, message: "Failed to apply Auto Learn results; candidates remain queued")
         }
     }
 
@@ -306,12 +350,94 @@ actor AutoLearnService {
         }
     }
 
+    private func showLearnedNotification(for summary: AutoLearnMutationSummary) async {
+        let corrections = summary.learnedCorrections
+        guard !corrections.isEmpty else { return }
+
+        if corrections.count == 1, let correction = corrections.first {
+            await MainActor.run {
+                NotificationManager.shared.showNotification(
+                    title: "Added “\(correction.destination)” to Dictionary",
+                    type: .success,
+                    duration: 4,
+                    actionButton: (
+                        label: "Undo",
+                        action: {
+                            Task {
+                                await AutoLearnService.shared.undo(correction)
+                            }
+                        }
+                    )
+                )
+            }
+        } else {
+            await MainActor.run {
+                NotificationManager.shared.showNotification(
+                    title: "Added \(corrections.count) words to Dictionary",
+                    type: .success
+                )
+            }
+        }
+    }
+
+    private func undo(_ correction: AutoLearnAppliedCorrection) async {
+        guard let replacementStore else { return }
+        do {
+            try await replacementStore.undo(correction)
+            await MainActor.run {
+                NotificationCenter.default.post(name: .wordReplacementsDidChange, object: nil)
+            }
+        } catch {
+            log(error, message: "Failed to undo Auto Learn correction")
+        }
+    }
+
     private func log(_ error: Error, message: String) {
         let nsError = error as NSError
         logger.error(
             "\(message, privacy: .public) domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
         )
     }
+
+    #if DEBUG || LOCAL_BUILD
+        private struct FailedReviewPreview: Decodable {
+            struct Candidate: Decodable {
+                let source: String
+                let destination: String
+            }
+
+            let enabled: Bool
+            let status: String
+            let failureMessage: String
+            let candidates: [Candidate]
+        }
+
+        private func installFailedReviewPreviewIfEnabled() async throws -> Bool {
+            let resourceURL = Bundle.main.url(
+                forResource: "AutoLearnFailedPreview",
+                withExtension: "json",
+                subdirectory: "Resources"
+            ) ?? Bundle.main.url(forResource: "AutoLearnFailedPreview", withExtension: "json")
+            guard let resourceURL else { return false }
+
+            let data = try Data(contentsOf: resourceURL)
+            let preview = try JSONDecoder().decode(FailedReviewPreview.self, from: data)
+            guard preview.enabled, preview.status == "failed" else { return false }
+
+            let candidates = preview.candidates.map {
+                LearnedReplacementCandidate(source: $0.source, destination: $0.destination)
+            }
+            _ = try await pendingQueue.enqueue(candidates)
+            AutoLearnSettings.recordFailure(
+                NSError(
+                    domain: "AutoLearnPreview",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: preview.failureMessage]
+                )
+            )
+            return true
+        }
+    #endif
 
     private func sleep(nanoseconds: UInt64) async -> Bool {
         do {

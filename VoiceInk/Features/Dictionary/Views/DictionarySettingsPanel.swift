@@ -10,23 +10,18 @@ struct DictionarySettingsPanel: View {
 
             Form {
                 Section {
-                    Toggle(isOn: $isAutoLearnDictionaryEnabled) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("Auto Learn Dictionary")
-                            Text(
-                                "Only correction pairs are sent to your configured AI enhancement provider. Approved replacements and vocabulary are added automatically."
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
+                    Toggle("Auto-Learn Dictionary", isOn: $isAutoLearnDictionaryEnabled)
                     .onChange(of: isAutoLearnDictionaryEnabled) { _, isEnabled in
                         Task {
                             await AutoLearnService.shared.settingDidChange(isEnabled: isEnabled)
                         }
                     }
+
+                    if isAutoLearnDictionaryEnabled {
+                        AutoLearnModelSelectionView()
+                    }
                 } header: {
-                    Text("Auto Learn")
+                    AutoLearnSectionHeader()
                 }
 
                 Section {

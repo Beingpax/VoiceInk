@@ -24,9 +24,55 @@ enum CloudTranscriptionSettings {
 
 enum AutoLearnSettings {
     static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
+    static let providerKey = "AutoLearnDictionaryProvider"
+    static let modelKey = "AutoLearnDictionaryModel"
+    static let hasFailureKey = "AutoLearnDictionaryHasFailure"
+    static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
 
     static var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: isEnabledKey)
+    }
+
+    static var selectedProvider: AIProvider? {
+        guard let value = UserDefaults.standard.string(forKey: providerKey) else { return nil }
+        return AIProvider(rawValue: value)
+    }
+
+    static var selectedModel: String? {
+        let value = UserDefaults.standard.string(forKey: modelKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return value?.isEmpty == false ? value : nil
+    }
+
+    static func recordFailure(_ error: Error) {
+        let nsError = error as NSError
+        var details = [nsError.localizedDescription]
+        if let reason = nsError.localizedFailureReason,
+            !reason.isEmpty,
+            !details.contains(reason)
+        {
+            details.append(reason)
+        }
+        if let suggestion = nsError.localizedRecoverySuggestion,
+            !suggestion.isEmpty,
+            !details.contains(suggestion)
+        {
+            details.append(suggestion)
+        }
+        let message = details
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        UserDefaults.standard.set(true, forKey: hasFailureKey)
+        UserDefaults.standard.set(
+            message.isEmpty ? "The selected provider or model could not review corrections." : message,
+            forKey: failureMessageKey
+        )
+    }
+
+    static func clearFailure() {
+        UserDefaults.standard.set(false, forKey: hasFailureKey)
+        UserDefaults.standard.removeObject(forKey: failureMessageKey)
     }
 }
 
