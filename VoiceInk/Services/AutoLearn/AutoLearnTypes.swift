@@ -33,17 +33,35 @@ struct AutoLearnFieldSnapshot: Sendable {
 struct LearnedReplacementCandidate: Hashable, Sendable {
     let source: String
     let destination: String
+    let reviewSource: String
+    let reviewDestination: String
+
+    init(
+        source: String,
+        destination: String,
+        reviewSource: String? = nil,
+        reviewDestination: String? = nil
+    ) {
+        self.source = source
+        self.destination = destination
+        self.reviewSource = reviewSource ?? source
+        self.reviewDestination = reviewDestination ?? destination
+    }
 }
 
 struct AutoLearnReviewCandidate: Codable, Sendable {
     let id: UUID
     let source: String
     let destination: String
+    let changedSource: String
+    let changedDestination: String
 }
 
 struct AutoLearnReviewDecision: Codable, Sendable {
     let id: UUID
     let accepted: Bool
+    let source: String?
+    let destination: String?
 }
 
 struct AutoLearnMutationSummary: Sendable {
@@ -83,6 +101,7 @@ enum AutoLearnLimits {
     static let maximumDiffSegments = 2_048
     static let maximumCandidateCharacters = 256
     static let maximumCandidateSegments = 24
+    static let reviewContextSegmentsPerSide = 2
     static let maximumUnspacedCandidateCharacters = 8
     static let maximumPendingCandidates = 100
 }

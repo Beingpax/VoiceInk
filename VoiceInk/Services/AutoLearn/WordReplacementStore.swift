@@ -48,19 +48,21 @@ actor WordReplacementStore {
 
                 for decision in decisions {
                     guard decision.accepted,
-                        let candidate = candidatesByID[decision.id]
+                        candidatesByID[decision.id] != nil,
+                        let source = decision.source,
+                        let destination = decision.destination
                     else { continue }
 
                     let mutation = applyReplacement(
-                        source: candidate.source,
-                        destination: candidate.destination,
+                        source: source,
+                        destination: destination,
                         entries: &entries,
                         existingSourceKeys: &existingSourceKeys
                     )
                     createdCount += mutation.created ? 1 : 0
                     updatedCount += mutation.updated ? 1 : 0
 
-                    let vocabulary = candidate.destination.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let vocabulary = destination.trimmingCharacters(in: .whitespacesAndNewlines)
                     let vocabularyKey = WordReplacementVariants.key(for: vocabulary)
                     var vocabularyCreationDate: Date?
                     if !vocabularyKey.isEmpty, vocabularyKeys.insert(vocabularyKey).inserted {
@@ -73,8 +75,8 @@ actor WordReplacementStore {
                     if mutation.created || mutation.updated || vocabularyCreationDate != nil {
                         learnedCorrections.append(
                             AutoLearnAppliedCorrection(
-                                source: candidate.source,
-                                destination: candidate.destination,
+                                source: source,
+                                destination: destination,
                                 replacementWasChanged: mutation.created || mutation.updated,
                                 vocabularyCreationDate: vocabularyCreationDate
                             )

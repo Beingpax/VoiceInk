@@ -10,10 +10,18 @@ actor AutoLearnPendingQueue {
         let id: UUID
         let source: String
         let destination: String
+        let reviewSource: String?
+        let reviewDestination: String?
         var status: Status
 
         var candidate: AutoLearnReviewCandidate {
-            AutoLearnReviewCandidate(id: id, source: source, destination: destination)
+            AutoLearnReviewCandidate(
+                id: id,
+                source: reviewSource ?? source,
+                destination: reviewDestination ?? destination,
+                changedSource: source,
+                changedDestination: destination
+            )
         }
     }
 
@@ -67,6 +75,8 @@ actor AutoLearnPendingQueue {
                     id: UUID(),
                     source: source,
                     destination: destination,
+                    reviewSource: candidate.reviewSource,
+                    reviewDestination: candidate.reviewDestination,
                     status: .pending
                 )
             )

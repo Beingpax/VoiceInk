@@ -108,7 +108,40 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.invalidResponse
         }
 
-        return response.decisions
+        let candidatesByID = Dictionary(uniqueKeysWithValues: candidates.map { ($0.id, $0) })
+        return try response.decisions.map { decision in
+            guard decision.accepted else {
+                return AutoLearnReviewDecision(
+                    id: decision.id,
+                    accepted: false,
+                    source: nil,
+                    destination: nil
+                )
+            }
+
+            guard let candidate = candidatesByID[decision.id],
+                let source = decision.source?.trimmingCharacters(in: .whitespacesAndNewlines),
+                let destination = decision.destination?.trimmingCharacters(in: .whitespacesAndNewlines),
+                !source.isEmpty,
+                !destination.isEmpty,
+                source != destination,
+                source.count <= AutoLearnLimits.maximumCandidateCharacters,
+                destination.count <= AutoLearnLimits.maximumCandidateCharacters,
+                candidate.source.range(of: source, options: .literal) != nil,
+                candidate.destination.range(of: destination, options: .literal) != nil,
+                source.range(of: candidate.changedSource, options: .literal) != nil,
+                destination.range(of: candidate.changedDestination, options: .literal) != nil
+            else {
+                throw ReviewError.invalidResponse
+            }
+
+            return AutoLearnReviewDecision(
+                id: decision.id,
+                accepted: true,
+                source: source,
+                destination: destination
+            )
+        }
     }
 
     #if DEBUG || LOCAL_BUILD
@@ -157,25 +190,23 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private static let reviewPrompt = """
-        Review corrections the user made to speech-to-text output.
+        Review corrections the user made to speech-to-text output. Each source and destination is a short window containing the changed text plus up to two unchanged terms on each side. changedSource and changedDestination identify the detected edit.
 
-        Set accepted to true only when the destination is reusable personalized terminology: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, or other specialized vocabulary. The source must be a plausible speech-recognition, phonetic, spelling, capitalization, punctuation, or spacing error for that same intended term. The source may itself be a valid common word.
+        Accept only reusable personalized terminology: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, or other specialized vocabulary. The source must be a plausible speech-recognition, phonetic, spelling, capitalization, punctuation, or spacing error for the same term.
 
-        Set accepted to false for ordinary word corrections, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions between common words, and deliberate abbreviation or expansion transformations. Converting a correctly transcribed long form into its short form is an editorial change, not a speech-recognition correction.
+        Reject ordinary wording, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions, and deliberate abbreviation or expansion transformations.
 
-        Examples:
-        - "Nevo Karna" to "Neeve O'Connor": accepted true
-        - "post gray sequel" to "PostgreSQL": accepted true
-        - "k eight s" to "K8s": accepted true
-        - "api" to "API": accepted true
-        - "application programming interface" to "API": accepted false
-        - "their" to "there": accepted false
-        - "quick" to "fast": accepted false
-        - "Tuesday" to "Wednesday": accepted false
+        For an accepted correction, return the exact complete term to store. Include unchanged nearby words only when they belong to the name or specialized term. The returned source must be a contiguous substring of source and contain changedSource. The returned destination must be a contiguous substring of destination and contain changedDestination. Copy text exactly; never invent or normalize it.
+
+        Example input:
+        {"id":"candidate UUID","source":"with Wojciech says me yesterday","destination":"with Wojciech Szczęsny yesterday","changedSource":"says me","changedDestination":"Szczęsny"}
+
+        Example output:
+        {"id":"candidate UUID","accepted":true,"source":"Wojciech says me","destination":"Wojciech Szczęsny"}
 
         Return JSON only, with this exact shape:
-        {"decisions":[{"id":"candidate UUID","accepted":true}]}
+        {"decisions":[{"id":"candidate UUID","accepted":true,"source":"exact source term","destination":"exact destination term"}]}
 
-        Return every input ID exactly once. Never alter, repeat, or invent source or destination text. Do not include explanations or markdown.
+        For rejected corrections, set source and destination to null. Return every input ID exactly once. Do not include explanations or markdown.
         """
 }

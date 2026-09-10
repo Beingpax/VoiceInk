@@ -4,6 +4,7 @@ enum CorrectionDiffEngine {
     private struct TextSegment: Equatable {
         let text: String
         let range: Range<String.Index>
+        let isBoundary: Bool
 
         static func == (lhs: TextSegment, rhs: TextSegment) -> Bool {
             lhs.text == rhs.text
@@ -42,7 +43,7 @@ enum CorrectionDiffEngine {
         var seen = Set<String>()
         var results: [LearnedReplacementCandidate] = []
 
-        for hunk in hunks {
+        for (hunkIndex, hunk) in hunks.enumerated() {
             guard !hunk.originalRange.isEmpty,
                 !hunk.correctedRange.isEmpty,
                 hunk.originalRange.count <= AutoLearnLimits.maximumCandidateSegments,
@@ -86,6 +87,34 @@ enum CorrectionDiffEngine {
                 continue
             }
 
+            let previousHunk = hunkIndex > 0 ? hunks[hunkIndex - 1] : nil
+            let nextHunk = hunkIndex + 1 < hunks.count ? hunks[hunkIndex + 1] : nil
+            let reviewOriginalRange = reviewRange(
+                around: hunk.originalRange,
+                lowerLimit: previousHunk?.originalRange.upperBound ?? originalSegments.startIndex,
+                upperLimit: nextHunk?.originalRange.lowerBound ?? originalSegments.endIndex,
+                segments: originalSegments
+            )
+            let reviewCorrectedRange = reviewRange(
+                around: hunk.correctedRange,
+                lowerLimit: previousHunk?.correctedRange.upperBound ?? correctedSegments.startIndex,
+                upperLimit: nextHunk?.correctedRange.lowerBound ?? correctedSegments.endIndex,
+                segments: correctedSegments
+            )
+            guard let reviewSource = fragment(
+                from: original,
+                segments: originalSegments,
+                segmentRange: reviewOriginalRange
+            ),
+                let reviewDestination = fragment(
+                    from: corrected,
+                    segments: correctedSegments,
+                    segmentRange: reviewCorrectedRange
+                )
+            else {
+                continue
+            }
+
             guard pair.source != pair.destination,
                 !pair.source.contains(","),
                 pair.source.count <= AutoLearnLimits.maximumCandidateCharacters,
@@ -103,7 +132,9 @@ enum CorrectionDiffEngine {
             results.append(
                 LearnedReplacementCandidate(
                     source: pair.source,
-                    destination: pair.destination
+                    destination: pair.destination,
+                    reviewSource: reviewSource,
+                    reviewDestination: reviewDestination
                 ))
         }
 
@@ -120,19 +151,25 @@ enum CorrectionDiffEngine {
             if character.isWhitespace {
                 if let start = segmentStart {
                     let range = start..<index
-                    results.append(TextSegment(text: String(text[range]), range: range))
+                    results.append(
+                        TextSegment(text: String(text[range]), range: range, isBoundary: false)
+                    )
                     segmentStart = nil
                 }
             } else if isStructuralSeparator(at: index, in: text) {
                 if let start = segmentStart {
                     let range = start..<index
-                    results.append(TextSegment(text: String(text[range]), range: range))
+                    results.append(
+                        TextSegment(text: String(text[range]), range: range, isBoundary: false)
+                    )
                     segmentStart = nil
                 }
 
                 let end = text.index(after: index)
                 let range = index..<end
-                results.append(TextSegment(text: String(text[range]), range: range))
+                results.append(
+                    TextSegment(text: String(text[range]), range: range, isBoundary: true)
+                )
             } else if segmentStart == nil {
                 segmentStart = index
             }
@@ -141,7 +178,9 @@ enum CorrectionDiffEngine {
 
         if let start = segmentStart {
             let range = start..<text.endIndex
-            results.append(TextSegment(text: String(text[range]), range: range))
+            results.append(
+                TextSegment(text: String(text[range]), range: range, isBoundary: false)
+            )
         }
         return results
     }
@@ -256,6 +295,37 @@ enum CorrectionDiffEngine {
         let range = segments[firstIndex].range.lowerBound..<segments[lastIndex].range.upperBound
         let value = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
         return value.isEmpty ? nil : value
+    }
+
+    private static func reviewRange(
+        around range: Range<Int>,
+        lowerLimit: Int,
+        upperLimit: Int,
+        segments: [TextSegment]
+    ) -> Range<Int> {
+        var lowerBound = range.lowerBound
+        var upperBound = range.upperBound
+        var leadingCount = 0
+        var trailingCount = 0
+
+        while lowerBound > lowerLimit,
+            leadingCount < AutoLearnLimits.reviewContextSegmentsPerSide
+        {
+            let candidate = lowerBound - 1
+            guard !segments[candidate].isBoundary else { break }
+            lowerBound = candidate
+            leadingCount += 1
+        }
+
+        while upperBound < upperLimit,
+            trailingCount < AutoLearnLimits.reviewContextSegmentsPerSide
+        {
+            guard !segments[upperBound].isBoundary else { break }
+            upperBound += 1
+            trailingCount += 1
+        }
+
+        return lowerBound..<upperBound
     }
 
     private static func cleanedPair(
