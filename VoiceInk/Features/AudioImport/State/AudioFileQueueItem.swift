@@ -11,6 +11,7 @@ enum QueueItemStatus: Equatable {
         case loading = "Loading model..."
         case processingAudio = "Processing audio..."
         case transcribing = "Transcribing..."
+        case diarizing = "Identifying speakers..."
         case enhancing = "Enhancing..."
     }
 

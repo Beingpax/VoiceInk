@@ -4,6 +4,42 @@ import SwiftData
 import SwiftUI
 import os
 
+/// How the Transcribe tab identifies speakers in imported audio.
+enum TranscribeDiarizationMode: String, CaseIterable {
+    case off
+    case auto
+    case voice
+    case stereo
+
+    /// Resolves the persisted mode, honoring the pre-menu boolean toggle.
+    static var current: TranscribeDiarizationMode {
+        if let raw = UserDefaults.standard.string(forKey: "TranscribeDiarizationMode"),
+            let mode = TranscribeDiarizationMode(rawValue: raw)
+        {
+            return mode
+        }
+        return UserDefaults.standard.bool(forKey: "TranscribeDiarizationEnabled") ? .auto : .off
+    }
+
+    var label: String {
+        switch self {
+        case .off: return "Off"
+        case .auto: return "Auto"
+        case .voice: return "Voice AI"
+        case .stereo: return "Stereo"
+        }
+    }
+
+    var help: String {
+        switch self {
+        case .off: return "No speaker identification"
+        case .auto: return "Stereo channels when each speaker has their own channel, Voice AI otherwise"
+        case .voice: return "Neural voice clustering (works on any audio)"
+        case .stereo: return "One speaker per stereo channel (telephony recordings); off for mono files"
+        }
+    }
+}
+
 @MainActor
 class AudioTranscriptionManager: ObservableObject {
     static let shared = AudioTranscriptionManager()
@@ -112,6 +148,57 @@ class AudioTranscriptionManager: ObservableObject {
 
     // MARK: - Private
 
+    /// Whether the model's engine emits word-level timestamps — the requirement
+    /// for any speaker attribution. Engines without them keep the plain
+    /// single-pass transcription path.
+    private static func engineSupportsWordTimings(_ model: any TranscriptionModel) -> Bool {
+        switch model.provider {
+        case .whisper, .nativeApple:
+            return true
+        case .fluidAudio:
+            return !FluidAudioModelManager.isParakeetUnifiedModel(named: model.name)
+        default:
+            return false
+        }
+    }
+
+    /// Peak-normalizes one channel so a quiet call participant gets full ASR
+    /// signal level regardless of how loud the other channel is.
+    private static func normalized(_ samples: [Float]) -> [Float] {
+        let maxSample = samples.map(abs).max() ?? 0
+        guard maxSample > 0 else { return samples }
+        return samples.map { $0 / maxSample }
+    }
+
+    /// Keeps only words whose time span has audible signal in the (normalized)
+    /// channel they came from — hallucinated words sit on top of silence.
+    /// The span is padded and checked frame by frame so slightly-off word
+    /// timestamps (e.g. from inverse text normalization) don't drop real words.
+    private static func wordsWithSignal(
+        _ words: [WordTiming], samples: [Float], sampleRate: Double = 16000
+    ) -> [WordTiming] {
+        let padding = 0.3
+        let frameSize = Int(sampleRate * 0.05)
+        return words.filter { word in
+            let start = max(0, Int((word.start - padding) * sampleRate))
+            let end = min(samples.count, Int((word.end + padding) * sampleRate))
+            guard end > start else { return false }
+            var frameStart = start
+            while frameStart < end {
+                let frameEnd = min(end, frameStart + frameSize)
+                var sum: Float = 0
+                for i in frameStart..<frameEnd {
+                    sum += samples[i] * samples[i]
+                }
+                if (sum / Float(frameEnd - frameStart)).squareRoot() > 0.012 {
+                    return true
+                }
+                frameStart = frameEnd
+            }
+            return false
+        }
+    }
+
     private func nextPendingItem() -> AudioFileQueueItem? {
         queue.first {
             if case .pending = $0.status { return true }
@@ -152,6 +239,47 @@ class AudioTranscriptionManager: ObservableObject {
             let samples = try await audioProcessor.processAudioToSamples(item.url)
             try Task.checkCancellation()
 
+            // Speaker identification strategy — only for engines that emit word
+            // timestamps (without them there is nothing to attribute, and the
+            // old single-pass behavior is kept untouched):
+            //  - stereo file with one participant per channel → one ASR pass per
+            //    channel (exact attribution, and a quiet participant isn't
+            //    masked by the loud one in the mono downmix)
+            //  - otherwise → neural diarization, concurrent with transcription
+            let diarizationMode = TranscribeDiarizationMode.current
+            let wantsSpeakers = diarizationMode != .off && Self.engineSupportsWordTimings(currentModel)
+            if diarizationMode != .off, !wantsSpeakers {
+                logger.notice(
+                    "Selected engine produces no word timestamps; transcribing without speaker identification")
+            }
+            let sourceURL = item.url
+            let stereoChannels: StereoChannelSamples?
+            if wantsSpeakers, diarizationMode == .auto || diarizationMode == .stereo {
+                // Off the main actor, and cancelled promptly with the queue —
+                // the extraction loop aborts between chunks on cancellation.
+                let extraction = Task.detached(priority: .userInitiated) {
+                    AudioProcessor().extractStereoChannels(sourceURL)
+                }
+                stereoChannels = await withTaskCancellationHandler {
+                    await extraction.value
+                } onCancel: {
+                    extraction.cancel()
+                }
+                try Task.checkCancellation()
+            } else {
+                stereoChannels = nil
+            }
+            if wantsSpeakers, diarizationMode == .stereo, stereoChannels == nil {
+                logger.notice("Stereo diarization selected but file has no distinct channels; skipping")
+            }
+            let neuralDiarizationTask: Task<[SpeakerSegment], Error>? =
+                wantsSpeakers && (diarizationMode == .voice || (diarizationMode == .auto && stereoChannels == nil))
+                ? Task.detached(priority: .userInitiated) {
+                    try await SpeakerDiarizationService.shared.diarize(samples: samples)
+                }
+                : nil
+            defer { neuralDiarizationTask?.cancel() }
+
             let audioAsset = AVURLAsset(url: item.url)
             let duration = CMTimeGetSeconds(try await audioAsset.load(.duration))
 
@@ -171,12 +299,96 @@ class AudioTranscriptionManager: ObservableObject {
             // Phase: Transcribing
             item.status = .processing(phase: .transcribing)
             let transcriptionStart = Date()
-            var text = try await serviceRegistry.transcribe(
-                audioURL: permanentURL,
-                model: currentModel,
-                context: transcriptionConfiguration.requestContext
-            )
+            var text: String
+            var wordTimings: [WordTiming]?
+            var speakerUtterances: [SpeakerUtterance]?
+
+            if let stereoChannels {
+                // Dual-channel transcription: each channel normalized and
+                // transcribed on its own, then merged on the shared timeline.
+                var requestContext = transcriptionConfiguration.requestContext
+                requestContext.preservesTimeline = true
+
+                let tempDirectory = FileManager.default.temporaryDirectory
+                let leftURL = tempDirectory.appendingPathComponent("channel_L_\(UUID().uuidString).wav")
+                let rightURL = tempDirectory.appendingPathComponent("channel_R_\(UUID().uuidString).wav")
+                defer {
+                    try? FileManager.default.removeItem(at: leftURL)
+                    try? FileManager.default.removeItem(at: rightURL)
+                }
+                let leftSamples = Self.normalized(stereoChannels.left)
+                let rightSamples = Self.normalized(stereoChannels.right)
+                try audioProcessor.saveSamplesAsWav(samples: leftSamples, to: leftURL)
+                try audioProcessor.saveSamplesAsWav(samples: rightSamples, to: rightURL)
+
+                let leftResult = try await serviceRegistry.transcribeDetailed(
+                    audioURL: leftURL, model: currentModel, context: requestContext)
+                try Task.checkCancellation()
+                let rightResult = try await serviceRegistry.transcribeDetailed(
+                    audioURL: rightURL, model: currentModel, context: requestContext)
+
+                // With VAD off, engines hallucinate words over silence; drop any
+                // word whose span carries no actual signal in its own channel.
+                var merged: [WordTiming] = []
+                for var word in Self.wordsWithSignal(leftResult.words ?? [], samples: leftSamples) {
+                    word.speaker = "1"
+                    merged.append(word)
+                }
+                for var word in Self.wordsWithSignal(rightResult.words ?? [], samples: rightSamples) {
+                    word.speaker = "2"
+                    merged.append(word)
+                }
+                merged.sort { $0.start < $1.start }
+
+                if merged.isEmpty {
+                    // Both channels filtered down to silence; nothing to attribute.
+                    text = ""
+                } else {
+                    wordTimings = merged
+                    let utterances = SpeakerAlignment.channelUtterances(from: merged)
+                    speakerUtterances = utterances
+                    text = utterances.map(\.text).joined(separator: " ")
+                }
+            } else {
+                var requestContext = transcriptionConfiguration.requestContext
+                requestContext.preservesTimeline = neuralDiarizationTask != nil
+                let detailedResult = try await serviceRegistry.transcribeDetailed(
+                    audioURL: permanentURL,
+                    model: currentModel,
+                    context: requestContext
+                )
+                text = detailedResult.text
+                wordTimings = detailedResult.words
+
+                if let neuralDiarizationTask {
+                    item.status = .processing(phase: .diarizing)
+                    do {
+                        // Cancel the detached diarization promptly when this task
+                        // is cancelled instead of waiting for it to finish.
+                        let speakerSegments = try await withTaskCancellationHandler {
+                            try await neuralDiarizationTask.value
+                        } onCancel: {
+                            neuralDiarizationTask.cancel()
+                        }
+                        if let words = wordTimings, !words.isEmpty, !speakerSegments.isEmpty {
+                            let assigned = SpeakerAlignment.assignSpeakers(words: words, segments: speakerSegments)
+                            wordTimings = assigned
+                            speakerUtterances = SpeakerAlignment.utterances(from: assigned)
+                        } else {
+                            logger.notice(
+                                "Diarization finished but the engine returned no word timings; skipping speaker assignment"
+                            )
+                        }
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        // Diarization failure must not lose the transcription.
+                        logger.error("Diarization failed: \(error, privacy: .public)")
+                    }
+                }
+            }
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
+            try Task.checkCancellation()
             text = TranscriptionOutputFilter.filter(text)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -258,6 +470,38 @@ class AudioTranscriptionManager: ObservableObject {
                     modeEmoji: modeMetadata.emoji
                 )
             }
+
+            // Keep the Speakers view consistent with the cleaned Original text:
+            // utterances go through the same hallucination filter and word
+            // replacements before being persisted.
+            if var utterances = speakerUtterances {
+                for index in utterances.indices {
+                    var utteranceText = TranscriptionOutputFilter.filter(utterances[index].text)
+                    utteranceText = WordReplacementService.shared.applyReplacements(
+                        to: utteranceText, using: modelContext)
+                    utterances[index].text = utteranceText.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+                let surviving = utterances.filter { !$0.text.isEmpty }
+                speakerUtterances = surviving
+
+                // Keep the persisted word data consistent with the visible
+                // transcript: drop words belonging to utterances that were
+                // filtered out entirely. Matching is strictly by speaker and
+                // time; words with no speaker sit outside every diarization
+                // segment and are dropped with the rest.
+                if let words = wordTimings {
+                    wordTimings = words.filter { word in
+                        surviving.contains { utterance in
+                            word.speaker == utterance.speaker
+                                && word.start >= utterance.start - 0.05
+                                && word.end <= utterance.end + 0.05
+                        }
+                    }
+                }
+            }
+
+            transcription.wordTimings = wordTimings
+            transcription.speakerUtterances = speakerUtterances
 
             modelContext.insert(transcription)
             try modelContext.save()

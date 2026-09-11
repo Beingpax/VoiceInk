@@ -264,6 +264,115 @@ class AudioProcessor {
 
         return samples
     }
+    /// Extracts the two channels of a stereo file as separate 16kHz sample
+    /// arrays, for channel-based speaker separation (telephony recordings often
+    /// carry one call participant per channel). Returns nil for mono sources,
+    /// for dual-mono (both channels carrying the same signal), or on decode
+    /// failure — callers should then fall back to voice-based diarization.
+    func extractStereoChannels(_ url: URL) -> StereoChannelSamples? {
+        guard let audioFile = try? AVAudioFile(forReading: url) else { return nil }
+
+        let format = audioFile.processingFormat
+        guard format.channelCount == 2 else { return nil }
+
+        guard
+            let outputFormat = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32,
+                sampleRate: AudioFormat.targetSampleRate,
+                channels: 2,
+                interleaved: false
+            )
+        else { return nil }
+
+        let totalFrames = audioFile.length
+        let chunkSize: AVAudioFrameCount = 50_000_000
+        var left: [Float] = []
+        var right: [Float] = []
+        var currentFrame: AVAudioFramePosition = 0
+
+        while currentFrame < totalFrames {
+            if Task.isCancelled { return nil }
+            let remainingFrames = totalFrames - currentFrame
+            let framesToRead = min(chunkSize, AVAudioFrameCount(remainingFrames))
+
+            guard let inputBuffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: framesToRead) else {
+                return nil
+            }
+
+            audioFile.framePosition = currentFrame
+            guard (try? audioFile.read(into: inputBuffer, frameCount: framesToRead)) != nil else { return nil }
+
+            let buffer: AVAudioPCMBuffer
+            if format.sampleRate == AudioFormat.targetSampleRate && format.channelCount == 2 {
+                buffer = inputBuffer
+            } else {
+                guard let converter = AVAudioConverter(from: format, to: outputFormat) else { return nil }
+                let ratio = AudioFormat.targetSampleRate / format.sampleRate
+                let outputFrameCount = AVAudioFrameCount(Double(inputBuffer.frameLength) * ratio)
+                guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputFrameCount)
+                else { return nil }
+
+                var error: NSError?
+                let status = converter.convert(
+                    to: outputBuffer,
+                    error: &error,
+                    withInputFrom: { _, outStatus in
+                        outStatus.pointee = .haveData
+                        return inputBuffer
+                    }
+                )
+                guard error == nil, status != .error else { return nil }
+                buffer = outputBuffer
+            }
+
+            guard let channelData = buffer.floatChannelData, buffer.format.channelCount >= 2 else { return nil }
+            let frameLength = Int(buffer.frameLength)
+            left.append(contentsOf: UnsafeBufferPointer(start: channelData[0], count: frameLength))
+            right.append(contentsOf: UnsafeBufferPointer(start: channelData[1], count: frameLength))
+
+            currentFrame += AVAudioFramePosition(framesToRead)
+        }
+
+        guard !left.isEmpty, left.count == right.count else { return nil }
+
+        // Normalize both channels by a shared factor so their relative energy
+        // (the speaker-separation signal) is preserved.
+        let maxSample = max(left.map(abs).max() ?? 1, right.map(abs).max() ?? 1)
+        if maxSample > 0 {
+            left = left.map { $0 / maxSample }
+            right = right.map { $0 / maxSample }
+        }
+
+        guard Self.channelsAreDistinct(left, right) else {
+            logger.notice("Stereo file has dual-mono channels; falling back to voice-based diarization")
+            return nil
+        }
+        return StereoChannelSamples(left: left, right: right)
+    }
+
+    /// Dual-mono detection: correlation near ±1 means both channels carry the
+    /// same signal and channel-based speaker separation is meaningless.
+    private static func channelsAreDistinct(_ left: [Float], _ right: [Float]) -> Bool {
+        let stride = max(1, left.count / 200_000)
+        var sumL: Double = 0, sumR: Double = 0, sumLL: Double = 0, sumRR: Double = 0, sumLR: Double = 0
+        var count: Double = 0
+        var i = 0
+        while i < left.count {
+            let l = Double(left[i]), r = Double(right[i])
+            sumL += l; sumR += r
+            sumLL += l * l; sumRR += r * r; sumLR += l * r
+            count += 1
+            i += stride
+        }
+        guard count > 1 else { return false }
+        let covariance = sumLR / count - (sumL / count) * (sumR / count)
+        let varianceL = sumLL / count - (sumL / count) * (sumL / count)
+        let varianceR = sumRR / count - (sumR / count) * (sumR / count)
+        guard varianceL > 0, varianceR > 0 else { return false }
+        let correlation = covariance / (varianceL * varianceR).squareRoot()
+        return abs(correlation) < 0.9
+    }
+
     func saveSamplesAsWav(samples: [Float], to url: URL) throws {
         let outputFormat = AVAudioFormat(
             commonFormat: .pcmFormatInt16,

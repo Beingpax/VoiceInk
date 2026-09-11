@@ -59,6 +59,17 @@ class TranscriptionServiceRegistry {
         return try await service.transcribe(audioURL: audioURL, model: model, context: context.scoped(to: model))
     }
 
+    func transcribeDetailed(
+        audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext = .currentDefaults
+    ) async throws -> DetailedTranscriptionResult {
+        let service = service(for: model.provider)
+        logger.debug(
+            "Transcribing (detailed) with \(model.displayName, privacy: .public) using \(String(describing: type(of: service)), privacy: .public)"
+        )
+        return try await service.transcribeDetailed(
+            audioURL: audioURL, model: model, context: context.scoped(to: model))
+    }
+
     /// Creates a streaming or file-based session for the resolved transcription configuration.
     func createSession(
         for configuration: TranscriptionRuntimeConfiguration, onPartialTranscript: ((String) -> Void)? = nil

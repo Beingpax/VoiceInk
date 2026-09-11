@@ -138,6 +138,12 @@ class FluidAudioTranscriptionService: TranscriptionService {
     func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
         -> String
     {
+        try await transcribeDetailed(audioURL: audioURL, model: model, context: context).text
+    }
+
+    func transcribeDetailed(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext)
+        async throws -> DetailedTranscriptionResult
+    {
         if FluidAudioModelManager.isParakeetUnifiedModel(named: model.name) {
             try await ensureUnifiedModelsLoaded()
             guard let unifiedAsrManager else {
@@ -146,7 +152,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
 
             let speechAudio = try loadAudioSamples(from: audioURL)
             let text = try await unifiedAsrManager.transcribe(speechAudio)
-            return text
+            return DetailedTranscriptionResult(text: text, words: nil)
         }
 
         if FluidAudioModelManager.isNemotronModel(named: model.name) {
@@ -171,8 +177,11 @@ class FluidAudioTranscriptionService: TranscriptionService {
             }
 
             _ = try await nemotronAsrManager.process(samples: speechAudio)
-            let text = try await nemotronAsrManager.finish()
-            return text
+            let (text, tokenTimings) = try await nemotronAsrManager.finishWithTokenTimings()
+            let words = buildWordTimings(from: tokenTimings).map {
+                WordTiming(text: $0.word, start: $0.startTime, end: $0.endTime)
+            }
+            return DetailedTranscriptionResult(text: text, words: words.isEmpty ? nil : words)
         }
 
         let targetVersion = version(for: model)
@@ -193,7 +202,16 @@ class FluidAudioTranscriptionService: TranscriptionService {
             language: languageHint
         )
 
-        return result.text
+        let words: [WordTiming]? = result.tokenTimings.flatMap { timings in
+            let grouped = buildWordTimings(from: timings).map {
+                WordTiming(text: $0.word, start: $0.startTime, end: $0.endTime)
+            }
+            return grouped.isEmpty ? nil : grouped
+        }
+        if words == nil {
+            logger.notice("Parakeet returned no token timings; transcription will have no word-level data")
+        }
+        return DetailedTranscriptionResult(text: result.text, words: words)
     }
 
     private func loadAudioSamples(from audioURL: URL) throws -> [Float] {

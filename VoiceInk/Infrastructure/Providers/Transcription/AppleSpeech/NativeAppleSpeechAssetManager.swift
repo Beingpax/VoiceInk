@@ -146,7 +146,7 @@ enum NativeAppleSpeechAssetManager {
                 locale: supportedLocale,
                 transcriptionOptions: [],
                 reportingOptions: [],
-                attributeOptions: []
+                attributeOptions: [.audioTimeRange]
             )
             let resolvedIdentifier = supportedLocale.identifier(.bcp47)
             let installedLocales = await SpeechTranscriber.installedLocales

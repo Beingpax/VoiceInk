@@ -9,7 +9,14 @@ struct AudioTranscribeView: View {
     @StateObject private var transcriptionManager = AudioTranscriptionManager.shared
     @State private var isDropTargeted = false
     @State private var showModePopover = false
+    @State private var showSpeakersPopover = false
     @State private var expandedItemId: UUID?
+    @AppStorage("TranscribeDiarizationMode") private var diarizationModeRaw =
+        TranscribeDiarizationMode.current.rawValue
+
+    private var diarizationMode: TranscribeDiarizationMode {
+        TranscribeDiarizationMode(rawValue: diarizationModeRaw) ?? .off
+    }
 
     private var selectedMode: ModeConfig? {
         modeManager.currentEffectiveConfiguration
@@ -156,7 +163,9 @@ struct AudioTranscribeView: View {
                         .font(.system(size: 12, weight: .medium))
                     Text("Add")
                         .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
                 }
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -170,6 +179,8 @@ struct AudioTranscribeView: View {
 
             Spacer()
 
+            speakersPicker
+
             modePicker
 
             if transcriptionManager.isProcessingQueue {
@@ -181,7 +192,9 @@ struct AudioTranscribeView: View {
                             .font(.system(size: 10, weight: .medium))
                         Text("Cancel")
                             .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundColor(AppTheme.Status.error)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
@@ -201,7 +214,9 @@ struct AudioTranscribeView: View {
                             .font(.system(size: 10, weight: .medium))
                         Text("Start")
                             .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
                     }
+                    .fixedSize(horizontal: true, vertical: false)
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -217,6 +232,33 @@ struct AudioTranscribeView: View {
                 .help(selectedMode == nil ? "Select an enabled mode to start" : "Start transcription")
             }
 
+            if completedItems.count >= 2 {
+                Menu {
+                    Button("Save All as TXT") { saveAll(fileExtension: "txt") }
+                    Button("Save All as MD") { saveAll(fileExtension: "md") }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.down.on.square")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Save All")
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(AppTheme.Surface.controlActive)
+                    )
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Save every completed transcription to a folder")
+            }
+
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     transcriptionManager.clearAll()
@@ -228,7 +270,9 @@ struct AudioTranscribeView: View {
                         .font(.system(size: 12, weight: .medium))
                     Text("Clear")
                         .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
                 }
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -242,6 +286,165 @@ struct AudioTranscribeView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
+    }
+
+    private var completedItems: [AudioFileQueueItem] {
+        transcriptionManager.queue.filter {
+            if case .completed = $0.status { return true }
+            return false
+        }
+    }
+
+    /// Batch-saves every completed transcription into a chosen folder, one file
+    /// per audio, named after the source file. Each item exports its primary
+    /// view — the speaker transcript when the item has speaker data, the
+    /// (enhanced) text otherwise — matching what the result row displays.
+    private func saveAll(fileExtension: String) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = String(localized: "Save All")
+        panel.message = String(localized: "Choose a folder for the transcriptions")
+
+        guard panel.runModal() == .OK, let directory = panel.url else { return }
+
+        var usedNames = Set<String>()
+        for item in completedItems {
+            guard let transcription = item.transcription else { continue }
+            let baseName = item.url.deletingPathExtension().lastPathComponent
+            // Two queue items can share a basename (same file name in different
+            // folders); suffix duplicates so no transcript silently overwrites another.
+            var uniqueName = baseName
+            var counter = 2
+            while usedNames.contains(uniqueName.lowercased()) {
+                uniqueName = "\(baseName) \(counter)"
+                counter += 1
+            }
+            usedNames.insert(uniqueName.lowercased())
+            let fileURL = directory.appendingPathComponent("\(uniqueName).\(fileExtension)")
+
+            let body: String
+            let isSpeakerMarkdown: Bool
+            if let speakerBody = transcription.speakerTranscriptMarkdown {
+                body = speakerBody
+                isSpeakerMarkdown = true
+            } else {
+                body = transcription.enhancedText ?? transcription.text
+                isSpeakerMarkdown = false
+            }
+
+            let content: String
+            if fileExtension == "md" {
+                content = "# \(item.filename)\n\n\(body)"
+            } else {
+                // Only speaker markdown gets its markers stripped; fallback
+                // plain text may legitimately contain asterisks.
+                content = isSpeakerMarkdown ? Self.plainText(fromMarkdown: body) : body
+            }
+
+            do {
+                try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            } catch {
+                print("Failed to save \(fileURL.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Strips the markdown emphasis used by the speaker transcript for TXT export.
+    private static func plainText(fromMarkdown markdown: String) -> String {
+        let silence = String(localized: "Silence")
+        return markdown
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "*\(silence)*", with: silence)
+    }
+
+    private var speakersPicker: some View {
+        HStack(spacing: 6) {
+            Text("Speakers")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+            Button {
+                showSpeakersPopover.toggle()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 10, weight: .medium))
+                        .frame(width: 16)
+                    Text(diarizationMode.label)
+                        .font(.system(size: 12, weight: .medium))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .foregroundColor(.primary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill(AppTheme.Surface.subtle)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(AppTheme.Accent.fillSubtle, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .help("How speakers are identified (requires a model with word timestamps)")
+            .popover(isPresented: $showSpeakersPopover, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Select Speakers")
+                        .font(.headline)
+                        .foregroundColor(AppTheme.Text.primary)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                    Divider()
+                        .background(AppTheme.Border.subtle)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(TranscribeDiarizationMode.allCases, id: \.self) { mode in
+                            Button {
+                                diarizationModeRaw = mode.rawValue
+                                showSpeakersPopover = false
+                            } label: {
+                                HStack {
+                                    Text(mode.label)
+                                        .font(.system(size: 13))
+                                        .foregroundColor(AppTheme.Text.primary)
+                                    Spacer()
+                                    if mode == diarizationMode {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 11, weight: .semibold))
+                                            .foregroundColor(AppTheme.Status.positive)
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .contentShape(Rectangle())
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(
+                                            mode == diarizationMode
+                                                ? AppTheme.Surface.controlActive : Color.clear)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .help(mode.help)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 10)
+                }
+                .frame(width: 230)
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private var modePicker: some View {

@@ -56,6 +56,12 @@ class NativeAppleTranscriptionService: TranscriptionService {
     func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
         -> String
     {
+        try await transcribeDetailed(audioURL: audioURL, model: model, context: context).text
+    }
+
+    func transcribeDetailed(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext)
+        async throws -> DetailedTranscriptionResult
+    {
         guard model is NativeAppleModel else {
             throw ServiceError.invalidModel
         }
@@ -107,12 +113,25 @@ class NativeAppleTranscriptionService: TranscriptionService {
 
             let modules: [any SpeechModule] = [assetContext.transcriber]
             let analyzer = SpeechAnalyzer(modules: modules)
-            let resultTask = Task<String, Error> {
+            let resultTask = Task<(String, [WordTiming]), Error> {
                 var transcript = ""
+                var words: [WordTiming] = []
                 for try await result in assetContext.transcriber.results {
                     transcript += String(result.text.characters)
+                    for run in result.text.runs {
+                        guard let timeRange = run.audioTimeRange else { continue }
+                        let runText = String(result.text[run.range].characters)
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !runText.isEmpty else { continue }
+                        words.append(
+                            WordTiming(
+                                text: runText,
+                                start: timeRange.start.seconds,
+                                end: timeRange.end.seconds
+                            ))
+                    }
                 }
-                return transcript
+                return (transcript, words)
             }
 
             do {
@@ -136,29 +155,34 @@ class NativeAppleTranscriptionService: TranscriptionService {
 
             let resultTimeout = max(20.0, audioDuration * 4.0 + 10.0)
             let finalTranscription: String
+            let wordTimings: [WordTiming]
             do {
-                finalTranscription = try await waitForResultStream(
+                let (transcript, words) = try await waitForResultStream(
                     resultTask,
                     timeout: resultTimeout
                 )
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+                finalTranscription = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                wordTimings = words
             } catch {
                 resultTask.cancel()
                 await analyzer.cancelAndFinishNow()
                 throw error
             }
 
-            return finalTranscription
+            return DetailedTranscriptionResult(
+                text: finalTranscription,
+                words: wordTimings.isEmpty ? nil : wordTimings
+            )
         #else
             throw ServiceError.unsupportedOS
         #endif
     }
 
-    private func waitForResultStream(
-        _ resultTask: Task<String, Error>,
+    private func waitForResultStream<T: Sendable>(
+        _ resultTask: Task<T, Error>,
         timeout: TimeInterval
-    ) async throws -> String {
-        try await withThrowingTaskGroup(of: String.self) { group in
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {
                 try await resultTask.value
             }
