@@ -1,26 +1,6 @@
 import SwiftData
 import SwiftUI
 
-private extension VocabularySortMode {
-    var label: LocalizedStringKey {
-        switch self {
-        case .wordAsc: "A–Z"
-        case .wordDesc: "Z–A"
-        case .newest: "Newest"
-        case .oldest: "Oldest"
-        }
-    }
-
-    var iconName: String {
-        switch self {
-        case .wordAsc: "arrow.up"
-        case .wordDesc: "arrow.down"
-        case .newest: "clock.arrow.circlepath"
-        case .oldest: "clock"
-        }
-    }
-}
-
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
     @Environment(\.modelContext) private var modelContext
@@ -37,30 +17,50 @@ struct VocabularyView: View {
         DictionarySortService.shared.sortVocabulary(vocabularyWords, by: sortMode)
     }
 
-    private func cycleSort() {
+    private func toggleSort() {
         let service = DictionarySortService.shared
-        sortMode = service.nextVocabularyMode(after: sortMode)
+        sortMode = sortMode == .wordAsc ? .wordDesc : .wordAsc
         service.saveVocabularyMode(sortMode)
+    }
+
+    private var shouldShowAddButton: Bool {
+        !newWord.isEmpty
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .onSubmit { addWords() }
+                    .labelsHidden()
+
+                if shouldShowAddButton {
+                    AddIconButton(
+                        helpText: "Add word",
+                        isDisabled: newWord.isEmpty,
+                        action: addWords
+                    )
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
+
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.Text.secondary)
+                    Button(action: toggleSort) {
+                        HStack(spacing: 4) {
+                            Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
 
-                        Spacer()
-
-                        DictionaryEdgeActionButton(
-                            title: sortMode.label,
-                            systemImage: sortMode.iconName,
-                            help: "Change vocabulary sorting",
-                            action: cycleSort
-                        )
+                            Image(systemName: sortMode == .wordDesc ? "chevron.down" : "chevron.up")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .help("Sort alphabetically")
 
                     FlowLayout(spacing: 8) {
                         ForEach(sortedItems) { item in
@@ -74,24 +74,6 @@ struct VocabularyView: View {
                 .padding(.top, 4)
             }
 
-            TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13))
-                .onSubmit { addWords() }
-                .labelsHidden()
-
-            HStack {
-                Spacer()
-
-                DictionaryEdgeActionButton(
-                    title: "Add",
-                    systemImage: "plus",
-                    shortcut: "↵",
-                    help: "Add word",
-                    isDisabled: newWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                    action: addWords
-                )
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .alert("Vocabulary", isPresented: $showAlert) {
