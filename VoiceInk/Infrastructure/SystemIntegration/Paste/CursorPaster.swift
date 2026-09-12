@@ -63,14 +63,19 @@ class CursorPaster {
 
         await wait(prePasteDelay)
 
-        await AutoLearnService.shared.pasteWillStart()
-        let targetProcessID = NSWorkspace.shared.frontmostApplication?.processIdentifier
-        let pasteResult = await postPasteCommand()
-        await AutoLearnService.shared.pasteDidFinish(
-            text: text,
-            processID: targetProcessID,
-            commandPosted: pasteResult.didPostPasteCommand
-        )
+        let pasteResult: PasteResult
+        if AutoLearnSettings.isEnabled {
+            await AutoLearnService.shared.pasteWillStart()
+            let targetProcessID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            pasteResult = await postPasteCommand()
+            await AutoLearnService.shared.pasteDidFinish(
+                text: text,
+                processID: targetProcessID,
+                commandPosted: pasteResult.didPostPasteCommand
+            )
+        } else {
+            pasteResult = await postPasteCommand()
+        }
         if shouldRestoreClipboard {
             scheduleClipboardRestore(
                 savedContents,

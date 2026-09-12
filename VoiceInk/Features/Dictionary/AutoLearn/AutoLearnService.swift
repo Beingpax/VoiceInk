@@ -58,7 +58,7 @@ actor AutoLearnService {
         guard AutoLearnSettings.isEnabled else { return }
         guard reviewTask == nil || reviewIsWaiting else { return }
         cancelReviewTask(clearScheduledDate: true)
-        await schedulePendingReview(force: true)
+        await schedulePendingReview(runImmediately: true)
     }
 
     func retryPendingReviews() async {
@@ -70,30 +70,35 @@ actor AutoLearnService {
     }
 
     func recordingDidStart() async {
+        guard AutoLearnSettings.isEnabled else { return }
+        if let token = activeToken {
+            await completeSession(token: token, persist: true)
+        }
         lifecycleGeneration &+= 1
         await discardActiveSession()
     }
 
     func pasteWillStart() async {
-        guard let token = activeToken else { return }
+        guard AutoLearnSettings.isEnabled, let token = activeToken else { return }
         await completeSession(token: token, persist: true)
     }
 
     func pasteDidFinish(text: String, processID: pid_t?, commandPosted: Bool) async {
+        guard AutoLearnSettings.isEnabled,
+            replacementStore != nil,
+            commandPosted,
+            let processID
+        else {
+            return
+        }
+
         // A new VoiceInk paste owns the next session. Capture happens only after
         // Command-V is posted, so Accessibility work never delays the paste.
         lifecycleGeneration &+= 1
         let generation = lifecycleGeneration
         await discardActiveSession()
 
-        guard lifecycleGeneration == generation,
-            commandPosted,
-            AutoLearnSettings.isEnabled,
-            replacementStore != nil,
-            let processID
-        else {
-            return
-        }
+        guard lifecycleGeneration == generation, AutoLearnSettings.isEnabled else { return }
 
         deadlineTask = Task { [weak self] in
             await self?.beginObservation(
@@ -105,6 +110,7 @@ actor AutoLearnService {
     }
 
     func cancelForAutoSend() async {
+        guard AutoLearnSettings.isEnabled else { return }
         lifecycleGeneration &+= 1
         await discardActiveSession()
     }
@@ -116,7 +122,7 @@ actor AutoLearnService {
     }
 
     func focusMayHaveChanged(token: AutoLearnPasteToken) {
-        guard activeToken == token else { return }
+        guard AutoLearnSettings.isEnabled, activeToken == token else { return }
         focusFinalizationTask?.cancel()
         focusFinalizationTask = Task { [weak self] in
             await self?.finalizeIfFocusLeft(token: token)
@@ -257,7 +263,7 @@ actor AutoLearnService {
         }
     }
 
-    private func schedulePendingReview(force: Bool = false) async {
+    private func schedulePendingReview(runImmediately: Bool = false) async {
         guard reviewTask == nil,
             AutoLearnSettings.isEnabled,
             replacementStore != nil,
@@ -266,19 +272,23 @@ actor AutoLearnService {
             return
         }
 
-        guard (try? await pendingQueue.pendingCount()) ?? 0 > 0 else {
+        let pendingCandidateCount = (try? await pendingQueue.pendingCount()) ?? 0
+        guard pendingCandidateCount > 0 else {
             AutoLearnSettings.setNextReviewDate(nil)
             return
         }
 
         let schedule = AutoLearnSettings.reviewSchedule
-        guard force || schedule != .manually else {
+        guard runImmediately || schedule != .manually else {
             AutoLearnSettings.setNextReviewDate(nil)
+            logger.notice(
+                "Auto Learn review waiting schedule=manually pending=\(pendingCandidateCount, privacy: .public)"
+            )
             return
         }
 
         let delay: TimeInterval
-        if force || schedule == .immediately {
+        if runImmediately || schedule == .immediately {
             AutoLearnSettings.setNextReviewDate(nil)
             delay = 0
         } else if let scheduledDate = AutoLearnSettings.nextReviewDate {
@@ -294,6 +304,9 @@ actor AutoLearnService {
         reviewGeneration &+= 1
         let generation = reviewGeneration
         reviewIsWaiting = delay > 0
+        logger.notice(
+            "Auto Learn review scheduled schedule=\(schedule.rawValue, privacy: .public) pending=\(pendingCandidateCount, privacy: .public) delaySeconds=\(Int(delay), privacy: .public)"
+        )
         reviewTask = Task { [weak self] in
             await self?.runScheduledReview(after: delay, generation: generation)
         }
@@ -342,35 +355,57 @@ actor AutoLearnService {
                     ($0.candidateID, $0)
                 }
             )
+            let unresolvedByCandidateID = Dictionary(
+                uniqueKeysWithValues: reviewResult.unresolvedReviews.map {
+                    ($0.candidateID, $0)
+                }
+            )
             for candidate in candidates {
                 guard let decision = decisionsByCandidateID[candidate.candidateID] else {
-                    logger.notice(
-                        "Auto Learn AI unresolved source=\(candidate.detectedOriginalText, privacy: .public) destination=\(candidate.userCorrectedText, privacy: .public)"
-                    )
+                    if let unresolved = unresolvedByCandidateID[candidate.candidateID] {
+                        let returnedAction = unresolved.learningAction?.rawValue ?? "none"
+                        let returnedReplacement = unresolved.incorrectTextToReplace ?? "none"
+                        let returnedVocabulary = unresolved.correctedVocabularyTerm ?? "none"
+                        logger.notice(
+                            "Auto Learn review result=unresolved reason=\(unresolved.reason.rawValue, privacy: .public) returnedAction=\(returnedAction, privacy: .public) original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public) returnedReplacement=\(returnedReplacement, privacy: .public) returnedVocabulary=\(returnedVocabulary, privacy: .public)"
+                        )
+                    }
                     continue
                 }
 
                 switch decision.learningAction {
                 case .addReplacementAndVocabulary:
-                    let source = decision.incorrectTextToReplace
+                    let incorrectTextToReplace = decision.incorrectTextToReplace
                         ?? candidate.detectedOriginalText
-                    let destination = decision.correctedVocabularyTerm
+                    let correctedVocabularyTerm = decision.correctedVocabularyTerm
                         ?? candidate.userCorrectedText
                     logger.notice(
-                        "Auto Learn AI accepted action=replacement+vocabulary source=\(source, privacy: .public) destination=\(destination, privacy: .public)"
+                        "Auto Learn review result=accepted action=addReplacementAndVocabulary original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public) replacement=\(incorrectTextToReplace, privacy: .public) vocabulary=\(correctedVocabularyTerm, privacy: .public)"
                     )
                 case .addVocabularyOnly:
-                    let destination = decision.correctedVocabularyTerm
+                    let correctedVocabularyTerm = decision.correctedVocabularyTerm
                         ?? candidate.userCorrectedText
                     logger.notice(
-                        "Auto Learn AI accepted action=vocabulary-only destination=\(destination, privacy: .public)"
+                        "Auto Learn review result=accepted action=addVocabularyOnly original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public) vocabulary=\(correctedVocabularyTerm, privacy: .public)"
                     )
                 case .rejectCorrection:
                     logger.notice(
-                        "Auto Learn AI rejected source=\(candidate.detectedOriginalText, privacy: .public) destination=\(candidate.userCorrectedText, privacy: .public)"
+                        "Auto Learn review result=rejected action=rejectCorrection original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public)"
                     )
                 }
             }
+            let replacementAndVocabularyCount = reviewResult.reviewDecisions.filter {
+                $0.learningAction == .addReplacementAndVocabulary
+            }.count
+            let vocabularyOnlyCount = reviewResult.reviewDecisions.filter {
+                $0.learningAction == .addVocabularyOnly
+            }.count
+            let rejectedCount = reviewResult.reviewDecisions.filter {
+                $0.learningAction == .rejectCorrection
+            }.count
+            logger.notice(
+                "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) unresolved=\(reviewResult.unresolvedReviews.count, privacy: .public)"
+            )
         } catch {
             try? await pendingQueue.release(candidateIDs)
             if !Task.isCancelled {
@@ -402,14 +437,14 @@ actor AutoLearnService {
             AutoLearnSettings.clearFailure()
             if summary.hasChanges {
                 logger.notice(
-                    "Applied AI-reviewed Auto Learn results created=\(summary.createdCount, privacy: .public) updated=\(summary.updatedCount, privacy: .public) vocabulary=\(summary.vocabularyCount, privacy: .public)"
+                    "Auto Learn apply completed replacementsCreated=\(summary.createdCount, privacy: .public) replacementsUpdated=\(summary.updatedCount, privacy: .public) vocabularyCreated=\(summary.vocabularyCount, privacy: .public)"
                 )
                 await MainActor.run {
                     NotificationCenter.default.post(name: .wordReplacementsDidChange, object: nil)
                 }
                 await showLearnedNotification(for: summary)
             } else {
-                logger.notice("Auto Learn review completed without adding dictionary entries")
+                logger.notice("Auto Learn apply completed without dictionary changes")
             }
 
             await finishReviewTask(
@@ -440,7 +475,7 @@ actor AutoLearnService {
         reviewTask = nil
         reviewIsWaiting = false
         if continueProcessing {
-            await schedulePendingReview(force: true)
+            await schedulePendingReview(runImmediately: true)
         } else if reschedule {
             AutoLearnSettings.setNextReviewDate(nil)
             await schedulePendingReview()

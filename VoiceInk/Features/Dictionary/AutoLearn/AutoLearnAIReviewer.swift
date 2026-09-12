@@ -22,7 +22,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     private struct CandidateReviewDecision: Decodable {
         let candidateID: Int
         let learningAction: AutoLearnReviewAction
-        let correctedTermIsPersonName: Bool?
         let incorrectTextToReplace: String?
         let correctedVocabularyTerm: String?
     }
@@ -55,7 +54,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     func review(_ candidates: [AutoLearnReviewCandidate]) async throws -> AutoLearnReviewResult {
         guard !candidates.isEmpty else {
-            return AutoLearnReviewResult(reviewDecisions: [], unresolvedCandidateIDs: [])
+            return AutoLearnReviewResult(reviewDecisions: [], unresolvedReviews: [])
         }
         guard let aiService = enhancementService.getAIService() else {
             throw ReviewError.unavailable
@@ -113,6 +112,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.invalidResponse
         }
 
+        let loggedModelName = modelName ?? "provider-default"
+        logger.notice(
+            "Auto Learn review started provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
+        )
         let responseText = try await aiService.reviewAutoLearnCandidates(
             payload: requestText,
             systemPrompt: Self.reviewPrompt,
@@ -132,13 +135,23 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
 
         var reviewDecisions: [AutoLearnReviewDecision] = []
-        var unresolvedCandidateIDs = Set<UUID>()
+        var unresolvedReviews: [AutoLearnUnresolvedReview] = []
 
         for (index, candidate) in candidates.enumerated() {
-            guard let matches = decisionsByCandidateID[index], matches.count == 1,
-                let decision = matches.first
-            else {
-                unresolvedCandidateIDs.insert(candidate.candidateID)
+            guard let matchingDecisions = decisionsByCandidateID[index] else {
+                unresolvedReviews.append(
+                    unresolvedReview(for: candidate, reason: .missingDecision)
+                )
+                continue
+            }
+            guard matchingDecisions.count == 1, let decision = matchingDecisions.first else {
+                unresolvedReviews.append(
+                    unresolvedReview(
+                        for: candidate,
+                        reason: .duplicateDecisions,
+                        decision: matchingDecisions.first
+                    )
+                )
                 continue
             }
             let learningAction = decision.learningAction
@@ -155,31 +168,26 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 continue
             }
 
-            guard let correctedTermIsPersonName = decision.correctedTermIsPersonName,
-                let correctedVocabularyTerm = decision.correctedVocabularyTerm?
+            guard let correctedVocabularyTerm = decision.correctedVocabularyTerm?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
             else {
-                unresolvedCandidateIDs.insert(candidate.candidateID)
+                unresolvedReviews.append(
+                    unresolvedReview(
+                        for: candidate,
+                        reason: .missingRequiredActionValues,
+                        decision: decision
+                    )
+                )
                 continue
             }
-            guard
-                !correctedVocabularyTerm.isEmpty,
-                correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
-                candidate.correctedTextContext.range(
-                    of: correctedVocabularyTerm,
-                    options: .literal
-                ) != nil,
-                correctedVocabularyTerm.range(
-                    of: candidate.userCorrectedText,
-                    options: .literal
-                ) != nil,
-                !correctedTermIsPersonName
-                    || !hasOmittedAdjacentNameComponent(
-                        correctedVocabularyTerm,
-                        in: candidate.correctedTextContext
+            guard !correctedVocabularyTerm.isEmpty else {
+                unresolvedReviews.append(
+                    unresolvedReview(
+                        for: candidate,
+                        reason: .invalidRequiredActionValues,
+                        decision: decision
                     )
-            else {
-                unresolvedCandidateIDs.insert(candidate.candidateID)
+                )
                 continue
             }
 
@@ -198,28 +206,25 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             guard let incorrectTextToReplace = decision.incorrectTextToReplace?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             else {
-                unresolvedCandidateIDs.insert(candidate.candidateID)
+                unresolvedReviews.append(
+                    unresolvedReview(
+                        for: candidate,
+                        reason: .missingRequiredActionValues,
+                        decision: decision
+                    )
+                )
                 continue
             }
-            guard
-                !incorrectTextToReplace.isEmpty,
-                incorrectTextToReplace != correctedVocabularyTerm,
-                incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
-                candidate.originalTextContext.range(
-                    of: incorrectTextToReplace,
-                    options: .literal
-                ) != nil,
-                incorrectTextToReplace.range(
-                    of: candidate.detectedOriginalText,
-                    options: .literal
-                ) != nil,
-                !correctedTermIsPersonName
-                    || !hasOmittedAdjacentNameComponent(
-                        incorrectTextToReplace,
-                        in: candidate.originalTextContext
-                    )
+            guard !incorrectTextToReplace.isEmpty,
+                incorrectTextToReplace != correctedVocabularyTerm
             else {
-                unresolvedCandidateIDs.insert(candidate.candidateID)
+                unresolvedReviews.append(
+                    unresolvedReview(
+                        for: candidate,
+                        reason: .invalidRequiredActionValues,
+                        decision: decision
+                    )
+                )
                 continue
             }
 
@@ -235,7 +240,21 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
         return AutoLearnReviewResult(
             reviewDecisions: reviewDecisions,
-            unresolvedCandidateIDs: unresolvedCandidateIDs
+            unresolvedReviews: unresolvedReviews
+        )
+    }
+
+    private func unresolvedReview(
+        for candidate: AutoLearnReviewCandidate,
+        reason: AutoLearnUnresolvedReason,
+        decision: CandidateReviewDecision? = nil
+    ) -> AutoLearnUnresolvedReview {
+        AutoLearnUnresolvedReview(
+            candidateID: candidate.candidateID,
+            reason: reason,
+            learningAction: decision?.learningAction,
+            incorrectTextToReplace: decision?.incorrectTextToReplace,
+            correctedVocabularyTerm: decision?.correctedVocabularyTerm
         )
     }
 
@@ -264,72 +283,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
     }
 
-    private func hasOmittedAdjacentNameComponent(
-        _ term: String,
-        in context: String
-    ) -> Bool {
-        guard let termRange = context.range(of: term) else { return false }
-        if let precedingRange = adjacentToken(before: termRange.lowerBound, in: context),
-            isLikelyNameComponent(context[precedingRange])
-        {
-            return true
-        }
-        if let followingRange = adjacentToken(after: termRange.upperBound, in: context),
-            isLikelyNameComponent(context[followingRange])
-        {
-            return true
-        }
-        return false
-    }
-
-    private func adjacentToken(
-        before index: String.Index,
-        in text: String
-    ) -> Range<String.Index>? {
-        var upperBound = index
-        while upperBound > text.startIndex {
-            let previous = text.index(before: upperBound)
-            guard text[previous].isWhitespace else { break }
-            upperBound = previous
-        }
-        guard upperBound < index, upperBound > text.startIndex else { return nil }
-
-        var lowerBound = upperBound
-        while lowerBound > text.startIndex {
-            let previous = text.index(before: lowerBound)
-            guard !text[previous].isWhitespace else { break }
-            lowerBound = previous
-        }
-        return lowerBound..<upperBound
-    }
-
-    private func adjacentToken(
-        after index: String.Index,
-        in text: String
-    ) -> Range<String.Index>? {
-        var lowerBound = index
-        while lowerBound < text.endIndex, text[lowerBound].isWhitespace {
-            lowerBound = text.index(after: lowerBound)
-        }
-        guard lowerBound > index, lowerBound < text.endIndex else { return nil }
-
-        var upperBound = lowerBound
-        while upperBound < text.endIndex, !text[upperBound].isWhitespace {
-            upperBound = text.index(after: upperBound)
-        }
-        return lowerBound..<upperBound
-    }
-
-    private func isLikelyNameComponent(_ token: Substring) -> Bool {
-        let trimmed = token.trimmingCharacters(in: .punctuationCharacters)
-        guard let firstLetter = trimmed.first(where: { $0.isLetter }), firstLetter.isUppercase else {
-            return false
-        }
-        return trimmed.allSatisfy {
-            $0.isLetter || $0 == "-" || $0 == "'" || $0 == "’"
-        }
-    }
-
     private static let reviewPrompt = """
         Review user corrections to speech-to-text. Each candidate contains originalChangedText and correctedChangedText plus short originalTextContext and correctedTextContext windows.
 
@@ -352,7 +305,13 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
         A capitalization-only edit of an ordinary word is rejectCorrection unless the context clearly uses a proper name or specialized term. For example, reject "apple" to "Apple" in "eat an apple today"; accept "voiceink" to "VoiceInk" when it names the product.
 
-        Multiple original transcription errors may independently map to the same corrected term. Judge each candidate independently and never reject or downgrade one because another candidate has the same corrected term.
+        Before classifying individual candidates, compare corrected entity terms within this request. When two or more corrected terms are clearly near-duplicate spellings or pronunciations of the same named entity, choose one canonical term from the corrected terms present in this request and use it as correctedVocabularyTerm for every related accepted candidate. Prefer the form repeated most often. If frequency is tied, prefer the clearly more complete and linguistically plausible form. Never invent a canonical spelling that is absent from all correctedTextContext values. Never merge terms based only on related meaning, and keep the terms separate when identity is uncertain.
+
+        Canonicalization changes only correctedVocabularyTerm. Decide learningAction independently for every candidate by comparing that candidate's original text with the selected canonical term. Never reject or downgrade one candidate merely because another candidate maps to the same canonical term.
+
+        Canonicalization example:
+        Inputs: [{"candidateID":5,"originalTextContext":"with Prakash Jossipax today","correctedTextContext":"with Prakash Joshi Pax today","originalChangedText":"Jossipax","correctedChangedText":"Joshi Pax"},{"candidateID":6,"originalTextContext":"with Prakash Joseph X today","correctedTextContext":"with Prakash Josh Pax today","originalChangedText":"Joseph X","correctedChangedText":"Josh Pax"}]
+        Decisions: [{"candidateID":5,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Prakash Jossipax","correctedVocabularyTerm":"Prakash Joshi Pax"},{"candidateID":6,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Prakash Joseph X","correctedVocabularyTerm":"Prakash Joshi Pax"}]
 
         Be conservative. A false acceptance is more harmful than missing a useful correction. If the corrected text is not clearly reusable terminology, or the edit does not clearly satisfy an acceptance rule, use rejectCorrection. Use addVocabularyOnly for a phonetically distant original phrase only when the corrected term is unambiguously a proper name, brand, product, project, acronym, technical term, or specialized term.
 
@@ -361,26 +320,26 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         Never return only a changed surname or name fragment when an unchanged adjacent name component belongs to the same person. Follow these exact boundary examples:
 
         Input: {"candidateID":1,"originalTextContext":"with Prakash Jossipax yesterday","correctedTextContext":"with Prakash Joshi Pax yesterday","originalChangedText":"Jossipax","correctedChangedText":"Joshi Pax"}
-        Decision: {"candidateID":1,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Prakash Jossipax","correctedVocabularyTerm":"Prakash Joshi Pax"}
+        Decision: {"candidateID":1,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Prakash Jossipax","correctedVocabularyTerm":"Prakash Joshi Pax"}
 
         Input: {"candidateID":2,"originalTextContext":"met Maya Jonson yesterday","correctedTextContext":"met Maya Johnson yesterday","originalChangedText":"Jonson","correctedChangedText":"Johnson"}
-        Decision: {"candidateID":2,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Maya Jonson","correctedVocabularyTerm":"Maya Johnson"}
+        Decision: {"candidateID":2,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Maya Jonson","correctedVocabularyTerm":"Maya Johnson"}
 
         Input: {"candidateID":3,"originalTextContext":"heard Satya Nadela speak","correctedTextContext":"heard Satya Nadella speak","originalChangedText":"Nadela","correctedChangedText":"Nadella"}
-        Decision: {"candidateID":3,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Satya Nadela","correctedVocabularyTerm":"Satya Nadella"}
+        Decision: {"candidateID":3,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Satya Nadela","correctedVocabularyTerm":"Satya Nadella"}
 
         Input: {"candidateID":4,"originalTextContext":"a film by Hiao Miyazaki","correctedTextContext":"a film by Hayao Miyazaki","originalChangedText":"Hiao","correctedChangedText":"Hayao"}
-        Decision: {"candidateID":4,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Hiao Miyazaki","correctedVocabularyTerm":"Hayao Miyazaki"}
+        Decision: {"candidateID":4,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Hiao Miyazaki","correctedVocabularyTerm":"Hayao Miyazaki"}
 
-        For addReplacementAndVocabulary, incorrectTextToReplace is the complete erroneous term and correctedVocabularyTerm is the complete corrected term to store in Vocabulary. incorrectTextToReplace must be an exact contiguous substring of originalTextContext containing originalChangedText. correctedVocabularyTerm must be an exact contiguous substring of correctedTextContext containing correctedChangedText. Set correctedTermIsPersonName to true only when correctedVocabularyTerm is a person's name; otherwise set it to false.
+        For addReplacementAndVocabulary, incorrectTextToReplace is the complete erroneous term and correctedVocabularyTerm is the complete corrected term to store in Vocabulary. incorrectTextToReplace must be an exact contiguous substring of that candidate's originalTextContext containing originalChangedText. Unless batch canonicalization applies, correctedVocabularyTerm must be an exact contiguous substring of that candidate's correctedTextContext containing correctedChangedText. When canonicalization applies, correctedVocabularyTerm may instead be copied exactly from another candidate's correctedTextContext in this request.
 
-        For addVocabularyOnly, set incorrectTextToReplace to null and return the complete corrected entity as correctedVocabularyTerm. correctedVocabularyTerm must be an exact contiguous substring of correctedTextContext containing correctedChangedText. Set correctedTermIsPersonName to true only when correctedVocabularyTerm is a person's name; otherwise set it to false.
+        For addVocabularyOnly, set incorrectTextToReplace to null and return the complete corrected entity as correctedVocabularyTerm. Apply the same correctedVocabularyTerm canonicalization rule described above.
 
-        For rejectCorrection, set correctedTermIsPersonName, incorrectTextToReplace, and correctedVocabularyTerm to null.
+        For rejectCorrection, set incorrectTextToReplace and correctedVocabularyTerm to null.
 
         Return JSON only in this exact shape:
-        {"reviewDecisions":[{"candidateID":0,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"complete original term","correctedVocabularyTerm":"complete corrected term"}]}
+        {"reviewDecisions":[{"candidateID":0,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"complete original term","correctedVocabularyTerm":"complete corrected term"}]}
 
-        Allowed learningAction values are addReplacementAndVocabulary, addVocabularyOnly, and rejectCorrection. correctedTermIsPersonName must be true or false for accepted corrections and null for rejectCorrection. Copy every integer candidateID exactly and return every input candidateID exactly once. Copy text exactly from the supplied context. Do not include explanations or markdown.
+        Allowed learningAction values are addReplacementAndVocabulary, addVocabularyOnly, and rejectCorrection. Copy every integer candidateID exactly and return every input candidateID exactly once. Copy incorrectTextToReplace from its candidate's originalTextContext. Copy correctedVocabularyTerm from a correctedTextContext in this request. Do not include explanations or markdown.
         """
 }

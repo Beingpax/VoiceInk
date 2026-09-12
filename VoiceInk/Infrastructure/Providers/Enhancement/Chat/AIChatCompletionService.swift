@@ -13,7 +13,6 @@ extension AIService {
         messages: [ChatMessage],
         systemPrompt: String? = nil,
         localUserPrompt: String? = nil,
-        temperature: Double? = nil,
         timeout: TimeInterval = 30
     ) async throws -> AIChatCompletionResult {
         let resolvedModel = modelName?.isEmpty == false ? modelName! : selectedModel(for: provider)
@@ -49,7 +48,7 @@ extension AIService {
                 model: policy.model,
                 messages: messages,
                 systemPrompt: systemPrompt,
-                temperature: temperature ?? policy.temperature,
+                temperature: policy.temperature,
                 reasoning: policy.reasoning,
                 provider: policy.provider,
                 includeRouterMetadata: true,
@@ -75,7 +74,7 @@ extension AIService {
                 model: customConfiguration.modelName,
                 messages: messages,
                 systemPrompt: systemPrompt,
-                temperature: temperature ?? 0.3,
+                temperature: 0.3,
                 timeout: timeout
             )
         case .voiceInkRefine:
@@ -112,7 +111,7 @@ extension AIService {
                 model: resolvedModel,
                 messages: messages,
                 systemPrompt: systemPrompt,
-                temperature: temperature ?? 0.3,
+                temperature: 0.3,
                 reasoningEffort: reasoningEffort,
                 extraBody: extraBody,
                 timeout: timeout

@@ -222,9 +222,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 await cleanupResources()
             }
         } else {
-            // Starting a new dictation means the previous pasted-text learning window
-            // is intentionally abandoned rather than finalized.
-            await AutoLearnService.shared.recordingDidStart()
+            // Preserve corrections made to the previous paste before recording again.
+            if AutoLearnSettings.isEnabled {
+                await AutoLearnService.shared.recordingDidStart()
+            }
 
             let canContinueAssistantSession = isAssistantFollowUp && assistantSession.canSendFollowUp
             let recordingUseCase: RecordingUseCase = canContinueAssistantSession ? .assistantFollowUp : .newSession

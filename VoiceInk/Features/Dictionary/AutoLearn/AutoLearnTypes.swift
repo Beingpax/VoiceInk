@@ -58,9 +58,28 @@ struct AutoLearnReviewDecision: Sendable {
     let correctedVocabularyTerm: String?
 }
 
+enum AutoLearnUnresolvedReason: String, Sendable {
+    case missingDecision
+    case duplicateDecisions
+    case missingRequiredActionValues
+    case invalidRequiredActionValues
+}
+
+struct AutoLearnUnresolvedReview: Sendable {
+    let candidateID: UUID
+    let reason: AutoLearnUnresolvedReason
+    let learningAction: AutoLearnReviewAction?
+    let incorrectTextToReplace: String?
+    let correctedVocabularyTerm: String?
+}
+
 struct AutoLearnReviewResult: Sendable {
     let reviewDecisions: [AutoLearnReviewDecision]
-    let unresolvedCandidateIDs: Set<UUID>
+    let unresolvedReviews: [AutoLearnUnresolvedReview]
+
+    var unresolvedCandidateIDs: Set<UUID> {
+        Set(unresolvedReviews.map(\.candidateID))
+    }
 }
 
 struct AutoLearnMutationSummary: Sendable {
