@@ -70,7 +70,7 @@ struct SystemHotKeyTests {
         withExtendedLifetime((monitor, replacement)) {}
     }
 
-    @Test @MainActor func fullyRegisteredMonitorWorksWithoutAnEventTap() {
+    @Test @MainActor func fullyRegisteredMonitorHoldsItsRegistrationWithoutAnEventTap() {
         let monitor = ShortcutMonitor(createEventTap: { _, _ in nil })
         let keyCode = UInt16(kVK_F18)
         let modifiers = UInt32(controlKey | optionKey | cmdKey)
