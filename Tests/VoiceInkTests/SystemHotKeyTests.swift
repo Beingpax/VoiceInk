@@ -49,4 +49,41 @@ struct SystemHotKeyTests {
         #expect(replacement != nil)
         withExtendedLifetime(replacement) {}
     }
+
+    @Test @MainActor func failedMonitorStartReleasesSuccessfulRegistrations() {
+        let monitor = ShortcutMonitor(createEventTap: { _, _ in nil })
+        let keyCode = UInt16(kVK_F18)
+        let modifiers = UInt32(controlKey | optionKey | cmdKey)
+
+        let started = monitor.start(
+            shortcuts: [
+                .primaryRecording: .key(keyCode: keyCode, modifierFlags: [.control, .option, .command]),
+                .secondaryRecording: .rightCommand,
+            ],
+            onShortcutDown: { _, _ in },
+            onShortcutUp: { _, _ in }
+        )
+        let replacement = SystemHotKey(keyCode: keyCode, modifiers: modifiers) { _, _ in }
+
+        #expect(!started)
+        #expect(replacement != nil)
+        withExtendedLifetime((monitor, replacement)) {}
+    }
+
+    @Test @MainActor func fullyRegisteredMonitorWorksWithoutAnEventTap() {
+        let monitor = ShortcutMonitor(createEventTap: { _, _ in nil })
+        let keyCode = UInt16(kVK_F18)
+        let modifiers = UInt32(controlKey | optionKey | cmdKey)
+
+        let started = monitor.start(
+            shortcuts: [.primaryRecording: .key(keyCode: keyCode, modifierFlags: [.control, .option, .command])],
+            onShortcutDown: { _, _ in },
+            onShortcutUp: { _, _ in }
+        )
+        let duplicate = SystemHotKey(keyCode: keyCode, modifiers: modifiers) { _, _ in }
+
+        #expect(started)
+        #expect(duplicate == nil)
+        withExtendedLifetime(monitor) {}
+    }
 }

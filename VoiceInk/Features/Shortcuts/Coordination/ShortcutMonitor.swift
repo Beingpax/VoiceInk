@@ -4,6 +4,8 @@ import Foundation
 import os
 
 final class ShortcutMonitor {
+    typealias EventTapFactory = (CGEventTapCallBack, UnsafeMutableRawPointer) -> CFMachPort?
+
     fileprivate enum EventKind {
         case keyDown
         case keyUp
@@ -29,9 +31,23 @@ final class ShortcutMonitor {
     private var onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)?
     private var eventTap: CFMachPort?
     private var eventTapRunLoopSource: CFRunLoopSource?
+    private let createEventTap: EventTapFactory
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ShortcutMonitor")
 
     private static let shortcutInterruptionWindow: TimeInterval = 1.0
+
+    init(createEventTap: @escaping EventTapFactory = { callback, userInfo in
+        CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: ShortcutMonitor.eventMask,
+            callback: callback,
+            userInfo: userInfo
+        )
+    }) {
+        self.createEventTap = createEventTap
+    }
 
     deinit {
         stop()
@@ -69,7 +85,11 @@ final class ShortcutMonitor {
         }
 
         let hasEventTap = installEventTap()
-        return hasEventTap || systemHotKeys.count == shortcuts.count
+        guard hasEventTap || systemHotKeys.count == shortcuts.count else {
+            stop()
+            return false
+        }
+        return true
     }
 
     func stop() {
@@ -113,14 +133,7 @@ final class ShortcutMonitor {
         }
 
         guard
-            let eventTap = CGEvent.tapCreate(
-                tap: .cgSessionEventTap,
-                place: .headInsertEventTap,
-                options: .defaultTap,
-                eventsOfInterest: Self.eventMask,
-                callback: callback,
-                userInfo: Unmanaged.passUnretained(self).toOpaque()
-            )
+            let eventTap = createEventTap(callback, Unmanaged.passUnretained(self).toOpaque())
         else {
             logger.error("Failed to install global shortcut event tap")
             return false
