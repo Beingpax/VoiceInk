@@ -24,6 +24,20 @@ struct Shortcut: Codable, Equatable {
         kind == .modifierOnly
     }
 
+    var systemHotKeyModifiers: UInt32? {
+        guard kind == .key, !modifierFlags.contains(.function) else {
+            return nil
+        }
+
+        var modifiers: UInt32 = 0
+        for (flag, carbonFlag): (NSEvent.ModifierFlags, Int) in [
+            (.command, cmdKey), (.option, optionKey), (.control, controlKey), (.shift, shiftKey),
+        ] where modifierFlags.contains(flag) {
+            modifiers |= UInt32(carbonFlag)
+        }
+        return modifiers
+    }
+
     var displayString: String {
         displayTokens.joined(separator: " + ")
     }
