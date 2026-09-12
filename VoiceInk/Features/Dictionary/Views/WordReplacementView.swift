@@ -29,11 +29,29 @@ struct WordReplacementView: View {
         let service = DictionarySortService.shared
         switch column {
         case .original:
-            sortMode = sortMode == .originalAsc ? .originalDesc : .originalAsc
+            switch sortMode {
+            case .originalAsc: sortMode = .originalDesc
+            case .originalDesc: sortMode = .newest
+            case .newest: sortMode = .oldest
+            case .oldest, .replacementAsc, .replacementDesc: sortMode = .originalAsc
+            }
         case .replacement:
-            sortMode = sortMode == .replacementAsc ? .replacementDesc : .replacementAsc
+            switch sortMode {
+            case .replacementAsc: sortMode = .replacementDesc
+            case .replacementDesc: sortMode = .newest
+            case .newest: sortMode = .oldest
+            case .oldest, .originalAsc, .originalDesc: sortMode = .replacementAsc
+            }
         }
         service.saveWordReplacementMode(sortMode)
+    }
+
+    private var dateSortIconName: String? {
+        switch sortMode {
+        case .newest: "clock.arrow.circlepath"
+        case .oldest: "clock"
+        case .originalAsc, .originalDesc, .replacementAsc, .replacementDesc: nil
+        }
     }
 
     private var shouldShowAddButton: Bool {
@@ -93,6 +111,10 @@ struct WordReplacementView: View {
                                     Image(systemName: sortMode == .originalAsc ? "chevron.up" : "chevron.down")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                } else if let dateSortIconName {
+                                    Image(systemName: dateSortIconName)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -113,6 +135,10 @@ struct WordReplacementView: View {
 
                                 if sortMode == .replacementAsc || sortMode == .replacementDesc {
                                     Image(systemName: sortMode == .replacementAsc ? "chevron.up" : "chevron.down")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else if let dateSortIconName {
+                                    Image(systemName: dateSortIconName)
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }

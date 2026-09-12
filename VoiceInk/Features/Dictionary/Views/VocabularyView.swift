@@ -19,8 +19,17 @@ struct VocabularyView: View {
 
     private func toggleSort() {
         let service = DictionarySortService.shared
-        sortMode = sortMode == .wordAsc ? .wordDesc : .wordAsc
+        sortMode = service.nextVocabularyMode(after: sortMode)
         service.saveVocabularyMode(sortMode)
+    }
+
+    private var sortIconName: String {
+        switch sortMode {
+        case .wordAsc: "chevron.up"
+        case .wordDesc: "chevron.down"
+        case .newest: "clock.arrow.circlepath"
+        case .oldest: "clock"
+        }
     }
 
     private var shouldShowAddButton: Bool {
@@ -54,7 +63,7 @@ struct VocabularyView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundColor(.secondary)
 
-                            Image(systemName: sortMode == .wordDesc ? "chevron.down" : "chevron.up")
+                            Image(systemName: sortIconName)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
