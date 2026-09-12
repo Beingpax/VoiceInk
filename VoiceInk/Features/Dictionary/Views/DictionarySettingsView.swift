@@ -84,8 +84,6 @@ struct DictionarySettingsView: View {
     private enum DictionaryPanel: Equatable {
         case settings
         case autoLearnFailure
-        case add(DictionarySection)
-        case information(DictionarySection)
     }
 
     var body: some View {
@@ -118,18 +116,6 @@ struct DictionarySettingsView: View {
                 }
             case .autoLearnFailure:
                 AutoLearnFailurePanel {
-                    activePanel = nil
-                }
-            case .add(.spellings):
-                AddVocabularyPanel {
-                    activePanel = nil
-                }
-            case .add(.replacements):
-                AddWordReplacementPanel {
-                    activePanel = nil
-                }
-            case .information(let section):
-                DictionaryInformationPanel(section: section) {
                     activePanel = nil
                 }
             case nil:
@@ -168,29 +154,7 @@ struct DictionarySettingsView: View {
     }
 
     private var sectionSelector: some View {
-        HStack(spacing: 8) {
-            DictionarySectionSwitcher(selection: $selectedSection)
-
-            AppIconButton(
-                systemName: "info.circle",
-                help: selectedSection.informationButtonLabel,
-                size: 36,
-                iconSize: 15,
-                cornerRadius: AppTheme.Radius.control
-            ) {
-                activePanel = .information(selectedSection)
-            }
-
-            AppIconButton(
-                systemName: "plus",
-                help: selectedSection.addButtonLabel,
-                size: 36,
-                iconSize: 15,
-                cornerRadius: AppTheme.Radius.control
-            ) {
-                activePanel = .add(selectedSection)
-            }
-        }
+        DictionarySectionSwitcher(selection: $selectedSection)
     }
 
     private var selectedSectionForm: some View {
@@ -207,55 +171,6 @@ struct DictionarySettingsView: View {
             VocabularyView()
         case .replacements:
             WordReplacementView()
-        }
-    }
-}
-
-extension DictionarySettingsView.DictionarySection {
-    var addButtonLabel: LocalizedStringResource {
-        switch self {
-        case .spellings: "Add Vocabulary Word"
-        case .replacements: "Add Word Replacement"
-        }
-    }
-
-    var informationButtonLabel: LocalizedStringResource {
-        switch self {
-        case .spellings: "About Vocabulary"
-        case .replacements: "About Word Replacements"
-        }
-    }
-}
-
-private struct DictionaryInformationPanel: View {
-    let section: DictionarySettingsView.DictionarySection
-    let onClose: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            AppPanelHeader(title: panelTitle, onClose: onClose)
-
-            ScrollView {
-                Group {
-                    switch section {
-                    case .spellings:
-                        Text(section.description)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    case .replacements:
-                        WordReplacementInformationContent()
-                    }
-                }
-                .padding(20)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    private var panelTitle: LocalizedStringKey {
-        switch section {
-        case .spellings: "About Vocabulary"
-        case .replacements: "About Word Replacements"
         }
     }
 }

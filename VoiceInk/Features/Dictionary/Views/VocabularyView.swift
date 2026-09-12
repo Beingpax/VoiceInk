@@ -4,6 +4,7 @@ import SwiftUI
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
     @Environment(\.modelContext) private var modelContext
+    @State private var newWord = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
@@ -31,8 +32,29 @@ struct VocabularyView: View {
         }
     }
 
+    private var shouldShowAddButton: Bool {
+        !newWord.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .onSubmit { addWords() }
+                    .labelsHidden()
+
+                if shouldShowAddButton {
+                    AddIconButton(
+                        helpText: "Add word",
+                        isDisabled: newWord.isEmpty,
+                        action: addWords
+                    )
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
+
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: toggleSort) {
@@ -59,12 +81,6 @@ struct VocabularyView: View {
                     .padding(.vertical, 4)
                 }
                 .padding(.top, 4)
-            } else {
-                Text("No vocabulary words yet.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
             }
 
         }
@@ -76,78 +92,24 @@ struct VocabularyView: View {
         }
     }
 
+    private func addWords() {
+        let input = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else { return }
+        if let error = DictionaryService.addVocabularyWords(
+            input, existing: Array(vocabularyWords), context: modelContext)
+        {
+            alertMessage = error
+            showAlert = true
+            return
+        }
+        newWord = ""
+    }
+
     private func removeWord(_ word: VocabularyWord) {
         if let error = DictionaryService.removeVocabularyWord(word, context: modelContext) {
             alertMessage = error
             showAlert = true
         }
-    }
-}
-
-struct AddVocabularyPanel: View {
-    @Query private var vocabularyWords: [VocabularyWord]
-    @Environment(\.modelContext) private var modelContext
-    @FocusState private var isInputFocused: Bool
-    @State private var newWord = ""
-    @State private var showAlert = false
-    @State private var alertMessage = ""
-
-    let onClose: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            AppPanelHeader(title: "Add Vocabulary Word", onClose: onClose)
-
-            Form {
-                Section("Vocabulary") {
-                    TextField("Add word to vocabulary", text: $newWord)
-                        .focused($isInputFocused)
-                        .onSubmit { addWords() }
-                }
-            }
-            .formStyle(.grouped)
-            .scrollContentBackground(.hidden)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            HStack {
-                Button("Cancel", action: onClose)
-                    .keyboardShortcut(.cancelAction)
-
-                Spacer()
-
-                Button("Add Word", action: addWords)
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(newWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            .overlay(Divider().opacity(0.5), alignment: .top)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .onAppear { isInputFocused = true }
-        .alert("Vocabulary", isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(alertMessage)
-        }
-    }
-
-    private func addWords() {
-        let input = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !input.isEmpty else { return }
-
-        if let error = DictionaryService.addVocabularyWords(
-            input,
-            existing: Array(vocabularyWords),
-            context: modelContext
-        ) {
-            alertMessage = error
-            showAlert = true
-            return
-        }
-
-        onClose()
     }
 }
 
