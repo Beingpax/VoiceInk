@@ -1,18 +1,30 @@
-import CoreFoundation
 import Foundation
 import OSLog
 
 @MainActor
 final class AutoLearnAIReviewer: @unchecked Sendable {
-    private struct ReviewRequest: Encodable {
-        let candidates: [AutoLearnReviewCandidate]
+    private struct AutoLearnReviewRequest: Encodable {
+        struct CandidateForReview: Encodable {
+            let candidateID: Int
+            let originalTextContext: String
+            let correctedTextContext: String
+            let originalChangedText: String
+            let correctedChangedText: String
+        }
+
+        let candidatesForReview: [CandidateForReview]
     }
 
-    private struct ParsedDecision {
-        let id: UUID
-        let accepted: Bool?
-        let source: String?
-        let destination: String?
+    private struct AutoLearnReviewResponse: Decodable {
+        let reviewDecisions: [CandidateReviewDecision]
+    }
+
+    private struct CandidateReviewDecision: Decodable {
+        let candidateID: Int
+        let learningAction: AutoLearnReviewAction
+        let correctedTermIsPersonName: Bool?
+        let incorrectTextToReplace: String?
+        let correctedVocabularyTerm: String?
     }
 
     private enum ReviewError: LocalizedError {
@@ -43,7 +55,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     func review(_ candidates: [AutoLearnReviewCandidate]) async throws -> AutoLearnReviewResult {
         guard !candidates.isEmpty else {
-            return AutoLearnReviewResult(decisions: [], unresolvedIDs: [])
+            return AutoLearnReviewResult(reviewDecisions: [], unresolvedCandidateIDs: [])
         }
         guard let aiService = enhancementService.getAIService() else {
             throw ReviewError.unavailable
@@ -85,15 +97,21 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.unavailable
         }
 
-        let requestData = try JSONEncoder().encode(ReviewRequest(candidates: candidates))
+        let candidatesForReview = candidates.enumerated().map { index, candidate in
+            AutoLearnReviewRequest.CandidateForReview(
+                candidateID: index,
+                originalTextContext: candidate.originalTextContext,
+                correctedTextContext: candidate.correctedTextContext,
+                originalChangedText: candidate.detectedOriginalText,
+                correctedChangedText: candidate.userCorrectedText
+            )
+        }
+        let requestData = try JSONEncoder().encode(
+            AutoLearnReviewRequest(candidatesForReview: candidatesForReview)
+        )
         guard let requestText = String(data: requestData, encoding: .utf8) else {
             throw ReviewError.invalidResponse
         }
-
-        let loggedModelName = modelName ?? "provider default"
-        logger.notice(
-            "Auto Learn AI request provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
-        )
 
         let responseText = try await aiService.reviewAutoLearnCandidates(
             payload: requestText,
@@ -101,72 +119,127 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             provider: provider,
             modelName: modelName
         )
-        let responseDecisions = try decodeResponse(responseText)
-        let expectedIDs = Set(candidates.map(\.id))
-        let decisionsByID = Dictionary(grouping: responseDecisions) { $0.id }
-        for unknownID in decisionsByID.keys where !expectedIDs.contains(unknownID) {
+        let candidateReviewDecisions = try decodeResponse(responseText)
+        let expectedCandidateIDs = Set(candidates.indices)
+        let decisionsByCandidateID = Dictionary(grouping: candidateReviewDecisions) {
+            $0.candidateID
+        }
+        for unknownCandidateID in decisionsByCandidateID.keys
+        where !expectedCandidateIDs.contains(unknownCandidateID) {
             logger.warning(
-                "Ignoring Auto Learn decision with unknown id=\(unknownID.uuidString, privacy: .public)"
+                "Ignoring Auto Learn decision with unknown candidate ID=\(unknownCandidateID, privacy: .public)"
             )
         }
 
-        var decisions: [AutoLearnReviewDecision] = []
-        var unresolvedIDs = Set<UUID>()
+        var reviewDecisions: [AutoLearnReviewDecision] = []
+        var unresolvedCandidateIDs = Set<UUID>()
 
-        for candidate in candidates {
-            guard let matches = decisionsByID[candidate.id], matches.count == 1,
-                let decision = matches.first,
-                let accepted = decision.accepted
+        for (index, candidate) in candidates.enumerated() {
+            guard let matches = decisionsByCandidateID[index], matches.count == 1,
+                let decision = matches.first
             else {
-                unresolvedIDs.insert(candidate.id)
+                unresolvedCandidateIDs.insert(candidate.candidateID)
                 continue
             }
+            let learningAction = decision.learningAction
 
-            guard accepted else {
-                decisions.append(
+            guard learningAction != .rejectCorrection else {
+                reviewDecisions.append(
                     AutoLearnReviewDecision(
-                        id: candidate.id,
-                        accepted: false,
-                        source: nil,
-                        destination: nil
+                        candidateID: candidate.candidateID,
+                        learningAction: .rejectCorrection,
+                        incorrectTextToReplace: nil,
+                        correctedVocabularyTerm: nil
                     )
                 )
                 continue
             }
 
-            guard let source = decision.source?.trimmingCharacters(in: .whitespacesAndNewlines),
-                let destination = decision.destination?.trimmingCharacters(in: .whitespacesAndNewlines),
-                !source.isEmpty,
-                !destination.isEmpty,
-                source != destination,
-                source.count <= AutoLearnLimits.maximumCandidateCharacters,
-                destination.count <= AutoLearnLimits.maximumCandidateCharacters,
-                candidate.reviewSource.range(of: source, options: .literal) != nil,
-                candidate.reviewDestination.range(of: destination, options: .literal) != nil,
-                source.range(of: candidate.source, options: .literal) != nil,
-                destination.range(of: candidate.destination, options: .literal) != nil
+            guard let correctedTermIsPersonName = decision.correctedTermIsPersonName,
+                let correctedVocabularyTerm = decision.correctedVocabularyTerm?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
             else {
-                unresolvedIDs.insert(candidate.id)
+                unresolvedCandidateIDs.insert(candidate.candidateID)
+                continue
+            }
+            guard
+                !correctedVocabularyTerm.isEmpty,
+                correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
+                candidate.correctedTextContext.range(
+                    of: correctedVocabularyTerm,
+                    options: .literal
+                ) != nil,
+                correctedVocabularyTerm.range(
+                    of: candidate.userCorrectedText,
+                    options: .literal
+                ) != nil,
+                !correctedTermIsPersonName
+                    || !hasOmittedAdjacentNameComponent(
+                        correctedVocabularyTerm,
+                        in: candidate.correctedTextContext
+                    )
+            else {
+                unresolvedCandidateIDs.insert(candidate.candidateID)
                 continue
             }
 
-            decisions.append(
+            if learningAction == .addVocabularyOnly {
+                reviewDecisions.append(
+                    AutoLearnReviewDecision(
+                        candidateID: candidate.candidateID,
+                        learningAction: .addVocabularyOnly,
+                        incorrectTextToReplace: nil,
+                        correctedVocabularyTerm: correctedVocabularyTerm
+                    )
+                )
+                continue
+            }
+
+            guard let incorrectTextToReplace = decision.incorrectTextToReplace?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            else {
+                unresolvedCandidateIDs.insert(candidate.candidateID)
+                continue
+            }
+            guard
+                !incorrectTextToReplace.isEmpty,
+                incorrectTextToReplace != correctedVocabularyTerm,
+                incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
+                candidate.originalTextContext.range(
+                    of: incorrectTextToReplace,
+                    options: .literal
+                ) != nil,
+                incorrectTextToReplace.range(
+                    of: candidate.detectedOriginalText,
+                    options: .literal
+                ) != nil,
+                !correctedTermIsPersonName
+                    || !hasOmittedAdjacentNameComponent(
+                        incorrectTextToReplace,
+                        in: candidate.originalTextContext
+                    )
+            else {
+                unresolvedCandidateIDs.insert(candidate.candidateID)
+                continue
+            }
+
+            reviewDecisions.append(
                 AutoLearnReviewDecision(
-                    id: candidate.id,
-                    accepted: true,
-                    source: source,
-                    destination: destination
+                    candidateID: candidate.candidateID,
+                    learningAction: .addReplacementAndVocabulary,
+                    incorrectTextToReplace: incorrectTextToReplace,
+                    correctedVocabularyTerm: correctedVocabularyTerm
                 )
             )
         }
 
         return AutoLearnReviewResult(
-            decisions: decisions,
-            unresolvedIDs: unresolvedIDs
+            reviewDecisions: reviewDecisions,
+            unresolvedCandidateIDs: unresolvedCandidateIDs
         )
     }
 
-    private func decodeResponse(_ text: String) throws -> [ParsedDecision] {
+    private func decodeResponse(_ text: String) throws -> [CandidateReviewDecision] {
         var payload = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if payload.hasPrefix("```") {
             let lines = payload.split(separator: "\n", omittingEmptySubsequences: false)
@@ -179,64 +252,135 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             payload = lines.dropFirst().dropLast().joined(separator: "\n")
         }
 
-        guard let data = payload.data(using: .utf8),
-            let jsonObject = try? JSONSerialization.jsonObject(with: data),
-            let root = jsonObject as? [String: Any],
-            let rawDecisions = root["decisions"] as? [Any]
-        else {
+        guard let data = payload.data(using: .utf8) else {
             throw ReviewError.invalidResponse
         }
+        do {
+            return try JSONDecoder()
+                .decode(AutoLearnReviewResponse.self, from: data)
+                .reviewDecisions
+        } catch {
+            throw ReviewError.invalidResponse
+        }
+    }
 
-        return rawDecisions.compactMap { rawDecision in
-            guard let object = rawDecision as? [String: Any],
-                let idText = object["id"] as? String,
-                let id = UUID(uuidString: idText)
-            else { return nil }
+    private func hasOmittedAdjacentNameComponent(
+        _ term: String,
+        in context: String
+    ) -> Bool {
+        guard let termRange = context.range(of: term) else { return false }
+        if let precedingRange = adjacentToken(before: termRange.lowerBound, in: context),
+            isLikelyNameComponent(context[precedingRange])
+        {
+            return true
+        }
+        if let followingRange = adjacentToken(after: termRange.upperBound, in: context),
+            isLikelyNameComponent(context[followingRange])
+        {
+            return true
+        }
+        return false
+    }
 
-            let accepted: Bool?
-            if let value = object["accepted"] as? NSNumber,
-                CFGetTypeID(value) == CFBooleanGetTypeID()
-            {
-                accepted = value.boolValue
-            } else {
-                accepted = nil
-            }
+    private func adjacentToken(
+        before index: String.Index,
+        in text: String
+    ) -> Range<String.Index>? {
+        var upperBound = index
+        while upperBound > text.startIndex {
+            let previous = text.index(before: upperBound)
+            guard text[previous].isWhitespace else { break }
+            upperBound = previous
+        }
+        guard upperBound < index, upperBound > text.startIndex else { return nil }
 
-            return ParsedDecision(
-                id: id,
-                accepted: accepted,
-                source: object["source"] as? String,
-                destination: object["destination"] as? String
-            )
+        var lowerBound = upperBound
+        while lowerBound > text.startIndex {
+            let previous = text.index(before: lowerBound)
+            guard !text[previous].isWhitespace else { break }
+            lowerBound = previous
+        }
+        return lowerBound..<upperBound
+    }
+
+    private func adjacentToken(
+        after index: String.Index,
+        in text: String
+    ) -> Range<String.Index>? {
+        var lowerBound = index
+        while lowerBound < text.endIndex, text[lowerBound].isWhitespace {
+            lowerBound = text.index(after: lowerBound)
+        }
+        guard lowerBound > index, lowerBound < text.endIndex else { return nil }
+
+        var upperBound = lowerBound
+        while upperBound < text.endIndex, !text[upperBound].isWhitespace {
+            upperBound = text.index(after: upperBound)
+        }
+        return lowerBound..<upperBound
+    }
+
+    private func isLikelyNameComponent(_ token: Substring) -> Bool {
+        let trimmed = token.trimmingCharacters(in: .punctuationCharacters)
+        guard let firstLetter = trimmed.first(where: { $0.isLetter }), firstLetter.isUppercase else {
+            return false
+        }
+        return trimmed.allSatisfy {
+            $0.isLetter || $0 == "-" || $0 == "'" || $0 == "’"
         }
     }
 
     private static let reviewPrompt = """
-        Review corrections the user made to speech-to-text output. Each source and destination is a short window containing the changed text plus up to two unchanged terms on each side. changedSource and changedDestination identify the detected edit.
+        Review user corrections to speech-to-text. Each candidate contains originalChangedText and correctedChangedText plus short originalTextContext and correctedTextContext windows.
 
-        Accept only reusable corrections for the same spoken term: a person's name, place, company, brand, product, project, acronym, abbreviation, technical term, specialized vocabulary, or a word whose speech-recognition output was incorrectly joined or split. The source must be a plausible phonetic, spelling, capitalization, punctuation, or spacing transcription error for that same spoken term.
+        Classify every candidate independently with exactly one learningAction:
 
-        A phonetic transcription error may resemble a different ordinary word or name and may contain a different number of written words. Accept it when the complete source plausibly sounds like the complete destination and the destination is reusable terminology. For example, accept "Claudia" to "Claude AI", "get hub" to "GitHub", and "post gray sequel" to "PostgreSQL".
+        1. addReplacementAndVocabulary
+        Use when the corrected text is a reusable person, place, company, brand, product, project, acronym, technical term, or specialized word, and the original text is a plausible transcription of the same spoken term. Phonetic similarity, not merely related meaning, is what makes a replacement safe. Judge pronunciation as well as spelling. Allow capitalization, punctuation, joined or split words, and substantial spelling differences when the phrases still sound alike. Examples include "voicing", "Boysync", and "boys ing" to "VoiceInk"; "get hub" to "GitHub"; "post gray sequel" to "PostgreSQL"; "data base" to "database"; "web hook" to "webhook"; "cube or netties" to "Kubernetes"; and "sequel light" to "SQLite".
 
-        Accept joining or splitting word boundaries when meaning is unchanged, such as "data base" to "database" or "web hook" to "webhook".
+        A spelling correction inside a person's name is addReplacementAndVocabulary. Include the complete name from both context windows: "Maya Jonson" to "Maya Johnson", and "Prakash Jossipax" to "Prakash Joshi Pax". Do not downgrade these to addVocabularyOnly merely because only one name component changed.
 
-        Reject capitalization-only changes for ordinary words, such as "apple" to "Apple" or "sun" to "Sun". Accept capitalization or stylization when it identifies a proper name, brand, product, project, acronym, or specialized term, such as "open ai" to "OpenAI" or "get hub" to "GitHub".
+        2. addVocabularyOnly
+        Use when the corrected text is reusable terminology but the original text is too phonetically and orthographically different to be a safe global replacement. Semantic relatedness alone is insufficient for a replacement. For example, classify "Procastus Apex" to "Prakash Joshi Pax", "speech app" to "VoiceInk", "project owner" to "Ada Lovelace", and "mister Smith" to "Dr. Jane Smith" as addVocabularyOnly. Return the complete corrected entity from correctedTextContext. Uncertainty about whether two phrases sound like the same spoken term should prefer addVocabularyOnly, not addReplacementAndVocabulary.
 
-        Reject genuinely added or removed meaning, qualifiers, product editions, or specificity when the source already correctly names a term. For example, reject "Claude" to "Claude AI", "GitHub" to "GitHub Enterprise", "Visual Studio" to "Visual Studio Code", and "PostgreSQL" to "PostgreSQL database". Do not apply this rejection when the whole source is instead a phonetic misrecognition of the whole destination, such as "Claudia" to "Claude AI".
+        3. rejectCorrection
+        Use when the corrected text is not reusable terminology, or the edit is ordinary wording, grammar, style, meaning, facts, numbers, dates, an unrelated rewrite, or a deliberate abbreviation or expansion. Deliberate semantic shortening is not a transcription correction: reject "application programming interface" to "API", "central processing unit" to "CPU", and "pull request" to "PR". If the original text already correctly names a term, reject additions or removals of qualifiers, editions, or generic type words, such as "PostgreSQL" to "PostgreSQL database", "Claude" to "Claude AI", "GitHub" to "GitHub Enterprise", and "Visual Studio" to "Visual Studio Code". Do not add ordinary nouns merely because they are nouns.
 
-        Reject ordinary wording, grammar or style edits, rewrites, meaning changes, facts, numbers, dates, unrelated substitutions, and deliberate abbreviation or expansion transformations. In particular, reject "application programming interface" to "API", "central processing unit" to "CPU", and "pull request" to "PR".
+        A common original word may still use addReplacementAndVocabulary when it plausibly sounds like the corrected term. For the product VoiceInk, each of "voicing", "Boysink", and "boys ing" passes the phonetic gate and is addReplacementAndVocabulary. Do not use addVocabularyOnly merely because the original text is an ordinary word.
 
-        For an accepted correction, return the exact complete term to store. Include unchanged nearby words only when they belong to the name or specialized term. The returned source must be a contiguous substring of source and contain changedSource. The returned destination must be a contiguous substring of destination and contain changedDestination. Copy text exactly; never invent or normalize it.
+        Hard replacement gate: addReplacementAndVocabulary is allowed only when the complete original and corrected terms have recognizably similar pronunciation or differ only by spelling, capitalization, punctuation, or word boundaries. A synonym, description, role, or semantic reference is never enough. Phrases such as "database company" and "Supabase", "our designer" and "Sofia Hernández", "cloud vendor" and "Cloudflare", or "new framework" and "SvelteKit" do not sound alike and must be addVocabularyOnly. Never create a global replacement for these descriptive sources.
 
-        Example input:
-        {"id":"candidate UUID","source":"with Wojciech says me yesterday","destination":"with Wojciech Szczęsny yesterday","changedSource":"says me","changedDestination":"Szczęsny"}
+        A capitalization-only edit of an ordinary word is rejectCorrection unless the context clearly uses a proper name or specialized term. For example, reject "apple" to "Apple" in "eat an apple today"; accept "voiceink" to "VoiceInk" when it names the product.
 
-        Example output:
-        {"id":"candidate UUID","accepted":true,"source":"Wojciech says me","destination":"Wojciech Szczęsny"}
+        Multiple original transcription errors may independently map to the same corrected term. Judge each candidate independently and never reject or downgrade one because another candidate has the same corrected term.
 
-        Return JSON only, with this exact shape:
-        {"decisions":[{"id":"candidate UUID","accepted":true,"source":"exact source term","destination":"exact destination term"}]}
+        Be conservative. A false acceptance is more harmful than missing a useful correction. If the corrected text is not clearly reusable terminology, or the edit does not clearly satisfy an acceptance rule, use rejectCorrection. Use addVocabularyOnly for a phonetically distant original phrase only when the corrected term is unambiguously a proper name, brand, product, project, acronym, technical term, or specialized term.
 
-        For rejected corrections, set source and destination to null. Return every input ID exactly once. Do not include explanations or markdown.
+        Select complete term boundaries from the context. For every person's name, return the maximal contiguous person name visible in both contexts—not only the edited component. If a surname changes, include its unchanged given and middle names. If a given name changes, include its unchanged surname. This rule is mandatory for both addReplacementAndVocabulary and addVocabularyOnly, even when the changed component alone could be reusable. Apply the same complete-boundary rule to multiword entities and specialized terms. Do not include surrounding sentence words.
+
+        Never return only a changed surname or name fragment when an unchanged adjacent name component belongs to the same person. Follow these exact boundary examples:
+
+        Input: {"candidateID":1,"originalTextContext":"with Prakash Jossipax yesterday","correctedTextContext":"with Prakash Joshi Pax yesterday","originalChangedText":"Jossipax","correctedChangedText":"Joshi Pax"}
+        Decision: {"candidateID":1,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Prakash Jossipax","correctedVocabularyTerm":"Prakash Joshi Pax"}
+
+        Input: {"candidateID":2,"originalTextContext":"met Maya Jonson yesterday","correctedTextContext":"met Maya Johnson yesterday","originalChangedText":"Jonson","correctedChangedText":"Johnson"}
+        Decision: {"candidateID":2,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Maya Jonson","correctedVocabularyTerm":"Maya Johnson"}
+
+        Input: {"candidateID":3,"originalTextContext":"heard Satya Nadela speak","correctedTextContext":"heard Satya Nadella speak","originalChangedText":"Nadela","correctedChangedText":"Nadella"}
+        Decision: {"candidateID":3,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Satya Nadela","correctedVocabularyTerm":"Satya Nadella"}
+
+        Input: {"candidateID":4,"originalTextContext":"a film by Hiao Miyazaki","correctedTextContext":"a film by Hayao Miyazaki","originalChangedText":"Hiao","correctedChangedText":"Hayao"}
+        Decision: {"candidateID":4,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"Hiao Miyazaki","correctedVocabularyTerm":"Hayao Miyazaki"}
+
+        For addReplacementAndVocabulary, incorrectTextToReplace is the complete erroneous term and correctedVocabularyTerm is the complete corrected term to store in Vocabulary. incorrectTextToReplace must be an exact contiguous substring of originalTextContext containing originalChangedText. correctedVocabularyTerm must be an exact contiguous substring of correctedTextContext containing correctedChangedText. Set correctedTermIsPersonName to true only when correctedVocabularyTerm is a person's name; otherwise set it to false.
+
+        For addVocabularyOnly, set incorrectTextToReplace to null and return the complete corrected entity as correctedVocabularyTerm. correctedVocabularyTerm must be an exact contiguous substring of correctedTextContext containing correctedChangedText. Set correctedTermIsPersonName to true only when correctedVocabularyTerm is a person's name; otherwise set it to false.
+
+        For rejectCorrection, set correctedTermIsPersonName, incorrectTextToReplace, and correctedVocabularyTerm to null.
+
+        Return JSON only in this exact shape:
+        {"reviewDecisions":[{"candidateID":0,"learningAction":"addReplacementAndVocabulary","correctedTermIsPersonName":true,"incorrectTextToReplace":"complete original term","correctedVocabularyTerm":"complete corrected term"}]}
+
+        Allowed learningAction values are addReplacementAndVocabulary, addVocabularyOnly, and rejectCorrection. correctedTermIsPersonName must be true or false for accepted corrections and null for rejectCorrection. Copy every integer candidateID exactly and return every input candidateID exactly once. Copy text exactly from the supplied context. Do not include explanations or markdown.
         """
 }

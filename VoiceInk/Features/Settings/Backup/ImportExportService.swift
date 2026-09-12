@@ -185,7 +185,8 @@ class ImportExportService {
             isExperimentalFeaturesEnabled: UserDefaults.standard.bool(forKey: "isExperimentalFeaturesEnabled"),
             restoreClipboardAfterPaste: UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"),
             clipboardRestoreDelay: UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
-            isAutoLearnDictionaryEnabled: AutoLearnSettings.isEnabled
+            isAutoLearnDictionaryEnabled: AutoLearnSettings.isEnabled,
+            autoLearnReviewSchedule: AutoLearnSettings.reviewSchedule.rawValue
         )
 
         let exportedSettings = BackupFile(

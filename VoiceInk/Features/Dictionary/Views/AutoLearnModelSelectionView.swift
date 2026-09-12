@@ -193,7 +193,11 @@ struct AutoLearnModelSelectionView: View {
     }
 
     private func retryAfterConfigurationChange() {
-        guard retriesOnChange, isAutoLearnDictionaryEnabled, hasAutoLearnFailure else { return }
+        guard retriesOnChange,
+            isAutoLearnDictionaryEnabled,
+            hasAutoLearnFailure,
+            AutoLearnSettings.reviewSchedule != .manually
+        else { return }
         Task {
             await AutoLearnService.shared.retryPendingReviews()
         }

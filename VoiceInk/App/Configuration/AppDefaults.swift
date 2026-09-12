@@ -29,6 +29,8 @@ enum AutoLearnSettings {
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
     static let failureAcknowledgedKey = "AutoLearnDictionaryFailureAcknowledged"
+    static let reviewScheduleKey = "AutoLearnDictionaryReviewSchedule"
+    static let nextReviewDateKey = "AutoLearnDictionaryNextReviewDate"
 
     static var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: isEnabledKey)
@@ -43,6 +45,25 @@ enum AutoLearnSettings {
         let value = UserDefaults.standard.string(forKey: modelKey)?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return value?.isEmpty == false ? value : nil
+    }
+
+    static var reviewSchedule: AutoLearnReviewSchedule {
+        guard let value = UserDefaults.standard.string(forKey: reviewScheduleKey) else {
+            return .immediately
+        }
+        return AutoLearnReviewSchedule(rawValue: value) ?? .immediately
+    }
+
+    static var nextReviewDate: Date? {
+        UserDefaults.standard.object(forKey: nextReviewDateKey) as? Date
+    }
+
+    static func setNextReviewDate(_ date: Date?) {
+        if let date {
+            UserDefaults.standard.set(date, forKey: nextReviewDateKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: nextReviewDateKey)
+        }
     }
 
     /// Adopts the first configured enhancement provider for Auto Learn.
@@ -140,6 +161,7 @@ enum AppDefaults {
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
             CloudTranscriptionSettings.timeoutKey: CloudTranscriptionSettings.defaultTimeout,
             AutoLearnSettings.isEnabledKey: true,
+            AutoLearnSettings.reviewScheduleKey: AutoLearnReviewSchedule.immediately.rawValue,
 
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,

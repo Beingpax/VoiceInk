@@ -26,7 +26,7 @@ enum CorrectionDiffEngine {
         ",", "!", "?", ";", ":", "…", "(", ")", "[", "]", "{", "}", "\"", "“", "”",
     ]
 
-    static func candidates(from revision: AutoLearnRevision) -> [LearnedReplacementCandidate] {
+    static func candidates(from revision: AutoLearnRevision) -> [DetectedCorrectionCandidate] {
         let original = revision.original.precomposedStringWithCanonicalMapping
         let corrected = revision.corrected.precomposedStringWithCanonicalMapping
         guard original != corrected else { return [] }
@@ -41,7 +41,7 @@ enum CorrectionDiffEngine {
 
         let hunks = segmentHunks(from: originalSegments, to: correctedSegments)
         var seen = Set<String>()
-        var results: [LearnedReplacementCandidate] = []
+        var results: [DetectedCorrectionCandidate] = []
 
         for (hunkIndex, hunk) in hunks.enumerated() {
             guard !hunk.originalRange.isEmpty,
@@ -101,12 +101,12 @@ enum CorrectionDiffEngine {
                 upperLimit: nextHunk?.correctedRange.lowerBound ?? correctedSegments.endIndex,
                 segments: correctedSegments
             )
-            guard let reviewSource = fragment(
+            guard let originalTextContext = fragment(
                 from: original,
                 segments: originalSegments,
                 segmentRange: reviewOriginalRange
             ),
-                let reviewDestination = fragment(
+                let correctedTextContext = fragment(
                     from: corrected,
                     segments: correctedSegments,
                     segmentRange: reviewCorrectedRange
@@ -130,11 +130,11 @@ enum CorrectionDiffEngine {
             guard seen.insert(deduplicationKey).inserted else { continue }
 
             results.append(
-                LearnedReplacementCandidate(
-                    source: pair.source,
-                    destination: pair.destination,
-                    reviewSource: reviewSource,
-                    reviewDestination: reviewDestination
+                DetectedCorrectionCandidate(
+                    detectedOriginalText: pair.source,
+                    userCorrectedText: pair.destination,
+                    originalTextContext: originalTextContext,
+                    correctedTextContext: correctedTextContext
                 ))
         }
 

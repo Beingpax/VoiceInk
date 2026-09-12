@@ -743,6 +743,7 @@ class AIService: ObservableObject {
             messages: [.user(payload)],
             systemPrompt: systemPrompt,
             localUserPrompt: payload,
+            temperature: 0,
             timeout: EnhancementRequestSettings.timeout
         ).text
     }

@@ -30,60 +30,37 @@ struct AutoLearnFieldSnapshot: Sendable {
     let originalPastedText: String
 }
 
-struct LearnedReplacementCandidate: Hashable, Sendable {
-    let source: String
-    let destination: String
-    let reviewSource: String
-    let reviewDestination: String
-
-    init(
-        source: String,
-        destination: String,
-        reviewSource: String? = nil,
-        reviewDestination: String? = nil
-    ) {
-        self.source = source
-        self.destination = destination
-        self.reviewSource = reviewSource ?? source
-        self.reviewDestination = reviewDestination ?? destination
-    }
+struct DetectedCorrectionCandidate: Hashable, Sendable {
+    let detectedOriginalText: String
+    let userCorrectedText: String
+    let originalTextContext: String
+    let correctedTextContext: String
 }
 
-struct AutoLearnReviewCandidate: Encodable, Sendable {
-    let id: UUID
-    let source: String
-    let destination: String
-    let reviewSource: String
-    let reviewDestination: String
-
-    private enum CodingKeys: String, CodingKey {
-        case id
-        case source
-        case destination
-        case changedSource
-        case changedDestination
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(reviewSource, forKey: .source)
-        try container.encode(reviewDestination, forKey: .destination)
-        try container.encode(source, forKey: .changedSource)
-        try container.encode(destination, forKey: .changedDestination)
-    }
+struct AutoLearnReviewCandidate: Sendable {
+    let candidateID: UUID
+    let detectedOriginalText: String
+    let userCorrectedText: String
+    let originalTextContext: String
+    let correctedTextContext: String
 }
 
-struct AutoLearnReviewDecision: Codable, Sendable {
-    let id: UUID
-    let accepted: Bool
-    let source: String?
-    let destination: String?
+enum AutoLearnReviewAction: String, Codable, Sendable {
+    case addReplacementAndVocabulary
+    case addVocabularyOnly
+    case rejectCorrection
+}
+
+struct AutoLearnReviewDecision: Sendable {
+    let candidateID: UUID
+    let learningAction: AutoLearnReviewAction
+    let incorrectTextToReplace: String?
+    let correctedVocabularyTerm: String?
 }
 
 struct AutoLearnReviewResult: Sendable {
-    let decisions: [AutoLearnReviewDecision]
-    let unresolvedIDs: Set<UUID>
+    let reviewDecisions: [AutoLearnReviewDecision]
+    let unresolvedCandidateIDs: Set<UUID>
 }
 
 struct AutoLearnMutationSummary: Sendable {
@@ -105,10 +82,37 @@ struct AutoLearnMutationSummary: Sendable {
 }
 
 struct AutoLearnAppliedCorrection: Sendable {
-    let source: String
-    let destination: String
+    let incorrectTextToReplace: String
+    let correctedVocabularyTerm: String
     let replacementSourceWasAdded: Bool
     let vocabularyCreationDate: Date?
+}
+
+enum AutoLearnReviewSchedule: String, CaseIterable, Identifiable {
+    case immediately
+    case hourly
+    case daily
+    case manually
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .immediately: String(localized: "Immediately")
+        case .hourly: String(localized: "Every hour")
+        case .daily: String(localized: "Once daily")
+        case .manually: String(localized: "Manually")
+        }
+    }
+
+    var delay: TimeInterval? {
+        switch self {
+        case .immediately: 0
+        case .hourly: 60 * 60
+        case .daily: 24 * 60 * 60
+        case .manually: nil
+        }
+    }
 }
 
 enum AutoLearnLimits {
@@ -125,5 +129,5 @@ enum AutoLearnLimits {
     static let maximumCandidateSegments = 24
     static let reviewContextSegmentsPerSide = 2
     static let maximumUnspacedCandidateCharacters = 8
-    static let maximumPendingCandidates = 100
+    static let maximumReviewBatchCandidates = 25
 }

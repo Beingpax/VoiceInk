@@ -203,10 +203,22 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
+        let importedReviewSchedule = general.autoLearnReviewSchedule.flatMap {
+            AutoLearnReviewSchedule(rawValue: $0)
+        }
+        if let importedReviewSchedule {
+            UserDefaults.standard.set(importedReviewSchedule.rawValue, forKey: AutoLearnSettings.reviewScheduleKey)
+        }
         if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
             UserDefaults.standard.set(autoLearnEnabled, forKey: AutoLearnSettings.isEnabledKey)
+        }
+        if general.isAutoLearnDictionaryEnabled != nil || importedReviewSchedule != nil {
             Task {
-                await AutoLearnService.shared.settingDidChange(isEnabled: autoLearnEnabled)
+                if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
+                    await AutoLearnService.shared.settingDidChange(isEnabled: autoLearnEnabled)
+                } else {
+                    await AutoLearnService.shared.reviewScheduleDidChange()
+                }
             }
         }
 

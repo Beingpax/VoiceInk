@@ -1,34 +1,34 @@
 import Foundation
 
 actor AutoLearnPendingQueue {
-    private enum Status: String, Codable {
+    private enum ReviewStatus: String, Codable {
         case pending
         case reviewing
     }
 
-    private struct Record: Codable {
-        let id: UUID
-        let source: String
-        let destination: String
-        let reviewSource: String?
-        let reviewDestination: String?
-        var status: Status
+    private struct QueuedCorrection: Codable {
+        let candidateID: UUID
+        let detectedOriginalText: String
+        let userCorrectedText: String
+        let originalTextContext: String
+        let correctedTextContext: String
+        var reviewStatus: ReviewStatus
 
-        var candidate: AutoLearnReviewCandidate {
+        var reviewCandidate: AutoLearnReviewCandidate {
             AutoLearnReviewCandidate(
-                id: id,
-                source: source,
-                destination: destination,
-                reviewSource: reviewSource ?? source,
-                reviewDestination: reviewDestination ?? destination
+                candidateID: candidateID,
+                detectedOriginalText: detectedOriginalText,
+                userCorrectedText: userCorrectedText,
+                originalTextContext: originalTextContext,
+                correctedTextContext: correctedTextContext
             )
         }
     }
 
     private let fileManager: FileManager
-    private let fileURL: URL
-    private var records: [Record] = []
-    private var didLoad = false
+    private let queueFileURL: URL
+    private var queuedCorrections: [QueuedCorrection] = []
+    private var queuedCorrectionsWereLoaded = false
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
@@ -36,55 +36,60 @@ actor AutoLearnPendingQueue {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        fileURL = applicationSupport
+        queueFileURL = applicationSupport
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
-            .appendingPathComponent("auto-learn-pending.json")
+            .appendingPathComponent("auto-learn-pending-corrections.json")
     }
 
     func recoverInterruptedReviews() throws {
         try loadIfNeeded()
-        let originalCount = records.count
         var changed = false
-        for index in records.indices where records[index].status == .reviewing {
-            records[index].status = .pending
+        for index in queuedCorrections.indices
+        where queuedCorrections[index].reviewStatus == .reviewing {
+            queuedCorrections[index].reviewStatus = .pending
             changed = true
         }
-        trimToLimit()
-        if changed || records.count != originalCount {
+        if changed {
             try save()
         }
     }
 
-    func enqueue(_ candidates: [LearnedReplacementCandidate]) throws -> Int {
+    func enqueue(_ candidates: [DetectedCorrectionCandidate]) throws -> Int {
         guard !candidates.isEmpty else { return 0 }
         try loadIfNeeded()
-        let originalRecords = records
+        let originalQueuedCorrections = queuedCorrections
 
         var knownPairs = Set(
-            records.map { pairKey(source: $0.source, destination: $0.destination) }
+            queuedCorrections.map {
+                pairKey(
+                    detectedOriginalText: $0.detectedOriginalText,
+                    userCorrectedText: $0.userCorrectedText
+                )
+            }
         )
         var insertedCount = 0
-        let availablePendingSlots = max(
-            0,
-            AutoLearnLimits.maximumPendingCandidates
-                - pendingRecordCount
-        )
         for candidate in candidates {
-            guard insertedCount < availablePendingSlots else { break }
-            let source = candidate.source.trimmingCharacters(in: .whitespacesAndNewlines)
-            let destination = candidate.destination.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !source.isEmpty, !destination.isEmpty else { continue }
+            let detectedOriginalText = candidate.detectedOriginalText.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            let userCorrectedText = candidate.userCorrectedText.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            guard !detectedOriginalText.isEmpty, !userCorrectedText.isEmpty else { continue }
 
-            let key = pairKey(source: source, destination: destination)
-            guard knownPairs.insert(key).inserted else { continue }
-            records.append(
-                Record(
-                    id: UUID(),
-                    source: source,
-                    destination: destination,
-                    reviewSource: candidate.reviewSource,
-                    reviewDestination: candidate.reviewDestination,
-                    status: .pending
+            let correctionPairKey = pairKey(
+                detectedOriginalText: detectedOriginalText,
+                userCorrectedText: userCorrectedText
+            )
+            guard knownPairs.insert(correctionPairKey).inserted else { continue }
+            queuedCorrections.append(
+                QueuedCorrection(
+                    candidateID: UUID(),
+                    detectedOriginalText: detectedOriginalText,
+                    userCorrectedText: userCorrectedText,
+                    originalTextContext: candidate.originalTextContext,
+                    correctedTextContext: candidate.correctedTextContext,
+                    reviewStatus: .pending
                 )
             )
             insertedCount += 1
@@ -94,7 +99,7 @@ actor AutoLearnPendingQueue {
             do {
                 try save()
             } catch {
-                records = originalRecords
+                queuedCorrections = originalQueuedCorrections
                 throw error
             }
         }
@@ -103,37 +108,39 @@ actor AutoLearnPendingQueue {
 
     func pendingCount() throws -> Int {
         try loadIfNeeded()
-        return pendingRecordCount
+        return queuedCorrections.count
     }
 
-    func claimPending() throws -> [AutoLearnReviewCandidate] {
+    func claimPending(limit: Int) throws -> [AutoLearnReviewCandidate] {
         try loadIfNeeded()
 
-        let indices = records.indices
-            .filter { records[$0].status == .pending }
-        guard !indices.isEmpty else { return [] }
+        let pendingCorrectionIndices = queuedCorrections.indices
+            .filter { queuedCorrections[$0].reviewStatus == .pending }
+            .prefix(max(0, limit))
+        guard !pendingCorrectionIndices.isEmpty else { return [] }
 
-        for index in indices {
-            records[index].status = .reviewing
+        for index in pendingCorrectionIndices {
+            queuedCorrections[index].reviewStatus = .reviewing
         }
         do {
             try save()
         } catch {
-            for index in indices {
-                records[index].status = .pending
+            for index in pendingCorrectionIndices {
+                queuedCorrections[index].reviewStatus = .pending
             }
             throw error
         }
-        return indices.map { records[$0].candidate }
+        return pendingCorrectionIndices.map { queuedCorrections[$0].reviewCandidate }
     }
 
-    func release(_ ids: Set<UUID>) throws {
-        guard !ids.isEmpty else { return }
+    func release(_ candidateIDs: Set<UUID>) throws {
+        guard !candidateIDs.isEmpty else { return }
         try loadIfNeeded()
 
         var changed = false
-        for index in records.indices where ids.contains(records[index].id) {
-            records[index].status = .pending
+        for index in queuedCorrections.indices
+        where candidateIDs.contains(queuedCorrections[index].candidateID) {
+            queuedCorrections[index].reviewStatus = .pending
             changed = true
         }
         if changed {
@@ -141,63 +148,44 @@ actor AutoLearnPendingQueue {
         }
     }
 
-    func remove(_ ids: Set<UUID>) throws {
-        guard !ids.isEmpty else { return }
+    func remove(_ candidateIDs: Set<UUID>) throws {
+        guard !candidateIDs.isEmpty else { return }
         try loadIfNeeded()
 
-        let originalCount = records.count
-        records.removeAll { ids.contains($0.id) }
-        if records.count != originalCount {
+        let originalCount = queuedCorrections.count
+        queuedCorrections.removeAll { candidateIDs.contains($0.candidateID) }
+        if queuedCorrections.count != originalCount {
             try save()
         }
     }
 
     private func loadIfNeeded() throws {
-        guard !didLoad else { return }
-        guard fileManager.fileExists(atPath: fileURL.path) else {
-            didLoad = true
+        guard !queuedCorrectionsWereLoaded else { return }
+        guard fileManager.fileExists(atPath: queueFileURL.path) else {
+            queuedCorrectionsWereLoaded = true
             return
         }
 
-        let data = try Data(contentsOf: fileURL)
-        records = try JSONDecoder().decode([Record].self, from: data)
-        didLoad = true
+        let data = try Data(contentsOf: queueFileURL)
+        queuedCorrections = try JSONDecoder().decode([QueuedCorrection].self, from: data)
+        queuedCorrectionsWereLoaded = true
     }
 
     private func save() throws {
-        let directory = fileURL.deletingLastPathComponent()
+        let directory = queueFileURL.deletingLastPathComponent()
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(records)
-        try data.write(to: fileURL, options: .atomic)
+        let data = try encoder.encode(queuedCorrections)
+        try data.write(to: queueFileURL, options: .atomic)
     }
 
-    private func pairKey(source: String, destination: String) -> String {
-        WordReplacementVariants.key(for: source) + "\u{0}"
-            + WordReplacementVariants.destinationKey(for: destination)
-    }
-
-    private func trimToLimit() {
-        let pendingCount = pendingRecordCount
-        let overflow = pendingCount - AutoLearnLimits.maximumPendingCandidates
-        guard overflow > 0 else { return }
-
-        let removableIDs = Set(
-            records.lazy
-                .filter { $0.status == .pending }
-                .prefix(overflow)
-                .map(\.id)
-        )
-        records.removeAll { removableIDs.contains($0.id) }
-    }
-
-    private var pendingRecordCount: Int {
-        records.reduce(into: 0) { count, record in
-            if record.status == .pending {
-                count += 1
-            }
-        }
+    private func pairKey(
+        detectedOriginalText: String,
+        userCorrectedText: String
+    ) -> String {
+        WordReplacementVariants.key(for: detectedOriginalText) + "\u{0}"
+            + WordReplacementVariants.destinationKey(for: userCorrectedText)
     }
 }

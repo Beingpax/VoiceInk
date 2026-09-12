@@ -20,6 +20,7 @@ actor AutoLearnService {
     private var focusFinalizationTask: Task<Void, Never>?
     private var reviewTask: Task<Void, Never>?
     private var reviewGeneration: UInt64 = 0
+    private var reviewIsWaiting = false
 
     private init() {}
 
@@ -30,27 +31,38 @@ actor AutoLearnService {
         self.reviewer = reviewer
         do {
             try await pendingQueue.recoverInterruptedReviews()
-            schedulePendingReview()
+            await notifyQueueChanged()
+            await schedulePendingReview()
         } catch {
             log(error, message: "Failed to recover queued Auto Learn reviews")
         }
     }
 
     func settingDidChange(isEnabled: Bool) async {
-        reviewGeneration &+= 1
-        reviewTask?.cancel()
-        reviewTask = nil
+        cancelReviewTask(clearScheduledDate: true)
         if isEnabled {
-            schedulePendingReview()
+            await schedulePendingReview()
             return
         }
         lifecycleGeneration &+= 1
         await discardActiveSession()
     }
 
-    func retryPendingReviews() {
+    func reviewScheduleDidChange() async {
+        cancelReviewTask(clearScheduledDate: true)
         guard AutoLearnSettings.isEnabled else { return }
-        schedulePendingReview()
+        await schedulePendingReview()
+    }
+
+    func reviewPendingNow() async {
+        guard AutoLearnSettings.isEnabled else { return }
+        guard reviewTask == nil || reviewIsWaiting else { return }
+        cancelReviewTask(clearScheduledDate: true)
+        await schedulePendingReview(force: true)
+    }
+
+    func retryPendingReviews() async {
+        await reviewPendingNow()
     }
 
     func pendingReviewCount() async -> Int {
@@ -99,9 +111,7 @@ actor AutoLearnService {
 
     func shutdown() async {
         lifecycleGeneration &+= 1
-        reviewGeneration &+= 1
-        reviewTask?.cancel()
-        reviewTask = nil
+        cancelReviewTask(clearScheduledDate: false)
         await discardActiveSession()
     }
 
@@ -227,9 +237,6 @@ actor AutoLearnService {
         }
 
         guard let revision = FinalSnapshotDiffEngine.revision(from: snapshot) else { return }
-        logger.notice(
-            "Auto Learn captured revision original=\(revision.original, privacy: .public) corrected=\(revision.corrected, privacy: .public)"
-        )
         let candidates = CorrectionDiffEngine.candidates(from: revision)
         guard !candidates.isEmpty else { return }
 
@@ -242,14 +249,15 @@ actor AutoLearnService {
                 logger.notice(
                     "Queued \(insertedCount, privacy: .public) Auto Learn candidate(s) for AI review"
                 )
-                schedulePendingReview()
+                await schedulePendingReview()
             }
+            await notifyQueueChanged()
         } catch {
             log(error, message: "Failed to queue Auto Learn candidates")
         }
     }
 
-    private func schedulePendingReview() {
+    private func schedulePendingReview(force: Bool = false) async {
         guard reviewTask == nil,
             AutoLearnSettings.isEnabled,
             replacementStore != nil,
@@ -258,67 +266,139 @@ actor AutoLearnService {
             return
         }
 
+        guard (try? await pendingQueue.pendingCount()) ?? 0 > 0 else {
+            AutoLearnSettings.setNextReviewDate(nil)
+            return
+        }
+
+        let schedule = AutoLearnSettings.reviewSchedule
+        guard force || schedule != .manually else {
+            AutoLearnSettings.setNextReviewDate(nil)
+            return
+        }
+
+        let delay: TimeInterval
+        if force || schedule == .immediately {
+            AutoLearnSettings.setNextReviewDate(nil)
+            delay = 0
+        } else if let scheduledDate = AutoLearnSettings.nextReviewDate {
+            delay = max(0, scheduledDate.timeIntervalSinceNow)
+        } else if let scheduleDelay = schedule.delay {
+            let scheduledDate = Date().addingTimeInterval(scheduleDelay)
+            AutoLearnSettings.setNextReviewDate(scheduledDate)
+            delay = scheduleDelay
+        } else {
+            return
+        }
+
         reviewGeneration &+= 1
         let generation = reviewGeneration
+        reviewIsWaiting = delay > 0
         reviewTask = Task { [weak self] in
-            await self?.processPendingReviewBatch(generation: generation)
+            await self?.runScheduledReview(after: delay, generation: generation)
         }
+    }
+
+    private func runScheduledReview(after delay: TimeInterval, generation: UInt64) async {
+        if delay > 0 {
+            let nanoseconds = UInt64(delay * 1_000_000_000)
+            guard await sleep(nanoseconds: nanoseconds), !Task.isCancelled else { return }
+        }
+        guard reviewGeneration == generation else { return }
+        reviewIsWaiting = false
+        await processPendingReviewBatch(generation: generation)
     }
 
     private func processPendingReviewBatch(generation: UInt64) async {
         guard let replacementStore, let reviewer else {
-            finishReviewTask(generation: generation)
+            await finishReviewTask(generation: generation)
             return
         }
 
         let candidates: [AutoLearnReviewCandidate]
         do {
-            candidates = try await pendingQueue.claimPending()
+            candidates = try await pendingQueue.claimPending(
+                limit: AutoLearnLimits.maximumReviewBatchCandidates
+            )
         } catch {
-            finishReviewTask(generation: generation)
+            await finishReviewTask(generation: generation)
             log(error, message: "Failed to load queued Auto Learn candidates")
             return
         }
 
         guard !candidates.isEmpty else {
-            finishReviewTask(generation: generation)
+            AutoLearnSettings.setNextReviewDate(nil)
+            await finishReviewTask(generation: generation)
+            await notifyQueueChanged()
             return
         }
 
-        let candidateIDs = Set(candidates.map(\.id))
+        let candidateIDs = Set(candidates.map(\.candidateID))
         let reviewResult: AutoLearnReviewResult
         do {
             reviewResult = try await reviewer.review(candidates)
-            let acceptedCount = reviewResult.decisions.reduce(0) { count, decision in
-                count + (decision.accepted ? 1 : 0)
-            }
-            logger.notice(
-                "Completed Auto Learn AI review accepted=\(acceptedCount, privacy: .public) rejected=\(reviewResult.decisions.count - acceptedCount, privacy: .public) unresolved=\(reviewResult.unresolvedIDs.count, privacy: .public)"
+            let decisionsByCandidateID = Dictionary(
+                uniqueKeysWithValues: reviewResult.reviewDecisions.map {
+                    ($0.candidateID, $0)
+                }
             )
+            for candidate in candidates {
+                guard let decision = decisionsByCandidateID[candidate.candidateID] else {
+                    logger.notice(
+                        "Auto Learn AI unresolved source=\(candidate.detectedOriginalText, privacy: .public) destination=\(candidate.userCorrectedText, privacy: .public)"
+                    )
+                    continue
+                }
+
+                switch decision.learningAction {
+                case .addReplacementAndVocabulary:
+                    let source = decision.incorrectTextToReplace
+                        ?? candidate.detectedOriginalText
+                    let destination = decision.correctedVocabularyTerm
+                        ?? candidate.userCorrectedText
+                    logger.notice(
+                        "Auto Learn AI accepted action=replacement+vocabulary source=\(source, privacy: .public) destination=\(destination, privacy: .public)"
+                    )
+                case .addVocabularyOnly:
+                    let destination = decision.correctedVocabularyTerm
+                        ?? candidate.userCorrectedText
+                    logger.notice(
+                        "Auto Learn AI accepted action=vocabulary-only destination=\(destination, privacy: .public)"
+                    )
+                case .rejectCorrection:
+                    logger.notice(
+                        "Auto Learn AI rejected source=\(candidate.detectedOriginalText, privacy: .public) destination=\(candidate.userCorrectedText, privacy: .public)"
+                    )
+                }
+            }
         } catch {
             try? await pendingQueue.release(candidateIDs)
             if !Task.isCancelled {
                 AutoLearnSettings.recordFailure(error)
             }
-            finishReviewTask(generation: generation)
+            await finishReviewTask(
+                generation: generation,
+                reschedule: (AutoLearnSettings.reviewSchedule.delay ?? 0) > 0
+            )
             log(error, message: "Auto Learn AI review failed; candidates remain queued")
             return
         }
 
         guard !Task.isCancelled, AutoLearnSettings.isEnabled else {
             try? await pendingQueue.release(candidateIDs)
-            finishReviewTask(generation: generation)
+            await finishReviewTask(generation: generation)
             return
         }
 
         do {
-            let resolvedIDs = candidateIDs.subtracting(reviewResult.unresolvedIDs)
+            let resolvedIDs = candidateIDs.subtracting(reviewResult.unresolvedCandidateIDs)
             let summary = try await replacementStore.apply(
-                reviewResult.decisions,
+                reviewResult.reviewDecisions,
                 candidates: candidates
             )
             try await pendingQueue.remove(resolvedIDs)
-            try await pendingQueue.release(reviewResult.unresolvedIDs)
+            try await pendingQueue.release(reviewResult.unresolvedCandidateIDs)
+            await notifyQueueChanged()
             AutoLearnSettings.clearFailure()
             if summary.hasChanges {
                 logger.notice(
@@ -332,25 +412,58 @@ actor AutoLearnService {
                 logger.notice("Auto Learn review completed without adding dictionary entries")
             }
 
-            finishReviewTask(
+            await finishReviewTask(
                 generation: generation,
-                continueProcessing: reviewResult.unresolvedIDs.isEmpty
+                continueProcessing: reviewResult.unresolvedCandidateIDs.isEmpty,
+                reschedule: !reviewResult.unresolvedCandidateIDs.isEmpty
+                    && (AutoLearnSettings.reviewSchedule.delay ?? 0) > 0
             )
         } catch {
             try? await pendingQueue.release(candidateIDs)
             if !Task.isCancelled {
                 AutoLearnSettings.recordFailure(error)
             }
-            finishReviewTask(generation: generation)
+            await finishReviewTask(
+                generation: generation,
+                reschedule: (AutoLearnSettings.reviewSchedule.delay ?? 0) > 0
+            )
             log(error, message: "Failed to apply Auto Learn results; candidates remain queued")
         }
     }
 
-    private func finishReviewTask(generation: UInt64, continueProcessing: Bool = false) {
+    private func finishReviewTask(
+        generation: UInt64,
+        continueProcessing: Bool = false,
+        reschedule: Bool = false
+    ) async {
         guard reviewGeneration == generation else { return }
         reviewTask = nil
+        reviewIsWaiting = false
         if continueProcessing {
-            schedulePendingReview()
+            await schedulePendingReview(force: true)
+        } else if reschedule {
+            AutoLearnSettings.setNextReviewDate(nil)
+            await schedulePendingReview()
+        }
+    }
+
+    private func cancelReviewTask(clearScheduledDate: Bool) {
+        reviewGeneration &+= 1
+        reviewTask?.cancel()
+        reviewTask = nil
+        reviewIsWaiting = false
+        if clearScheduledDate {
+            AutoLearnSettings.setNextReviewDate(nil)
+        }
+    }
+
+    private func notifyQueueChanged() async {
+        let pendingCount = (try? await pendingQueue.pendingCount()) ?? 0
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: .autoLearnQueueDidChange,
+                object: pendingCount
+            )
         }
     }
 
@@ -361,7 +474,9 @@ actor AutoLearnService {
         if corrections.count == 1, let correction = corrections.first {
             await MainActor.run {
                 NotificationManager.shared.showNotification(
-                    title: String(localized: "Added “\(correction.destination)” to Dictionary"),
+                    title: String(
+                        localized: "Added “\(correction.correctedVocabularyTerm)” to Dictionary"
+                    ),
                     type: .success,
                     duration: 4,
                     actionButton: (
