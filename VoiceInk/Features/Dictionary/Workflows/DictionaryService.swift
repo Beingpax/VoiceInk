@@ -109,11 +109,9 @@ enum DictionaryService {
 
                 if wordReplacement.originalText != normalizedOriginal
                     || wordReplacement.replacementText != normalizedDestination
-                    || !wordReplacement.isEnabled
                 {
                     wordReplacement.originalText = normalizedOriginal
                     wordReplacement.replacementText = normalizedDestination
-                    wordReplacement.isEnabled = true
                     normalizedReplacementCount += 1
                 }
 
@@ -193,15 +191,26 @@ enum DictionaryService {
                 if $0.dateAdded != $1.dateAdded { return $0.dateAdded < $1.dateAdded }
                 return $0.id.uuidString < $1.id.uuidString
             }
+
+        // Checked for every result, not only when an existing rule is reused:
+        // creating a brand new rule can loop just as easily as merging into one.
+        if WordReplacementVariants.wouldCreateCycle(
+            newSources: tokens.map { (source: $0, destination: destination) },
+            in: existing.map {
+                (originalText: $0.originalText, replacementText: $0.replacementText)
+            }
+        ) {
+            return String(localized: "That replacement would create a loop between existing rules")
+        }
+
         let insertedEntry: WordReplacement?
         if let canonical = destinationMatches.first {
-            canonical.originalText = WordReplacementVariants.serialize(
-                destinationMatches.flatMap {
-                    WordReplacementVariants.parse($0.originalText)
-                } + tokens
-            )
+            let mergedTokens = destinationMatches.flatMap {
+                WordReplacementVariants.parse($0.originalText)
+            } + tokens
+
+            canonical.originalText = WordReplacementVariants.serialize(mergedTokens)
             canonical.replacementText = destination
-            canonical.isEnabled = true
             for duplicate in destinationMatches.dropFirst() {
                 context.delete(duplicate)
             }
@@ -273,14 +282,25 @@ enum DictionaryService {
                 WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
             }
             .sorted(by: replacementOrder)
+
+        // The edited rule is excluded from the graph, so pointing it at a new
+        // destination is validated the same way whether or not it merges.
+        if WordReplacementVariants.wouldCreateCycle(
+            newSources: tokens.map { (source: $0, destination: destination) },
+            in: otherReplacements.map {
+                (originalText: $0.originalText, replacementText: $0.replacementText)
+            }
+        ) {
+            return String(localized: "That replacement would create a loop between existing rules")
+        }
+
         if let canonical = destinationMatches.first {
-            canonical.originalText = WordReplacementVariants.serialize(
-                destinationMatches.flatMap {
-                    WordReplacementVariants.parse($0.originalText)
-                } + tokens
-            )
+            let mergedTokens = destinationMatches.flatMap {
+                WordReplacementVariants.parse($0.originalText)
+            } + tokens
+
+            canonical.originalText = WordReplacementVariants.serialize(mergedTokens)
             canonical.replacementText = destination
-            canonical.isEnabled = true
             context.delete(replacement)
             for duplicate in destinationMatches.dropFirst() {
                 context.delete(duplicate)
@@ -288,7 +308,6 @@ enum DictionaryService {
         } else {
             replacement.originalText = WordReplacementVariants.serialize(tokens)
             replacement.replacementText = destination
-            replacement.isEnabled = true
         }
 
         do {

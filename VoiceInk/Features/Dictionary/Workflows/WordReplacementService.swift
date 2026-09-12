@@ -29,9 +29,6 @@ final class WordReplacementService {
     private init() {}
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
-        // isEnabled remains in the persisted model for migration compatibility,
-        // but every replacement is currently active because the setting is not
-        // exposed in the UI.
         let descriptor = FetchDescriptor<WordReplacement>()
 
         let replacements: [WordReplacement]
@@ -149,9 +146,8 @@ final class WordReplacementService {
                 return PreparedRule(original: rule.original, replacement: rule.replacement, regex: nil)
             }
 
-            // Lookarounds instead of \b so punctuation acts as a word boundary.
-            // Word chars are Unicode letters/marks/digits (not just ASCII) so triggers
-            // cannot match inside a larger word.
+            // Unicode-aware lookarounds treat punctuation as a boundary while
+            // preventing matches inside larger words.
             do {
                 let escaped = NSRegularExpression.escapedPattern(for: rule.original)
                 let wordChar = "[[\\p{L}\\p{M}\\p{N}]-[\\p{scx=Han}\\p{scx=Hiragana}\\p{scx=Katakana}\\p{scx=Hangul}\\p{scx=Thai}]]"

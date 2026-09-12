@@ -52,6 +52,17 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         self.enhancementService = enhancementService
     }
 
+    /// True when a review could run right now. Used to defer queued reviews
+    /// while providers are still starting up instead of recording a failure.
+    var hasAvailableProvider: Bool {
+        guard let aiService = enhancementService.getAIService() else { return false }
+        let connectedProviders = aiService.connectedProviders
+        if let selected = AutoLearnSettings.selectedProvider {
+            return connectedProviders.contains(selected)
+        }
+        return !connectedProviders.isEmpty
+    }
+
     func review(_ candidates: [AutoLearnReviewCandidate]) async throws -> AutoLearnReviewResult {
         guard !candidates.isEmpty else {
             return AutoLearnReviewResult(reviewDecisions: [], unresolvedReviews: [])
@@ -137,6 +148,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         var reviewDecisions: [AutoLearnReviewDecision] = []
         var unresolvedReviews: [AutoLearnUnresolvedReview] = []
 
+        // Batch-wide canonicalization lets a term be copied from any candidate in
+        // this request, so grounding is checked against every context at once.
+        let correctedContextUniverse = candidates.map(\.correctedTextContext)
+        let originalContextUniverse = candidates.map(\.originalTextContext)
+
         for (index, candidate) in candidates.enumerated() {
             guard let matchingDecisions = decisionsByCandidateID[index] else {
                 unresolvedReviews.append(
@@ -180,7 +196,12 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 )
                 continue
             }
-            guard !correctedVocabularyTerm.isEmpty else {
+            guard !correctedVocabularyTerm.isEmpty,
+                correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
+                // Require a verbatim batch-context term so an invented longer
+                // value cannot become a global replacement.
+                isGrounded(correctedVocabularyTerm, in: correctedContextUniverse)
+            else {
                 unresolvedReviews.append(
                     unresolvedReview(
                         for: candidate,
@@ -216,7 +237,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 continue
             }
             guard !incorrectTextToReplace.isEmpty,
-                incorrectTextToReplace != correctedVocabularyTerm
+                incorrectTextToReplace != correctedVocabularyTerm,
+                incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
+                // Same grounding rule against the original contexts in this batch.
+                isGrounded(incorrectTextToReplace, in: originalContextUniverse)
             else {
                 unresolvedReviews.append(
                     unresolvedReview(
@@ -256,6 +280,18 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             incorrectTextToReplace: decision?.incorrectTextToReplace,
             correctedVocabularyTerm: decision?.correctedVocabularyTerm
         )
+    }
+
+    /// Rejects terms not copied from their claimed text, preventing invented
+    /// values from becoming global replacements.
+    private func isExactSubstring(_ term: String, of context: String) -> Bool {
+        context.range(of: term, options: .literal) != nil
+    }
+
+    /// Each context is checked on its own so a term can never be matched across
+    /// the seam between two candidates' context windows.
+    private func isGrounded(_ term: String, in contexts: [String]) -> Bool {
+        contexts.contains { isExactSubstring(term, of: $0) }
     }
 
     private func decodeResponse(_ text: String) throws -> [CandidateReviewDecision] {

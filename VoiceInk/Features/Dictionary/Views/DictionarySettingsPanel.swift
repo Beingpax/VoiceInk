@@ -77,9 +77,9 @@ struct DictionarySettingsPanel: View {
         .task {
             await refreshPendingCorrectionCount()
         }
-        .onReceive(NotificationCenter.default.publisher(for: .autoLearnQueueDidChange)) { notification in
-            if let pendingCount = notification.object as? Int {
-                pendingCorrectionCount = pendingCount
+        .onReceive(NotificationCenter.default.publisher(for: .autoLearnQueueDidChange)) { _ in
+            Task {
+                await refreshPendingCorrectionCount()
             }
         }
     }
@@ -90,6 +90,6 @@ struct DictionarySettingsPanel: View {
 
     @MainActor
     private func refreshPendingCorrectionCount() async {
-        pendingCorrectionCount = await AutoLearnService.shared.pendingReviewCount()
+        pendingCorrectionCount = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0
     }
 }

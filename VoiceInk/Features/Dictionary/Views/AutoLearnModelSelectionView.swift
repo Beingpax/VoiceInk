@@ -23,7 +23,7 @@ struct AutoLearnModelSelectionView: View {
     @AppStorage(AutoLearnSettings.providerKey) private var autoLearnProvider = ""
     @AppStorage(AutoLearnSettings.modelKey) private var autoLearnModel = ""
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
-    @State private var modelRefreshGeneration = 0
+    @State private var modelRefreshTask: Task<Void, Never>?
 
     private var providerOptions: [AIProvider] {
         var providers = aiService.connectedProviders
@@ -66,6 +66,9 @@ struct AutoLearnModelSelectionView: View {
             }
         }
         .onAppear(perform: prepareSelectionIfNeeded)
+        .onDisappear {
+            modelRefreshTask?.cancel()
+        }
         .onChange(of: autoLearnModel) { _, _ in
             retryAfterConfigurationChange()
         }
@@ -147,44 +150,41 @@ struct AutoLearnModelSelectionView: View {
     }
 
     private func refreshModelsIfNeeded(for provider: AIProvider) {
-        modelRefreshGeneration &+= 1
-        let refreshGeneration = modelRefreshGeneration
-        let modelAtStart = autoLearnModel
+        modelRefreshTask?.cancel()
+        // The task is owned by the view, so a panel that closes mid-refresh
+        // cannot write a stale model into the shared selection.
+        modelRefreshTask = Task {
+            let modelAtStart = autoLearnModel
 
-        switch provider {
-        case .ollama:
-            Task {
+            switch provider {
+            case .ollama:
                 let models = await aiService.refreshOllamaConnectionAndModels().map(\.name)
                 updateModelSelection(
                     afterLoading: models,
                     for: provider,
-                    refreshGeneration: refreshGeneration,
                     modelAtStart: modelAtStart
                 )
-            }
-        case .openRouter:
-            Task {
+            case .openRouter:
                 await aiService.fetchOpenRouterModels()
+                guard !Task.isCancelled else { return }
                 updateModelSelection(
                     afterLoading: aiService.availableModels(for: provider),
                     for: provider,
-                    refreshGeneration: refreshGeneration,
                     modelAtStart: modelAtStart
                 )
+            default:
+                break
             }
-        default:
-            break
         }
     }
 
     private func updateModelSelection(
         afterLoading models: [String],
         for provider: AIProvider,
-        refreshGeneration: Int,
         modelAtStart: String
     ) {
-        guard selectedProvider == provider,
-            modelRefreshGeneration == refreshGeneration,
+        guard !Task.isCancelled,
+            selectedProvider == provider,
             autoLearnModel == modelAtStart,
             !models.isEmpty,
             !models.contains(autoLearnModel)

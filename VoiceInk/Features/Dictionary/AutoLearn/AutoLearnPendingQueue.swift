@@ -96,6 +96,7 @@ actor AutoLearnPendingQueue {
         }
 
         if insertedCount > 0 {
+            trimToLimit()
             do {
                 try save()
             } catch {
@@ -106,7 +107,30 @@ actor AutoLearnPendingQueue {
         return insertedCount
     }
 
+    /// Bounds the persisted queue by dropping the oldest pending entries while
+    /// preserving any batch currently under review.
+    private func trimToLimit() {
+        let overflow = queuedCorrections.count - AutoLearnLimits.maximumQueuedCorrections
+        guard overflow > 0 else { return }
+
+        var remainingToRemove = overflow
+        queuedCorrections.removeAll { correction in
+            guard remainingToRemove > 0, correction.reviewStatus == .pending else { return false }
+            remainingToRemove -= 1
+            return true
+        }
+    }
+
+    /// Corrections that still need a review decision. Entries claimed by an
+    /// in-flight batch are excluded so callers only see actionable work.
     func pendingCount() throws -> Int {
+        try loadIfNeeded()
+        return queuedCorrections.filter { $0.reviewStatus == .pending }.count
+    }
+
+    /// Every retained correction, including one currently under review. Used for
+    /// status reporting so a claimed batch still counts as outstanding work.
+    func outstandingCount() throws -> Int {
         try loadIfNeeded()
         return queuedCorrections.count
     }
@@ -167,8 +191,29 @@ actor AutoLearnPendingQueue {
         }
 
         let data = try Data(contentsOf: queueFileURL)
-        queuedCorrections = try JSONDecoder().decode([QueuedCorrection].self, from: data)
+        queuedCorrections = try Self.decodeCorrections(from: data)
         queuedCorrectionsWereLoaded = true
+    }
+
+    /// Decodes entry by entry so one unreadable record cannot strand the whole
+    /// queue for the lifetime of the install.
+    private static func decodeCorrections(from data: Data) throws -> [QueuedCorrection] {
+        let decoder = JSONDecoder()
+        guard let records = try JSONSerialization.jsonObject(with: data) as? [Any] else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "Auto Learn queue file is not a JSON array"
+                )
+            )
+        }
+
+        return records.compactMap { record in
+            guard let recordData = try? JSONSerialization.data(withJSONObject: record) else {
+                return nil
+            }
+            return try? decoder.decode(QueuedCorrection.self, from: recordData)
+        }
     }
 
     private func save() throws {

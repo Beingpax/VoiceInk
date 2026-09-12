@@ -193,10 +193,8 @@ actor WordReplacementStore {
         let canonical = destinationMatches.first
 
         if let canonical {
-            // Auto Learn only adds the learned source. It does not consolidate
-            // or otherwise rewrite existing rows, so Undo removes exactly what
-            // Auto Learn added.
-            canonical.isEnabled = true
+            // Auto Learn only adds the learned source without rewriting rows,
+            // allowing Undo to remove exactly what was added.
             var variants = WordReplacementVariants.parse(canonical.originalText)
             variants.append(source)
             canonical.originalText = WordReplacementVariants.serialize(variants)
@@ -225,32 +223,11 @@ actor WordReplacementStore {
         destinationSourceKey: String,
         entries: [WordReplacement]
     ) -> Bool {
-        guard sourceKey != destinationSourceKey else { return false }
-
-        var graph: [String: String] = [:]
-        for entry in entries.sorted(by: destinationOrder) {
-            let next = WordReplacementVariants.key(for: entry.replacementText)
-            guard !next.isEmpty else { continue }
-
-            for variant in WordReplacementVariants.parse(entry.originalText) {
-                let key = WordReplacementVariants.key(for: variant)
-                guard !key.isEmpty, graph[key] == nil else { continue }
-                graph[key] = next
-            }
-        }
-
-        var current = destinationSourceKey
-        var visited = Set<String>()
-        while visited.insert(current).inserted, let next = graph[current] {
-            if next == sourceKey {
-                return true
-            }
-            if next == current {
-                return false
-            }
-            current = next
-        }
-
-        return false
+        WordReplacementVariants.wouldCreateCycle(
+            newSources: [(source: sourceKey, destination: destinationSourceKey)],
+            in: entries
+                .sorted(by: destinationOrder)
+                .map { (originalText: $0.originalText, replacementText: $0.replacementText) }
+        )
     }
 }

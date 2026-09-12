@@ -128,7 +128,9 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
     }
 
     private func isSecureTextElement(_ element: AXUIElement) -> Bool {
-        guard let subrole = copyStringAttribute(kAXSubroleAttribute, from: element) else { return false }
+        // Fail closed. An unreadable subrole cannot prove the field is not a
+        // password field, and capturing one would leak it into the queue.
+        guard let subrole = copyStringAttribute(kAXSubroleAttribute, from: element) else { return true }
         return subrole == kAXSecureTextFieldSubrole as String
     }
 

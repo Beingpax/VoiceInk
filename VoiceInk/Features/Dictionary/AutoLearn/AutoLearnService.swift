@@ -21,6 +21,8 @@ actor AutoLearnService {
     private var reviewTask: Task<Void, Never>?
     private var reviewGeneration: UInt64 = 0
     private var reviewIsWaiting = false
+    private var claimedCandidateIDs = Set<UUID>()
+    private var providerAvailabilityObserver: NSObjectProtocol?
 
     private init() {}
 
@@ -29,6 +31,7 @@ actor AutoLearnService {
         let store = WordReplacementStore(modelContainer: modelContainer)
         replacementStore = store
         self.reviewer = reviewer
+        observeProviderAvailability()
         do {
             try await pendingQueue.recoverInterruptedReviews()
             await notifyQueueChanged()
@@ -38,8 +41,29 @@ actor AutoLearnService {
         }
     }
 
+    /// Retries deferred reviews when `.AppSettingsDidChange` signals that a
+    /// provider or Ollama connection may be available.
+    private func observeProviderAvailability() {
+        guard providerAvailabilityObserver == nil else { return }
+        providerAvailabilityObserver = NotificationCenter.default.addObserver(
+            forName: .AppSettingsDidChange,
+            object: nil,
+            queue: .main
+        ) { _ in
+            Task {
+                await AutoLearnService.shared.serviceConfigurationDidChange()
+            }
+        }
+    }
+
+    func serviceConfigurationDidChange() async {
+        guard AutoLearnSettings.isEnabled else { return }
+        guard (try? await pendingQueue.pendingCount()) ?? 0 > 0 else { return }
+        await schedulePendingReview()
+    }
+
     func settingDidChange(isEnabled: Bool) async {
-        cancelReviewTask(clearScheduledDate: true)
+        await cancelReviewTask(clearScheduledDate: true)
         if isEnabled {
             await schedulePendingReview()
             return
@@ -49,7 +73,7 @@ actor AutoLearnService {
     }
 
     func reviewScheduleDidChange() async {
-        cancelReviewTask(clearScheduledDate: true)
+        await cancelReviewTask(clearScheduledDate: true)
         guard AutoLearnSettings.isEnabled else { return }
         await schedulePendingReview()
     }
@@ -57,7 +81,7 @@ actor AutoLearnService {
     func reviewPendingNow() async {
         guard AutoLearnSettings.isEnabled else { return }
         guard reviewTask == nil || reviewIsWaiting else { return }
-        cancelReviewTask(clearScheduledDate: true)
+        await cancelReviewTask(clearScheduledDate: true)
         await schedulePendingReview(runImmediately: true)
     }
 
@@ -65,8 +89,12 @@ actor AutoLearnService {
         await reviewPendingNow()
     }
 
-    func pendingReviewCount() async -> Int {
-        (try? await pendingQueue.pendingCount()) ?? 0
+    func pendingReviewCount() async throws -> Int {
+        try await pendingQueue.pendingCount()
+    }
+
+    func outstandingReviewCount() async throws -> Int {
+        try await pendingQueue.outstandingCount()
     }
 
     func recordingDidStart() async {
@@ -92,15 +120,28 @@ actor AutoLearnService {
             return
         }
 
-        // A new VoiceInk paste owns the next session. Capture happens only after
-        // Command-V is posted, so Accessibility work never delays the paste.
+        // Finalize the previous session after Command-V so Accessibility and
+        // SwiftData work do not delay the paste.
+        let previousToken = activeToken
         lifecycleGeneration &+= 1
         let generation = lifecycleGeneration
-        await discardActiveSession()
+        deadlineTask?.cancel()
+        deadlineTask = nil
+        focusFinalizationTask?.cancel()
+        focusFinalizationTask = nil
+        focusObserver.stop()
+        activeToken = nil
+        activeGeneration = nil
+        activeProcessID = nil
 
         guard lifecycleGeneration == generation, AutoLearnSettings.isEnabled else { return }
 
         deadlineTask = Task { [weak self] in
+            if let previousToken {
+                // `finishSnapshot` drops the session, so the pending capture is
+                // cancelled before a new one can be started.
+                await self?.persistFinishedSession(token: previousToken, generation: generation)
+            }
             await self?.beginObservation(
                 text: text,
                 processID: processID,
@@ -117,7 +158,7 @@ actor AutoLearnService {
 
     func shutdown() async {
         lifecycleGeneration &+= 1
-        cancelReviewTask(clearScheduledDate: false)
+        await cancelReviewTask(clearScheduledDate: false)
         await discardActiveSession()
     }
 
@@ -197,12 +238,16 @@ actor AutoLearnService {
         focusObserver.stop()
 
         if persist {
-            let snapshot = await accessibilityRuntime.finishSnapshot(token: token)
-            guard lifecycleGeneration == generation else { return }
-            await persistSnapshot(snapshot)
+            await persistFinishedSession(token: token, generation: generation)
         } else {
             await accessibilityRuntime.discard(token: token)
         }
+    }
+
+    private func persistFinishedSession(token: AutoLearnPasteToken, generation: UInt64) async {
+        let snapshot = await accessibilityRuntime.finishSnapshot(token: token)
+        guard lifecycleGeneration == generation else { return }
+        await persistSnapshot(snapshot)
     }
 
     private func finalizeIfFocusLeft(token: AutoLearnPasteToken) async {
@@ -269,6 +314,13 @@ actor AutoLearnService {
             replacementStore != nil,
             reviewer != nil
         else {
+            return
+        }
+
+        // A provider that is still starting up is not a failure. Leave the
+        // candidates queued; the next paste, setting change, or retry arms it.
+        guard reviewer?.hasAvailableProvider == true else {
+            logger.notice("Auto Learn review deferred: no provider available")
             return
         }
 
@@ -347,6 +399,7 @@ actor AutoLearnService {
         }
 
         let candidateIDs = Set(candidates.map(\.candidateID))
+        claimedCandidateIDs = candidateIDs
         let reviewResult: AutoLearnReviewResult
         do {
             reviewResult = try await reviewer.review(candidates)
@@ -360,14 +413,12 @@ actor AutoLearnService {
                     ($0.candidateID, $0)
                 }
             )
+            // Candidate text is user content, so it stays private in the log.
             for candidate in candidates {
                 guard let decision = decisionsByCandidateID[candidate.candidateID] else {
                     if let unresolved = unresolvedByCandidateID[candidate.candidateID] {
-                        let returnedAction = unresolved.learningAction?.rawValue ?? "none"
-                        let returnedReplacement = unresolved.incorrectTextToReplace ?? "none"
-                        let returnedVocabulary = unresolved.correctedVocabularyTerm ?? "none"
                         logger.notice(
-                            "Auto Learn review result=unresolved reason=\(unresolved.reason.rawValue, privacy: .public) returnedAction=\(returnedAction, privacy: .public) original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public) returnedReplacement=\(returnedReplacement, privacy: .public) returnedVocabulary=\(returnedVocabulary, privacy: .public)"
+                            "Auto Learn review result=unresolved reason=\(unresolved.reason.rawValue, privacy: .public) returnedAction=\(unresolved.learningAction?.rawValue ?? "none", privacy: .public) returnedReplacement=\(unresolved.incorrectTextToReplace ?? "none", privacy: .private) returnedVocabulary=\(unresolved.correctedVocabularyTerm ?? "none", privacy: .private) original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
                         )
                     }
                     continue
@@ -375,22 +426,16 @@ actor AutoLearnService {
 
                 switch decision.learningAction {
                 case .addReplacementAndVocabulary:
-                    let incorrectTextToReplace = decision.incorrectTextToReplace
-                        ?? candidate.detectedOriginalText
-                    let correctedVocabularyTerm = decision.correctedVocabularyTerm
-                        ?? candidate.userCorrectedText
                     logger.notice(
-                        "Auto Learn review result=accepted action=addReplacementAndVocabulary original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public) replacement=\(incorrectTextToReplace, privacy: .public) vocabulary=\(correctedVocabularyTerm, privacy: .public)"
+                        "Auto Learn review result=accepted action=addReplacementAndVocabulary replacement=\(decision.incorrectTextToReplace ?? candidate.detectedOriginalText, privacy: .private) vocabulary=\(decision.correctedVocabularyTerm ?? candidate.userCorrectedText, privacy: .private) original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
                     )
                 case .addVocabularyOnly:
-                    let correctedVocabularyTerm = decision.correctedVocabularyTerm
-                        ?? candidate.userCorrectedText
                     logger.notice(
-                        "Auto Learn review result=accepted action=addVocabularyOnly original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public) vocabulary=\(correctedVocabularyTerm, privacy: .public)"
+                        "Auto Learn review result=accepted action=addVocabularyOnly vocabulary=\(decision.correctedVocabularyTerm ?? candidate.userCorrectedText, privacy: .private) original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
                     )
                 case .rejectCorrection:
                     logger.notice(
-                        "Auto Learn review result=rejected action=rejectCorrection original=\(candidate.detectedOriginalText, privacy: .public) corrected=\(candidate.userCorrectedText, privacy: .public)"
+                        "Auto Learn review result=rejected action=rejectCorrection original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
                     )
                 }
             }
@@ -407,6 +452,7 @@ actor AutoLearnService {
                 "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) unresolved=\(reviewResult.unresolvedReviews.count, privacy: .public)"
             )
         } catch {
+            releaseClaim(candidateIDs)
             try? await pendingQueue.release(candidateIDs)
             if !Task.isCancelled {
                 AutoLearnSettings.recordFailure(error)
@@ -420,6 +466,7 @@ actor AutoLearnService {
         }
 
         guard !Task.isCancelled, AutoLearnSettings.isEnabled else {
+            releaseClaim(candidateIDs)
             try? await pendingQueue.release(candidateIDs)
             await finishReviewTask(generation: generation)
             return
@@ -433,7 +480,10 @@ actor AutoLearnService {
             )
             try await pendingQueue.remove(resolvedIDs)
             try await pendingQueue.release(reviewResult.unresolvedCandidateIDs)
+            releaseClaim(candidateIDs)
             await notifyQueueChanged()
+            // Cleared only after the queue and dictionary are consistent, so a
+            // failure in this block still surfaces to the user.
             AutoLearnSettings.clearFailure()
             if summary.hasChanges {
                 logger.notice(
@@ -449,11 +499,10 @@ actor AutoLearnService {
 
             await finishReviewTask(
                 generation: generation,
-                continueProcessing: reviewResult.unresolvedCandidateIDs.isEmpty,
                 reschedule: !reviewResult.unresolvedCandidateIDs.isEmpty
-                    && (AutoLearnSettings.reviewSchedule.delay ?? 0) > 0
             )
         } catch {
+            releaseClaim(candidateIDs)
             try? await pendingQueue.release(candidateIDs)
             if !Task.isCancelled {
                 AutoLearnSettings.recordFailure(error)
@@ -466,23 +515,27 @@ actor AutoLearnService {
         }
     }
 
-    private func finishReviewTask(
-        generation: UInt64,
-        continueProcessing: Bool = false,
-        reschedule: Bool = false
-    ) async {
+    /// Forgets the in-flight batch; cancellation consumes its claim before a
+    /// replacement batch can populate the set.
+    private func releaseClaim(_ candidateIDs: Set<UUID>) {
+        claimedCandidateIDs.subtract(candidateIDs)
+    }
+
+    /// Re-arms the queue after a batch. `.immediately` drains right away; timed
+    /// schedules keep their delay so a backlog is not reviewed ahead of schedule.
+    private func finishReviewTask(generation: UInt64, reschedule: Bool = false) async {
         guard reviewGeneration == generation else { return }
         reviewTask = nil
         reviewIsWaiting = false
-        if continueProcessing {
-            await schedulePendingReview(runImmediately: true)
-        } else if reschedule {
+        if reschedule || AutoLearnSettings.reviewSchedule == .immediately {
             AutoLearnSettings.setNextReviewDate(nil)
             await schedulePendingReview()
         }
     }
 
-    private func cancelReviewTask(clearScheduledDate: Bool) {
+    /// Cancels the active batch and returns its claims so rapid disable/re-enable
+    /// cannot strand them. Releasing is idempotent.
+    private func cancelReviewTask(clearScheduledDate: Bool) async {
         reviewGeneration &+= 1
         reviewTask?.cancel()
         reviewTask = nil
@@ -490,14 +543,20 @@ actor AutoLearnService {
         if clearScheduledDate {
             AutoLearnSettings.setNextReviewDate(nil)
         }
+
+        guard !claimedCandidateIDs.isEmpty else { return }
+        let claimedIDs = claimedCandidateIDs
+        claimedCandidateIDs = []
+        try? await pendingQueue.release(claimedIDs)
+        await notifyQueueChanged()
     }
 
     private func notifyQueueChanged() async {
-        let pendingCount = (try? await pendingQueue.pendingCount()) ?? 0
+        let outstandingCount = (try? await pendingQueue.outstandingCount()) ?? 0
         await MainActor.run {
             NotificationCenter.default.post(
                 name: .autoLearnQueueDidChange,
-                object: pendingCount
+                object: outstandingCount
             )
         }
     }

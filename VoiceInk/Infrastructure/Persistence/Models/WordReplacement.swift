@@ -15,8 +15,7 @@ final class WordReplacement {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .precomposedStringWithCanonicalMapping
         self.dateAdded = dateAdded
-        // Keep this persisted field for store compatibility. Until an
-        // enable/disable control returns to the UI, every rule is active.
+        // Keep this persisted field for store and CloudKit compatibility; every rule remains active.
         self.isEnabled = true
     }
 }

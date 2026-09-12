@@ -25,6 +25,7 @@ final class AutoLearnFocusObserver: @unchecked Sendable {
     private struct State {
         var generation: UUID?
         var runLoop: CFRunLoop?
+        var shouldRun: Bool = false
     }
 
     private let lock = NSLock()
@@ -41,6 +42,7 @@ final class AutoLearnFocusObserver: @unchecked Sendable {
         withLock {
             state.generation = generation
             state.runLoop = nil
+            state.shouldRun = true
         }
 
         let thread = Thread { [weak self] in
@@ -59,6 +61,7 @@ final class AutoLearnFocusObserver: @unchecked Sendable {
     func stop() {
         let runLoop = withLock { () -> CFRunLoop? in
             state.generation = nil
+            state.shouldRun = false
             let runLoop = state.runLoop
             state.runLoop = nil
             return runLoop
@@ -118,13 +121,26 @@ final class AutoLearnFocusObserver: @unchecked Sendable {
             CFRunLoopAddSource(runLoop, source, .defaultMode)
 
             let shouldRun = withLock { () -> Bool in
-                guard state.generation == generation else { return false }
+                guard state.shouldRun, state.generation == generation else { return false }
                 state.runLoop = runLoop
                 return true
             }
+            guard shouldRun else {
+                CFRunLoopRemoveSource(runLoop, source, .defaultMode)
+                for notification in registeredNotifications {
+                    AXObserverRemoveNotification(observer, appElement, notification as CFString)
+                }
+                Unmanaged<AutoLearnFocusCallbackBridge>.fromOpaque(refcon).release()
+                clearState(for: generation)
+                return
+            }
 
-            if shouldRun {
-                CFRunLoopRun()
+            // Bounded slices catch `stop()` calls that arrive just before the
+            // run loop starts and would otherwise be lost.
+            var isRunning = true
+            while isRunning {
+                CFRunLoopRunInMode(.defaultMode, 0.25, true)
+                isRunning = withLock { state.shouldRun && state.generation == generation }
             }
 
             CFRunLoopRemoveSource(runLoop, source, .defaultMode)
@@ -141,6 +157,7 @@ final class AutoLearnFocusObserver: @unchecked Sendable {
             guard state.generation == generation else { return }
             state.generation = nil
             state.runLoop = nil
+            state.shouldRun = false
         }
     }
 

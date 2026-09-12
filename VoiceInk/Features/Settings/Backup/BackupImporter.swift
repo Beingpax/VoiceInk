@@ -310,14 +310,12 @@ enum BackupImporter {
                     )
                     if canonical.originalText != consolidatedVariants
                         || canonical.replacementText != trimmedReplacement
-                        || !canonical.isEnabled
                         || destinationMatches.count > 1
                     {
                         didMutateReplacements = true
                     }
                     canonical.originalText = consolidatedVariants
                     canonical.replacementText = trimmedReplacement
-                    canonical.isEnabled = true
                     for duplicate in destinationMatches.dropFirst() {
                         modelContext.delete(duplicate)
                         existingReplacements.removeAll { $0 === duplicate }

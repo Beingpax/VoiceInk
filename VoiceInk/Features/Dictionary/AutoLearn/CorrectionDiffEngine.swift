@@ -379,9 +379,12 @@ enum CorrectionDiffEngine {
         case 0x0E00...0x0EFF, // Thai and Lao
             0x1000...0x109F, // Myanmar
             0x1780...0x17FF, // Khmer
+            0x1100...0x11FF, // Hangul Jamo
             0x3040...0x30FF, // Hiragana and Katakana
+            0x3130...0x318F, // Hangul Compatibility Jamo
             0x3400...0x4DBF, // CJK Extension A
             0x4E00...0x9FFF, // CJK Unified Ideographs
+            0xAC00...0xD7AF, // Hangul Syllables
             0x20000...0x2FA1F: // Additional CJK ideographs
             return true
         default:

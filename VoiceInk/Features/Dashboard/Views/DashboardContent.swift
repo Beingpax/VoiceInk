@@ -642,7 +642,12 @@ struct DashboardContent: View {
                 .buttonStyle(.plain)
                 .fixedSize(horizontal: true, vertical: true)
                 .disabled(!updaterViewModel.canCheckForUpdates)
-                .help("Open the VoiceInk \(availableUpdate.displayVersion) update")
+                .help(
+                    String(
+                        format: String(localized: "Open the VoiceInk %@ update"),
+                        availableUpdate.displayVersion
+                    )
+                )
                 .accessibilityLabel("Update Available")
                 .accessibilityValue(Text(verbatim: availableUpdate.displayVersion))
                 .accessibilityHint("Opens the update window")

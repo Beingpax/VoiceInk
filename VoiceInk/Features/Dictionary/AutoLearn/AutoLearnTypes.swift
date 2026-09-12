@@ -149,4 +149,5 @@ enum AutoLearnLimits {
     static let reviewContextSegmentsPerSide = 2
     static let maximumUnspacedCandidateCharacters = 8
     static let maximumReviewBatchCandidates = 25
+    static let maximumQueuedCorrections = 500
 }
