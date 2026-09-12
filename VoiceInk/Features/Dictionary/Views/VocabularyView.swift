@@ -34,7 +34,7 @@ struct VocabularyView: View {
     }
 
     private var shouldShowAddButton: Bool {
-        !newWord.isEmpty
+        !newWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -49,7 +49,7 @@ struct VocabularyView: View {
                 if shouldShowAddButton {
                     AddIconButton(
                         helpText: "Add word",
-                        isDisabled: newWord.isEmpty,
+                        isDisabled: !shouldShowAddButton,
                         action: addWords
                     )
                 }
@@ -81,7 +81,7 @@ struct VocabularyView: View {
                         }
                     }
                     .buttonStyle(.plain)
-                    .help("Sort alphabetically")
+                    .help("Change sort order")
 
                     FlowLayout(spacing: 8) {
                         ForEach(sortedItems) { item in

@@ -3,8 +3,10 @@ import SwiftUI
 struct AutoLearnFailurePanel: View {
     let onClose: () -> Void
 
+    @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnEnabled = true
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasFailure = false
     @AppStorage(AutoLearnSettings.failureMessageKey) private var failureMessage = ""
+    @State private var pendingCount = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,7 +29,11 @@ struct AutoLearnFailurePanel: View {
                 }
 
                 Section("How to Fix It") {
-                    Text("Choose another model or provider above, then retry the 24 pending corrections.")
+                    Text(
+                        isAutoLearnEnabled
+                            ? "Pending corrections: \(pendingCount). Choose another model or provider above, then retry."
+                            : "Enable Auto Learn before retrying pending corrections."
+                    )
                         .foregroundStyle(.secondary)
                 }
             }
@@ -42,6 +48,9 @@ struct AutoLearnFailurePanel: View {
             if !failed {
                 onClose()
             }
+        }
+        .task {
+            pendingCount = await AutoLearnService.shared.pendingReviewCount()
         }
     }
 
@@ -64,6 +73,7 @@ struct AutoLearnFailurePanel: View {
                 }
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!isAutoLearnEnabled)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)

@@ -29,25 +29,26 @@ final class WordReplacementService {
     private init() {}
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
-        let descriptor = FetchDescriptor<WordReplacement>(
-            predicate: #Predicate { $0.isEnabled }
-        )
+        // isEnabled remains in the persisted model for migration compatibility,
+        // but every replacement is currently active because the setting is not
+        // exposed in the UI.
+        let descriptor = FetchDescriptor<WordReplacement>()
 
         let replacements: [WordReplacement]
         do {
             replacements = try context.fetch(descriptor)
         } catch {
-            logger.error("Could not load enabled word replacements: \(error, privacy: .public)")
+            logger.error("Could not load word replacements: \(error, privacy: .public)")
             return text
         }
 
         guard !replacements.isEmpty else {
-            logger.debug("Word replacement skipped: no enabled rules")
+            logger.debug("Word replacement skipped: no rules")
             return text
         }
 
         logger.debug(
-            "Starting word replacement selection with \(replacements.count, privacy: .public) enabled rule(s)"
+            "Starting word replacement with \(replacements.count, privacy: .public) rule(s)"
         )
 
         var modifiedText = text
@@ -55,7 +56,7 @@ final class WordReplacementService {
         let rules = preparedRules(from: replacements)
 
         logger.debug(
-            "Prepared \(rules.count, privacy: .public) unique replacement variant(s)"
+            "Prepared \(rules.count, privacy: .public) replacement variant(s)"
         )
 
         var matchedRuleCount = 0
@@ -141,20 +142,9 @@ final class WordReplacementService {
                 return $0.id < $1.id
             }
 
-        var seenSources = Set<String>()
-        let rules = sortedRules.filter { rule in
-            let wasSelected = seenSources.insert(
-                WordReplacementVariants.key(for: rule.original)
-            ).inserted
-            if !wasSelected {
-                logger.debug(
-                    "Skipping duplicate word replacement variant \(rule.original, privacy: .private); an earlier longest-first rule already owns this trigger"
-                )
-            }
-            return wasSelected
-        }
-
-        let prepared = rules.compactMap { rule -> PreparedRule? in
+        // Preserve every legacy rule. New dictionary mutations prevent source
+        // conflicts, but older stores may contain multiple rules for a trigger.
+        let prepared = sortedRules.compactMap { rule -> PreparedRule? in
             guard usesWordBoundaries(for: rule.original) else {
                 return PreparedRule(original: rule.original, replacement: rule.replacement, regex: nil)
             }

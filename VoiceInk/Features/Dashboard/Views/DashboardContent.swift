@@ -40,7 +40,9 @@ struct DashboardContent: View {
     @State private var isEditingDisplayName = false
     @State private var displayNameDraft = ""
     @AppStorage("dashboardDisplayName") private var dashboardDisplayName: String = ""
+    @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnEnabled = true
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
+    @AppStorage(AutoLearnSettings.failureAcknowledgedKey) private var isAutoLearnFailureAcknowledged = false
     @FocusState private var isNameFieldFocused: Bool
     @Query(Self.recentTranscriptionsDescriptor()) private var recentTranscriptionCandidates: [Transcription]
 
@@ -99,17 +101,22 @@ struct DashboardContent: View {
         .onAppear {
             refreshAccessibilityStatus()
             updaterViewModel.checkForUpdatesIfDue()
-            if hasAutoLearnFailure {
+            if shouldAutomaticallyPresentAutoLearnFailure {
                 scheduleAutoLearnFailurePresentation()
             }
         }
-        .onChange(of: hasAutoLearnFailure) { _, hasFailure in
-            if hasFailure {
-                scheduleAutoLearnFailurePresentation()
-            } else {
-                autoLearnFailurePresentationTask?.cancel()
-                autoLearnFailurePresentationTask = nil
-                isAutoLearnFailurePanelPresented = false
+        .onChange(of: hasAutoLearnFailure) { _, _ in
+            updateAutoLearnFailurePresentation()
+        }
+        .onChange(of: isAutoLearnEnabled) { _, _ in
+            updateAutoLearnFailurePresentation()
+        }
+        .onChange(of: isAutoLearnFailureAcknowledged) { _, _ in
+            updateAutoLearnFailurePresentation()
+        }
+        .onChange(of: isAutoLearnFailurePanelPresented) { wasPresented, isPresented in
+            if wasPresented, !isPresented, hasAutoLearnFailure, isAutoLearnEnabled {
+                AutoLearnSettings.acknowledgeCurrentFailure()
             }
         }
         .onReceive(LifecycleObserver.shared.publisher(for: .applicationDidBecomeActive)) { _ in
@@ -155,9 +162,23 @@ struct DashboardContent: View {
         autoLearnFailurePresentationTask?.cancel()
         autoLearnFailurePresentationTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_500_000_000)
-            guard !Task.isCancelled, hasAutoLearnFailure else { return }
+            guard !Task.isCancelled, shouldAutomaticallyPresentAutoLearnFailure else { return }
             isAutoLearnFailurePanelPresented = true
             autoLearnFailurePresentationTask = nil
+        }
+    }
+
+    private var shouldAutomaticallyPresentAutoLearnFailure: Bool {
+        hasAutoLearnFailure && isAutoLearnEnabled && !isAutoLearnFailureAcknowledged
+    }
+
+    private func updateAutoLearnFailurePresentation() {
+        if shouldAutomaticallyPresentAutoLearnFailure {
+            scheduleAutoLearnFailurePresentation()
+        } else {
+            autoLearnFailurePresentationTask?.cancel()
+            autoLearnFailurePresentationTask = nil
+            isAutoLearnFailurePanelPresented = false
         }
     }
 

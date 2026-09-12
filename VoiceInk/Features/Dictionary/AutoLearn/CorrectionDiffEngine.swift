@@ -332,31 +332,24 @@ enum CorrectionDiffEngine {
         source: String,
         destination: String
     ) -> (source: String, destination: String)? {
-        var sourceCharacters = Array(source)
-        var destinationCharacters = Array(destination)
-
-        while let sourceLast = sourceCharacters.last,
-            let destinationLast = destinationCharacters.last,
-            sourceLast == destinationLast,
-            trailingSentencePunctuation.contains(sourceLast)
-        {
-            sourceCharacters.removeLast()
-            destinationCharacters.removeLast()
-        }
-
-        while let sourceFirst = sourceCharacters.first,
-            let destinationFirst = destinationCharacters.first,
-            sourceFirst == destinationFirst,
-            leadingWrappers.contains(sourceFirst)
-        {
-            sourceCharacters.removeFirst()
-            destinationCharacters.removeFirst()
-        }
+        let sourceCharacters = cleanedEdgeCharacters(Array(source))
+        let destinationCharacters = cleanedEdgeCharacters(Array(destination))
 
         let cleanedSource = String(sourceCharacters).trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedDestination = String(destinationCharacters).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedSource.isEmpty, !cleanedDestination.isEmpty else { return nil }
         return (cleanedSource, cleanedDestination)
+    }
+
+    private static func cleanedEdgeCharacters(_ characters: [Character]) -> [Character] {
+        var result = characters
+        while let first = result.first, leadingWrappers.contains(first) {
+            result.removeFirst()
+        }
+        while let last = result.last, trailingSentencePunctuation.contains(last) {
+            result.removeLast()
+        }
+        return result
     }
 
     private static func containsControlCharacter(_ text: String) -> Bool {

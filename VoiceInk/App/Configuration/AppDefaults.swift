@@ -28,6 +28,7 @@ enum AutoLearnSettings {
     static let modelKey = "AutoLearnDictionaryModel"
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
+    static let failureAcknowledgedKey = "AutoLearnDictionaryFailureAcknowledged"
 
     static var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: isEnabledKey)
@@ -89,16 +90,22 @@ enum AutoLearnSettings {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
-        UserDefaults.standard.set(true, forKey: hasFailureKey)
         UserDefaults.standard.set(
             message.isEmpty ? "The selected provider or model could not review corrections." : message,
             forKey: failureMessageKey
         )
+        UserDefaults.standard.set(false, forKey: failureAcknowledgedKey)
+        UserDefaults.standard.set(true, forKey: hasFailureKey)
     }
 
     static func clearFailure() {
         UserDefaults.standard.set(false, forKey: hasFailureKey)
         UserDefaults.standard.removeObject(forKey: failureMessageKey)
+        UserDefaults.standard.removeObject(forKey: failureAcknowledgedKey)
+    }
+
+    static func acknowledgeCurrentFailure(defaults: UserDefaults = .standard) {
+        defaults.set(true, forKey: failureAcknowledgedKey)
     }
 }
 

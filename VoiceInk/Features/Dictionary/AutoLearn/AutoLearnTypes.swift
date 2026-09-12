@@ -49,12 +49,29 @@ struct LearnedReplacementCandidate: Hashable, Sendable {
     }
 }
 
-struct AutoLearnReviewCandidate: Codable, Sendable {
+struct AutoLearnReviewCandidate: Encodable, Sendable {
     let id: UUID
     let source: String
     let destination: String
-    let changedSource: String
-    let changedDestination: String
+    let reviewSource: String
+    let reviewDestination: String
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case source
+        case destination
+        case changedSource
+        case changedDestination
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(reviewSource, forKey: .source)
+        try container.encode(reviewDestination, forKey: .destination)
+        try container.encode(source, forKey: .changedSource)
+        try container.encode(destination, forKey: .changedDestination)
+    }
 }
 
 struct AutoLearnReviewDecision: Codable, Sendable {
@@ -90,7 +107,7 @@ struct AutoLearnMutationSummary: Sendable {
 struct AutoLearnAppliedCorrection: Sendable {
     let source: String
     let destination: String
-    let replacementWasChanged: Bool
+    let replacementSourceWasAdded: Bool
     let vocabularyCreationDate: Date?
 }
 

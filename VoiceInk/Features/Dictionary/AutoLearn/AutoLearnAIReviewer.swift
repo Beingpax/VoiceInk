@@ -34,7 +34,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     private let enhancementService: AIEnhancementService
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",
-        category: "AutoLearnAIResponse"
+        category: "AutoLearnAIReview"
     )
 
     init(enhancementService: AIEnhancementService) {
@@ -94,8 +94,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         logger.notice(
             "Auto Learn AI request provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
         )
-        logRawText(Self.reviewPrompt, label: "system prompt")
-        logRawText(requestText, label: "candidate payload")
 
         let responseText = try await aiService.reviewAutoLearnCandidates(
             payload: requestText,
@@ -103,7 +101,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             provider: provider,
             modelName: modelName
         )
-        logRawText(responseText, label: "AI response")
         let responseDecisions = try decodeResponse(responseText)
         let expectedIDs = Set(candidates.map(\.id))
         let decisionsByID = Dictionary(grouping: responseDecisions) { $0.id }
@@ -144,10 +141,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 source != destination,
                 source.count <= AutoLearnLimits.maximumCandidateCharacters,
                 destination.count <= AutoLearnLimits.maximumCandidateCharacters,
-                candidate.source.range(of: source, options: .literal) != nil,
-                candidate.destination.range(of: destination, options: .literal) != nil,
-                source.range(of: candidate.changedSource, options: .literal) != nil,
-                destination.range(of: candidate.changedDestination, options: .literal) != nil
+                candidate.reviewSource.range(of: source, options: .literal) != nil,
+                candidate.reviewDestination.range(of: destination, options: .literal) != nil,
+                source.range(of: candidate.source, options: .literal) != nil,
+                destination.range(of: candidate.destination, options: .literal) != nil
             else {
                 unresolvedIDs.insert(candidate.id)
                 continue
@@ -167,26 +164,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             decisions: decisions,
             unresolvedIDs: unresolvedIDs
         )
-    }
-
-    private func logRawText(_ text: String, label: String) {
-        let characters = Array(text)
-        let chunkSize = 1_000
-        let chunkCount = max(1, Int(ceil(Double(characters.count) / Double(chunkSize))))
-
-        if characters.isEmpty {
-            logger.notice("Auto Learn raw \(label, privacy: .public) [1/1]: <empty>")
-            return
-        }
-
-        for index in 0..<chunkCount {
-            let start = index * chunkSize
-            let end = min(start + chunkSize, characters.count)
-            let chunk = String(characters[start..<end])
-            logger.notice(
-                "Auto Learn raw \(label, privacy: .public) [\(index + 1, privacy: .public)/\(chunkCount, privacy: .public)]: \(chunk, privacy: .public)"
-            )
-        }
     }
 
     private func decodeResponse(_ text: String) throws -> [ParsedDecision] {

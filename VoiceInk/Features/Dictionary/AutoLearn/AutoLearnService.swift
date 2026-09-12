@@ -53,9 +53,13 @@ actor AutoLearnService {
         schedulePendingReview()
     }
 
+    func pendingReviewCount() async -> Int {
+        (try? await pendingQueue.pendingCount()) ?? 0
+    }
+
     func recordingDidStart() async {
-        guard let token = activeToken else { return }
-        await completeSession(token: token, persist: true)
+        lifecycleGeneration &+= 1
+        await discardActiveSession()
     }
 
     func pasteWillStart() async {
@@ -185,10 +189,6 @@ actor AutoLearnService {
         }
     }
 
-    private func discardSession(token: AutoLearnPasteToken) async {
-        await completeSession(token: token, persist: false)
-    }
-
     private func finalizeIfFocusLeft(token: AutoLearnPasteToken) async {
         guard await sleep(nanoseconds: AutoLearnLimits.focusChangeGraceNanoseconds),
             !Task.isCancelled,
@@ -289,7 +289,6 @@ actor AutoLearnService {
         let reviewResult: AutoLearnReviewResult
         do {
             reviewResult = try await reviewer.review(candidates)
-            AutoLearnSettings.clearFailure()
             let acceptedCount = reviewResult.decisions.reduce(0) { count, decision in
                 count + (decision.accepted ? 1 : 0)
             }
@@ -320,6 +319,7 @@ actor AutoLearnService {
             )
             try await pendingQueue.remove(resolvedIDs)
             try await pendingQueue.release(reviewResult.unresolvedIDs)
+            AutoLearnSettings.clearFailure()
             if summary.hasChanges {
                 logger.notice(
                     "Applied AI-reviewed Auto Learn results created=\(summary.createdCount, privacy: .public) updated=\(summary.updatedCount, privacy: .public) vocabulary=\(summary.vocabularyCount, privacy: .public)"
@@ -338,6 +338,9 @@ actor AutoLearnService {
             )
         } catch {
             try? await pendingQueue.release(candidateIDs)
+            if !Task.isCancelled {
+                AutoLearnSettings.recordFailure(error)
+            }
             finishReviewTask(generation: generation)
             log(error, message: "Failed to apply Auto Learn results; candidates remain queued")
         }

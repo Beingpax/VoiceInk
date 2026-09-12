@@ -63,6 +63,7 @@ actor WordReplacementStore {
                     updatedCount += mutation.updated ? 1 : 0
 
                     let vocabulary = destination.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .precomposedStringWithCanonicalMapping
                     let vocabularyKey = WordReplacementVariants.key(for: vocabulary)
                     var vocabularyCreationDate: Date?
                     if !vocabularyKey.isEmpty, vocabularyKeys.insert(vocabularyKey).inserted {
@@ -77,7 +78,7 @@ actor WordReplacementStore {
                             AutoLearnAppliedCorrection(
                                 source: source,
                                 destination: destination,
-                                replacementWasChanged: mutation.created || mutation.updated,
+                                replacementSourceWasAdded: mutation.created || mutation.updated,
                                 vocabularyCreationDate: vocabularyCreationDate
                             )
                         )
@@ -99,7 +100,7 @@ actor WordReplacementStore {
 
     func undo(_ correction: AutoLearnAppliedCorrection) throws {
         try modelContext.transaction {
-            if correction.replacementWasChanged {
+            if correction.replacementSourceWasAdded {
                 let destinationKey = WordReplacementVariants.destinationKey(for: correction.destination)
                 let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
                 if let entry = entries.first(where: {
@@ -142,7 +143,9 @@ actor WordReplacementStore {
         existingSourceKeys: inout Set<String>
     ) -> (created: Bool, updated: Bool) {
         let source = rawSource.trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
         let destination = rawDestination.trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
         let sourceKey = WordReplacementVariants.key(for: source)
         let destinationKey = WordReplacementVariants.destinationKey(for: destination)
         let destinationSourceKey = WordReplacementVariants.key(for: destination)
@@ -166,37 +169,15 @@ actor WordReplacementStore {
             }
             .sorted(by: destinationOrder)
         let canonical = destinationMatches.first
-        var changed = false
 
         if let canonical {
-            if canonical.replacementText != destination || !canonical.isEnabled {
-                changed = true
-            }
-            canonical.replacementText = destination
+            // Auto Learn only adds the learned source. It does not consolidate
+            // or otherwise rewrite existing rows, so Undo removes exactly what
+            // Auto Learn added.
             canonical.isEnabled = true
-            for duplicate in destinationMatches.dropFirst() {
-                let merged = WordReplacementVariants.serialize(
-                    WordReplacementVariants.parse(canonical.originalText)
-                        + WordReplacementVariants.parse(duplicate.originalText)
-                )
-                if canonical.originalText != merged {
-                    canonical.originalText = merged
-                }
-                modelContext.delete(duplicate)
-                entries.removeAll { $0 === duplicate }
-                changed = true
-            }
-
             var variants = WordReplacementVariants.parse(canonical.originalText)
-            if !WordReplacementVariants.contains(source, in: variants) {
-                variants.append(source)
-                changed = true
-            }
-            let serialized = WordReplacementVariants.serialize(variants)
-            if canonical.originalText != serialized {
-                canonical.originalText = serialized
-                changed = true
-            }
+            variants.append(source)
+            canonical.originalText = WordReplacementVariants.serialize(variants)
         } else {
             let entry = WordReplacement(
                 originalText: WordReplacementVariants.serialize([source]),
@@ -207,13 +188,10 @@ actor WordReplacementStore {
         }
 
         existingSourceKeys.insert(sourceKey)
-        return (canonical == nil, canonical != nil && changed)
+        return (canonical == nil, canonical != nil)
     }
 
     private func destinationOrder(_ lhs: WordReplacement, _ rhs: WordReplacement) -> Bool {
-        if lhs.isEnabled != rhs.isEnabled {
-            return lhs.isEnabled && !rhs.isEnabled
-        }
         if lhs.dateAdded != rhs.dateAdded {
             return lhs.dateAdded < rhs.dateAdded
         }

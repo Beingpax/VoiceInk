@@ -55,7 +55,15 @@ struct WordReplacementView: View {
     }
 
     private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
+        !trimmedOriginal.isEmpty || !trimmedReplacement.isEmpty
+    }
+
+    private var trimmedOriginal: String {
+        originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedReplacement: String {
+        replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var body: some View {
@@ -64,6 +72,7 @@ struct WordReplacementView: View {
                 TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
+                    .onSubmit { addReplacement() }
                     .labelsHidden()
 
                 Image(systemName: "arrow.right")
@@ -80,7 +89,7 @@ struct WordReplacementView: View {
                 if shouldShowAddButton {
                     AddIconButton(
                         helpText: "Add word replacement",
-                        isDisabled: originalWord.isEmpty || replacementWord.isEmpty,
+                        isDisabled: trimmedOriginal.isEmpty || trimmedReplacement.isEmpty,
                         action: addReplacement
                     )
                 }
@@ -186,8 +195,9 @@ struct WordReplacementView: View {
     }
 
     private func addReplacement() {
-        let original = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        let replacement = replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = trimmedOriginal
+        let replacement = trimmedReplacement
+        guard !original.isEmpty, !replacement.isEmpty else { return }
         if let error = DictionaryService.addWordReplacement(
             original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext)
         {

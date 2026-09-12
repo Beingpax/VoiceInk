@@ -128,6 +128,7 @@ enum FinalSnapshotDiffEngine {
         let anchorStart = max(0, pastedStart - maximumAnchorScalars)
         let anchor = Array(baseline[anchorStart..<pastedStart])
         if anchor.count >= minimumAnchorScalars,
+            uniqueOccurrence(of: anchor, in: baseline) != nil,
             let occurrence = uniqueOccurrence(of: anchor, in: final)
         {
             return Boundary(index: occurrence.upperBound, isAmbiguous: false)
@@ -157,6 +158,7 @@ enum FinalSnapshotDiffEngine {
         let anchorEnd = min(baselineCount, pastedEnd + maximumAnchorScalars)
         let anchor = Array(baseline[pastedEnd..<anchorEnd])
         if anchor.count >= minimumAnchorScalars,
+            uniqueOccurrence(of: anchor, in: baseline) != nil,
             let occurrence = uniqueOccurrence(of: anchor, in: final)
         {
             return Boundary(index: occurrence.lowerBound, isAmbiguous: false)

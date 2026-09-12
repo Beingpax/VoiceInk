@@ -17,10 +17,10 @@ actor AutoLearnPendingQueue {
         var candidate: AutoLearnReviewCandidate {
             AutoLearnReviewCandidate(
                 id: id,
-                source: reviewSource ?? source,
-                destination: reviewDestination ?? destination,
-                changedSource: source,
-                changedDestination: destination
+                source: source,
+                destination: destination,
+                reviewSource: reviewSource ?? source,
+                reviewDestination: reviewDestination ?? destination
             )
         }
     }
@@ -58,12 +58,19 @@ actor AutoLearnPendingQueue {
     func enqueue(_ candidates: [LearnedReplacementCandidate]) throws -> Int {
         guard !candidates.isEmpty else { return 0 }
         try loadIfNeeded()
+        let originalRecords = records
 
         var knownPairs = Set(
             records.map { pairKey(source: $0.source, destination: $0.destination) }
         )
         var insertedCount = 0
+        let availablePendingSlots = max(
+            0,
+            AutoLearnLimits.maximumPendingCandidates
+                - pendingRecordCount
+        )
         for candidate in candidates {
+            guard insertedCount < availablePendingSlots else { break }
             let source = candidate.source.trimmingCharacters(in: .whitespacesAndNewlines)
             let destination = candidate.destination.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !source.isEmpty, !destination.isEmpty else { continue }
@@ -84,10 +91,19 @@ actor AutoLearnPendingQueue {
         }
 
         if insertedCount > 0 {
-            trimToLimit()
-            try save()
+            do {
+                try save()
+            } catch {
+                records = originalRecords
+                throw error
+            }
         }
         return insertedCount
+    }
+
+    func pendingCount() throws -> Int {
+        try loadIfNeeded()
+        return pendingRecordCount
     }
 
     func claimPending() throws -> [AutoLearnReviewCandidate] {
@@ -100,7 +116,14 @@ actor AutoLearnPendingQueue {
         for index in indices {
             records[index].status = .reviewing
         }
-        try save()
+        do {
+            try save()
+        } catch {
+            for index in indices {
+                records[index].status = .pending
+            }
+            throw error
+        }
         return indices.map { records[$0].candidate }
     }
 
@@ -157,7 +180,8 @@ actor AutoLearnPendingQueue {
     }
 
     private func trimToLimit() {
-        let overflow = records.count - AutoLearnLimits.maximumPendingCandidates
+        let pendingCount = pendingRecordCount
+        let overflow = pendingCount - AutoLearnLimits.maximumPendingCandidates
         guard overflow > 0 else { return }
 
         let removableIDs = Set(
@@ -167,5 +191,13 @@ actor AutoLearnPendingQueue {
                 .map(\.id)
         )
         records.removeAll { removableIDs.contains($0.id) }
+    }
+
+    private var pendingRecordCount: Int {
+        records.reduce(into: 0) { count, record in
+            if record.status == .pending {
+                count += 1
+            }
+        }
     }
 }

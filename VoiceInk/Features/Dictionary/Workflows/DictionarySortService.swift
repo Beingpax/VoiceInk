@@ -65,10 +65,6 @@ final class DictionarySortService {
         return mode
     }
 
-    func nextWordReplacementMode(after mode: WordReplacementSortMode) -> WordReplacementSortMode {
-        nextMode(after: mode, in: WordReplacementSortMode.allCases)
-    }
-
     func saveWordReplacementMode(_ mode: WordReplacementSortMode, defaults: UserDefaults = .standard) {
         defaults.set(mode.rawValue, forKey: PreferenceKey.wordReplacement)
     }

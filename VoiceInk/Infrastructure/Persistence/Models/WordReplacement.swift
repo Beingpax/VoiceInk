@@ -9,10 +9,14 @@ final class WordReplacement {
     var dateAdded: Date = Date()
     var isEnabled: Bool = true
 
-    init(originalText: String, replacementText: String, dateAdded: Date = Date(), isEnabled: Bool = true) {
-        self.originalText = originalText
+    init(originalText: String, replacementText: String, dateAdded: Date = Date()) {
+        self.originalText = originalText.precomposedStringWithCanonicalMapping
         self.replacementText = replacementText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
         self.dateAdded = dateAdded
-        self.isEnabled = isEnabled
+        // Keep this persisted field for store compatibility. Until an
+        // enable/disable control returns to the UI, every rule is active.
+        self.isEnabled = true
     }
 }

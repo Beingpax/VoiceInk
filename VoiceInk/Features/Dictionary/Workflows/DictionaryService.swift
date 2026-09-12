@@ -72,12 +72,13 @@ enum DictionaryService {
         }
     }
 
-    // MARK: - Duplicate Cleanup
+    // MARK: - Dictionary Cleanup
 
     @discardableResult
     static func removeExactDuplicateContent(context: ModelContext, source: String) -> Bool {
         var deletedVocabularyCount = 0
         var deletedReplacementCount = 0
+        var normalizedReplacementCount = 0
 
         if let vocabularyWords = try? context.fetch(FetchDescriptor<VocabularyWord>()) {
             var seenWords = Set<String>()
@@ -99,8 +100,25 @@ enum DictionaryService {
             var seenReplacements = Set<[String]>()
 
             for wordReplacement in wordReplacements.sorted(by: { $0.dateAdded < $1.dateAdded }) {
-                let key = [wordReplacement.originalText, wordReplacement.replacementText]
-                guard !wordReplacement.originalText.isEmpty || !wordReplacement.replacementText.isEmpty else {
+                let normalizedOriginal = WordReplacementVariants.serialize(
+                    WordReplacementVariants.parse(wordReplacement.originalText)
+                )
+                let normalizedDestination = wordReplacement.replacementText
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .precomposedStringWithCanonicalMapping
+
+                if wordReplacement.originalText != normalizedOriginal
+                    || wordReplacement.replacementText != normalizedDestination
+                    || !wordReplacement.isEnabled
+                {
+                    wordReplacement.originalText = normalizedOriginal
+                    wordReplacement.replacementText = normalizedDestination
+                    wordReplacement.isEnabled = true
+                    normalizedReplacementCount += 1
+                }
+
+                let key = [normalizedOriginal, normalizedDestination]
+                guard !normalizedOriginal.isEmpty || !normalizedDestination.isEmpty else {
                     continue
                 }
 
@@ -113,20 +131,23 @@ enum DictionaryService {
             }
         }
 
-        guard deletedVocabularyCount > 0 || deletedReplacementCount > 0 else {
+        guard normalizedReplacementCount > 0
+            || deletedVocabularyCount > 0
+            || deletedReplacementCount > 0
+        else {
             return false
         }
 
         do {
             try context.save()
             logger.notice(
-                "Removed exact dictionary duplicates from \(source, privacy: .public): \(deletedVocabularyCount, privacy: .public) vocabulary, \(deletedReplacementCount, privacy: .public) word replacement"
+                "Cleaned dictionary data from \(source, privacy: .public): normalized=\(normalizedReplacementCount, privacy: .public) replacements, removed=\(deletedVocabularyCount, privacy: .public) vocabulary and \(deletedReplacementCount, privacy: .public) replacements"
             )
             return true
         } catch {
             context.rollback()
             logger.error(
-                "Failed to remove exact dictionary duplicates from \(source, privacy: .public): \(error, privacy: .public)"
+                "Failed to clean dictionary data from \(source, privacy: .public): \(error, privacy: .public)"
             )
             return false
         }
@@ -146,6 +167,7 @@ enum DictionaryService {
         let tokens = WordReplacementVariants.parse(original)
 
         let destination = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
         guard !tokens.isEmpty, !destination.isEmpty else { return nil }
 
         let destinationKey = WordReplacementVariants.destinationKey(for: destination)
@@ -216,6 +238,7 @@ enum DictionaryService {
     ) -> String? {
         let tokens = WordReplacementVariants.parse(original)
         let destination = replacementText.trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
         guard !tokens.isEmpty, !destination.isEmpty else { return nil }
 
         let existing: [WordReplacement]
@@ -265,6 +288,7 @@ enum DictionaryService {
         } else {
             replacement.originalText = WordReplacementVariants.serialize(tokens)
             replacement.replacementText = destination
+            replacement.isEnabled = true
         }
 
         do {

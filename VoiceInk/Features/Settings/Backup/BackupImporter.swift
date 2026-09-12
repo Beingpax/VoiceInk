@@ -257,6 +257,7 @@ enum BackupImporter {
 
             for (original, replacement) in replacements {
                 let trimmedReplacement = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .precomposedStringWithCanonicalMapping
                 let importVariants = WordReplacementVariants.parse(original)
                 let importKeys = importVariants.map { WordReplacementVariants.key(for: $0) }
                 let destinationKey = WordReplacementVariants.destinationKey(for: trimmedReplacement)

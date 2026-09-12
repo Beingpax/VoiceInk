@@ -5,7 +5,10 @@ enum WordReplacementVariants {
         deduplicated(
             text
                 .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .map {
+                    $0.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .precomposedStringWithCanonicalMapping
+                }
                 .filter { !$0.isEmpty }
         )
     }
@@ -15,10 +18,11 @@ enum WordReplacementVariants {
     }
 
     static func key(for text: String) -> String {
-        text
+        let normalized = text
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .precomposedStringWithCanonicalMapping
-            .lowercased()
+
+        return (normalized as NSString).folding(options: .caseInsensitive, locale: nil)
     }
 
     static func destinationKey(for text: String) -> String {
@@ -38,6 +42,7 @@ enum WordReplacementVariants {
 
         for variant in variants {
             let trimmed = variant.trimmingCharacters(in: .whitespacesAndNewlines)
+                .precomposedStringWithCanonicalMapping
             guard !trimmed.isEmpty else { continue }
 
             let comparisonKey = key(for: trimmed)
