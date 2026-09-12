@@ -13,9 +13,6 @@ struct WordReplacementView: View {
     @State private var editingReplacement: WordReplacement? = nil
     @State private var alertMessage = ""
     @State private var sortMode: WordReplacementSortMode = .originalAsc
-    @State private var originalWord = ""
-    @State private var replacementWord = ""
-    @State private var showInfoPopover = false
 
     init() {
         _sortMode = State(initialValue: DictionarySortService.shared.savedWordReplacementMode())
@@ -54,50 +51,8 @@ struct WordReplacementView: View {
         }
     }
 
-    private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .labelsHidden()
-
-                Image(systemName: "arrow.right")
-                    .foregroundColor(.secondary)
-                    .font(.system(size: 10))
-                    .frame(width: 10)
-
-                TextField("", text: $replacementWord, prompt: Text("Replacement text"))
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 13))
-                    .onSubmit { addReplacement() }
-                    .labelsHidden()
-
-                if shouldShowAddButton {
-                    AddIconButton(
-                        helpText: "Add word replacement",
-                        isDisabled: originalWord.isEmpty || replacementWord.isEmpty,
-                        action: addReplacement
-                    )
-                }
-
-                Button {
-                    showInfoPopover.toggle()
-                } label: {
-                    Image(systemName: "info.circle")
-                }
-                .buttonStyle(.borderless)
-                .help("Word replacement examples")
-                .popover(isPresented: $showInfoPopover) {
-                    WordReplacementInfoPopover()
-                }
-            }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
-
             if !wordReplacements.isEmpty {
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {
@@ -169,6 +124,12 @@ struct WordReplacementView: View {
                     }
                 }
                 .padding(.top, 4)
+            } else {
+                Text("No word replacements yet.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 20)
             }
 
         }
@@ -183,20 +144,6 @@ struct WordReplacementView: View {
         } message: {
             Text(alertMessage)
         }
-    }
-
-    private func addReplacement() {
-        let original = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        let replacement = replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let error = DictionaryService.addWordReplacement(
-            original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext)
-        {
-            alertMessage = error
-            showAlert = true
-            return
-        }
-        originalWord = ""
-        replacementWord = ""
     }
 
     private func removeReplacement(_ replacement: WordReplacement) {
@@ -218,7 +165,90 @@ struct WordReplacementView: View {
     }
 }
 
-struct WordReplacementInfoPopover: View {
+struct AddWordReplacementPanel: View {
+    @Query private var wordReplacements: [WordReplacement]
+    @Environment(\.modelContext) private var modelContext
+    @FocusState private var focusedField: Field?
+    @State private var originalWord = ""
+    @State private var replacementWord = ""
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+
+    let onClose: () -> Void
+
+    private enum Field: Hashable {
+        case original
+        case replacement
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            AppPanelHeader(title: "Add Word Replacement", onClose: onClose)
+
+            Form {
+                Section("Word Replacement") {
+                    TextField("Original text (use commas for multiple)", text: $originalWord)
+                        .focused($focusedField, equals: .original)
+
+                    TextField("Replacement text", text: $replacementWord)
+                        .focused($focusedField, equals: .replacement)
+                        .onSubmit { addReplacement() }
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            HStack {
+                Button("Cancel", action: onClose)
+                    .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Add Replacement", action: addReplacement)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canAddReplacement)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .overlay(Divider().opacity(0.5), alignment: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onAppear { focusedField = .original }
+        .alert("Word Replacement", isPresented: $showAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(alertMessage)
+        }
+    }
+
+    private var canAddReplacement: Bool {
+        !originalWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !replacementWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func addReplacement() {
+        guard canAddReplacement else { return }
+
+        let original = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        let replacement = replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let error = DictionaryService.addWordReplacement(
+            original: original,
+            replacement: replacement,
+            existing: Array(wordReplacements),
+            context: modelContext
+        ) {
+            alertMessage = error
+            showAlert = true
+            return
+        }
+
+        onClose()
+    }
+}
+
+struct WordReplacementInformationContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("How to use Word Replacements")
