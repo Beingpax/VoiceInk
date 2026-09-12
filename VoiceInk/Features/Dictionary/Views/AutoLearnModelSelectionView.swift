@@ -26,8 +26,11 @@ struct AutoLearnModelSelectionView: View {
     @State private var modelRefreshTask: Task<Void, Never>?
 
     private var providerOptions: [AIProvider] {
-        var providers = aiService.connectedProviders
-        if let selectedProvider, selectedProvider.supportsEnhancement,
+        var providers = aiService.connectedProviders.filter {
+            AutoLearnProviderPolicy.isSupported($0)
+                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
+        }
+        if let selectedProvider, AutoLearnProviderPolicy.isSupported(selectedProvider),
             !providers.contains(selectedProvider)
         {
             providers.insert(selectedProvider, at: 0)
@@ -36,14 +39,22 @@ struct AutoLearnModelSelectionView: View {
     }
 
     private var selectedProvider: AIProvider? {
-        AIProvider(rawValue: autoLearnProvider)
+        guard let provider = AIProvider(rawValue: autoLearnProvider),
+            AutoLearnProviderPolicy.isSupported(provider),
+            provider != .ollama
+                || (aiService.connectedProviders.contains(provider)
+                    && !aiService.availableModels(for: provider).isEmpty)
+        else {
+            return nil
+        }
+        return provider
     }
 
     var body: some View {
         Group {
             if providerOptions.isEmpty {
                 LabeledContent("Provider") {
-                    Text("No AI providers connected")
+                    Text("No supported AI providers connected")
                         .foregroundStyle(.secondary)
                         .italic()
                 }
@@ -90,29 +101,17 @@ struct AutoLearnModelSelectionView: View {
 
     @ViewBuilder
     private func modelPicker(for provider: AIProvider) -> some View {
-        if provider == .localCLI {
+        let models = modelOptions(for: provider)
+        if models.isEmpty {
             LabeledContent("Model") {
-                Text("Configured command")
+                Text("No models available")
                     .foregroundStyle(.secondary)
-            }
-        } else if provider == .voiceInkRefine {
-            LabeledContent("Model") {
-                Text(VoiceInkRefineService.modelName)
-                    .foregroundStyle(.secondary)
+                    .italic()
             }
         } else {
-            let models = modelOptions(for: provider)
-            if models.isEmpty {
-                LabeledContent("Model") {
-                    Text("No models available")
-                        .foregroundStyle(.secondary)
-                        .italic()
-                }
-            } else {
-                Picker("Model", selection: $autoLearnModel) {
-                    ForEach(models, id: \.self) { model in
-                        Text(model).tag(model)
-                    }
+            Picker("Model", selection: $autoLearnModel) {
+                ForEach(models, id: \.self) { model in
+                    Text(model).tag(model)
                 }
             }
         }
@@ -127,15 +126,13 @@ struct AutoLearnModelSelectionView: View {
     }
 
     private func defaultModel(for provider: AIProvider) -> String {
-        if provider == .localCLI { return "" }
-        if provider == .voiceInkRefine { return VoiceInkRefineService.modelName }
         let models = aiService.availableModels(for: provider)
         let selectedModel = aiService.selectedModel(for: provider)
         return models.contains(selectedModel) ? selectedModel : models.first ?? selectedModel
     }
 
     private func prepareSelectionIfNeeded() {
-        guard let provider = selectedProvider, provider.supportsEnhancement else {
+        guard let provider = selectedProvider else {
             guard let fallback = providerOptions.first else { return }
             autoLearnProvider = fallback.rawValue
             autoLearnModel = defaultModel(for: fallback)
@@ -143,7 +140,7 @@ struct AutoLearnModelSelectionView: View {
             return
         }
 
-        if autoLearnModel.isEmpty, provider != .localCLI {
+        if autoLearnModel.isEmpty {
             autoLearnModel = defaultModel(for: provider)
         }
         refreshModelsIfNeeded(for: provider)

@@ -96,7 +96,6 @@ actor AutoLearnPendingQueue {
         }
 
         if insertedCount > 0 {
-            trimToLimit()
             do {
                 try save()
             } catch {
@@ -105,20 +104,6 @@ actor AutoLearnPendingQueue {
             }
         }
         return insertedCount
-    }
-
-    /// Bounds the persisted queue by dropping the oldest pending entries while
-    /// preserving any batch currently under review.
-    private func trimToLimit() {
-        let overflow = queuedCorrections.count - AutoLearnLimits.maximumQueuedCorrections
-        guard overflow > 0 else { return }
-
-        var remainingToRemove = overflow
-        queuedCorrections.removeAll { correction in
-            guard remainingToRemove > 0, correction.reviewStatus == .pending else { return false }
-            remainingToRemove -= 1
-            return true
-        }
     }
 
     /// Corrections that still need a review decision. Entries claimed by an

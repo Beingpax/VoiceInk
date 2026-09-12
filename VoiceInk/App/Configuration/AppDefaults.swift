@@ -74,21 +74,20 @@ enum AutoLearnSettings {
         defaults: UserDefaults = .standard
     ) {
         if let storedProvider = defaults.string(forKey: providerKey),
-            AIProvider(rawValue: storedProvider) != nil
+            let provider = AIProvider(rawValue: storedProvider),
+            AutoLearnProviderPolicy.isSupported(provider)
         {
             return
         }
 
+        guard AutoLearnProviderPolicy.isSupported(provider) else { return }
+
         defaults.set(provider.rawValue, forKey: providerKey)
-        if provider == .localCLI {
+        let selectedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        if selectedModel.isEmpty {
             defaults.removeObject(forKey: modelKey)
         } else {
-            let selectedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
-            if selectedModel.isEmpty {
-                defaults.removeObject(forKey: modelKey)
-            } else {
-                defaults.set(selectedModel, forKey: modelKey)
-            }
+            defaults.set(selectedModel, forKey: modelKey)
         }
     }
 

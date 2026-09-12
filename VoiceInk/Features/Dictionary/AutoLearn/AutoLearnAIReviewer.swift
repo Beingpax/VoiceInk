@@ -56,7 +56,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     /// while providers are still starting up instead of recording a failure.
     var hasAvailableProvider: Bool {
         guard let aiService = enhancementService.getAIService() else { return false }
-        let connectedProviders = aiService.connectedProviders
+        let connectedProviders = aiService.connectedProviders.filter {
+            AutoLearnProviderPolicy.isSupported($0)
+                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
+        }
         if let selected = AutoLearnSettings.selectedProvider {
             return connectedProviders.contains(selected)
         }
@@ -71,22 +74,17 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.unavailable
         }
 
-        let connectedProviders = aiService.connectedProviders
+        let connectedProviders = aiService.connectedProviders.filter {
+            AutoLearnProviderPolicy.isSupported($0)
+                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
+        }
         // Respect the user's provider choice. Ollama keeps correction review on-device.
         guard let provider = AutoLearnSettings.selectedProvider ?? connectedProviders.first,
             connectedProviders.contains(provider)
         else {
             throw ReviewError.unavailable
         }
-        let modelName: String?
-        switch provider {
-        case .localCLI:
-            modelName = nil
-        case .voiceInkRefine:
-            modelName = provider.defaultModel
-        default:
-            modelName = AutoLearnSettings.selectedModel ?? aiService.selectedModel(for: provider)
-        }
+        let modelName = AutoLearnSettings.selectedModel ?? aiService.selectedModel(for: provider)
 
         let prompt = CustomPrompt(
             title: "Auto Learn Review",

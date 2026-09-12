@@ -435,9 +435,16 @@ class AIService: ObservableObject {
     }
 
     private func initializeAutoLearnSelectionIfNeeded() {
-        guard AutoLearnSettings.selectedProvider == nil else { return }
+        if let selectedProvider = AutoLearnSettings.selectedProvider,
+            AutoLearnProviderPolicy.isSupported(selectedProvider)
+        {
+            return
+        }
 
-        let availableProviders = connectedProviders
+        let availableProviders = connectedProviders.filter {
+            AutoLearnProviderPolicy.isSupported($0)
+                && ($0 != .ollama || !availableModels(for: $0).isEmpty)
+        }
         let provider = availableProviders.contains(selectedProvider)
             ? selectedProvider
             : availableProviders.first
@@ -450,9 +457,6 @@ class AIService: ObservableObject {
     }
 
     private func initialAutoLearnModel(for provider: AIProvider) -> String {
-        if provider == .localCLI { return "" }
-        if provider == .voiceInkRefine { return provider.defaultModel }
-
         let selectedModel = selectedModel(for: provider)
         let availableModels = availableModels(for: provider)
         return availableModels.contains(selectedModel)
@@ -720,21 +724,14 @@ class AIService: ObservableObject {
         try await voiceInkRefineService.enhance(transcript: transcript)
     }
 
-    func generateWithVoiceInkRefine(transcript: String, systemPrompt: String) async throws -> String {
-        try await voiceInkRefineService.generate(transcript: transcript, systemPrompt: systemPrompt)
-    }
-
     func reviewAutoLearnCandidates(
         payload: String,
         systemPrompt: String,
         provider: AIProvider,
         modelName: String?
     ) async throws -> String {
-        if provider == .voiceInkRefine {
-            return try await generateWithVoiceInkRefine(
-                transcript: payload,
-                systemPrompt: systemPrompt
-            )
+        guard AutoLearnProviderPolicy.isSupported(provider) else {
+            throw EnhancementError.notConfigured
         }
 
         return try await performChatCompletion(

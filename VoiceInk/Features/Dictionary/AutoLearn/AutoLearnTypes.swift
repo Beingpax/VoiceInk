@@ -148,6 +148,13 @@ enum AutoLearnLimits {
     static let maximumCandidateSegments = 24
     static let reviewContextSegmentsPerSide = 2
     static let maximumUnspacedCandidateCharacters = 8
-    static let maximumReviewBatchCandidates = 25
-    static let maximumQueuedCorrections = 500
+    static let maximumReviewBatchCandidates = 100
+}
+
+enum AutoLearnProviderPolicy {
+    static func isSupported(_ provider: AIProvider) -> Bool {
+        provider.supportsEnhancement
+            && provider != .voiceInkRefine
+            && provider != .localCLI
+    }
 }

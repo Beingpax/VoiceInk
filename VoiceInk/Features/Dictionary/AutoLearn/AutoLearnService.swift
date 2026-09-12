@@ -378,7 +378,17 @@ actor AutoLearnService {
     }
 
     private func processPendingReviewBatch(generation: UInt64) async {
+        guard !Task.isCancelled,
+            reviewGeneration == generation,
+            AutoLearnSettings.isEnabled
+        else {
+            try? await releaseAllClaimsToQueue()
+            await finishReviewTask(generation: generation)
+            return
+        }
+
         guard let replacementStore, let reviewer else {
+            try? await releaseAllClaimsToQueue()
             await finishReviewTask(generation: generation)
             return
         }
@@ -389,12 +399,14 @@ actor AutoLearnService {
                 limit: AutoLearnLimits.maximumReviewBatchCandidates
             )
         } catch {
+            try? await releaseAllClaimsToQueue()
             await finishReviewTask(generation: generation)
             log(error, message: "Failed to load queued Auto Learn candidates")
             return
         }
 
         guard !candidates.isEmpty else {
+            try? await releaseAllClaimsToQueue()
             AutoLearnSettings.setNextReviewDate(nil)
             await finishReviewTask(generation: generation)
             await notifyQueueChanged()
@@ -402,7 +414,7 @@ actor AutoLearnService {
         }
 
         let candidateIDs = Set(candidates.map(\.candidateID))
-        claimedCandidateIDs = candidateIDs
+        claimedCandidateIDs.formUnion(candidateIDs)
         let reviewResult: AutoLearnReviewResult
         do {
             reviewResult = try await reviewer.review(candidates)
@@ -455,8 +467,7 @@ actor AutoLearnService {
                 "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) unresolved=\(reviewResult.unresolvedReviews.count, privacy: .public)"
             )
         } catch {
-            releaseClaim(candidateIDs)
-            try? await pendingQueue.release(candidateIDs)
+            try? await releaseAllClaimsToQueue()
             if !Task.isCancelled {
                 AutoLearnSettings.recordFailure(error)
             }
@@ -469,8 +480,7 @@ actor AutoLearnService {
         }
 
         guard !Task.isCancelled, AutoLearnSettings.isEnabled else {
-            releaseClaim(candidateIDs)
-            try? await pendingQueue.release(candidateIDs)
+            try? await releaseAllClaimsToQueue()
             await finishReviewTask(generation: generation)
             return
         }
@@ -482,8 +492,7 @@ actor AutoLearnService {
                 candidates: candidates
             )
             try await pendingQueue.remove(resolvedIDs)
-            try await pendingQueue.release(reviewResult.unresolvedCandidateIDs)
-            releaseClaim(candidateIDs)
+            releaseClaim(resolvedIDs)
             await notifyQueueChanged()
             // Cleared only after the queue and dictionary are consistent, so a
             // failure in this block still surfaces to the user.
@@ -500,13 +509,26 @@ actor AutoLearnService {
                 logger.notice("Auto Learn apply completed without dictionary changes")
             }
 
+            if try await pendingQueue.pendingCount() > 0 {
+                // The schedule controls when a review run starts. Once started,
+                // drain the backlog sequentially in bounded batches.
+                await processPendingReviewBatch(generation: generation)
+                return
+            }
+
+            // Unresolved decisions stayed claimed while later batches drained,
+            // preventing one malformed response from blocking the rest of the queue.
+            let hasUnresolvedReviews = !claimedCandidateIDs.isEmpty
+            try await releaseAllClaimsToQueue()
+            AutoLearnSettings.setNextReviewDate(nil)
+            await notifyQueueChanged()
             await finishReviewTask(
                 generation: generation,
-                reschedule: !reviewResult.unresolvedCandidateIDs.isEmpty
+                reschedule: hasUnresolvedReviews
+                    && (AutoLearnSettings.reviewSchedule.delay ?? 0) > 0
             )
         } catch {
-            releaseClaim(candidateIDs)
-            try? await pendingQueue.release(candidateIDs)
+            try? await releaseAllClaimsToQueue()
             if !Task.isCancelled {
                 AutoLearnSettings.recordFailure(error)
             }
@@ -524,13 +546,20 @@ actor AutoLearnService {
         claimedCandidateIDs.subtract(candidateIDs)
     }
 
-    /// Re-arms the queue after a batch. `.immediately` drains right away; timed
-    /// schedules keep their delay so a backlog is not reviewed ahead of schedule.
+    private func releaseAllClaimsToQueue() async throws {
+        guard !claimedCandidateIDs.isEmpty else { return }
+        let claimedIDs = claimedCandidateIDs
+        try await pendingQueue.release(claimedIDs)
+        claimedCandidateIDs.subtract(claimedIDs)
+    }
+
+    /// Re-arms a failed timed review. Successful runs drain their backlog
+    /// directly without applying the schedule between batches.
     private func finishReviewTask(generation: UInt64, reschedule: Bool = false) async {
         guard reviewGeneration == generation else { return }
         reviewTask = nil
         reviewIsWaiting = false
-        if reschedule || AutoLearnSettings.reviewSchedule == .immediately {
+        if reschedule {
             AutoLearnSettings.setNextReviewDate(nil)
             await schedulePendingReview()
         }
