@@ -138,6 +138,11 @@ struct VocabularyInfoPopover: View {
             .foregroundColor(.secondary)
             .fixedSize(horizontal: false, vertical: true)
 
+            Text("Add one entry at a time, or paste multiple entries separated by commas.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
             Divider()
 
             Text("Examples")

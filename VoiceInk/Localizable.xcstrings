@@ -2649,6 +2649,22 @@
         }
       }
     },
+    "Add one entry at a time, or paste multiple entries separated by commas." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge jeweils einen Eintrag hinzu oder füge mehrere durch Kommas getrennte Einträge ein."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "一次添加一个条目，或粘贴多个以逗号分隔的条目。"
+          }
+        }
+      }
+    },
     "Added %lld words to Dictionary" : {
       "comment" : "Success notification showing how many corrections Auto Learn added to the Dictionary.",
       "localizations" : {
