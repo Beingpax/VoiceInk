@@ -322,7 +322,7 @@ actor AutoLearnService {
 
         // A provider that is still starting up is not a failure. Leave the
         // candidates queued; the next paste, setting change, or retry arms it.
-        guard reviewer?.hasAvailableProvider == true else {
+        guard await reviewer?.hasAvailableProvider == true else {
             logger.notice("Auto Learn review deferred: no provider available")
             return
         }
