@@ -8,6 +8,7 @@ struct VocabularyView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
+    @State private var showInfoPopover = false
 
     init() {
         _sortMode = State(initialValue: DictionarySortService.shared.savedVocabularyMode())
@@ -51,6 +52,17 @@ struct VocabularyView: View {
                         isDisabled: newWord.isEmpty,
                         action: addWords
                     )
+                }
+
+                Button {
+                    showInfoPopover.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Vocabulary examples")
+                .popover(isPresented: $showInfoPopover) {
+                    VocabularyInfoPopover()
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
@@ -110,6 +122,37 @@ struct VocabularyView: View {
             alertMessage = error
             showAlert = true
         }
+    }
+}
+
+struct VocabularyInfoPopover: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("How to use Vocabulary")
+                .font(.headline)
+
+            Text(
+                "Vocabulary helps supported transcription models and AI enhancement preserve important names, technical terms, and unique spellings."
+            )
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            Text("Examples")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Text(verbatim: "Prakash, VoiceInk, SwiftData, WebSocket")
+                .font(.callout)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.textBackgroundColor))
+                .cornerRadius(6)
+        }
+        .padding()
+        .frame(width: 320)
     }
 }
 

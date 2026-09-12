@@ -9179,6 +9179,22 @@
         }
       }
     },
+    "How to use Vocabulary" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So verwendest du das Vokabular"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何使用词汇表"
+          }
+        }
+      }
+    },
     "How to use Word Replacements" : {
       "localizations" : {
         "de" : {
@@ -19021,6 +19037,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "词汇"
+          }
+        }
+      }
+    },
+    "Vocabulary examples" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vokabularbeispiele"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "词汇示例"
           }
         }
       }
