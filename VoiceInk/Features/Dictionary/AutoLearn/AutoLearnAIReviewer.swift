@@ -148,10 +148,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         var reviewDecisions: [AutoLearnReviewDecision] = []
         var unresolvedReviews: [AutoLearnUnresolvedReview] = []
 
-        // Batch-wide canonicalization lets a term be copied from any candidate in
-        // this request, so grounding is checked against every context at once.
         let correctedContextUniverse = candidates.map(\.correctedTextContext)
-        let originalContextUniverse = candidates.map(\.originalTextContext)
 
         for (index, candidate) in candidates.enumerated() {
             guard let matchingDecisions = decisionsByCandidateID[index] else {
@@ -198,8 +195,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             }
             guard !correctedVocabularyTerm.isEmpty,
                 correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
-                // Require a verbatim batch-context term so an invented longer
-                // value cannot become a global replacement.
                 isGrounded(correctedVocabularyTerm, in: correctedContextUniverse)
             else {
                 unresolvedReviews.append(
@@ -239,8 +234,14 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             guard !incorrectTextToReplace.isEmpty,
                 incorrectTextToReplace != correctedVocabularyTerm,
                 incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
-                // Same grounding rule against the original contexts in this batch.
-                isGrounded(incorrectTextToReplace, in: originalContextUniverse)
+                isExactSubstring(
+                    incorrectTextToReplace,
+                    of: candidate.originalTextContext
+                ),
+                isExactSubstring(
+                    candidate.detectedOriginalText,
+                    of: incorrectTextToReplace
+                )
             else {
                 unresolvedReviews.append(
                     unresolvedReview(
@@ -282,14 +283,10 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         )
     }
 
-    /// Rejects terms not copied from their claimed text, preventing invented
-    /// values from becoming global replacements.
     private func isExactSubstring(_ term: String, of context: String) -> Bool {
         context.range(of: term, options: .literal) != nil
     }
 
-    /// Each context is checked on its own so a term can never be matched across
-    /// the seam between two candidates' context windows.
     private func isGrounded(_ term: String, in contexts: [String]) -> Bool {
         contexts.contains { isExactSubstring(term, of: $0) }
     }

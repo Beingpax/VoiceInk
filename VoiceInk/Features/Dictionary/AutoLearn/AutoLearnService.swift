@@ -13,6 +13,7 @@ actor AutoLearnService {
     private var replacementStore: WordReplacementStore?
     private var reviewer: AutoLearnAIReviewer?
     private var lifecycleGeneration: UInt64 = 0
+    private var snapshotCancellationGeneration: UInt64 = 0
     private var activeToken: AutoLearnPasteToken?
     private var activeGeneration: UInt64?
     private var activeProcessID: pid_t?
@@ -140,7 +141,7 @@ actor AutoLearnService {
             if let previousToken {
                 // `finishSnapshot` drops the session, so the pending capture is
                 // cancelled before a new one can be started.
-                await self?.persistFinishedSession(token: previousToken, generation: generation)
+                await self?.persistFinishedSession(token: previousToken)
             }
             await self?.beginObservation(
                 text: text,
@@ -210,6 +211,7 @@ actor AutoLearnService {
     }
 
     private func discardActiveSession() async {
+        snapshotCancellationGeneration &+= 1
         let token = activeToken
         deadlineTask?.cancel()
         deadlineTask = nil
@@ -227,7 +229,7 @@ actor AutoLearnService {
     }
 
     private func completeSession(token: AutoLearnPasteToken, persist: Bool) async {
-        guard activeToken == token, let generation = activeGeneration else { return }
+        guard activeToken == token, activeGeneration != nil else { return }
         deadlineTask?.cancel()
         activeToken = nil
         activeGeneration = nil
@@ -238,15 +240,16 @@ actor AutoLearnService {
         focusObserver.stop()
 
         if persist {
-            await persistFinishedSession(token: token, generation: generation)
+            await persistFinishedSession(token: token)
         } else {
             await accessibilityRuntime.discard(token: token)
         }
     }
 
-    private func persistFinishedSession(token: AutoLearnPasteToken, generation: UInt64) async {
+    private func persistFinishedSession(token: AutoLearnPasteToken) async {
+        let cancellationGeneration = snapshotCancellationGeneration
         let snapshot = await accessibilityRuntime.finishSnapshot(token: token)
-        guard lifecycleGeneration == generation else { return }
+        guard snapshotCancellationGeneration == cancellationGeneration else { return }
         await persistSnapshot(snapshot)
     }
 
@@ -537,7 +540,11 @@ actor AutoLearnService {
     /// cannot strand them. Releasing is idempotent.
     private func cancelReviewTask(clearScheduledDate: Bool) async {
         reviewGeneration &+= 1
-        reviewTask?.cancel()
+        let cancelledTask = reviewTask
+        cancelledTask?.cancel()
+        if let cancelledTask {
+            await cancelledTask.value
+        }
         reviewTask = nil
         reviewIsWaiting = false
         if clearScheduledDate {
