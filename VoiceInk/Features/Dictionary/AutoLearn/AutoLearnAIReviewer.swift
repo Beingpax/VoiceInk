@@ -388,65 +388,44 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private static let reviewPrompt = """
-        Review user corrections to speech-to-text. Each candidate contains an originalText snippet and a correctedText snippet. Each snippet includes the edited text with up to two surrounding words on each side. Compare the snippets to identify what the user changed.
+        Review speech-to-text corrections. Each candidate has originalText and correctedText snippets containing the edit plus up to two surrounding words.
 
-        First identify every minimal, independently reusable correction in each candidate. Normally a candidate produces one review decision. If two or more separate learnable terms were corrected next to each other with no unchanged word between them, return one review decision for each term and repeat that candidateID. Never combine independent entities into one replacement merely because their edits are adjacent. A genuinely single multiword name or term remains one correction. If a candidate contains both learnable and ordinary edits, return only the learnable corrections. Return one rejectCorrection only when the candidate contains no learnable correction; never combine rejectCorrection with an accepted decision for the same candidateID.
+        Identify every minimal, independently reusable correction. Usually return one decision per candidate. If adjacent independent terms were corrected with no unchanged word between them, return a separate decision for each and repeat the candidateID. Keep a genuine multiword name or term together. If a candidate mixes learnable and ordinary edits, return only the learnable corrections. Return rejectCorrection only when nothing is learnable, and never mix rejection with acceptance for one candidateID.
 
         Adjacent independent correction example:
         Input: {"candidateID":0,"originalText":"results with voicing prakase packs","correctedText":"results with VoiceInk Prakash Joshi Pax"}
         Decisions: [{"candidateID":0,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"voicing","correctedVocabularyTerm":"VoiceInk"},{"candidateID":0,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"prakase packs","correctedVocabularyTerm":"Prakash Joshi Pax"}]
 
-        By contrast, "with Prakash Jossipax yesterday" to "with Prakash Joshi Pax yesterday" is one correction because both phrases refer to the same complete person name.
+        Choose one learningAction for each identified correction:
 
-        Classify every identified correction with one learningAction:
-
-        Vocabulary gate: Vocabulary is reserved for uncommon, user-specific, domain-specific, or specialized terms whose spelling would materially help future speech recognition. Do not add ordinary words, common personal names, broadly recognized organizations, mainstream products, major platforms, standard technologies, or other already well-known terms to Vocabulary merely because they are proper nouns or appeared in a correction. This gate overrides every other Vocabulary rule below. If such a term has a safe reusable mis-transcription mapping, use addReplacementOnly. If it has no safe replacement mapping, reject it rather than adding it to Vocabulary.
+        Vocabulary gate: Vocabulary is only for uncommon, user-specific, private, or obscure terms whose spelling would improve future recognition. A term does not qualify merely because it is technical or domain-specific. Any public tool, library, framework, platform, product, organization, technology, or standard that you recognize from general knowledge fails this gate, even if it is niche. Ordinary words, common names, and famous people also fail it. If a failing term has a safe transcription mapping, use addReplacementOnly; otherwise reject it.
 
         1. addReplacementAndVocabulary
-        Use when the corrected term passes the Vocabulary gate and the original text is a plausible transcription of the same spoken term. Phonetic similarity, not merely related meaning, is what makes a replacement safe. Judge pronunciation as well as spelling. Allow capitalization, punctuation, joined or split words, and substantial spelling differences when the phrases still sound alike.
+        Use when the corrected term passes the Vocabulary gate and the original plausibly sounds like the same term.
 
         2. addReplacementOnly
-        Use when the original and corrected terms satisfy the same strict replacement gate, but the corrected term fails the Vocabulary gate because it is generic, common, or already broadly recognized. Create the useful replacement without inserting the corrected term into Vocabulary.
-
-        A spelling correction inside a person's name uses one of the two replacement actions when it passes the replacement gate. Include the complete name from both snippets: "Maya Jonson" to "Maya Johnson", and "Prakash Jossipax" to "Prakash Joshi Pax". Choose whether to include Vocabulary by applying the Vocabulary gate; do not add a name merely because it is a name. Simple or common personal names never qualify for Vocabulary. They may use addReplacementOnly only for a genuine reusable spelling or transcription correction that changes more than letter case.
+        Use when the replacement is safe but the corrected term fails the Vocabulary gate because it is common or broadly recognized.
 
         3. addVocabularyOnly
-        Use only when the corrected term passes the Vocabulary gate but the original text is too phonetically and orthographically different to be a safe global replacement. Semantic relatedness alone is insufficient for a replacement. Return the complete corrected entity from correctedText. Uncertainty about whether two phrases sound like the same spoken term should prefer addVocabularyOnly only when the corrected term passes the Vocabulary gate.
+        Use only when the corrected term clearly passes the Vocabulary gate and the original looks like a failed transcription of that spoken term but is too dissimilar for a safe global replacement. The evidence must support a transcription error rather than a rewrite.
+
+        Never use addVocabularyOnly for a coherent generic phrase, placeholder, description, role, deliberate abbreviation or expansion, or when the corrected term fails the Vocabulary gate. Reject "our internal service" to "NebulaForge", "the rare condition" to "dysdiadochokinesia", "application programming interface" to "API", "cloud vendor" to "Cloudflare", and "new framework" to "SvelteKit". These may be intentional rewrites, so uncertainty requires rejection.
 
         4. rejectCorrection
-        Use when the corrected text is not reusable terminology, or the edit is ordinary wording, grammar, style, meaning, facts, numbers, dates, an unrelated rewrite, or a deliberate abbreviation or expansion. Deliberate semantic shortening is not a transcription correction: reject "application programming interface" to "API", "central processing unit" to "CPU", and "pull request" to "PR". If the original text already correctly names a term, reject additions or removals of qualifiers, editions, or generic type words, such as "PostgreSQL" to "PostgreSQL database", "Claude" to "Claude AI", "GitHub" to "GitHub Enterprise", and "Visual Studio" to "Visual Studio Code". Do not add ordinary nouns merely because they are nouns.
+        Use for non-reusable terminology; ordinary wording, grammar, style, meaning, facts, numbers, or dates; unrelated rewrites; deliberate abbreviations or expansions; and added or removed qualifiers, editions, or generic type words.
 
-        A common original word may still use a replacement action when it plausibly sounds like the corrected term. Do not use addVocabularyOnly merely because the original text is an ordinary word.
+        Accept a correction only when you are fully confident about its complete term boundaries, pronunciation relationship, and safe reuse. Never return a partial source or destination. A synonym, description, role, placeholder, or semantic association is never a safe replacement source. If anything is uncertain, return rejectCorrection. Public technologies, products, frameworks, standards, abbreviations, and ordinary industry terminology must never be added to Vocabulary; use addReplacementOnly only when the complete replacement is clearly safe, otherwise reject. Reject all case-only changes, and do not infer private or specialized status without clear evidence in the text.
 
-        Hard replacement gate: addReplacementAndVocabulary and addReplacementOnly are allowed only when the complete original and corrected terms have recognizably similar pronunciation or differ by spelling, punctuation, or word boundaries. A case-only change never qualifies. A synonym, description, role, or semantic reference is never enough. Phrases such as "database company" and "Supabase", "our designer" and "Sofia Hernández", "cloud vendor" and "Cloudflare", or "new framework" and "SvelteKit" do not sound alike and may use addVocabularyOnly only if the corrected term passes the Vocabulary gate. Never create a global replacement for descriptive sources.
-
-        Any correction consisting only of uppercase or lowercase letter changes is rejectCorrection. Do not create either a replacement or a Vocabulary entry for it, even when the text is a personal name, proper noun, brand, product, or specialized term. For example, a lowercase personal name changed only to title case must be rejected.
-
-        Before classifying individual candidates, compare corrected entity terms within this request. When two or more corrected terms are clearly near-duplicate spellings or pronunciations of the same named entity, choose one canonical term from the corrected terms present in this request and use it as correctedVocabularyTerm for every related accepted candidate. Prefer the form repeated most often. If frequency is tied, prefer the clearly more complete and linguistically plausible form. Never invent a canonical spelling that is absent from all correctedText values. Never merge terms based only on related meaning, and keep the terms separate when identity is uncertain.
-
-        Canonicalization changes only correctedVocabularyTerm. Decide learningAction independently for every candidate by comparing that candidate's original text with the selected canonical term. Never reject or downgrade one candidate merely because another candidate maps to the same canonical term.
+        Batch canonicalization: before returning decisions, compare all corrected terms. When terms are clearly spelling or pronunciation variants of the same entity, you must use one corrected form present in correctedText for every related accepted decision, including candidates whose own correctedText uses a non-canonical variant. Prefer the most frequent form, then the clearly more complete and plausible form. Never invent a form, merge by meaning alone, or merge when identity is uncertain. Canonicalization changes only correctedVocabularyTerm; classify each candidate independently against the canonical term.
 
         Canonicalization example:
         Inputs: [{"candidateID":5,"originalText":"with Prakash Jossipax today","correctedText":"with Prakash Joshi Pax today"},{"candidateID":6,"originalText":"with Prakash Joseph X today","correctedText":"with Prakash Josh Pax today"}]
         Decisions: [{"candidateID":5,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Prakash Jossipax","correctedVocabularyTerm":"Prakash Joshi Pax"},{"candidateID":6,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Prakash Joseph X","correctedVocabularyTerm":"Prakash Joshi Pax"}]
 
-        Be conservative. A false acceptance is more harmful than missing a useful correction. If the edit does not clearly satisfy an acceptance rule, use rejectCorrection. If you are uncertain about any classification, identity, pronunciation, term boundary, reusability, or required response value, use rejectCorrection. Use addVocabularyOnly for a phonetically distant original phrase only when the corrected term clearly passes the Vocabulary gate.
-
-        Select complete term boundaries from the context. For every person's name, return the maximal contiguous person name visible in both contexts—not only the edited component. If a surname changes, include its unchanged given and middle names. If a given name changes, include its unchanged surname. This rule is mandatory for all accepted actions, even when the changed component alone could be reusable. Apply the same complete-boundary rule to multiword entities and specialized terms. Do not include surrounding sentence words.
-
-        Never return only a changed surname or name fragment when an unchanged adjacent name component belongs to the same person. Follow these exact boundary examples:
-
-        Input: {"candidateID":1,"originalText":"with Prakash Jossipax yesterday","correctedText":"with Prakash Joshi Pax yesterday"}
-        Decision: {"candidateID":1,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"Prakash Jossipax","correctedVocabularyTerm":"Prakash Joshi Pax"}
+        Boundaries: return the complete contiguous entity or specialized term without surrounding sentence words. For a person's name, include all adjacent name components visible in both snippets, even when only one component changed.
 
         Input: {"candidateID":2,"originalText":"met Maya Jonson yesterday","correctedText":"met Maya Johnson yesterday"}
         Decision: {"candidateID":2,"learningAction":"addReplacementOnly","incorrectTextToReplace":"Maya Jonson","correctedVocabularyTerm":"Maya Johnson"}
-
-        Input: {"candidateID":3,"originalText":"heard Satya Nadela speak","correctedText":"heard Satya Nadella speak"}
-        Decision: {"candidateID":3,"learningAction":"addReplacementOnly","incorrectTextToReplace":"Satya Nadela","correctedVocabularyTerm":"Satya Nadella"}
-
-        Input: {"candidateID":4,"originalText":"a film by Hiao Miyazaki","correctedText":"a film by Hayao Miyazaki"}
-        Decision: {"candidateID":4,"learningAction":"addReplacementOnly","incorrectTextToReplace":"Hiao Miyazaki","correctedVocabularyTerm":"Hayao Miyazaki"}
 
         For addReplacementAndVocabulary, incorrectTextToReplace is the complete erroneous term and correctedVocabularyTerm is the complete corrected term to store in Vocabulary. incorrectTextToReplace must be an exact contiguous substring of that candidate's originalText. Unless batch canonicalization applies, correctedVocabularyTerm must be an exact contiguous substring of that candidate's correctedText. When canonicalization applies, correctedVocabularyTerm may instead be copied exactly from another candidate's correctedText in this request.
 
@@ -455,6 +434,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         For addVocabularyOnly, set incorrectTextToReplace to null and return the complete corrected entity as correctedVocabularyTerm. Apply the same correctedVocabularyTerm canonicalization rule described above.
 
         For rejectCorrection, set incorrectTextToReplace and correctedVocabularyTerm to null.
+
+        A false acceptance is much worse than missing a valid correction. When in doubt, reject.
 
         Return JSON only in this exact shape:
         {"reviewDecisions":[{"candidateID":0,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"complete original term","correctedVocabularyTerm":"complete corrected term"}]}
