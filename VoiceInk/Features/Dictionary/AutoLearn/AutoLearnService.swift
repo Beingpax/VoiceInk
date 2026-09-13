@@ -179,14 +179,14 @@ actor AutoLearnService {
         guard await sleep(nanoseconds: AutoLearnLimits.verificationDelayNanoseconds),
             !Task.isCancelled,
             lifecycleGeneration == generation,
-            AutoLearnSettings.isEnabled,
-            let token = await accessibilityRuntime.capturePastedText(
+            AutoLearnSettings.isEnabled
+        else { return }
+
+        guard let token = await accessibilityRuntime.capturePastedText(
                 text: text,
                 processID: processID
             )
-        else {
-            return
-        }
+        else { return }
 
         guard lifecycleGeneration == generation,
             !Task.isCancelled,
@@ -284,21 +284,15 @@ actor AutoLearnService {
 
     private func persistSnapshot(_ snapshot: AutoLearnFieldSnapshot?) async {
         guard AutoLearnSettings.isEnabled,
-            let snapshot,
-            let replacementStore
-        else {
-            return
-        }
+            let snapshot
+        else { return }
 
         guard let revision = FinalSnapshotDiffEngine.revision(from: snapshot) else { return }
         let candidates = CorrectionDiffEngine.candidates(from: revision)
         guard !candidates.isEmpty else { return }
 
         do {
-            let reviewCandidates = try await replacementStore.excludingExistingSources(
-                from: candidates
-            )
-            let insertedCount = try await pendingQueue.enqueue(reviewCandidates)
+            let insertedCount = try await pendingQueue.enqueue(candidates)
             if insertedCount > 0 {
                 logger.notice(
                     "Queued \(insertedCount, privacy: .public) Auto Learn candidate(s) for AI review"
@@ -418,53 +412,20 @@ actor AutoLearnService {
         let reviewResult: AutoLearnReviewResult
         do {
             reviewResult = try await reviewer.review(candidates)
-            let decisionsByCandidateID = Dictionary(
-                uniqueKeysWithValues: reviewResult.reviewDecisions.map {
-                    ($0.candidateID, $0)
-                }
-            )
-            let unresolvedByCandidateID = Dictionary(
-                uniqueKeysWithValues: reviewResult.unresolvedReviews.map {
-                    ($0.candidateID, $0)
-                }
-            )
-            // Candidate text is user content, so it stays private in the log.
-            for candidate in candidates {
-                guard let decision = decisionsByCandidateID[candidate.candidateID] else {
-                    if let unresolved = unresolvedByCandidateID[candidate.candidateID] {
-                        logger.notice(
-                            "Auto Learn review result=unresolved reason=\(unresolved.reason.rawValue, privacy: .public) returnedAction=\(unresolved.learningAction?.rawValue ?? "none", privacy: .public) returnedReplacement=\(unresolved.incorrectTextToReplace ?? "none", privacy: .private) returnedVocabulary=\(unresolved.correctedVocabularyTerm ?? "none", privacy: .private) original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
-                        )
-                    }
-                    continue
-                }
-
-                switch decision.learningAction {
-                case .addReplacementAndVocabulary:
-                    logger.notice(
-                        "Auto Learn review result=accepted action=addReplacementAndVocabulary replacement=\(decision.incorrectTextToReplace ?? candidate.detectedOriginalText, privacy: .private) vocabulary=\(decision.correctedVocabularyTerm ?? candidate.userCorrectedText, privacy: .private) original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
-                    )
-                case .addVocabularyOnly:
-                    logger.notice(
-                        "Auto Learn review result=accepted action=addVocabularyOnly vocabulary=\(decision.correctedVocabularyTerm ?? candidate.userCorrectedText, privacy: .private) original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
-                    )
-                case .rejectCorrection:
-                    logger.notice(
-                        "Auto Learn review result=rejected action=rejectCorrection original=\(candidate.detectedOriginalText, privacy: .private) corrected=\(candidate.userCorrectedText, privacy: .private)"
-                    )
-                }
-            }
             let replacementAndVocabularyCount = reviewResult.reviewDecisions.filter {
                 $0.learningAction == .addReplacementAndVocabulary
             }.count
             let vocabularyOnlyCount = reviewResult.reviewDecisions.filter {
                 $0.learningAction == .addVocabularyOnly
             }.count
+            let replacementOnlyCount = reviewResult.reviewDecisions.filter {
+                $0.learningAction == .addReplacementOnly
+            }.count
             let rejectedCount = reviewResult.reviewDecisions.filter {
                 $0.learningAction == .rejectCorrection
             }.count
             logger.notice(
-                "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) unresolved=\(reviewResult.unresolvedReviews.count, privacy: .public)"
+                "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) replacementOnly=\(replacementOnlyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) unresolved=\(reviewResult.unresolvedReviews.count, privacy: .public)"
             )
         } catch {
             try? await releaseAllClaimsToQueue()
@@ -602,11 +563,19 @@ actor AutoLearnService {
         guard !corrections.isEmpty else { return }
 
         if corrections.count == 1, let correction = corrections.first {
+            let notificationTitle: String
+            if correction.vocabularyCreationDate != nil {
+                notificationTitle = String(
+                    localized: "Added “\(correction.correctedVocabularyTerm)” to Dictionary"
+                )
+            } else {
+                notificationTitle = String(
+                    localized: "Learned “\(correction.incorrectTextToReplace)” → “\(correction.correctedVocabularyTerm)”"
+                )
+            }
             await MainActor.run {
                 NotificationManager.shared.showNotification(
-                    title: String(
-                        localized: "Added “\(correction.correctedVocabularyTerm)” to Dictionary"
-                    ),
+                    title: notificationTitle,
                     type: .success,
                     duration: 4,
                     actionButton: (
@@ -622,7 +591,7 @@ actor AutoLearnService {
         } else {
             await MainActor.run {
                 NotificationManager.shared.showNotification(
-                    title: String(localized: "Added \(corrections.count) words to Dictionary"),
+                    title: String(localized: "Learned \(corrections.count) corrections"),
                     type: .success
                 )
             }
@@ -644,7 +613,7 @@ actor AutoLearnService {
     private func log(_ error: Error, message: String) {
         let nsError = error as NSError
         logger.error(
-            "\(message, privacy: .public) domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
+            "\(message, privacy: .public): domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)"
         )
     }
 

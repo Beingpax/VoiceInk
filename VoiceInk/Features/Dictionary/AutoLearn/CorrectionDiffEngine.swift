@@ -52,26 +52,7 @@ enum CorrectionDiffEngine {
                 continue
             }
 
-            let touchesLeadingBoundary = hunk.originalRange.lowerBound == 0
-                || hunk.correctedRange.lowerBound == 0
-            let touchesTrailingBoundary = hunk.originalRange.upperBound == originalSegments.count
-                || hunk.correctedRange.upperBound == correctedSegments.count
-            let hasLeadingAnchor = hunk.originalRange.lowerBound > 0
-                && hunk.correctedRange.lowerBound > 0
-            let hasTrailingAnchor = hunk.originalRange.upperBound < originalSegments.count
-                && hunk.correctedRange.upperBound < correctedSegments.count
-            let isWholeTextCorrection = hunk.originalRange == originalSegments.indices
-                && hunk.correctedRange == correctedSegments.indices
-
             guard
-                !(
-                    revision.hasAmbiguousLeadingBoundary && touchesLeadingBoundary
-                        && !hasTrailingAnchor && !isWholeTextCorrection
-                ),
-                !(
-                    revision.hasAmbiguousTrailingBoundary && touchesTrailingBoundary
-                        && !hasLeadingAnchor && !isWholeTextCorrection
-                ),
                 let source = fragment(
                     from: original,
                     segments: originalSegments,
@@ -101,12 +82,12 @@ enum CorrectionDiffEngine {
                 upperLimit: nextHunk?.correctedRange.lowerBound ?? correctedSegments.endIndex,
                 segments: correctedSegments
             )
-            guard let originalTextContext = fragment(
+            guard let originalSnippet = fragment(
                 from: original,
                 segments: originalSegments,
                 segmentRange: reviewOriginalRange
             ),
-                let correctedTextContext = fragment(
+                let correctedSnippet = fragment(
                     from: corrected,
                     segments: correctedSegments,
                     segmentRange: reviewCorrectedRange
@@ -131,10 +112,8 @@ enum CorrectionDiffEngine {
 
             results.append(
                 DetectedCorrectionCandidate(
-                    detectedOriginalText: pair.source,
-                    userCorrectedText: pair.destination,
-                    originalTextContext: originalTextContext,
-                    correctedTextContext: correctedTextContext
+                    originalText: originalSnippet,
+                    correctedText: correctedSnippet
                 ))
         }
 

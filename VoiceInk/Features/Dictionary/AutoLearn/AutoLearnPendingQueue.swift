@@ -8,20 +8,75 @@ actor AutoLearnPendingQueue {
 
     private struct QueuedCorrection: Codable {
         let candidateID: UUID
-        let detectedOriginalText: String
-        let userCorrectedText: String
-        let originalTextContext: String
-        let correctedTextContext: String
+        let originalText: String
+        let correctedText: String
         var reviewStatus: ReviewStatus
 
         var reviewCandidate: AutoLearnReviewCandidate {
             AutoLearnReviewCandidate(
                 candidateID: candidateID,
-                detectedOriginalText: detectedOriginalText,
-                userCorrectedText: userCorrectedText,
-                originalTextContext: originalTextContext,
-                correctedTextContext: correctedTextContext
+                originalText: originalText,
+                correctedText: correctedText
             )
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case candidateID
+            case originalText
+            case correctedText
+            case reviewStatus
+            case detectedOriginalText
+            case userCorrectedText
+            case originalTextContext
+            case correctedTextContext
+        }
+
+        init(
+            candidateID: UUID,
+            originalText: String,
+            correctedText: String,
+            reviewStatus: ReviewStatus
+        ) {
+            self.candidateID = candidateID
+            self.originalText = originalText
+            self.correctedText = correctedText
+            self.reviewStatus = reviewStatus
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            candidateID = try container.decode(UUID.self, forKey: .candidateID)
+            reviewStatus = try container.decode(ReviewStatus.self, forKey: .reviewStatus)
+
+            if let value = try container.decodeIfPresent(String.self, forKey: .originalText) {
+                originalText = value
+            } else if let legacyContext = try container.decodeIfPresent(
+                String.self,
+                forKey: .originalTextContext
+            ) {
+                originalText = legacyContext
+            } else {
+                originalText = try container.decode(String.self, forKey: .detectedOriginalText)
+            }
+
+            if let value = try container.decodeIfPresent(String.self, forKey: .correctedText) {
+                correctedText = value
+            } else if let legacyContext = try container.decodeIfPresent(
+                String.self,
+                forKey: .correctedTextContext
+            ) {
+                correctedText = legacyContext
+            } else {
+                correctedText = try container.decode(String.self, forKey: .userCorrectedText)
+            }
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(candidateID, forKey: .candidateID)
+            try container.encode(originalText, forKey: .originalText)
+            try container.encode(correctedText, forKey: .correctedText)
+            try container.encode(reviewStatus, forKey: .reviewStatus)
         }
     }
 
@@ -62,33 +117,31 @@ actor AutoLearnPendingQueue {
         var knownPairs = Set(
             queuedCorrections.map {
                 pairKey(
-                    detectedOriginalText: $0.detectedOriginalText,
-                    userCorrectedText: $0.userCorrectedText
+                    originalText: $0.originalText,
+                    correctedText: $0.correctedText
                 )
             }
         )
         var insertedCount = 0
         for candidate in candidates {
-            let detectedOriginalText = candidate.detectedOriginalText.trimmingCharacters(
+            let originalText = candidate.originalText.trimmingCharacters(
                 in: .whitespacesAndNewlines
             )
-            let userCorrectedText = candidate.userCorrectedText.trimmingCharacters(
+            let correctedText = candidate.correctedText.trimmingCharacters(
                 in: .whitespacesAndNewlines
             )
-            guard !detectedOriginalText.isEmpty, !userCorrectedText.isEmpty else { continue }
+            guard !originalText.isEmpty, !correctedText.isEmpty else { continue }
 
             let correctionPairKey = pairKey(
-                detectedOriginalText: detectedOriginalText,
-                userCorrectedText: userCorrectedText
+                originalText: originalText,
+                correctedText: correctedText
             )
             guard knownPairs.insert(correctionPairKey).inserted else { continue }
             queuedCorrections.append(
                 QueuedCorrection(
                     candidateID: UUID(),
-                    detectedOriginalText: detectedOriginalText,
-                    userCorrectedText: userCorrectedText,
-                    originalTextContext: candidate.originalTextContext,
-                    correctedTextContext: candidate.correctedTextContext,
+                    originalText: originalText,
+                    correctedText: correctedText,
                     reviewStatus: .pending
                 )
             )
@@ -212,10 +265,10 @@ actor AutoLearnPendingQueue {
     }
 
     private func pairKey(
-        detectedOriginalText: String,
-        userCorrectedText: String
+        originalText: String,
+        correctedText: String
     ) -> String {
-        WordReplacementVariants.key(for: detectedOriginalText) + "\u{0}"
-            + WordReplacementVariants.destinationKey(for: userCorrectedText)
+        WordReplacementVariants.key(for: originalText) + "\u{0}"
+            + WordReplacementVariants.destinationKey(for: correctedText)
     }
 }

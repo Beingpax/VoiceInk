@@ -3,23 +3,6 @@ import SwiftData
 
 @ModelActor
 actor WordReplacementStore {
-    func excludingExistingSources(
-        from candidates: [DetectedCorrectionCandidate]
-    ) throws -> [DetectedCorrectionCandidate] {
-        let existingSourceKeys = Set(
-            try modelContext.fetch(FetchDescriptor<WordReplacement>()).flatMap {
-                WordReplacementVariants.parse($0.originalText).map {
-                    WordReplacementVariants.key(for: $0)
-                }
-            }
-        )
-        return candidates.filter {
-            !existingSourceKeys.contains(
-                WordReplacementVariants.key(for: $0.detectedOriginalText)
-            )
-        }
-    }
-
     func apply(
         _ decisions: [AutoLearnReviewDecision],
         candidates: [AutoLearnReviewCandidate]
@@ -57,8 +40,21 @@ actor WordReplacementStore {
                     else { continue }
 
                     let mutation: (created: Bool, updated: Bool)
+                    let shouldAddVocabulary: Bool
                     switch decision.learningAction {
                     case .addReplacementAndVocabulary:
+                        shouldAddVocabulary = true
+                        guard let incorrectTextToReplace = decision.incorrectTextToReplace else {
+                            continue
+                        }
+                        mutation = applyReplacement(
+                            source: incorrectTextToReplace,
+                            destination: correctedVocabularyTerm,
+                            entries: &entries,
+                            existingSourceKeys: &existingSourceKeys
+                        )
+                    case .addReplacementOnly:
+                        shouldAddVocabulary = false
                         guard let incorrectTextToReplace = decision.incorrectTextToReplace else {
                             continue
                         }
@@ -69,6 +65,7 @@ actor WordReplacementStore {
                             existingSourceKeys: &existingSourceKeys
                         )
                     case .addVocabularyOnly:
+                        shouldAddVocabulary = true
                         mutation = (false, false)
                     case .rejectCorrection:
                         continue
@@ -81,7 +78,10 @@ actor WordReplacementStore {
                         .precomposedStringWithCanonicalMapping
                     let vocabularyKey = WordReplacementVariants.key(for: vocabulary)
                     var vocabularyCreationDate: Date?
-                    if !vocabularyKey.isEmpty, vocabularyKeys.insert(vocabularyKey).inserted {
+                    if shouldAddVocabulary,
+                        !vocabularyKey.isEmpty,
+                        vocabularyKeys.insert(vocabularyKey).inserted
+                    {
                         let entry = VocabularyWord(word: vocabulary)
                         modelContext.insert(entry)
                         vocabularyCreationDate = entry.dateAdded
@@ -92,7 +92,7 @@ actor WordReplacementStore {
                         learnedCorrections.append(
                             AutoLearnAppliedCorrection(
                                 incorrectTextToReplace: decision.incorrectTextToReplace
-                                    ?? candidate.detectedOriginalText,
+                                    ?? candidate.originalText,
                                 correctedVocabularyTerm: correctedVocabularyTerm,
                                 replacementSourceWasAdded: mutation.created || mutation.updated,
                                 vocabularyCreationDate: vocabularyCreationDate
