@@ -92,6 +92,8 @@ enum AppTheme {
     enum Action {
         static let primaryFill = Accent.primary
         static let primaryForeground = Text.onAccent
+        static let destructiveFill = Status.error
+        static let destructiveForeground = Color.white
         static let secondaryForeground = Text.primary
         static let disabledFill = Surface.controlActive
         static let disabledForeground = Text.disabled

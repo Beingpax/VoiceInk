@@ -39,11 +39,6 @@ class CursorPaster {
     }
 
     @MainActor
-    static func pasteAtCursorAndWaitUntilPosted(_ text: String) async -> PasteResult {
-        await startPasteAtCursor(text).value
-    }
-
-    @MainActor
     private static func performPasteSession(_ text: String) async -> PasteResult {
         let pasteboard = NSPasteboard.general
         let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
@@ -65,7 +60,6 @@ class CursorPaster {
 
         let pasteResult: PasteResult
         if AutoLearnSettings.isEnabled {
-            await AutoLearnService.shared.pasteWillStart()
             let targetProcessID = NSWorkspace.shared.frontmostApplication?.processIdentifier
             pasteResult = await postPasteCommand()
             await AutoLearnService.shared.pasteDidFinish(

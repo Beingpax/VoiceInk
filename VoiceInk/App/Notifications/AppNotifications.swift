@@ -21,6 +21,7 @@ extension Notification.Name {
     static let sessionMetricsDidChange = Notification.Name("sessionMetricsDidChange")
     static let wordReplacementsDidChange = Notification.Name("wordReplacementsDidChange")
     static let autoLearnQueueDidChange = Notification.Name("autoLearnQueueDidChange")
+    static let autoLearnReviewProposalsDidChange = Notification.Name("autoLearnReviewProposalsDidChange")
     static let openFileForTranscription = Notification.Name("openFileForTranscription")
     static let recordingDeviceChangeRequired = Notification.Name("recordingDeviceChangeRequired")
 }

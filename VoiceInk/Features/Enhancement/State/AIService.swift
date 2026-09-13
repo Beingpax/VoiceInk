@@ -629,11 +629,6 @@ class AIService: ObservableObject {
         }
     }
 
-    func fetchOllamaModels() async -> [OllamaModel] {
-        let result = await refreshOllamaAvailability()
-        return result.models
-    }
-
     func refreshOllamaAvailabilityInBackground() {
         Task { [weak self] in
             guard let self else { return }

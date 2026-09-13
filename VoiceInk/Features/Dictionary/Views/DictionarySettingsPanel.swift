@@ -2,15 +2,14 @@ import SwiftUI
 
 struct DictionarySettingsPanel: View {
     let onDismiss: () -> Void
+    let onReviewNow: () -> Void
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
     @AppStorage(AutoLearnSettings.reviewScheduleKey)
     private var reviewScheduleRawValue = AutoLearnReviewSchedule.immediately.rawValue
     @State private var pendingCorrectionCount = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            panelHeader
-
+        QuickPanelScaffold {
             Form {
                 Section {
                     LabeledContent("Quick Add to Dictionary") {
@@ -53,15 +52,13 @@ struct DictionarySettingsPanel: View {
                             }
                         }
 
-                        LabeledContent("Pending corrections") {
+                        LabeledContent("Corrections to review") {
                             Text("\(pendingCorrectionCount)")
                                 .foregroundStyle(.secondary)
                         }
 
                         Button("Review Now") {
-                            Task {
-                                await AutoLearnService.shared.reviewPendingNow()
-                            }
+                            onReviewNow()
                         }
                         .disabled(pendingCorrectionCount == 0)
                     }
@@ -71,7 +68,10 @@ struct DictionarySettingsPanel: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+            .contentMargins(.top, 68, for: .scrollContent)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } header: {
+            panelHeader
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task {
@@ -82,14 +82,40 @@ struct DictionarySettingsPanel: View {
                 await refreshPendingCorrectionCount()
             }
         }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .autoLearnReviewProposalsDidChange)
+        ) { _ in
+            Task {
+                await refreshPendingCorrectionCount()
+            }
+        }
     }
 
     private var panelHeader: some View {
-        AppPanelHeader(title: "Dictionary Settings", onClose: onDismiss)
+        HStack(spacing: 12) {
+            Text("Dictionary Settings")
+                .font(.headline)
+                .fontWeight(.semibold)
+
+            Spacer()
+
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onDismiss
+            )
+        }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 
     @MainActor
     private func refreshPendingCorrectionCount() async {
-        pendingCorrectionCount = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0
+        let pending = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0
+        let proposals = (try? await AutoLearnService.shared.reviewProposalCount()) ?? 0
+        pendingCorrectionCount = pending + proposals
     }
 }

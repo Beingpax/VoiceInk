@@ -77,17 +77,16 @@ struct AutoLearnFailurePanel: View {
 
     private var footer: some View {
         HStack {
-            Button("Close", action: onClose)
+            AppActionButton("Close", action: onClose)
                 .keyboardShortcut(.cancelAction)
 
             Spacer()
 
-            Button("Retry") {
+            AppActionButton("Retry", kind: .primary) {
                 Task {
                     await AutoLearnService.shared.retryPendingReviews()
                 }
             }
-            .buttonStyle(.borderedProminent)
             .disabled(!isAutoLearnEnabled)
         }
         .padding(.horizontal, 20)

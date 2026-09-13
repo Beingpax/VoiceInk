@@ -1,5 +1,39 @@
 import SwiftUI
 
+struct TranscriptionInfoSidePanel: View {
+    let transcription: Transcription
+    let onClose: () -> Void
+
+    var body: some View {
+        QuickPanelScaffold {
+            TranscriptionInfoPanel(transcription: transcription)
+        } header: {
+            header
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Text("Info")
+                .font(.headline)
+                .fontWeight(.semibold)
+
+            Spacer()
+
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onClose
+            )
+        }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.headerHeight)
+    }
+}
+
 /// Reusable component that displays transcription details and the recorded AI request.
 struct TranscriptionInfoPanel: View {
     let transcription: Transcription
@@ -11,6 +45,7 @@ struct TranscriptionInfoPanel: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, 68, for: .scrollContent)
         .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -101,6 +101,7 @@ actor WordReplacementStore {
                     }
                 }
             }
+            try modelContext.save()
         } catch {
             modelContext.rollback()
             throw error
@@ -156,6 +157,7 @@ actor WordReplacementStore {
                 }
             }
         }
+        try modelContext.save()
     }
 
     private func applyReplacement(

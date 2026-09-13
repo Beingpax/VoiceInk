@@ -29,7 +29,9 @@ final class WordReplacementService {
     private init() {}
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
-        let descriptor = FetchDescriptor<WordReplacement>()
+        let descriptor = FetchDescriptor<WordReplacement>(
+            predicate: #Predicate { $0.isEnabled }
+        )
 
         let replacements: [WordReplacement]
         do {
@@ -40,12 +42,12 @@ final class WordReplacementService {
         }
 
         guard !replacements.isEmpty else {
-            logger.debug("Word replacement skipped: no rules")
+            logger.debug("Word replacement skipped: no enabled rules")
             return text
         }
 
         logger.debug(
-            "Starting word replacement with \(replacements.count, privacy: .public) rule(s)"
+            "Starting word replacement with \(replacements.count, privacy: .public) enabled rule(s)"
         )
 
         var modifiedText = text

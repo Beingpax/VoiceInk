@@ -13,6 +13,7 @@ struct DashboardContent: View {
     private static let displayNameHorizontalPadding: CGFloat = 8
     private static let insightsUnlockDuration: TimeInterval = 30 * 60
     private static let peakHoursUnlockDuration: TimeInterval = 30 * 60
+    private static let reviewBacklogActionThreshold = 50
     // Above this count, skip live auto-refresh (full reload is expensive); tab reopen still refreshes.
     private static let automaticStatsRefreshMetricLimit = 2_000
     private static let statsRefreshDebounceNanoseconds: UInt64 = 750_000_000
@@ -29,6 +30,8 @@ struct DashboardContent: View {
     @State private var isModelPerformancePanelPresented = false
     @State private var isModelUsagePanelPresented = false
     @State private var isAutoLearnFailurePanelPresented = false
+    @State private var isAutoLearnReviewPanelPresented = false
+    @State private var autoLearnReviewBacklogCount = 0
     @State private var autoLearnFailurePresentationTask: Task<Void, Never>?
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
@@ -98,6 +101,9 @@ struct DashboardContent: View {
         .task {
             scheduleDashboardStatsRefresh(allowSkipWhenFresh: hasLoadedStatsSnapshot)
         }
+        .task {
+            await refreshAutoLearnReviewBacklogCount()
+        }
         .onAppear {
             refreshAccessibilityStatus()
             updaterViewModel.checkForUpdatesIfDue()
@@ -129,6 +135,14 @@ struct DashboardContent: View {
                 scheduleDashboardStatsRefresh(debounce: true, allowSkipWhenFresh: false)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .autoLearnQueueDidChange)) { _ in
+            Task { await refreshAutoLearnReviewBacklogCount() }
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .autoLearnReviewProposalsDidChange)
+        ) { _ in
+            Task { await refreshAutoLearnReviewBacklogCount() }
+        }
         .onDisappear {
             dashboardStatsTask?.cancel()
             dashboardStatsTask = nil
@@ -156,6 +170,11 @@ struct DashboardContent: View {
                 isAutoLearnFailurePanelPresented = false
             }
         }
+        .sidePanel(isPresented: $isAutoLearnReviewPanelPresented) {
+            AutoLearnReviewPanel {
+                isAutoLearnReviewPanelPresented = false
+            }
+        }
     }
 
     private func scheduleAutoLearnFailurePresentation() {
@@ -170,6 +189,22 @@ struct DashboardContent: View {
 
     private var shouldAutomaticallyPresentAutoLearnFailure: Bool {
         hasAutoLearnFailure && isAutoLearnEnabled && !isAutoLearnFailureAcknowledged
+    }
+
+    private var dashboardReviewCorrectionCount: Int? {
+        guard isAutoLearnEnabled,
+            autoLearnReviewBacklogCount > Self.reviewBacklogActionThreshold
+        else {
+            return nil
+        }
+        return autoLearnReviewBacklogCount
+    }
+
+    @MainActor
+    private func refreshAutoLearnReviewBacklogCount() async {
+        let queuedCount = (try? await AutoLearnService.shared.outstandingReviewCount()) ?? 0
+        let proposalCount = (try? await AutoLearnService.shared.reviewProposalCount()) ?? 0
+        autoLearnReviewBacklogCount = queuedCount + proposalCount
     }
 
     private func updateAutoLearnFailurePresentation() {
@@ -439,6 +474,10 @@ struct DashboardContent: View {
         isModelUsagePanelPresented = true
     }
 
+    private func openAutoLearnReviewPanel() {
+        isAutoLearnReviewPanelPresented = true
+    }
+
     @MainActor
     private func refreshDashboardStats() {
         scheduleDashboardStatsRefresh(allowSkipWhenFresh: false)
@@ -599,7 +638,9 @@ struct DashboardContent: View {
             canViewInsights: canViewInsights,
             actionHelp: insightsActionHelp,
             actionAccessibilityLabel: insightsActionAccessibilityLabel,
-            onViewInsights: openInsightsIfAvailable
+            reviewCorrectionCount: dashboardReviewCorrectionCount,
+            onViewInsights: openInsightsIfAvailable,
+            onReviewCorrections: openAutoLearnReviewPanel
         )
     }
 

@@ -111,7 +111,7 @@ struct DictionaryQuickAddView: View {
     let onResize: (CGFloat) -> Void
 
     var body: some View {
-        ZStack {
+        QuickPanelScaffold {
             VStack(spacing: 0) {
                 inputArea
                 if let errorMessage {
@@ -124,18 +124,10 @@ struct DictionaryQuickAddView: View {
             }
             .padding(.top, 52)
             .padding(.bottom, 52)
-
-            VStack(spacing: 0) {
-                QuickPanelScrollEdge(edge: .top) {
-                    modeBar
-                }
-
-                Spacer(minLength: 0)
-
-                QuickPanelScrollEdge(edge: .bottom) {
-                    actionBar
-                }
-            }
+        } header: {
+            modeBar
+        } footer: {
+            actionBar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))

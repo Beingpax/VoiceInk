@@ -30,7 +30,6 @@ enum AutoLearnSettings {
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
     static let failureAcknowledgedKey = "AutoLearnDictionaryFailureAcknowledged"
     static let reviewScheduleKey = "AutoLearnDictionaryReviewSchedule"
-    static let nextReviewDateKey = "AutoLearnDictionaryNextReviewDate"
 
     static var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: isEnabledKey)
@@ -52,18 +51,6 @@ enum AutoLearnSettings {
             return .immediately
         }
         return AutoLearnReviewSchedule(rawValue: value) ?? .immediately
-    }
-
-    static var nextReviewDate: Date? {
-        UserDefaults.standard.object(forKey: nextReviewDateKey) as? Date
-    }
-
-    static func setNextReviewDate(_ date: Date?) {
-        if let date {
-            UserDefaults.standard.set(date, forKey: nextReviewDateKey)
-        } else {
-            UserDefaults.standard.removeObject(forKey: nextReviewDateKey)
-        }
     }
 
     /// Adopts the first configured enhancement provider for Auto Learn.

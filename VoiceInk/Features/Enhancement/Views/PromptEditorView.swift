@@ -74,9 +74,7 @@ struct PromptEditorView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-
+        QuickPanelScaffold {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if case .add = mode {
@@ -86,9 +84,13 @@ struct PromptEditorView: View {
                     instructionsEditor
                     systemTemplateToggle
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 76)
+                .padding(.bottom, 72)
             }
-
+        } header: {
+            header
+        } footer: {
             footer
         }
         .confirmationDialog(
@@ -131,8 +133,7 @@ struct PromptEditorView: View {
             Spacer()
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .overlay(Divider().opacity(0.5), alignment: .bottom)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 
     private var systemTemplateToggle: some View {
@@ -196,42 +197,30 @@ struct PromptEditorView: View {
     private var footer: some View {
         HStack {
             if canDeletePrompt {
-                Button(role: .destructive) {
+                AppActionButton("Delete", kind: .destructive, minWidth: 90) {
                     showDeleteConfirmation = true
-                } label: {
-                    Text("Delete")
-                        .frame(minWidth: 90)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.Status.error)
             } else {
-                Button("Cancel") {
+                AppActionButton("Cancel") {
                     dismissPanel()
                 }
                 .keyboardShortcut(.escape, modifiers: [])
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
             }
 
             Spacer()
 
-            Button {
+            AppActionButton(saveButtonTitle, kind: .primary, minWidth: 108) {
                 if let savedPrompt = save() {
                     onSave(savedPrompt)
                 }
                 dismissPanel()
-            } label: {
-                Text(saveButtonTitle)
-                    .frame(minWidth: 108)
             }
-            .buttonStyle(.borderedProminent)
             .disabled(isSaveDisabled)
             .keyboardShortcut(.return, modifiers: .command)
             .help("Save this prompt and select it.")
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .overlay(Divider().opacity(0.5), alignment: .top)
+        .frame(height: QuickPanelMetrics.footerHeight)
     }
 
     private func deletePrompt() {

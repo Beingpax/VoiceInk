@@ -92,6 +92,47 @@ struct AutoLearnReviewResult: Sendable {
     }
 }
 
+struct AutoLearnReviewProposal: Codable, Identifiable, Sendable {
+    let id: UUID
+    let candidateID: UUID
+    let originalText: String
+    let correctedText: String
+    let learningAction: AutoLearnReviewAction
+    let incorrectTextToReplace: String?
+    let correctedVocabularyTerm: String?
+
+    var addsReplacement: Bool {
+        learningAction == .addReplacementAndVocabulary || learningAction == .addReplacementOnly
+    }
+
+    var addsVocabulary: Bool {
+        learningAction == .addReplacementAndVocabulary || learningAction == .addVocabularyOnly
+    }
+
+    var reviewCandidate: AutoLearnReviewCandidate {
+        AutoLearnReviewCandidate(
+            candidateID: candidateID,
+            originalText: originalText,
+            correctedText: correctedText
+        )
+    }
+
+    var reviewDecision: AutoLearnReviewDecision {
+        AutoLearnReviewDecision(
+            candidateID: candidateID,
+            learningAction: learningAction,
+            incorrectTextToReplace: incorrectTextToReplace,
+            correctedVocabularyTerm: correctedVocabularyTerm
+        )
+    }
+}
+
+struct AutoLearnReviewSelection: Sendable {
+    let proposalID: UUID
+    let includesReplacement: Bool
+    let includesVocabulary: Bool
+}
+
 struct AutoLearnMutationSummary: Sendable {
     let createdCount: Int
     let updatedCount: Int
@@ -119,8 +160,6 @@ struct AutoLearnAppliedCorrection: Sendable {
 
 enum AutoLearnReviewSchedule: String, CaseIterable, Identifiable {
     case immediately
-    case hourly
-    case daily
     case manually
 
     var id: String { rawValue }
@@ -128,20 +167,10 @@ enum AutoLearnReviewSchedule: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .immediately: String(localized: "Immediately")
-        case .hourly: String(localized: "Every hour")
-        case .daily: String(localized: "Once daily")
         case .manually: String(localized: "Manually")
         }
     }
 
-    var delay: TimeInterval? {
-        switch self {
-        case .immediately: 0
-        case .hourly: 60 * 60
-        case .daily: 24 * 60 * 60
-        case .manually: nil
-        }
-    }
 }
 
 enum AutoLearnLimits {
