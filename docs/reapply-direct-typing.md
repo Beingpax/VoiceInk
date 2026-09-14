@@ -1,8 +1,10 @@
 # Reapply Direct Typing onto latest VoiceInk
 
-Playbook for an AI agent. Direct Typing lives on fork PR [#701](https://github.com/Beingpax/VoiceInk/pull/701) until upstream (`Beingpax/VoiceInk`) merges it.
+Playbook for an AI agent. Direct Typing is **fork-only**. It lives on `marib00/VoiceInk`, never on `Beingpax/VoiceInk`.
 
-**Hard gate:** re-apply Direct Typing **only** if it is **not** already in the current upstream `main`. If it is merged, stop. Do not reset the feature branch, do not copy paste files, do not rebuild for this feature, do not force-push #701.
+**Never push to upstream.** Do not `git push origin`, `git push upstream`, or any other write to `Beingpax/VoiceInk`. Do not `gh pr create` against Beingpax, do not merge, do not request a merge. After a rebase, push **only** to `fork` (`marib00/VoiceInk`).
+
+**Hard gate:** re-apply Direct Typing **only** if it is **not** already in the current upstream `main`. If upstream already has it, stop (no reset, no patch, no fork push). If it is still missing, keep the copy on the fork — do not submit it upstream.
 
 Last verified: VoiceInk **2.13** (`origin/main` `832d212`), Direct Typing rebased from commit `80e2983`. Build used Xcode 27 beta (`Xcode-beta.app`) plus Metal toolchain `27A5218h`.
 
@@ -21,7 +23,7 @@ git show origin/main:VoiceInk/Infrastructure/SystemIntegration/Paste/PasteMethod
 git show origin/main:VoiceInk/Paste/PasteMethod.swift
 ```
 
-Also check the PR, in case GitHub merged it under a different branch name:
+Optional: if an old PR against Beingpax exists, you may *read* its state. Do not create, reopen, or merge PRs into Beingpax.
 
 ```bash
 gh api repos/Beingpax/VoiceInk/pulls/701 --jq '{state, merged, merged_at, title}'
@@ -31,19 +33,18 @@ gh api repos/Beingpax/VoiceInk/pulls/701 --jq '{state, merged, merged_at, title}
 
 - `PasteMethod` on `origin/main` already has `case directTyping`
 - `git grep` on `origin/main` finds `directTyping` in Swift sources
-- PR #701 is `MERGED` (or another upstream PR merged the same feature)
 
-A closed-but-unmerged #701 is **not** a reason to skip: the code may still be absent from `main`. Trust `PasteMethod.swift` on `origin/main` over PR metadata.
+Trust `PasteMethod.swift` on `origin/main`, not GitHub PR metadata. Fetch from `origin` is read-only and required; **pushing** to `origin` / `upstream` is forbidden.
 
 **Continue only if** upstream `PasteMethod` is still just `standard` / `appleScript` (no `directTyping`). Then record:
 
 - `origin/main` SHA and marketing version (`MARKETING_VERSION` in the Xcode project, or `appcast.xml`).
 - Whether paste sources changed since the last Direct Typing commit (`VoiceInk/Paste/` or `VoiceInk/Infrastructure/SystemIntegration/Paste/`).
 
-Typical remotes:
+Typical remotes (fetch `origin`; **push only `fork`**):
 
-- `origin` / `upstream` → `https://github.com/Beingpax/VoiceInk.git`
-- `fork` → `https://github.com/marib00/VoiceInk.git`
+- `origin` / `upstream` → `https://github.com/Beingpax/VoiceInk.git` (**fetch only**)
+- `fork` → `https://github.com/marib00/VoiceInk.git` (**only push target**)
 - Branch: `feature/paste-method-remote-desktop`
 
 ## 2. Snapshot the last known-good implementation, then reset
@@ -236,9 +237,11 @@ Success: `BUILD SUCCEEDED`. App paths:
 
 If you already ran a failed `make local`, **do not run it again** — it deletes `.local-build` and repeats 2–6. Continue with the direct `xcodebuild` flags.
 
-## 5. Commit and push
+## 5. Commit and push (fork only)
 
 Expected diff: the seven code/l10n files plus this playbook (`docs/reapply-direct-typing.md`). One commit, message focused on why (RDP scancodes / rebase onto current main).
+
+**Push target is the fork only.** Never `git push origin`, `git push upstream`, `git push Beingpax`, or `gh pr create --repo Beingpax/VoiceInk`. Direct Typing must not land on the upstream repo from this playbook.
 
 If the environment appends a Cursor trailer (`Co-authored-by: Cursor <cursoragent@cursor.com>`), `git commit` and even `git commit --amend -F` will re-inject it. Bypass with `commit-tree`:
 
@@ -258,19 +261,21 @@ git reset --hard "$NEW"
 git log -1 --format='%B'   # must not contain Co-authored-by: Cursor
 ```
 
-Then:
+Then push **only** to `fork`:
 
 ```bash
+git remote -v   # origin = Beingpax (fetch); fork = marib00 (push)
 git push --force-with-lease fork HEAD:feature/paste-method-remote-desktop
 ```
 
-If push fails with `Could not resolve host: github.com`, retry; GitHub DNS/503 happened during the 2.11 rebase. Confirm with REST (GraphQL `gh pr view` can be stale/503):
+If push fails with `Could not resolve host: github.com`, retry. Confirm the **fork** branch, not Beingpax `main`:
 
 ```bash
-gh api repos/Beingpax/VoiceInk/pulls/701 --jq '{state, mergeable, mergeable_state, head: .head.sha}'
+git ls-remote fork refs/heads/feature/paste-method-remote-desktop
+git rev-parse HEAD
 ```
 
-Head SHA must match local `HEAD`. Commit body must have **no** Cursor co-author.
+SHAs must match. Commit body must have **no** Cursor co-author. Do not verify or update a Beingpax pull request.
 
 ## 6. Known pitfalls
 
@@ -290,9 +295,11 @@ Head SHA must match local `HEAD`. Commit body must have **no** Cursor co-author.
 | `cannot execute tool 'metal'` | Metal toolchain not installed | `xcodebuild -downloadComponent MetalToolchain` |
 | `make local` loops on the above | Makefile deletes `.local-build` | Use direct `xcodebuild`; never re-run `make local` after a failed resolve |
 | Re-applied DT though it is already on main | Skipped the upstream gate | Stop if `PasteMethod` on `origin/main` has `directTyping` |
+| Commits appeared on Beingpax/VoiceInk | Pushed to `origin` / `upstream` | Push **only** `fork`; never write to Beingpax |
 
 ## Out of scope
 
+- Pushing, merging, or opening PRs against `Beingpax/VoiceInk`. Direct Typing stays on the fork.
 - Second paste method named “Direct Typing (Remote Desktop)”.
 - Menu-bar / activation-policy fixes.
 - Changing Default or AppleScript paste behavior.
