@@ -186,7 +186,7 @@ enum AutoLearnLimits {
     static let maximumDiffSegments = 2_048
     static let maximumCandidateCharacters = 256
     static let maximumCandidateSegments = 24
-    static let reviewContextSegmentsPerSide = 2
+    static let reviewContextSegmentsPerSide = 3
     static let maximumUnspacedCandidateCharacters = 8
     static let maximumReviewBatchCandidates = 100
 }

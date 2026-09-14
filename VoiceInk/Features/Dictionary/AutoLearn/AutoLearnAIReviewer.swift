@@ -429,9 +429,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private static let reviewPrompt = """
-        Review speech-to-text corrections. Each candidate has originalText and correctedText containing the edit plus up to two surrounding words.
+        Review speech-to-text corrections. Each candidate has originalText and correctedText containing the edit plus up to three surrounding words.
 
-        Identify every independently reusable correction. Usually return one decision per candidate. Use minimal safe boundaries except for personal names: the complete-name rule always overrides minimality. Separate adjacent independent terms. If learnable and ordinary edits are mixed, return only the learnable corrections. Return rejectCorrection only when nothing is learnable, and never mix rejection with acceptance for one candidateID.
+        Mandatory personal-name rule: A personal name is one indivisible term. For every accepted personal-name correction, incorrectTextToReplace and correctedVocabularyTerm must contain every visible name component, including every unchanged component. Apply this rule even when only a middle name, surname, particle, spacing, punctuation, or suffix changed. Returning only the changed fragment, first name, surname, or any other partial part of a visible multiword name is invalid. A personal name may consist of a single word; when only a single-word personal name is visible, that word is the complete name and may be accepted. Never invent or require name components that are not visible. Reject only when multiple visible words may belong to the name and its complete boundary cannot be identified confidently.
+
+        Identify every independently reusable correction. Usually return one decision per candidate. Separate adjacent independent terms. If learnable and ordinary edits are mixed, return only the learnable corrections. Return rejectCorrection only when nothing is learnable, and never mix rejection with acceptance for one candidateID.
 
         Before selecting an action, every acceptance must pass both gates:
 
@@ -450,11 +452,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
         Vocabulary is primarily for personal names. It may also include genuinely uncommon, user-specific, private, or obscure entities whose spelling improves recognition, such as internal project names, private product names, small organizations, uncommon local place names, usernames, and specialized terms a capable general-purpose ASR model is unlikely to know.
 
-        Use context to identify user-specific entities. “Call”, “email”, “ask”, “invite”, or “send to” makes the adjacent name a personal contact unless the text clearly identifies a public figure. For a phonetically plausible personal name, spelling, apostrophe, spacing, hyphenation, and diacritic corrections are learnable—not formatting-only edits. Labels such as “project”, “internal”, “repository”, “account”, “tenant”, or “pipeline” similarly support a user-specific entity. Context never substitutes for phonetic evidence or permits a semantic rewrite.
+        Use context to identify user-specific entities. “Call”, “email”, “ask”, “invite”, or “send to” supports interpreting the adjacent text as a personal name. For a phonetically plausible personal name, spelling, apostrophe, spacing, hyphenation, and diacritic corrections are learnable—not formatting-only edits. A personal name remains learnable when it belongs to a well-known or public person. Labels such as “project”, “internal”, “repository”, “account”, “tenant”, or “pipeline” similarly support a user-specific entity. Context never substitutes for phonetic evidence or permits a semantic rewrite.
 
-        Do not learn ordinary words or well-known public names, brands, products, technologies, places, or organizations. Examples include Microsoft, Apple, Google, Xcode, Markdown, React, PostgreSQL, and GitHub. VoiceInk is user-specific and may be learned. Outside the user-specific contexts above, capitalization or proper-noun appearance alone is insufficient; when uncertain, reject.
+        Do not learn ordinary words, brands, products, technologies, places, or organizations. Examples include Microsoft, Apple, Google, Xcode, Markdown, React, PostgreSQL, and GitHub. VoiceInk is user-specific and may be learned. Outside the user-specific contexts above, capitalization or proper-noun appearance alone is insufficient; when uncertain, reject.
 
-        For accepted replacements, choose minimal safe boundaries that capture the reusable mistranscription and corrected term without surrounding sentence words. Reject case-only changes and partial unsafe mappings.
+        Reject case-only changes and partial unsafe mappings.
 
         Batch canonicalization: when corrected terms are clearly spelling or pronunciation variants of one entity, use one corrected form already present in correctedText for all related acceptances. Prefer the most frequent, then most complete plausible form. Never invent a form or merge by meaning alone.
 
