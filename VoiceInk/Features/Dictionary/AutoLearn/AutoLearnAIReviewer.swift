@@ -13,15 +13,42 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         let candidatesForReview: [CandidateForReview]
     }
 
-    private struct AutoLearnReviewResponse: Decodable {
-        let reviewDecisions: [CandidateReviewDecision]
-    }
-
     private struct CandidateReviewDecision: Decodable {
         let candidateID: Int
         let learningAction: AutoLearnReviewAction
         let incorrectTextToReplace: String?
         let correctedVocabularyTerm: String?
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+            case candidateID
+            case learningAction
+            case incorrectTextToReplace
+            case correctedVocabularyTerm
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let returnedKeys = Set(container.allKeys.map(\.stringValue))
+            let expectedKeys = Set(CodingKeys.allCases.map(\.stringValue))
+            guard returnedKeys == expectedKeys else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .candidateID,
+                    in: container,
+                    debugDescription: "Each decision must contain exactly the four required fields."
+                )
+            }
+
+            candidateID = try container.decode(Int.self, forKey: .candidateID)
+            learningAction = try container.decode(AutoLearnReviewAction.self, forKey: .learningAction)
+            incorrectTextToReplace = try container.decodeIfPresent(
+                String.self,
+                forKey: .incorrectTextToReplace
+            )
+            correctedVocabularyTerm = try container.decodeIfPresent(
+                String.self,
+                forKey: .correctedVocabularyTerm
+            )
+        }
     }
 
     private enum ReviewError: LocalizedError {
@@ -54,10 +81,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     /// while providers are still starting up instead of recording a failure.
     var hasAvailableProvider: Bool {
         guard let aiService = enhancementService.getAIService() else { return false }
-        let connectedProviders = aiService.connectedProviders.filter {
-            AutoLearnProviderPolicy.isSupported($0)
-                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
-        }
+        let connectedProviders = availableProviders(in: aiService)
         if let selected = AutoLearnSettings.selectedProvider {
             return connectedProviders.contains(selected)
         }
@@ -72,10 +96,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.unavailable
         }
 
-        let connectedProviders = aiService.connectedProviders.filter {
-            AutoLearnProviderPolicy.isSupported($0)
-                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
-        }
+        let connectedProviders = availableProviders(in: aiService)
         // Respect the user's provider choice. Ollama keeps correction review on-device.
         guard let provider = AutoLearnSettings.selectedProvider ?? connectedProviders.first,
             connectedProviders.contains(provider)
@@ -83,25 +104,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             throw ReviewError.unavailable
         }
         let modelName = AutoLearnSettings.selectedModel ?? aiService.selectedModel(for: provider)
-
-        let prompt = CustomPrompt(
-            title: "Auto Learn Review",
-            promptText: Self.reviewPrompt,
-            useSystemInstructions: false
-        )
-        let configuration = EnhancementRuntimeConfiguration(
-            mode: nil,
-            isEnabled: true,
-            prompt: prompt,
-            provider: provider,
-            modelName: modelName,
-            useClipboardContext: false,
-            useSelectedTextContext: false,
-            useScreenCaptureContext: false
-        )
-        guard enhancementService.isConfigured(for: configuration) else {
-            throw ReviewError.unavailable
-        }
 
         let candidatesForReview = candidates.enumerated().map { index, candidate in
             AutoLearnReviewRequest.CandidateForReview(
@@ -113,9 +115,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         let requestData = try JSONEncoder().encode(
             AutoLearnReviewRequest(candidatesForReview: candidatesForReview)
         )
-        guard let requestText = String(data: requestData, encoding: .utf8) else {
-            throw ReviewError.invalidResponse
-        }
+        let requestText = String(decoding: requestData, as: UTF8.self)
 
         let loggedModelName = modelName ?? "provider-default"
         logger.notice(
@@ -127,7 +127,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             provider: provider,
             modelName: modelName
         )
-        let candidateReviewDecisions = try decodeResponse(responseText)
+        let candidateReviewDecisions = try decodeResponse(
+            responseText,
+            provider: provider,
+            modelName: loggedModelName
+        )
         let expectedCandidateIDs = Set(candidates.indices)
         let decisionsByCandidateID = Dictionary(grouping: candidateReviewDecisions) {
             $0.candidateID
@@ -206,6 +210,13 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             reviewDecisions: reviewDecisions,
             unresolvedReviews: unresolvedReviews
         )
+    }
+
+    private func availableProviders(in aiService: AIService) -> [AIProvider] {
+        aiService.connectedProviders.filter {
+            AutoLearnProviderPolicy.isSupported($0)
+                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
+        }
     }
 
     private func unresolvedReview(
@@ -362,35 +373,65 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         return assign(0, occupied: [])
     }
 
-    private func decodeResponse(_ text: String) throws -> [CandidateReviewDecision] {
-        var payload = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func decodeResponse(
+        _ text: String,
+        provider: AIProvider,
+        modelName: String
+    ) throws -> [CandidateReviewDecision] {
+        let payload = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if payload.hasPrefix("```") {
-            let lines = payload.split(separator: "\n", omittingEmptySubsequences: false)
-            let closingFence = lines.last.map {
-                String($0).trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            guard lines.count >= 3, closingFence == "```" else {
-                throw ReviewError.invalidResponse
-            }
-            payload = lines.dropFirst().dropLast().joined(separator: "\n")
+            logInvalidResponse(
+                payload,
+                provider: provider,
+                modelName: modelName,
+                reason: "markdown-code-fence"
+            )
+            throw ReviewError.invalidResponse
         }
 
-        guard let data = payload.data(using: .utf8) else {
-            throw ReviewError.invalidResponse
-        }
+        let data = Data(payload.utf8)
+
         do {
-            return try JSONDecoder()
-                .decode(AutoLearnReviewResponse.self, from: data)
-                .reviewDecisions
+            return try JSONDecoder().decode([CandidateReviewDecision].self, from: data)
         } catch {
+            let diagnostic = invalidResponseDiagnostic(for: data)
+            logInvalidResponse(
+                payload,
+                provider: provider,
+                modelName: modelName,
+                reason: diagnostic.reason,
+                shape: diagnostic.shape
+            )
             throw ReviewError.invalidResponse
         }
+    }
+
+    private func logInvalidResponse(
+        _ payload: String,
+        provider: AIProvider,
+        modelName: String,
+        reason: String,
+        shape: String = "unknown"
+    ) {
+        let preview = String(payload.prefix(1_000))
+        logger.error(
+            "Auto Learn response invalid provider=\(provider.rawValue, privacy: .public) model=\(modelName, privacy: .public) reason=\(reason, privacy: .public) shape=\(shape, privacy: .public) characters=\(payload.count, privacy: .public) responsePreview=\(preview, privacy: .private)"
+        )
+    }
+
+    private func invalidResponseDiagnostic(for data: Data) -> (reason: String, shape: String) {
+        guard let value = try? JSONSerialization.jsonObject(with: data) else {
+            return ("malformed-json", "invalid-json")
+        }
+        if value is [Any] { return ("invalid-decision-array", "array") }
+        if value is [String: Any] { return ("expected-top-level-array", "object") }
+        return ("unsupported-json-shape", "scalar")
     }
 
     private static let reviewPrompt = """
         Review speech-to-text corrections. Each candidate has originalText and correctedText containing the edit plus up to two surrounding words.
 
-        Identify every minimal, independently reusable correction. Usually return one decision per candidate. Separate adjacent independent terms, but treat a visible multiword personal name as one indivisible term, even when only one component changed. If learnable and ordinary edits are mixed, return only the learnable corrections. Return rejectCorrection only when nothing is learnable, and never mix rejection with acceptance for one candidateID.
+        Identify every independently reusable correction. Usually return one decision per candidate. Use minimal safe boundaries except for personal names: the complete-name rule always overrides minimality. Separate adjacent independent terms. If learnable and ordinary edits are mixed, return only the learnable corrections. Return rejectCorrection only when nothing is learnable, and never mix rejection with acceptance for one candidateID.
 
         Before selecting an action, every acceptance must pass both gates:
 
@@ -407,23 +448,26 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         3. addVocabularyOnly: the corrected term passes the Vocabulary gate and the pair passes the phonetic gate, but the source is too broad or ambiguous for a safe global replacement. Never use this for coherent descriptions, semantic rewrites, deliberate abbreviations, or expansions.
         4. rejectCorrection: nothing is safely reusable, including ordinary wording, grammar, style, meaning, facts, numbers, dates, abbreviations, expansions, changed qualifiers, editions, generic type words, and corrections a capable general-purpose ASR model should handle without permanent user-specific learning.
 
-        Vocabulary is primarily for personal names. It may also include genuinely uncommon, user-specific, private, or obscure entities whose spelling improves recognition, such as internal project names, private product names, small organizations, uncommon local place names, usernames, and specialized terms a capable general-purpose ASR model is unlikely to know. When adjacent components of a personal name are visible, correctedVocabularyTerm must contain the complete name; learn one component alone only when it appears alone.
+        Vocabulary is primarily for personal names. It may also include genuinely uncommon, user-specific, private, or obscure entities whose spelling improves recognition, such as internal project names, private product names, small organizations, uncommon local place names, usernames, and specialized terms a capable general-purpose ASR model is unlikely to know.
 
-        Use the snippet's ordinary language as evidence of entity type. Phrases such as “call”, “email”, “ask”, “invite”, or “send this to” support treating the adjacent corrected phrase as a personal name. Labels such as “Project”, “internal”, “dashboard”, “service”, “repository”, “account”, “tenant”, or “pipeline” support treating an unfamiliar corrected term as user-specific. Location phrases such as “meet at”, “drive toward”, “lodge in”, or “visit” support treating an unfamiliar corrected place name as an uncommon location. This contextual evidence establishes only what kind of entity the term is; it never substitutes for phonetic evidence and never overrides the exclusions below.
+        Use context to identify user-specific entities. “Call”, “email”, “ask”, “invite”, or “send to” makes the adjacent name a personal contact unless the text clearly identifies a public figure. For a phonetically plausible personal name, spelling, apostrophe, spacing, hyphenation, and diacritic corrections are learnable—not formatting-only edits. Labels such as “project”, “internal”, “repository”, “account”, “tenant”, or “pipeline” similarly support a user-specific entity. Context never substitutes for phonetic evidence or permits a semantic rewrite.
 
-        Do not learn ordinary words, generic terminology, well-known brands, public products, programming languages, tools, libraries, frameworks, platforms, technologies, standards, countries, major cities, famous organizations, or famous public people. For example, terms such as Microsoft, Apple, Google, Xcode, Markdown, React, PostgreSQL, and GitHub must be rejected completely, with no Vocabulary entry and no replacement. A term being capitalized, technical, specialized-looking, or a proper noun is not enough to qualify. Do not infer private status without evidence. When uncertain whether a term is personal or uncommon enough to provide lasting user-specific value, reject it.
+        Do not learn ordinary words or well-known public names, brands, products, technologies, places, or organizations. Examples include Microsoft, Apple, Google, Xcode, Markdown, React, PostgreSQL, and GitHub. VoiceInk is user-specific and may be learned. Outside the user-specific contexts above, capitalization or proper-noun appearance alone is insufficient; when uncertain, reject.
 
-        For accepted replacements, choose minimal safe boundaries that capture the reusable mistranscription and corrected term without surrounding sentence words. For a multiword personal name, incorrectTextToReplace must contain the corresponding complete original name. Example: "Prakash Joshi Pages" to "Prakash Joshi Pax" must learn the complete names, never only "Pages" to "Pax" or "Pax". Reject case-only changes and partial unsafe mappings.
+        For accepted replacements, choose minimal safe boundaries that capture the reusable mistranscription and corrected term without surrounding sentence words. Reject case-only changes and partial unsafe mappings.
 
         Batch canonicalization: when corrected terms are clearly spelling or pronunciation variants of one entity, use one corrected form already present in correctedText for all related acceptances. Prefer the most frequent, then most complete plausible form. Never invent a form or merge by meaning alone.
 
         For replacement actions, incorrectTextToReplace must be an exact nonempty contiguous substring of that candidate's originalText and correctedVocabularyTerm must be copied from correctedText, except canonicalization may copy it from another candidate. For addVocabularyOnly set incorrectTextToReplace to null. For rejectCorrection set both fields to null.
 
-        Return JSON only:
-        {"reviewDecisions":[{"candidateID":0,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"original term","correctedVocabularyTerm":"corrected term"}]}
+        Before returning a personal-name decision, treat the visible multiword name as one indivisible term and verify that both fields contain the complete original and corrected names, even if only one component changed. Never return only a first name, surname, or changed fragment. Example: "Prakash Joshi Pages" to "Prakash Joshi Pax" must learn the complete names, never only "Pages" to "Pax". If either complete name is uncertain, reject the correction.
 
-        Allowed actions are addReplacementAndVocabulary, addReplacementOnly, addVocabularyOnly, and rejectCorrection. Copy every integer candidateID exactly and return each input candidateID at least once. Repeat an ID only for independent corrections.
+        Return only one JSON array. Do not return an outer object, reviewDecisions key, explanation, Markdown, or code fence. Each array object must contain exactly these four fields: candidateID, learningAction, incorrectTextToReplace, and correctedVocabularyTerm.
 
-        Reject false corrections and false-positive matches. When uncertain, reject: a false acceptance is worse than missing a valid correction.
+        Exact output format:
+        [{"candidateID":0,"learningAction":"addReplacementAndVocabulary","incorrectTextToReplace":"original term","correctedVocabularyTerm":"corrected term"},{"candidateID":1,"learningAction":"rejectCorrection","incorrectTextToReplace":null,"correctedVocabularyTerm":null}]
+
+        Allowed actions are addReplacementAndVocabulary, addReplacementOnly, addVocabularyOnly, and rejectCorrection. Copy every integer candidateID exactly and return each input candidateID at least once. Repeat an ID only for independent accepted corrections.
+
         """
 }
