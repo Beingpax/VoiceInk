@@ -34,7 +34,10 @@ class CursorPaster {
     @discardableResult
     static func startPasteAtCursor(_ text: String) -> Task<PasteResult, Never> {
         Task { @MainActor in
-            await performPasteSession(text)
+            if PasteMethod.current() == .directTyping {
+                return await typeTextDirectly(text)
+            }
+            return await performPasteSession(text)
         }
     }
 
@@ -217,6 +220,191 @@ class CursorPaster {
         guard seconds > 0 else { return }
         let nanoseconds = UInt64(seconds * 1_000_000_000)
         try? await Task.sleep(nanoseconds: nanoseconds)
+    }
+
+    // MARK: - Direct Typing (for Remote Desktop / virtual machine sessions)
+
+    // A character that can be produced by pressing one key, optionally with Shift.
+    private struct KeyStroke {
+        let keyCode: CGKeyCode
+        let shift: Bool
+    }
+
+    private static let directTypingInterKeyDelay: UInt64 = 5_000_000
+
+    // Remote-desktop clients (e.g. Microsoft Remote Desktop) ignore the Unicode
+    // payload attached via keyboardSetUnicodeString and instead forward the
+    // virtual key code / scancode to the guest OS. Posting every character with
+    // virtualKey 0 therefore typed the physical 'A' key for every character on
+    // the remote side. To type correctly we resolve each character to its real
+    // virtual key code (plus Shift) for the active keyboard layout and post those
+    // hardware-style events. Characters that can't be produced that way fall back
+    // to Unicode injection, which still works for local apps.
+    @MainActor
+    private static func typeTextDirectly(_ text: String) async -> PasteResult {
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility permission is required to type text directly")
+            return .commandNotPosted
+        }
+
+        guard let source = CGEventSource(stateID: .privateState) else {
+            logger.error("Failed to create event source for direct typing")
+            return .commandNotPosted
+        }
+
+        // Give the recorder UI time to dismiss and hand focus back before the
+        // first character. Some apps/remote-desktop clients drop the first event
+        // if typing starts while focus is still settling.
+        await wait(prePasteDelay)
+
+        let keyStrokeMap = buildKeyStrokeMap()
+        let autoSendKey = ModeManager.shared.currentActiveConfiguration?.autoSendKey ?? .none
+
+        for character in text {
+            if let keyStroke = keyStroke(for: character, in: keyStrokeMap, autoSendKey: autoSendKey) {
+                postKeyStroke(keyStroke, source: source)
+            } else {
+                // Emoji, accented dead-key characters, etc. that aren't reachable
+                // with a single key on the current layout. Best-effort: works for
+                // local apps, may be dropped by remote-desktop sessions.
+                postUnicodeCharacter(character, source: source)
+            }
+
+            try? await Task.sleep(nanoseconds: directTypingInterKeyDelay)
+        }
+
+        return .commandPosted
+    }
+
+    private static func keyStroke(
+        for character: Character,
+        in map: [Character: KeyStroke],
+        autoSendKey: AutoSendKey
+    ) -> KeyStroke? {
+        switch character {
+        case "\n", "\r":
+            // Prefer bare Return so Direct Typing matches literal pasted text in
+            // terminals and form fields. If Return is the configured Auto Send
+            // key, use Shift+Return for embedded line breaks so the final Auto
+            // Send remains the only intentional submission keystroke.
+            return KeyStroke(keyCode: CGKeyCode(kVK_Return), shift: autoSendKey == .enter)
+        case "\t":
+            return KeyStroke(keyCode: CGKeyCode(kVK_Tab), shift: false)
+        default:
+            return map[character]
+        }
+    }
+
+    @MainActor
+    private static func postKeyStroke(_ keyStroke: KeyStroke, source: CGEventSource?) {
+        let flags: CGEventFlags = keyStroke.shift ? .maskShift : []
+
+        // Press Shift as a real key so the remote session updates its modifier
+        // state; merely setting the flag on the character event is not enough.
+        if keyStroke.shift {
+            let shiftDown = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Shift), keyDown: true)
+            shiftDown?.flags = .maskShift
+            shiftDown?.post(tap: .cghidEventTap)
+        }
+
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyStroke.keyCode, keyDown: true)
+        keyDown?.flags = flags
+        keyDown?.post(tap: .cghidEventTap)
+
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyStroke.keyCode, keyDown: false)
+        keyUp?.flags = flags
+        keyUp?.post(tap: .cghidEventTap)
+
+        // Always release Shift if it was pressed so it never sticks on the remote side.
+        if keyStroke.shift {
+            let shiftUp = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Shift), keyDown: false)
+            shiftUp?.flags = []
+            shiftUp?.post(tap: .cghidEventTap)
+        }
+    }
+
+    @MainActor
+    private static func postUnicodeCharacter(_ character: Character, source: CGEventSource?) {
+        var utf16Units = Array(String(character).utf16)
+        guard !utf16Units.isEmpty,
+            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
+            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+        else {
+            return
+        }
+
+        keyDown.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.keyboardSetUnicodeString(stringLength: utf16Units.count, unicodeString: &utf16Units)
+        keyUp.post(tap: .cghidEventTap)
+    }
+
+    // Builds a character -> key code map for the active keyboard layout. Only the
+    // unmodified and Shift variants are considered: Option/AltGr characters are
+    // intentionally excluded because remote-desktop clients map Option to the
+    // Windows Alt key, which can open menus or produce the wrong character.
+    @MainActor
+    private static func buildKeyStrokeMap() -> [Character: KeyStroke] {
+        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+            let layoutDataRef = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData)
+        else {
+            logger.error("Direct typing could not read the current keyboard layout")
+            return [:]
+        }
+
+        let layoutData = unsafeBitCast(layoutDataRef, to: CFData.self)
+        guard let layoutBytes = CFDataGetBytePtr(layoutData) else {
+            return [:]
+        }
+
+        let keyboardType = UInt32(LMGetKbdType())
+        // modifierKeyState for UCKeyTranslate is the Carbon modifier mask shifted
+        // right by 8, so Shift (0x0200) becomes 0x02.
+        let modifierVariants: [(state: UInt32, shift: Bool)] = [
+            (0x00, false),
+            (0x02, true),
+        ]
+
+        var map: [Character: KeyStroke] = [:]
+
+        for keyCode in 0..<UInt16(128) {
+            for variant in modifierVariants {
+                var deadKeyState: UInt32 = 0
+                var chars = [UniChar](repeating: 0, count: 4)
+                var length = 0
+
+                let status = layoutBytes.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) {
+                    keyboardLayout in
+                    UCKeyTranslate(
+                        keyboardLayout,
+                        keyCode,
+                        UInt16(kUCKeyActionDown),
+                        variant.state,
+                        keyboardType,
+                        UInt32(kUCKeyTranslateNoDeadKeysMask),
+                        &deadKeyState,
+                        chars.count,
+                        &length,
+                        &chars
+                    )
+                }
+
+                guard status == noErr, length > 0 else { continue }
+
+                let produced = String(utf16CodeUnits: chars, count: length)
+                guard produced.count == 1, let character = produced.first,
+                    !character.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
+                else {
+                    continue
+                }
+
+                if map[character] == nil {
+                    map[character] = KeyStroke(keyCode: CGKeyCode(keyCode), shift: variant.shift)
+                }
+            }
+        }
+
+        return map
     }
 
     // MARK: - Auto Send Keys
