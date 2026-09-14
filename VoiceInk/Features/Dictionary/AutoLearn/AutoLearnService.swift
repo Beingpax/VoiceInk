@@ -149,8 +149,8 @@ actor AutoLearnService {
                 learningAction: action,
                 incorrectTextToReplace: action == .addVocabularyOnly
                     ? nil
-                    : proposal.incorrectTextToReplace,
-                correctedVocabularyTerm: proposal.correctedVocabularyTerm
+                    : selection.incorrectTextToReplace,
+                correctedVocabularyTerm: selection.correctedVocabularyTerm
             )
         }
         guard !decisions.isEmpty else { return .empty }
@@ -170,6 +170,18 @@ actor AutoLearnService {
     func dismissReviewProposals(_ proposalIDs: Set<UUID>) async throws {
         try await reviewProposalStore.remove(proposalIDs)
         await notifyReviewProposalsChanged()
+    }
+
+    func updateReviewProposal(
+        proposalID: UUID,
+        incorrectTextToReplace: String?,
+        correctedVocabularyTerm: String
+    ) async throws {
+        try await reviewProposalStore.update(
+            proposalID: proposalID,
+            incorrectTextToReplace: incorrectTextToReplace,
+            correctedVocabularyTerm: correctedVocabularyTerm
+        )
     }
 
     func retryPendingReviews() async {

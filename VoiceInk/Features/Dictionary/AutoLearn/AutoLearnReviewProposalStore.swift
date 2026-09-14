@@ -76,6 +76,36 @@ actor AutoLearnReviewProposalStore {
         }
     }
 
+    func update(
+        proposalID: UUID,
+        incorrectTextToReplace: String?,
+        correctedVocabularyTerm: String
+    ) throws {
+        try loadIfNeeded()
+        guard let index = proposals.firstIndex(where: { $0.id == proposalID }) else { return }
+
+        let proposal = proposals[index]
+        let updatedProposal = AutoLearnReviewProposal(
+            id: proposal.id,
+            candidateID: proposal.candidateID,
+            originalText: proposal.originalText,
+            correctedText: proposal.correctedText,
+            learningAction: proposal.learningAction,
+            incorrectTextToReplace: incorrectTextToReplace,
+            correctedVocabularyTerm: correctedVocabularyTerm
+        )
+        guard Self.proposalKey(updatedProposal) != Self.proposalKey(proposal) else { return }
+
+        let originalProposals = proposals
+        proposals[index] = updatedProposal
+        do {
+            try save()
+        } catch {
+            proposals = originalProposals
+            throw error
+        }
+    }
+
     private func loadIfNeeded() throws {
         guard !isLoaded else { return }
         defer { isLoaded = true }

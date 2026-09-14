@@ -131,6 +131,8 @@ struct AutoLearnReviewSelection: Sendable {
     let proposalID: UUID
     let includesReplacement: Bool
     let includesVocabulary: Bool
+    let incorrectTextToReplace: String?
+    let correctedVocabularyTerm: String
 }
 
 struct AutoLearnMutationSummary: Sendable {
