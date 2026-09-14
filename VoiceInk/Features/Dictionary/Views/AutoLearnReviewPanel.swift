@@ -217,13 +217,19 @@ struct AutoLearnReviewPanel: View {
     private func loadAndReview() async {
         isReviewing = true
         errorMessage = nil
-        await reloadProposals(selectNewItems: true)
-        await AutoLearnService.shared.preparePendingReviewForApproval()
-        await reloadProposals(selectNewItems: true)
+        proposals = []
+        selections = [:]
+        drafts = [:]
+        do {
+            try await AutoLearnService.shared.prepareFreshPendingReviewForApproval()
+            await reloadProposals(selectNewItems: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
         isReviewing = false
 
         let pendingCount = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0
-        if pendingCount > 0 {
+        if pendingCount > 0, errorMessage == nil {
             errorMessage = String(
                 localized: "Some corrections could not be reviewed. Check the selected AI provider and try again."
             )

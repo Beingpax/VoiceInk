@@ -86,9 +86,21 @@ actor AutoLearnService {
         await schedulePendingReview()
     }
 
-    func preparePendingReviewForApproval() async {
+    func prepareFreshPendingReviewForApproval() async throws {
         guard AutoLearnSettings.isEnabled else { return }
         await cancelReviewTask()
+        try await reviewProposalStore.removeAll()
+        await notifyReviewProposalsChanged()
+        await startPendingReviewForApproval()
+    }
+
+    private func preparePendingReviewForApproval() async {
+        guard AutoLearnSettings.isEnabled else { return }
+        await cancelReviewTask()
+        await startPendingReviewForApproval()
+    }
+
+    private func startPendingReviewForApproval() async {
         guard await reviewer?.hasAvailableProvider == true else {
             logger.notice("Manual Auto Learn review deferred: no provider available")
             return
