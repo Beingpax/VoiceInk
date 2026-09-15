@@ -253,7 +253,7 @@ class ImportExportService {
         menuBarManager: MenuBarManager, mediaController: MediaController, playbackController: PlaybackController,
         recorderUIManager: RecorderUIManager, modelContext: ModelContext,
         transcriptionModelManager: TranscriptionModelManager
-    ) {
+    ) async {
         let openPanel = NSOpenPanel()
         openPanel.allowedContentTypes = [UTType.json]
         openPanel.canChooseFiles = true
@@ -305,7 +305,7 @@ class ImportExportService {
                 return
             }
 
-            try BackupImporter.apply(
+            try await BackupImporter.apply(
                 backup,
                 categories: selectedCategories,
                 enhancementService: enhancementService,

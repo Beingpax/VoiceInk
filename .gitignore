@@ -33,6 +33,7 @@ playground.xcworkspace
 .build/
 build/
 .local-build/
+.review-build/
 .local-dependencies/
 
 # CocoaPods

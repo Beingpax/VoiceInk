@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var showResetOnboardingAlert = false
     @State private var showLanguageRestartAlert = false
     @State private var cancelRecordingShortcutRecorderResetID = 0
+    @State private var isImportingSettings = false
 
     @State private var isRestoreClipboardExpanded = false
 
@@ -272,17 +273,23 @@ struct SettingsView: View {
 
                 LabeledContent("Import Settings") {
                     Button("Import") {
-                        ImportExportService.shared.importSettings(
-                            enhancementService: enhancementService,
-                            recordingShortcutManager: recordingShortcutManager,
-                            menuBarManager: menuBarManager,
-                            mediaController: mediaController,
-                            playbackController: playbackController,
-                            recorderUIManager: recorderUIManager,
-                            modelContext: modelContext,
-                            transcriptionModelManager: transcriptionModelManager
-                        )
+                        guard !isImportingSettings else { return }
+                        isImportingSettings = true
+                        Task { @MainActor in
+                            defer { isImportingSettings = false }
+                            await ImportExportService.shared.importSettings(
+                                enhancementService: enhancementService,
+                                recordingShortcutManager: recordingShortcutManager,
+                                menuBarManager: menuBarManager,
+                                mediaController: mediaController,
+                                playbackController: playbackController,
+                                recorderUIManager: recorderUIManager,
+                                modelContext: modelContext,
+                                transcriptionModelManager: transcriptionModelManager
+                            )
+                        }
                     }
+                    .disabled(isImportingSettings)
                 }
             } header: {
                 Text("Backup")

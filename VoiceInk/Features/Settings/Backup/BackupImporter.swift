@@ -1,17 +1,6 @@
 import Foundation
 import SwiftData
 
-enum BackupImportError: LocalizedError {
-    case saveFailed(String, Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .saveFailed(let item, let error):
-            return String(format: String(localized: "Failed to save imported %@: %@"), item, error.localizedDescription)
-        }
-    }
-}
-
 enum BackupImporter {
     private static let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
 
@@ -21,11 +10,11 @@ enum BackupImporter {
         recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager,
         mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager,
         modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager
-    ) throws {
+    ) async throws {
         var shouldRepairModePromptSelections = false
 
         if categories.contains(.dictionary) {
-            try importDictionary(from: backup, modelContext: modelContext)
+            try await importDictionary(from: backup, modelContext: modelContext)
         }
 
         if categories.contains(.general) {
@@ -232,142 +221,42 @@ enum BackupImporter {
     }
 
     @MainActor
-    private static func importDictionary(from backup: BackupFile, modelContext: ModelContext) throws {
-        var insertedWords = 0
-        var insertedReplacements = 0
-        var skippedInvalidReplacements = 0
-        var didMutateReplacements = false
-
-        if let words = backup.vocabularyWords {
-            let descriptor = FetchDescriptor<VocabularyWord>()
-            let existingWords = try modelContext.fetch(descriptor)
-            var existingWordsSet = Set(existingWords.map { $0.word.lowercased() })
-
-            for item in words {
-                let word = item.word.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !word.isEmpty else { continue }
-
-                let lowercasedWord = word.lowercased()
-                if !existingWordsSet.contains(lowercasedWord) {
-                    modelContext.insert(VocabularyWord(word: word))
-                    existingWordsSet.insert(lowercasedWord)
-                    insertedWords += 1
-                }
-            }
-        } else {
-            print("No vocabulary words found in the imported file. Existing items remain unchanged.")
-        }
-
-        if let replacements = backup.wordReplacements {
-            let descriptor = FetchDescriptor<WordReplacement>()
-            var existingReplacements = try modelContext.fetch(descriptor)
-
-            var existingDestinationsBySource: [String: Set<String>] = [:]
-            for existing in existingReplacements {
-                let destinationKey = WordReplacementVariants.destinationKey(
-                    for: existing.replacementText
-                )
-                for variant in WordReplacementVariants.parse(existing.originalText) {
-                    existingDestinationsBySource[WordReplacementVariants.key(for: variant), default: []]
-                        .insert(destinationKey)
-                }
-            }
-
-            for (original, replacement) in replacements {
-                let trimmedReplacement = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .precomposedStringWithCanonicalMapping
-                let importVariants = WordReplacementVariants.parse(original)
-                let importKeys = importVariants.map { WordReplacementVariants.key(for: $0) }
-                let destinationKey = WordReplacementVariants.destinationKey(for: trimmedReplacement)
-                guard !importVariants.isEmpty, !trimmedReplacement.isEmpty else {
-                    skippedInvalidReplacements += 1
-                    continue
-                }
-
-                let hasConflict = importKeys.contains { sourceKey in
-                    guard let existingDestinations = existingDestinationsBySource[sourceKey] else {
-                        return false
-                    }
-                    return existingDestinations.contains(where: { $0 != destinationKey })
-                }
-                guard !hasConflict else {
-                    skippedInvalidReplacements += 1
-                    continue
-                }
-
-                let newVariants = zip(importVariants, importKeys)
-                    .filter { existingDestinationsBySource[$0.1] == nil }
-                    .map(\.0)
-                let destinationMatches = existingReplacements
-                    .filter {
-                        WordReplacementVariants.destinationKey(for: $0.replacementText)
-                            == destinationKey
-                    }
-                    .sorted {
-                        if $0.dateAdded != $1.dateAdded { return $0.dateAdded < $1.dateAdded }
-                        return $0.id.uuidString < $1.id.uuidString
-                    }
-
-                if let canonical = destinationMatches.first {
-                    let consolidatedVariants = WordReplacementVariants.serialize(
-                        destinationMatches.flatMap {
-                            WordReplacementVariants.parse($0.originalText)
-                        } + importVariants
-                    )
-                    if canonical.originalText != consolidatedVariants
-                        || canonical.replacementText != trimmedReplacement
-                        || destinationMatches.count > 1
-                    {
-                        didMutateReplacements = true
-                    }
-                    canonical.originalText = consolidatedVariants
-                    canonical.replacementText = trimmedReplacement
-                    for duplicate in destinationMatches.dropFirst() {
-                        modelContext.delete(duplicate)
-                        existingReplacements.removeAll { $0 === duplicate }
-                    }
-                    if !newVariants.isEmpty {
-                        insertedReplacements += 1
-                    }
-                } else {
-                    let entry = WordReplacement(
-                        originalText: WordReplacementVariants.serialize(importVariants),
-                        replacementText: trimmedReplacement
-                    )
-                    modelContext.insert(entry)
-                    existingReplacements.append(entry)
-                    insertedReplacements += 1
-                    didMutateReplacements = true
-                }
-                for sourceKey in importKeys {
-                    existingDestinationsBySource[sourceKey, default: []].insert(destinationKey)
-                }
-            }
-        } else {
-            print("No word replacements found in the imported file. Existing replacements remain unchanged.")
-        }
-
-        guard insertedWords > 0 || didMutateReplacements else {
+    private static func importDictionary(from backup: BackupFile, modelContext: ModelContext) async throws {
+        guard backup.vocabularyWords != nil || backup.wordReplacements != nil else {
             print("No new dictionary entries were imported.")
-            if skippedInvalidReplacements > 0 {
-                print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
-            }
             DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
             return
         }
 
-        do {
-            try modelContext.save()
-            print(
-                "Successfully imported \(insertedWords) vocabulary words and \(insertedReplacements) word replacements to SwiftData."
-            )
-            if skippedInvalidReplacements > 0 {
-                print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
+        let replacementEntries = (backup.wordReplacements ?? [:])
+            .sorted { $0.key < $1.key }
+            .map { original, replacement in
+                DictionaryReplacementEntry(
+                    sources: WordReplacementVariants.parse(original),
+                    replacement: replacement,
+                    createdAt: nil
+                )
             }
-            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
-        } catch {
-            modelContext.rollback()
-            throw BackupImportError.saveFailed("dictionary entries", error)
+
+        let archive = DictionaryArchive(
+            vocabulary: (backup.vocabularyWords ?? []).map {
+                DictionaryVocabularyEntry(term: $0.word, createdAt: nil)
+            },
+            replacements: replacementEntries
+        )
+
+        let result = try await DictionaryImportExportService.apply(
+            archive: archive,
+            mode: .merge,
+            modelContext: modelContext
+        )
+        DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
+        print(
+            "Successfully imported \(result.summary.vocabularyToImport) vocabulary entries and "
+                + "\(result.summary.replacementRulesToImport) word replacement rules."
+        )
+        if result.summary.skippedEntryCount > 0 {
+            print("Skipped \(result.summary.skippedEntryCount) dictionary entries.")
         }
     }
 

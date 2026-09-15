@@ -1,12 +1,22 @@
 import SwiftUI
 
+private struct DictionaryTransferAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+}
+
 struct DictionarySettingsPanel: View {
+    @Environment(\.modelContext) private var modelContext
+
     let onDismiss: () -> Void
     let onReviewNow: () -> Void
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
     @AppStorage(AutoLearnSettings.reviewScheduleKey)
     private var reviewScheduleRawValue = AutoLearnReviewSchedule.immediately.rawValue
     @State private var pendingCorrectionCount = 0
+    @State private var pendingImport: DictionaryImportPayload?
+    @State private var transferAlert: DictionaryTransferAlert?
 
     var body: some View {
         QuickPanelScaffold {
@@ -65,6 +75,22 @@ struct DictionarySettingsPanel: View {
                 } header: {
                     AutoLearnSectionHeader()
                 }
+
+                Section {
+                    LabeledContent("Export Dictionary") {
+                        Button("Export") {
+                            exportDictionary()
+                        }
+                    }
+
+                    LabeledContent("Import Dictionary") {
+                        Button("Import") {
+                            chooseDictionaryFile()
+                        }
+                    }
+                } header: {
+                    Text("Dictionary Data")
+                }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -88,6 +114,24 @@ struct DictionarySettingsPanel: View {
             Task {
                 await refreshPendingCorrectionCount()
             }
+        }
+        .sheet(item: $pendingImport) { payload in
+            DictionaryImportPreviewSheet(
+                payload: payload,
+                onCancel: {
+                    pendingImport = nil
+                },
+                onImported: { _ in
+                    pendingImport = nil
+                }
+            )
+        }
+        .alert(item: $transferAlert) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .cancel(Text("OK"))
+            )
         }
     }
 
@@ -117,5 +161,47 @@ struct DictionarySettingsPanel: View {
         let pending = (try? await AutoLearnService.shared.outstandingReviewCount()) ?? 0
         let proposals = (try? await AutoLearnService.shared.reviewProposalCount()) ?? 0
         pendingCorrectionCount = pending + proposals
+    }
+
+    @MainActor
+    private func exportDictionary() {
+        do {
+            let archive = try DictionaryImportExportService.makeArchive(modelContext: modelContext)
+            let data = try DictionaryImportExportService.encodeArchive(archive)
+            guard let url = try DictionaryFilePanelService.saveDictionaryData(data) else {
+                return
+            }
+            showTransferAlert(
+                title: String(localized: "Dictionary Exported"),
+                message: String(
+                    format: String(localized: "Vocabulary and word replacements were exported to %@."),
+                    url.lastPathComponent
+                )
+            )
+        } catch {
+            showTransferAlert(
+                title: String(localized: "Export Failed"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    @MainActor
+    private func chooseDictionaryFile() {
+        do {
+            guard let data = try DictionaryFilePanelService.chooseDictionaryData() else {
+                return
+            }
+            pendingImport = try DictionaryImportExportService.decodeArchiveData(data)
+        } catch {
+            showTransferAlert(
+                title: String(localized: "Import Failed"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func showTransferAlert(title: String, message: String) {
+        transferAlert = DictionaryTransferAlert(title: title, message: message)
     }
 }
