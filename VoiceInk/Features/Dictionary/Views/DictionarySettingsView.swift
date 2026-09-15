@@ -1,53 +1,10 @@
 import SwiftUI
 
-struct DictionaryEdgeActionButton: View {
-    let title: LocalizedStringKey
-    let systemImage: String
-    var shortcut: String? = nil
-    let help: LocalizedStringKey
-    var isDisabled = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 7) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 11, weight: .semibold))
-
-                Text(title)
-                    .lineLimit(1)
-
-                if let shortcut {
-                    Text(shortcut)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(AppTheme.Text.muted)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 3)
-                        .background(AppTheme.Surface.controlActive, in: RoundedRectangle(cornerRadius: 5))
-                }
-            }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(isDisabled ? AppTheme.Text.muted : AppTheme.Text.secondary)
-            .padding(.horizontal, 10)
-            .frame(height: 32)
-            .background {
-                RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
-                    .fill(AppTheme.Surface.control)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: AppTheme.Radius.control, style: .continuous)
-                            .strokeBorder(AppTheme.Border.card, lineWidth: 1)
-                    }
-            }
-        }
-        .buttonStyle(.plain)
-        .disabled(isDisabled)
-        .help(help)
-    }
-}
-
 struct DictionarySettingsView: View {
     @State private var selectedSection: DictionarySection = .replacements
-    @State private var isShowingSettings = false
+    @State private var activePanel: DictionaryPanel?
+    @State private var isAutoLearnReviewPresented = false
+    @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
     private let dictionaryInfoMessage: LocalizedStringKey =
         "Word Replacements run after transcription. Vocabulary helps supported transcription models and AI enhancement recognize names, technical terms, and unique spellings."
 
@@ -80,6 +37,11 @@ struct DictionarySettingsView: View {
         }
     }
 
+    private enum DictionaryPanel: Equatable {
+        case settings
+        case autoLearnFailure
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             headerSection
@@ -97,16 +59,52 @@ struct DictionarySettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 600, minHeight: 500)
-        .sidePanel(isPresented: $isShowingSettings) {
-            DictionarySettingsPanel {
-                isShowingSettings = false
+        .sidePanel(
+            isPresented: Binding(
+                get: { activePanel != nil },
+                set: { if !$0 { activePanel = nil } }
+            )
+        ) {
+            switch activePanel {
+            case .settings:
+                DictionarySettingsPanel {
+                    activePanel = nil
+                } onReviewNow: {
+                    activePanel = nil
+                    isAutoLearnReviewPresented = true
+                }
+            case .autoLearnFailure:
+                AutoLearnFailurePanel {
+                    activePanel = nil
+                }
+            case nil:
+                EmptyView()
+            }
+        }
+        .sidePanel(isPresented: $isAutoLearnReviewPresented) {
+            AutoLearnReviewPanel {
+                isAutoLearnReviewPresented = false
             }
         }
     }
 
     private var headerSection: some View {
-        AppScreenHeader(title: "Dictionary", infoMessage: dictionaryInfoMessage) {
-            settingsButton
+        AppScreenHeader(
+            title: "Dictionary",
+            infoMessage: dictionaryInfoMessage,
+            infoURL: "https://tryvoiceink.com/docs/auto-learn-dictionary"
+        ) {
+            HStack(spacing: 8) {
+                if hasAutoLearnFailure {
+                    AppIconButton(
+                        systemName: "exclamationmark.triangle.fill",
+                        help: "Dictionary Auto Learn failed"
+                    ) {
+                        activePanel = .autoLearnFailure
+                    }
+                }
+                settingsButton
+            }
         }
     }
 
@@ -115,7 +113,7 @@ struct DictionarySettingsView: View {
             systemName: "gearshape.fill",
             help: "Dictionary Settings"
         ) {
-            isShowingSettings.toggle()
+            activePanel = activePanel == .settings ? nil : .settings
         }
     }
 

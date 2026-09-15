@@ -343,16 +343,14 @@ struct HistoryView: View {
         }
     }
 
+    @ViewBuilder
     private var infoPanelContent: some View {
-        VStack(spacing: 0) {
-            AppPanelHeader(title: "Info", onClose: closePanel)
-
-            if let transcription = panelTranscription {
-                TranscriptionInfoPanel(transcription: transcription)
-                    .id(transcription.id)
-            } else {
-                Spacer()
-            }
+        if let transcription = panelTranscription {
+            TranscriptionInfoSidePanel(transcription: transcription, onClose: closePanel)
+                .id(transcription.id)
+        } else {
+            Color.clear
+                .task { closePanel() }
         }
     }
 

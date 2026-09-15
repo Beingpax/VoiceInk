@@ -62,11 +62,11 @@ struct ModeConfigFormView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-
+        QuickPanelScaffold {
             formContent
-
+        } header: {
+            header
+        } footer: {
             footer
         }
         .onAppear {
@@ -116,20 +116,17 @@ struct ModeConfigFormView: View {
 
             Spacer()
 
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(AppTheme.Surface.card)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Close")
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onDismiss
+            )
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .overlay(Divider().opacity(0.5), alignment: .bottom)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 
     private var formContent: some View {
@@ -148,6 +145,8 @@ struct ModeConfigFormView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .contentMargins(.top, 68, for: .scrollContent)
+        .contentMargins(.bottom, 58, for: .scrollContent)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .confirmationDialog(
             "Delete Mode?",
@@ -654,39 +653,30 @@ struct ModeConfigFormView: View {
     }
 
     private var footer: some View {
-        VStack(spacing: 0) {
-            HStack {
-                if case .edit = mode {
-                    Button("Delete", role: .destructive) {
-                        if isDeletingDefaultMode {
-                            isShowingDefaultModeDeleteAlert = true
-                        } else {
-                            isShowingDeleteConfirmation = true
-                        }
+        HStack {
+            if case .edit = mode {
+                AppActionButton("Delete", kind: .destructive) {
+                    if isDeletingDefaultMode {
+                        isShowingDefaultModeDeleteAlert = true
+                    } else {
+                        isShowingDeleteConfirmation = true
                     }
-                    .buttonStyle(.bordered)
-                } else {
-                    Button("Cancel") { onDismiss() }
-                        .keyboardShortcut(.escape, modifiers: [])
-                        .buttonStyle(.plain)
-                        .foregroundColor(.secondary)
                 }
-
-                Spacer()
-
-                Button {
-                    onSave()
-                } label: {
-                    Text("Save Changes")
-                        .frame(minWidth: 100)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!draft.canSave)
-                .keyboardShortcut(.return, modifiers: .command)
+            } else {
+                AppActionButton("Cancel") { onDismiss() }
+                    .keyboardShortcut(.escape, modifiers: [])
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+
+            Spacer()
+
+            AppActionButton("Save Changes", kind: .primary, minWidth: 100) {
+                onSave()
+            }
+            .disabled(!draft.canSave)
+            .keyboardShortcut(.return, modifiers: .command)
         }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.footerHeight)
     }
 
     private func availableLanguages(for model: any TranscriptionModel) -> [String: String] {

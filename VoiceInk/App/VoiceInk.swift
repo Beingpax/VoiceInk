@@ -23,7 +23,7 @@ struct VoiceInkApp: App {
     @StateObject private var enhancementService: AIEnhancementService
     @StateObject private var licenseViewModel = LicenseViewModel.shared
     @StateObject private var activeWindowService = ActiveWindowService.shared
-    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
+    @AppStorage(OnboardingSettings.completedV2Key) private var hasCompletedOnboardingV2 = false
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @State private var showMenuBarIcon = true
     @State private var didShowLaunchReminders = false
@@ -104,6 +104,13 @@ struct VoiceInkApp: App {
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
+        let autoLearnReviewer = AutoLearnAIReviewer(enhancementService: enhancementService)
+        Task {
+            await AutoLearnService.shared.configure(
+                modelContainer: resolvedContainer,
+                reviewer: autoLearnReviewer
+            )
+        }
 
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -299,12 +306,25 @@ struct VoiceInkApp: App {
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
                         .modelContainer(container)
-                        .onAppear {
-                            if enableAnnouncements {
-                                AnnouncementsService.shared.start()
+                        .lazyChangeLogPresenter { isPresenting in
+                            if isPresenting {
+                                if enableAnnouncements {
+                                    AnnouncementsService.shared.stop()
+                                }
+                            } else {
+                                if enableAnnouncements {
+                                    AnnouncementsService.shared.start()
+                                }
+                                showLaunchRemindersIfNeeded()
                             }
-
-                            showLaunchRemindersIfNeeded()
+                        }
+                        .onAppear {
+                            if !ChangeLogManager.needsPresentation() {
+                                if enableAnnouncements {
+                                    AnnouncementsService.shared.start()
+                                }
+                                showLaunchRemindersIfNeeded()
+                            }
 
                             GitHubStarPromptCoordinator.shared.scheduleIfNeeded(modelContainer: container)
 

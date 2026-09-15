@@ -5,19 +5,13 @@ struct ModelUsagePanel: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        QuickPanelScaffold {
+            ModelUsagePanelContent(summary: summary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } header: {
             header
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .overlay(Divider().opacity(0.5), alignment: .bottom)
-                .zIndex(1)
-
-            ZStack(alignment: .bottomTrailing) {
-                ModelUsagePanelContent(summary: summary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                recommendedModelsOverlay
-            }
+        } footer: {
+            RecommendedModelsFooter()
         }
     }
 
@@ -37,21 +31,29 @@ struct ModelUsagePanel: View {
                 action: onClose
             )
         }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
+}
 
-    private var recommendedModelsOverlay: some View {
-        Button(action: ModelLinks.openRecommendedModels) {
-            ModelActionLabel(
-                title: "Recommended Models",
-                icon: "sparkles",
-                isPrimary: true
-            )
+struct RecommendedModelsFooter: View {
+    var body: some View {
+        HStack {
+            Spacer()
+
+            Button(action: ModelLinks.openRecommendedModels) {
+                ModelActionLabel(
+                    title: "Recommended Models",
+                    icon: "sparkles",
+                    isPrimary: true
+                )
+            }
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: true)
+            .help(String(localized: "Open recommended AI models"))
         }
-        .buttonStyle(.plain)
-        .fixedSize(horizontal: true, vertical: true)
-        .help(String(localized: "Open recommended AI models"))
-        .padding(.trailing, 20)
-        .padding(.bottom, 16)
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.footerHeight)
     }
 }
 
@@ -95,8 +97,8 @@ private struct ModelUsagePanelContent: View {
                     )
                 }
                 .padding(.horizontal, 18)
-                .padding(.top, 18)
-                .padding(.bottom, 86)
+                .padding(.top, 76)
+                .padding(.bottom, 72)
             }
         } else {
             emptyState

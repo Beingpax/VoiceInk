@@ -223,9 +223,7 @@ struct CustomTranscriptionModelEditorPanel: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            editorHeader(title: isEditing ? "Edit Custom Transcription Model" : "Add Custom Transcription Model")
-
+        QuickPanelScaffold {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     CustomModelEditorSection(title: "Details") {
@@ -253,9 +251,16 @@ struct CustomTranscriptionModelEditorPanel: View {
                         CustomModelErrorBox(messages: validationErrors)
                     }
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 76)
+                .padding(.bottom, 72)
             }
-
+        } header: {
+            editorHeader(
+                title: isEditing
+                    ? "Edit Custom Transcription Model" : "Add Custom Transcription Model"
+            )
+        } footer: {
             editorFooter(
                 primaryTitle: isSaving ? "Saving" : isEditing ? "Save Changes" : "Add Model",
                 isPrimaryDisabled: !canSave || isSaving,
@@ -425,12 +430,7 @@ struct CustomEnhancementModelEditorPanel: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            CustomModelEditorHeader(
-                title: isEditing ? "Edit Custom Enhancement Model" : "Add Custom Enhancement Model",
-                onClose: onClose
-            )
-
+        QuickPanelScaffold {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     CustomModelEditorSection(title: "Details") {
@@ -456,9 +456,17 @@ struct CustomEnhancementModelEditorPanel: View {
                         CustomModelErrorBox(messages: [errorMessage])
                     }
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 76)
+                .padding(.bottom, 72)
             }
-
+        } header: {
+            CustomModelEditorHeader(
+                title: isEditing
+                    ? "Edit Custom Enhancement Model" : "Add Custom Enhancement Model",
+                onClose: onClose
+            )
+        } footer: {
             CustomModelEditorFooter(
                 primaryTitle: primaryButtonTitle,
                 isPrimaryDisabled: !canSave || isSaving,
@@ -760,20 +768,17 @@ private struct CustomModelEditorHeader: View {
 
             Spacer()
 
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(AppTheme.Surface.card)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Close")
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onClose
+            )
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .overlay(Divider().opacity(0.5), alignment: .bottom)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 }
 
@@ -785,17 +790,16 @@ private struct CustomModelEditorFooter: View {
 
     var body: some View {
         HStack {
-            Button("Cancel", action: onCancel)
+            AppActionButton("Cancel", action: onCancel)
                 .keyboardShortcut(.cancelAction)
 
             Spacer()
 
-            Button(primaryTitle, action: onPrimary)
-                .buttonStyle(.borderedProminent)
+            AppActionButton(primaryTitle, kind: .primary, action: onPrimary)
                 .disabled(isPrimaryDisabled)
         }
-        .padding(20)
-        .overlay(Divider().opacity(0.5), alignment: .top)
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.footerHeight)
     }
 }
 

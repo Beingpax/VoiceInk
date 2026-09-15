@@ -28,9 +28,7 @@ struct ProviderDetailPanel: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-
+        QuickPanelScaffold {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     apiKeySection
@@ -43,8 +41,12 @@ struct ProviderDetailPanel: View {
                         enhancementModelsSection
                     }
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.top, 76)
+                .padding(.bottom, 20)
             }
+        } header: {
+            header
         }
         .onAppear(perform: loadSavedAPIKey)
         .onChange(of: descriptor.id) { _, _ in
@@ -68,20 +70,17 @@ struct ProviderDetailPanel: View {
 
             Spacer()
 
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(6)
-                    .background(AppTheme.Surface.card)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Close")
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onClose
+            )
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .overlay(Divider().opacity(0.5), alignment: .bottom)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 
     private var apiKeySection: some View {

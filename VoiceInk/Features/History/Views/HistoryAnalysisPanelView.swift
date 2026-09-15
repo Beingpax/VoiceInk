@@ -13,15 +13,11 @@ struct HistoryAnalysisPanelView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .overlay(Divider().opacity(0.5), alignment: .bottom)
-                .zIndex(1)
-
+        QuickPanelScaffold {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } header: {
+            header
         }
     }
 
@@ -47,6 +43,8 @@ struct HistoryAnalysisPanelView: View {
                 action: onClose
             )
         }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 
     @ViewBuilder
@@ -73,7 +71,7 @@ struct HistoryAnalysisPanelView: View {
                     )
                 }
                 .padding(.horizontal, 18)
-                .padding(.top, 18)
+                .padding(.top, QuickPanelMetrics.topEdgeHeight + 4)
                 .padding(.bottom, 24)
             }
         }

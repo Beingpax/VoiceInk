@@ -1,11 +1,6 @@
 import SwiftData
 import SwiftUI
 
-enum VocabularySortMode: String {
-    case wordAsc = "wordAsc"
-    case wordDesc = "wordDesc"
-}
-
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
     @Environment(\.modelContext) private var modelContext
@@ -13,47 +8,80 @@ struct VocabularyView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
+    @State private var showInfoPopover = false
 
     init() {
-        if let savedSort = UserDefaults.standard.string(forKey: "vocabularySortMode"),
-            let mode = VocabularySortMode(rawValue: savedSort)
-        {
-            _sortMode = State(initialValue: mode)
-        }
+        _sortMode = State(initialValue: DictionarySortService.shared.savedVocabularyMode())
     }
 
     private var sortedItems: [VocabularyWord] {
-        switch sortMode {
-        case .wordAsc:
-            return vocabularyWords.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedAscending }
-        case .wordDesc:
-            return vocabularyWords.sorted { $0.word.localizedCaseInsensitiveCompare($1.word) == .orderedDescending }
-        }
+        DictionarySortService.shared.sortVocabulary(vocabularyWords, by: sortMode)
     }
 
     private func toggleSort() {
-        sortMode = (sortMode == .wordAsc) ? .wordDesc : .wordAsc
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "vocabularySortMode")
+        let service = DictionarySortService.shared
+        sortMode = service.nextVocabularyMode(after: sortMode)
+        service.saveVocabularyMode(sortMode)
+    }
+
+    private var sortIconName: String {
+        switch sortMode {
+        case .wordAsc: "chevron.up"
+        case .wordDesc: "chevron.down"
+        case .newest: "clock.arrow.circlepath"
+        case .oldest: "clock"
+        }
+    }
+
+    private var shouldShowAddButton: Bool {
+        !newWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 13))
+                    .onSubmit { addWords() }
+                    .labelsHidden()
+
+                if shouldShowAddButton {
+                    AddIconButton(
+                        helpText: "Add word",
+                        isDisabled: !shouldShowAddButton,
+                        action: addWords
+                    )
+                }
+
+                Button {
+                    showInfoPopover.toggle()
+                } label: {
+                    Image(systemName: "info.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Vocabulary examples")
+                .popover(isPresented: $showInfoPopover) {
+                    VocabularyInfoPopover()
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
+
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(AppTheme.Text.secondary)
+                    Button(action: toggleSort) {
+                        HStack(spacing: 4) {
+                            Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
 
-                        Spacer()
-
-                        DictionaryEdgeActionButton(
-                            title: sortMode == .wordAsc ? "ASC" : "DESC",
-                            systemImage: sortMode == .wordAsc ? "chevron.up" : "chevron.down",
-                            help: "Sort alphabetically",
-                            action: toggleSort
-                        )
+                            Image(systemName: sortIconName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .help("Change sort order")
 
                     FlowLayout(spacing: 8) {
                         ForEach(sortedItems) { item in
@@ -67,24 +95,6 @@ struct VocabularyView: View {
                 .padding(.top, 4)
             }
 
-            TextField("", text: $newWord, prompt: Text("Add word to vocabulary"))
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 13))
-                .onSubmit { addWords() }
-                .labelsHidden()
-
-            HStack {
-                Spacer()
-
-                DictionaryEdgeActionButton(
-                    title: "Add",
-                    systemImage: "plus",
-                    shortcut: "↵",
-                    help: "Add word",
-                    isDisabled: newWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                    action: addWords
-                )
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .alert("Vocabulary", isPresented: $showAlert) {
@@ -108,16 +118,46 @@ struct VocabularyView: View {
     }
 
     private func removeWord(_ word: VocabularyWord) {
-        modelContext.delete(word)
-
-        do {
-            try modelContext.save()
-        } catch {
-            // Rollback the delete to restore UI consistency
-            modelContext.rollback()
-            alertMessage = String(format: String(localized: "Failed to remove word: %@"), error.localizedDescription)
+        if let error = DictionaryService.removeVocabularyWord(word, context: modelContext) {
+            alertMessage = error
             showAlert = true
         }
+    }
+}
+
+struct VocabularyInfoPopover: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("How to use Vocabulary")
+                .font(.headline)
+
+            Text(
+                "Vocabulary helps supported transcription models and AI enhancement preserve important names, technical terms, and unique spellings."
+            )
+            .font(.subheadline)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Text("Add one entry at a time, or paste multiple entries separated by commas.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Divider()
+
+            Text("Examples")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Text(verbatim: "Prakash, VoiceInk, SwiftData, WebSocket")
+                .font(.callout)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.textBackgroundColor))
+                .cornerRadius(6)
+        }
+        .padding()
+        .frame(width: 320)
     }
 }
 

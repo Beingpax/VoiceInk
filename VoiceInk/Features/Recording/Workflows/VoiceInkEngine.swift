@@ -173,10 +173,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
     }
 
-    func getEnhancementService() -> AIEnhancementService? {
-        return enhancementService
-    }
-
     // MARK: - Toggle Record
 
     func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false) async {
@@ -280,6 +276,13 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .recording
+
+                            // Only retire the previous paste session once recording
+                            // has actually started. Preflight/permission failures
+                            // must leave it available for Auto Learn capture.
+                            if AutoLearnSettings.isEnabled {
+                                await AutoLearnService.shared.recordingDidStart()
+                            }
 
                             await activeModeTask.value
 

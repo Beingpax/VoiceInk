@@ -45,24 +45,16 @@ struct QuickHistoryView: View {
     }
 
     private var historyView: some View {
-        ZStack {
+        QuickPanelScaffold {
             if viewModel.filteredTranscriptions.isEmpty {
                 emptyState
             } else {
                 resultsList
             }
-
-            VStack(spacing: 0) {
-                QuickPanelScrollEdge(edge: .top) {
-                    searchHeader
-                }
-
-                Spacer(minLength: 0)
-
-                QuickPanelScrollEdge(edge: .bottom) {
-                    keyboardHints
-                }
-            }
+        } header: {
+            searchHeader
+        } footer: {
+            keyboardHints
         }
     }
 
@@ -85,7 +77,7 @@ struct QuickHistoryView: View {
             escapeKeyCap
         }
         .padding(.horizontal, 18)
-        .frame(height: 56)
+        .frame(height: QuickPanelMetrics.headerHeight)
     }
 
     private var resultsList: some View {
@@ -124,36 +116,28 @@ struct QuickHistoryView: View {
     @ViewBuilder
     private var detailView: some View {
         if let transcription = viewModel.selectedTranscription {
-            ZStack {
+            QuickPanelScaffold {
                 ScrollView {
                     detailContent(transcription)
                 }
                 .scrollIndicators(.never)
-
-                VStack(spacing: 0) {
-                    QuickPanelScrollEdge(edge: .top) {
-                        detailHeader
+            } header: {
+                detailHeader
+            } footer: {
+                QuickHistoryDetailActionBar(
+                    transcription: transcription,
+                    audioURL: audioURL(for: transcription),
+                    isInfoPresented: viewModel.isShowingInfo,
+                    onToggleInfo: {
+                        viewModel.isShowingInfo.toggle()
+                    },
+                    onPaste: {
+                        onPaste(transcription)
+                    },
+                    onTranscriptionUpdated: { updated in
+                        viewModel.reload(selecting: updated)
                     }
-
-                    Spacer(minLength: 0)
-
-                    QuickPanelScrollEdge(edge: .bottom) {
-                        QuickHistoryDetailActionBar(
-                            transcription: transcription,
-                            audioURL: audioURL(for: transcription),
-                            isInfoPresented: viewModel.isShowingInfo,
-                            onToggleInfo: {
-                                viewModel.isShowingInfo.toggle()
-                            },
-                            onPaste: {
-                                onPaste(transcription)
-                            },
-                            onTranscriptionUpdated: { updated in
-                                viewModel.reload(selecting: updated)
-                            }
-                        )
-                    }
-                }
+                )
             }
             .sidePanel(
                 isPresented: Binding(
@@ -162,14 +146,10 @@ struct QuickHistoryView: View {
                 ),
                 dismissOnExitCommand: false
             ) {
-                VStack(spacing: 0) {
-                    AppPanelHeader(title: "Info") {
-                        viewModel.isShowingInfo = false
-                    }
-
-                    TranscriptionInfoPanel(transcription: transcription)
-                        .id(transcription.id)
+                TranscriptionInfoSidePanel(transcription: transcription) {
+                    viewModel.isShowingInfo = false
                 }
+                .id(transcription.id)
             }
         }
     }
