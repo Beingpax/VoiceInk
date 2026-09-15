@@ -23,7 +23,7 @@ enum ChangeLogCatalog {
         id: "dictionary-auto-learn",
         title: "Dictionary Auto Learn",
         summary:
-            "VoiceInk automatically learns from corrections you make after pasting and adds them to your Dictionary, making future transcriptions more accurate over time.",
+            "VoiceInk can learn from corrections you make after pasting and add approved corrections to your Dictionary, making future transcriptions more accurate over time.",
         youtubeVideoID: "YEDxTrr1Jco"
     )
 }

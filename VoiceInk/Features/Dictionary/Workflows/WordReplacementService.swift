@@ -29,8 +29,7 @@ final class WordReplacementService {
     private init() {}
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
-        // `isEnabled` is retained for store/CloudKit compatibility, but older
-        // rows may contain false values from before the field was introduced.
+        // `isEnabled` is retained only for store and CloudKit compatibility.
         // Replacement rules are intentionally always active.
         let descriptor = FetchDescriptor<WordReplacement>()
 

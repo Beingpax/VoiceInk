@@ -86,15 +86,7 @@ actor AutoLearnService {
         await schedulePendingReview()
     }
 
-    func prepareFreshPendingReviewForApproval() async throws {
-        guard AutoLearnSettings.isEnabled else { return }
-        await cancelReviewTask()
-        try await reviewProposalStore.removeAll()
-        await notifyReviewProposalsChanged()
-        await startPendingReviewForApproval()
-    }
-
-    private func preparePendingReviewForApproval() async {
+    func preparePendingReviewForApproval() async {
         guard AutoLearnSettings.isEnabled else { return }
         await cancelReviewTask()
         await startPendingReviewForApproval()

@@ -76,20 +76,6 @@ actor AutoLearnReviewProposalStore {
         }
     }
 
-    func removeAll() throws {
-        try loadIfNeeded()
-        guard !proposals.isEmpty else { return }
-
-        let originalProposals = proposals
-        proposals.removeAll()
-        do {
-            try save()
-        } catch {
-            proposals = originalProposals
-            throw error
-        }
-    }
-
     func update(
         proposalID: UUID,
         incorrectTextToReplace: String?,

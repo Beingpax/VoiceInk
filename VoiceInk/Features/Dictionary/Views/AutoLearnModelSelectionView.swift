@@ -6,7 +6,7 @@ struct AutoLearnSectionHeader: View {
             Text("Auto Learn")
             InfoTip(
                 LocalizedStringKey(
-                    "Automatically learns corrections you make after dictation. Only correction pairs are sent to your selected AI provider; recordings and full text fields are never sent."
+                    "Automatically learns corrections you make after dictation. Each correction and up to three surrounding words are sent to your selected AI provider; recordings and full text fields are never sent."
                 ),
                 learnMoreURL: "https://tryvoiceink.com/docs/auto-learn-dictionary"
             )

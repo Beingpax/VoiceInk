@@ -317,20 +317,108 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private func hasChangedSpan(source: String, destination: String, candidate: AutoLearnReviewCandidate) -> Bool {
-        guard let sourceRange = candidate.originalText.range(of: source) else { return false }
-        guard let destinationRange = candidate.correctedText.range(of: destination) else { return false }
-        let original = Array(candidate.originalText), corrected = Array(candidate.correctedText)
+        guard let changedRanges = changedRanges(
+            original: candidate.originalText,
+            corrected: candidate.correctedText
+        ) else { return false }
+
+        let sourceRanges = characterRanges(of: source, in: candidate.originalText).filter {
+            overlapsChangedRegion($0, changedRange: changedRanges.original)
+        }
+        let destinationRanges = characterRanges(of: destination, in: candidate.correctedText).filter {
+            overlapsChangedRegion($0, changedRange: changedRanges.corrected)
+        }
+
+        guard !sourceRanges.isEmpty, !destinationRanges.isEmpty else { return false }
+
+        // A single diff hunk can contain multiple adjacent corrections. Merely
+        // touching the hunk is not enough: the selected terms must also occupy
+        // the same relative part of their respective snippets. This prevents a
+        // source from one correction being paired with a neighboring destination.
+        return sourceRanges.contains { sourceRange in
+            destinationRanges.contains { destinationRange in
+                normalizedRangesOverlap(
+                    sourceRange,
+                    inTextLength: candidate.originalText.count,
+                    destinationRange,
+                    inTextLength: candidate.correctedText.count
+                )
+            }
+        }
+    }
+
+    private func changedRanges(
+        original: String,
+        corrected: String
+    ) -> (original: Range<Int>, corrected: Range<Int>)? {
+        let originalCharacters = Array(original)
+        let correctedCharacters = Array(corrected)
+        guard originalCharacters != correctedCharacters else { return nil }
+
         var prefix = 0
-        while prefix < min(original.count, corrected.count), original[prefix] == corrected[prefix] { prefix += 1 }
+        while prefix < min(originalCharacters.count, correctedCharacters.count),
+            originalCharacters[prefix] == correctedCharacters[prefix]
+        {
+            prefix += 1
+        }
+
         var suffix = 0
-        while suffix < min(original.count - prefix, corrected.count - prefix),
-              original[original.count - 1 - suffix] == corrected[corrected.count - 1 - suffix] { suffix += 1 }
-        let sourceStart = candidate.originalText.distance(from: candidate.originalText.startIndex, to: sourceRange.lowerBound)
-        let sourceEnd = candidate.originalText.distance(from: candidate.originalText.startIndex, to: sourceRange.upperBound)
-        let destinationStart = candidate.correctedText.distance(from: candidate.correctedText.startIndex, to: destinationRange.lowerBound)
-        let destinationEnd = candidate.correctedText.distance(from: candidate.correctedText.startIndex, to: destinationRange.upperBound)
-        return sourceStart < original.count - suffix && sourceEnd > prefix
-            && destinationStart < corrected.count - suffix && destinationEnd > prefix
+        while suffix < min(originalCharacters.count - prefix, correctedCharacters.count - prefix),
+            originalCharacters[originalCharacters.count - 1 - suffix]
+                == correctedCharacters[correctedCharacters.count - 1 - suffix]
+        {
+            suffix += 1
+        }
+
+        return (
+            prefix..<(originalCharacters.count - suffix),
+            prefix..<(correctedCharacters.count - suffix)
+        )
+    }
+
+    private func characterRanges(of term: String, in text: String) -> [Range<Int>] {
+        guard !term.isEmpty else { return [] }
+
+        var result: [Range<Int>] = []
+        var searchStart = text.startIndex
+        while searchStart < text.endIndex,
+            let match = text.range(
+                of: term,
+                options: .literal,
+                range: searchStart..<text.endIndex
+            )
+        {
+            let lowerBound = text.distance(from: text.startIndex, to: match.lowerBound)
+            let upperBound = text.distance(from: text.startIndex, to: match.upperBound)
+            result.append(lowerBound..<upperBound)
+            searchStart = text.index(after: match.lowerBound)
+        }
+        return result
+    }
+
+    private func overlapsChangedRegion(_ termRange: Range<Int>, changedRange: Range<Int>) -> Bool {
+        if changedRange.isEmpty {
+            return termRange.lowerBound <= changedRange.lowerBound
+                && termRange.upperBound >= changedRange.lowerBound
+        }
+        return termRange.lowerBound < changedRange.upperBound
+            && termRange.upperBound > changedRange.lowerBound
+    }
+
+    private func normalizedRangesOverlap(
+        _ sourceRange: Range<Int>,
+        inTextLength sourceLength: Int,
+        _ destinationRange: Range<Int>,
+        inTextLength destinationLength: Int
+    ) -> Bool {
+        guard sourceLength > 0, destinationLength > 0 else { return false }
+
+        let sourceLower = Double(sourceRange.lowerBound) / Double(sourceLength)
+        let sourceUpper = Double(sourceRange.upperBound) / Double(sourceLength)
+        let destinationLower = Double(destinationRange.lowerBound) / Double(destinationLength)
+        let destinationUpper = Double(destinationRange.upperBound) / Double(destinationLength)
+
+        return sourceLower < destinationUpper && sourceUpper > destinationLower
     }
 
     private func isGrounded(_ term: String, in contexts: [String]) -> Bool {

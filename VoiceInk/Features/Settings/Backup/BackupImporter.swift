@@ -263,7 +263,7 @@ enum BackupImporter {
             var existingReplacements = try modelContext.fetch(descriptor)
 
             var existingDestinationsBySource: [String: Set<String>] = [:]
-            for existing in existingReplacements where existing.isEnabled {
+            for existing in existingReplacements {
                 let destinationKey = WordReplacementVariants.destinationKey(
                     for: existing.replacementText
                 )

@@ -218,15 +218,9 @@ struct AutoLearnReviewPanel: View {
     private func loadAndReview() async {
         isReviewing = true
         errorMessage = nil
-        proposals = []
-        selections = [:]
-        drafts = [:]
-        do {
-            try await AutoLearnService.shared.prepareFreshPendingReviewForApproval()
-            await reloadProposals(selectNewItems: true)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        await reloadProposals(selectNewItems: true)
+        await AutoLearnService.shared.preparePendingReviewForApproval()
+        await reloadProposals(selectNewItems: true)
         isReviewing = false
 
         let pendingCount = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0

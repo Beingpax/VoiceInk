@@ -15,7 +15,6 @@ struct ChangeLogView: View {
             Color.black.opacity(0.42)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
-                .onTapGesture(perform: onDismiss)
                 .accessibilityHidden(true)
 
             changeLogCard
@@ -26,7 +25,6 @@ struct ChangeLogView: View {
                 ? .opacity
                 : .opacity.combined(with: .scale(scale: 0.97))
         )
-        .onExitCommand(perform: onDismiss)
         .accessibilityAddTraits(.isModal)
     }
 
