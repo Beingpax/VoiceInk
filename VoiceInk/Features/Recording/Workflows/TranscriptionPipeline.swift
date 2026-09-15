@@ -194,8 +194,7 @@ class TranscriptionPipeline {
                         )
                         transcription.enhancedText = enhancementResult.text
                         transcription.aiEnhancementModelName =
-                            resolvedEnhancementConfiguration.modelName
-                            ?? resolvedEnhancementConfiguration.provider?.defaultModel
+                            enhancementResult.enhancementModelName(for: resolvedEnhancementConfiguration)
                         transcription.promptName = enhancementResult.promptName
                         transcription.enhancementDuration = enhancementResult.duration
                         transcription.aiRequestSystemMessage = enhancementResult.systemMessage

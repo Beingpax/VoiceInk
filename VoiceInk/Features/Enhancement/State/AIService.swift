@@ -16,6 +16,7 @@ enum AIProvider: String, CaseIterable {
     case speechmatics = "Speechmatics"
     case assemblyAI = "AssemblyAI"
     case voiceInkRefine = "VoiceInk Refine"
+    case appleIntelligence = "Apple Intelligence"
     case ollama = "Ollama"
     case localCLI = "Local CLI"
     case custom = "Custom"
@@ -47,6 +48,8 @@ enum AIProvider: String, CaseIterable {
         case .assemblyAI:
             return "https://api.assemblyai.com/v2/transcript"
         case .voiceInkRefine:
+            return ""
+        case .appleIntelligence:
             return ""
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
@@ -83,6 +86,8 @@ enum AIProvider: String, CaseIterable {
             return "universal-3-5-pro"
         case .voiceInkRefine:
             return VoiceInkRefineService.modelName
+        case .appleIntelligence:
+            return AppleIntelligenceModel.preferredDefault.rawValue
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
         case .localCLI:
@@ -154,6 +159,10 @@ enum AIProvider: String, CaseIterable {
             return ["universal-3-5-pro"]
         case .voiceInkRefine:
             return [VoiceInkRefineService.modelName]
+        case .appleIntelligence:
+            return AppleIntelligenceModel.allCases
+                .filter(\.isCallableWithCurrentSDK)
+                .map(\.rawValue)
         case .ollama:
             return []
         case .localCLI:
@@ -167,7 +176,7 @@ enum AIProvider: String, CaseIterable {
 
     var requiresAPIKey: Bool {
         switch self {
-        case .voiceInkRefine, .ollama, .localCLI:
+        case .voiceInkRefine, .appleIntelligence, .ollama, .localCLI:
             return false
         default:
             return true
@@ -219,6 +228,9 @@ class AIService: ObservableObject {
                     self.isAPIKeyValid = localCLIService.isConfigured
                 } else if selectedProvider == .voiceInkRefine {
                     self.isAPIKeyValid = voiceInkRefineService.isAvailableInModes
+                } else if selectedProvider == .appleIntelligence {
+                    appleIntelligenceService.refreshAvailability()
+                    self.isAPIKeyValid = appleIntelligenceService.isProviderUsable
                 } else {
                     self.isAPIKeyValid = true
                 }
@@ -235,11 +247,13 @@ class AIService: ObservableObject {
     @Published private var selectedModels: [AIProvider: String] = [:]
     private let userDefaults = UserDefaults.standard
     let voiceInkRefineService = VoiceInkRefineService.shared
+    let appleIntelligenceService = AppleIntelligenceService.shared
     private lazy var ollamaService = OllamaService()
     private lazy var localCLIService = LocalCLIService()
     private var apiKeyChangeObserver: NSObjectProtocol?
     private var settingsChangeObserver: NSObjectProtocol?
     private var voiceInkRefineObserver: AnyCancellable?
+    private var appleIntelligenceObserver: AnyCancellable?
 
     @Published private var openRouterModels: [String] = []
     @Published private var openRouterModelCatalog: [OpenRouterModel] = []
@@ -256,6 +270,8 @@ class AIService: ObservableObject {
                 return CustomAIProviderManager.shared.hasConfiguredModels
             } else if provider == .voiceInkRefine {
                 return voiceInkRefineService.isAvailableInModes
+            } else if provider == .appleIntelligence {
+                return appleIntelligenceService.isProviderUsable
             } else if provider == .ollama {
                 return ollamaService.isConnected
             } else if provider == .localCLI {
@@ -268,8 +284,8 @@ class AIService: ObservableObject {
     }
 
     var currentModel: String {
-        if selectedProvider == .voiceInkRefine {
-            return selectedProvider.defaultModel
+        if selectedProvider == .voiceInkRefine || selectedProvider == .appleIntelligence {
+            return selectedModel(for: selectedProvider)
         }
 
         if let selectedModel = selectedModels[selectedProvider],
@@ -283,6 +299,14 @@ class AIService: ObservableObject {
 
     func selectedModel(for provider: AIProvider) -> String {
         if provider == .voiceInkRefine {
+            return provider.defaultModel
+        }
+
+        if provider == .appleIntelligence {
+            let models = availableModels(for: provider)
+            if let selectedModel = selectedModels[provider], models.contains(selectedModel) {
+                return selectedModel
+            }
             return provider.defaultModel
         }
 
@@ -342,6 +366,9 @@ class AIService: ObservableObject {
                 self.isAPIKeyValid = localCLIService.isConfigured
             } else if selectedProvider == .voiceInkRefine {
                 self.isAPIKeyValid = voiceInkRefineService.isAvailableInModes
+            } else if selectedProvider == .appleIntelligence {
+                appleIntelligenceService.refreshAvailability()
+                self.isAPIKeyValid = appleIntelligenceService.isProviderUsable
             } else {
                 self.isAPIKeyValid = true
             }
@@ -363,6 +390,25 @@ class AIService: ObservableObject {
                 }
 
                 if self.voiceInkRefineService.isAvailableInModes {
+                    self.initializeAutoLearnSelectionIfNeeded()
+                }
+
+                self.objectWillChange.send()
+            }
+        }
+
+        appleIntelligenceObserver = appleIntelligenceService.objectWillChange.sink { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+
+                if self.selectedProvider == .appleIntelligence {
+                    let isReady = self.appleIntelligenceService.isProviderUsable
+                    if self.isAPIKeyValid != isReady {
+                        self.isAPIKeyValid = isReady
+                    }
+                }
+
+                if self.appleIntelligenceService.isProviderUsable {
                     self.initializeAutoLearnSelectionIfNeeded()
                 }
 
@@ -399,6 +445,7 @@ class AIService: ObservableObject {
             NotificationCenter.default.removeObserver(settingsChangeObserver)
         }
         voiceInkRefineObserver?.cancel()
+        appleIntelligenceObserver?.cancel()
     }
 
     private func reloadSelectedProviderConfiguration() {
@@ -428,6 +475,9 @@ class AIService: ObservableObject {
                 isAPIKeyValid = localCLIService.isConfigured
             } else if selectedProvider == .voiceInkRefine {
                 isAPIKeyValid = voiceInkRefineService.isAvailableInModes
+            } else if selectedProvider == .appleIntelligence {
+                appleIntelligenceService.refreshAvailability()
+                isAPIKeyValid = appleIntelligenceService.isProviderUsable
             } else {
                 isAPIKeyValid = true
             }
@@ -471,6 +521,18 @@ class AIService: ObservableObject {
                 continue
             }
 
+            if provider == .appleIntelligence {
+                let key = "\(provider.rawValue)SelectedModel"
+                let savedModel = userDefaults.string(forKey: key)
+                let callableModels = provider.availableModels
+                if let savedModel, callableModels.contains(savedModel) {
+                    selectedModels[provider] = savedModel
+                } else {
+                    selectedModels[provider] = provider.defaultModel
+                }
+                continue
+            }
+
             let key = "\(provider.rawValue)SelectedModel"
             if let savedModel = userDefaults.string(forKey: key), !savedModel.isEmpty {
                 selectedModels[provider] = savedModel
@@ -508,6 +570,11 @@ class AIService: ObservableObject {
 
         if provider == .custom {
             guard CustomAIProviderManager.shared.applyConfiguration(forModel: model) else { return }
+        }
+
+        if provider == .appleIntelligence {
+            let callableModels = provider.availableModels
+            guard callableModels.contains(model) else { return }
         }
 
         let resolvedModel = provider == .voiceInkRefine ? provider.defaultModel : model
@@ -720,6 +787,20 @@ class AIService: ObservableObject {
         try await voiceInkRefineService.enhance(transcript: transcript)
     }
 
+    func enhanceWithAppleIntelligence(
+        systemPrompt: String,
+        userPrompt: String,
+        modelName: String?,
+        timeout: TimeInterval = AppleIntelligenceLimits.requestTimeout
+    ) async throws -> AppleIntelligenceEnhanceResult {
+        try await appleIntelligenceService.enhance(
+            systemPrompt: systemPrompt,
+            userPrompt: userPrompt,
+            modelName: modelName,
+            timeout: timeout
+        )
+    }
+
     func reviewAutoLearnCandidates(
         payload: String,
         systemPrompt: String,
@@ -730,13 +811,18 @@ class AIService: ObservableObject {
             throw EnhancementError.notConfigured
         }
 
+        let timeout =
+            provider == .appleIntelligence
+            ? max(EnhancementRequestSettings.timeout, AppleIntelligenceLimits.requestTimeout)
+            : EnhancementRequestSettings.timeout
+
         return try await performChatCompletion(
             provider: provider,
             modelName: modelName,
             messages: [.user(payload)],
             systemPrompt: systemPrompt,
             localUserPrompt: payload,
-            timeout: EnhancementRequestSettings.timeout
+            timeout: timeout
         ).text
     }
 

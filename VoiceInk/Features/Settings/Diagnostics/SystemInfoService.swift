@@ -42,6 +42,12 @@ final class SystemInfoService {
             MODE CONFIGURATION:
             \(modeConfigurationInfo)
 
+            APPLE INTELLIGENCE:
+            On-Device: \(AppleIntelligenceService.shared.status.title)\(AppleIntelligenceService.shared.onDeviceVariantName.map { " (\($0))" } ?? "")
+            \(AppleIntelligenceService.shared.status.guidance)
+            Private Cloud Compute: \(AppleIntelligenceService.shared.cloudStatus.title)
+            \(AppleIntelligenceService.shared.cloudStatus.guidance)
+
             UI SETTINGS:
             Hide Dock Icon: \(UserDefaults.standard.bool(forKey: "IsMenuBarOnly"))
             Recorder Style: \(UserDefaults.standard.string(forKey: "RecorderType") ?? "mini")

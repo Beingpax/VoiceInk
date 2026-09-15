@@ -10,6 +10,11 @@ struct AIEnhancementResult: Sendable {
     let promptName: String?
     let systemMessage: String?
     let userMessage: String?
+    let resolvedModelName: String?
+
+    func enhancementModelName(for configuration: EnhancementRuntimeConfiguration) -> String? {
+        resolvedModelName ?? configuration.modelName ?? configuration.provider?.defaultModel
+    }
 }
 
 @MainActor
@@ -81,6 +86,12 @@ class AIEnhancementService: ObservableObject {
 
         if provider == .voiceInkRefine {
             return aiService.voiceInkRefineService.isAvailableInModes
+        }
+
+        if provider == .appleIntelligence {
+            guard configuration.prompt != nil else { return false }
+            let model = AppleIntelligenceModel.resolved(from: configuration.modelName)
+            return aiService.appleIntelligenceService.isReady(for: model)
         }
 
         guard configuration.prompt != nil else { return false }
@@ -178,6 +189,16 @@ class AIEnhancementService: ObservableObject {
                 ""
             }
 
+        if configuration.provider == .appleIntelligence {
+            return AppleIntelligencePromptBudget.budgetedSystemMessage(
+                basePrompt: prompt.finalPromptText,
+                customVocabularySection: customVocabularySection,
+                selectedText: useSelectedText ? (contextSnapshot?.selectedText ?? "") : "",
+                clipboardText: useClipboard ? (lastCapturedClipboard ?? "") : "",
+                screenText: useScreenCapture ? (screenCaptureService.lastCapturedText ?? "") : ""
+            )
+        }
+
         return [prompt.finalPromptText, customVocabularySection, contextSection]
             .filter { !$0.isEmpty }
             .joined(separator: "\n\n")
@@ -187,8 +208,12 @@ class AIEnhancementService: ObservableObject {
         text: String,
         configuration: EnhancementRuntimeConfiguration,
         contextSnapshot: RecordingContextSnapshot?
-    ) async throws -> (text: String, systemMessage: String?, userMessage: String?) {
+    ) async throws -> (text: String, systemMessage: String?, userMessage: String?, resolvedModelName: String?) {
         guard isConfigured(for: configuration) else {
+            if configuration.provider == .appleIntelligence {
+                let model = AppleIntelligenceModel.resolved(from: configuration.modelName)
+                throw EnhancementError.customError(aiService.appleIntelligenceService.guidance(for: model))
+            }
             throw EnhancementError.notConfigured
         }
 
@@ -197,7 +222,7 @@ class AIEnhancementService: ObservableObject {
         }
 
         guard !text.isEmpty else {
-            return ("", nil, nil)
+            return ("", nil, nil, nil)
         }
 
         if provider == .voiceInkRefine {
@@ -212,7 +237,8 @@ class AIEnhancementService: ObservableObject {
                 return (
                     filteredResult,
                     nil,
-                    text
+                    text,
+                    VoiceInkRefineService.modelName
                 )
             } catch is CancellationError {
                 throw CancellationError()
@@ -233,11 +259,14 @@ class AIEnhancementService: ObservableObject {
             contextSnapshot: contextSnapshot
         )
 
-        if provider != .openRouter, provider != .ollama, provider != .localCLI {
+        if provider != .openRouter, provider != .ollama, provider != .localCLI, provider != .appleIntelligence {
             try await waitForRateLimit()
         }
 
         do {
+            let requestTimeout = provider == .appleIntelligence
+                ? max(self.requestTimeout, AppleIntelligenceLimits.requestTimeout)
+                : self.requestTimeout
             let completion = try await aiService.performChatCompletion(
                 provider: provider,
                 modelName: modelName,
@@ -263,7 +292,8 @@ class AIEnhancementService: ObservableObject {
             return (
                 filteredResult,
                 systemMessage,
-                formattedText
+                formattedText,
+                completion.resolvedModelName
             )
         } catch let error as LLMKitError {
             throw mapLLMKitError(error)
@@ -320,7 +350,7 @@ class AIEnhancementService: ObservableObject {
         contextSnapshot: RecordingContextSnapshot?,
         maxAttempts: Int = EnhancementRequestSettings.maximumAttempts,
         initialDelay: TimeInterval = 1.0
-    ) async throws -> (text: String, systemMessage: String?, userMessage: String?) {
+    ) async throws -> (text: String, systemMessage: String?, userMessage: String?, resolvedModelName: String?) {
         var retries = 0
         var currentDelay = initialDelay
 
@@ -411,7 +441,8 @@ class AIEnhancementService: ObservableObject {
                 duration: duration,
                 promptName: promptName,
                 systemMessage: requestResult.systemMessage,
-                userMessage: requestResult.userMessage
+                userMessage: requestResult.userMessage,
+                resolvedModelName: requestResult.resolvedModelName
             )
         } catch {
             let errorDescription = EnhancementFailureFormatter.description(for: error)
@@ -482,6 +513,13 @@ class AIEnhancementService: ObservableObject {
                     updatedConfigurations[index].selectedAIModel = VoiceInkRefineService.modelName
                     didUpdateModes = true
                 }
+            } else if updatedConfigurations[index].selectedAIProvider == AIProvider.appleIntelligence.rawValue {
+                let appleModels = AppleIntelligenceModel.allCases.filter(\.isCallableWithCurrentSDK).map(\.rawValue)
+                let selectedAppleModel = updatedConfigurations[index].selectedAIModel
+                if selectedAppleModel.map({ !appleModels.contains($0) }) ?? true {
+                    updatedConfigurations[index].selectedAIModel = AIProvider.appleIntelligence.defaultModel
+                    didUpdateModes = true
+                }
             }
 
             let selectedPrompt = updatedConfigurations[index].selectedPrompt
@@ -509,7 +547,7 @@ class AIEnhancementService: ObservableObject {
     }
 }
 
-enum EnhancementError: Error {
+enum EnhancementError: Error, Sendable {
     case notConfigured
     case invalidResponse
     case enhancementFailed
@@ -518,6 +556,7 @@ enum EnhancementError: Error {
     case serverError
     case rateLimitExceeded
     case timeout
+    case guardrailViolation
     case customError(String)
 }
 
@@ -541,6 +580,10 @@ extension EnhancementError: LocalizedError {
         case .timeout:
             return String(
                 localized: "Enhancement request timed out. Check your connection or increase the timeout duration.")
+        case .guardrailViolation:
+            return String(
+                localized: "Apple Intelligence declined to rewrite this text. Try a different prompt or turn off extra context."
+            )
         case .customError(let message):
             return message
         }
