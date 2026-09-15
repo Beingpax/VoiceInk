@@ -74,6 +74,7 @@ enum AppleIntelligenceAvailabilityStatus: Equatable, Sendable {
 enum AppleIntelligenceCloudAvailabilityStatus: Equatable, Sendable {
     case available
     case unsupportedOS
+    case missingEntitlement
     case deviceNotEligible
     case systemNotReady
     case unavailable
@@ -88,6 +89,8 @@ enum AppleIntelligenceCloudAvailabilityStatus: Equatable, Sendable {
             return String(localized: "Available")
         case .unsupportedOS:
             return String(localized: "Needs macOS 27+")
+        case .missingEntitlement:
+            return String(localized: "Needs entitlement")
         case .deviceNotEligible:
             return String(localized: "This Mac is not eligible")
         case .systemNotReady:
@@ -101,10 +104,12 @@ enum AppleIntelligenceCloudAvailabilityStatus: Equatable, Sendable {
         switch self {
         case .available:
             return String(
-                localized: "Apple’s server model. A signed VoiceInk build with Apple’s PCC entitlement can use it; this local ad-hoc build cannot."
+                localized: "Apple’s server model. This build includes Apple’s Private Cloud Compute entitlement."
             )
         case .unsupportedOS:
             return AppleIntelligenceCloudSupport.unavailableReason
+        case .missingEntitlement:
+            return AppleIntelligenceModel.privateCloudComputeEntitlementMessage
         case .deviceNotEligible:
             return String(localized: "This Mac cannot use Private Cloud Compute.")
         case .systemNotReady:
@@ -317,11 +322,15 @@ final class AppleIntelligenceService: ObservableObject {
     }
 
     private nonisolated static func resolveCloudAvailability() -> AppleIntelligenceCloudAvailabilityStatus {
-        guard AppleIntelligenceCloudSupport.isCallableWithCurrentSDK else {
+        guard #available(macOS 27, *) else {
             return .unsupportedOS
         }
 
-        guard #available(macOS 27, *) else {
+        guard AppleIntelligenceCloudSupport.hasPrivateCloudComputeEntitlement else {
+            return .missingEntitlement
+        }
+
+        guard AppleIntelligenceCloudSupport.isCallableWithCurrentSDK else {
             return .unsupportedOS
         }
 
@@ -370,26 +379,35 @@ enum AppleIntelligenceTaskTimeout {
         _ timeout: TimeInterval,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await operation()
-            }
-            group.addTask {
-                let nanoseconds = UInt64(max(timeout, 1) * 1_000_000_000)
-                try await Task.sleep(nanoseconds: nanoseconds)
-                throw EnhancementError.timeout
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<T, Error>) in
+            let finished = OSAllocatedUnfairLock(initialState: false)
+
+            func resumeOnce(_ result: Result<T, Error>) {
+                let shouldResume = finished.withLock { isFinished -> Bool in
+                    if isFinished {
+                        return false
+                    }
+                    isFinished = true
+                    return true
+                }
+                guard shouldResume else { return }
+                continuation.resume(with: result)
             }
 
-            do {
-                guard let result = try await group.next() else {
-                    group.cancelAll()
-                    throw EnhancementError.enhancementFailed
+            let work = Task {
+                do {
+                    let value = try await operation()
+                    resumeOnce(.success(value))
+                } catch {
+                    resumeOnce(.failure(error))
                 }
-                group.cancelAll()
-                return result
-            } catch {
-                group.cancelAll()
-                throw error
+            }
+
+            Task {
+                let nanoseconds = UInt64(max(timeout, 1) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanoseconds)
+                work.cancel()
+                resumeOnce(.failure(EnhancementError.timeout))
             }
         }
     }
@@ -472,33 +490,6 @@ enum AppleIntelligenceGenerationError {
         }
 
         return .customError(error.localizedDescription)
-    }
-
-    static func shouldFallBackToUnconstrained(_ error: Error) -> Bool {
-        if error is CancellationError {
-            return false
-        }
-
-        #if canImport(FoundationModels)
-            if #available(macOS 26, *),
-                let generationError = error as? LanguageModelSession.GenerationError
-            {
-                switch generationError {
-                case .exceededContextWindowSize, .assetsUnavailable, .unsupportedLanguageOrLocale,
-                    .guardrailViolation, .refusal, .rateLimited, .concurrentRequests:
-                    return false
-                default:
-                    return true
-                }
-            }
-        #endif
-
-        switch map(error) {
-        case .timeout, .guardrailViolation, .rateLimitExceeded:
-            return false
-        default:
-            return true
-        }
     }
 }
 
@@ -604,31 +595,6 @@ actor AppleIntelligenceSessionRunner {
         }
 
         @available(macOS 26, *)
-        private func generateStructuredTranscript(
-            session: LanguageModelSession,
-            userPrompt: String,
-            options: GenerationOptions
-        ) async throws -> String? {
-            do {
-                let structured = try await session.respond(
-                    to: userPrompt,
-                    generating: AppleIntelligenceEnhancedTranscript.self,
-                    includeSchemaInPrompt: true,
-                    options: options
-                )
-                let transcript = AppleIntelligenceOutputSanitizer.sanitize(structured.content.transcript)
-                return transcript.isEmpty ? nil : transcript
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                guard AppleIntelligenceGenerationError.shouldFallBackToUnconstrained(error) else {
-                    throw AppleIntelligenceGenerationError.map(error)
-                }
-                return nil
-            }
-        }
-
-        @available(macOS 26, *)
         private func unconstrainedTranscript(
             session: LanguageModelSession,
             userPrompt: String,
@@ -643,14 +609,3 @@ actor AppleIntelligenceSessionRunner {
         }
     #endif
 }
-
-#if canImport(FoundationModels)
-    @available(macOS 26, *)
-    @Generable(description: "Enhanced speech transcript")
-    private struct AppleIntelligenceEnhancedTranscript {
-        @Guide(
-            description: "The complete enhanced transcript only, with no preface, title, quotes, or explanation."
-        )
-        var transcript: String
-    }
-#endif

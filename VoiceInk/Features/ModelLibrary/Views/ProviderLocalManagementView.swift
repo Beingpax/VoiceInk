@@ -151,6 +151,7 @@ struct LocalEnhancementServiceManagementView: View {
         }
         if appleIntelligenceService.status == .modelNotReady
             || appleIntelligenceService.cloudStatus == .systemNotReady
+            || appleIntelligenceService.cloudStatus == .missingEntitlement
         {
             return AppTheme.Status.warningStrong
         }

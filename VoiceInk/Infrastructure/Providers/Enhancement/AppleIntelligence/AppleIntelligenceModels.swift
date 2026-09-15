@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 enum AppleIntelligenceModel: String, CaseIterable, Identifiable, Sendable {
     case onDevice = "On-Device"
@@ -35,7 +36,7 @@ enum AppleIntelligenceModel: String, CaseIterable, Identifiable, Sendable {
             )
         case .privateCloudCompute:
             return String(
-                localized: "Apple’s server model. Needs Apple’s Private Cloud Compute entitlement on a Developer ID or App Store build. This local ad-hoc build can see PCC as available, then Apple rejects the request."
+                localized: "Apple’s server model. Needs Apple’s Private Cloud Compute entitlement on a Developer ID or App Store build, not signing alone."
             )
         }
     }
@@ -43,7 +44,7 @@ enum AppleIntelligenceModel: String, CaseIterable, Identifiable, Sendable {
     var isCallableWithCurrentSDK: Bool {
         switch self {
         case .onDevice:
-            return true
+            return AppleIntelligenceOnDeviceSupport.isCallableWithCurrentSDK
         case .privateCloudCompute:
             return AppleIntelligenceCloudSupport.isCallableWithCurrentSDK
         }
@@ -74,9 +75,9 @@ enum AppleIntelligenceLimits {
     static let requestTimeout: TimeInterval = 90
 }
 
-enum AppleIntelligenceCloudSupport {
+enum AppleIntelligenceOnDeviceSupport {
     static var isCallableWithCurrentSDK: Bool {
-        guard #available(macOS 27, *) else {
+        guard #available(macOS 26, *) else {
             return false
         }
 
@@ -86,9 +87,48 @@ enum AppleIntelligenceCloudSupport {
             return false
         #endif
     }
+}
+
+enum AppleIntelligenceCloudSupport {
+    static var isCallableWithCurrentSDK: Bool {
+        guard #available(macOS 27, *) else {
+            return false
+        }
+
+        #if canImport(FoundationModels)
+            return hasPrivateCloudComputeEntitlement
+        #else
+            return false
+        #endif
+    }
+
+    static var hasPrivateCloudComputeEntitlement: Bool {
+        var code: SecCode?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else {
+            return false
+        }
+
+        var staticCode: SecStaticCode?
+        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else {
+            return false
+        }
+
+        var signingInformation: CFDictionary?
+        let copyStatus = SecCodeCopySigningInformation(
+            staticCode,
+            SecCSFlags(rawValue: kSecCSSigningInformation),
+            &signingInformation
+        )
+        guard copyStatus == errSecSuccess, let signingInformation else {
+            return false
+        }
+
+        let entitlements = (signingInformation as NSDictionary)[kSecCodeInfoEntitlementsDict] as? [String: Any]
+        return entitlements?["com.apple.developer.private-cloud-compute"] as? Bool == true
+    }
 
     static let unavailableReason = String(
-        localized: "Private Cloud Compute needs macOS 27. This Mac or this VoiceInk build cannot call that model."
+        localized: "Private Cloud Compute needs macOS 27 and Apple’s PCC entitlement on a Developer ID or App Store build."
     )
 }
 
@@ -105,14 +145,6 @@ enum AppleIntelligenceOutputSanitizer {
                 lines.removeLast()
             }
             processedText = lines.joined(separator: "\n")
-        }
-
-        if processedText.count >= 2 {
-            let first = processedText.first
-            let last = processedText.last
-            if (first == "\"" && last == "\"") || (first == "“" && last == "”") || (first == "'" && last == "'") {
-                processedText = String(processedText.dropFirst().dropLast())
-            }
         }
 
         return processedText.trimmingCharacters(in: .whitespacesAndNewlines)

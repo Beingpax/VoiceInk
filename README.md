@@ -38,7 +38,7 @@ My goal is to make it **the most efficient and privacy-focused voice-to-text sol
 - 📝 **Personal Dictionary**: Train the AI to understand your unique terminology with custom words, industry terms, and smart text replacements
 - 🔄 **Smart Modes**: Instantly switch between AI-powered modes optimized for different writing styles and contexts
 - 🤖 **AI Assistant**: Built-in voice assistant mode for a quick chatGPT like conversational assistant
-- ✨ **AI Enhancement**: Optional cleanup with cloud providers, Ollama, Local CLI, VoiceInk Refine, or Apple Intelligence on macOS 26+ (on-device AFM 3 Core / Core Advanced, plus Private Cloud Compute on macOS 27 for signed builds)
+- ✨ **AI Enhancement**: Optional cleanup with cloud providers, Ollama, Local CLI, VoiceInk Refine, or Apple Intelligence on macOS 26+ (on-device AFM 3 Core / Core Advanced, plus Private Cloud Compute on macOS 27 for Developer ID or App Store builds that include Apple’s PCC entitlement)
 
 ## Get Started
 

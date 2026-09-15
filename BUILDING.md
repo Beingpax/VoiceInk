@@ -33,7 +33,7 @@ make local LOCAL_CODESIGN_IDENTITY=-
 
 Local builds do not include iCloud dictionary sync or automatic updates. Ad-hoc builds may require macOS permissions again after rebuilding.
 
-On macOS 26 or later, a local build can use Apple Intelligence for enhancement from Model Library → Local. The on-device model is AFM 3 Core or AFM 3 Core Advanced; the Mac picks the variant (Advanced on M3 or later with at least 12 GB). On macOS 27, Modes can also pick Private Cloud Compute. PCC needs Apple’s entitlement on a Developer ID or App Store build; ad-hoc local builds cannot complete PCC requests.
+On macOS 26 or later, a local build can use Apple Intelligence for enhancement from Model Library → Local. The on-device model is AFM 3 Core or AFM 3 Core Advanced; the Mac picks the variant (Advanced on M3 or later with at least 12 GB). Private Cloud Compute needs macOS 27 and Apple’s `com.apple.developer.private-cloud-compute` entitlement on a Developer ID or App Store build. Signing without that entitlement is not enough; ad-hoc local builds hide PCC.
 
 ## Other Commands
 

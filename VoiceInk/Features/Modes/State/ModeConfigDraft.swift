@@ -109,11 +109,6 @@ struct ModeConfigDraft {
             return
         }
 
-        if provider == .appleIntelligence {
-            selectedAIModel = snapshot.selectedModel(for: provider)
-            return
-        }
-
         let availableModels = snapshot.availableModels(for: provider)
         if let selectedAIModel,
             !selectedAIModel.isEmpty,

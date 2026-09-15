@@ -89,6 +89,7 @@ class AIEnhancementService: ObservableObject {
         }
 
         if provider == .appleIntelligence {
+            guard configuration.prompt != nil else { return false }
             let model = AppleIntelligenceModel.resolved(from: configuration.modelName)
             return aiService.appleIntelligenceService.isReady(for: model)
         }
@@ -192,9 +193,9 @@ class AIEnhancementService: ObservableObject {
             return AppleIntelligencePromptBudget.budgetedSystemMessage(
                 basePrompt: prompt.finalPromptText,
                 customVocabularySection: customVocabularySection,
-                selectedTextContext: selectedTextContext,
-                clipboardContext: clipboardContext,
-                screenCaptureContext: screenCaptureContext
+                selectedText: useSelectedText ? (contextSnapshot?.selectedText ?? "") : "",
+                clipboardText: useClipboard ? (lastCapturedClipboard ?? "") : "",
+                screenText: useScreenCapture ? (screenCaptureService.lastCapturedText ?? "") : ""
             )
         }
 
