@@ -212,6 +212,12 @@ enum BackupImporter {
         if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
             UserDefaults.standard.set(autoLearnEnabled, forKey: AutoLearnSettings.isEnabledKey)
         }
+        if let provider = general.autoLearnProvider {
+            UserDefaults.standard.set(provider, forKey: AutoLearnSettings.providerKey)
+        }
+        if let model = general.autoLearnModel {
+            UserDefaults.standard.set(model, forKey: AutoLearnSettings.modelKey)
+        }
         if general.isAutoLearnDictionaryEnabled != nil || importedReviewSchedule != nil {
             Task {
                 if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
@@ -256,14 +262,14 @@ enum BackupImporter {
             let descriptor = FetchDescriptor<WordReplacement>()
             var existingReplacements = try modelContext.fetch(descriptor)
 
-            var existingDestinationsBySource: [String: String] = [:]
-            for existing in existingReplacements {
+            var existingDestinationsBySource: [String: Set<String>] = [:]
+            for existing in existingReplacements where existing.isEnabled {
                 let destinationKey = WordReplacementVariants.destinationKey(
                     for: existing.replacementText
                 )
                 for variant in WordReplacementVariants.parse(existing.originalText) {
-                    existingDestinationsBySource[WordReplacementVariants.key(for: variant)]
-                        = destinationKey
+                    existingDestinationsBySource[WordReplacementVariants.key(for: variant), default: []]
+                        .insert(destinationKey)
                 }
             }
 
@@ -279,10 +285,10 @@ enum BackupImporter {
                 }
 
                 let hasConflict = importKeys.contains { sourceKey in
-                    guard let existingDestination = existingDestinationsBySource[sourceKey] else {
+                    guard let existingDestinations = existingDestinationsBySource[sourceKey] else {
                         return false
                     }
-                    return existingDestination != destinationKey
+                    return existingDestinations.contains(where: { $0 != destinationKey })
                 }
                 guard !hasConflict else {
                     skippedInvalidReplacements += 1
@@ -334,7 +340,7 @@ enum BackupImporter {
                     didMutateReplacements = true
                 }
                 for sourceKey in importKeys {
-                    existingDestinationsBySource[sourceKey] = destinationKey
+                    existingDestinationsBySource[sourceKey, default: []].insert(destinationKey)
                 }
             }
         } else {

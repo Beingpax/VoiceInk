@@ -70,6 +70,7 @@ struct DictionarySettingsView: View {
                 DictionarySettingsPanel {
                     activePanel = nil
                 } onReviewNow: {
+                    activePanel = nil
                     isAutoLearnReviewPresented = true
                 }
             case .autoLearnFailure:

@@ -36,7 +36,6 @@ struct VoiceInkApp: App {
 
     // Model prewarm service for optimizing model on wake from sleep
     @StateObject private var prewarmService: ModelPrewarmService
-    @StateObject private var changeLogManager: ChangeLogManager
 
     init() {
         // Disable HTTP response caching — prevents API responses from being stored in Cache.db
@@ -46,7 +45,6 @@ struct VoiceInkApp: App {
         AppLanguagePreference.applyStored()
         AppAppearancePreference.applyStored()
         OnboardingV2Migration.prepareIfNeeded()
-        _changeLogManager = StateObject(wrappedValue: ChangeLogManager())
 
         let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "Initialization")
         // Keep existing model order stable; append new models after synced entities.
@@ -308,15 +306,23 @@ struct VoiceInkApp: App {
                         .environmentObject(aiService)
                         .environmentObject(enhancementService)
                         .modelContainer(container)
-                        .changeLogPresenter(manager: changeLogManager)
-                        .onAppear {
-                            changeLogManager.presentIfNeeded()
-
-                            if enableAnnouncements && !changeLogManager.isPresenting {
-                                AnnouncementsService.shared.start()
+                        .lazyChangeLogPresenter { isPresenting in
+                            if isPresenting {
+                                if enableAnnouncements {
+                                    AnnouncementsService.shared.stop()
+                                }
+                            } else {
+                                if enableAnnouncements {
+                                    AnnouncementsService.shared.start()
+                                }
+                                showLaunchRemindersIfNeeded()
                             }
-
-                            if !changeLogManager.isPresenting {
+                        }
+                        .onAppear {
+                            if !ChangeLogManager.needsPresentation() {
+                                if enableAnnouncements {
+                                    AnnouncementsService.shared.start()
+                                }
                                 showLaunchRemindersIfNeeded()
                             }
 
@@ -356,18 +362,6 @@ struct VoiceInkApp: App {
 
                             // Stop the automatic audio cleanup process
                             audioCleanupManager.stopAutomaticCleanup()
-                        }
-                        .onChange(of: changeLogManager.isPresenting) { _, isPresenting in
-                            if isPresenting {
-                                if enableAnnouncements {
-                                    AnnouncementsService.shared.stop()
-                                }
-                            } else {
-                                if enableAnnouncements {
-                                    AnnouncementsService.shared.start()
-                                }
-                                showLaunchRemindersIfNeeded()
-                            }
                         }
                 } else {
                     OnboardingView(hasCompletedOnboardingV2: $hasCompletedOnboardingV2)

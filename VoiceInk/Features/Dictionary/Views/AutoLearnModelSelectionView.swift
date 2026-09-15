@@ -28,7 +28,7 @@ struct AutoLearnModelSelectionView: View {
     private var providerOptions: [AIProvider] {
         var providers = aiService.connectedProviders.filter {
             AutoLearnProviderPolicy.isSupported($0)
-                && ($0 != .ollama || !aiService.availableModels(for: $0).isEmpty)
+                && ($0 != .ollama || !aiService.isOllamaRefreshing && !aiService.availableModels(for: $0).isEmpty)
         }
         if let selectedProvider, AutoLearnProviderPolicy.isSupported(selectedProvider),
             !providers.contains(selectedProvider)
@@ -41,9 +41,7 @@ struct AutoLearnModelSelectionView: View {
     private var selectedProvider: AIProvider? {
         guard let provider = AIProvider(rawValue: autoLearnProvider),
             AutoLearnProviderPolicy.isSupported(provider),
-            provider != .ollama
-                || (aiService.connectedProviders.contains(provider)
-                    && !aiService.availableModels(for: provider).isEmpty)
+            provider != .ollama || aiService.connectedProviders.contains(provider)
         else {
             return nil
         }

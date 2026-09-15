@@ -3,6 +3,7 @@ import SwiftData
 
 @ModelActor
 actor WordReplacementStore {
+    private enum MutationError: Error { case invalidReplacementSource }
     func apply(
         _ decisions: [AutoLearnReviewDecision],
         candidates: [AutoLearnReviewCandidate]
@@ -47,7 +48,7 @@ actor WordReplacementStore {
                         guard let incorrectTextToReplace = decision.incorrectTextToReplace else {
                             continue
                         }
-                        mutation = applyReplacement(
+                        mutation = try applyReplacement(
                             source: incorrectTextToReplace,
                             destination: correctedVocabularyTerm,
                             entries: &entries,
@@ -58,7 +59,7 @@ actor WordReplacementStore {
                         guard let incorrectTextToReplace = decision.incorrectTextToReplace else {
                             continue
                         }
-                        mutation = applyReplacement(
+                        mutation = try applyReplacement(
                             source: incorrectTextToReplace,
                             destination: correctedVocabularyTerm,
                             entries: &entries,
@@ -157,7 +158,12 @@ actor WordReplacementStore {
                 }
             }
         }
-        try modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 
     private func applyReplacement(
@@ -165,7 +171,7 @@ actor WordReplacementStore {
         destination rawDestination: String,
         entries: inout [WordReplacement],
         existingSourceKeys: inout Set<String>
-    ) -> (created: Bool, updated: Bool) {
+    ) throws -> (created: Bool, updated: Bool) {
         let source = rawSource.trimmingCharacters(in: .whitespacesAndNewlines)
             .precomposedStringWithCanonicalMapping
         let destination = rawDestination.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -174,7 +180,8 @@ actor WordReplacementStore {
         let destinationKey = WordReplacementVariants.destinationKey(for: destination)
         let destinationSourceKey = WordReplacementVariants.key(for: destination)
 
-        guard !source.isEmpty, !destination.isEmpty, !source.contains(","),
+        guard !source.contains(",") else { throw MutationError.invalidReplacementSource }
+        guard !source.isEmpty, !destination.isEmpty,
             !sourceKey.isEmpty, !destinationKey.isEmpty,
             source != destination,
             !existingSourceKeys.contains(sourceKey),

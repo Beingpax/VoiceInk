@@ -11,7 +11,7 @@ struct ModelUsagePanel: View {
         } header: {
             header
         } footer: {
-            recommendedModelsOverlay
+            RecommendedModelsFooter()
         }
     }
 
@@ -36,6 +36,27 @@ struct ModelUsagePanel: View {
     }
 
     private var recommendedModelsOverlay: some View {
+        HStack {
+            Spacer()
+
+            Button(action: ModelLinks.openRecommendedModels) {
+                ModelActionLabel(
+                    title: "Recommended Models",
+                    icon: "sparkles",
+                    isPrimary: true
+                )
+            }
+            .buttonStyle(.plain)
+            .fixedSize(horizontal: true, vertical: true)
+            .help(String(localized: "Open recommended AI models"))
+        }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.footerHeight)
+    }
+}
+
+struct RecommendedModelsFooter: View {
+    var body: some View {
         HStack {
             Spacer()
 

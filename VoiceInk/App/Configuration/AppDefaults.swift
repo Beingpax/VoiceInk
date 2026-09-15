@@ -116,6 +116,10 @@ enum AutoLearnSettings {
     }
 }
 
+enum OnboardingSettings {
+    static let completedV2Key = "hasCompletedOnboardingV2"
+}
+
 enum AppDefaults {
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [

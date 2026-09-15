@@ -71,7 +71,7 @@ struct HistoryAnalysisPanelView: View {
                     )
                 }
                 .padding(.horizontal, 18)
-                .padding(.top, 76)
+                .padding(.top, QuickPanelMetrics.topEdgeHeight + 4)
                 .padding(.bottom, 24)
             }
         }

@@ -17,6 +17,11 @@ class CursorPaster {
         }
     }
 
+    struct PasteOutcome {
+        let result: PasteResult
+        let autoLearnGeneration: UInt64?
+    }
+
     private static let prePasteDelay: TimeInterval = 0.10
     private static let pasteShortcutEventDelay: TimeInterval = 0.01
     private static let minimumClipboardRestoreDelay: TimeInterval = 0.25
@@ -32,14 +37,14 @@ class CursorPaster {
 
     @MainActor
     @discardableResult
-    static func startPasteAtCursor(_ text: String) -> Task<PasteResult, Never> {
+    static func startPasteAtCursor(_ text: String) -> Task<PasteOutcome, Never> {
         Task { @MainActor in
             await performPasteSession(text)
         }
     }
 
     @MainActor
-    private static func performPasteSession(_ text: String) async -> PasteResult {
+    private static func performPasteSession(_ text: String) async -> PasteOutcome {
         let pasteboard = NSPasteboard.general
         let shouldRestoreClipboard = UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
         let savedContents = shouldRestoreClipboard ? snapshotClipboard(from: pasteboard) : []
@@ -53,22 +58,24 @@ class CursorPaster {
             )
         else {
             logger.error("Failed to prepare clipboard for paste")
-            return .commandNotPosted
+            return PasteOutcome(result: .commandNotPosted, autoLearnGeneration: nil)
         }
 
         await wait(prePasteDelay)
 
         let pasteResult: PasteResult
+        let autoLearnGeneration: UInt64?
         if AutoLearnSettings.isEnabled {
             let targetProcessID = NSWorkspace.shared.frontmostApplication?.processIdentifier
             pasteResult = await postPasteCommand()
-            await AutoLearnService.shared.pasteDidFinish(
+            autoLearnGeneration = await AutoLearnService.shared.pasteDidFinish(
                 text: text,
                 processID: targetProcessID,
                 commandPosted: pasteResult.didPostPasteCommand
             )
         } else {
             pasteResult = await postPasteCommand()
+            autoLearnGeneration = nil
         }
         if shouldRestoreClipboard {
             scheduleClipboardRestore(
@@ -79,7 +86,7 @@ class CursorPaster {
             )
         }
 
-        return pasteResult
+        return PasteOutcome(result: pasteResult, autoLearnGeneration: autoLearnGeneration)
     }
 
     private static func snapshotClipboard(from pasteboard: NSPasteboard) -> ClipboardSnapshot {

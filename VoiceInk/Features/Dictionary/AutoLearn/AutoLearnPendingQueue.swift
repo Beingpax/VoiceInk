@@ -98,6 +98,7 @@ actor AutoLearnPendingQueue {
 
     func recoverInterruptedReviews() throws {
         try loadIfNeeded()
+        let snapshot = queuedCorrections
         var changed = false
         for index in queuedCorrections.indices
         where queuedCorrections[index].reviewStatus == .reviewing {
@@ -105,7 +106,7 @@ actor AutoLearnPendingQueue {
             changed = true
         }
         if changed {
-            try save()
+            do { try save() } catch { queuedCorrections = snapshot; throw error }
         }
     }
 
@@ -198,6 +199,7 @@ actor AutoLearnPendingQueue {
     func release(_ candidateIDs: Set<UUID>) throws {
         guard !candidateIDs.isEmpty else { return }
         try loadIfNeeded()
+        let snapshot = queuedCorrections
 
         var changed = false
         for index in queuedCorrections.indices
@@ -206,7 +208,7 @@ actor AutoLearnPendingQueue {
             changed = true
         }
         if changed {
-            try save()
+            do { try save() } catch { queuedCorrections = snapshot; throw error }
         }
     }
 
@@ -214,10 +216,11 @@ actor AutoLearnPendingQueue {
         guard !candidateIDs.isEmpty else { return }
         try loadIfNeeded()
 
+        let snapshot = queuedCorrections
         let originalCount = queuedCorrections.count
         queuedCorrections.removeAll { candidateIDs.contains($0.candidateID) }
         if queuedCorrections.count != originalCount {
-            try save()
+            do { try save() } catch { queuedCorrections = snapshot; throw error }
         }
     }
 

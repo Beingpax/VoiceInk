@@ -66,6 +66,10 @@ struct WordReplacementView: View {
         replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var hasValidOriginalVariants: Bool {
+        !WordReplacementVariants.parse(trimmedOriginal).isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
@@ -89,7 +93,7 @@ struct WordReplacementView: View {
                 if shouldShowAddButton {
                     AddIconButton(
                         helpText: "Add word replacement",
-                        isDisabled: trimmedOriginal.isEmpty || trimmedReplacement.isEmpty,
+                        isDisabled: trimmedOriginal.isEmpty || trimmedReplacement.isEmpty || !hasValidOriginalVariants,
                         action: addReplacement
                     )
                 }
@@ -197,7 +201,8 @@ struct WordReplacementView: View {
     private func addReplacement() {
         let original = trimmedOriginal
         let replacement = trimmedReplacement
-        guard !original.isEmpty, !replacement.isEmpty else { return }
+        guard !original.isEmpty, !replacement.isEmpty,
+            !WordReplacementVariants.parse(original).isEmpty else { return }
         if let error = DictionaryService.addWordReplacement(
             original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext)
         {

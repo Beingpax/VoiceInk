@@ -29,9 +29,10 @@ final class WordReplacementService {
     private init() {}
 
     func applyReplacements(to text: String, using context: ModelContext) -> String {
-        let descriptor = FetchDescriptor<WordReplacement>(
-            predicate: #Predicate { $0.isEnabled }
-        )
+        // `isEnabled` is retained for store/CloudKit compatibility, but older
+        // rows may contain false values from before the field was introduced.
+        // Replacement rules are intentionally always active.
+        let descriptor = FetchDescriptor<WordReplacement>()
 
         let replacements: [WordReplacement]
         do {
@@ -71,12 +72,11 @@ final class WordReplacementService {
                 logger.debug(
                     "Applying boundary-aware word replacement \(original, privacy: .private) -> \(replacementText, privacy: .private), matches=\(matchCount, privacy: .public)"
                 )
-                let literalReplacement = NSRegularExpression.escapedTemplate(for: replacementText)
                 modifiedText = regex.stringByReplacingMatches(
                     in: modifiedText,
                     options: [],
                     range: range,
-                    withTemplate: literalReplacement
+                    withTemplate: replacementText
                 )
                 matchedRuleCount += 1
             } else {

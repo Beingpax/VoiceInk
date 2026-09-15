@@ -539,6 +539,7 @@ class AIService: ObservableObject {
                     self.isAPIKeyValid = true
                     APIKeyManager.shared.saveAPIKey(key, forProvider: self.selectedProvider.rawValue)
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
+                    NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
                 } else {
                     self.isAPIKeyValid = false
                 }

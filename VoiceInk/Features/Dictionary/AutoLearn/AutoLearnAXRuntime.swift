@@ -52,6 +52,7 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
             }
 
             guard let reading = matchedReading, let pastedRange else {
+                textReader.restoreWebAccessibility(processID: processID, appElement: AXUIElementCreateApplication(processID))
                 return rejectCapture(
                     lastReading == nil ? "focused-text-reading-unavailable" : "pasted-range-invalid"
                 )
@@ -82,6 +83,7 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
             guard let active = session, active.token == token else { return nil }
             session = nil
 
+            defer { textReader.restoreWebAccessibility(processID: AXProcessID(active.appElement), appElement: active.appElement) }
             guard let finalTextValue = textReader.textValue(from: active.targetElement) else { return nil }
             let finalFieldText = finalTextValue.text
             guard finalFieldText.utf16.count <= AutoLearnLimits.maximumFieldUTF16Length else { return nil }
@@ -106,8 +108,17 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
     func discard(token: AutoLearnPasteToken? = nil) async {
         await perform { [self] in
             guard token == nil || session?.token == token else { return }
+            if let active = session {
+                textReader.restoreWebAccessibility(processID: AXProcessID(active.appElement), appElement: active.appElement)
+            }
             session = nil
         }
+    }
+
+    private func AXProcessID(_ element: AXUIElement) -> pid_t {
+        var pid: pid_t = 0
+        _ = AXUIElementGetPid(element, &pid)
+        return pid
     }
 
     private func textIsExactlyEqual(_ lhs: String, _ rhs: String) -> Bool {
@@ -307,7 +318,8 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
             guard match.location != NSNotFound else { break }
             matches.append(match)
 
-            let nextLocation = NSMaxRange(match)
+            // Advance by one UTF-16 unit so overlapping occurrences are not skipped.
+            let nextLocation = match.location + 1
             guard nextLocation < field.length else { break }
             searchRange = NSRange(location: nextLocation, length: field.length - nextLocation)
         }

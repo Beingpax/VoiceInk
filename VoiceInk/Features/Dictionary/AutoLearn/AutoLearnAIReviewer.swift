@@ -146,8 +146,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         var reviewDecisions: [AutoLearnReviewDecision] = []
         var unresolvedReviews: [AutoLearnUnresolvedReview] = []
 
-        let correctedTextUniverse = candidates.map(\.correctedText)
-
         for (index, candidate) in candidates.enumerated() {
             guard let matchingDecisions = decisionsByCandidateID[index] else {
                 unresolvedReviews.append(
@@ -177,8 +175,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             for decision in matchingDecisions {
                 let validation = validate(
                     decision,
-                    for: candidate,
-                    correctedTextUniverse: correctedTextUniverse
+                    for: candidate
                 )
                 guard let validatedDecision = validation.decision else {
                     unresolvedDecision = unresolvedReview(
@@ -235,8 +232,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     private func validate(
         _ decision: CandidateReviewDecision,
-        for candidate: AutoLearnReviewCandidate,
-        correctedTextUniverse: [String]
+        for candidate: AutoLearnReviewCandidate
     ) -> (decision: AutoLearnReviewDecision?, failure: AutoLearnUnresolvedReason?) {
         if decision.learningAction == .rejectCorrection {
             return (
@@ -257,7 +253,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
         guard !correctedVocabularyTerm.isEmpty,
             correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
-            isGrounded(correctedVocabularyTerm, in: correctedTextUniverse)
+            isExactSubstring(correctedVocabularyTerm, of: candidate.correctedText)
         else {
             return (nil, .invalidRequiredActionValues)
         }
@@ -282,6 +278,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         guard !incorrectTextToReplace.isEmpty,
             incorrectTextToReplace != correctedVocabularyTerm,
             incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
+            !incorrectTextToReplace.contains(","),
+            hasChangedSpan(source: incorrectTextToReplace, destination: correctedVocabularyTerm, candidate: candidate),
             isExactSubstring(incorrectTextToReplace, of: candidate.originalText)
         else {
             return (nil, .invalidRequiredActionValues)
@@ -316,6 +314,23 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     private func isExactSubstring(_ term: String, of context: String) -> Bool {
         context.range(of: term, options: .literal) != nil
+    }
+
+    private func hasChangedSpan(source: String, destination: String, candidate: AutoLearnReviewCandidate) -> Bool {
+        guard let sourceRange = candidate.originalText.range(of: source) else { return false }
+        guard let destinationRange = candidate.correctedText.range(of: destination) else { return false }
+        let original = Array(candidate.originalText), corrected = Array(candidate.correctedText)
+        var prefix = 0
+        while prefix < min(original.count, corrected.count), original[prefix] == corrected[prefix] { prefix += 1 }
+        var suffix = 0
+        while suffix < min(original.count - prefix, corrected.count - prefix),
+              original[original.count - 1 - suffix] == corrected[corrected.count - 1 - suffix] { suffix += 1 }
+        let sourceStart = candidate.originalText.distance(from: candidate.originalText.startIndex, to: sourceRange.lowerBound)
+        let sourceEnd = candidate.originalText.distance(from: candidate.originalText.startIndex, to: sourceRange.upperBound)
+        let destinationStart = candidate.correctedText.distance(from: candidate.correctedText.startIndex, to: destinationRange.lowerBound)
+        let destinationEnd = candidate.correctedText.distance(from: candidate.correctedText.startIndex, to: destinationRange.upperBound)
+        return sourceStart < original.count - suffix && sourceEnd > prefix
+            && destinationStart < corrected.count - suffix && destinationEnd > prefix
     }
 
     private func isGrounded(_ term: String, in contexts: [String]) -> Bool {

@@ -32,6 +32,7 @@ struct DashboardContent: View {
     @State private var isAutoLearnFailurePanelPresented = false
     @State private var isAutoLearnReviewPanelPresented = false
     @State private var autoLearnReviewBacklogCount = 0
+    @State private var autoLearnBacklogRefreshGeneration = 0
     @State private var autoLearnFailurePresentationTask: Task<Void, Never>?
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
@@ -136,12 +137,12 @@ struct DashboardContent: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .autoLearnQueueDidChange)) { _ in
-            Task { await refreshAutoLearnReviewBacklogCount() }
+            scheduleAutoLearnReviewBacklogRefresh()
         }
         .onReceive(
             NotificationCenter.default.publisher(for: .autoLearnReviewProposalsDidChange)
         ) { _ in
-            Task { await refreshAutoLearnReviewBacklogCount() }
+            scheduleAutoLearnReviewBacklogRefresh()
         }
         .onDisappear {
             dashboardStatsTask?.cancel()
@@ -202,9 +203,16 @@ struct DashboardContent: View {
 
     @MainActor
     private func refreshAutoLearnReviewBacklogCount() async {
+        let generation = autoLearnBacklogRefreshGeneration
         let queuedCount = (try? await AutoLearnService.shared.outstandingReviewCount()) ?? 0
         let proposalCount = (try? await AutoLearnService.shared.reviewProposalCount()) ?? 0
+        guard generation == autoLearnBacklogRefreshGeneration else { return }
         autoLearnReviewBacklogCount = queuedCount + proposalCount
+    }
+
+    private func scheduleAutoLearnReviewBacklogRefresh() {
+        autoLearnBacklogRefreshGeneration += 1
+        Task { await refreshAutoLearnReviewBacklogCount() }
     }
 
     private func updateAutoLearnFailurePresentation() {

@@ -170,7 +170,7 @@ enum DictionaryService {
 
         let destinationKey = WordReplacementVariants.destinationKey(for: destination)
 
-        for existingEntry in existing {
+        for existingEntry in existing where existingEntry.isEnabled {
             let existingTokens = WordReplacementVariants.parse(existingEntry.originalText)
 
             for token in tokens {
@@ -184,6 +184,7 @@ enum DictionaryService {
         }
 
         let destinationMatches = existing
+            .filter { $0.isEnabled }
             .filter {
                 WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
             }
@@ -196,7 +197,7 @@ enum DictionaryService {
         // creating a brand new rule can loop just as easily as merging into one.
         if WordReplacementVariants.wouldCreateCycle(
             newSources: tokens.map { (source: $0, destination: destination) },
-            in: existing.map {
+            in: existing.filter(\.isEnabled).map {
                 (originalText: $0.originalText, replacementText: $0.replacementText)
             }
         ) {

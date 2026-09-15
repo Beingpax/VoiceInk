@@ -56,7 +56,14 @@ struct DashboardHeroCard: View {
                     .buttonStyle(.plain)
                     .help(reviewCorrectionsHelp(count: reviewCorrectionCount))
                     .accessibilityLabel("Review corrections")
-                    .accessibilityValue("\(reviewCorrectionCount) pending corrections")
+                    .accessibilityValue(
+                        Text(
+                            String(
+                                format: String(localized: "%lld pending corrections"),
+                                Int64(reviewCorrectionCount)
+                            )
+                        )
+                    )
                 }
             }
             .padding(.top, 8)

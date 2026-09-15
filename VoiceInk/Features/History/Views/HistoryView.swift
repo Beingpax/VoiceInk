@@ -343,14 +343,14 @@ struct HistoryView: View {
         }
     }
 
+    @ViewBuilder
     private var infoPanelContent: some View {
-        Group {
-            if let transcription = panelTranscription {
-                TranscriptionInfoSidePanel(transcription: transcription, onClose: closePanel)
-                    .id(transcription.id)
-            } else {
-                Spacer()
-            }
+        if let transcription = panelTranscription {
+            TranscriptionInfoSidePanel(transcription: transcription, onClose: closePanel)
+                .id(transcription.id)
+        } else {
+            Color.clear
+                .task { closePanel() }
         }
     }
 

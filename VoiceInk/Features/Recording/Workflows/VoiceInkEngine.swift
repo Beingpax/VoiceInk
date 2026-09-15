@@ -218,13 +218,6 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 await cleanupResources()
             }
         } else {
-            // Preserve corrections made to the previous paste before recording again.
-            if AutoLearnSettings.isEnabled {
-                Task {
-                    await AutoLearnService.shared.recordingDidStart()
-                }
-            }
-
             let canContinueAssistantSession = isAssistantFollowUp && assistantSession.canSendFollowUp
             let recordingUseCase: RecordingUseCase = canContinueAssistantSession ? .assistantFollowUp : .newSession
 
@@ -283,6 +276,13 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .recording
+
+                            // Only retire the previous paste session once recording
+                            // has actually started. Preflight/permission failures
+                            // must leave it available for Auto Learn capture.
+                            if AutoLearnSettings.isEnabled {
+                                await AutoLearnService.shared.recordingDidStart()
+                            }
 
                             await activeModeTask.value
 

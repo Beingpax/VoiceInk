@@ -23,7 +23,7 @@ enum ChangeLogCatalog {
         id: "dictionary-auto-learn",
         title: "Dictionary Auto Learn",
         summary:
-            "Fix a word after VoiceInk pastes it, and Auto Learn can turn that edit into a reusable Dictionary replacement. Names and phrases become more accurate without entering every rule yourself.",
+            "VoiceInk automatically learns from corrections you make after pasting and adds them to your Dictionary, making future transcriptions more accurate over time.",
         youtubeVideoID: "YEDxTrr1Jco"
     )
 }
@@ -38,7 +38,6 @@ final class ChangeLogManager: ObservableObject {
 
     private let defaults: UserDefaults
     private let item: ChangeLogItem
-    private let wasOnboardedAtLaunch: Bool
 
     init(
         defaults: UserDefaults = .standard,
@@ -46,22 +45,23 @@ final class ChangeLogManager: ObservableObject {
     ) {
         self.defaults = defaults
         self.item = item
-        wasOnboardedAtLaunch = defaults.bool(forKey: "hasCompletedOnboardingV2")
     }
 
     var isPresenting: Bool {
         presentedItem != nil
     }
 
+    static func needsPresentation(
+        defaults: UserDefaults = .standard,
+        item: ChangeLogItem = ChangeLogCatalog.latest
+    ) -> Bool {
+        defaults.bool(forKey: OnboardingSettings.completedV2Key)
+            && !(defaults.stringArray(forKey: DefaultsKey.dismissedItemIDs) ?? []).contains(item.id)
+    }
+
     func presentIfNeeded() {
-        // First-time users already learn the app through onboarding. Mark this
-        // release item as seen so it does not interrupt their second launch.
-        guard wasOnboardedAtLaunch else {
-            rememberDismissal(of: item.id)
-            return
-        }
+        guard Self.needsPresentation(defaults: defaults, item: item) else { return }
         guard presentedItem == nil else { return }
-        guard !dismissedItemIDs.contains(item.id) else { return }
 
         presentedItem = item
     }

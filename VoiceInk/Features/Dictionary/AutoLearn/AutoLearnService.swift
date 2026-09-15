@@ -221,13 +221,13 @@ actor AutoLearnService {
         await discardActiveSession()
     }
 
-    func pasteDidFinish(text: String, processID: pid_t?, commandPosted: Bool) async {
+    func pasteDidFinish(text: String, processID: pid_t?, commandPosted: Bool) async -> UInt64? {
         guard AutoLearnSettings.isEnabled,
             replacementStore != nil,
             commandPosted,
             let processID
         else {
-            return
+            return nil
         }
 
         // Finalize the previous session after Command-V so Accessibility and
@@ -244,7 +244,7 @@ actor AutoLearnService {
         activeGeneration = nil
         activeProcessID = nil
 
-        guard lifecycleGeneration == generation, AutoLearnSettings.isEnabled else { return }
+        guard lifecycleGeneration == generation, AutoLearnSettings.isEnabled else { return nil }
 
         deadlineTask = Task { [weak self] in
             if let previousToken {
@@ -258,10 +258,12 @@ actor AutoLearnService {
                 generation: generation
             )
         }
+        return generation
     }
 
-    func cancelForAutoSend() async {
+    func cancelForAutoSend(generation: UInt64) async {
         guard AutoLearnSettings.isEnabled else { return }
+        guard lifecycleGeneration == generation else { return }
         lifecycleGeneration &+= 1
         await discardActiveSession()
     }

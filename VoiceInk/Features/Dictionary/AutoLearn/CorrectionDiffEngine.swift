@@ -17,7 +17,7 @@ enum CorrectionDiffEngine {
     }
 
     private static let trailingSentencePunctuation: Set<Character> = [
-        ".", ",", "!", "?", ";", ":",
+        ".", ",", "!", "?", ";", ":", "…",
     ]
     private static let leadingWrappers: Set<Character> = [
         "\"", "“", "‘", "(", "[", "{",

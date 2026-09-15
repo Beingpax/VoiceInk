@@ -170,7 +170,8 @@ struct AutoLearnReviewPanel: View {
     }
 
     private var applyButtonTitle: LocalizedStringKey {
-        if !proposals.isEmpty, selectedProposalCount == proposals.count {
+        if !proposals.isEmpty,
+           proposals.allSatisfy({ selections[$0.id] == availableComponents(for: $0) }) {
             return "Apply All (\(proposals.count))"
         }
         return "Apply Selected (\(selectedProposalCount))"

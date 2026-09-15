@@ -114,7 +114,7 @@ struct DictionarySettingsPanel: View {
 
     @MainActor
     private func refreshPendingCorrectionCount() async {
-        let pending = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0
+        let pending = (try? await AutoLearnService.shared.outstandingReviewCount()) ?? 0
         let proposals = (try? await AutoLearnService.shared.reviewProposalCount()) ?? 0
         pendingCorrectionCount = pending + proposals
     }

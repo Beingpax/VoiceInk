@@ -8,6 +8,7 @@ struct ChangeLogView: View {
     let onWatchVideo: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnEnabled = true
 
     var body: some View {
         ZStack {
@@ -130,13 +131,17 @@ struct ChangeLogView: View {
 
     private var footer: some View {
         HStack(spacing: 16) {
-            Text("Available in Dictionary Settings")
-                .font(.system(size: 12))
-                .foregroundStyle(AppTheme.Text.secondary)
+            Toggle("Auto-Learn Dictionary", isOn: $isAutoLearnEnabled)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .font(.system(size: 13, weight: .medium))
+                .onChange(of: isAutoLearnEnabled) { _, isEnabled in
+                    Task {
+                        await AutoLearnService.shared.settingDidChange(isEnabled: isEnabled)
+                    }
+                }
 
             Spacer()
-
-            AppActionButton("Close", action: onDismiss)
 
             AppActionButton(
                 "Watch video",
@@ -185,8 +190,57 @@ private struct ChangeLogPresenter: ViewModifier {
     }
 }
 
+private struct LazyChangeLogPresenter<PresentedContent: View>: View {
+    @StateObject private var manager = ChangeLogManager()
+
+    let content: PresentedContent
+    let onPresentationChanged: (Bool) -> Void
+
+    var body: some View {
+        content
+            .changeLogPresenter(manager: manager)
+            .task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard !Task.isCancelled else { return }
+                manager.presentIfNeeded()
+                onPresentationChanged(manager.isPresenting)
+            }
+            .onChange(of: manager.isPresenting) { _, isPresenting in
+                onPresentationChanged(isPresenting)
+            }
+    }
+}
+
+private struct LazyChangeLogModifier: ViewModifier {
+    let shouldCreateManager: Bool
+    let onPresentationChanged: (Bool) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if shouldCreateManager {
+            LazyChangeLogPresenter(
+                content: content,
+                onPresentationChanged: onPresentationChanged
+            )
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
     func changeLogPresenter(manager: ChangeLogManager) -> some View {
         modifier(ChangeLogPresenter(manager: manager))
+    }
+
+    func lazyChangeLogPresenter(
+        onPresentationChanged: @escaping (Bool) -> Void
+    ) -> some View {
+        modifier(
+            LazyChangeLogModifier(
+                shouldCreateManager: ChangeLogManager.needsPresentation(),
+                onPresentationChanged: onPresentationChanged
+            )
+        )
     }
 }

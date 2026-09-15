@@ -33,7 +33,8 @@ final class AutoLearnAXTextReader {
     private static let stringForMarkerRangeAttribute = "AXStringForTextMarkerRange" as CFString
 
     private var manualAccessibilityLastEnabledAt: [pid_t: UInt64] = [:]
-    private var manualAccessibilityUnsupportedPIDs = Set<pid_t>()
+    private var manualAccessibilityUnsupportedUntil: [pid_t: UInt64] = [:]
+    private var manualAccessibilityPreviousValue: [pid_t: Bool] = [:]
 
     func focusedReadings(processID: pid_t) -> [AutoLearnAXTextReading] {
         let appElement = AXUIElementCreateApplication(processID)
@@ -57,7 +58,7 @@ final class AutoLearnAXTextReader {
 
         var readings: [AutoLearnAXTextReading] = []
         for candidate in candidates {
-            guard copyBool("AXEditable" as CFString, from: candidate.element) != false else { continue }
+            guard isEditable(candidate.element) else { continue }
 
             let candidateReadings = makeReadings(
                 from: candidate.element,
@@ -66,7 +67,20 @@ final class AutoLearnAXTextReader {
             )
             readings.append(contentsOf: candidateReadings)
         }
+        if readings.isEmpty { restoreWebAccessibility(processID: processID, appElement: appElement) }
         return readings
+    }
+
+    func restoreWebAccessibility(processID: pid_t, appElement: AXUIElement) {
+        guard let previous = manualAccessibilityPreviousValue.removeValue(forKey: processID) else { return }
+        _ = AXUIElementSetAttributeValue(appElement, Self.manualAccessibilityAttribute, previous ? kCFBooleanTrue : kCFBooleanFalse)
+        manualAccessibilityLastEnabledAt.removeValue(forKey: processID)
+    }
+
+    private func isEditable(_ element: AXUIElement) -> Bool {
+        if let value = copyBool("AXEditable" as CFString, from: element) { return value }
+        let role = copyString(kAXRoleAttribute as CFString, from: element) ?? ""
+        return role == kAXTextFieldRole || role == kAXTextAreaRole || role == kAXComboBoxRole
     }
 
     func textValue(from element: AXUIElement) -> AutoLearnAXTextValue? {
@@ -181,15 +195,13 @@ final class AutoLearnAXTextReader {
             return nil
         }
 
-        let selectedText = stringForMarkerRange(selectedRange, on: element) ?? ""
+        guard let selectedText = stringForMarkerRange(selectedRange, on: element) else { return nil }
         let afterText: String
         if let afterRange = markerRange(from: selectionEnd, to: documentEnd, on: element),
             let text = stringForMarkerRange(afterRange, on: element)
         {
             afterText = text
-        } else {
-            afterText = ""
-        }
+        } else { return nil }
 
         let fieldText = beforeText + selectedText + afterText
         guard fieldText.utf16.count <= AutoLearnLimits.maximumFieldUTF16Length else {
@@ -209,17 +221,18 @@ final class AutoLearnAXTextReader {
         processID: pid_t,
         appElement: AXUIElement
     ) {
-        guard !manualAccessibilityUnsupportedPIDs.contains(processID) else {
-            return
-        }
-
         let now = DispatchTime.now().uptimeNanoseconds
+        if let until = manualAccessibilityUnsupportedUntil[processID], now < until { return }
         if let lastEnabledAt = manualAccessibilityLastEnabledAt[processID],
             now - lastEnabledAt < 1_000_000_000
         {
             return
         }
 
+        guard let previousValue = copyBool(Self.manualAccessibilityAttribute, from: appElement) else {
+            return
+        }
+        manualAccessibilityPreviousValue[processID] = previousValue
         let result = AXUIElementSetAttributeValue(
             appElement,
             Self.manualAccessibilityAttribute,
@@ -229,7 +242,7 @@ final class AutoLearnAXTextReader {
         case .success:
             manualAccessibilityLastEnabledAt[processID] = now
         case .attributeUnsupported, .notImplemented:
-            manualAccessibilityUnsupportedPIDs.insert(processID)
+            manualAccessibilityUnsupportedUntil[processID] = now + 60_000_000_000
         default:
             break
         }
