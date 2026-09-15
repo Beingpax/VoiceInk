@@ -78,11 +78,7 @@ final class Transcription {
         if let modelName {
             transcriptionModelName = modelName
         }
+        // Keep enhancement metadata when cancellation happens after an AI attempt.
         transcriptionDuration = nil
-        enhancementDuration = nil
-        aiEnhancementModelName = nil
-        promptName = nil
-        aiRequestSystemMessage = nil
-        aiRequestUserMessage = nil
     }
 }
