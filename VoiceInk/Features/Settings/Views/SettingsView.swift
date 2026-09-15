@@ -272,16 +272,18 @@ struct SettingsView: View {
 
                 LabeledContent("Import Settings") {
                     Button("Import") {
-                        ImportExportService.shared.importSettings(
-                            enhancementService: enhancementService,
-                            recordingShortcutManager: recordingShortcutManager,
-                            menuBarManager: menuBarManager,
-                            mediaController: mediaController,
-                            playbackController: playbackController,
-                            recorderUIManager: recorderUIManager,
-                            modelContext: modelContext,
-                            transcriptionModelManager: transcriptionModelManager
-                        )
+                        Task {
+                            await ImportExportService.shared.importSettings(
+                                enhancementService: enhancementService,
+                                recordingShortcutManager: recordingShortcutManager,
+                                menuBarManager: menuBarManager,
+                                mediaController: mediaController,
+                                playbackController: playbackController,
+                                recorderUIManager: recorderUIManager,
+                                modelContext: modelContext,
+                                transcriptionModelManager: transcriptionModelManager
+                            )
+                        }
                     }
                 }
             } header: {

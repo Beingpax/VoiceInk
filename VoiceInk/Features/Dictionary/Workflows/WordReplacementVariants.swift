@@ -1,6 +1,52 @@
 import Foundation
 
 enum WordReplacementVariants {
+    struct CycleDetector {
+        private var graph: [String: Set<String>] = [:]
+
+        init(records: [(originalText: String, replacementText: String)]) {
+            for record in records {
+                let destination = WordReplacementVariants.key(for: record.replacementText)
+                guard !destination.isEmpty else { continue }
+
+                for source in WordReplacementVariants.parse(record.originalText) {
+                    let sourceKey = WordReplacementVariants.key(for: source)
+                    guard !sourceKey.isEmpty else { continue }
+                    graph[sourceKey, default: []].insert(destination)
+                }
+            }
+        }
+
+        /// Adds or replaces one source edge when it does not introduce a cycle.
+        /// Rejected edges leave the graph unchanged.
+        mutating func insertIfAcyclic(source: String, destination: String) -> Bool {
+            let sourceKey = WordReplacementVariants.key(for: source)
+            let destinationKey = WordReplacementVariants.key(for: destination)
+            guard !sourceKey.isEmpty, !destinationKey.isEmpty else { return false }
+
+            let previousDestinations = graph[sourceKey]
+            graph[sourceKey] = [destinationKey]
+
+            guard !canReach(sourceKey, from: destinationKey) else {
+                graph[sourceKey] = previousDestinations
+                return false
+            }
+            return true
+        }
+
+        private func canReach(_ target: String, from start: String) -> Bool {
+            var pending = [start]
+            var visited = Set<String>()
+
+            while let node = pending.popLast() {
+                guard visited.insert(node).inserted else { continue }
+                if node == target { return true }
+                pending.append(contentsOf: graph[node] ?? [])
+            }
+            return false
+        }
+    }
+
     static func parse(_ text: String) -> [String] {
         deduplicated(
             text
@@ -42,36 +88,14 @@ enum WordReplacementVariants {
         newSources: [(source: String, destination: String)],
         in records: [(originalText: String, replacementText: String)]
     ) -> Bool {
-        var graph: [String: Set<String>] = [:]
-        for record in records {
-            let next = key(for: record.replacementText)
-            guard !next.isEmpty else { continue }
-
-            for variant in parse(record.originalText) {
-                let variantKey = key(for: variant)
-                guard !variantKey.isEmpty else { continue }
-                graph[variantKey, default: []].insert(next)
-            }
-        }
-
-        var mutatedKeys = Set<String>()
+        var detector = CycleDetector(records: records)
         for newSource in newSources {
-            let sourceKey = key(for: newSource.source)
-            let destinationKey = key(for: newSource.destination)
-            guard !sourceKey.isEmpty, !destinationKey.isEmpty else { continue }
-            graph[sourceKey] = [destinationKey]
-            mutatedKeys.insert(sourceKey)
-        }
-        guard !mutatedKeys.isEmpty else { return false }
-
-        for sourceKey in mutatedKeys {
-            var visited = Set<String>()
-            func reachesMutated(_ node: String) -> Bool {
-                guard visited.insert(node).inserted else { return false }
-                if mutatedKeys.contains(node) { return true }
-                return (graph[node] ?? []).contains(where: reachesMutated)
+            if !detector.insertIfAcyclic(
+                source: newSource.source,
+                destination: newSource.destination
+            ) {
+                return true
             }
-            if (graph[sourceKey] ?? []).contains(where: reachesMutated) { return true }
         }
         return false
     }
