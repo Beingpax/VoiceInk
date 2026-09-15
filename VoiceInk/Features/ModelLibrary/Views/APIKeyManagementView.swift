@@ -22,7 +22,7 @@ struct APIKeyManagementView: View {
     private var providerOptions: [AIProvider] {
         AIProvider.allCases.filter { provider in
             guard provider.supportsEnhancement else { return false }
-            guard provider != .voiceInkRefine else { return false }
+            guard provider != .voiceInkRefine && provider != .appleIntelligence else { return false }
             if provider == .custom {
                 return customAIProviderManager.hasConfiguredModels
             }

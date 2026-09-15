@@ -620,7 +620,7 @@ struct AudioPlayerView: View {
                 await MainActor.run {
                     transcription.enhancedText = enhancementResult.text
                     transcription.aiEnhancementModelName =
-                        enhancementConfiguration.modelName ?? enhancementConfiguration.provider?.defaultModel
+                        enhancementResult.enhancementModelName(for: enhancementConfiguration)
                     transcription.promptName = enhancementResult.promptName
                     transcription.enhancementDuration = enhancementResult.duration
                     transcription.aiRequestSystemMessage = enhancementResult.systemMessage

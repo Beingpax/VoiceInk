@@ -487,6 +487,8 @@ private struct ModelProviderIdentity {
             fallbackSystemImage = "server.rack"
         case .localCLI:
             fallbackSystemImage = "terminal"
+        case .appleIntelligence:
+            fallbackSystemImage = "apple.logo"
         case .custom:
             fallbackSystemImage = "slider.horizontal.3"
         default:

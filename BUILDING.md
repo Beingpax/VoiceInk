@@ -33,6 +33,8 @@ make local LOCAL_CODESIGN_IDENTITY=-
 
 Local builds do not include iCloud dictionary sync or automatic updates. Ad-hoc builds may require macOS permissions again after rebuilding.
 
+On macOS 26 or later, a local build can use Apple Intelligence for enhancement from Model Library → Local. The on-device model is AFM 3 Core or AFM 3 Core Advanced; the Mac picks the variant (Advanced on M3 or later with at least 12 GB). On macOS 27, Modes can also pick Private Cloud Compute. PCC needs Apple’s entitlement on a Developer ID or App Store build; ad-hoc local builds cannot complete PCC requests.
+
 ## Other Commands
 
 - `make check` — verify required tools
@@ -59,4 +61,5 @@ Select the `VoiceInk` scheme. Run builds `VoiceInk Dev.app`; Archive uses Releas
 - Run `make check` to verify the required tools.
 - Run `make whisper` if the framework is missing.
 - If several Apple Development identities exist, set `LOCAL_CODESIGN_IDENTITY` explicitly.
+- `make local` on Xcode 26 can fail because VoiceInk Refine pulls `mlx-swift` 0.31.6, which requires Swift tools 6.3. Use an Xcode that includes Swift 6.3, or wait for a Refine pin that still builds on Xcode 26.
 - For additional help, open a [GitHub issue](https://github.com/Beingpax/VoiceInk/issues).

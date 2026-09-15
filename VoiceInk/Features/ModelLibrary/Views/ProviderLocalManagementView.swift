@@ -3,9 +3,11 @@ import SwiftUI
 
 struct LocalEnhancementServiceManagementView: View {
     @EnvironmentObject private var aiService: AIService
+    @ObservedObject private var appleIntelligenceService = AppleIntelligenceService.shared
 
     @State private var isOllamaExpanded = false
     @State private var isLocalCLIExpanded = false
+    @State private var isAppleIntelligenceExpanded = true
     @State private var ollamaBaseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
     @State private var selectedOllamaModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var ollamaUserRefreshError: String?
@@ -21,11 +23,24 @@ struct LocalEnhancementServiceManagementView: View {
         VStack(alignment: .leading, spacing: 10) {
             ProviderSectionHeader(
                 title: "Local Enhancement Services",
-                subtitle: "Connect Ollama or configure a CLI command for local enhancement."
+                subtitle: "Use Apple Intelligence, connect Ollama, or configure a CLI command."
             )
             .padding(.top, 8)
 
             VStack(spacing: 0) {
+                LocalProviderDisclosureRow(
+                    title: Text("Apple Intelligence"),
+                    subtitle: Text("On-device General or Private Cloud Compute"),
+                    systemImage: "apple.logo",
+                    statusTitle: Text(appleIntelligenceCombinedStatus),
+                    isExpanded: $isAppleIntelligenceExpanded
+                ) {
+                    appleIntelligenceConfiguration
+                }
+
+                Divider()
+                    .padding(.leading, 58)
+
                 LocalProviderDisclosureRow(
                     title: Text(verbatim: "Ollama"),
                     subtitle: ollamaModelNames.isEmpty ? Text("Local server") : Text(localModelCountLabel),
@@ -54,7 +69,109 @@ struct LocalEnhancementServiceManagementView: View {
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
             syncLocalCLIStateFromService()
+            aiService.appleIntelligenceService.refreshAvailability()
         }
+    }
+
+    private var appleIntelligenceConfiguration: some View {
+        LocalProviderExpandedContent {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Circle()
+                    .fill(appleIntelligenceStatusColor)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 4)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(appleIntelligenceService.status.guidance)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(AppleIntelligenceModel.onDevice.displayName)
+                            .font(.system(size: 12, weight: .medium))
+                        Text(appleIntelligenceOnDeviceDetail)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(AppleIntelligenceModel.onDevice.detail)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(AppleIntelligenceModel.privateCloudCompute.displayName)
+                            .font(.system(size: 12, weight: .medium))
+                        Text(appleIntelligenceCloudDetail)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(AppleIntelligenceModel.privateCloudCompute.detail)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button("Check Again") {
+                    appleIntelligenceService.refreshAvailability()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
+                if appleIntelligenceService.status.showsSettingsButton
+                    || appleIntelligenceService.cloudStatus.showsSettingsButton
+                {
+                    Button("Open Settings") {
+                        appleIntelligenceService.openSystemSettings()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+    }
+
+    private var appleIntelligenceCombinedStatus: String {
+        if appleIntelligenceService.isCloudReady {
+            return String(localized: "PCC ready")
+        }
+        if appleIntelligenceService.isReady {
+            return String(localized: "On-device ready")
+        }
+        return appleIntelligenceService.status.title
+    }
+
+    private var appleIntelligenceStatusColor: Color {
+        if appleIntelligenceService.isProviderUsable {
+            return AppTheme.Status.positive
+        }
+        if appleIntelligenceService.status == .modelNotReady
+            || appleIntelligenceService.cloudStatus == .systemNotReady
+        {
+            return AppTheme.Status.warningStrong
+        }
+        if appleIntelligenceService.status == .unsupportedOS
+            && appleIntelligenceService.cloudStatus == .unsupportedOS
+        {
+            return .secondary
+        }
+        return AppTheme.Status.error
+    }
+
+    private var appleIntelligenceOnDeviceDetail: String {
+        appleIntelligenceService.isReady
+            ? String(localized: "Ready. This Mac’s on-device variant is \(appleIntelligenceService.onDeviceVariantName ?? "Apple Intelligence"). Pick On-Device in a Mode’s AI Model menu.")
+            : appleIntelligenceService.status.title
+    }
+
+    private var appleIntelligenceCloudDetail: String {
+        appleIntelligenceService.isCloudReady
+            ? String(localized: "Ready. Pick Private Cloud Compute in a Mode’s AI Model menu.")
+            : appleIntelligenceService.cloudStatus.guidance
     }
 
     private var ollamaModelNames: [String] {

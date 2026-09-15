@@ -194,8 +194,7 @@ class TranscriptionPipeline {
                         )
                         transcription.enhancedText = enhancementResult.text
                         transcription.aiEnhancementModelName =
-                            resolvedEnhancementConfiguration.modelName
-                            ?? resolvedEnhancementConfiguration.provider?.defaultModel
+                            enhancementResult.enhancementModelName(for: resolvedEnhancementConfiguration)
                         transcription.promptName = enhancementResult.promptName
                         transcription.enhancementDuration = enhancementResult.duration
                         transcription.aiRequestSystemMessage = enhancementResult.systemMessage
@@ -205,6 +204,9 @@ class TranscriptionPipeline {
                         let errorDescription = EnhancementFailureFormatter.description(for: error)
                         let failureMessage = EnhancementFailureFormatter.message(description: errorDescription)
                         transcription.enhancedText = failureMessage
+                        transcription.aiEnhancementModelName =
+                            resolvedEnhancementConfiguration.modelName
+                            ?? resolvedEnhancementConfiguration.provider?.defaultModel
                         responseError = errorDescription
                         await MainActor.run {
                             NotificationManager.shared.showNotification(

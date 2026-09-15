@@ -4,6 +4,7 @@ import LLMkit
 struct AIChatCompletionResult: Sendable {
     let text: String
     let openRouterCompletion: OpenRouterCompletion?
+    let resolvedModelName: String?
 }
 
 extension AIService {
@@ -19,6 +20,7 @@ extension AIService {
 
         let result: String
         var openRouterCompletion: OpenRouterCompletion? = nil
+        var resolvedModelName: String? = nil
         switch provider {
         case .gemini:
             result = try await GeminiLLMClient.chatCompletion(
@@ -93,6 +95,15 @@ extension AIService {
                 systemPrompt: systemPrompt ?? "",
                 userPrompt: localUserPrompt ?? chatPrompt(from: messages)
             )
+        case .appleIntelligence:
+            let appleResult = try await enhanceWithAppleIntelligence(
+                systemPrompt: systemPrompt ?? "",
+                userPrompt: localUserPrompt ?? chatPrompt(from: messages),
+                modelName: resolvedModel,
+                timeout: max(timeout, AppleIntelligenceLimits.requestTimeout)
+            )
+            result = appleResult.text
+            resolvedModelName = appleResult.modelLabel
         default:
             guard let baseURL = URL(string: provider.baseURL) else {
                 throw EnhancementError.notConfigured
@@ -118,7 +129,11 @@ extension AIService {
             )
         }
 
-        return AIChatCompletionResult(text: result, openRouterCompletion: openRouterCompletion)
+        return AIChatCompletionResult(
+            text: result,
+            openRouterCompletion: openRouterCompletion,
+            resolvedModelName: resolvedModelName
+        )
     }
 
     func completeChat(

@@ -330,7 +330,7 @@ struct QuickHistoryDetailActionBar: View {
                 await MainActor.run {
                     transcription.enhancedText = result.text
                     transcription.aiEnhancementModelName =
-                        configuration.modelName ?? configuration.provider?.defaultModel
+                        result.enhancementModelName(for: configuration)
                     transcription.promptName = result.promptName
                     transcription.enhancementDuration = result.duration
                     transcription.aiRequestSystemMessage = result.systemMessage

@@ -371,6 +371,8 @@ struct ModeConfigFormView: View {
                                 draft.selectedAIModel = nil
                             case .voiceInkRefine:
                                 applyVoiceInkRefineRules()
+                            case .appleIntelligence:
+                                draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                             case .ollama:
                                 if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
                                     draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
@@ -417,6 +419,34 @@ struct ModeConfigFormView: View {
             }
             .onAppear {
                 applyVoiceInkRefineRules()
+            }
+        } else if provider == .appleIntelligence {
+            let models = AppleIntelligenceModel.allCases.filter(\.isCallableWithCurrentSDK)
+            let modelBinding = Binding<String>(
+                get: {
+                    if let model = draft.selectedAIModel,
+                        models.contains(where: { $0.rawValue == model })
+                    {
+                        return model
+                    }
+                    return warmupSnapshot.selectedModel(for: provider)
+                },
+                set: { newModelValue in
+                    draft.selectedAIModel = newModelValue
+                }
+            )
+
+            Picker("AI Model", selection: modelBinding) {
+                ForEach(models) { model in
+                    Text(model.pickerTitle(onDeviceVariantName: aiService.appleIntelligenceService.onDeviceVariantName)).tag(model.rawValue)
+                }
+            }
+            .onAppear {
+                if draft.selectedAIModel == nil
+                    || !models.contains(where: { $0.rawValue == draft.selectedAIModel })
+                {
+                    draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
+                }
             }
         } else {
             let models = aiModelOptions(for: provider)
