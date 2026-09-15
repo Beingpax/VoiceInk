@@ -618,10 +618,85 @@
         }
       }
     },
+    "%lld current vocabulary entries" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld aktueller Vokabulareintrag" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld aktuelle Vokabulareinträge" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld current vocabulary entry" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld current vocabulary entries" } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "当前的 %lld 个词汇条目" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld current word replacements" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld aktuelle Wortersetzung" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld aktuelle Wortersetzungen" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld current word replacement" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld current word replacements" } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "当前的 %lld 个词语替换" } }
+            }
+          }
+        }
+      }
+    },
     "%lld entries" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld Einträge" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%lld 个条目" } }
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Eintrag" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Einträge" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld entry" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld entries" } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 个条目" } }
+            }
+          }
+        }
       }
     },
     "%lld files" : {
@@ -798,24 +873,110 @@
         }
       }
     },
-    "%lld rules, %lld source phrases" : {
+    "%lld previous vocabulary entries" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld rules, %2$lld source phrases"
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld bisheriger Vokabulareintrag" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld bisherige Vokabulareinträge" } }
+            }
           }
         },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld Regeln, %2$lld Quellphrasen"
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld previous vocabulary entry" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld previous vocabulary entries" } }
+            }
           }
         },
         "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld 条规则，%2$lld 个源短语"
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "之前的 %lld 个词汇条目" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld previous word replacements" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld bisherige Wortersetzung" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld bisherige Wortersetzungen" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld previous word replacement" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld previous word replacements" } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "之前的 %lld 个词语替换" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld rules" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Regel" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Regeln" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld rule" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld rules" } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 条规则" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld source phrases" : {
+      "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Quellphrase" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Quellphrasen" } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld source phrase" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld source phrases" } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld 个源短语" } }
+            }
           }
         }
       }
@@ -9739,14 +9900,56 @@
     },
     "Imported %lld vocabulary entries." : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld Vokabulareinträge importiert." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已导入 %lld 个词汇条目。" } }
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Vokabulareintrag importiert." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Vokabulareinträge importiert." } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Imported %lld vocabulary entry." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Imported %lld vocabulary entries." } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "已导入 %lld 个词汇条目。" } }
+            }
+          }
+        }
       }
     },
     "Imported %lld word replacement rules." : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld Wortersetzungsregeln importiert." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已导入 %lld 条词语替换规则。" } }
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld Wortersetzungsregel importiert." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld Wortersetzungsregeln importiert." } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Imported %lld word replacement rule." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Imported %lld word replacement rules." } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "已导入 %lld 条词语替换规则。" } }
+            }
+          }
+        }
       }
     },
     "Imported local model" : {
@@ -14812,24 +15015,24 @@
         }
       }
     },
-    "Removed %lld previous vocabulary entries and %lld previous word replacements." : {
+    "Removed %@ and %@." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Removed %1$lld previous vocabulary entries and %2$lld previous word replacements."
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$lld bisherige Vokabulareinträge und %2$lld bisherige Wortersetzungen entfernt."
+            "value" : "%1$@ und %2$@ entfernt."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removed %1$@ and %2$@."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "已移除之前的 %1$lld 个词汇条目和 %2$lld 个词语替换。"
+            "value" : "已移除%1$@和%2$@。"
           }
         }
       }
@@ -16681,8 +16884,29 @@
     },
     "Skipped %lld duplicate, conflicting, invalid, or cyclic entries." : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "%lld doppelte, widersprüchliche, ungültige oder zyklische Einträge übersprungen." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已跳过 %lld 个重复、冲突、无效或循环条目。" } }
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld doppelten, widersprüchlichen, ungültigen oder zyklischen Eintrag übersprungen." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld doppelte, widersprüchliche, ungültige oder zyklische Einträge übersprungen." } }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "Skipped %lld duplicate, conflicting, invalid, or cyclic entry." } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "Skipped %lld duplicate, conflicting, invalid, or cyclic entries." } }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "variations" : {
+            "plural" : {
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "已跳过 %lld 个重复、冲突、无效或循环条目。" } }
+            }
+          }
+        }
       }
     },
     "Some corrections could not be reviewed. Check the selected AI provider and try again." : {
@@ -18395,24 +18619,24 @@
         }
       }
     },
-    "This removes %lld current vocabulary entries and %lld current word replacements. This action cannot be undone." : {
+    "This removes %@ and %@. This action cannot be undone." : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "This removes %1$lld current vocabulary entries and %2$lld current word replacements. This action cannot be undone."
-          }
-        },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dadurch werden %1$lld aktuelle Vokabulareinträge und %2$lld aktuelle Wortersetzungen entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
+            "value" : "Dadurch werden %1$@ und %2$@ entfernt. Diese Aktion kann nicht rückgängig gemacht werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This removes %1$@ and %2$@. This action cannot be undone."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这将移除当前的 %1$lld 个词汇条目和 %2$lld 个词语替换。此操作无法撤销。"
+            "value" : "这将移除%1$@和%2$@。此操作无法撤销。"
           }
         }
       }

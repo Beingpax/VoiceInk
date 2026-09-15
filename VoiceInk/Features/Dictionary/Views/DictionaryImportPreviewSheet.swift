@@ -135,10 +135,10 @@ struct DictionaryImportPreviewSheet: View {
                 )
                 summaryRow(
                     "Word Replacements",
-                    value: String(
-                        localized:
-                            "\(summary.replacementRulesToImport) rules, \(summary.replacementSourcesToImport) source phrases"
-                    )
+                    value: [
+                        String(localized: "\(summary.replacementRulesToImport) rules"),
+                        String(localized: "\(summary.replacementSourcesToImport) source phrases"),
+                    ].joined(separator: ", ")
                 )
 
                 if summary.duplicateVocabularyCount + summary.duplicateReplacementCount > 0 {
@@ -260,9 +260,16 @@ struct DictionaryImportPreviewSheet: View {
             return String(localized: "This action cannot be undone.")
         }
 
+        let currentVocabulary = String(
+            localized: "\(summary.vocabularyToRemove) current vocabulary entries"
+        )
+        let currentReplacements = String(
+            localized: "\(summary.replacementsToRemove) current word replacements"
+        )
         return String(
-            localized:
-                "This removes \(summary.vocabularyToRemove) current vocabulary entries and \(summary.replacementsToRemove) current word replacements. This action cannot be undone."
+            format: String(localized: "This removes %@ and %@. This action cannot be undone."),
+            currentVocabulary,
+            currentReplacements
         )
     }
 

@@ -26,6 +26,7 @@ struct SettingsView: View {
     @State private var showResetOnboardingAlert = false
     @State private var showLanguageRestartAlert = false
     @State private var cancelRecordingShortcutRecorderResetID = 0
+    @State private var isImportingSettings = false
 
     @State private var isRestoreClipboardExpanded = false
 
@@ -272,7 +273,10 @@ struct SettingsView: View {
 
                 LabeledContent("Import Settings") {
                     Button("Import") {
-                        Task {
+                        guard !isImportingSettings else { return }
+                        isImportingSettings = true
+                        Task { @MainActor in
+                            defer { isImportingSettings = false }
                             await ImportExportService.shared.importSettings(
                                 enhancementService: enhancementService,
                                 recordingShortcutManager: recordingShortcutManager,
@@ -285,6 +289,7 @@ struct SettingsView: View {
                             )
                         }
                     }
+                    .disabled(isImportingSettings)
                 }
             } header: {
                 Text("Backup")

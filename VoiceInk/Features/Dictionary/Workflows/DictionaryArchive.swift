@@ -91,10 +91,17 @@ struct DictionaryImportResult: Sendable {
         ]
 
         if summary.vocabularyToRemove + summary.replacementsToRemove > 0 {
+            let removedVocabulary = String(
+                localized: "\(summary.vocabularyToRemove) previous vocabulary entries"
+            )
+            let removedReplacements = String(
+                localized: "\(summary.replacementsToRemove) previous word replacements"
+            )
             lines.append(
                 String(
-                    localized:
-                        "Removed \(summary.vocabularyToRemove) previous vocabulary entries and \(summary.replacementsToRemove) previous word replacements."
+                    format: String(localized: "Removed %@ and %@."),
+                    removedVocabulary,
+                    removedReplacements
                 )
             )
         }
