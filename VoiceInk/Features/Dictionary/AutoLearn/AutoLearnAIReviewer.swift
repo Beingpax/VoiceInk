@@ -398,8 +398,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     private func overlapsChangedRegion(_ termRange: Range<Int>, changedRange: Range<Int>) -> Bool {
         if changedRange.isEmpty {
-            return termRange.lowerBound <= changedRange.lowerBound
-                && termRange.upperBound >= changedRange.lowerBound
+            return termRange.lowerBound < changedRange.lowerBound
+                && termRange.upperBound > changedRange.lowerBound
         }
         return termRange.lowerBound < changedRange.upperBound
             && termRange.upperBound > changedRange.lowerBound
@@ -532,7 +532,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     }
 
     private static let reviewPrompt = """
-        Review speech-to-text corrections. Each candidate has originalText and correctedText containing the edit plus up to three surrounding words.
+        Review speech-to-text corrections. Each candidate has originalText and correctedText containing the edit plus up to three surrounding words on each side.
 
         Mandatory personal-name rule: A personal name is one indivisible term. For every accepted personal-name correction, incorrectTextToReplace and correctedVocabularyTerm must contain every visible name component, including every unchanged component. Apply this rule even when only a middle name, surname, particle, spacing, punctuation, or suffix changed. Returning only the changed fragment, first name, surname, or any other partial part of a visible multiword name is invalid. A personal name may consist of a single word; when only a single-word personal name is visible, that word is the complete name and may be accepted. Never invent or require name components that are not visible. Reject only when multiple visible words may belong to the name and its complete boundary cannot be identified confidently.
 

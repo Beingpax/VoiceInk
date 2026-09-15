@@ -3973,19 +3973,19 @@
         }
       }
     },
-    "Automatically learns corrections you make after dictation. Each correction and up to three surrounding words are sent to your selected AI provider; recordings and full text fields are never sent." : {
+    "Automatically learns corrections you make after dictation. Each correction and up to three surrounding words on each side are sent to your selected AI provider; recordings and full text fields are never sent." : {
       "comment" : "Explains how Dictionary Auto Learn handles corrections and privacy.",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lernt automatisch aus Korrekturen, die du nach dem Diktieren vornimmst. Jede Korrektur und bis zu drei umgebende Wörter werden an den ausgewählten KI-Anbieter gesendet; Aufnahmen und vollständige Textfelder werden niemals gesendet."
+            "value" : "Lernt automatisch aus Korrekturen, die du nach dem Diktieren vornimmst. Jede Korrektur und bis zu drei umgebende Wörter auf jeder Seite werden an den ausgewählten KI-Anbieter gesendet; Aufnahmen und vollständige Textfelder werden niemals gesendet."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自动学习你在听写后所做的更正。每项更正及其前后最多三个词会发送给所选的 AI 提供商；录音和完整文本字段绝不会被发送。"
+            "value" : "自动学习你在听写后所做的更正。每项更正及其前后各最多三个词会发送给所选的 AI 提供商；录音和完整文本字段绝不会被发送。"
           }
         }
       }
