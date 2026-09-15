@@ -379,35 +379,66 @@ enum AppleIntelligenceTaskTimeout {
         _ timeout: TimeInterval,
         operation: @escaping @Sendable () async throws -> T
     ) async throws -> T {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<T, Error>) in
-            let finished = OSAllocatedUnfairLock(initialState: false)
+        let nanoseconds = UInt64(max(timeout, 1) * 1_000_000_000)
+        let finished = OSAllocatedUnfairLock(initialState: false)
+        let workBox = OSAllocatedUnfairLock<Task<Void, Never>?>(initialState: nil)
+        let timeoutBox = OSAllocatedUnfairLock<Task<Void, Never>?>(initialState: nil)
+        let resumeBox = OSAllocatedUnfairLock<(@Sendable (Result<T, Error>) -> Void)?>(initialState: nil)
 
-            func resumeOnce(_ result: Result<T, Error>) {
-                let shouldResume = finished.withLock { isFinished -> Bool in
-                    if isFinished {
-                        return false
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<T, Error>) in
+                let resumeOnce: @Sendable (Result<T, Error>) -> Void = { result in
+                    let shouldResume = finished.withLock { isFinished -> Bool in
+                        if isFinished {
+                            return false
+                        }
+                        isFinished = true
+                        return true
                     }
-                    isFinished = true
-                    return true
+                    guard shouldResume else { return }
+                    timeoutBox.withLock { task in
+                        task?.cancel()
+                        task = nil
+                    }
+                    workBox.withLock { task in
+                        task?.cancel()
+                        task = nil
+                    }
+                    continuation.resume(with: result)
                 }
-                guard shouldResume else { return }
-                continuation.resume(with: result)
-            }
+                resumeBox.withLock { $0 = resumeOnce }
 
-            let work = Task {
-                do {
-                    let value = try await operation()
-                    resumeOnce(.success(value))
-                } catch {
-                    resumeOnce(.failure(error))
+                let work = Task {
+                    do {
+                        let value = try await operation()
+                        resumeOnce(.success(value))
+                    } catch is CancellationError {
+                        resumeOnce(.failure(CancellationError()))
+                    } catch {
+                        resumeOnce(.failure(error))
+                    }
                 }
-            }
+                workBox.withLock { $0 = work }
 
-            Task {
-                let nanoseconds = UInt64(max(timeout, 1) * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: nanoseconds)
-                work.cancel()
-                resumeOnce(.failure(EnhancementError.timeout))
+                let timeoutTask = Task {
+                    try? await Task.sleep(nanoseconds: nanoseconds)
+                    guard !Task.isCancelled else { return }
+                    work.cancel()
+                    resumeOnce(.failure(EnhancementError.timeout))
+                }
+                timeoutBox.withLock { $0 = timeoutTask }
+            }
+        } onCancel: {
+            resumeBox.withLock { resume in
+                resume?(.failure(CancellationError()))
+            }
+            timeoutBox.withLock { task in
+                task?.cancel()
+                task = nil
+            }
+            workBox.withLock { task in
+                task?.cancel()
+                task = nil
             }
         }
     }
