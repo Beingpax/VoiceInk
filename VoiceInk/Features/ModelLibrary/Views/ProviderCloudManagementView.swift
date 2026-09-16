@@ -56,10 +56,16 @@ struct CloudProviderManagementView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            ProviderSectionHeader(
-                title: "Cloud Providers",
-                subtitle: "Connect providers here, then choose models inside Modes."
-            )
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Cloud Providers")
+                    .font(.system(size: 15, weight: .semibold))
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("Cloud providers process audio and text under their own privacy policies.")
+                        .foregroundStyle(.secondary)
+                    Link("Learn more", destination: URL(string: "https://tryvoiceink.com/privacy")!)
+                }
+                .font(.caption)
+            }
 
             ForEach(providerDescriptors) { descriptor in
                 ProviderListRow(

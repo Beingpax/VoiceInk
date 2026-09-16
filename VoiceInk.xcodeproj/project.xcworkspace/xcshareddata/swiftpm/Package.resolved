@@ -42,7 +42,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Beingpax/LLMkit.git",
       "state" : {
-        "revision" : "1fc213b8e37ea8b8a755dd30eaf50fa090cd4241"
+        "revision" : "f35a17ad59350074bb54f2877eefdd8bae3b5827"
       }
     },
     {
