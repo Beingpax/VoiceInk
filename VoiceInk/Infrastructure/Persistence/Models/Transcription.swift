@@ -80,5 +80,7 @@ final class Transcription {
         }
         // Keep enhancement metadata when cancellation happens after an AI attempt.
         transcriptionDuration = nil
+        aiRequestSystemMessage = nil
+        aiRequestUserMessage = nil
     }
 }

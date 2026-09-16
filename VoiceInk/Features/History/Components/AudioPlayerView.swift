@@ -640,7 +640,6 @@ struct AudioPlayerView: View {
                     description: errorDescription
                 )
                 await MainActor.run {
-                    try? modelContext.save()
                     isReEnhancing = false
                     showErrorNotification(failureMessage)
                 }

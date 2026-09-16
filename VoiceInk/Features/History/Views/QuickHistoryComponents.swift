@@ -362,11 +362,6 @@ struct QuickHistoryDetailActionBar: View {
                 }
             } catch {
                 await MainActor.run {
-                    do {
-                        try modelContext.save()
-                    } catch {
-                        modelContext.rollback()
-                    }
                     selectedPromptOverride = nil
                     isWorking = false
                     let description = EnhancementFailureFormatter.description(for: error)
