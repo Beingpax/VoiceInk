@@ -323,6 +323,9 @@ struct QuickHistoryDetailActionBar: View {
 
         Task {
             do {
+                transcription.aiEnhancementModelName =
+                    configuration.modelName ?? configuration.provider?.defaultModel
+                transcription.promptName = configuration.prompt?.title
                 let result = try await enhancementService.enhance(
                     transcription.text,
                     configuration: configuration
@@ -331,7 +334,8 @@ struct QuickHistoryDetailActionBar: View {
                     transcription.enhancedText = result.text
                     transcription.aiEnhancementModelName =
                         configuration.modelName ?? configuration.provider?.defaultModel
-                    transcription.promptName = result.promptName
+                    transcription.promptName =
+                        result.promptName ?? configuration.prompt?.title
                     transcription.enhancementDuration = result.duration
                     transcription.aiRequestSystemMessage = result.systemMessage
                     transcription.aiRequestUserMessage = result.userMessage
