@@ -4,6 +4,8 @@ import Foundation
 import os
 
 final class ShortcutMonitor {
+    typealias EventTapFactory = (CGEventTapCallBack, UnsafeMutableRawPointer) -> CFMachPort?
+
     fileprivate enum EventKind {
         case keyDown
         case keyUp
@@ -21,6 +23,7 @@ final class ShortcutMonitor {
     }
 
     private var shortcuts: [ShortcutAction: ShortcutState] = [:]
+    private var systemHotKeys: [ShortcutAction: SystemHotKey] = [:]
     private var suppressedMouseButtons = Set<UInt16>()
     private var interruptibleActions: Set<ShortcutAction> = []
     private var onShortcutDown: ((ShortcutAction, TimeInterval) -> Void)?
@@ -28,9 +31,23 @@ final class ShortcutMonitor {
     private var onShortcutInterrupted: ((ShortcutAction, TimeInterval) -> Void)?
     private var eventTap: CFMachPort?
     private var eventTapRunLoopSource: CFRunLoopSource?
+    private let createEventTap: EventTapFactory
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ShortcutMonitor")
 
     private static let shortcutInterruptionWindow: TimeInterval = 1.0
+
+    init(createEventTap: @escaping EventTapFactory = { callback, userInfo in
+        CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: ShortcutMonitor.eventMask,
+            callback: callback,
+            userInfo: userInfo
+        )
+    }) {
+        self.createEventTap = createEventTap
+    }
 
     deinit {
         stop()
@@ -59,10 +76,24 @@ final class ShortcutMonitor {
         self.onShortcutUp = onShortcutUp
         self.onShortcutInterrupted = onShortcutInterrupted
 
-        return installEventTap()
+        for (action, shortcut) in shortcuts {
+            guard let modifiers = shortcut.systemHotKeyModifiers else { continue }
+            systemHotKeys[action] = SystemHotKey(keyCode: shortcut.keyCode, modifiers: modifiers) {
+                [weak self] isDown, eventTime in
+                self?.handleSystemHotKey(action: action, isDown: isDown, eventTime: eventTime)
+            }
+        }
+
+        let hasEventTap = installEventTap()
+        guard hasEventTap || systemHotKeys.count == shortcuts.count else {
+            stop()
+            return false
+        }
+        return true
     }
 
     func stop() {
+        systemHotKeys = [:]
         if let eventTapRunLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), eventTapRunLoopSource, .commonModes)
             self.eventTapRunLoopSource = nil
@@ -102,14 +133,7 @@ final class ShortcutMonitor {
         }
 
         guard
-            let eventTap = CGEvent.tapCreate(
-                tap: .cgSessionEventTap,
-                place: .headInsertEventTap,
-                options: .defaultTap,
-                eventsOfInterest: Self.eventMask,
-                callback: callback,
-                userInfo: Unmanaged.passUnretained(self).toOpaque()
-            )
+            let eventTap = createEventTap(callback, Unmanaged.passUnretained(self).toOpaque())
         else {
             logger.error("Failed to install global shortcut event tap")
             return false
@@ -153,7 +177,7 @@ final class ShortcutMonitor {
     private func resetPressedShortcutsAfterTapInterruption() {
         let eventTime = ProcessInfo.processInfo.systemUptime
         let pressedActions = shortcuts.compactMap { action, state in
-            state.isDown ? action : nil
+            state.isDown && systemHotKeys[action] == nil ? action : nil
         }
 
         guard !pressedActions.isEmpty else {
@@ -167,6 +191,24 @@ final class ShortcutMonitor {
                 state.isInterrupted = false
                 shortcuts[action] = state
             }
+            dispatchShortcutUp(for: action, eventTime: eventTime)
+        }
+    }
+
+    private func handleSystemHotKey(action: ShortcutAction, isDown: Bool, eventTime: TimeInterval) {
+        guard var state = shortcuts[action], state.isDown != isDown else { return }
+
+        if isDown {
+            handleShortcutInterruptions(keyCode: state.shortcut.keyCode, eventTime: eventTime)
+        }
+        state.isDown = isDown
+        state.pressedAt = isDown ? eventTime : nil
+        state.isInterrupted = false
+        shortcuts[action] = state
+
+        if isDown {
+            dispatchShortcutDown(for: action, eventTime: eventTime)
+        } else {
             dispatchShortcutUp(for: action, eventTime: eventTime)
         }
     }
@@ -192,6 +234,8 @@ final class ShortcutMonitor {
         }
 
         for action in Array(shortcuts.keys) {
+            // Registered hot keys also work during Secure Input; only that route owns their transitions.
+            guard systemHotKeys[action] == nil else { continue }
             guard var state = shortcuts[action] else {
                 continue
             }
