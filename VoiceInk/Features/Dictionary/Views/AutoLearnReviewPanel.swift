@@ -150,23 +150,26 @@ struct AutoLearnReviewPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    @ViewBuilder
     private var footer: some View {
-        HStack(spacing: 10) {
-            AppActionButton("Dismiss All", kind: .destructive) {
-                dismiss(Set(proposals.map(\.id)))
-            }
-            .disabled(proposals.isEmpty || isApplying || isReviewing)
+        if !proposals.isEmpty {
+            HStack(spacing: 10) {
+                AppActionButton("Dismiss All", kind: .destructive) {
+                    dismiss(Set(proposals.map(\.id)))
+                }
+                .disabled(isApplying || isReviewing)
 
-            Spacer()
+                Spacer()
 
-            AppActionButton(applyButtonTitle, kind: .primary) {
-                applySelections()
+                AppActionButton(applyButtonTitle, kind: .primary) {
+                    applySelections()
+                }
+                .disabled(selectedProposalCount == 0 || hasInvalidSelection || isApplying || isReviewing)
+                .help(firstValidationIssue ?? "Apply the selected corrections")
             }
-            .disabled(selectedProposalCount == 0 || hasInvalidSelection || isApplying || isReviewing)
-            .help(firstValidationIssue ?? "Apply the selected corrections")
+            .padding(.horizontal, 20)
+            .frame(height: QuickPanelMetrics.footerHeight)
         }
-        .padding(.horizontal, 20)
-        .frame(height: QuickPanelMetrics.footerHeight)
     }
 
     private var applyButtonTitle: LocalizedStringKey {

@@ -136,6 +136,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         let decisionsByCandidateID = Dictionary(grouping: candidateReviewDecisions) {
             $0.candidateID
         }
+        let correctedContexts = candidates.map(\.correctedText)
         for unknownCandidateID in decisionsByCandidateID.keys
         where !expectedCandidateIDs.contains(unknownCandidateID) {
             logger.warning(
@@ -175,7 +176,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             for decision in matchingDecisions {
                 let validation = validate(
                     decision,
-                    for: candidate
+                    for: candidate,
+                    correctedContexts: correctedContexts
                 )
                 guard let validatedDecision = validation.decision else {
                     unresolvedDecision = unresolvedReview(
@@ -232,7 +234,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     private func validate(
         _ decision: CandidateReviewDecision,
-        for candidate: AutoLearnReviewCandidate
+        for candidate: AutoLearnReviewCandidate,
+        correctedContexts: [String]
     ) -> (decision: AutoLearnReviewDecision?, failure: AutoLearnUnresolvedReason?) {
         if decision.learningAction == .rejectCorrection {
             return (
@@ -253,7 +256,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         }
         guard !correctedVocabularyTerm.isEmpty,
             correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
-            isExactSubstring(correctedVocabularyTerm, of: candidate.correctedText)
+            isGrounded(correctedVocabularyTerm, in: correctedContexts)
         else {
             return (nil, .invalidRequiredActionValues)
         }
@@ -279,7 +282,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             incorrectTextToReplace != correctedVocabularyTerm,
             incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
             !incorrectTextToReplace.contains(","),
-            hasChangedSpan(source: incorrectTextToReplace, destination: correctedVocabularyTerm, candidate: candidate),
             isExactSubstring(incorrectTextToReplace, of: candidate.originalText)
         else {
             return (nil, .invalidRequiredActionValues)
@@ -314,111 +316,6 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
     private func isExactSubstring(_ term: String, of context: String) -> Bool {
         context.range(of: term, options: .literal) != nil
-    }
-
-    private func hasChangedSpan(source: String, destination: String, candidate: AutoLearnReviewCandidate) -> Bool {
-        guard let changedRanges = changedRanges(
-            original: candidate.originalText,
-            corrected: candidate.correctedText
-        ) else { return false }
-
-        let sourceRanges = characterRanges(of: source, in: candidate.originalText).filter {
-            overlapsChangedRegion($0, changedRange: changedRanges.original)
-        }
-        let destinationRanges = characterRanges(of: destination, in: candidate.correctedText).filter {
-            overlapsChangedRegion($0, changedRange: changedRanges.corrected)
-        }
-
-        guard !sourceRanges.isEmpty, !destinationRanges.isEmpty else { return false }
-
-        // A single diff hunk can contain multiple adjacent corrections. Merely
-        // touching the hunk is not enough: the selected terms must also occupy
-        // the same relative part of their respective snippets. This prevents a
-        // source from one correction being paired with a neighboring destination.
-        return sourceRanges.contains { sourceRange in
-            destinationRanges.contains { destinationRange in
-                normalizedRangesOverlap(
-                    sourceRange,
-                    inTextLength: candidate.originalText.count,
-                    destinationRange,
-                    inTextLength: candidate.correctedText.count
-                )
-            }
-        }
-    }
-
-    private func changedRanges(
-        original: String,
-        corrected: String
-    ) -> (original: Range<Int>, corrected: Range<Int>)? {
-        let originalCharacters = Array(original)
-        let correctedCharacters = Array(corrected)
-        guard originalCharacters != correctedCharacters else { return nil }
-
-        var prefix = 0
-        while prefix < min(originalCharacters.count, correctedCharacters.count),
-            originalCharacters[prefix] == correctedCharacters[prefix]
-        {
-            prefix += 1
-        }
-
-        var suffix = 0
-        while suffix < min(originalCharacters.count - prefix, correctedCharacters.count - prefix),
-            originalCharacters[originalCharacters.count - 1 - suffix]
-                == correctedCharacters[correctedCharacters.count - 1 - suffix]
-        {
-            suffix += 1
-        }
-
-        return (
-            prefix..<(originalCharacters.count - suffix),
-            prefix..<(correctedCharacters.count - suffix)
-        )
-    }
-
-    private func characterRanges(of term: String, in text: String) -> [Range<Int>] {
-        guard !term.isEmpty else { return [] }
-
-        var result: [Range<Int>] = []
-        var searchStart = text.startIndex
-        while searchStart < text.endIndex,
-            let match = text.range(
-                of: term,
-                options: .literal,
-                range: searchStart..<text.endIndex
-            )
-        {
-            let lowerBound = text.distance(from: text.startIndex, to: match.lowerBound)
-            let upperBound = text.distance(from: text.startIndex, to: match.upperBound)
-            result.append(lowerBound..<upperBound)
-            searchStart = text.index(after: match.lowerBound)
-        }
-        return result
-    }
-
-    private func overlapsChangedRegion(_ termRange: Range<Int>, changedRange: Range<Int>) -> Bool {
-        if changedRange.isEmpty {
-            return termRange.lowerBound < changedRange.lowerBound
-                && termRange.upperBound > changedRange.lowerBound
-        }
-        return termRange.lowerBound < changedRange.upperBound
-            && termRange.upperBound > changedRange.lowerBound
-    }
-
-    private func normalizedRangesOverlap(
-        _ sourceRange: Range<Int>,
-        inTextLength sourceLength: Int,
-        _ destinationRange: Range<Int>,
-        inTextLength destinationLength: Int
-    ) -> Bool {
-        guard sourceLength > 0, destinationLength > 0 else { return false }
-
-        let sourceLower = Double(sourceRange.lowerBound) / Double(sourceLength)
-        let sourceUpper = Double(sourceRange.upperBound) / Double(sourceLength)
-        let destinationLower = Double(destinationRange.lowerBound) / Double(destinationLength)
-        let destinationUpper = Double(destinationRange.upperBound) / Double(destinationLength)
-
-        return sourceLower < destinationUpper && sourceUpper > destinationLower
     }
 
     private func isGrounded(_ term: String, in contexts: [String]) -> Bool {
@@ -534,7 +431,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     private static let reviewPrompt = """
         Review speech-to-text corrections. Each candidate has originalText and correctedText containing the edit plus up to three surrounding words on each side.
 
-        Mandatory personal-name rule: A personal name is one indivisible term. For every accepted personal-name correction, incorrectTextToReplace and correctedVocabularyTerm must contain every visible name component, including every unchanged component. Apply this rule even when only a middle name, surname, particle, spacing, punctuation, or suffix changed. Returning only the changed fragment, first name, surname, or any other partial part of a visible multiword name is invalid. A personal name may consist of a single word; when only a single-word personal name is visible, that word is the complete name and may be accepted. Never invent or require name components that are not visible. Reject only when multiple visible words may belong to the name and its complete boundary cannot be identified confidently.
+        Mandatory personal-name rule: A personal name is one indivisible term. For a visible multiword personal name, incorrectTextToReplace and correctedVocabularyTerm must contain every visible name component, including every unchanged component. Apply this rule even when only a middle name, surname, particle, spacing, punctuation, or suffix changed. Returning only the changed fragment or one component of a visible multiword name is invalid. When only one personal-name component is visible, such as only a first name or only a surname, it may qualify for addReplacementOnly but must not be added to Vocabulary. Allow a single-word personal name into Vocabulary only when context clearly establishes that the person is genuinely known by that complete mononym, not merely because only one name component appears in the snippet. Never invent name components that are not visible.
 
         Identify every independently reusable correction. Usually return one decision per candidate. Separate adjacent independent terms. If learnable and ordinary edits are mixed, return only the learnable corrections. Return rejectCorrection only when nothing is learnable, and never mix rejection with acceptance for one candidateID.
 
@@ -549,11 +446,11 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         Choose one learningAction:
 
         1. addReplacementAndVocabulary: the corrected term passes the Vocabulary gate and the original plausibly sounds like it.
-        2. addReplacementOnly: use only for a distinctive, unambiguous, user-specific correction that is worth applying again but whose corrected term would not improve speech recognition as Vocabulary. Never use this as a fallback for public, common, or generic terms.
-        3. addVocabularyOnly: the corrected term passes the Vocabulary gate and the pair passes the phonetic gate, but the source is too broad or ambiguous for a safe global replacement. Never use this for coherent descriptions, semantic rewrites, deliberate abbreviations, or expansions.
+        2. addReplacementOnly: use for a distinctive, unambiguous, user-specific correction that is worth applying again but whose corrected term should not enter Vocabulary. This includes a learnable correction to a single visible first name or surname when the person's complete name is not visible. Never use this as a fallback for public, common, or generic terms.
+        3. addVocabularyOnly: the corrected term passes the Vocabulary gate and the pair passes the phonetic gate, but the source is too broad or ambiguous for a safe global replacement. Never use this for a partial personal name, coherent descriptions, semantic rewrites, deliberate abbreviations, or expansions.
         4. rejectCorrection: nothing is safely reusable, including ordinary wording, grammar, style, meaning, facts, numbers, dates, abbreviations, expansions, changed qualifiers, editions, generic type words, and corrections a capable general-purpose ASR model should handle without permanent user-specific learning.
 
-        Vocabulary is primarily for personal names. It may also include genuinely uncommon, user-specific, private, or obscure entities whose spelling improves recognition, such as internal project names, private product names, small organizations, uncommon local place names, usernames, and specialized terms a capable general-purpose ASR model is unlikely to know.
+        Vocabulary is primarily for complete personal names. A person's first name, surname, or other single component must not enter Vocabulary by itself unless it is clearly the person's complete mononym. This personal-name restriction does not apply to qualifying non-person entities: a single-token internal brand, project, private product, username, specialized term, small organization, or uncommon local place may enter Vocabulary when it is genuinely user-specific, private, or obscure enough to improve recognition.
 
         Use context to identify user-specific entities. “Call”, “email”, “ask”, “invite”, or “send to” supports interpreting the adjacent text as a personal name. For a phonetically plausible personal name, spelling, apostrophe, spacing, hyphenation, and diacritic corrections are learnable—not formatting-only edits. A personal name remains learnable when it belongs to a well-known or public person. Labels such as “project”, “internal”, “repository”, “account”, “tenant”, or “pipeline” similarly support a user-specific entity. Context never substitutes for phonetic evidence or permits a semantic rewrite.
 
@@ -565,7 +462,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
 
         For replacement actions, incorrectTextToReplace must be an exact nonempty contiguous substring of that candidate's originalText and correctedVocabularyTerm must be copied from correctedText, except canonicalization may copy it from another candidate. For addVocabularyOnly set incorrectTextToReplace to null. For rejectCorrection set both fields to null.
 
-        Before returning a personal-name decision, treat the visible multiword name as one indivisible term and verify that both fields contain the complete original and corrected names, even if only one component changed. Never return only a first name, surname, or changed fragment. Example: "Prakash Joshi Pages" to "Prakash Joshi Pax" must learn the complete names, never only "Pages" to "Pax". If either complete name is uncertain, reject the correction.
+        Before returning a personal-name decision, treat a visible multiword name as one indivisible term and verify that both fields contain the complete original and corrected names, even if only one component changed. Example: "Prakash Joshi Pages" to "Prakash Joshi Pax" must use the complete names, never only "Pages" to "Pax". If only one first name or surname is visible and the correction is otherwise safe and learnable, return addReplacementOnly for that visible component. Do not add it to Vocabulary and do not reject it merely because the person's full name is unavailable. Use a Vocabulary action for a single-word personal name only when the context clearly identifies a genuine mononym.
 
         Return only one JSON array. Do not return an outer object, reviewDecisions key, explanation, Markdown, or code fence. Each array object must contain exactly these four fields: candidateID, learningAction, incorrectTextToReplace, and correctedVocabularyTerm.
 

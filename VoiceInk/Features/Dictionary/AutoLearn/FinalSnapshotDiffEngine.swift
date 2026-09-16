@@ -3,7 +3,6 @@ import Foundation
 enum FinalSnapshotDiffEngine {
     static func revision(from snapshot: AutoLearnFieldSnapshot) -> AutoLearnRevision? {
         let baseline = snapshot.baselineFieldText as NSString
-        let final = snapshot.finalFieldText as NSString
 
         guard isValid(snapshot.pastedRange, inUTF16Length: baseline.length),
             !textIsExactlyEqual(snapshot.baselineFieldText, snapshot.finalFieldText)
@@ -25,30 +24,11 @@ enum FinalSnapshotDiffEngine {
         let beforeText = baseline.substring(with: beforeRange)
         let afterText = baseline.substring(with: afterRange)
 
-        guard final.length >= beforeRange.length + afterRange.length else {
-            return nil
-        }
-
-        let finalBeforeText = final.substring(with: beforeRange)
-        let finalAfterRange = NSRange(
-            location: final.length - afterRange.length,
-            length: afterRange.length
-        )
-        let finalAfterText = final.substring(with: finalAfterRange)
-
-        // Only the pasted region may change. Any edit to surrounding field text
-        // makes the capture ambiguous and must not produce a learned correction.
-        guard textIsExactlyEqual(beforeText, finalBeforeText),
-            textIsExactlyEqual(afterText, finalAfterText)
-        else {
-            return nil
-        }
-
-        let correctedRange = NSRange(
-            location: beforeRange.length,
-            length: final.length - beforeRange.length - afterRange.length
-        )
-        let correctedText = final.substring(with: correctedRange)
+        guard let correctedText = correctedPastedText(
+            in: snapshot.finalFieldText,
+            beforeText: beforeText,
+            afterText: afterText
+        ) else { return nil }
         let normalizedOriginalText = AutoLearnTextNormalizer.accessibilityComparable(
             snapshot.originalPastedText
         )
@@ -63,6 +43,51 @@ enum FinalSnapshotDiffEngine {
             original: normalizedOriginalText,
             corrected: normalizedCorrectedText
         )
+    }
+
+    private static func correctedPastedText(
+        in finalText: String,
+        beforeText: String,
+        afterText: String
+    ) -> String? {
+        let leftBoundary: String.Index
+        if beforeText.isEmpty {
+            leftBoundary = finalText.startIndex
+        } else {
+            let anchor = String(beforeText.suffix(16))
+            guard let range = uniqueRange(of: anchor, in: finalText) else { return nil }
+            leftBoundary = range.upperBound
+        }
+
+        let rightBoundary: String.Index
+        if afterText.isEmpty {
+            rightBoundary = finalText.endIndex
+        } else {
+            let anchor = String(afterText.prefix(16))
+            guard let range = uniqueRange(of: anchor, in: finalText),
+                range.lowerBound >= leftBoundary
+            else { return nil }
+            rightBoundary = range.lowerBound
+        }
+
+        return String(finalText[leftBoundary..<rightBoundary])
+    }
+
+    private static func uniqueRange(of value: String, in text: String) -> Range<String.Index>? {
+        guard !value.isEmpty,
+            let firstRange = text.range(of: value, options: .literal)
+        else { return nil }
+
+        let nextSearchStart = text.index(after: firstRange.lowerBound)
+        guard nextSearchStart >= text.endIndex
+            || text.range(
+                of: value,
+                options: .literal,
+                range: nextSearchStart..<text.endIndex
+            ) == nil
+        else { return nil }
+
+        return firstRange
     }
 
     private static func textIsExactlyEqual(_ lhs: String, _ rhs: String) -> Bool {

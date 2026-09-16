@@ -86,10 +86,6 @@ struct AutoLearnUnresolvedReview: Sendable {
 struct AutoLearnReviewResult: Sendable {
     let reviewDecisions: [AutoLearnReviewDecision]
     let unresolvedReviews: [AutoLearnUnresolvedReview]
-
-    var unresolvedCandidateIDs: Set<UUID> {
-        Set(unresolvedReviews.map(\.candidateID))
-    }
 }
 
 struct AutoLearnReviewProposal: Codable, Identifiable, Sendable {
@@ -187,7 +183,7 @@ enum AutoLearnLimits {
     static let maximumCandidateCharacters = 256
     static let maximumCandidateSegments = 24
     static let reviewContextSegmentsPerSide = 3
-    static let maximumUnspacedCandidateCharacters = 8
+    static let maximumUnspacedCandidateCharacters = 32
     static let maximumReviewBatchCandidates = 100
 }
 

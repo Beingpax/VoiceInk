@@ -503,7 +503,7 @@ actor AutoLearnService {
                 $0.learningAction == .rejectCorrection
             }.count
             logger.notice(
-                "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) replacementOnly=\(replacementOnlyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) unresolved=\(reviewResult.unresolvedReviews.count, privacy: .public)"
+                "Auto Learn review completed replacementAndVocabulary=\(replacementAndVocabularyCount, privacy: .public) replacementOnly=\(replacementOnlyCount, privacy: .public) vocabularyOnly=\(vocabularyOnlyCount, privacy: .public) rejected=\(rejectedCount, privacy: .public) discarded=\(reviewResult.unresolvedReviews.count, privacy: .public)"
             )
         } catch {
             try? await releaseAllClaimsToQueue()
@@ -522,14 +522,13 @@ actor AutoLearnService {
         }
 
         do {
-            let resolvedIDs = candidateIDs.subtracting(reviewResult.unresolvedCandidateIDs)
             if stagesForApproval {
                 try await reviewProposalStore.append(
                     decisions: reviewResult.reviewDecisions,
                     candidates: candidates
                 )
-                try await pendingQueue.remove(resolvedIDs)
-                releaseClaim(resolvedIDs)
+                try await pendingQueue.remove(candidateIDs)
+                releaseClaim(candidateIDs)
                 await notifyQueueChanged()
                 await notifyReviewProposalsChanged()
                 AutoLearnSettings.clearFailure()
@@ -552,8 +551,8 @@ actor AutoLearnService {
                 reviewResult.reviewDecisions,
                 candidates: candidates
             )
-            try await pendingQueue.remove(resolvedIDs)
-            releaseClaim(resolvedIDs)
+            try await pendingQueue.remove(candidateIDs)
+            releaseClaim(candidateIDs)
             await notifyQueueChanged()
             // Cleared only after the queue and dictionary are consistent, so a
             // failure in this block still surfaces to the user.
@@ -577,8 +576,6 @@ actor AutoLearnService {
                 return
             }
 
-            // Unresolved decisions stayed claimed while later batches drained,
-            // preventing one malformed response from blocking the rest of the queue.
             try await releaseAllClaimsToQueue()
             await notifyQueueChanged()
             await finishReviewTask(generation: generation)

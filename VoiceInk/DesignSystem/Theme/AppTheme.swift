@@ -92,8 +92,7 @@ enum AppTheme {
     enum Action {
         static let primaryFill = Accent.primary
         static let primaryForeground = Text.onAccent
-        // A darker fill keeps white text readable in both macOS appearances.
-        static let destructiveFill = Color(red: 0.62, green: 0.08, blue: 0.08)
+        static let destructiveFill = Color(nsColor: .systemRed)
         static let destructiveForeground = Text.onAccent
         static let secondaryForeground = Text.primary
         static let disabledFill = Surface.controlActive
