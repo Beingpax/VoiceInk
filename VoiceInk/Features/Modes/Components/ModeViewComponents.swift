@@ -97,6 +97,37 @@ struct DefaultModeIndicator: View {
     }
 }
 
+private struct ModeShortcutIndicator: View {
+    let modeID: UUID
+    @State private var shortcut: Shortcut?
+
+    private var action: ShortcutAction {
+        .mode(modeID)
+    }
+
+    init(modeID: UUID) {
+        self.modeID = modeID
+        _shortcut = State(initialValue: ShortcutStore.shortcut(for: .mode(modeID)))
+    }
+
+    var body: some View {
+        Group {
+            if let shortcut {
+                ShortcutVisualization(shortcut: shortcut, isRecording: false, isCompact: true)
+                    .help("Mode shortcut: \(shortcut.displayString)")
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Mode shortcut: \(shortcut.displayString)")
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ShortcutStore.shortcutDidChange)) { notification in
+            guard let changedAction = notification.object as? ShortcutAction,
+                changedAction == action
+            else { return }
+            shortcut = ShortcutStore.shortcut(for: action)
+        }
+    }
+}
+
 struct ConfigurationRow: View {
     private struct TranscriptionModelMetadata {
         let label: String
@@ -403,6 +434,8 @@ struct ConfigurationRow: View {
                             .stroke(AppTheme.Border.control, lineWidth: 0.5)
                     )
                 }
+
+                ModeShortcutIndicator(modeID: config.id)
 
                 Spacer()
 

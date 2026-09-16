@@ -92,15 +92,16 @@ struct ShortcutRecorder: View {
     private static let shortcutRecordingDidStart = Notification.Name("ShortcutRecorderRecordingDidStart")
 }
 
-private struct ShortcutVisualization: View {
+struct ShortcutVisualization: View {
     let shortcut: Shortcut?
     let isRecording: Bool
+    var isCompact = false
 
     var body: some View {
         HStack(spacing: 4) {
             if let shortcut {
                 ForEach(Array(shortcut.displayTokens.enumerated()), id: \.offset) { _, token in
-                    ShortcutKeyCap(title: token, isRecording: isRecording)
+                    ShortcutKeyCap(title: token, isRecording: isRecording, isCompact: isCompact)
                 }
             } else {
                 Text(isRecording ? LocalizedStringKey("Press shortcut") : LocalizedStringKey("Record"))
@@ -110,15 +111,15 @@ private struct ShortcutVisualization: View {
                     .foregroundStyle(isRecording ? .primary : .secondary)
             }
         }
-        .padding(4)
-        .frame(minWidth: shortcut == nil ? 104 : nil, minHeight: 26)
+        .padding(isCompact ? 2 : 4)
+        .frame(minWidth: shortcut == nil ? 104 : nil, minHeight: isCompact ? 20 : 26)
         .fixedSize(horizontal: true, vertical: false)
         .background {
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: isCompact ? 5 : 6)
                 .fill(isRecording ? AppTheme.Accent.fill : AppTheme.Surface.control)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: isCompact ? 5 : 6)
                 .stroke(isRecording ? AppTheme.Accent.border : AppTheme.Border.subtle, lineWidth: 1)
         }
     }
@@ -127,21 +128,22 @@ private struct ShortcutVisualization: View {
 private struct ShortcutKeyCap: View {
     let title: String
     let isRecording: Bool
+    let isCompact: Bool
 
     var body: some View {
         Text(title)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .font(.system(size: isCompact ? 9 : 11, weight: .semibold, design: .rounded))
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .foregroundStyle(foregroundColor)
-            .padding(.horizontal, 5)
-            .frame(minHeight: 18)
+            .padding(.horizontal, isCompact ? 4 : 5)
+            .frame(minHeight: isCompact ? 14 : 18)
             .background {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: isCompact ? 3 : 4)
                     .fill(backgroundColor)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: isCompact ? 3 : 4)
                     .stroke(borderColor, lineWidth: 1)
             }
     }
