@@ -123,6 +123,9 @@ struct TranscribeCppModel: TranscriptionModel, Sendable {
     let publisher: String
     let supportedLanguages: [String: String]
 
+    /// Zero ratings mean this model has not been rated; do not display them as measured scores.
+    var hasPerformanceRatings: Bool { speed > 0 && accuracy > 0 }
+
     var isMultilingualModel: Bool { supportedLanguages.count > 1 }
 }
 
