@@ -269,6 +269,7 @@ final class TranscribeCppModelManager: ObservableObject {
     var onModelsChanged: (() -> Void)?
 
     private var activeDownloadIDs: [String: UUID] = [:]
+    private var activeDownloadTasks: [String: Task<Void, Never>] = [:]
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",
         category: "TranscribeCppModelManager"
@@ -292,7 +293,20 @@ final class TranscribeCppModelManager: ObservableObject {
         downloadStatuses[model.name]
     }
 
-    func downloadModel(_ model: TranscribeCppModel) async {
+    func startDownload(_ model: TranscribeCppModel) {
+        guard activeDownloadTasks[model.name] == nil else { return }
+        activeDownloadTasks[model.name] = Task { [weak self] in
+            guard let self else { return }
+            await self.downloadModel(model)
+            self.activeDownloadTasks[model.name] = nil
+        }
+    }
+
+    func cancelDownload(_ model: TranscribeCppModel) {
+        activeDownloadTasks[model.name]?.cancel()
+    }
+
+    private func downloadModel(_ model: TranscribeCppModel) async {
         guard
             let artifact = TranscribeCppModelCatalog.artifact(for: model.name),
             activeDownloadIDs[model.name] == nil,
@@ -336,7 +350,8 @@ final class TranscribeCppModelManager: ObservableObject {
             }
             try Task.checkCancellation()
         } catch is CancellationError {
-            logger.notice("\(model.displayName, privacy: .public) download paused")
+            try? FileManager.default.removeItem(at: partialURL)
+            logger.notice("\(model.displayName, privacy: .public) download cancelled")
             return
         } catch {
             reportFailure(error, for: model)
@@ -353,15 +368,21 @@ final class TranscribeCppModelManager: ObservableObject {
             guard regularFileSize(at: partialURL) == artifact.expectedFileSize else {
                 throw CocoaError(.fileReadCorruptFile)
             }
-            let checksum = try await Task.detached(priority: .utility) {
-                try Self.sha256(of: partialURL)
-            }.value
+            let checksumTask = Task.detached(priority: .utility) {
+                try await Self.sha256(of: partialURL)
+            }
+            let checksum = try await withTaskCancellationHandler {
+                try await checksumTask.value
+            } onCancel: {
+                checksumTask.cancel()
+            }
             try Task.checkCancellation()
             guard checksum == artifact.expectedSHA256 else {
                 throw CocoaError(.fileReadCorruptFile)
             }
         } catch is CancellationError {
-            logger.notice("\(model.displayName, privacy: .public) verification paused")
+            try? FileManager.default.removeItem(at: partialURL)
+            logger.notice("\(model.displayName, privacy: .public) verification cancelled")
             return
         } catch {
             try? FileManager.default.removeItem(at: partialURL)
@@ -370,18 +391,24 @@ final class TranscribeCppModelManager: ObservableObject {
         }
 
         do {
+            try Task.checkCancellation()
             // Commit the checksum first so the final model move makes the installation visible atomically.
             try artifact.expectedSHA256.write(
                 to: artifact.checksumFileURL,
                 atomically: true,
                 encoding: .utf8
             )
+            try Task.checkCancellation()
             try? FileManager.default.removeItem(at: artifact.modelFileURL)
             try FileManager.default.moveItem(at: partialURL, to: artifact.modelFileURL)
             guard artifact.installedModelFileURL != nil else {
                 throw CocoaError(.fileReadCorruptFile)
             }
             logger.notice("\(model.displayName, privacy: .public) installed successfully")
+        } catch is CancellationError {
+            try? FileManager.default.removeItem(at: partialURL)
+            try? FileManager.default.removeItem(at: artifact.checksumFileURL)
+            logger.notice("\(model.displayName, privacy: .public) installation cancelled")
         } catch {
             if !artifact.modelFileIsValid(in: artifact.modelDirectory) {
                 try? FileManager.default.removeItem(at: artifact.modelFileURL)
@@ -504,12 +531,13 @@ final class TranscribeCppModelManager: ObservableObject {
         return error is URLError
     }
 
-    nonisolated private static func sha256(of fileURL: URL) throws -> String {
+    nonisolated private static func sha256(of fileURL: URL) async throws -> String {
         let handle = try FileHandle(forReadingFrom: fileURL)
         defer { try? handle.close() }
 
         var hasher = SHA256()
         while let data = try handle.read(upToCount: 8 * 1_024 * 1_024), !data.isEmpty {
+            try Task.checkCancellation()
             hasher.update(data: data)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()

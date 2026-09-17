@@ -99,6 +99,7 @@ class WhisperModelManager: ObservableObject {
     @Published var isModelLoaded = false
     @Published var loadedWhisperModel: WhisperModelFile?
     @Published var isModelLoading = false
+    private var activeDownloadTasks: [String: Task<Void, Never>] = [:]
 
     let modelsDirectory: URL
     let whisperPrompt = WhisperPrompt()
@@ -168,6 +169,7 @@ class WhisperModelManager: ObservableObject {
     private func downloadFileWithProgress(from url: URL, progressKey: String) async throws -> Data {
         let destinationURL = modelsDirectory.appendingPathComponent(UUID().uuidString)
         let requestState = DownloadRequestState()
+        defer { try? FileManager.default.removeItem(at: destinationURL) }
 
         return try await withTaskCancellationHandler(
             operation: {
@@ -249,9 +251,27 @@ class WhisperModelManager: ObservableObject {
         await performModelDownload(model, url)
     }
 
+    func startDownload(_ model: WhisperModel) {
+        guard activeDownloadTasks[model.name] == nil else { return }
+        downloadProgress[model.name + "_main"] = 0
+        activeDownloadTasks[model.name] = Task { [weak self] in
+            guard let self else { return }
+            await self.downloadModel(model)
+            self.activeDownloadTasks[model.name] = nil
+        }
+    }
+
+    func cancelDownload(_ model: WhisperModel) {
+        activeDownloadTasks[model.name]?.cancel()
+    }
+
     private func performModelDownload(_ model: WhisperModel, _ url: URL) async {
+        var committedMainModel: WhisperModelFile?
+
         do {
             var whisperModel = try await downloadMainModel(model, from: url)
+            committedMainModel = whisperModel
+            try Task.checkCancellation()
 
             if let coreMLZipURL = whisperModel.coreMLZipDownloadURL,
                 let coreMLURL = URL(string: coreMLZipURL)
@@ -259,6 +279,7 @@ class WhisperModelManager: ObservableObject {
                 whisperModel = try await downloadAndSetupCoreMLModel(for: whisperModel, from: coreMLURL)
             }
 
+            try Task.checkCancellation()
             availableModels.append(whisperModel)
             self.downloadProgress.removeValue(forKey: model.name + "_main")
 
@@ -267,17 +288,40 @@ class WhisperModelManager: ObservableObject {
             if shouldWarmup(model) {
                 WhisperModelWarmupCoordinator.shared.scheduleWarmup(for: model, whisperModelManager: self)
             }
+        } catch is CancellationError {
+            removePartialDownload(for: model, preserveMainModel: committedMainModel != nil)
+            if let committedMainModel,
+                !availableModels.contains(where: { $0.name == committedMainModel.name })
+            {
+                availableModels.append(committedMainModel)
+                onModelsChanged?()
+            }
+            handleModelDownloadError(model, CancellationError())
         } catch {
             handleModelDownloadError(model, error)
         }
     }
 
+    private func removePartialDownload(for model: WhisperModel, preserveMainModel: Bool) {
+        if !preserveMainModel {
+            try? FileManager.default.removeItem(at: modelsDirectory.appendingPathComponent(model.filename))
+        }
+        try? FileManager.default.removeItem(
+            at: modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
+        )
+        try? FileManager.default.removeItem(
+            at: modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
+        )
+    }
+
     private func downloadMainModel(_ model: WhisperModel, from url: URL) async throws -> WhisperModelFile {
         let progressKeyMain = model.name + "_main"
         let data = try await downloadFileWithProgress(from: url, progressKey: progressKeyMain)
+        try Task.checkCancellation()
 
         let destinationURL = modelsDirectory.appendingPathComponent(model.filename)
-        try data.write(to: destinationURL)
+        try data.write(to: destinationURL, options: .atomic)
+        try Task.checkCancellation()
 
         return WhisperModelFile(name: model.name, url: destinationURL)
     }
@@ -287,9 +331,11 @@ class WhisperModelManager: ObservableObject {
     {
         let progressKeyCoreML = model.name + "_coreml"
         let coreMLData = try await downloadFileWithProgress(from: url, progressKey: progressKeyCoreML)
+        try Task.checkCancellation()
 
         let coreMLZipPath = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
-        try coreMLData.write(to: coreMLZipPath)
+        try coreMLData.write(to: coreMLZipPath, options: .atomic)
+        try Task.checkCancellation()
 
         return try await unzipAndSetupCoreMLModel(for: model, zipPath: coreMLZipPath, progressKey: progressKeyCoreML)
     }
@@ -300,7 +346,9 @@ class WhisperModelManager: ObservableObject {
         let coreMLDestination = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
 
         try? FileManager.default.removeItem(at: coreMLDestination)
+        try Task.checkCancellation()
         try await unzipCoreMLFile(zipPath, to: modelsDirectory)
+        try Task.checkCancellation()
         return try verifyAndCleanupCoreMLFiles(model, coreMLDestination, zipPath, progressKey)
     }
 
@@ -525,6 +573,5 @@ struct DownloadProgressView: View {
             .frame(height: 6)
         }
         .padding(.vertical, 4)
-        .animation(.smooth, value: totalProgress)
     }
 }

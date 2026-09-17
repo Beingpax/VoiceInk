@@ -12,6 +12,7 @@ struct OnboardingModelScreen: View {
     let isSetupReady: Bool
     let onSelectSetupKind: (OnboardingTranscriptionSetupKind) -> Void
     let onDownload: (FluidAudioModel) -> Void
+    let onCancelDownload: (FluidAudioModel) -> Void
     let onVerificationChanged: () -> Void
     let onBack: () -> Void
     let onContinue: () -> Void
@@ -31,6 +32,7 @@ struct OnboardingModelScreen: View {
                 localDownloadStatus: localDownloadStatus,
                 onSelectSetupKind: onSelectSetupKind,
                 onDownloadLocalModel: onDownload,
+                onCancelLocalModelDownload: onCancelDownload,
                 onVerificationChanged: onVerificationChanged
             )
         } bottomBar: {

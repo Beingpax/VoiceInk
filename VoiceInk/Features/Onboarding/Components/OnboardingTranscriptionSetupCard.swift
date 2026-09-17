@@ -11,6 +11,7 @@ struct OnboardingTranscriptionSetupCard: View {
     let localDownloadStatus: FluidAudioDownloadStatus?
     let onSelectSetupKind: (OnboardingTranscriptionSetupKind) -> Void
     let onDownloadLocalModel: (FluidAudioModel) -> Void
+    let onCancelLocalModelDownload: (FluidAudioModel) -> Void
     let onVerificationChanged: () -> Void
 
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
@@ -115,6 +116,9 @@ struct OnboardingTranscriptionSetupCard: View {
                 status: localDownloadStatus,
                 onDownload: {
                     onDownloadLocalModel(localModel)
+                },
+                onCancel: {
+                    onCancelLocalModelDownload(localModel)
                 }
             )
         } else {

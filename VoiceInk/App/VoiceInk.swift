@@ -11,8 +11,9 @@ struct VoiceInkApp: App {
     let container: ModelContainer
 
     @StateObject private var engine: VoiceInkEngine
-    @StateObject private var whisperModelManager: WhisperModelManager
-    @StateObject private var fluidAudioModelManager: FluidAudioModelManager
+    // Retain managers without subscribing the entire scene to download progress.
+    @State private var whisperModelManager: WhisperModelManager
+    @State private var fluidAudioModelManager: FluidAudioModelManager
     @StateObject private var transcriptionModelManager: TranscriptionModelManager
     @StateObject private var recorderUIManager: RecorderUIManager
     @StateObject private var recordingShortcutManager: RecordingShortcutManager
@@ -148,8 +149,8 @@ struct VoiceInkApp: App {
         transcriptionModelManager.refreshAllAvailableModels()
         transcriptionModelManager.loadCurrentTranscriptionModel()
 
-        _whisperModelManager = StateObject(wrappedValue: whisperModelManager)
-        _fluidAudioModelManager = StateObject(wrappedValue: fluidAudioModelManager)
+        _whisperModelManager = State(initialValue: whisperModelManager)
+        _fluidAudioModelManager = State(initialValue: fluidAudioModelManager)
         _transcriptionModelManager = StateObject(wrappedValue: transcriptionModelManager)
         _recorderUIManager = StateObject(wrappedValue: recorderUIManager)
         _engine = StateObject(wrappedValue: engine)
