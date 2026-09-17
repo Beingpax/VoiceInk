@@ -129,6 +129,11 @@ final class ShortcutMonitor {
     }
 
     private func handleCGEvent(type: CGEventType, event: CGEvent) -> Bool {
+        guard UserSessionInputPolicy.allowsShortcutHandling else {
+            clearPressedShortcutState()
+            return false
+        }
+
         guard let eventKind = EventKind(type) else {
             return false
         }
@@ -151,23 +156,25 @@ final class ShortcutMonitor {
     }
 
     private func resetPressedShortcutsAfterTapInterruption() {
-        let eventTime = ProcessInfo.processInfo.systemUptime
-        let pressedActions = shortcuts.compactMap { action, state in
-            state.isDown ? action : nil
-        }
+        releasePressedShortcuts(eventTime: ProcessInfo.processInfo.systemUptime)
+    }
 
-        guard !pressedActions.isEmpty else {
-            return
-        }
+    private func clearPressedShortcutState() {
+        releasePressedShortcuts(eventTime: ProcessInfo.processInfo.systemUptime)
+        suppressedMouseButtons.removeAll()
+    }
 
-        for action in pressedActions {
-            if var state = shortcuts[action] {
-                state.isDown = false
-                state.pressedAt = nil
-                state.isInterrupted = false
-                shortcuts[action] = state
+    private func releasePressedShortcuts(eventTime: TimeInterval) {
+        for action in Array(shortcuts.keys) {
+            guard var state = shortcuts[action] else { continue }
+            let wasDown = state.isDown
+            state.isDown = false
+            state.pressedAt = nil
+            state.isInterrupted = false
+            shortcuts[action] = state
+            if wasDown {
+                dispatchShortcutUp(for: action, eventTime: eventTime)
             }
-            dispatchShortcutUp(for: action, eventTime: eventTime)
         }
     }
 
