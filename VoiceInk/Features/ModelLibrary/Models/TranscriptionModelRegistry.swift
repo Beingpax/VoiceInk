@@ -75,6 +75,18 @@ enum TranscriptionModelRegistry {
             ),
 
             TranscribeCppModel(
+                name: "orukeet",
+                displayName: "Orukeet",
+                description: "Local transcription in 25 languages using Oruk's adaptation of Parakeet TDT v3. Weights: CC BY-SA 4.0.",
+                size: "705 MB",
+                speed: 0,
+                accuracy: 0,
+                ramUsage: nil,
+                publisher: "Oruk / NVIDIA",
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
+            ),
+
+            TranscribeCppModel(
                 name: "cohere-transcribe",
                 displayName: "Cohere Transcribe",
                 description: "Accurate multilingual transcription that runs privately on your Mac",
