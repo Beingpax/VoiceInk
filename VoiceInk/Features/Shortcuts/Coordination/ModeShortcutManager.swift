@@ -6,6 +6,7 @@ class ModeShortcutManager {
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var monitoredActions = Set<ShortcutAction>()
 
     init(
         modeProvider: @escaping @MainActor () -> RecordingShortcutManager.Mode,
@@ -57,6 +58,10 @@ class ModeShortcutManager {
         }
     }
 
+    func recordingModeDidChange() {
+        shortcutMonitor.updateStandaloneModifierActions(standaloneModifierActions)
+    }
+
     private func refreshModeShortcuts() {
         let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) {
             result, config in
@@ -65,10 +70,12 @@ class ModeShortcutManager {
                 result[action] = shortcut
             }
         }
+        monitoredActions = Set(shortcuts.keys)
 
         shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: Set(shortcuts.keys),
+            standaloneModifierActions: standaloneModifierActions,
             onShortcutDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self,
@@ -108,6 +115,10 @@ class ModeShortcutManager {
                 }
             }
         )
+    }
+
+    private var standaloneModifierActions: Set<ShortcutAction> {
+        modeProvider() == .toggle ? monitoredActions : []
     }
 
     private func modeId(for action: ShortcutAction) -> UUID? {
