@@ -22,11 +22,14 @@ class RecordingShortcutManager: ObservableObject {
         didSet {
             UserDefaults.standard.set(primaryRecordingShortcutMode.rawValue, forKey: "primaryRecordingShortcutMode")
             primaryRecordingShortcutModeSource.primaryMode = primaryRecordingShortcutMode
+            modeShortcutManager.recordingModeDidChange()
+            updateStandaloneModifierActions()
         }
     }
     @Published var secondaryRecordingShortcutMode: Mode {
         didSet {
             UserDefaults.standard.set(secondaryRecordingShortcutMode.rawValue, forKey: "secondaryRecordingShortcutMode")
+            updateStandaloneModifierActions()
         }
     }
     private var engine: VoiceInkEngine
@@ -164,6 +167,7 @@ class RecordingShortcutManager: ObservableObject {
         shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: interruptibleRecordingActions,
+            standaloneModifierActions: standaloneModifierActions,
             onShortcutDown: { [weak self] action, eventTime in
                 Task { @MainActor in
                     guard let self else { return }
@@ -196,6 +200,21 @@ class RecordingShortcutManager: ObservableObject {
                 }
             }
         )
+    }
+
+    private var standaloneModifierActions: Set<ShortcutAction> {
+        var actions = Set<ShortcutAction>()
+        if primaryRecordingShortcutMode == .toggle {
+            actions.insert(.primaryRecording)
+        }
+        if secondaryRecordingShortcutMode == .toggle {
+            actions.insert(.secondaryRecording)
+        }
+        return actions
+    }
+
+    private func updateStandaloneModifierActions() {
+        shortcutMonitor.updateStandaloneModifierActions(standaloneModifierActions)
     }
 
     private func recordingMode(for action: ShortcutAction) -> Mode? {
