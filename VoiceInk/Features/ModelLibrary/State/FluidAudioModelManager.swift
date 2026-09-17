@@ -228,6 +228,7 @@ class FluidAudioModelManager: ObservableObject {
         let progressHandler: ProgressHandler = { progress in
             progressContinuation.yield(progress)
         }
+        var isPreparingModel = false
 
         do {
             switch Self.modelKind(for: modelName) {
@@ -239,15 +240,21 @@ class FluidAudioModelManager: ObservableObject {
                     additionalModelNames: [Self.parakeetUnifiedStreamingEncoderFile],
                     progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
                 )
+                try Task.checkCancellation()
+                isPreparingModel = true
                 beginModelPreparation(for: modelName, downloadID: downloadID)
                 try await Self.optimizeParakeetUnifiedRealtimeModel()
+                try Task.checkCancellation()
                 try await Self.optimizeParakeetUnifiedBatchModel()
+                try Task.checkCancellation()
             case .nemotron(let variant):
                 let modelDirectory = try await StreamingNemotronMultilingualAsrManager.downloadVariant(
                     languageCode: variant.downloadLanguageCode,
                     chunkMs: Self.nemotronChunkMs,
                     progressHandler: progressHandler
                 )
+                try Task.checkCancellation()
+                isPreparingModel = true
                 beginModelPreparation(for: modelName, downloadID: downloadID)
                 let manager = StreamingNemotronMultilingualAsrManager()
                 do {
@@ -257,6 +264,7 @@ class FluidAudioModelManager: ObservableObject {
                     throw error
                 }
                 await manager.cleanup()
+                try Task.checkCancellation()
             case .parakeet(let version):
                 guard let repo = Self.parakeetRepo(for: version) else {
                     throw AsrModelsError.loadingFailed("Unsupported Parakeet model version.")
@@ -269,17 +277,23 @@ class FluidAudioModelManager: ObservableObject {
                     additionalModelNames: [ModelNames.ASR.vocabularyFile],
                     progressHandler: Self.downloadOnlyProgressHandler(forwarding: progressHandler)
                 )
+                try Task.checkCancellation()
+                isPreparingModel = true
                 beginModelPreparation(for: modelName, downloadID: downloadID)
                 _ = try await AsrModels.load(
                     from: cacheDirectory,
                     version: version,
                     encoderPrecision: .int8
                 )
+                try Task.checkCancellation()
             }
+            try Task.checkCancellation()
             modelStateRevision += 1
         } catch {
             if error is CancellationError || Task.isCancelled {
-                try? FileManager.default.removeItem(at: cacheDirectory(for: model))
+                if !isPreparingModel {
+                    try? FileManager.default.removeItem(at: cacheDirectory(for: model))
+                }
                 modelStateRevision += 1
             } else {
                 logger.error("❌ FluidAudio download failed for \(modelName, privacy: .public): \(error, privacy: .public)")
