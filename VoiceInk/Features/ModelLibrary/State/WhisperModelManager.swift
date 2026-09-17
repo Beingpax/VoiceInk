@@ -99,6 +99,7 @@ class WhisperModelManager: ObservableObject {
     @Published var isModelLoaded = false
     @Published var loadedWhisperModel: WhisperModelFile?
     @Published var isModelLoading = false
+    private var activeDownloadTasks: [String: Task<Void, Never>] = [:]
 
     let modelsDirectory: URL
     let whisperPrompt = WhisperPrompt()
@@ -168,6 +169,7 @@ class WhisperModelManager: ObservableObject {
     private func downloadFileWithProgress(from url: URL, progressKey: String) async throws -> Data {
         let destinationURL = modelsDirectory.appendingPathComponent(UUID().uuidString)
         let requestState = DownloadRequestState()
+        defer { try? FileManager.default.removeItem(at: destinationURL) }
 
         return try await withTaskCancellationHandler(
             operation: {
@@ -249,6 +251,20 @@ class WhisperModelManager: ObservableObject {
         await performModelDownload(model, url)
     }
 
+    func startDownload(_ model: WhisperModel) {
+        guard activeDownloadTasks[model.name] == nil else { return }
+        downloadProgress[model.name + "_main"] = 0
+        activeDownloadTasks[model.name] = Task { [weak self] in
+            guard let self else { return }
+            await self.downloadModel(model)
+            self.activeDownloadTasks[model.name] = nil
+        }
+    }
+
+    func cancelDownload(_ model: WhisperModel) {
+        activeDownloadTasks[model.name]?.cancel()
+    }
+
     private func performModelDownload(_ model: WhisperModel, _ url: URL) async {
         do {
             var whisperModel = try await downloadMainModel(model, from: url)
@@ -267,9 +283,22 @@ class WhisperModelManager: ObservableObject {
             if shouldWarmup(model) {
                 WhisperModelWarmupCoordinator.shared.scheduleWarmup(for: model, whisperModelManager: self)
             }
+        } catch is CancellationError {
+            removePartialDownload(for: model)
+            handleModelDownloadError(model, CancellationError())
         } catch {
             handleModelDownloadError(model, error)
         }
+    }
+
+    private func removePartialDownload(for model: WhisperModel) {
+        try? FileManager.default.removeItem(at: modelsDirectory.appendingPathComponent(model.filename))
+        try? FileManager.default.removeItem(
+            at: modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
+        )
+        try? FileManager.default.removeItem(
+            at: modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
+        )
     }
 
     private func downloadMainModel(_ model: WhisperModel, from url: URL) async throws -> WhisperModelFile {
@@ -525,6 +554,5 @@ struct DownloadProgressView: View {
             .frame(height: 6)
         }
         .padding(.vertical, 4)
-        .animation(.smooth, value: totalProgress)
     }
 }

@@ -228,14 +228,26 @@ final class VoiceInkRefineService: ObservableObject {
                 downloadProgress = isDownloaded ? 1 : 0
                 NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
             } catch is CancellationError {
-                downloadError = nil
+                cleanupCancelledDownload()
             } catch {
-                downloadError = error.localizedDescription
-                logger.error("Failed to download VoiceInk Refine: \(error.localizedDescription, privacy: .public)")
+                if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                    cleanupCancelledDownload()
+                } else {
+                    downloadError = error.localizedDescription
+                    logger.error("Failed to download VoiceInk Refine: \(error.localizedDescription, privacy: .public)")
+                }
             }
         #else
             downloadError = VoiceInkRefineError.unavailable.localizedDescription
         #endif
+    }
+
+    private func cleanupCancelledDownload() {
+        try? FileManager.default.removeItem(at: modelRootDirectory)
+        downloadProgress = 0
+        downloadedBytes = 0
+        refreshDownloadedState()
+        downloadError = nil
     }
 
     private var snapshotURL: URL? {

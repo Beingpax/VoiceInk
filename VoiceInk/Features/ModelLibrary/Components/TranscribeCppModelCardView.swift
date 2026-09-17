@@ -80,7 +80,6 @@ struct TranscribeCppModelCardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 8)
-            .animation(.smooth, value: status.fractionCompleted)
         }
     }
 
@@ -110,20 +109,25 @@ struct TranscribeCppModelCardView: View {
                 .frame(width: 20, height: 20)
             } else {
                 Button {
-                    Task { await modelManager.downloadModel(model) }
+                    if isDownloading {
+                        modelManager.cancelDownload(model)
+                    } else {
+                        modelManager.startDownload(model)
+                    }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
-                        Image(systemName: "arrow.down.circle")
+                        Text(LocalizedStringKey(isDownloading ? "Cancel" : "Download"))
+                        Image(systemName: isDownloading ? "xmark.circle" : "arrow.down.circle")
                     }
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(AppTheme.Accent.primary))
+                    .background(
+                        Capsule().fill(isDownloading ? AppTheme.Action.destructiveFill : AppTheme.Accent.primary)
+                    )
                 }
                 .buttonStyle(.plain)
-                .disabled(isDownloading)
             }
         }
     }

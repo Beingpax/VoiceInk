@@ -269,6 +269,7 @@ final class TranscribeCppModelManager: ObservableObject {
     var onModelsChanged: (() -> Void)?
 
     private var activeDownloadIDs: [String: UUID] = [:]
+    private var activeDownloadTasks: [String: Task<Void, Never>] = [:]
     private let logger = Logger(
         subsystem: "com.prakashjoshipax.voiceink",
         category: "TranscribeCppModelManager"
@@ -292,7 +293,20 @@ final class TranscribeCppModelManager: ObservableObject {
         downloadStatuses[model.name]
     }
 
-    func downloadModel(_ model: TranscribeCppModel) async {
+    func startDownload(_ model: TranscribeCppModel) {
+        guard activeDownloadTasks[model.name] == nil else { return }
+        activeDownloadTasks[model.name] = Task { [weak self] in
+            guard let self else { return }
+            await self.downloadModel(model)
+            self.activeDownloadTasks[model.name] = nil
+        }
+    }
+
+    func cancelDownload(_ model: TranscribeCppModel) {
+        activeDownloadTasks[model.name]?.cancel()
+    }
+
+    private func downloadModel(_ model: TranscribeCppModel) async {
         guard
             let artifact = TranscribeCppModelCatalog.artifact(for: model.name),
             activeDownloadIDs[model.name] == nil,
@@ -336,7 +350,8 @@ final class TranscribeCppModelManager: ObservableObject {
             }
             try Task.checkCancellation()
         } catch is CancellationError {
-            logger.notice("\(model.displayName, privacy: .public) download paused")
+            try? FileManager.default.removeItem(at: partialURL)
+            logger.notice("\(model.displayName, privacy: .public) download cancelled")
             return
         } catch {
             reportFailure(error, for: model)

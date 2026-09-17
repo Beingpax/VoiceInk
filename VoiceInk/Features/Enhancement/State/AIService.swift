@@ -351,24 +351,28 @@ class AIService: ObservableObject {
         loadSavedOpenRouterModels()
         initializeAutoLearnSelectionIfNeeded()
 
-        voiceInkRefineObserver = voiceInkRefineService.objectWillChange.sink { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
+        // Observe installation state without forwarding every progress update to the entire scene.
+        voiceInkRefineObserver = voiceInkRefineService.$isDownloaded
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    guard let self else { return }
 
-                if self.selectedProvider == .voiceInkRefine {
-                    let isAvailable = self.voiceInkRefineService.isAvailableInModes
-                    if self.isAPIKeyValid != isAvailable {
-                        self.isAPIKeyValid = isAvailable
+                    if self.selectedProvider == .voiceInkRefine {
+                        let isAvailable = self.voiceInkRefineService.isAvailableInModes
+                        if self.isAPIKeyValid != isAvailable {
+                            self.isAPIKeyValid = isAvailable
+                        }
                     }
-                }
 
-                if self.voiceInkRefineService.isAvailableInModes {
-                    self.initializeAutoLearnSelectionIfNeeded()
-                }
+                    if self.voiceInkRefineService.isAvailableInModes {
+                        self.initializeAutoLearnSelectionIfNeeded()
+                    }
 
-                self.objectWillChange.send()
+                    self.objectWillChange.send()
+                }
             }
-        }
 
         apiKeyChangeObserver = NotificationCenter.default.addObserver(
             forName: .aiProviderKeyChanged,
