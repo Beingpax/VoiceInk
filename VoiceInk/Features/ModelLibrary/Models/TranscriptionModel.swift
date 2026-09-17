@@ -119,7 +119,8 @@ struct TranscribeCppModel: TranscriptionModel, Sendable {
     let size: String
     let speed: Double
     let accuracy: Double
-    let ramUsage: Double
+    /// Nil until this runtime/model combination has a measured memory footprint.
+    let ramUsage: Double?
     let publisher: String
     let supportedLanguages: [String: String]
 

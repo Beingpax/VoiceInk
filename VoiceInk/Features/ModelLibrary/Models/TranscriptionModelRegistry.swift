@@ -81,7 +81,7 @@ enum TranscriptionModelRegistry {
                 size: "705 MB",
                 speed: 0,
                 accuracy: 0,
-                ramUsage: 1.2,
+                ramUsage: nil,
                 publisher: "Oruk / NVIDIA",
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .fluidAudio)
             ),
