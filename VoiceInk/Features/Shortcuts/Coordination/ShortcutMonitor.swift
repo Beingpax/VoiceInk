@@ -156,35 +156,26 @@ final class ShortcutMonitor {
     }
 
     private func resetPressedShortcutsAfterTapInterruption() {
-        let eventTime = ProcessInfo.processInfo.systemUptime
-        let pressedActions = shortcuts.compactMap { action, state in
-            state.isDown ? action : nil
-        }
-
-        guard !pressedActions.isEmpty else {
-            return
-        }
-
-        for action in pressedActions {
-            if var state = shortcuts[action] {
-                state.isDown = false
-                state.pressedAt = nil
-                state.isInterrupted = false
-                shortcuts[action] = state
-            }
-            dispatchShortcutUp(for: action, eventTime: eventTime)
-        }
+        releasePressedShortcuts(eventTime: ProcessInfo.processInfo.systemUptime)
     }
 
     private func clearPressedShortcutState() {
+        releasePressedShortcuts(eventTime: ProcessInfo.processInfo.systemUptime)
+        suppressedMouseButtons.removeAll()
+    }
+
+    private func releasePressedShortcuts(eventTime: TimeInterval) {
         for action in Array(shortcuts.keys) {
             guard var state = shortcuts[action] else { continue }
+            let wasDown = state.isDown
             state.isDown = false
             state.pressedAt = nil
             state.isInterrupted = false
             shortcuts[action] = state
+            if wasDown {
+                dispatchShortcutUp(for: action, eventTime: eventTime)
+            }
         }
-        suppressedMouseButtons.removeAll()
     }
 
     private func handleEvent(
