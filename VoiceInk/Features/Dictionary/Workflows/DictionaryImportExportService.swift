@@ -45,6 +45,7 @@ enum DictionaryImportExportService {
 
         let existingVocabulary = try modelContext.fetch(FetchDescriptor<VocabularyWord>())
         let existingReplacements = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+        let existingSections = try modelContext.fetch(FetchDescriptor<VocabularySection>())
 
         if mode == .replace {
             for item in existingVocabulary {
@@ -53,6 +54,15 @@ enum DictionaryImportExportService {
             for item in existingReplacements {
                 modelContext.delete(item)
             }
+            for section in existingSections {
+                modelContext.delete(section)
+            }
+        }
+
+        for entry in plan.sections {
+            modelContext.insert(VocabularySection(
+                id: entry.id, name: entry.name, sectionDescription: entry.description
+            ))
         }
 
         var replacementsByDestination: [String: [WordReplacement]] = [:]
@@ -71,7 +81,11 @@ enum DictionaryImportExportService {
 
         for entry in plan.vocabulary {
             modelContext.insert(
-                VocabularyWord(word: entry.term, dateAdded: entry.createdAt ?? Date())
+                VocabularyWord(
+                    word: entry.term,
+                    dateAdded: entry.createdAt ?? Date(),
+                    sectionID: entry.sectionID.flatMap { plan.sectionIDMap[$0] }
+                )
             )
         }
 
@@ -116,6 +130,8 @@ enum DictionaryImportExportService {
     static func makeArchive(modelContext: ModelContext) throws -> DictionaryArchive {
         let vocabulary = try modelContext.fetch(FetchDescriptor<VocabularyWord>())
         let replacements = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+        let sections = try modelContext.fetch(FetchDescriptor<VocabularySection>())
+        let sectionIDs = Set(sections.map(\.id))
 
         var seenVocabulary = Set<String>()
         let vocabularyEntries = vocabulary
@@ -127,7 +143,11 @@ enum DictionaryImportExportService {
                 let term = normalizedText(item.word)
                 let key = vocabularyKey(term)
                 guard !term.isEmpty, seenVocabulary.insert(key).inserted else { return nil }
-                return DictionaryVocabularyEntry(term: term, createdAt: item.dateAdded)
+                return DictionaryVocabularyEntry(
+                    term: term,
+                    createdAt: item.dateAdded,
+                    sectionID: item.sectionID.flatMap { sectionIDs.contains($0) ? $0 : nil }
+                )
             }
 
         struct ReplacementGroup {
@@ -176,11 +196,16 @@ enum DictionaryImportExportService {
         return DictionaryArchive(
             appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
             vocabulary: vocabularyEntries,
-            replacements: replacementEntries
+            replacements: replacementEntries,
+            sections: sections.map {
+                DictionarySectionEntry(id: $0.id, name: $0.name, description: $0.sectionDescription)
+            }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         )
     }
 
     private struct PreparedPlan: Sendable {
+        let sections: [DictionarySectionEntry]
+        let sectionIDMap: [UUID: UUID]
         let vocabulary: [DictionaryVocabularyEntry]
         let replacements: [DictionaryReplacementEntry]
         let summary: DictionaryImportSummary
@@ -198,8 +223,20 @@ enum DictionaryImportExportService {
     }
 
     private struct ExistingDictionarySnapshot: Equatable, Sendable {
-        let vocabulary: [String]
+        let vocabulary: [ExistingVocabulary]
         let replacements: [ExistingReplacement]
+        let sections: [ExistingSection]
+    }
+
+    private struct ExistingVocabulary: Equatable, Sendable {
+        let term: String
+        let sectionID: UUID?
+    }
+
+    private struct ExistingSection: Equatable, Sendable {
+        let id: UUID
+        let name: String
+        let description: String
     }
 
     // MARK: - Planning
@@ -208,8 +245,10 @@ enum DictionaryImportExportService {
     private static func makeSnapshot(modelContext: ModelContext) throws -> ExistingDictionarySnapshot {
         let vocabulary = try modelContext.fetch(FetchDescriptor<VocabularyWord>())
         let replacements = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+        let sections = try modelContext.fetch(FetchDescriptor<VocabularySection>())
         return ExistingDictionarySnapshot(
-            vocabulary: vocabulary.map(\.word).sorted(),
+            vocabulary: vocabulary.map { ExistingVocabulary(term: $0.word, sectionID: $0.sectionID) }
+                .sorted { $0.term < $1.term },
             replacements: replacements
                 .map {
                     ExistingReplacement(
@@ -222,7 +261,10 @@ enum DictionaryImportExportService {
                         return $0.originalText < $1.originalText
                     }
                     return $0.replacementText < $1.replacementText
-                }
+                },
+            sections: sections.map {
+                ExistingSection(id: $0.id, name: $0.name, description: $0.sectionDescription)
+            }.sorted { $0.id.uuidString < $1.id.uuidString }
         )
     }
 
@@ -249,19 +291,44 @@ enum DictionaryImportExportService {
         guard archive.format == DictionaryArchive.formatIdentifier else {
             throw DictionaryArchiveError.unsupportedFormat(archive.format)
         }
-        guard archive.schemaVersion == DictionaryArchive.currentSchemaVersion else {
+        guard (1...DictionaryArchive.currentSchemaVersion).contains(archive.schemaVersion) else {
             throw DictionaryArchiveError.unsupportedVersion(archive.schemaVersion)
         }
 
         let existingVocabulary = snapshot.vocabulary
         let existingReplacements = snapshot.replacements
 
+        var sectionIDMap: [UUID: UUID] = [:]
+        var acceptedSections: [DictionarySectionEntry] = []
+        var knownIDs = Set(mode == .merge ? snapshot.sections.map(\.id) : [])
+        var knownNames: [String: UUID] = [:]
+        for section in mode == .merge ? snapshot.sections : [] {
+            knownNames[vocabularyKey(section.name)] = section.id
+        }
+        for entry in archive.sections {
+            let name = normalizedText(entry.name)
+            guard !name.isEmpty else { continue }
+            let key = vocabularyKey(name)
+            if knownIDs.contains(entry.id) {
+                sectionIDMap[entry.id] = entry.id
+            } else if let existingID = knownNames[key] {
+                sectionIDMap[entry.id] = existingID
+            } else {
+                acceptedSections.append(DictionarySectionEntry(
+                    id: entry.id, name: name, description: normalizedText(entry.description)
+                ))
+                sectionIDMap[entry.id] = entry.id
+                knownIDs.insert(entry.id)
+                knownNames[key] = entry.id
+            }
+        }
+
         var invalidEntryCount = 0
         var commaContainingSourceCount = 0
         var duplicateVocabularyCount = 0
         var acceptedVocabulary: [DictionaryVocabularyEntry] = []
         var vocabularyKeys = mode == .merge
-            ? Set(existingVocabulary.map { vocabularyKey($0) })
+            ? Set(existingVocabulary.map { vocabularyKey($0.term) })
             : Set<String>()
 
         for (index, entry) in archive.vocabulary.enumerated() {
@@ -277,7 +344,9 @@ enum DictionaryImportExportService {
                 duplicateVocabularyCount += 1
                 continue
             }
-            acceptedVocabulary.append(DictionaryVocabularyEntry(term: term, createdAt: entry.createdAt))
+            acceptedVocabulary.append(DictionaryVocabularyEntry(
+                term: term, createdAt: entry.createdAt, sectionID: entry.sectionID
+            ))
         }
 
         var candidates: [ReplacementCandidate] = []
@@ -382,6 +451,7 @@ enum DictionaryImportExportService {
         }
 
         let summary = DictionaryImportSummary(
+            sectionsToImport: acceptedSections.count,
             vocabularyToImport: acceptedVocabulary.count,
             replacementRulesToImport: acceptedReplacements.count,
             replacementSourcesToImport: acceptedCandidates.count,
@@ -392,10 +462,13 @@ enum DictionaryImportExportService {
             commaContainingSourceCount: commaContainingSourceCount,
             cyclicReplacementCount: cyclicReplacementCount,
             vocabularyToRemove: mode == .replace ? existingVocabulary.count : 0,
-            replacementsToRemove: mode == .replace ? existingReplacements.count : 0
+            replacementsToRemove: mode == .replace ? existingReplacements.count : 0,
+            sectionsToRemove: mode == .replace ? snapshot.sections.count : 0
         )
 
         return PreparedPlan(
+            sections: acceptedSections,
+            sectionIDMap: sectionIDMap,
             vocabulary: acceptedVocabulary,
             replacements: acceptedReplacements,
             summary: summary

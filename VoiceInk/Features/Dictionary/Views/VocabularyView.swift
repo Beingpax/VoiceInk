@@ -3,12 +3,21 @@ import SwiftUI
 
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
+    @Query private var vocabularySections: [VocabularySection]
     @Environment(\.modelContext) private var modelContext
     @State private var newWord = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
     @State private var sortMode: VocabularySortMode = .wordAsc
     @State private var showInfoPopover = false
+    @State private var selectedSectionID: UUID?
+    @State private var sectionEditor: SectionEditor?
+    @State private var sectionToDelete: VocabularySection?
+
+    private struct SectionEditor: Identifiable {
+        let id = UUID()
+        let section: VocabularySection?
+    }
 
     init() {
         _sortMode = State(initialValue: DictionarySortService.shared.savedVocabularyMode())
@@ -16,6 +25,18 @@ struct VocabularyView: View {
 
     private var sortedItems: [VocabularyWord] {
         DictionarySortService.shared.sortVocabulary(vocabularyWords, by: sortMode)
+    }
+
+    private var sortedSections: [VocabularySection] {
+        vocabularySections.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private var ungroupedWords: [VocabularyWord] {
+        let sectionIDs = Set(vocabularySections.map(\.id))
+        return sortedItems.filter { word in
+            guard let sectionID = word.sectionID else { return true }
+            return !sectionIDs.contains(sectionID)
+        }
     }
 
     private func toggleSort() {
@@ -67,6 +88,23 @@ struct VocabularyView: View {
             }
             .animation(.easeInOut(duration: 0.2), value: shouldShowAddButton)
 
+            HStack {
+                if !vocabularySections.isEmpty {
+                    Picker("Add to section", selection: $selectedSectionID) {
+                        Text("No section").tag(Optional<UUID>.none)
+                        ForEach(sortedSections) { section in
+                            Text(section.name).tag(Optional(section.id))
+                        }
+                    }
+                    .fixedSize()
+                }
+                Spacer()
+                Button("New section") {
+                    sectionEditor = SectionEditor(section: nil)
+                }
+                .buttonStyle(.borderless)
+            }
+
             if !vocabularyWords.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Button(action: toggleSort) {
@@ -83,16 +121,53 @@ struct VocabularyView: View {
                     .buttonStyle(.plain)
                     .help("Change sort order")
 
-                    FlowLayout(spacing: 8) {
-                        ForEach(sortedItems) { item in
-                            VocabularyWordView(item: item) {
-                                removeWord(item)
-                            }
+                    if !ungroupedWords.isEmpty {
+                        if !vocabularySections.isEmpty {
+                            Text("No section")
+                                .font(.system(size: 12, weight: .semibold))
                         }
+                        wordFlow(ungroupedWords)
                     }
-                    .padding(.vertical, 4)
+
+                    ForEach(sortedSections) { section in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(section.name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                Spacer()
+                                Button("Edit") {
+                                    sectionEditor = SectionEditor(section: section)
+                                }
+                                .buttonStyle(.borderless)
+                                Button("Delete") {
+                                    sectionToDelete = section
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                            if !section.sectionDescription.isEmpty {
+                                Text(section.sectionDescription)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                            }
+                            wordFlow(sortedItems.filter { $0.sectionID == section.id })
+                        }
+                        .padding(.top, 4)
+                    }
                 }
                 .padding(.top, 4)
+            } else {
+                ForEach(sortedSections) { section in
+                    HStack {
+                        Text(section.name)
+                        if !section.sectionDescription.isEmpty {
+                            Text(section.sectionDescription).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Edit") { sectionEditor = SectionEditor(section: section) }
+                        Button("Delete") { sectionToDelete = section }
+                    }
+                    .font(.system(size: 12))
+                }
             }
 
         }
@@ -102,13 +177,59 @@ struct VocabularyView: View {
         } message: {
             Text(alertMessage)
         }
+        .sheet(item: $sectionEditor) { editor in
+            VocabularySectionEditor(section: editor.section)
+        }
+        .confirmationDialog(
+            "Delete section?",
+            isPresented: Binding(
+                get: { sectionToDelete != nil },
+                set: { if !$0 { sectionToDelete = nil } }
+            )
+        ) {
+            Button("Delete section", role: .destructive) {
+                if let sectionToDelete {
+                    if let error = VocabularySectionService.delete(
+                        sectionToDelete, words: vocabularyWords, context: modelContext
+                    ) {
+                        alertMessage = error
+                        showAlert = true
+                    }
+                    if selectedSectionID == sectionToDelete.id { selectedSectionID = nil }
+                    self.sectionToDelete = nil
+                }
+            }
+        } message: {
+            Text("Its words will stay in your vocabulary without a section.")
+        }
+    }
+
+    private func wordFlow(_ words: [VocabularyWord]) -> some View {
+        FlowLayout(spacing: 8) {
+            ForEach(words) { item in
+                VocabularyWordView(item: item, sections: sortedSections) { sectionID in
+                    if let error = VocabularySectionService.move(item, to: sectionID, context: modelContext) {
+                        alertMessage = error
+                        showAlert = true
+                    }
+                } onDelete: {
+                    removeWord(item)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     private func addWords() {
         let input = newWord.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return }
         if let error = DictionaryService.addVocabularyWords(
-            input, existing: Array(vocabularyWords), context: modelContext)
+            input,
+            existing: Array(vocabularyWords),
+            context: modelContext,
+            sectionID: selectedSectionID.flatMap { id in
+                vocabularySections.contains(where: { $0.id == id }) ? id : nil
+            })
         {
             alertMessage = error
             showAlert = true
@@ -163,6 +284,8 @@ struct VocabularyInfoPopover: View {
 
 struct VocabularyWordView: View {
     let item: VocabularyWord
+    let sections: [VocabularySection]
+    let onMove: (UUID?) -> Void
     let onDelete: () -> Void
     @State private var isDeleteHovered = false
 
@@ -172,6 +295,21 @@ struct VocabularyWordView: View {
                 .font(.system(size: 13))
                 .lineLimit(1)
                 .foregroundColor(.primary)
+
+            if !sections.isEmpty {
+                Menu {
+                    Button("No section") { onMove(nil) }
+                    ForEach(sections) { section in
+                        Button(section.name) { onMove(section.id) }
+                    }
+                } label: {
+                    Image(systemName: "folder")
+                        .foregroundStyle(.secondary)
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Move word to section")
+            }
 
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")

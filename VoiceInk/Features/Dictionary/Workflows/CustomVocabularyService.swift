@@ -7,23 +7,42 @@ class CustomVocabularyService {
     private init() {}
 
     func getCustomVocabulary(from context: ModelContext) -> String {
-        guard let customWords = getCustomVocabularyWords(from: context), !customWords.isEmpty else {
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\VocabularyWord.word)])
+        guard let words = try? context.fetch(descriptor), !words.isEmpty else {
             return ""
         }
-
-        let wordsText = customWords.joined(separator: ", ")
-        return "Important Vocabulary: \(wordsText)"
+        let sections = (try? context.fetch(FetchDescriptor<VocabularySection>())) ?? []
+        return Self.format(words: words, sections: sections)
     }
 
-    private func getCustomVocabularyWords(from context: ModelContext) -> [String]? {
-        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\VocabularyWord.word)])
+    static func format(words: [VocabularyWord], sections: [VocabularySection]) -> String {
+        let sortedWords = words.map { ($0.word.trimmingCharacters(in: .whitespacesAndNewlines), $0.sectionID) }
+            .filter { !$0.0.isEmpty }
+            .sorted { $0.0.localizedCaseInsensitiveCompare($1.0) == .orderedAscending }
+        guard !sortedWords.isEmpty else { return "" }
 
-        do {
-            let items = try context.fetch(descriptor)
-            let words = items.map { $0.word }
-            return words.isEmpty ? nil : words
-        } catch {
-            return nil
+        let sectionByID = sections.reduce(into: [UUID: VocabularySection]()) { result, section in
+            result[section.id] = section
         }
+        let ungrouped = sortedWords.filter { sectionID in
+            guard let id = sectionID.1 else { return true }
+            return sectionByID[id] == nil
+        }.map(\.0)
+        let groups = sections.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            .compactMap { section -> String? in
+                let terms = sortedWords.filter { $0.1 == section.id }.map(\.0)
+                guard !terms.isEmpty else { return nil }
+                let name = section.name.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+                let description = section.sectionDescription.split(whereSeparator: \.isWhitespace)
+                    .joined(separator: " ")
+                let heading = description.isEmpty ? name : "\(name) — \(description)"
+                return "\(heading): \(terms.joined(separator: ", "))"
+            }
+
+        if groups.isEmpty {
+            return "Important Vocabulary: \(sortedWords.map(\.0).joined(separator: ", "))"
+        }
+        let ungroupedLine = ungrouped.isEmpty ? [] : ["Other terms: \(ungrouped.joined(separator: ", "))"]
+        return (["Important Vocabulary:"] + ungroupedLine + groups).joined(separator: "\n")
     }
 }

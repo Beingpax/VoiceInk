@@ -54,6 +54,7 @@ struct VoiceInkApp: App {
             VocabularyWord.self,
             WordReplacement.self,
             SessionMetric.self,
+            VocabularySection.self,
         ])
         let resolvedContainer: ModelContainer
 
@@ -239,7 +240,7 @@ struct VoiceInkApp: App {
             cloudKitDatabase: .none
         )
 
-        let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
+        let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self, VocabularySection.self])
         // Dev shares the local stores but must never connect to CloudKit.
         #if DEBUG || LOCAL_BUILD
             let dictionaryCloudKit: ModelConfiguration.CloudKitDatabase = .none
@@ -275,7 +276,7 @@ struct VoiceInkApp: App {
         let transcriptSchema = Schema([Transcription.self])
         let transcriptConfig = ModelConfiguration("default", schema: transcriptSchema, isStoredInMemoryOnly: true)
 
-        let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self])
+        let dictionarySchema = Schema([VocabularyWord.self, WordReplacement.self, VocabularySection.self])
         let dictionaryConfig = ModelConfiguration("dictionary", schema: dictionarySchema, isStoredInMemoryOnly: true)
 
         let statsSchema = Schema([SessionMetric.self])
