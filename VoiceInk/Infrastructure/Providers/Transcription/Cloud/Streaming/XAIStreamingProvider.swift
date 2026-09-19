@@ -1,5 +1,6 @@
 import Foundation
 import LLMkit
+import SwiftData
 
 /// xAI streaming provider wrapping `LLMkit.XAIStreamingClient`.
 final class XAIStreamingProvider: StreamingTranscriptionProvider {
@@ -7,10 +8,12 @@ final class XAIStreamingProvider: StreamingTranscriptionProvider {
     private let client = LLMkit.XAIStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
+    private let modelContext: ModelContext
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init() {
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -30,7 +33,12 @@ final class XAIStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: model.name, language: language)
+            try await client.connect(
+                apiKey: apiKey,
+                model: model.name,
+                language: language,
+                customVocabulary: getCustomVocabularyTerms()
+            )
         } catch {
             forwardingTask?.cancel()
             forwardingTask = nil
@@ -62,6 +70,25 @@ final class XAIStreamingProvider: StreamingTranscriptionProvider {
     }
 
     // MARK: - Private
+
+    private func getCustomVocabularyTerms() -> [String] {
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
+            return []
+        }
+
+        var seen = Set<String>()
+        var unique: [String] = []
+        for word in vocabularyWords {
+            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let key = trimmed.lowercased()
+            if seen.insert(key).inserted {
+                unique.append(trimmed)
+            }
+        }
+        return unique
+    }
 
     private func startEventForwarding() {
         forwardingTask = Task { [weak self] in
