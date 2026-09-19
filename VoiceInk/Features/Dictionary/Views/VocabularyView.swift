@@ -1,5 +1,19 @@
+import CoreTransferable
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
+
+private struct VocabularyWordTransfer: Codable, Transferable {
+    let term: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: .voiceInkVocabularyWord)
+    }
+}
+
+private extension UTType {
+    static let voiceInkVocabularyWord = UTType(exportedAs: "com.prakashjoshipax.voiceink.vocabulary-word")
+}
 
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
@@ -13,10 +27,23 @@ struct VocabularyView: View {
     @State private var selectedSectionID: UUID?
     @State private var sectionEditor: SectionEditor?
     @State private var sectionToDelete: VocabularySection?
+    @State private var targetedDropTarget: VocabularyDropTarget?
 
     private struct SectionEditor: Identifiable {
         let id = UUID()
         let section: VocabularySection?
+    }
+
+    private enum VocabularyDropTarget: Equatable {
+        case noSection
+        case section(UUID)
+
+        var sectionID: UUID? {
+            switch self {
+            case .noSection: nil
+            case .section(let id): id
+            }
+        }
     }
 
     init() {
@@ -105,69 +132,64 @@ struct VocabularyView: View {
                 .buttonStyle(.borderless)
             }
 
-            if !vocabularyWords.isEmpty {
+            if !vocabularyWords.isEmpty || !vocabularySections.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    Button(action: toggleSort) {
-                        HStack(spacing: 4) {
-                            Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
+                    if !vocabularyWords.isEmpty {
+                        Button(action: toggleSort) {
+                            HStack(spacing: 4) {
+                                Text(String(localized: "Vocabulary Words (\(vocabularyWords.count))"))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.secondary)
 
-                            Image(systemName: sortIconName)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                Image(systemName: sortIconName)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .help("Change sort order")
                     }
-                    .buttonStyle(.plain)
-                    .help("Change sort order")
 
-                    if !ungroupedWords.isEmpty {
-                        if !vocabularySections.isEmpty {
-                            Text("No section")
-                                .font(.system(size: 12, weight: .semibold))
+                    if !vocabularySections.isEmpty {
+                        sectionDropTarget(.noSection) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("No section")
+                                    .font(.system(size: 12, weight: .semibold))
+                                sectionWordFlow(ungroupedWords)
+                            }
                         }
+                    } else if !ungroupedWords.isEmpty {
                         wordFlow(ungroupedWords)
                     }
 
                     ForEach(sortedSections) { section in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(section.name)
-                                    .font(.system(size: 13, weight: .semibold))
-                                Spacer()
-                                Button("Edit") {
-                                    sectionEditor = SectionEditor(section: section)
+                        sectionDropTarget(.section(section.id)) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text(section.name)
+                                        .font(.system(size: 13, weight: .semibold))
+                                    Spacer()
+                                    Button("Edit") {
+                                        sectionEditor = SectionEditor(section: section)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    Button("Delete") {
+                                        sectionToDelete = section
+                                    }
+                                    .buttonStyle(.borderless)
                                 }
-                                .buttonStyle(.borderless)
-                                Button("Delete") {
-                                    sectionToDelete = section
+                                if !section.sectionDescription.isEmpty {
+                                    Text(section.sectionDescription)
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.borderless)
+                                sectionWordFlow(sortedItems.filter { $0.sectionID == section.id })
                             }
-                            if !section.sectionDescription.isEmpty {
-                                Text(section.sectionDescription)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(.secondary)
-                            }
-                            wordFlow(sortedItems.filter { $0.sectionID == section.id })
                         }
                         .padding(.top, 4)
                     }
                 }
                 .padding(.top, 4)
-            } else {
-                ForEach(sortedSections) { section in
-                    HStack {
-                        Text(section.name)
-                        if !section.sectionDescription.isEmpty {
-                            Text(section.sectionDescription).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Button("Edit") { sectionEditor = SectionEditor(section: section) }
-                        Button("Delete") { sectionToDelete = section }
-                    }
-                    .font(.system(size: 12))
-                }
             }
 
         }
@@ -204,20 +226,85 @@ struct VocabularyView: View {
         }
     }
 
+    private func sectionDropTarget<Content: View>(
+        _ target: VocabularyDropTarget,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(
+                        targetedDropTarget == target
+                            ? Color.accentColor.opacity(0.12)
+                            : Color.clear
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(
+                        targetedDropTarget == target
+                            ? Color.accentColor.opacity(0.8)
+                            : Color.clear,
+                        style: StrokeStyle(lineWidth: 1, dash: [4])
+                    )
+            }
+            .contentShape(Rectangle())
+            .dropDestination(for: VocabularyWordTransfer.self) { transfers, _ in
+                guard
+                    let transfer = transfers.first,
+                    let word = vocabularyWords.first(where: { $0.word == transfer.term })
+                else {
+                    return false
+                }
+
+                targetedDropTarget = nil
+                guard word.sectionID != target.sectionID else { return true }
+                return moveWord(word, to: target.sectionID)
+            } isTargeted: { isTargeted in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    if isTargeted {
+                        targetedDropTarget = target
+                    } else if targetedDropTarget == target {
+                        targetedDropTarget = nil
+                    }
+                }
+            }
+    }
+
+    @ViewBuilder
+    private func sectionWordFlow(_ words: [VocabularyWord]) -> some View {
+        if words.isEmpty {
+            Text("Drop terms here")
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+        } else {
+            wordFlow(words)
+        }
+    }
+
     private func wordFlow(_ words: [VocabularyWord]) -> some View {
         FlowLayout(spacing: 8) {
             ForEach(words) { item in
-                VocabularyWordView(item: item, sections: sortedSections) { sectionID in
-                    if let error = VocabularySectionService.move(item, to: sectionID, context: modelContext) {
-                        alertMessage = error
-                        showAlert = true
-                    }
-                } onDelete: {
+                VocabularyWordView(item: item) {
                     removeWord(item)
                 }
+                .draggable(VocabularyWordTransfer(term: item.word))
+                .help("Drag to move this term to another section")
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func moveWord(_ word: VocabularyWord, to sectionID: UUID?) -> Bool {
+        if let error = VocabularySectionService.move(word, to: sectionID, context: modelContext) {
+            alertMessage = error
+            showAlert = true
+            return false
+        }
+        return true
     }
 
     private func addWords() {
@@ -284,8 +371,6 @@ struct VocabularyInfoPopover: View {
 
 struct VocabularyWordView: View {
     let item: VocabularyWord
-    let sections: [VocabularySection]
-    let onMove: (UUID?) -> Void
     let onDelete: () -> Void
     @State private var isDeleteHovered = false
 
@@ -295,21 +380,6 @@ struct VocabularyWordView: View {
                 .font(.system(size: 13))
                 .lineLimit(1)
                 .foregroundColor(.primary)
-
-            if !sections.isEmpty {
-                Menu {
-                    Button("No section") { onMove(nil) }
-                    ForEach(sections) { section in
-                        Button(section.name) { onMove(section.id) }
-                    }
-                } label: {
-                    Image(systemName: "folder")
-                        .foregroundStyle(.secondary)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .help("Move word to section")
-            }
 
             Button(action: onDelete) {
                 Image(systemName: "xmark.circle.fill")
