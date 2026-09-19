@@ -2,6 +2,39 @@ import SwiftData
 import XCTest
 @testable import VoiceInk
 
+private enum DictionarySchemaV1: VersionedSchema {
+    static var versionIdentifier = Schema.Version(1, 0, 0)
+    static var models: [any PersistentModel.Type] {
+        [VocabularyWord.self, WordReplacement.self]
+    }
+
+    @Model
+    final class VocabularyWord {
+        var word: String = ""
+        var dateAdded: Date = Date()
+
+        init(word: String, dateAdded: Date = Date()) {
+            self.word = word
+            self.dateAdded = dateAdded
+        }
+    }
+
+    @Model
+    final class WordReplacement {
+        var id: UUID = UUID()
+        var originalText: String = ""
+        var replacementText: String = ""
+        var dateAdded: Date = Date()
+        var isEnabled: Bool = true
+
+        init(originalText: String, replacementText: String, dateAdded: Date = Date()) {
+            self.originalText = originalText
+            self.replacementText = replacementText
+            self.dateAdded = dateAdded
+        }
+    }
+}
+
 @MainActor
 final class VocabularySectionTests: XCTestCase {
     func testSectionAndWordAssignmentPersist() throws {
@@ -115,6 +148,61 @@ final class VocabularySectionTests: XCTestCase {
         XCTAssertNil(error)
         XCTAssertTrue(try context.fetch(FetchDescriptor<VocabularySection>()).isEmpty)
         XCTAssertNil(try XCTUnwrap(context.fetch(FetchDescriptor<VocabularyWord>()).first).sectionID)
+    }
+
+    func testLegacyDictionaryStoreMigratesBeforeDeletingVocabulary() throws {
+        let temporaryDirectory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporaryDirectory) }
+        let storeURL = temporaryDirectory.appendingPathComponent("dictionary.store")
+
+        do {
+            let legacySchema = Schema(versionedSchema: DictionarySchemaV1.self)
+            let legacyConfiguration = ModelConfiguration(
+                "dictionary", schema: legacySchema, url: storeURL, cloudKitDatabase: .none
+            )
+            let legacyContainer = try ModelContainer(
+                for: legacySchema, configurations: legacyConfiguration
+            )
+            let legacyContext = ModelContext(legacyContainer)
+            legacyContext.insert(DictionarySchemaV1.VocabularyWord(word: "VoiceInk"))
+            try legacyContext.save()
+        }
+
+        let schema = Schema([VocabularyWord.self, WordReplacement.self, VocabularySection.self])
+        let configuration = ModelConfiguration(
+            "dictionary", schema: schema, url: storeURL, cloudKitDatabase: .none
+        )
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let context = ModelContext(container)
+
+        let migratedWord = try XCTUnwrap(context.fetch(FetchDescriptor<VocabularyWord>()).first)
+        XCTAssertEqual(migratedWord.word, "VoiceInk")
+        XCTAssertNil(migratedWord.sectionID)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<VocabularySection>()).isEmpty)
+        XCTAssertNil(DictionaryService.removeVocabularyWord(migratedWord, context: context))
+        XCTAssertTrue(try context.fetch(FetchDescriptor<VocabularyWord>()).isEmpty)
+    }
+
+    func testDevelopmentBuildsUseIsolatedPersistenceDirectories() {
+        XCTAssertEqual(
+            VoiceInkPersistence.directoryName(
+                bundleIdentifier: "com.prakashjoshipax.VoiceInk.dev", isLocalBuild: false
+            ),
+            "com.prakashjoshipax.VoiceInk.dev"
+        )
+        XCTAssertEqual(
+            VoiceInkPersistence.directoryName(
+                bundleIdentifier: "com.prakashjoshipax.VoiceInk", isLocalBuild: true
+            ),
+            "com.prakashjoshipax.VoiceInk.local"
+        )
+        XCTAssertEqual(
+            VoiceInkPersistence.directoryName(
+                bundleIdentifier: "com.prakashjoshipax.VoiceInk", isLocalBuild: false
+            ),
+            "com.prakashjoshipax.VoiceInk"
+        )
     }
 
     func testSavedSectionAndWordsAppearTogetherInEnhancementVocabulary() throws {

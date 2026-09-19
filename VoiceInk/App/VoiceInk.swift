@@ -223,8 +223,7 @@ struct VoiceInkApp: App {
     }
 
     private static func createPersistentContainer(schema: Schema, logger: Logger) throws -> ModelContainer {
-        let appSupportURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
+        let appSupportURL = VoiceInkPersistence.directoryURL
 
         try? FileManager.default.createDirectory(at: appSupportURL, withIntermediateDirectories: true)
 
