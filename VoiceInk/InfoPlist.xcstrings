@@ -17,10 +17,16 @@
             "value" : "VoiceInk"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
           }
         }
       }
@@ -41,10 +47,16 @@
             "value" : "VoiceInk"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
           }
         }
       }
@@ -64,10 +76,16 @@
             "value" : "Audio/Video File"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "音频/视频文件"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音频/视频文件"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fichier audio/vidéo"
           }
         }
       }
@@ -88,10 +106,16 @@
             "value" : "VoiceInk needs to interact with your browser to detect the current website for applying website-specific configurations."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk 需要与浏览器交互以检测当前网站，从而应用针对特定网站的配置。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk 需要与浏览器交互以检测当前网站，从而应用针对特定网站的配置。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk doit interagir avec votre navigateur pour détecter le site Web actuel afin d'appliquer des configurations spécifiques au site Web."
           }
         }
       }
@@ -112,10 +136,16 @@
             "value" : ""
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": ""
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
           }
         }
       }
@@ -136,10 +166,16 @@
             "value" : "VoiceInk needs access to your microphone to record audio for transcription."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk 需要访问麦克风以录制音频用于转录。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk 需要访问麦克风以录制音频用于转录。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk a besoin d'accéder à votre microphone pour enregistrer l'audio à des fins de transcription."
           }
         }
       }
@@ -159,10 +195,16 @@
             "value" : "VoiceInk needs screen recording access to understand context from your screen for improved transcription accuracy."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "VoiceInk 需要屏幕录制权限以理解屏幕上的上下文，提高转录准确性。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk 需要屏幕录制权限以理解屏幕上的上下文，提高转录准确性。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk a besoin d'un accès à l'enregistrement d'écran pour comprendre le contexte de votre écran afin d'améliorer la précision de la transcription."
           }
         }
       }
