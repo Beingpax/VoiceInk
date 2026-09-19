@@ -10,13 +10,13 @@
 		E1342C1F2EB4844800CED8A2 /* Atomics in Frameworks */ = {isa = PBXBuildFile; productRef = E1342C1E2EB4844800CED8A2 /* Atomics */; };
 		E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = E13461EC2FD1CCCD005B6A81 /* MarkdownUI */; };
 		E161D4A12F41ECB90086F83D /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E161D4A02F41ECB90086F83D /* CloudKit.framework */; };
+		E1701E75305E77220098872B /* LLMkit in Frameworks */ = {isa = PBXBuildFile; productRef = E1701E74305E77220098872B /* LLMkit */; };
 		E1ADD45F2CC544F100303ECB /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E1ADD45E2CC544F100303ECB /* Sparkle */; };
 		E1AF669B3031B7AA006D50FA /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = E1AF669A3031B7AA006D50FA /* FluidAudio */; };
 		E1C0A0022FA8000000000001 /* TranscribeCpp in Frameworks */ = {isa = PBXBuildFile; productRef = E1C0A0012FA8000000000001 /* TranscribeCpp */; };
 		E1D7EF992E35E16C00640029 /* MediaRemoteAdapter in Frameworks */ = {isa = PBXBuildFile; productRef = E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */; };
 		E1D7EF9A2E35E19B00640029 /* MediaRemoteAdapter in Embed Frameworks */ = {isa = PBXBuildFile; productRef = E1D7EF982E35E16C00640029 /* MediaRemoteAdapter */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		E1DD1EE12FA1D7D30020AF3B /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = E1DD1EE02FA1D7D30020AF3B /* Zip */; };
-		E1E9B5B03040793C001126FE /* LLMkit in Frameworks */ = {isa = PBXBuildFile; productRef = E1E9B5AF3040793C001126FE /* LLMkit */; };
 		E1F350112F1D10D600790A2C /* whisper.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; };
 		E1F350122F1D10D600790A2C /* whisper.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = E1F511032FA3B47000F00001 /* SelectedTextKit */; };
@@ -151,7 +151,7 @@
 				E1C0A0022FA8000000000001 /* TranscribeCpp in Frameworks */,
 				E1AF669B3031B7AA006D50FA /* FluidAudio in Frameworks */,
 				E1DD1EE12FA1D7D30020AF3B /* Zip in Frameworks */,
-				E1E9B5B03040793C001126FE /* LLMkit in Frameworks */,
+				E1701E75305E77220098872B /* LLMkit in Frameworks */,
 				E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */,
 				E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */,
 			);
@@ -268,7 +268,7 @@
 				E1F511032FA3B47000F00001 /* SelectedTextKit */,
 				E13461EC2FD1CCCD005B6A81 /* MarkdownUI */,
 				E1AF669A3031B7AA006D50FA /* FluidAudio */,
-				E1E9B5AF3040793C001126FE /* LLMkit */,
+				E1701E74305E77220098872B /* LLMkit */,
 			);
 			productName = VoiceInk;
 			productReference = E11473B02CBE0F0A00318EE4 /* VoiceInk Dev.app */;
@@ -397,7 +397,7 @@
 				E1F900032FA6000000000001 /* XCRemoteSwiftPackageReference "swift-transformers" */,
 				E1C0A0002FA8000000000001 /* XCRemoteSwiftPackageReference "Transcribe-cpp-swift" */,
 				E1AF66993031B7AA006D50FA /* XCRemoteSwiftPackageReference "FluidAudio" */,
-				E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */,
+				E1701E73305E77220098872B /* XCRemoteSwiftPackageReference "LLMkit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E11473B12CBE0F0A00318EE4 /* Products */;
@@ -883,6 +883,14 @@
 				minimumVersion = 2.4.1;
 			};
 		};
+		E1701E73305E77220098872B /* XCRemoteSwiftPackageReference "LLMkit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
+			requirement = {
+				kind = revision;
+				revision = 7b6218215374f0742d78198b0a6539da3c282efc;
+			};
+		};
 		E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
@@ -913,14 +921,6 @@
 			requirement = {
 				branch = master;
 				kind = branch;
-			};
-		};
-		E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
-			requirement = {
-				kind = revision;
-				revision = f35a17ad59350074bb54f2877eefdd8bae3b5827;
 			};
 		};
 		E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */ = {
@@ -978,6 +978,11 @@
 			package = E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
 			productName = MarkdownUI;
 		};
+		E1701E74305E77220098872B /* LLMkit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1701E73305E77220098872B /* XCRemoteSwiftPackageReference "LLMkit" */;
+			productName = LLMkit;
+		};
 		E1ADD45E2CC544F100303ECB /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */;
@@ -1002,11 +1007,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "Zip" */;
 			productName = Zip;
-		};
-		E1E9B5AF3040793C001126FE /* LLMkit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E1E9B5AE3040793C001126FE /* XCRemoteSwiftPackageReference "LLMkit" */;
-			productName = LLMkit;
 		};
 		E1F511032FA3B47000F00001 /* SelectedTextKit */ = {
 			isa = XCSwiftPackageProductDependency;
