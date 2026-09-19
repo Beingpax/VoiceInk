@@ -82,11 +82,18 @@ struct DashboardActivityCalendarCard: View {
                     emptyActivityCell
                 }
             }
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("No activity recorded for this period")
         } else if visiblePoints.count <= 35 {
             LazyVGrid(columns: gridColumns, spacing: 9) {
-                ForEach(visiblePoints) { point in
-                    activityCell(point: point)
+                ForEach(calendarCells) { cell in
+                    if let point = cell.point {
+                        activityCell(point: point)
+                    } else {
+                        Color.clear
+                            .aspectRatio(1, contentMode: .fit)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
         } else {
@@ -161,7 +168,7 @@ struct DashboardActivityCalendarCard: View {
         RoundedRectangle(cornerRadius: 5, style: .continuous)
             .fill(activityColor(words: 0))
             .aspectRatio(1, contentMode: .fit)
-            .accessibilityLabel("No activity")
+            .accessibilityHidden(true)
     }
 
     private func compactActivityCell(point: DashboardProductivityPoint) -> some View {
