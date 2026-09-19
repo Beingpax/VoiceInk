@@ -420,9 +420,10 @@ final class VocabularySectionTests: XCTestCase {
             archive: sectionArchive, mode: .merge, modelContext: context
         )
 
-        XCTAssertFalse(vocabularyResult.message.contains("vocabulary section"))
+        XCTAssertEqual(vocabularyResult.summary.sectionsToImport, 0)
+        XCTAssertEqual(vocabularyResult.message.split(separator: "\n").count, 2)
         XCTAssertEqual(sectionResult.summary.sectionsToImport, 1)
-        XCTAssertTrue(sectionResult.message.contains("Imported 1 vocabulary section."))
+        XCTAssertEqual(sectionResult.message.split(separator: "\n").count, 3)
     }
 
 }
