@@ -146,6 +146,9 @@ final class CoreAudioRecorder: @unchecked Sendable {
             return
         }
 
+        if audioUnit != nil {
+            logger.notice("Rebuilding prepared audio input for device \(deviceID, privacy: .public): device or capture format changed")
+        }
         teardownPreparedAudioUnit()
         currentDeviceID = deviceID
 
@@ -697,7 +700,32 @@ final class CoreAudioRecorder: @unchecked Sendable {
     }
 
     private func isPrepared(for deviceID: AudioDeviceID) -> Bool {
-        audioUnit != nil && isAudioUnitInitialized && currentDeviceID == deviceID && isDeviceAvailable(deviceID)
+        guard let audioUnit, isAudioUnitInitialized,
+              currentDeviceID == deviceID, isDeviceAvailable(deviceID) else { return false }
+
+        // A DAW or a Bluetooth route change can reconfigure an existing device
+        // without changing its ID. The cached AUHAL client format then becomes
+        // stale: starting still succeeds, but rendering can produce no audio.
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var sampleRate: Double = 0
+        var size = UInt32(MemoryLayout<Double>.size)
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &sampleRate) == noErr,
+              sampleRate == deviceFormat.mSampleRate else { return false }
+
+        var currentFormat = AudioStreamBasicDescription()
+        size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        guard AudioUnitGetProperty(
+            audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 1,
+            &currentFormat, &size
+        ) == noErr else { return false }
+
+        return currentFormat.mSampleRate == deviceFormat.mSampleRate
+            && currentFormat.mChannelsPerFrame == deviceFormat.mChannelsPerFrame
+            && renderFrameCapacity(for: deviceID) <= renderBufferSize / captureChannelCount
     }
 
     private func validateDevice(_ deviceID: AudioDeviceID) throws {
