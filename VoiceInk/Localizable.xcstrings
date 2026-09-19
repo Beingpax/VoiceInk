@@ -352,12 +352,6 @@
             "state" : "translated",
             "value" : "'%@' existe déjà dans cette section"
           }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "「%@」已在词汇中"
-          }
         }
       }
     },
