@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ChangeLogItem: Identifiable {
     let id: String
-    let title: LocalizedStringKey
     let summary: LocalizedStringKey
     let youtubeVideoID: String
 
@@ -21,10 +20,9 @@ enum ChangeLogCatalog {
     /// remembers dismissed IDs, so each item is presented only once per user.
     static let latest = ChangeLogItem(
         id: "dictionary-auto-learn",
-        title: "Dictionary Auto Learn",
         summary:
-            "VoiceInk can learn from corrections you make after pasting and add approved corrections to your Dictionary, making future transcriptions more accurate over time.",
-        youtubeVideoID: "YEDxTrr1Jco"
+            "VoiceInk automatically learns from the corrections you make to improve transcription accuracy over time. Dictionary Auto Learn uses your currently configured AI provider and AI model. You can change them anytime in Dictionary Settings.",
+        youtubeVideoID: "29Wy0SkoWk8"
     )
 }
 

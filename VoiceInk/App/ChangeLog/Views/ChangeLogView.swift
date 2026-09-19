@@ -32,21 +32,11 @@ struct ChangeLogView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
-            Text(item.title)
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(AppTheme.Text.primary)
-                .fixedSize(horizontal: false, vertical: true)
+            videoPreview
                 .padding(.top, 22)
 
-            Text(item.summary)
-                .font(.system(size: 14))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 8)
-
-            videoPreview
-                .padding(.top, 18)
+            description
+                .padding(.top, 16)
 
             footer
                 .padding(.top, 16)
@@ -127,6 +117,14 @@ struct ChangeLogView: View {
         .accessibilityHidden(true)
     }
 
+    private var description: some View {
+        Text(item.summary)
+            .font(.system(size: 14))
+            .foregroundStyle(AppTheme.Text.primary.opacity(0.72))
+            .lineSpacing(3)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     private var footer: some View {
         HStack(spacing: 16) {
             Toggle("Auto-Learn Dictionary", isOn: $isAutoLearnEnabled)
@@ -198,7 +196,7 @@ private struct LazyChangeLogPresenter<PresentedContent: View>: View {
         content
             .changeLogPresenter(manager: manager)
             .task {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
                 guard !Task.isCancelled else { return }
                 manager.presentIfNeeded()
                 onPresentationChanged(manager.isPresenting)
