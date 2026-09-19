@@ -54,6 +54,7 @@ enum DashboardStatsLoader {
             var thisYearPeakHours: [Int: DashboardPeakHourAccumulator] = [:]
             var allTimePeakHours: [Int: DashboardPeakHourAccumulator] = [:]
             var allTimeMonthWords: [Date: Int] = [:]
+            var allTimeDayWords: [Date: Int] = [:]
             var firstMetricDate: Date?
             let windows = DashboardPeriodWindows()
             let now = windows.now
@@ -64,6 +65,8 @@ enum DashboardStatsLoader {
             var lastThirtyDayProductivity = Self.productivityPoints(
                 dayCount: 30, now: now, calendar: calendar, labelStyle: .dayOfMonth)
             var thisYearProductivity = Self.monthlyProductivityPoints(
+                from: windows.thisYearStart, through: now, calendar: calendar)
+            var thisYearDailyActivity = Self.dailyProductivityPoints(
                 from: windows.thisYearStart, through: now, calendar: calendar)
             let todayHourIndices = Dictionary(
                 uniqueKeysWithValues: todayProductivity.enumerated().map { index, point in
@@ -80,6 +83,10 @@ enum DashboardStatsLoader {
             let thisYearMonthIndices = Dictionary(
                 uniqueKeysWithValues: thisYearProductivity.enumerated().map { index, point in
                     (startOfMonth(for: point.date, calendar: calendar), index)
+                })
+            let thisYearDayIndices = Dictionary(
+                uniqueKeysWithValues: thisYearDailyActivity.enumerated().map { index, point in
+                    (calendar.startOfDay(for: point.date), index)
                 })
             var offset = 0
 
@@ -150,9 +157,13 @@ enum DashboardStatsLoader {
                         if let thisYearIndex = thisYearMonthIndices[metricMonth] {
                             thisYearProductivity[thisYearIndex].words += metric.wordCount
                         }
+                        if let thisYearDayIndex = thisYearDayIndices[metricDay] {
+                            thisYearDailyActivity[thisYearDayIndex].words += metric.wordCount
+                        }
                     }
                     allTimeMonthWords[startOfMonth(for: metric.timestamp, calendar: calendar), default: 0] +=
                         metric.wordCount
+                    allTimeDayWords[metricDay, default: 0] += metric.wordCount
 
                     let metricHour = calendar.component(.hour, from: metric.timestamp)
 
@@ -235,6 +246,15 @@ enum DashboardStatsLoader {
                     wordsByMonth: allTimeMonthWords
                 )
             }()
+            let allTimeDailyActivity: [DashboardProductivityPoint] = {
+                guard let firstMetricDate else { return [] }
+                return Self.dailyProductivityPoints(
+                    from: firstMetricDate,
+                    through: now,
+                    calendar: calendar,
+                    wordsByDay: allTimeDayWords
+                )
+            }()
 
             return DashboardStatsSummary(
                 totalCount: count,
@@ -260,6 +280,8 @@ enum DashboardStatsLoader {
                 lastThirtyDayProductivity: lastThirtyDayProductivity,
                 thisYearProductivity: thisYearProductivity,
                 allTimeProductivity: allTimeProductivity,
+                thisYearDailyActivity: thisYearDailyActivity,
+                allTimeDailyActivity: allTimeDailyActivity,
                 todayModelPerformance: Self.modelPerformance(
                     transcription: todayTranscriptionPerformance,
                     enhancement: todayEnhancementPerformance
@@ -347,6 +369,43 @@ enum DashboardStatsLoader {
                 label: labelFormatter.string(from: date),
                 accessibilityLabel: accessibilityFormatter.string(from: date),
                 words: wordsByMonth[startOfMonth(for: date, calendar: calendar), default: 0]
+            )
+        }
+    }
+
+    private static func dailyProductivityPoints(
+        from startDate: Date,
+        through endDate: Date,
+        calendar: Calendar,
+        wordsByDay: [Date: Int] = [:]
+    ) -> [DashboardProductivityPoint] {
+        let firstDay = calendar.startOfDay(for: startDate)
+        let lastDay = calendar.startOfDay(for: endDate)
+        guard let dayCount = calendar.dateComponents([.day], from: firstDay, to: lastDay).day else {
+            return []
+        }
+
+        let labelFormatter = DateFormatter()
+        labelFormatter.calendar = calendar
+        labelFormatter.locale = .current
+        labelFormatter.setLocalizedDateFormatFromTemplate("MMM d")
+
+        let accessibilityFormatter = DateFormatter()
+        accessibilityFormatter.calendar = calendar
+        accessibilityFormatter.locale = .current
+        accessibilityFormatter.dateStyle = .full
+
+        return (0...max(dayCount, 0)).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: firstDay) else {
+                return nil
+            }
+
+            let day = calendar.startOfDay(for: date)
+            return DashboardProductivityPoint(
+                date: day,
+                label: labelFormatter.string(from: day),
+                accessibilityLabel: accessibilityFormatter.string(from: day),
+                words: wordsByDay[day, default: 0]
             )
         }
     }
