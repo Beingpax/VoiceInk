@@ -7,10 +7,8 @@ enum VoiceInkPersistence {
         if isLocalBuild {
             return "\(productionDirectoryName).local"
         }
-        if bundleIdentifier == "\(productionDirectoryName).dev" {
-            return "\(productionDirectoryName).dev"
-        }
-        return productionDirectoryName
+        return bundleIdentifier.flatMap { $0.isEmpty ? nil : $0 }
+            ?? "\(productionDirectoryName).unidentified"
     }
 
     static var directoryURL: URL {

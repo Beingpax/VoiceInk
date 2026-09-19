@@ -143,8 +143,11 @@ class ImportExportService {
             exportedDictionaryItems = items.map { WordBackup(word: $0.word, sectionID: $0.sectionID) }
         }
 
-        let vocabularySections = (try? modelContext.fetch(FetchDescriptor<VocabularySection>()))?.map {
-            DictionarySectionEntry(id: $0.id, name: $0.name, description: $0.sectionDescription)
+        var vocabularySections: [DictionarySectionEntry]?
+        if let sections = try? modelContext.fetch(FetchDescriptor<VocabularySection>()), !sections.isEmpty {
+            vocabularySections = sections.map {
+                DictionarySectionEntry(id: $0.id, name: $0.name, description: $0.sectionDescription)
+            }
         }
 
         // Fetch word replacements from SwiftData

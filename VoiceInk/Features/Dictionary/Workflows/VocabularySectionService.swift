@@ -38,11 +38,13 @@ enum VocabularySectionService {
         guard word.sectionID != sectionID else { return nil }
         do {
             let identity = VocabularyWordIdentity(word: word.word, sectionID: sectionID)
-            let words = try context.fetch(FetchDescriptor<VocabularyWord>())
+            let words = try context.fetch(
+                FetchDescriptor<VocabularyWord>(predicate: #Predicate { $0.sectionID == sectionID })
+            )
             guard !words.contains(where: {
                 $0 !== word && VocabularyWordIdentity(word: $0.word, sectionID: $0.sectionID) == identity
             }) else {
-                return String(format: String(localized: "'%@' is already in this section"), word.word)
+                return DictionaryService.duplicateVocabularyMessage(word.word, sectionID: sectionID)
             }
 
             word.sectionID = sectionID

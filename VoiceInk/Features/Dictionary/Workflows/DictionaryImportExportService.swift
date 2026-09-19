@@ -249,7 +249,10 @@ enum DictionaryImportExportService {
         let sections = try modelContext.fetch(FetchDescriptor<VocabularySection>())
         return ExistingDictionarySnapshot(
             vocabulary: vocabulary.map { ExistingVocabulary(term: $0.word, sectionID: $0.sectionID) }
-                .sorted { $0.term < $1.term },
+                .sorted {
+                    if $0.term != $1.term { return $0.term < $1.term }
+                    return ($0.sectionID?.uuidString ?? "") < ($1.sectionID?.uuidString ?? "")
+                },
             replacements: replacements
                 .map {
                     ExistingReplacement(

@@ -40,9 +40,15 @@ class CustomVocabularyService {
             }
 
         if groups.isEmpty {
-            return "Important Vocabulary: \(sortedWords.map(\.0).joined(separator: ", "))"
+            return escapePromptDelimiters("Important Vocabulary: \(sortedWords.map(\.0).joined(separator: ", "))")
         }
         let ungroupedLine = ungrouped.isEmpty ? [] : ["Other terms: \(ungrouped.joined(separator: ", "))"]
-        return (["Important Vocabulary:"] + ungroupedLine + groups).joined(separator: "\n")
+        return escapePromptDelimiters((["Important Vocabulary:"] + ungroupedLine + groups).joined(separator: "\n"))
+    }
+
+    private static func escapePromptDelimiters(_ text: String) -> String {
+        text.replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
     }
 }

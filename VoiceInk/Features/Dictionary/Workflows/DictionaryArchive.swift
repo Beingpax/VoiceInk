@@ -118,10 +118,13 @@ struct DictionaryImportResult: Sendable {
 
     var message: String {
         var lines = [
-            String(localized: "Imported \(summary.sectionsToImport) vocabulary sections."),
             String(localized: "Imported \(summary.vocabularyToImport) vocabulary entries."),
             String(localized: "Imported \(summary.replacementRulesToImport) word replacement rules."),
         ]
+
+        if summary.sectionsToImport > 0 {
+            lines.insert(String(localized: "Imported \(summary.sectionsToImport) vocabulary sections."), at: 0)
+        }
 
         if summary.vocabularyToRemove + summary.replacementsToRemove + summary.sectionsToRemove > 0 {
             let removedVocabulary = String(

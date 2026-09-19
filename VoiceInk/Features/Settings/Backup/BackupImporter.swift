@@ -253,7 +253,8 @@ enum BackupImporter {
         )
         DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
         print(
-            "Successfully imported \(result.summary.vocabularyToImport) vocabulary entries and "
+            "Successfully imported \(result.summary.sectionsToImport) vocabulary sections, "
+                + "\(result.summary.vocabularyToImport) vocabulary entries and "
                 + "\(result.summary.replacementRulesToImport) word replacement rules."
         )
         if result.summary.skippedEntryCount > 0 {

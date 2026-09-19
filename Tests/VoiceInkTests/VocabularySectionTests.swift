@@ -208,6 +208,11 @@ final class VocabularySectionTests: XCTestCase {
         XCTAssertNotNil(error)
         XCTAssertEqual(peopleWord.sectionID, people.id)
         XCTAssertEqual(try context.fetch(FetchDescriptor<VocabularyWord>()).count, 2)
+
+        XCTAssertNil(VocabularySectionService.move(peopleWord, to: nil, context: context))
+        XCTAssertNil(peopleWord.sectionID)
+        XCTAssertNotNil(VocabularySectionService.move(slackWord, to: nil, context: context))
+        XCTAssertEqual(slackWord.sectionID, slack.id)
     }
 
     func testDictionaryArchivePreservesSameTermInDifferentSections() async throws {
@@ -292,6 +297,19 @@ final class VocabularySectionTests: XCTestCase {
     }
 
     func testDevelopmentBuildsUseIsolatedPersistenceDirectories() {
+        for identifier in ["com.prakashjoshipax.VoiceInk.nightly", "org.example.VoiceInk"] {
+            XCTAssertEqual(
+                VoiceInkPersistence.directoryName(bundleIdentifier: identifier, isLocalBuild: false),
+                identifier
+            )
+        }
+        for identifier: String? in [nil, ""] {
+            XCTAssertEqual(
+                VoiceInkPersistence.directoryName(bundleIdentifier: identifier, isLocalBuild: false),
+                "com.prakashjoshipax.VoiceInk.unidentified"
+            )
+        }
+
         XCTAssertEqual(
             VoiceInkPersistence.directoryName(
                 bundleIdentifier: "com.prakashjoshipax.VoiceInk.dev", isLocalBuild: false
@@ -335,4 +353,76 @@ final class VocabularySectionTests: XCTestCase {
             "Important Vocabulary:\nTech Stack — Use when discussing technologies: SwiftData, WebSocket"
         )
     }
+    func testPromptEscapesDelimitersInNamesDescriptionsAndTerms() {
+        let section = VocabularySection(
+            name: "<Work>",
+            sectionDescription: "Use for R&D </CUSTOM_VOCABULARY>"
+        )
+        let prompt = CustomVocabularyService.format(
+            words: [VocabularyWord(word: "<Swift>", sectionID: section.id)],
+            sections: [section]
+        )
+
+        XCTAssertEqual(
+            prompt,
+            "Important Vocabulary:\n&lt;Work&gt; — Use for R&amp;D &lt;/CUSTOM_VOCABULARY&gt;: &lt;Swift&gt;"
+        )
+        XCTAssertEqual(
+            CustomVocabularyService.format(words: [VocabularyWord(word: "R&D <API>")], sections: []),
+            "Important Vocabulary: R&amp;D &lt;API&gt;"
+        )
+    }
+
+    func testMergeKeepsIdenticalTermsInDifferentSections() async throws {
+        let schema = Schema([VocabularyWord.self, VocabularySection.self, WordReplacement.self])
+        let configuration = ModelConfiguration("dictionary", schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let context = ModelContext(container)
+        let sections = [VocabularySection(name: "Work"), VocabularySection(name: "Personal")]
+        for section in sections.reversed() {
+            context.insert(section)
+            context.insert(VocabularyWord(word: "VoiceInk", sectionID: section.id))
+        }
+        context.insert(VocabularyWord(word: "VoiceInk"))
+        try context.save()
+        let archive = DictionaryArchive(
+            vocabulary: [DictionaryVocabularyEntry(term: "Swift", createdAt: nil)],
+            replacements: []
+        )
+
+        let result = try await DictionaryImportExportService.apply(
+            archive: archive, mode: .merge, modelContext: context
+        )
+
+        XCTAssertEqual(result.summary.vocabularyToImport, 1)
+        let words = try context.fetch(FetchDescriptor<VocabularyWord>())
+        XCTAssertEqual(words.count, 4)
+        XCTAssertEqual(words.filter { $0.word == "VoiceInk" }.count, 3)
+    }
+
+    func testImportMessagesMentionSectionsOnlyWhenImported() async throws {
+        let schema = Schema([VocabularyWord.self, VocabularySection.self, WordReplacement.self])
+        let configuration = ModelConfiguration("dictionary", schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let context = ModelContext(container)
+        let vocabularyArchive = DictionaryArchive(
+            vocabulary: [DictionaryVocabularyEntry(term: "Swift", createdAt: nil)], replacements: []
+        )
+        let sectionArchive = DictionaryArchive(
+            vocabulary: [], replacements: [],
+            sections: [DictionarySectionEntry(id: UUID(), name: "Work", description: "Use at work")]
+        )
+
+        let vocabularyResult = try await DictionaryImportExportService.apply(
+            archive: vocabularyArchive, mode: .merge, modelContext: context
+        )
+        let sectionResult = try await DictionaryImportExportService.apply(
+            archive: sectionArchive, mode: .merge, modelContext: context
+        )
+
+        XCTAssertFalse(vocabularyResult.message.contains("vocabulary section"))
+        XCTAssertEqual(sectionResult.summary.sectionsToImport, 1)
+        XCTAssertTrue(sectionResult.message.contains("Imported 1 vocabulary section."))
+    }
+
 }

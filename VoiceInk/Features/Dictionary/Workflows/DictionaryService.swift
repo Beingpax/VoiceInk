@@ -29,7 +29,7 @@ enum DictionaryService {
             if existing.contains(where: {
                 VocabularyWordIdentity(word: $0.word, sectionID: $0.sectionID) == identity
             }) {
-                return String(format: String(localized: "'%@' is already in this section"), word)
+                return duplicateVocabularyMessage(word, sectionID: sectionID)
             }
             return insertVocabularyWord(word, context: context, sectionID: sectionID)
         }
@@ -61,6 +61,13 @@ enum DictionaryService {
             context.delete(entry)
             return String(format: String(localized: "Failed to add '%@': %@"), word, error.localizedDescription)
         }
+    }
+
+    static func duplicateVocabularyMessage(_ word: String, sectionID: UUID?) -> String {
+        let message = sectionID == nil
+            ? String(localized: "'%@' is already in No section")
+            : String(localized: "'%@' is already in this section")
+        return String(format: message, word)
     }
 
     @discardableResult
