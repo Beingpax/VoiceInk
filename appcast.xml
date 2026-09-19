@@ -3,22 +3,25 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>2.13</title>
-            <pubDate>Thu, 27 Aug 2026 22:54:28 +0545</pubDate>
-            <sparkle:version>213</sparkle:version>
-            <sparkle:shortVersionString>2.13</sparkle:shortVersionString>
+            <title>2.20</title>
+            <pubDate>Sat, 19 Sep 2026 17:52:18 +0545</pubDate>
+            <sparkle:version>220</sparkle:version>
+            <sparkle:shortVersionString>2.20</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h3>What's New in VoiceInk 2.13</h3>
+            <description><![CDATA[<h3>What's New in VoiceInk 2.20</h3>
 <ul>
-  <li>✨ Added Gemini 3.5 Transcribe support</li>
-  <li>✨ Added SenseVoice Small support</li>
-  <li>⌨️ Improved cancellation handling</li>
-  <li>🎙️ Fixed the recorder panel issue — by @AlexSarbu</li>
-  <li>🎧 Fixed microphone routing issue in clamshell mode</li>
-  <li>🐛 Minor bug fixes and improvements</li>
+  <li>🧠 Introduced the Dictionary Auto Learn feature</li>
+  <li>📦 Support for importing and exporting dictionaries</li>
+  <li>🕘 Faster access to recent transcriptions with Quick History</li>
+  <li>🖱️ Added support for mouse shortcuts</li>
+  <li>🗣️ Added support for Grok Voice Transcribe 2.0</li>
+  <li>🤖 Added support for Gemini 3.8 Flash and Qwen 3.8 27B enhancement models</li>
+  <li>🌍 Support for French localization</li>
+  <li>⚡ Improved OpenRouter performance and stability</li>
+  <li>🛠️ Minor bug fixes and improvements</li>
 </ul>
 ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.13/VoiceInk.dmg" length="50174451" type="application/octet-stream" sparkle:edSignature="EZyhSWJgi1u+VLfXBrlEci/V9T4bolvqsBIO2+1vHICIdb5gnq4IwSkk0FN9wagAm+f3v2UfIBEfQSSDC8OhAA=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.20/VoiceInk.dmg" length="50395303" type="application/octet-stream" sparkle:edSignature="4jrUeMTntgAvIkxuJrNy9a53K3+e+UXXMxD+pAv2uxLlG+bmImBIZ3+bRBxG3GcI4SoRHw80bXguDKtMnHnqBg=="/>
         </item>
     </channel>
 </rss>
