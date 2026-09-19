@@ -260,6 +260,8 @@ struct DashboardStatsSummary: Codable, Equatable, Sendable {
     var lastThirtyDayProductivity: [DashboardProductivityPoint] = []
     var thisYearProductivity: [DashboardProductivityPoint] = []
     var allTimeProductivity: [DashboardProductivityPoint] = []
+    var thisYearDailyActivity: [DashboardProductivityPoint] = []
+    var allTimeDailyActivity: [DashboardProductivityPoint] = []
     var todayModelPerformance: [ModelPerformanceSummary] = []
     var lastSevenDayModelPerformance: [ModelPerformanceSummary] = []
     var lastThirtyDayModelPerformance: [ModelPerformanceSummary] = []
@@ -337,6 +339,22 @@ extension DashboardStatsSummary {
             return thisYearProductivity
         case .allTime:
             return allTimeProductivity
+        }
+    }
+
+    func dailyActivity(for period: DashboardInsightPeriod) -> [DashboardProductivityPoint] {
+        switch period {
+        case .today:
+            let calendar = DashboardPeriodWindows.dashboardCalendar()
+            return lastSevenDayProductivity.filter { calendar.isDateInToday($0.date) }
+        case .lastSevenDays:
+            return lastSevenDayProductivity
+        case .lastThirtyDays:
+            return lastThirtyDayProductivity
+        case .thisYear:
+            return thisYearDailyActivity
+        case .allTime:
+            return allTimeDailyActivity
         }
     }
 

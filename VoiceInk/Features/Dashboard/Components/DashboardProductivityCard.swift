@@ -48,67 +48,70 @@ struct DashboardProductivityCard: View {
         isRefreshingStats ? String(localized: "Updating") : updatedAtText
     }
 }
-struct DashboardProductivitySummaryStrip: View {
+struct DashboardEditorialSummaryCard: View {
     let summary: DashboardTimeSavedSummary
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            metricCell(
-                title: "Time saved",
-                value: summary.hasData ? Formatters.formattedSavedTime(summary.timeSaved) : "--",
-                systemName: "clock"
-            )
-            metricCell(
-                title: "Words dictated",
-                value: summary.hasData ? Formatters.formattedCompactNumber(summary.wordCount) : "--",
-                systemName: "list.bullet.rectangle"
-            )
-            metricCell(
-                title: "Sessions",
-                value: summary.hasData ? Formatters.formattedCompactNumber(summary.sessionCount) : "--",
-                systemName: "mic"
-            )
+        VStack(alignment: .leading, spacing: 20) {
+            Text("You made room for")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+
+            HStack(alignment: .lastTextBaseline, spacing: 12) {
+                Text(summary.hasData ? Formatters.formattedSavedTime(summary.timeSaved) : "--")
+                    .font(.system(size: 54, weight: .heavy, design: .rounded))
+                    .foregroundStyle(AppTheme.Accent.strong)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+
+                Text("of focused work")
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .padding(.bottom, 7)
+            }
+
+            Rectangle()
+                .fill(AppTheme.Text.primary)
+                .frame(height: 2)
+
+            HStack(alignment: .top, spacing: 30) {
+                editorialFact(
+                    value: summary.hasData ? Formatters.formattedCompactNumber(summary.wordCount) : "--",
+                    copy: "words captured"
+                )
+                editorialFact(
+                    value: summary.hasData ? Formatters.formattedCompactNumber(summary.sessionCount) : "--",
+                    copy: "dictation sessions"
+                )
+                editorialFact(
+                    value: averageSessionText,
+                    copy: "words per average session"
+                )
+            }
         }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("VoiceInk impact summary")
     }
 
-    private func metricCell(title: LocalizedStringKey, value: String, systemName: String) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    .fill(AppTheme.Surface.controlActive.opacity(0.72))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(AppTheme.Border.subtle.opacity(0.80), lineWidth: 1)
-                    )
+    private var averageSessionText: String {
+        guard summary.sessionCount > 0 else { return "--" }
+        return Formatters.formattedCompactNumber(summary.wordCount / summary.sessionCount)
+    }
 
-                Image(systemName: systemName)
-                    .font(.system(size: 17, weight: .semibold))
-                    .symbolRenderingMode(.monochrome)
-                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.86))
-            }
-            .frame(width: 44, height: 44)
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(AppTheme.Text.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.76)
-
-                Text(value)
-                    .font(.system(size: 23, weight: .bold, design: .rounded))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.66)
-            }
-
-            Spacer(minLength: 0)
+    private func editorialFact(value: String, copy: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(value)
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .foregroundStyle(AppTheme.Text.primary)
+            Text(copy)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(minWidth: 132, maxWidth: .infinity, minHeight: 86, alignment: .leading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

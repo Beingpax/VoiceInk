@@ -295,6 +295,10 @@ struct DashboardContent: View {
         statsSummary.productivity(for: selectedInsightPeriod)
     }
 
+    private var selectedDailyActivityPoints: [DashboardProductivityPoint] {
+        statsSummary.dailyActivity(for: selectedInsightPeriod)
+    }
+
     private var selectedModelPerformance: [ModelPerformanceSummary] {
         statsSummary.modelPerformance(for: selectedInsightPeriod)
     }
@@ -622,6 +626,7 @@ struct DashboardContent: View {
         DashboardInsightsView(
             selectedPeriod: $selectedInsightPeriod,
             productivityPoints: selectedProductivityPoints,
+            dailyActivityPoints: selectedDailyActivityPoints,
             peakHoursSummary: selectedPeakHours,
             isPeakHoursLocked: shouldLockPeakHours,
             timeSavedSummary: selectedTimeSavedSummary,

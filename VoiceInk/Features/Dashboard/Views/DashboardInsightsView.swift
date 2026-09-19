@@ -3,6 +3,7 @@ import SwiftUI
 struct DashboardInsightsView: View {
     @Binding var selectedPeriod: DashboardInsightPeriod
     let productivityPoints: [DashboardProductivityPoint]
+    let dailyActivityPoints: [DashboardProductivityPoint]
     let peakHoursSummary: DashboardPeakHoursSummary
     let isPeakHoursLocked: Bool
     let timeSavedSummary: DashboardTimeSavedSummary
@@ -19,7 +20,7 @@ struct DashboardInsightsView: View {
         VStack(alignment: .leading, spacing: 22) {
             header
 
-            DashboardProductivitySummaryStrip(
+            DashboardEditorialSummaryCard(
                 summary: timeSavedSummary
             )
 
@@ -31,7 +32,12 @@ struct DashboardInsightsView: View {
                 onRefreshStats: onRefreshStats
             )
 
-            insightSummaryCards
+            DashboardActivityCalendarCard(
+                points: dailyActivityPoints,
+                summary: timeSavedSummary,
+                peakHoursSummary: peakHoursSummary,
+                isPeakHoursLocked: isPeakHoursLocked
+            )
 
             ModelUsageCard(
                 summary: modelUsage,
@@ -44,17 +50,6 @@ struct DashboardInsightsView: View {
             )
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    private var insightSummaryCards: some View {
-        HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
-            DashboardPeakHoursCard(summary: peakHoursSummary, isLocked: isPeakHoursLocked)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-
-            DashboardTimeSavedCard(summary: timeSavedSummary, period: selectedPeriod)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-        }
-        .frame(height: 196)
     }
 
     private var header: some View {
