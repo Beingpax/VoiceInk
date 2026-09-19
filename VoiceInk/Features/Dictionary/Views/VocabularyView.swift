@@ -1,19 +1,5 @@
-import CoreTransferable
 import SwiftData
 import SwiftUI
-import UniformTypeIdentifiers
-
-private struct VocabularyWordTransfer: Codable, Transferable {
-    let term: String
-
-    static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .voiceInkVocabularyWord)
-    }
-}
-
-private extension UTType {
-    static let voiceInkVocabularyWord = UTType(exportedAs: "com.prakashjoshipax.voiceink.vocabulary-word")
-}
 
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
@@ -251,17 +237,17 @@ struct VocabularyView: View {
                     )
             }
             .contentShape(Rectangle())
-            .dropDestination(for: VocabularyWordTransfer.self) { transfers, _ in
+            .dropDestination(for: String.self) { terms, _ in
                 guard
-                    let transfer = transfers.first,
-                    let word = vocabularyWords.first(where: { $0.word == transfer.term })
+                    let term = terms.first,
+                    let word = vocabularyWords.first(where: { $0.word == term })
                 else {
                     return false
                 }
 
                 targetedDropTarget = nil
                 guard word.sectionID != target.sectionID else { return true }
-                return moveWord(word, to: target.sectionID)
+                return moveWord(term, to: target.sectionID)
             } isTargeted: { isTargeted in
                 withAnimation(.easeInOut(duration: 0.15)) {
                     if isTargeted {
@@ -291,14 +277,20 @@ struct VocabularyView: View {
                 VocabularyWordView(item: item) {
                     removeWord(item)
                 }
-                .draggable(VocabularyWordTransfer(term: item.word))
+                .contentShape(Rectangle())
+                .draggable(item.word) {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                }
                 .help("Drag to move this term to another section")
             }
         }
         .padding(.vertical, 4)
     }
 
-    private func moveWord(_ word: VocabularyWord, to sectionID: UUID?) -> Bool {
+    private func moveWord(_ term: String, to sectionID: UUID?) -> Bool {
+        guard let word = vocabularyWords.first(where: { $0.word == term }) else { return false }
+        guard word.sectionID != sectionID else { return true }
         if let error = VocabularySectionService.move(word, to: sectionID, context: modelContext) {
             alertMessage = error
             showAlert = true
