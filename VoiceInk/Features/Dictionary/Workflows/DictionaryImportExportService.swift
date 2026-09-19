@@ -133,7 +133,7 @@ enum DictionaryImportExportService {
         let sections = try modelContext.fetch(FetchDescriptor<VocabularySection>())
         let sectionIDs = Set(sections.map(\.id))
 
-        var seenVocabulary = Set<String>()
+        var seenVocabulary = Set<VocabularyWordIdentity>()
         let vocabularyEntries = vocabulary
             .sorted {
                 if $0.dateAdded != $1.dateAdded { return $0.dateAdded < $1.dateAdded }
@@ -141,12 +141,13 @@ enum DictionaryImportExportService {
             }
             .compactMap { item -> DictionaryVocabularyEntry? in
                 let term = normalizedText(item.word)
-                let key = vocabularyKey(term)
-                guard !term.isEmpty, seenVocabulary.insert(key).inserted else { return nil }
+                let sectionID = item.sectionID.flatMap { sectionIDs.contains($0) ? $0 : nil }
+                let identity = VocabularyWordIdentity(word: term, sectionID: sectionID)
+                guard !term.isEmpty, seenVocabulary.insert(identity).inserted else { return nil }
                 return DictionaryVocabularyEntry(
                     term: term,
                     createdAt: item.dateAdded,
-                    sectionID: item.sectionID.flatMap { sectionIDs.contains($0) ? $0 : nil }
+                    sectionID: sectionID
                 )
             }
 
@@ -328,8 +329,10 @@ enum DictionaryImportExportService {
         var duplicateVocabularyCount = 0
         var acceptedVocabulary: [DictionaryVocabularyEntry] = []
         var vocabularyKeys = mode == .merge
-            ? Set(existingVocabulary.map { vocabularyKey($0.term) })
-            : Set<String>()
+            ? Set(existingVocabulary.map {
+                VocabularyWordIdentity(word: $0.term, sectionID: $0.sectionID)
+            })
+            : Set<VocabularyWordIdentity>()
 
         for (index, entry) in archive.vocabulary.enumerated() {
             if index.isMultiple(of: 256) { try Task.checkCancellation() }
@@ -339,8 +342,9 @@ enum DictionaryImportExportService {
                 continue
             }
 
-            let key = vocabularyKey(term)
-            guard vocabularyKeys.insert(key).inserted else {
+            let sectionID = entry.sectionID.flatMap { sectionIDMap[$0] }
+            let identity = VocabularyWordIdentity(word: term, sectionID: sectionID)
+            guard vocabularyKeys.insert(identity).inserted else {
                 duplicateVocabularyCount += 1
                 continue
             }

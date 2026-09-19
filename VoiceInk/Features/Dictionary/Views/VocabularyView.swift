@@ -1,6 +1,33 @@
 import SwiftData
 import SwiftUI
 
+private struct VocabularyWordDragPayload {
+    let term: String
+    let sectionID: UUID?
+
+    var encoded: String {
+        "\(sectionID?.uuidString ?? "")\n\(term)"
+    }
+
+    init(term: String, sectionID: UUID?) {
+        self.term = term
+        self.sectionID = sectionID
+    }
+
+    init?(encoded: String) {
+        guard let separator = encoded.firstIndex(of: "\n") else { return nil }
+        let sectionText = String(encoded[..<separator])
+        if sectionText.isEmpty {
+            sectionID = nil
+        } else if let sectionID = UUID(uuidString: sectionText) {
+            self.sectionID = sectionID
+        } else {
+            return nil
+        }
+        term = String(encoded[encoded.index(after: separator)...])
+    }
+}
+
 struct VocabularyView: View {
     @Query private var vocabularyWords: [VocabularyWord]
     @Query private var vocabularySections: [VocabularySection]
@@ -237,17 +264,20 @@ struct VocabularyView: View {
                     )
             }
             .contentShape(Rectangle())
-            .dropDestination(for: String.self) { terms, _ in
+            .dropDestination(for: String.self) { encodedPayloads, _ in
                 guard
-                    let term = terms.first,
-                    let word = vocabularyWords.first(where: { $0.word == term })
+                    let encodedPayload = encodedPayloads.first,
+                    let payload = VocabularyWordDragPayload(encoded: encodedPayload),
+                    let word = vocabularyWords.first(where: {
+                        $0.word == payload.term && $0.sectionID == payload.sectionID
+                    })
                 else {
                     return false
                 }
 
                 targetedDropTarget = nil
                 guard word.sectionID != target.sectionID else { return true }
-                return moveWord(term, to: target.sectionID)
+                return moveWord(word, to: target.sectionID)
             } isTargeted: { isTargeted in
                 withAnimation(.easeInOut(duration: 0.15)) {
                     if isTargeted {
@@ -278,7 +308,9 @@ struct VocabularyView: View {
                     removeWord(item)
                 }
                 .contentShape(Rectangle())
-                .draggable(item.word) {
+                .draggable(
+                    VocabularyWordDragPayload(term: item.word, sectionID: item.sectionID).encoded
+                ) {
                     Color.clear
                         .frame(width: 1, height: 1)
                 }
@@ -288,9 +320,7 @@ struct VocabularyView: View {
         .padding(.vertical, 4)
     }
 
-    private func moveWord(_ term: String, to sectionID: UUID?) -> Bool {
-        guard let word = vocabularyWords.first(where: { $0.word == term }) else { return false }
-        guard word.sectionID != sectionID else { return true }
+    private func moveWord(_ word: VocabularyWord, to sectionID: UUID?) -> Bool {
         if let error = VocabularySectionService.move(word, to: sectionID, context: modelContext) {
             alertMessage = error
             showAlert = true

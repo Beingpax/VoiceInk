@@ -35,8 +35,17 @@ enum VocabularySectionService {
     }
 
     static func move(_ word: VocabularyWord, to sectionID: UUID?, context: ModelContext) -> String? {
-        word.sectionID = sectionID
+        guard word.sectionID != sectionID else { return nil }
         do {
+            let identity = VocabularyWordIdentity(word: word.word, sectionID: sectionID)
+            let words = try context.fetch(FetchDescriptor<VocabularyWord>())
+            guard !words.contains(where: {
+                $0 !== word && VocabularyWordIdentity(word: $0.word, sectionID: $0.sectionID) == identity
+            }) else {
+                return String(format: String(localized: "'%@' is already in this section"), word.word)
+            }
+
+            word.sectionID = sectionID
             try context.save()
             return nil
         } catch {
@@ -46,8 +55,18 @@ enum VocabularySectionService {
     }
 
     static func delete(_ section: VocabularySection, words: [VocabularyWord], context: ModelContext) -> String? {
+        var unsectionedWords = Set(
+            words.lazy
+                .filter { $0.sectionID == nil }
+                .map { VocabularyWordIdentity(word: $0.word, sectionID: nil) }
+        )
         for word in words where word.sectionID == section.id {
-            word.sectionID = nil
+            let identity = VocabularyWordIdentity(word: word.word, sectionID: nil)
+            if unsectionedWords.insert(identity).inserted {
+                word.sectionID = nil
+            } else {
+                context.delete(word)
+            }
         }
         context.delete(section)
         do {

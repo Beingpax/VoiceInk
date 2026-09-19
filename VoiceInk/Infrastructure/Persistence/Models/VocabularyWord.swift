@@ -1,6 +1,19 @@
 import Foundation
 import SwiftData
 
+struct VocabularyWordIdentity: Hashable, Sendable {
+    let normalizedWord: String
+    let sectionID: UUID?
+
+    init(word: String, sectionID: UUID?) {
+        let normalized = word
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .precomposedStringWithCanonicalMapping
+        normalizedWord = (normalized as NSString).folding(options: .caseInsensitive, locale: nil)
+        self.sectionID = sectionID
+    }
+}
+
 @Model
 final class VocabularyWord {
     var word: String = ""

@@ -138,16 +138,123 @@ final class VocabularySectionTests: XCTestCase {
         let container = try ModelContainer(for: schema, configurations: configuration)
         let context = ModelContext(container)
         let section = VocabularySection(name: "Tech Stack", sectionDescription: "Use for technologies")
-        let word = VocabularyWord(word: "SwiftData", sectionID: section.id)
+        let duplicate = VocabularyWord(word: "SwiftData")
+        let sectionedDuplicate = VocabularyWord(word: "SwiftData", sectionID: section.id)
+        let distinctWord = VocabularyWord(word: "WebSocket", sectionID: section.id)
         context.insert(section)
-        context.insert(word)
+        context.insert(duplicate)
+        context.insert(sectionedDuplicate)
+        context.insert(distinctWord)
         try context.save()
 
-        let error = VocabularySectionService.delete(section, words: [word], context: context)
+        let error = VocabularySectionService.delete(
+            section,
+            words: [duplicate, sectionedDuplicate, distinctWord],
+            context: context
+        )
 
         XCTAssertNil(error)
         XCTAssertTrue(try context.fetch(FetchDescriptor<VocabularySection>()).isEmpty)
-        XCTAssertNil(try XCTUnwrap(context.fetch(FetchDescriptor<VocabularyWord>()).first).sectionID)
+        let words = try context.fetch(FetchDescriptor<VocabularyWord>())
+        XCTAssertEqual(Set(words.map(\.word)), ["SwiftData", "WebSocket"])
+        XCTAssertTrue(words.allSatisfy { $0.sectionID == nil })
+    }
+
+    func testVocabularyTermCanRepeatAcrossSectionsButNotWithinOneSection() throws {
+        let schema = Schema([VocabularyWord.self, VocabularySection.self])
+        let configuration = ModelConfiguration("dictionary", schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let context = ModelContext(container)
+        let slack = VocabularySection(name: "Slack")
+        let people = VocabularySection(name: "People")
+        context.insert(slack)
+        context.insert(people)
+        try context.save()
+
+        XCTAssertNil(DictionaryService.addVocabularyWords(
+            "VoiceInk", existing: [], context: context, sectionID: slack.id
+        ))
+        var words = try context.fetch(FetchDescriptor<VocabularyWord>())
+        XCTAssertNil(DictionaryService.addVocabularyWords(
+            "voiceink", existing: words, context: context, sectionID: people.id
+        ))
+        words = try context.fetch(FetchDescriptor<VocabularyWord>())
+
+        XCTAssertNotNil(DictionaryService.addVocabularyWords(
+            "VOICEINK", existing: words, context: context, sectionID: slack.id
+        ))
+        words = try context.fetch(FetchDescriptor<VocabularyWord>())
+        XCTAssertEqual(words.count, 2)
+        XCTAssertEqual(Set(words.compactMap(\.sectionID)), [slack.id, people.id])
+    }
+
+    func testMovingTermDoesNotCreateDuplicateWithinSection() throws {
+        let schema = Schema([VocabularyWord.self, VocabularySection.self])
+        let configuration = ModelConfiguration("dictionary", schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let context = ModelContext(container)
+        let slack = VocabularySection(name: "Slack")
+        let people = VocabularySection(name: "People")
+        let slackWord = VocabularyWord(word: "VoiceInk", sectionID: slack.id)
+        let peopleWord = VocabularyWord(word: "voiceink", sectionID: people.id)
+        context.insert(slack)
+        context.insert(people)
+        context.insert(slackWord)
+        context.insert(peopleWord)
+        try context.save()
+
+        let error = VocabularySectionService.move(peopleWord, to: slack.id, context: context)
+
+        XCTAssertNotNil(error)
+        XCTAssertEqual(peopleWord.sectionID, people.id)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<VocabularyWord>()).count, 2)
+    }
+
+    func testDictionaryArchivePreservesSameTermInDifferentSections() async throws {
+        let schema = Schema([VocabularyWord.self, WordReplacement.self, VocabularySection.self])
+        let configuration = ModelConfiguration("dictionary", schema: schema, isStoredInMemoryOnly: true)
+        let source = try ModelContainer(for: schema, configurations: configuration)
+        let sourceContext = ModelContext(source)
+        let slack = VocabularySection(name: "Slack")
+        let people = VocabularySection(name: "People")
+        sourceContext.insert(slack)
+        sourceContext.insert(people)
+        sourceContext.insert(VocabularyWord(word: "VoiceInk", sectionID: slack.id))
+        sourceContext.insert(VocabularyWord(word: "VoiceInk", sectionID: people.id))
+        try sourceContext.save()
+
+        let archive = try DictionaryImportExportService.makeArchive(modelContext: sourceContext)
+        let destination = try ModelContainer(for: schema, configurations: configuration)
+        let destinationContext = ModelContext(destination)
+        _ = try await DictionaryImportExportService.apply(
+            archive: archive, mode: .replace, modelContext: destinationContext
+        )
+
+        let restoredWords = try destinationContext.fetch(FetchDescriptor<VocabularyWord>())
+        XCTAssertEqual(archive.vocabulary.count, 2)
+        XCTAssertEqual(restoredWords.count, 2)
+        XCTAssertEqual(Set(restoredWords.compactMap(\.sectionID)), [slack.id, people.id])
+    }
+
+    func testDictionaryCleanupKeepsSameTermInDifferentSections() throws {
+        let schema = Schema([VocabularyWord.self, VocabularySection.self])
+        let configuration = ModelConfiguration("dictionary", schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let context = ModelContext(container)
+        let slack = VocabularySection(name: "Slack")
+        let people = VocabularySection(name: "People")
+        context.insert(slack)
+        context.insert(people)
+        context.insert(VocabularyWord(word: "VoiceInk", dateAdded: Date(timeIntervalSince1970: 1), sectionID: slack.id))
+        context.insert(VocabularyWord(word: "voiceink", dateAdded: Date(timeIntervalSince1970: 2), sectionID: slack.id))
+        context.insert(VocabularyWord(word: "VoiceInk", dateAdded: Date(timeIntervalSince1970: 3), sectionID: people.id))
+        try context.save()
+
+        XCTAssertTrue(DictionaryService.removeExactDuplicateContent(context: context, source: "test"))
+
+        let words = try context.fetch(FetchDescriptor<VocabularyWord>())
+        XCTAssertEqual(words.count, 2)
+        XCTAssertEqual(Set(words.compactMap(\.sectionID)), [slack.id, people.id])
     }
 
     func testLegacyDictionaryStoreMigratesBeforeDeletingVocabulary() throws {

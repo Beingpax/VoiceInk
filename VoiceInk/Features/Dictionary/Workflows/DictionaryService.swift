@@ -25,21 +25,26 @@ enum DictionaryService {
         guard !parts.isEmpty else { return nil }
 
         if parts.count == 1, let word = parts.first {
-            if existing.contains(where: { $0.word.lowercased() == word.lowercased() }) {
-                return String(format: String(localized: "'%@' is already in the vocabulary"), word)
+            let identity = VocabularyWordIdentity(word: word, sectionID: sectionID)
+            if existing.contains(where: {
+                VocabularyWordIdentity(word: $0.word, sectionID: $0.sectionID) == identity
+            }) {
+                return String(format: String(localized: "'%@' is already in this section"), word)
             }
             return insertVocabularyWord(word, context: context, sectionID: sectionID)
         }
 
-        var addedWords = Set(existing.map { $0.word.lowercased() })
+        var addedWords = Set(existing.map {
+            VocabularyWordIdentity(word: $0.word, sectionID: $0.sectionID)
+        })
         var errors = [String]()
         for word in parts {
-            let lower = word.lowercased()
-            if !addedWords.contains(lower) {
+            let identity = VocabularyWordIdentity(word: word, sectionID: sectionID)
+            if !addedWords.contains(identity) {
                 if let error = insertVocabularyWord(word, context: context, sectionID: sectionID) {
                     errors.append(error)
                 }
-                addedWords.insert(lower)
+                addedWords.insert(identity)
             }
         }
         return errors.isEmpty ? nil : errors.joined(separator: "; ")
@@ -82,13 +87,14 @@ enum DictionaryService {
         var normalizedReplacementCount = 0
 
         if let vocabularyWords = try? context.fetch(FetchDescriptor<VocabularyWord>()) {
-            var seenWords = Set<String>()
+            var seenWords = Set<VocabularyWordIdentity>()
 
             for vocabularyWord in vocabularyWords.sorted(by: { $0.dateAdded < $1.dateAdded }) {
                 let word = vocabularyWord.word
                 guard !word.isEmpty else { continue }
 
-                if seenWords.insert(word).inserted {
+                let identity = VocabularyWordIdentity(word: word, sectionID: vocabularyWord.sectionID)
+                if seenWords.insert(identity).inserted {
                     continue
                 }
 
