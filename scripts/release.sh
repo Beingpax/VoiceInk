@@ -21,7 +21,7 @@ SPARKLE_ACCOUNT="${VOICEINK_SPARKLE_ACCOUNT:-VoiceInk}"
 RELEASE_BASE_URL="${VOICEINK_RELEASE_BASE_URL:-https://github.com/Beingpax/VoiceInk/releases/download}"
 EXPECTED_FEED_URL="https://beingpax.github.io/VoiceInk/appcast.xml"
 EXPECTED_BUNDLE_ID="com.prakashjoshipax.VoiceInk"
-EXPECTED_MINIMUM_SYSTEM_VERSION="14.4"
+EXPECTED_MINIMUM_SYSTEM_VERSION="15.0"
 
 XCODE_DEVELOPER_DIR="${VOICEINK_XCODE_DEVELOPER_DIR:-${DEVELOPER_DIR:-}}"
 if [[ -z "$XCODE_DEVELOPER_DIR" && -d "/Applications/Xcode.app/Contents/Developer" ]]; then
