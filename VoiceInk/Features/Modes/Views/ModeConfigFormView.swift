@@ -195,20 +195,30 @@ struct ModeConfigFormView: View {
                 )
                 .foregroundColor(.secondary)
             } else {
-                let modelBinding = Binding<String?>(
-                    get: { draft.selectedTranscriptionModelName },
-                    set: { draft.selectedTranscriptionModelName = $0 }
-                )
+                let availableModels = warmupSnapshot.usableTranscriptionModels
+                let openRouterModels = availableModels.filter { $0.provider == .openRouter }
 
-                Picker("Model", selection: modelBinding) {
-                    if draft.selectedTranscriptionModelName == nil {
-                        Label("Unavailable", systemImage: "waveform")
-                            .tag(nil as String?)
-                    }
+                LabeledContent("Model") {
+                    Menu {
+                        ForEach(availableModels.filter { $0.provider != .openRouter }, id: \.selectionKey) { model in
+                            transcriptionModelMenuItem(model)
+                        }
 
-                    ForEach(warmupSnapshot.usableTranscriptionModels, id: \.name) { model in
-                        Text(model.displayName).tag(model.name as String?)
+                        if !openRouterModels.isEmpty {
+                            Menu("OpenRouter") {
+                                ForEach(openRouterModels, id: \.selectionKey) { model in
+                                    transcriptionModelMenuItem(model)
+                                }
+                            }
+                        }
+                    } label: {
+                        Text(
+                            availableModels.first { $0.selectionKey == draft.selectedTranscriptionModelName }?.displayName
+                                ?? String(localized: "Unavailable")
+                        )
+                            .lineLimit(1)
                     }
+                    .menuStyle(.borderlessButton)
                 }
                 .onChange(of: draft.selectedTranscriptionModelName) { _, newModelName in
                     if let modelName = newModelName,
@@ -239,6 +249,19 @@ struct ModeConfigFormView: View {
     }
 
     @ViewBuilder
+    private func transcriptionModelMenuItem(_ model: any TranscriptionModel) -> some View {
+        Button {
+            draft.selectedTranscriptionModelName = model.selectionKey
+        } label: {
+            if draft.selectedTranscriptionModelName == model.selectionKey {
+                Label(model.displayName, systemImage: "checkmark")
+            } else {
+                Text(model.displayName)
+            }
+        }
+    }
+
+    @ViewBuilder
     private var realtimeToggle: some View {
         if let model = selectedTranscriptionModel,
             TranscriptionRealtimeSupport.isAvailable(for: model)
@@ -260,11 +283,12 @@ struct ModeConfigFormView: View {
     private var languagePicker: some View {
         if let selectedModel = effectiveModelName,
             let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-            modelInfo.isMultilingualModel
+            modelInfo.provider == .openRouter
+                || (modelInfo.isMultilingualModel && modelInfo.supportedLanguages.count > 1)
         {
             let languageBinding = Binding<String?>(
-                get: { effectiveLanguage(for: modelInfo) },
-                set: { draft.selectedLanguage = $0 }
+                get: { modelInfo.provider == .openRouter ? "auto" : effectiveLanguage(for: modelInfo) },
+                set: { if modelInfo.provider != .openRouter { draft.selectedLanguage = $0 } }
             )
 
             HStack(spacing: 8) {
@@ -296,13 +320,15 @@ struct ModeConfigFormView: View {
                     }
                 }
                 .labelsHidden()
+                .disabled(modelInfo.provider == .openRouter)
             }
             .onAppear {
-                draft.selectedLanguage = effectiveLanguage(for: modelInfo)
+                draft.selectedLanguage = modelInfo.provider == .openRouter ? "auto" : effectiveLanguage(for: modelInfo)
             }
         } else if let selectedModel = effectiveModelName,
             let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-            !modelInfo.isMultilingualModel
+            !modelInfo.isMultilingualModel,
+            modelInfo.provider != .openRouter
         {
             EmptyView()
                 .onAppear {

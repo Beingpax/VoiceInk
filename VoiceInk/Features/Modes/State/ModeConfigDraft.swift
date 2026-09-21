@@ -127,7 +127,7 @@ struct ModeConfigDraft {
             return
         }
 
-        selectedTranscriptionModelName = snapshot.usableTranscriptionModels.first?.name
+        selectedTranscriptionModelName = snapshot.usableTranscriptionModels.first?.selectionKey
     }
 
     mutating func ensurePromptSelection(firstPromptId: UUID?) {

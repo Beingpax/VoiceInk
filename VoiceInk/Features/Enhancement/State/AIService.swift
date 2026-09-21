@@ -487,7 +487,7 @@ class AIService: ObservableObject {
             let decodedCatalog = try? JSONDecoder().decode([OpenRouterModel].self, from: savedCatalog)
         {
             openRouterModelCatalog = decodedCatalog
-            openRouterModels = decodedCatalog.map(\.id)
+            openRouterModels = decodedCatalog.filter(isOpenRouterEnhancementModel).map(\.id)
             return
         }
 
@@ -501,6 +501,12 @@ class AIService: ObservableObject {
         if let encodedCatalog = try? JSONEncoder().encode(openRouterModelCatalog) {
             userDefaults.set(encodedCatalog, forKey: "openRouterModelCatalog")
         }
+    }
+
+    private func isOpenRouterEnhancementModel(_ model: OpenRouterModel) -> Bool {
+        guard let architecture = model.architecture else { return true }
+        return architecture.inputModalities.contains("text")
+            && architecture.outputModalities.contains("text")
     }
 
     func selectModel(_ model: String) {
@@ -805,7 +811,7 @@ class AIService: ObservableObject {
         do {
             let catalog = try await OpenRouterClient.fetchModelCatalog()
             openRouterModelCatalog = catalog
-            openRouterModels = catalog.map(\.id)
+            openRouterModels = catalog.filter(isOpenRouterEnhancementModel).map(\.id)
             saveOpenRouterModels()
             if !openRouterModels.isEmpty,
                 let savedModel = selectedModels[.openRouter],

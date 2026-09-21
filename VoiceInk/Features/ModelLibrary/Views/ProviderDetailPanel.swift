@@ -261,6 +261,29 @@ struct ProviderDetailPanel: View {
         let models = descriptor.transcriptionModels
 
         return ProviderModelListSection(title: "Available Transcription Models") {
+            if descriptor.cloudProvider?.modelProvider == .openRouter {
+                HStack(spacing: 12) {
+                    Text(openRouterModelAvailabilityText(for: models.count))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(models.isEmpty ? .secondary : .primary)
+
+                    Spacer()
+
+                    Button {
+                        refreshOpenRouterModels()
+                    } label: {
+                        Label(
+                            isRefreshingOpenRouterModels ? "Refreshing" : "Refresh",
+                            systemImage: "arrow.clockwise"
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(isRefreshingOpenRouterModels)
+                }
+                .padding(.vertical, 8)
+            }
+
             ForEach(Array(models.prefix(8).enumerated()), id: \.element.id) { index, model in
                 modelRow(
                     title: model.displayName,
@@ -276,7 +299,7 @@ struct ProviderDetailPanel: View {
 
             if models.count > 8 {
                 Divider()
-                Text("More transcription models available")
+                Text("+\(models.count - 8) more transcription models available")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 8)
@@ -288,6 +311,7 @@ struct ProviderDetailPanel: View {
     private var enhancementModelsSection: some View {
         if let provider = descriptor.aiProvider {
             let models = aiService.availableModels(for: provider)
+            let previewCount = provider == .openRouter ? 5 : 8
 
             ProviderModelListSection(title: "Available Enhancement Models") {
                 if provider == .openRouter {
@@ -320,13 +344,15 @@ struct ProviderDetailPanel: View {
                         .opacity(isRefreshingOpenRouterModels ? 0.55 : 1)
                     }
                     .padding(.vertical, 8)
-                } else if models.isEmpty {
+                }
+
+                if provider != .openRouter && models.isEmpty {
                     Text("No models listed.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 8)
                 } else {
-                    ForEach(Array(models.prefix(8).enumerated()), id: \.offset) { index, model in
+                    ForEach(Array(models.prefix(previewCount).enumerated()), id: \.offset) { index, model in
                         modelRow(
                             title: model,
                             subtitle: nil,
@@ -334,14 +360,14 @@ struct ProviderDetailPanel: View {
                             systemImage: "sparkles"
                         )
 
-                        if index < min(models.count, 8) - 1 {
+                        if index < min(models.count, previewCount) - 1 {
                             Divider()
                         }
                     }
 
-                    if models.count > 8 {
+                    if models.count > previewCount {
                         Divider()
-                        Text("More enhancement models available")
+                        Text("+\(models.count - previewCount) more enhancement models available")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.vertical, 8)
@@ -509,6 +535,7 @@ struct ProviderDetailPanel: View {
 
         Task {
             await aiService.fetchOpenRouterModels()
+            await transcriptionModelManager.refreshOpenRouterCatalog()
             await MainActor.run {
                 isRefreshingOpenRouterModels = false
             }

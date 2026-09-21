@@ -175,7 +175,10 @@ struct ConfigurationRow: View {
             if langCode == "en" { return String(localized: "English") }
 
             if let modelName = config.selectedTranscriptionModelName,
-                let model = transcriptionModelManager.allAvailableModels.first(where: { $0.name == modelName }),
+                let model = TranscriptionModelRegistry.model(
+                    forSelectionKey: modelName,
+                    in: transcriptionModelManager.allAvailableModels
+                ),
                 let langName = TranscriptionLanguageSupport.languages(
                     for: model, realtimeEnabled: config.isRealtimeTranscriptionEnabled)[langCode]
             {

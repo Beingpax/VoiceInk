@@ -3,7 +3,13 @@ import Foundation
 enum TranscriptionModelRegistry {
 
     static var models: [any TranscriptionModel] {
-        return predefinedModels + CustomCloudModelManager.shared.customModels
+        let cloudModels: [any TranscriptionModel] = CloudProviderRegistry.allProviders.flatMap { $0.models }
+        return predefinedModels + cloudModels + CustomCloudModelManager.shared.customModels
+    }
+
+    static func model(forSelectionKey key: String, in models: [any TranscriptionModel]) -> (any TranscriptionModel)? {
+        models.first { $0.selectionKey == key }
+            ?? models.first { $0.name == key && $0.provider != .openRouter }
     }
 
     private static let predefinedModels: [any TranscriptionModel] = {
@@ -180,7 +186,6 @@ enum TranscriptionModelRegistry {
             ),
         ]
 
-        let cloudModels: [any TranscriptionModel] = CloudProviderRegistry.allProviders.flatMap { $0.models }
-        return nonCloudModels + cloudModels
+        return nonCloudModels
     }()
 }
