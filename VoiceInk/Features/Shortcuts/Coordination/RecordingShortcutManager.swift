@@ -22,7 +22,7 @@ class RecordingShortcutManager: ObservableObject {
         didSet {
             UserDefaults.standard.set(primaryRecordingShortcutMode.rawValue, forKey: "primaryRecordingShortcutMode")
             primaryRecordingShortcutModeSource.primaryMode = primaryRecordingShortcutMode
-            shortcutModeHandler.clearPendingDoubleTaps()
+            shortcutModeHandler.resetShortcutState(for: .primaryRecording)
             modeShortcutManager.recordingModeDidChange()
             updateStandaloneModifierActions()
         }
@@ -30,7 +30,7 @@ class RecordingShortcutManager: ObservableObject {
     @Published var secondaryRecordingShortcutMode: Mode {
         didSet {
             UserDefaults.standard.set(secondaryRecordingShortcutMode.rawValue, forKey: "secondaryRecordingShortcutMode")
-            shortcutModeHandler.clearPendingDoubleTaps()
+            shortcutModeHandler.resetShortcutState(for: .secondaryRecording)
             updateStandaloneModifierActions()
         }
     }
@@ -313,7 +313,7 @@ final class RecordingShortcutModeHandler {
 
     private let shortcutPressCooldown: TimeInterval = 0.5
     private let hybridPressThreshold: TimeInterval = 0.5
-    private let doubleTapThreshold: TimeInterval = 0.5
+    private let doubleTapThreshold: TimeInterval = 0.7
 
     init(
         canHandleShortcutAction: @escaping @MainActor () -> Bool,
@@ -342,6 +342,23 @@ final class RecordingShortcutModeHandler {
 
     func clearPendingDoubleTaps() {
         pendingDoubleTapReleaseTimes.removeAll()
+    }
+
+    func clearPendingModeDoubleTaps() {
+        pendingDoubleTapReleaseTimes = pendingDoubleTapReleaseTimes.filter { action, _ in
+            if case .mode = action { return false }
+            return true
+        }
+    }
+
+    func resetShortcutState(for action: ShortcutAction) {
+        pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+        guard activeRecordingShortcutAction == action else { return }
+        isShortcutPressed = false
+        shortcutPressStartTime = nil
+        activeRecordingShortcutAction = nil
+        activeShortcutCanCancelAccidentalStart = false
+        activeShortcutIsDoubleTap = false
     }
 
     func handleShortcutDown(

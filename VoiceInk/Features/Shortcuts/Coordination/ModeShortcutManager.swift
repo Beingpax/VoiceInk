@@ -63,7 +63,7 @@ class ModeShortcutManager {
     }
 
     private func refreshModeShortcuts() {
-        shortcutModeHandler.clearPendingDoubleTaps()
+        shortcutModeHandler.clearPendingModeDoubleTaps()
         let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) {
             result, config in
             let action = ShortcutAction.mode(config.id)
