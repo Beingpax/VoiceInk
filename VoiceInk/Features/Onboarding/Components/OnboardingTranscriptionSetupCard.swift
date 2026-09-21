@@ -71,7 +71,7 @@ struct OnboardingTranscriptionSetupCard: View {
             verificationMessage = nil
             verificationDetailMessage = nil
         }
-        .task(id: selectedProviderKey) {
+        .task(id: "\(setupKind.rawValue):\(selectedProviderKey)") {
             await loadOpenRouterModelsIfNeeded()
         }
     }
@@ -433,7 +433,8 @@ struct OnboardingTranscriptionSetupCard: View {
     }
 
     private func loadOpenRouterModelsIfNeeded() async {
-        guard selectedProvider?.modelProvider == .openRouter,
+        guard setupKind == .cloud,
+            selectedProvider?.modelProvider == .openRouter,
             selectedProvider?.models.isEmpty == true,
             isSelectedProviderConnected,
             !isLoadingOpenRouterModels

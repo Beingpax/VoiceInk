@@ -486,7 +486,7 @@ class AIService: ObservableObject {
         if let catalog = OpenRouterCatalogStore.shared.models(for: .enhancement) {
             openRouterModelCatalog = catalog
             openRouterModels = catalog.filter(isOpenRouterEnhancementModel).map(\.id)
-            reconcileOpenRouterSelection()
+            reconcileOpenRouterSelection(selectInitialIfNeeded: true)
             return
         }
 
