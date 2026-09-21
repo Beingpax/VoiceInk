@@ -102,6 +102,8 @@ struct MiniRecorderView<S: RecorderStateProvider & ObservableObject>: View {
         )
         .animation(.easeInOut(duration: 0.3), value: hasLiveTranscript)
         .animation(.easeInOut(duration: 0.3), value: hasAssistantResponse)
+        .gesture(WindowDragGesture())
+        .allowsWindowActivationEvents()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     }
 }
