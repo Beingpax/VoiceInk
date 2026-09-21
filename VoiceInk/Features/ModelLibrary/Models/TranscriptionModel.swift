@@ -15,6 +15,7 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case assemblyAI = "AssemblyAI"
     case xai = "xAI"
     case cartesia = "Cartesia"
+    case openRouter = "OpenRouter"
     case custom = "Custom"
     case nativeApple = "Native Apple"
 
@@ -62,6 +63,13 @@ extension TranscriptionModel {
     }
 
     var supportsStreaming: Bool { false }
+
+    /// Keep routed and custom models distinct from models stored by name.
+    var selectionKey: String {
+        if provider == .openRouter { return "OpenRouter:\(id.uuidString)" }
+        if provider == .custom { return "Custom:\(id.uuidString)" }
+        return name
+    }
 
 }
 

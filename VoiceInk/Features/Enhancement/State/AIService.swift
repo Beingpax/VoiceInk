@@ -483,24 +483,43 @@ class AIService: ObservableObject {
     }
 
     private func loadSavedOpenRouterModels() {
-        if let savedCatalog = userDefaults.data(forKey: "openRouterModelCatalog"),
-            let decodedCatalog = try? JSONDecoder().decode([OpenRouterModel].self, from: savedCatalog)
-        {
-            openRouterModelCatalog = decodedCatalog
-            openRouterModels = decodedCatalog.map(\.id)
+        if let catalog = OpenRouterCatalogStore.shared.models(for: .enhancement) {
+            openRouterModelCatalog = catalog
+            openRouterModels = catalog.filter(isOpenRouterEnhancementModel).map(\.id)
+            reconcileOpenRouterSelection(selectInitialIfNeeded: true)
             return
         }
 
-        if let savedModels = userDefaults.array(forKey: "openRouterModels") as? [String] {
-            openRouterModels = savedModels
-        }
+        openRouterModels = OpenRouterCatalogStore.shared.legacyEnhancementModelIDs
     }
 
     private func saveOpenRouterModels() {
-        userDefaults.set(openRouterModels, forKey: "openRouterModels")
-        if let encodedCatalog = try? JSONEncoder().encode(openRouterModelCatalog) {
-            userDefaults.set(encodedCatalog, forKey: "openRouterModelCatalog")
+        OpenRouterCatalogStore.shared.saveLegacyEnhancementModelIDs(openRouterModels)
+        try? OpenRouterCatalogStore.shared.save(openRouterModelCatalog, for: .enhancement)
+    }
+
+    private func isOpenRouterEnhancementModel(_ model: OpenRouterModel) -> Bool {
+        guard let architecture = model.architecture else { return true }
+        return architecture.inputModalities.contains("text")
+            && architecture.outputModalities.contains("text")
+    }
+
+    @discardableResult
+    private func reconcileOpenRouterSelection(selectInitialIfNeeded: Bool = false) -> Bool {
+        let selected = selectedModels[.openRouter]
+        if let selected, openRouterModels.contains(selected) { return false }
+        guard selected != nil || (selectInitialIfNeeded && selectedProvider == .openRouter) else { return false }
+
+        if let replacement = openRouterModels.first(where: { $0 == AIProvider.openRouter.defaultModel })
+            ?? openRouterModels.first
+        {
+            selectedModels[.openRouter] = replacement
+            userDefaults.set(replacement, forKey: "OpenRouterSelectedModel")
+        } else {
+            selectedModels.removeValue(forKey: .openRouter)
+            userDefaults.removeObject(forKey: "OpenRouterSelectedModel")
         }
+        return selected != selectedModels[.openRouter]
     }
 
     func selectModel(_ model: String) {
@@ -805,24 +824,10 @@ class AIService: ObservableObject {
         do {
             let catalog = try await OpenRouterClient.fetchModelCatalog()
             openRouterModelCatalog = catalog
-            openRouterModels = catalog.map(\.id)
+            openRouterModels = catalog.filter(isOpenRouterEnhancementModel).map(\.id)
             saveOpenRouterModels()
-            if !openRouterModels.isEmpty,
-                let savedModel = selectedModels[.openRouter],
-                !openRouterModels.contains(savedModel)
-            {
-                let replacement = openRouterModels.contains(AIProvider.openRouter.defaultModel)
-                    ? AIProvider.openRouter.defaultModel
-                    : openRouterModels[0]
-                selectModel(replacement, for: .openRouter)
-            } else if selectedProvider == .openRouter,
-                selectedModels[.openRouter] == nil,
-                !openRouterModels.isEmpty
-            {
-                let initialModel = openRouterModels.contains(AIProvider.openRouter.defaultModel)
-                    ? AIProvider.openRouter.defaultModel
-                    : openRouterModels[0]
-                selectModel(initialModel)
+            if reconcileOpenRouterSelection(selectInitialIfNeeded: true) {
+                NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
             }
             objectWillChange.send()
         } catch {

@@ -298,7 +298,7 @@ final class OnboardingCoordinator: ObservableObject {
     }
 
     var selectedOnboardingTranscriptionModelName: String? {
-        selectedOnboardingTranscriptionModel?.name
+        selectedOnboardingTranscriptionModel?.selectionKey
     }
 
     var selectedOnboardingTranscriptionUsesRealtime: Bool {

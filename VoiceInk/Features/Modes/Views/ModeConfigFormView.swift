@@ -195,20 +195,30 @@ struct ModeConfigFormView: View {
                 )
                 .foregroundColor(.secondary)
             } else {
-                let modelBinding = Binding<String?>(
-                    get: { draft.selectedTranscriptionModelName },
-                    set: { draft.selectedTranscriptionModelName = $0 }
-                )
+                let availableModels = warmupSnapshot.usableTranscriptionModels
+                let openRouterModels = availableModels.filter { $0.provider == .openRouter }
 
-                Picker("Model", selection: modelBinding) {
-                    if draft.selectedTranscriptionModelName == nil {
-                        Label("Unavailable", systemImage: "waveform")
-                            .tag(nil as String?)
-                    }
+                LabeledContent("Model") {
+                    Menu {
+                        ForEach(availableModels.filter { $0.provider != .openRouter }, id: \.selectionKey) { model in
+                            transcriptionModelMenuItem(model)
+                        }
 
-                    ForEach(warmupSnapshot.usableTranscriptionModels, id: \.name) { model in
-                        Text(model.displayName).tag(model.name as String?)
+                        if !openRouterModels.isEmpty {
+                            Menu("OpenRouter") {
+                                ForEach(openRouterModels, id: \.selectionKey) { model in
+                                    transcriptionModelMenuItem(model)
+                                }
+                            }
+                        }
+                    } label: {
+                        Text(
+                            availableModels.first { $0.selectionKey == draft.selectedTranscriptionModelName }?.displayName
+                                ?? String(localized: "Unavailable")
+                        )
+                            .lineLimit(1)
                     }
+                    .menuStyle(.borderlessButton)
                 }
                 .onChange(of: draft.selectedTranscriptionModelName) { _, newModelName in
                     if let modelName = newModelName,
@@ -239,6 +249,19 @@ struct ModeConfigFormView: View {
     }
 
     @ViewBuilder
+    private func transcriptionModelMenuItem(_ model: any TranscriptionModel) -> some View {
+        Button {
+            draft.selectedTranscriptionModelName = model.selectionKey
+        } label: {
+            if draft.selectedTranscriptionModelName == model.selectionKey {
+                Label(model.displayName, systemImage: "checkmark")
+            } else {
+                Text(model.displayName)
+            }
+        }
+    }
+
+    @ViewBuilder
     private var realtimeToggle: some View {
         if let model = selectedTranscriptionModel,
             TranscriptionRealtimeSupport.isAvailable(for: model)
@@ -260,7 +283,7 @@ struct ModeConfigFormView: View {
     private var languagePicker: some View {
         if let selectedModel = effectiveModelName,
             let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-            modelInfo.isMultilingualModel
+            modelInfo.supportedLanguages.count > 1
         {
             let languageBinding = Binding<String?>(
                 get: { effectiveLanguage(for: modelInfo) },
@@ -301,14 +324,11 @@ struct ModeConfigFormView: View {
                 draft.selectedLanguage = effectiveLanguage(for: modelInfo)
             }
         } else if let selectedModel = effectiveModelName,
-            let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-            !modelInfo.isMultilingualModel
+            let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel)
         {
             EmptyView()
                 .onAppear {
-                    if draft.selectedLanguage == nil {
-                        draft.selectedLanguage = "en"
-                    }
+                    draft.selectedLanguage = effectiveLanguage(for: modelInfo)
                 }
         }
     }

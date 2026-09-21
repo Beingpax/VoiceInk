@@ -164,7 +164,7 @@ final class SystemInfoService {
         }
 
         let model = mode.selectedTranscriptionModelName.flatMap { modelName in
-            TranscriptionModelRegistry.models.first { $0.name == modelName }
+            TranscriptionModelRegistry.model(forSelectionKey: modelName, in: TranscriptionModelRegistry.models)
         }
         let modelDescription = model?.displayName
             ?? mode.selectedTranscriptionModelName

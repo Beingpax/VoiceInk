@@ -82,14 +82,17 @@ enum ModeRuntimeResolver {
         }
 
         guard
-            let model = transcriptionModelManager.allAvailableModels.first(where: {
-                $0.name == modelName
-            })
+            let model = TranscriptionModelRegistry.model(
+                forSelectionKey: modelName,
+                in: transcriptionModelManager.allAvailableModels
+            )
         else {
             return .modelNotFound(mode: mode)
         }
 
-        guard transcriptionModelManager.usableModels.contains(where: { $0.name == modelName }) else {
+        guard transcriptionModelManager.usableModels.contains(where: {
+            $0.selectionKey == model.selectionKey
+        }) else {
             return .unavailable(mode: mode, model: model)
         }
 

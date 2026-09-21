@@ -99,7 +99,7 @@ struct ProviderDescriptor: Identifiable {
     }
 
     var hasTranscription: Bool {
-        !transcriptionModels.isEmpty
+        !transcriptionModels.isEmpty || cloudProvider?.modelProvider == .openRouter
     }
 
     var hasEnhancement: Bool {
@@ -179,6 +179,7 @@ struct ProviderDescriptor: Identifiable {
 
 private struct ProviderListRow: View {
     @EnvironmentObject private var aiService: AIService
+    @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
 
     let descriptor: ProviderDescriptor
     let isSelected: Bool
@@ -206,8 +207,12 @@ private struct ProviderListRow: View {
         var parts: [String] = []
 
         let transcriptionCount = descriptor.transcriptionModels.count
-        if transcriptionCount > 0 {
-            parts.append(transcriptionModelCountText(transcriptionCount))
+        if descriptor.hasTranscription {
+            parts.append(
+                transcriptionCount == 0
+                    ? String(localized: "Transcription")
+                    : transcriptionModelCountText(transcriptionCount)
+            )
         }
 
         if let provider = descriptor.aiProvider {

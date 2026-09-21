@@ -21,6 +21,7 @@ struct OnboardingTranscriptionSetupCard: View {
     @State private var verificationDetailMessage: String?
     @State private var verificationSucceeded = false
     @State private var isSwitchingProvider = false
+    @State private var isLoadingOpenRouterModels = false
 
     private var selectedProvider: (any CloudProvider)? {
         providerOptions.first {
@@ -69,6 +70,9 @@ struct OnboardingTranscriptionSetupCard: View {
             verificationSucceeded = false
             verificationMessage = nil
             verificationDetailMessage = nil
+        }
+        .task(id: "\(setupKind.rawValue):\(selectedProviderKey)") {
+            await loadOpenRouterModelsIfNeeded()
         }
     }
 
@@ -148,6 +152,24 @@ struct OnboardingTranscriptionSetupCard: View {
 
             if isSelectedProviderConnected {
                 verifiedProviderSummary
+                if selectedProvider?.modelProvider == .openRouter,
+                    selectedProvider?.models.isEmpty == true
+                {
+                    HStack(spacing: 8) {
+                        if isLoadingOpenRouterModels {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Refreshing")
+                        } else {
+                            Text("No models loaded.")
+                            Button("Refresh") {
+                                Task { await loadOpenRouterModelsIfNeeded() }
+                            }
+                        }
+                    }
+                    .font(.system(size: 12))
+                    .foregroundColor(AppTheme.Text.secondary)
+                }
             } else {
                 apiKeyField
                 verificationFooter
@@ -398,6 +420,7 @@ struct OnboardingTranscriptionSetupCard: View {
                     verificationMessage = String(format: String(localized: "%@ connection verified."), providerKey)
                     verificationDetailMessage = nil
                     NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
+                    Task { await loadOpenRouterModelsIfNeeded() }
                 } else {
                     verificationMessage = String(
                         localized: "Could not verify this API key. Check the key and try again.")
@@ -407,6 +430,20 @@ struct OnboardingTranscriptionSetupCard: View {
                 onVerificationChanged()
             }
         }
+    }
+
+    private func loadOpenRouterModelsIfNeeded() async {
+        guard setupKind == .cloud,
+            selectedProvider?.modelProvider == .openRouter,
+            selectedProvider?.models.isEmpty == true,
+            isSelectedProviderConnected,
+            !isLoadingOpenRouterModels
+        else { return }
+
+        isLoadingOpenRouterModels = true
+        await transcriptionModelManager.refreshOpenRouterCatalog()
+        isLoadingOpenRouterModels = false
+        onVerificationChanged()
     }
 
     private func descriptor(for provider: any CloudProvider) -> ProviderDescriptor {
