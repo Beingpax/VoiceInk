@@ -10020,6 +10020,28 @@
         }
       }
     },
+    "Double Tap" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zweimal drücken"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double appui"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "连按两次"
+          }
+        }
+      }
+    },
     "Double-click to edit • Right-click for more options" : {
       "localizations" : {
         "de" : {

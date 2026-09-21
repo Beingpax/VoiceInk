@@ -63,6 +63,7 @@ class ModeShortcutManager {
     }
 
     private func refreshModeShortcuts() {
+        shortcutModeHandler.clearPendingDoubleTaps()
         let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) {
             result, config in
             let action = ShortcutAction.mode(config.id)
@@ -118,7 +119,7 @@ class ModeShortcutManager {
     }
 
     private var standaloneModifierActions: Set<ShortcutAction> {
-        modeProvider() == .toggle ? monitoredActions : []
+        modeProvider() == .toggle || modeProvider() == .doubleTap ? monitoredActions : []
     }
 
     private func modeId(for action: ShortcutAction) -> UUID? {
