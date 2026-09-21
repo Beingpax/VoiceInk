@@ -141,8 +141,17 @@ class TranscriptionModelManager: ObservableObject {
 
         allAvailableModels = models
 
-        currentTranscriptionModel = currentSelection.flatMap {
-            TranscriptionModelRegistry.model(forSelectionKey: $0, in: allAvailableModels)
+        if let currentSelection,
+            let updatedModel = TranscriptionModelRegistry.model(forSelectionKey: currentSelection, in: allAvailableModels)
+        {
+            if isAvailableOnCurrentOS(updatedModel) {
+                setDefaultTranscriptionModel(updatedModel)
+            } else {
+                currentTranscriptionModel = nil
+                UserDefaults.standard.removeObject(forKey: "CurrentTranscriptionModel")
+            }
+        } else {
+            currentTranscriptionModel = nil
         }
     }
 

@@ -459,9 +459,7 @@ final class ShortcutMonitor {
 
         for action in standaloneModifierActions {
             guard shortcuts[action]?.shortcut.isModifierOnly == true else { continue }
-            DispatchQueue.main.async { [onStandaloneModifierChord] in
-                onStandaloneModifierChord?(action)
-            }
+            onStandaloneModifierChord?(action)
         }
 
         for action in interruptibleActions {

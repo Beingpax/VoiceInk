@@ -483,24 +483,18 @@ class AIService: ObservableObject {
     }
 
     private func loadSavedOpenRouterModels() {
-        if let savedCatalog = userDefaults.data(forKey: "openRouterModelCatalog"),
-            let decodedCatalog = try? JSONDecoder().decode([OpenRouterModel].self, from: savedCatalog)
-        {
-            openRouterModelCatalog = decodedCatalog
-            openRouterModels = decodedCatalog.filter(isOpenRouterEnhancementModel).map(\.id)
+        if let catalog = OpenRouterCatalogStore.shared.models(for: .enhancement) {
+            openRouterModelCatalog = catalog
+            openRouterModels = catalog.filter(isOpenRouterEnhancementModel).map(\.id)
             return
         }
 
-        if let savedModels = userDefaults.array(forKey: "openRouterModels") as? [String] {
-            openRouterModels = savedModels
-        }
+        openRouterModels = OpenRouterCatalogStore.shared.legacyEnhancementModelIDs
     }
 
     private func saveOpenRouterModels() {
-        userDefaults.set(openRouterModels, forKey: "openRouterModels")
-        if let encodedCatalog = try? JSONEncoder().encode(openRouterModelCatalog) {
-            userDefaults.set(encodedCatalog, forKey: "openRouterModelCatalog")
-        }
+        OpenRouterCatalogStore.shared.saveLegacyEnhancementModelIDs(openRouterModels)
+        try? OpenRouterCatalogStore.shared.save(openRouterModelCatalog, for: .enhancement)
     }
 
     private func isOpenRouterEnhancementModel(_ model: OpenRouterModel) -> Bool {

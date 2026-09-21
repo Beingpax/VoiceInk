@@ -283,12 +283,11 @@ struct ModeConfigFormView: View {
     private var languagePicker: some View {
         if let selectedModel = effectiveModelName,
             let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-            modelInfo.provider == .openRouter
-                || (modelInfo.isMultilingualModel && modelInfo.supportedLanguages.count > 1)
+            modelInfo.supportedLanguages.count > 1
         {
             let languageBinding = Binding<String?>(
-                get: { modelInfo.provider == .openRouter ? "auto" : effectiveLanguage(for: modelInfo) },
-                set: { if modelInfo.provider != .openRouter { draft.selectedLanguage = $0 } }
+                get: { effectiveLanguage(for: modelInfo) },
+                set: { draft.selectedLanguage = $0 }
             )
 
             HStack(spacing: 8) {
@@ -320,21 +319,16 @@ struct ModeConfigFormView: View {
                     }
                 }
                 .labelsHidden()
-                .disabled(modelInfo.provider == .openRouter)
             }
             .onAppear {
-                draft.selectedLanguage = modelInfo.provider == .openRouter ? "auto" : effectiveLanguage(for: modelInfo)
+                draft.selectedLanguage = effectiveLanguage(for: modelInfo)
             }
         } else if let selectedModel = effectiveModelName,
-            let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel),
-            !modelInfo.isMultilingualModel,
-            modelInfo.provider != .openRouter
+            let modelInfo = warmupSnapshot.transcriptionModel(named: selectedModel)
         {
             EmptyView()
                 .onAppear {
-                    if draft.selectedLanguage == nil {
-                        draft.selectedLanguage = "en"
-                    }
+                    draft.selectedLanguage = effectiveLanguage(for: modelInfo)
                 }
         }
     }
