@@ -64,10 +64,11 @@ extension TranscriptionModel {
 
     var supportsStreaming: Bool { false }
 
-    /// OpenRouter slugs are qualified so a model routed through OpenRouter cannot
-    /// collide with a direct-provider or user-defined transcription model.
+    /// Keep routed and custom models distinct from models stored by name.
     var selectionKey: String {
-        provider == .openRouter ? "OpenRouter:\(name)" : name
+        if provider == .openRouter { return "OpenRouter:\(id.uuidString)" }
+        if provider == .custom { return "Custom:\(id.uuidString)" }
+        return name
     }
 
 }

@@ -262,26 +262,7 @@ struct ProviderDetailPanel: View {
 
         return ProviderModelListSection(title: "Available Transcription Models") {
             if descriptor.cloudProvider?.modelProvider == .openRouter {
-                HStack(spacing: 12) {
-                    Text(openRouterModelAvailabilityText(for: models.count))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(models.isEmpty ? .secondary : .primary)
-
-                    Spacer()
-
-                    Button {
-                        refreshOpenRouterModels()
-                    } label: {
-                        Label(
-                            isRefreshingOpenRouterModels ? "Refreshing" : "Refresh",
-                            systemImage: "arrow.clockwise"
-                        )
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(isRefreshingOpenRouterModels)
-                }
-                .padding(.vertical, 8)
+                openRouterCatalogStatus(modelCount: models.count)
             }
 
             ForEach(Array(models.prefix(8).enumerated()), id: \.element.id) { index, model in
@@ -315,35 +296,7 @@ struct ProviderDetailPanel: View {
 
             ProviderModelListSection(title: "Available Enhancement Models") {
                 if provider == .openRouter {
-                    HStack(spacing: 12) {
-                        Text(openRouterModelAvailabilityText(for: models.count))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(models.isEmpty ? .secondary : .primary)
-
-                        Spacer()
-
-                        Button {
-                            refreshOpenRouterModels()
-                        } label: {
-                            HStack(spacing: 5) {
-                                if isRefreshingOpenRouterModels {
-                                    ProgressView()
-                                        .controlSize(.small)
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                }
-                                Text(
-                                    isRefreshingOpenRouterModels
-                                        ? LocalizedStringKey("Refreshing") : LocalizedStringKey("Refresh"))
-                            }
-                            .font(.system(size: 12, weight: .medium))
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(isRefreshingOpenRouterModels)
-                        .opacity(isRefreshingOpenRouterModels ? 0.55 : 1)
-                    }
-                    .padding(.vertical, 8)
+                    openRouterCatalogStatus(modelCount: models.count)
                 }
 
                 if provider != .openRouter && models.isEmpty {
@@ -384,6 +337,35 @@ struct ProviderDetailPanel: View {
         }
 
         return String(localized: "\(count) models available")
+    }
+
+    private func openRouterCatalogStatus(modelCount: Int) -> some View {
+        HStack(spacing: 12) {
+            Text(openRouterModelAvailabilityText(for: modelCount))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(modelCount == 0 ? .secondary : .primary)
+
+            Spacer()
+
+            Button {
+                refreshOpenRouterModels()
+            } label: {
+                HStack(spacing: 5) {
+                    if isRefreshingOpenRouterModels {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    Text(isRefreshingOpenRouterModels ? LocalizedStringKey("Refreshing") : LocalizedStringKey("Refresh"))
+                }
+                .font(.system(size: 12, weight: .medium))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .disabled(isRefreshingOpenRouterModels)
+        }
+        .padding(.vertical, 8)
     }
 
     private func modelRow(title: String, subtitle: String?, trailing: String?, systemImage: String) -> some View {

@@ -208,7 +208,11 @@ private struct ProviderListRow: View {
 
         let transcriptionCount = descriptor.transcriptionModels.count
         if descriptor.hasTranscription {
-            parts.append(transcriptionModelCountText(transcriptionCount))
+            parts.append(
+                transcriptionCount == 0
+                    ? String(localized: "Transcription")
+                    : transcriptionModelCountText(transcriptionCount)
+            )
         }
 
         if let provider = descriptor.aiProvider {
