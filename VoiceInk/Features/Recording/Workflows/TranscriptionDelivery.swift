@@ -12,6 +12,7 @@ final class TranscriptionDelivery {
         let responseConfig: EnhancementRuntimeConfiguration?
         let responseError: String?
         let isAssistantFollowUp: Bool
+        let sendAfterPaste: Bool
     }
 
     struct Actions {
@@ -46,7 +47,7 @@ final class TranscriptionDelivery {
         }
 
         if let text = request.text {
-            await paste(text, output: request.output, actions: actions)
+            await paste(text, sendAfterPaste: request.sendAfterPaste, actions: actions)
         } else {
             await actions.dismiss()
         }
@@ -154,7 +155,7 @@ final class TranscriptionDelivery {
         String(format: "%.3f", duration)
     }
 
-    private func paste(_ text: String, output: OutputRuntimeConfiguration, actions: Actions) async {
+    private func paste(_ text: String, sendAfterPaste: Bool, actions: Actions) async {
         let textToPaste = deliverableText(from: text)
         let appendSpace = UserDefaults.standard.bool(forKey: "AppendTrailingSpace")
         let pastedText = textToPaste + (appendSpace ? " " : "")
@@ -163,16 +164,17 @@ final class TranscriptionDelivery {
 
         let pasteTask = CursorPaster.startPasteAtCursor(pastedText)
 
-        let autoSendKey = output.outputMode == .paste ? output.autoSendKey : .none
+        let selectedKey = FinishAndSendSettings.selectedKey
+        let finishAndSendKey: FinishAndSendKey = sendAfterPaste ? selectedKey : .none
         Task { @MainActor in
             let pasteOutcome = await pasteTask.value
 
-            if autoSendKey.isEnabled {
-                try? await Task.sleep(nanoseconds: 500_000_000)
+            if finishAndSendKey.isEnabled && pasteOutcome.result.didPostPasteCommand {
+                try? await Task.sleep(nanoseconds: 150_000_000)
                 if let generation = pasteOutcome.autoLearnGeneration {
                     await AutoLearnService.shared.cancelForAutoSend(generation: generation)
                 }
-                CursorPaster.performAutoSend(autoSendKey)
+                CursorPaster.performSendKey(finishAndSendKey)
             }
         }
     }

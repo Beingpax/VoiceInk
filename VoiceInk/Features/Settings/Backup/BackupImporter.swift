@@ -192,6 +192,9 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
+        if let finishAndSendKey = general.finishAndSendKey.flatMap(FinishAndSendKey.init(rawValue:)) {
+            UserDefaults.standard.set(finishAndSendKey.rawValue, forKey: FinishAndSendSettings.key)
+        }
         let importedReviewSchedule = general.autoLearnReviewSchedule.flatMap {
             AutoLearnReviewSchedule(rawValue: $0)
         }

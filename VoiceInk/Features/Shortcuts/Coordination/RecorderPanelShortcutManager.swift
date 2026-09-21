@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import Combine
 import Foundation
 
 @MainActor
@@ -7,6 +8,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var recorderUIManager: RecorderUIManager
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var settingsChangeObserver: NSObjectProtocol?
+    private var recordingStateCancellable: AnyCancellable?
+    private var observedSendKey: FinishAndSendKey
     private let visibleRecorderMonitor = ShortcutMonitor()
 
     // Double-tap Escape handling
@@ -24,8 +28,25 @@ final class RecorderPanelShortcutManager: ObservableObject {
 
     init(recorderUIManager: RecorderUIManager) {
         self.recorderUIManager = recorderUIManager
+        self.observedSendKey = FinishAndSendSettings.selectedKey
         setupShortcutChangeObserver()
+        settingsChangeObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: UserDefaults.standard,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                let sendKey = FinishAndSendSettings.selectedKey
+                guard sendKey != self.observedSendKey else { return }
+                self.observedSendKey = sendKey
+                self.refreshVisibleShortcuts()
+            }
+        }
         setupVisibilityObserver()
+        recordingStateCancellable = recorderUIManager.recordingStatePublisher?.sink { [weak self] _ in
+            Task { @MainActor in self?.refreshVisibleShortcuts() }
+        }
     }
 
     private func setupShortcutChangeObserver() {
@@ -90,6 +111,10 @@ final class RecorderPanelShortcutManager: ObservableObject {
             shortcuts[.recorderPanelEscape] = .key(keyCode: UInt16(kVK_Escape), modifierFlags: [])
         }
 
+        if FinishAndSendSettings.selectedKey.isEnabled && recorderUIManager.isActivelyRecording {
+            shortcuts[.recorderPanelReturn] = .key(keyCode: UInt16(kVK_Return), modifierFlags: [])
+        }
+
         if canUseModeShortcuts {
             for (index, keyCode) in Self.digitKeyCodes.enumerated() {
                 shortcuts[.recorderPanelMode(index)] = .key(
@@ -119,6 +144,10 @@ final class RecorderPanelShortcutManager: ObservableObject {
             await recorderUIManager.cancelRecording()
         case .recorderPanelEscape:
             await handleEscapeShortcut()
+        case .recorderPanelReturn:
+            if FinishAndSendSettings.selectedKey.isEnabled {
+                await recorderUIManager.finishRecordingAndSend()
+            }
         case .recorderPanelMode(let index):
             handleModeSelectionShortcut(index: index)
         default:
@@ -189,6 +218,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
     deinit {
         if let shortcutChangeObserver {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
+        }
+        if let settingsChangeObserver {
+            NotificationCenter.default.removeObserver(settingsChangeObserver)
         }
 
         visibilityTask?.cancel()

@@ -11,6 +11,7 @@ enum ShortcutAction: Hashable {
     case quickAddToDictionary
     case mode(UUID)
     case recorderPanelEscape
+    case recorderPanelReturn
     case recorderPanelMode(Int)
 
     var userDefaultsKey: String {
@@ -19,7 +20,7 @@ enum ShortcutAction: Hashable {
 
     var isStored: Bool {
         switch self {
-        case .recorderPanelEscape, .recorderPanelMode:
+        case .recorderPanelEscape, .recorderPanelReturn, .recorderPanelMode:
             return false
         default:
             return true
@@ -48,6 +49,8 @@ enum ShortcutAction: Hashable {
             return "mode_\(id.uuidString)"
         case .recorderPanelEscape:
             return "recorderPanelEscape"
+        case .recorderPanelReturn:
+            return "recorderPanelReturn"
         case .recorderPanelMode(let index):
             return "recorderPanelMode_\(index)"
         }
@@ -83,6 +86,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Mode")
         case .recorderPanelEscape:
             return String(localized: "Recorder Cancel")
+        case .recorderPanelReturn:
+            return String(localized: "Auto Send")
         case .recorderPanelMode(let index):
             return String(format: String(localized: "Select Mode %@"), Self.displayNumber(forRecorderPanelIndex: index))
         }
