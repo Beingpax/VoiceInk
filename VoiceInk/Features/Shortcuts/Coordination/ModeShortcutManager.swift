@@ -114,6 +114,11 @@ class ModeShortcutManager {
                     guard let self, case .mode = action else { return }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
+            },
+            onStandaloneModifierChord: { [weak self] action in
+                MainActor.assumeIsolated {
+                    self?.shortcutModeHandler.clearPendingDoubleTap(for: action)
+                }
             }
         )
     }

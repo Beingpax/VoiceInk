@@ -202,6 +202,11 @@ class RecordingShortcutManager: ObservableObject {
                     guard let self, self.recordingMode(for: action) != nil else { return }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
+            },
+            onStandaloneModifierChord: { [weak self] action in
+                MainActor.assumeIsolated {
+                    self?.shortcutModeHandler.clearPendingDoubleTap(for: action)
+                }
             }
         )
     }
@@ -344,6 +349,10 @@ final class RecordingShortcutModeHandler {
         pendingDoubleTapReleaseTimes.removeAll()
     }
 
+    func clearPendingDoubleTap(for action: ShortcutAction) {
+        pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+    }
+
     func clearPendingModeDoubleTaps() {
         pendingDoubleTapReleaseTimes = pendingDoubleTapReleaseTimes.filter { action, _ in
             if case .mode = action { return false }
@@ -368,6 +377,11 @@ final class RecordingShortcutModeHandler {
         modeId: UUID? = nil
     ) async {
         if interruptedRecordingActions.remove(action) != nil {
+            return
+        }
+
+        if mode == .doubleTap && (!canHandleShortcutAction() || recordingState() == .starting) {
+            clearPendingDoubleTap(for: action)
             return
         }
 
@@ -446,6 +460,10 @@ final class RecordingShortcutModeHandler {
             }
 
         case .doubleTap:
+            guard canHandleShortcutAction(), recordingState() != .starting else {
+                clearPendingDoubleTap(for: action)
+                break
+            }
             let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
             if pressDuration < 0 || pressDuration > doubleTapThreshold {
                 pendingDoubleTapReleaseTimes.removeValue(forKey: action)
@@ -453,10 +471,8 @@ final class RecordingShortcutModeHandler {
                 eventTime - firstRelease >= 0,
                 eventTime - firstRelease <= doubleTapThreshold
             {
-                if canHandleShortcutAction() && recordingState() != .starting {
-                    await toggleRecorderPanel(modeId)
-                    isHandsFreeRecording = isRecorderVisible()
-                }
+                await toggleRecorderPanel(modeId)
+                isHandsFreeRecording = isRecorderVisible()
             } else {
                 pendingDoubleTapReleaseTimes[action] = eventTime
             }
