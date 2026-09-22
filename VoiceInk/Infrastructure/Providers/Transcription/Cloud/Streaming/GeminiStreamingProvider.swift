@@ -4,7 +4,7 @@ import SwiftData
 
 /// Gemini streaming provider wrapping `LLMkit.GeminiStreamingClient`.
 final class GeminiStreamingProvider: StreamingTranscriptionProvider {
-    private let client = LLMkit.GeminiStreamingClient(mode: GeminiTranscriptionSettings.mode())
+    private let client = LLMkit.GeminiStreamingClient(mode: GeminiTranscriptionSettings.mode)
     private let modelContext: ModelContext
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?

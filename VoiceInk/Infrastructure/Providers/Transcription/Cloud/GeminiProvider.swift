@@ -49,7 +49,7 @@ struct GeminiProvider: CloudProvider {
             fileName: fileName,
             language: language,
             customVocabulary: customVocabulary,
-            mode: GeminiTranscriptionSettings.mode(),
+            mode: GeminiTranscriptionSettings.mode,
             timeout: timeout
         )
     }

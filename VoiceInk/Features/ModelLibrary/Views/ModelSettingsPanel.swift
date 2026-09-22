@@ -100,7 +100,7 @@ private struct GeminiTranscriptionSettingsSection: View {
             Text("Gemini")
         } footer: {
             Text(
-                "Clean up filler words, self-corrections, and formatting with Gemini 3.5 Transcribe. Applies to batch and real-time transcription."
+                "Removes filler words, resolves spoken corrections, and automatically formats your transcript for readability."
             )
         }
     }
