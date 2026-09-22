@@ -58,6 +58,7 @@ class TranscriptionPipeline {
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
         recordingContextSnapshot: @escaping () async -> RecordingContextSnapshot? = { nil },
         outputConfiguration: @escaping () -> OutputRuntimeConfiguration,
+        sendAfterPaste: Bool = false,
         onStateChange: @escaping (RecordingState) -> Void,
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
@@ -280,7 +281,8 @@ class TranscriptionPipeline {
                 output: outputForDelivery ?? outputConfiguration(),
                 responseConfig: responseConfig,
                 responseError: responseError,
-                isAssistantFollowUp: assistant.isFollowUp
+                isAssistantFollowUp: assistant.isFollowUp,
+                sendAfterPaste: sendAfterPaste
             ),
             actions: TranscriptionDelivery.Actions(
                 setState: onStateChange,

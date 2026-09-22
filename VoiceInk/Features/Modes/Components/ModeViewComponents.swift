@@ -397,24 +397,6 @@ struct ConfigurationRow: View {
                     )
                 }
 
-                if config.outputMode == .paste && config.autoSendKey.isEnabled {
-                    HStack(spacing: 4) {
-                        Image(systemName: "keyboard")
-                            .font(.system(size: 10))
-                        Text(config.autoSendKey.displayName)
-                            .font(.caption)
-                    }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(AppTheme.Surface.control)
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(AppTheme.Border.control, lineWidth: 0.5)
-                    )
-                }
                 if config.isAIEnhancementEnabled {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")

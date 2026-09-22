@@ -232,9 +232,9 @@ class CursorPaster {
         try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
-    // MARK: - Auto Send Keys
+    // MARK: - Send Key
 
-    static func performAutoSend(_ key: AutoSendKey) {
+    static func performSendKey(_ key: FinishAndSendKey) {
         guard key.isEnabled else { return }
         guard AXIsProcessTrusted() else { return }
 
