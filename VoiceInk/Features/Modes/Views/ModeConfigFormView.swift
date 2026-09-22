@@ -397,7 +397,7 @@ struct ModeConfigFormView: View {
                                 }
                                 aiService.refreshOllamaAvailabilityInBackground()
                             default:
-                                draft.selectedAIModel = provider.defaultModel
+                                draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                             }
 
                             if provider != .voiceInkRefine,
@@ -460,9 +460,19 @@ struct ModeConfigFormView: View {
                     }
                 )
 
-                Picker("AI Model", selection: modelBinding) {
-                    ForEach(models, id: \.self) { model in
-                        Text(model).tag(model)
+                if provider.supportsCustomModelID {
+                    EnhancementModelPicker(
+                        title: "AI Model",
+                        provider: provider,
+                        models: models,
+                        savedCustomModelID: aiService.customModelID(for: provider),
+                        draftModel: modelBinding
+                    )
+                } else {
+                    Picker("AI Model", selection: modelBinding) {
+                        ForEach(models, id: \.self) { model in
+                            Text(model).tag(model)
+                        }
                     }
                 }
 
@@ -481,7 +491,8 @@ struct ModeConfigFormView: View {
 
         if let selectedModel = draft.selectedAIModel,
             !selectedModel.isEmpty,
-            !models.contains(selectedModel)
+            !models.contains(selectedModel),
+            !provider.supportsCustomModelID
         {
             models.insert(selectedModel, at: 0)
         }

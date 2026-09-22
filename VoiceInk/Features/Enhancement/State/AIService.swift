@@ -182,6 +182,15 @@ enum AIProvider: String, CaseIterable {
             return true
         }
     }
+
+    var supportsCustomModelID: Bool {
+        switch self {
+        case .cerebras, .groq, .gemini, .anthropic, .openAI, .mistral:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 struct OllamaRefreshResult {
@@ -274,7 +283,8 @@ class AIService: ObservableObject {
 
         if let selectedModel = selectedModels[selectedProvider],
             !selectedModel.isEmpty,
-            (selectedProvider == .ollama && !selectedModel.isEmpty) || availableModels.contains(selectedModel)
+            (selectedProvider.supportsCustomModelID || selectedProvider == .ollama
+                || availableModels.contains(selectedModel))
         {
             return selectedModel
         }
@@ -290,6 +300,16 @@ class AIService: ObservableObject {
             return selectedModel
         }
         return provider.defaultModel
+    }
+
+    func customModelID(for provider: AIProvider) -> String {
+        guard provider.supportsCustomModelID else { return "" }
+        let key = "\(provider.rawValue)CustomModelID"
+        if let savedModel = userDefaults.string(forKey: key), !savedModel.isEmpty {
+            return savedModel
+        }
+        let selectedModel = selectedModel(for: provider)
+        return provider.availableModels.contains(selectedModel) ? "" : selectedModel
     }
 
     var availableModels: [String] {
@@ -463,7 +483,7 @@ class AIService: ObservableObject {
     private func initialAutoLearnModel(for provider: AIProvider) -> String {
         let selectedModel = selectedModel(for: provider)
         let availableModels = availableModels(for: provider)
-        return availableModels.contains(selectedModel)
+        return provider.supportsCustomModelID || availableModels.contains(selectedModel)
             ? selectedModel
             : availableModels.first ?? selectedModel
     }
@@ -527,19 +547,23 @@ class AIService: ObservableObject {
     }
 
     func selectModel(_ model: String, for provider: AIProvider) {
-        guard !model.isEmpty else { return }
+        let resolvedInput = model.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !resolvedInput.isEmpty else { return }
 
         if provider == .custom {
-            guard CustomAIProviderManager.shared.applyConfiguration(forModel: model) else { return }
+            guard CustomAIProviderManager.shared.applyConfiguration(forModel: resolvedInput) else { return }
         }
 
-        let resolvedModel = provider == .voiceInkRefine ? provider.defaultModel : model
+        let resolvedModel = provider == .voiceInkRefine ? provider.defaultModel : resolvedInput
         selectedModels[provider] = resolvedModel
         let key = "\(provider.rawValue)SelectedModel"
         userDefaults.set(resolvedModel, forKey: key)
+        if provider.supportsCustomModelID, !provider.availableModels.contains(resolvedModel) {
+            userDefaults.set(resolvedModel, forKey: "\(provider.rawValue)CustomModelID")
+        }
 
         if provider == .ollama {
-            updateSelectedOllamaModel(model)
+            updateSelectedOllamaModel(resolvedModel)
         } else if provider == .custom {
             reloadSelectedProviderConfiguration()
         }

@@ -16,6 +16,7 @@ struct ProviderDetailPanel: View {
     @State private var verificationSucceeded = false
     @State private var isShowingRemoveAPIKeyConfirmation = false
     @State private var activeDescriptorID = ""
+    @State private var enhancementModelDraft = ""
 
     private var isConfigured: Bool {
         APIKeyManager.shared.hasAPIKey(forProvider: descriptor.providerKey)
@@ -299,6 +300,26 @@ struct ProviderDetailPanel: View {
                     openRouterCatalogStatus(modelCount: models.count)
                 }
 
+                if provider.supportsCustomModelID {
+                    EnhancementModelPicker(
+                        title: "AI Model",
+                        provider: provider,
+                        models: models,
+                        savedCustomModelID: aiService.customModelID(for: provider),
+                        draftModel: $enhancementModelDraft
+                    )
+                    Button("Save Model") {
+                        aiService.selectModel(enhancementModelDraft, for: provider)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(
+                        enhancementModelDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || enhancementModelDraft == aiService.selectedModel(for: provider)
+                    )
+                    Divider()
+                }
+
                 if provider != .openRouter && models.isEmpty {
                     Text("No models listed.")
                         .font(.caption)
@@ -439,13 +460,14 @@ struct ProviderDetailPanel: View {
         verificationMessage = nil
         verificationDetailMessage = nil
         isShowingRemoveAPIKeyConfirmation = false
+        enhancementModelDraft = descriptor.aiProvider.map { aiService.selectedModel(for: $0) } ?? ""
     }
 
     private func verificationModel(for provider: AIProvider) -> String {
         let selectedModel = aiService.selectedModel(for: provider)
         let models = aiService.availableModels(for: provider)
 
-        if models.contains(selectedModel) {
+        if provider.supportsCustomModelID || models.contains(selectedModel) {
             return selectedModel
         }
 
