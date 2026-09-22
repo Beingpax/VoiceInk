@@ -11738,24 +11738,24 @@
         }
       }
     },
-    "Environment variables available: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk also writes VOICEINK_FULL_PROMPT to stdin for every command." : {
+    "Environment variables available: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. Custom commands can also read VOICEINK_FULL_PROMPT from stdin." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verfügbare Umgebungsvariablen: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk schreibt außerdem VOICEINK_FULL_PROMPT für jeden Befehl nach stdin."
+            "value" : "Verfügbare Umgebungsvariablen: VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. Benutzerdefinierte Befehle können VOICEINK_FULL_PROMPT auch aus stdin lesen."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Variables d'environnement disponibles : VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. VoiceInk écrit également VOICEINK_FULL_PROMPT sur stdin pour chaque commande."
+            "value" : "Variables d’environnement disponibles : VOICEINK_SYSTEM_PROMPT, VOICEINK_USER_PROMPT, VOICEINK_FULL_PROMPT. Les commandes personnalisées peuvent aussi lire VOICEINK_FULL_PROMPT depuis stdin."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "可用的环境变量：VOICEINK_SYSTEM_PROMPT、VOICEINK_USER_PROMPT、VOICEINK_FULL_PROMPT。VoiceInk 还会在每次执行命令时将 VOICEINK_FULL_PROMPT 写入 stdin。"
+            "value" : "可用的环境变量：VOICEINK_SYSTEM_PROMPT、VOICEINK_USER_PROMPT、VOICEINK_FULL_PROMPT。自定义命令也可以从 stdin 读取 VOICEINK_FULL_PROMPT。"
           }
         }
       }

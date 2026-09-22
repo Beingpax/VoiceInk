@@ -62,7 +62,9 @@ struct AutoLearnModelSelectionView: View {
                 }
 
                 if let selectedProvider {
-                    modelPicker(for: selectedProvider)
+                    if selectedProvider != .localCLI {
+                        modelPicker(for: selectedProvider)
+                    }
 
                     if !aiService.connectedProviders.contains(selectedProvider) {
                         Text("The selected provider is currently unavailable.")
