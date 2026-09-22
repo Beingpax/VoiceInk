@@ -141,6 +141,8 @@ struct ConfigurationRow: View {
     @EnvironmentObject var enhancementService: AIEnhancementService
     @EnvironmentObject var transcriptionModelManager: TranscriptionModelManager
     @State private var isHovering = false
+    @State private var isShowingDeleteConfirmation = false
+    @State private var deletionCandidate: ModeConfig?
 
     private let maxAppIconsToShow = 5
 
@@ -208,6 +210,30 @@ struct ConfigurationRow: View {
 
     private var visibleAppConfigs: [AppConfig] {
         return Array(config.allAppConfigs.prefix(maxAppIconsToShow))
+    }
+
+    @ViewBuilder private var modeActions: some View {
+        Button {
+            onEditConfig(config)
+        } label: {
+            Text("Edit")
+        }
+
+        Button {
+            modeManager.duplicateConfiguration(with: config.id)
+        } label: {
+            Text("Duplicate")
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            deletionCandidate = config
+            isShowingDeleteConfirmation = true
+        } label: {
+            Text("Delete")
+        }
+        .disabled(config.isDefault)
     }
 
     private var editModeButton: some View {
@@ -449,6 +475,33 @@ struct ConfigurationRow: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: 0.12)) {
                 isHovering = hovering
+            }
+        }
+        .contextMenu {
+            modeActions
+        }
+        .confirmationDialog(
+            "Delete Mode?",
+            isPresented: $isShowingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let deletionCandidate {
+                    _ = modeManager.removeConfiguration(with: deletionCandidate.id)
+                }
+                deletionCandidate = nil
+            }
+            Button("Cancel", role: .cancel) {
+                deletionCandidate = nil
+            }
+        } message: {
+            if let deletionCandidate {
+                Text(
+                    String(
+                        format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."),
+                        deletionCandidate.name
+                    )
+                )
             }
         }
     }

@@ -2140,31 +2140,66 @@
         "de" : {
           "variations" : {
             "plural" : {
-              "one" : { "stringUnit" : { "state" : "translated", "value" : "+%lld weiteres Verbesserungsmodell verfügbar" } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "+%lld weitere Verbesserungsmodelle verfügbar" } }
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld weiteres Verbesserungsmodell verfügbar"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld weitere Verbesserungsmodelle verfügbar"
+                }
+              }
             }
           }
         },
         "en" : {
           "variations" : {
             "plural" : {
-              "one" : { "stringUnit" : { "state" : "translated", "value" : "+%lld more enhancement model available" } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "+%lld more enhancement models available" } }
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld more enhancement model available"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld more enhancement models available"
+                }
+              }
             }
           }
         },
         "fr" : {
           "variations" : {
             "plural" : {
-              "one" : { "stringUnit" : { "state" : "translated", "value" : "+%lld autre modèle d’amélioration disponible" } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "+%lld autres modèles d’amélioration disponibles" } }
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld autre modèle d’amélioration disponible"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld autres modèles d’amélioration disponibles"
+                }
+              }
             }
           }
         },
         "zh-Hans" : {
           "variations" : {
             "plural" : {
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "另有 %lld 个可用润色模型" } }
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "另有 %lld 个可用润色模型"
+                }
+              }
             }
           }
         }
@@ -2176,31 +2211,66 @@
         "de" : {
           "variations" : {
             "plural" : {
-              "one" : { "stringUnit" : { "state" : "translated", "value" : "+%lld weiteres Transkriptionsmodell verfügbar" } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "+%lld weitere Transkriptionsmodelle verfügbar" } }
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld weiteres Transkriptionsmodell verfügbar"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld weitere Transkriptionsmodelle verfügbar"
+                }
+              }
             }
           }
         },
         "en" : {
           "variations" : {
             "plural" : {
-              "one" : { "stringUnit" : { "state" : "translated", "value" : "+%lld more transcription model available" } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "+%lld more transcription models available" } }
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld more transcription model available"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld more transcription models available"
+                }
+              }
             }
           }
         },
         "fr" : {
           "variations" : {
             "plural" : {
-              "one" : { "stringUnit" : { "state" : "translated", "value" : "+%lld autre modèle de transcription disponible" } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "+%lld autres modèles de transcription disponibles" } }
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld autre modèle de transcription disponible"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld autres modèles de transcription disponibles"
+                }
+              }
             }
           }
         },
         "zh-Hans" : {
           "variations" : {
             "plural" : {
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "另有 %lld 个可用转写模型" } }
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "另有 %lld 个可用转写模型"
+                }
+              }
             }
           }
         }
@@ -5912,9 +5982,24 @@
     "Auto-detect" : {
       "comment" : "Displayed as the default language option when the user is not selecting a specific language.",
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Automatisch erkennen" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Détection automatique" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自动检测" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch erkennen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Détection automatique"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动检测"
+          }
+        }
       }
     },
     "Auto-Learn Dictionary" : {
@@ -10525,6 +10610,30 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "松开以添加文件"
+          }
+        }
+      }
+    },
+    "Duplicate" : {
+      "comment" : "A button that duplicates a configuration.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duplizieren"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dupliquer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "复制"
           }
         }
       }
@@ -19090,16 +19199,46 @@
     "OpenRouter" : {
       "comment" : "A category for OpenRouter-provided transcription models.",
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "OpenRouter" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "OpenRouter" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "OpenRouter" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter"
+          }
+        }
       }
     },
     "OpenRouter speech-to-text model" : {
       "localizations" : {
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "OpenRouter-Spracherkennungsmodell" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Modèle de transcription OpenRouter" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "OpenRouter 语音转文字模型" } }
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter-Spracherkennungsmodell"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modèle de transcription OpenRouter"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OpenRouter 语音转文字模型"
+          }
+        }
       }
     },
     "Opens the update window" : {

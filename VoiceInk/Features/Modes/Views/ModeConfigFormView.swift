@@ -165,7 +165,7 @@ struct ModeConfigFormView: View {
             Text(
                 String(
                     format: String(localized: "Are you sure you want to delete '%@'? This action cannot be undone."),
-                    draft.name))
+                    modeManager.getConfiguration(with: draft.id)?.name ?? draft.name))
         }
         .alert(
             "Default Mode Can’t Be Deleted",

@@ -294,6 +294,48 @@ class ModeManager: ObservableObject {
         postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
     }
 
+    @discardableResult
+    func duplicateConfiguration(with id: UUID) -> ModeConfig? {
+        guard let index = configurations.firstIndex(where: { $0.id == id }) else { return nil }
+
+        let source = configurations[index]
+        var duplicate = source
+        duplicate.id = UUID()
+        duplicate.name = nextDuplicateName(for: source.name)
+        duplicate.isDefault = false
+
+        // The new mode keeps the settings, but claims no automatic triggers.
+        duplicate.appConfigs = nil
+        duplicate.urlConfigs = nil
+        duplicate.triggerGroups = nil
+        duplicate.triggerWords = []
+
+        // Shortcuts are keyed by mode ID, so the duplicate starts without a shortcut.
+        let previousEnabledConfigIds = enabledConfigurationIds
+        configurations.insert(duplicate, at: index + 1)
+        saveConfigurations()
+        postShortcutAvailabilityChangeIfNeeded(previousEnabledConfigIds: previousEnabledConfigIds)
+        return duplicate
+    }
+
+    private func nextDuplicateName(for name: String) -> String {
+        let names = Set(configurations.map(\.name))
+        var base = name
+        if let separator = name.lastIndex(of: " "),
+            let suffix = Int(name[name.index(after: separator)...]),
+            suffix > 0,
+            names.contains(String(name[..<separator]))
+        {
+            base = String(name[..<separator])
+        }
+
+        var number = 1
+        while names.contains("\(base) \(number)") {
+            number += 1
+        }
+        return "\(base) \(number)"
+    }
+
     func removeConfiguration(with id: UUID) -> ModeRemovalResult {
         guard let configuration = getConfiguration(with: id) else {
             return .notFound
