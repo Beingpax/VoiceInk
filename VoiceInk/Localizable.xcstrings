@@ -7105,13 +7105,13 @@
         }
       }
     },
-    "Clean up filler words, self-corrections, and formatting with Gemini 3.5 Transcribe. Applies to batch transcription only; real-time transcription remains verbatim." : {
-      "comment" : "Explains the Gemini Smart Transcription toggle and its batch-only scope.",
+    "Clean up filler words, self-corrections, and formatting with Gemini 3.5 Transcribe. Applies to batch and real-time transcription." : {
+      "comment" : "Explains the Gemini Smart Transcription toggle.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Clean up filler words, self-corrections, and formatting with Gemini 3.5 Transcribe. Applies to batch transcription only; real-time transcription remains verbatim."
+            "value" : "Clean up filler words, self-corrections, and formatting with Gemini 3.5 Transcribe. Applies to batch and real-time transcription."
           }
         }
       }
@@ -24138,7 +24138,7 @@
       }
     },
     "Smart Transcription" : {
-      "comment" : "Toggle for Gemini's optional smart batch transcription mode.",
+      "comment" : "Toggle for Gemini's optional smart transcription mode.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
