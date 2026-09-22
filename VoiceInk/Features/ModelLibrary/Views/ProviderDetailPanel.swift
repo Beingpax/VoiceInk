@@ -445,7 +445,7 @@ struct ProviderDetailPanel: View {
         let selectedModel = aiService.selectedModel(for: provider)
         let models = aiService.availableModels(for: provider)
 
-        if models.contains(selectedModel) {
+        if provider.supportsCustomModelID || models.contains(selectedModel) {
             return selectedModel
         }
 
