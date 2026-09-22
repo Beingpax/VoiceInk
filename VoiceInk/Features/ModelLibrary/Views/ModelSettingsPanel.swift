@@ -79,11 +79,30 @@ private struct TranscriptionModelSettingsView: View {
 
             FillerWordsSettingsSection()
 
+            GeminiTranscriptionSettingsSection()
+
             AdvancedModelSettingsSection()
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct GeminiTranscriptionSettingsSection: View {
+    @AppStorage(GeminiTranscriptionSettings.smartTranscriptionKey) private var smartTranscription = false
+
+    var body: some View {
+        Section {
+            Toggle("Smart Transcription", isOn: $smartTranscription)
+                .toggleStyle(.switch)
+        } header: {
+            Text("Gemini")
+        } footer: {
+            Text(
+                "Removes filler words, resolves spoken corrections, and automatically formats your transcript for readability."
+            )
+        }
     }
 }
 

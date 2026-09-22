@@ -13115,6 +13115,10 @@
         }
       }
     },
+    "Gemini" : {
+      "comment" : "Transcription settings section for the Gemini provider.",
+      "shouldTranslate" : false
+    },
     "General Settings" : {
       "localizations" : {
         "de" : {
@@ -21509,6 +21513,35 @@
         }
       }
     },
+    "Removes filler words, resolves spoken corrections, and automatically formats your transcript for readability." : {
+      "comment" : "Explains the Gemini Smart Transcription toggle.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernt Füllwörter, berücksichtigt gesprochene Korrekturen und formatiert dein Transkript automatisch für bessere Lesbarkeit."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Removes filler words, resolves spoken corrections, and automatically formats your transcript for readability."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprime les mots de remplissage, intègre les corrections orales et met automatiquement en forme votre transcription pour en faciliter la lecture."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "去除口头语，整合说话时的自我纠正，并自动调整转录文本的格式，使其更易阅读。"
+          }
+        }
+      }
+    },
     "Reorder Modes" : {
       "localizations" : {
         "de" : {
@@ -24118,6 +24151,35 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "Smart Transcription" : {
+      "comment" : "Toggle for Gemini's optional smart transcription mode.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Intelligente Transkription"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Smart Transcription"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcription intelligente"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "智能转录"
           }
         }
       }

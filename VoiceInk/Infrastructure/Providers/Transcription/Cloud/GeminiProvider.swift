@@ -29,7 +29,7 @@ struct GeminiProvider: CloudProvider {
             CloudModel(
                 name: "gemini-3.5-transcribe",
                 displayName: "Gemini 3.5 Transcribe",
-                description: "Google's dedicated Verbatim transcription model with real-time support",
+                description: "Google's dedicated transcription model with real-time support",
                 provider: .gemini,
                 isMultilingual: true,
                 supportsStreaming: true,
@@ -49,7 +49,7 @@ struct GeminiProvider: CloudProvider {
             fileName: fileName,
             language: language,
             customVocabulary: customVocabulary,
-            mode: .verbatim,
+            mode: GeminiTranscriptionSettings.mode,
             timeout: timeout
         )
     }
