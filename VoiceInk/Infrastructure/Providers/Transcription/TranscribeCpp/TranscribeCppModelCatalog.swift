@@ -94,7 +94,22 @@ enum TranscribeCppModelCatalog {
         boundaryEnergyWindowSamples: 1_600
     )
 
+    static let orukeet = TranscribeCppModelArtifact(
+        modelName: "orukeet",
+        fileName: "orukeet-transcribe-cpp-Q8_0.gguf",
+        repository: "oruk/orukeet",
+        repositoryRevision: "43142dd1897f9ddadcd70173fcb5ff45c08aa951",
+        expectedFileSize: 739_508_608,
+        expectedSHA256: "cad2f52ac91cad829279422301989687c2cf02e19157352ed25ea501b90dbb7e",
+        architectureHint: "parakeet",
+        enablesInverseTextNormalization: false,
+        maximumChunkSeconds: 30,
+        boundarySearchSeconds: 3,
+        boundaryEnergyWindowSamples: 1_600
+    )
+
     private static let artifactsByModelName = [
+        orukeet.modelName: orukeet,
         cohereTranscribe.modelName: cohereTranscribe,
         senseVoiceSmall.modelName: senseVoiceSmall,
     ]
