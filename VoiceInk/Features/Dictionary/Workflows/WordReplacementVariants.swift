@@ -12,6 +12,7 @@ enum WordReplacementVariants {
                 for source in WordReplacementVariants.parse(record.originalText) {
                     let sourceKey = WordReplacementVariants.key(for: source)
                     guard !sourceKey.isEmpty else { continue }
+                    guard sourceKey != destination else { continue }
                     graph[sourceKey, default: []].insert(destination)
                 }
             }
@@ -23,6 +24,10 @@ enum WordReplacementVariants {
             let sourceKey = WordReplacementVariants.key(for: source)
             let destinationKey = WordReplacementVariants.key(for: destination)
             guard !sourceKey.isEmpty, !destinationKey.isEmpty else { return false }
+            if sourceKey == destinationKey {
+                graph[sourceKey] = nil
+                return true
+            }
 
             let previousDestinations = graph[sourceKey]
             graph[sourceKey] = [destinationKey]
