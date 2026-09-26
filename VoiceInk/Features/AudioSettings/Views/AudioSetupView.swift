@@ -1,6 +1,7 @@
 import CoreAudio
 import SwiftUI
 
+@MainActor
 struct AudioSetupView: View {
     @ObservedObject private var audioDeviceManager = AudioDeviceManager.shared
     @ObservedObject private var mediaController = MediaController.shared
