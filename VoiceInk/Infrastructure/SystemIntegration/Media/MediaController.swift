@@ -1,14 +1,14 @@
 import CoreAudio
 import Foundation
 
+@MainActor
 final class MediaController: ObservableObject {
 
     static let shared = MediaController()
 
-    private var didMuteAudio = false
-    private var wasAudioMutedBeforeRecording = false
-    private var unmuteTask: Task<Void, Never>?
-    private var muteGeneration: Int = 0
+    // Keep responsibility across rapid recordings, including output-device changes.
+    private var mutedDevices: Set<AudioDeviceID> = []
+    private var recordingSessionID = UUID()
 
     @Published var isSystemMuteEnabled: Bool = UserDefaults.standard.bool(forKey: "isSystemMuteEnabled") {
         didSet { UserDefaults.standard.set(isSystemMuteEnabled, forKey: "isSystemMuteEnabled") }
@@ -20,58 +20,45 @@ final class MediaController: ObservableObject {
 
     private init() {}
 
-    func muteSystemAudio() async -> Bool {
-        guard isSystemMuteEnabled else { return false }
-
-        unmuteTask?.cancel()
-        unmuteTask = nil
-        muteGeneration += 1
-
-        let currentlyMuted = isSystemAudioMuted()
-
-        if currentlyMuted {
-            if didMuteAudio {
-                // We muted it previously, stay responsible for unmuting
-                wasAudioMutedBeforeRecording = false
-            } else {
-                // User muted it, don't unmute when done
-                wasAudioMutedBeforeRecording = true
-                didMuteAudio = false
-            }
-            return true
-        }
-
-        wasAudioMutedBeforeRecording = false
-        let success = setSystemMuted(true)
-        didMuteAudio = success
-        return success
+    func beginRecordingSession(sessionID: UUID) {
+        // Invalidate delayed restoration before the recorder's 220 ms mute delay.
+        recordingSessionID = sessionID
     }
 
-    func unmuteSystemAudio() async {
-        guard isSystemMuteEnabled else { return }
-
-        let delay = audioResumptionDelay
-        let shouldUnmute = didMuteAudio && !wasAudioMutedBeforeRecording
-        let myGeneration = muteGeneration
-
-        let task = Task { [weak self] in
-            if delay > 0 {
-                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            }
-
-            guard let self = self else { return }
-            guard !Task.isCancelled else { return }
-            guard self.muteGeneration == myGeneration else { return }
-
-            if shouldUnmute {
-                _ = self.setSystemMuted(false)
-            }
-
-            self.didMuteAudio = false
+    func muteSystemAudio(sessionID: UUID) -> Bool {
+        guard sessionID == recordingSessionID, !Task.isCancelled, isSystemMuteEnabled else { return false }
+        guard let deviceID = getDefaultOutputDevice(),
+            let currentlyMuted = isSystemAudioMuted(deviceID: deviceID) else {
+            return false
         }
+        // A device already muted by the user is never added to our ownership.
+        guard !currentlyMuted else { return true }
+        guard setSystemMuted(true, deviceID: deviceID) else {
+            return false
+        }
+        mutedDevices.insert(deviceID)
+        return true
+    }
 
-        unmuteTask = task
-        await task.value
+    func unmuteSystemAudio(sessionID: UUID) async {
+        guard sessionID == recordingSessionID, !Task.isCancelled, !mutedDevices.isEmpty else { return }
+        let delay = audioResumptionDelay
+        if delay > 0 {
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+        }
+        guard sessionID == recordingSessionID, !Task.isCancelled else { return }
+
+        // Restore the devices we actually muted, rather than the current default.
+        // Restore ownership even if the preference was disabled during recording.
+        for deviceID in Array(mutedDevices) {
+            if setSystemMuted(false, deviceID: deviceID) {
+                mutedDevices.remove(deviceID)
+            }
+        }
     }
 
     private func getDefaultOutputDevice() -> AudioDeviceID? {
@@ -93,12 +80,10 @@ final class MediaController: ObservableObject {
             &deviceID
         )
 
-        return status == noErr ? deviceID : nil
+        return status == noErr && deviceID != kAudioObjectUnknown ? deviceID : nil
     }
 
-    private func isSystemAudioMuted() -> Bool {
-        guard let deviceID = getDefaultOutputDevice() else { return false }
-
+    private func isSystemAudioMuted(deviceID: AudioDeviceID) -> Bool? {
         var muted: UInt32 = 0
         var propertySize = UInt32(MemoryLayout<UInt32>.size)
 
@@ -110,16 +95,14 @@ final class MediaController: ObservableObject {
 
         if !AudioObjectHasProperty(deviceID, &address) {
             address.mElement = 0
-            if !AudioObjectHasProperty(deviceID, &address) { return false }
+            if !AudioObjectHasProperty(deviceID, &address) { return nil }
         }
 
         let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &propertySize, &muted)
-        return status == noErr && muted != 0
+        return status == noErr ? muted != 0 : nil
     }
 
-    private func setSystemMuted(_ muted: Bool) -> Bool {
-        guard let deviceID = getDefaultOutputDevice() else { return false }
-
+    private func setSystemMuted(_ muted: Bool, deviceID: AudioDeviceID) -> Bool {
         var muteValue: UInt32 = muted ? 1 : 0
         let propertySize = UInt32(MemoryLayout<UInt32>.size)
 
