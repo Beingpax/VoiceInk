@@ -418,29 +418,13 @@ private struct ReplacementSourcePill: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 5) {
+        DictionaryPill(
+            onRemove: showsRemoveButton ? onRemove : nil,
+            removeHelp: "Remove \(source) from Word Replacements",
+            removeAccessibilityLabel: "Remove \(source) from Word Replacements"
+        ) {
             Text(source)
-                .font(.system(size: 12))
                 .fixedSize(horizontal: true, vertical: false)
-
-            if showsRemoveButton {
-                Button(action: onRemove) {
-                    Image(systemName: "xmark.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(AppTheme.Text.primary)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Remove \(source) from Word Replacements")
-                .help("Remove \(source) from Word Replacements")
-            }
         }
-        .padding(.leading, 9)
-        .padding(.trailing, 6)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(AppTheme.Surface.subtle))
-        .overlay(
-            Capsule()
-                .stroke(AppTheme.Border.subtle, lineWidth: 1)
-        )
     }
 }

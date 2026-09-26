@@ -166,26 +166,9 @@ struct VocabularyWordView: View {
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 5) {
+        DictionaryPill(onRemove: onDelete, removeHelp: "Remove word") {
             Text(item.word)
-                .font(.system(size: 12))
                 .lineLimit(1)
-
-            Button(action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(AppTheme.Text.primary)
-            }
-            .buttonStyle(.borderless)
-            .help("Remove word")
         }
-        .padding(.leading, 9)
-        .padding(.trailing, 6)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(AppTheme.Surface.subtle))
-        .overlay(
-            Capsule()
-                .stroke(AppTheme.Border.subtle, lineWidth: 1)
-        )
     }
 }
