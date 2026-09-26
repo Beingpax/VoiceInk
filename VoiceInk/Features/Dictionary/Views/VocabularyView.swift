@@ -164,39 +164,11 @@ struct VocabularyInfoPopover: View {
 struct VocabularyWordView: View {
     let item: VocabularyWord
     let onDelete: () -> Void
-    @State private var isDeleteHovered = false
 
     var body: some View {
-        HStack(spacing: 6) {
+        DictionaryPill(onRemove: onDelete, removeHelp: "Remove word") {
             Text(item.word)
-                .font(.system(size: 13))
                 .lineLimit(1)
-                .foregroundColor(.primary)
-
-            Button(action: onDelete) {
-                Image(systemName: "xmark.circle.fill")
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(isDeleteHovered ? AppTheme.Status.error : .secondary)
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.borderless)
-            .help("Remove word")
-            .onHover { hover in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isDeleteHovered = hover
-                }
-            }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(AppTheme.Surface.window.opacity(0.4))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 6)
-                .stroke(AppTheme.Border.subtle, lineWidth: 1)
-        }
-        .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
     }
 }

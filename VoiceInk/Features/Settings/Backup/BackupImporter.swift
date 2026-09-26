@@ -227,7 +227,7 @@ enum BackupImporter {
     private static func importDictionary(from backup: BackupFile, modelContext: ModelContext) async throws {
         guard backup.vocabularyWords != nil || backup.wordReplacements != nil else {
             print("No new dictionary entries were imported.")
-            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
+            DictionaryService.cleanUpDictionaryContent(context: modelContext, source: "settings import")
             return
         }
 
@@ -253,7 +253,7 @@ enum BackupImporter {
             mode: .merge,
             modelContext: modelContext
         )
-        DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
+        DictionaryService.cleanUpDictionaryContent(context: modelContext, source: "settings import")
         print(
             "Successfully imported \(result.summary.vocabularyToImport) vocabulary entries and "
                 + "\(result.summary.replacementRulesToImport) word replacement rules."

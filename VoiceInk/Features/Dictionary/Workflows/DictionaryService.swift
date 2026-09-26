@@ -74,10 +74,13 @@ enum DictionaryService {
 
     // MARK: - Dictionary Cleanup
 
+    /// Idempotent cleanup that merges older replacement rows with the same
+    /// case-sensitive target into the oldest row.
     @discardableResult
-    static func removeExactDuplicateContent(context: ModelContext, source: String) -> Bool {
+    static func cleanUpDictionaryContent(context: ModelContext, source: String) -> Bool {
         var deletedVocabularyCount = 0
         var deletedReplacementCount = 0
+        var mergedReplacementCount = 0
         var normalizedReplacementCount = 0
 
         if let vocabularyWords = try? context.fetch(FetchDescriptor<VocabularyWord>()) {
@@ -98,8 +101,9 @@ enum DictionaryService {
 
         if let wordReplacements = try? context.fetch(FetchDescriptor<WordReplacement>()) {
             var seenReplacements = Set<[String]>()
+            var replacementsByDestination: [String: WordReplacement] = [:]
 
-            for wordReplacement in wordReplacements.sorted(by: { $0.dateAdded < $1.dateAdded }) {
+            for wordReplacement in wordReplacements.sorted(by: replacementOrder) {
                 let normalizedOriginal = WordReplacementVariants.serialize(
                     WordReplacementVariants.parse(wordReplacement.originalText)
                 )
@@ -120,18 +124,34 @@ enum DictionaryService {
                     continue
                 }
 
-                if seenReplacements.insert(key).inserted {
+                if !seenReplacements.insert(key).inserted {
+                    context.delete(wordReplacement)
+                    deletedReplacementCount += 1
                     continue
                 }
 
-                context.delete(wordReplacement)
-                deletedReplacementCount += 1
+                guard !normalizedOriginal.isEmpty, !normalizedDestination.isEmpty else {
+                    continue
+                }
+
+                let destinationKey = WordReplacementVariants.destinationKey(for: normalizedDestination)
+                if let canonical = replacementsByDestination[destinationKey] {
+                    canonical.originalText = WordReplacementVariants.serialize(
+                        WordReplacementVariants.parse(canonical.originalText)
+                            + WordReplacementVariants.parse(normalizedOriginal)
+                    )
+                    context.delete(wordReplacement)
+                    mergedReplacementCount += 1
+                } else {
+                    replacementsByDestination[destinationKey] = wordReplacement
+                }
             }
         }
 
         guard normalizedReplacementCount > 0
             || deletedVocabularyCount > 0
             || deletedReplacementCount > 0
+            || mergedReplacementCount > 0
         else {
             return false
         }
@@ -139,7 +159,7 @@ enum DictionaryService {
         do {
             try context.save()
             logger.notice(
-                "Cleaned dictionary data from \(source, privacy: .public): normalized=\(normalizedReplacementCount, privacy: .public) replacements, removed=\(deletedVocabularyCount, privacy: .public) vocabulary and \(deletedReplacementCount, privacy: .public) replacements"
+                "Cleaned dictionary data from \(source, privacy: .public): normalized=\(normalizedReplacementCount, privacy: .public) replacements, removed=\(deletedVocabularyCount, privacy: .public) vocabulary and \(deletedReplacementCount, privacy: .public) exact replacements, merged=\(mergedReplacementCount, privacy: .public) replacement targets"
             )
             return true
         } catch {
@@ -332,6 +352,33 @@ enum DictionaryService {
             context.rollback()
             return String(
                 format: String(localized: "Failed to remove replacement: %@"),
+                error.localizedDescription
+            )
+        }
+    }
+
+    @discardableResult
+    static func removeWordReplacementSource(
+        _ source: String,
+        from replacement: WordReplacement,
+        context: ModelContext
+    ) -> String? {
+        var remaining = WordReplacementVariants.parse(replacement.originalText)
+        guard let sourceIndex = remaining.firstIndex(of: source) else { return nil }
+        remaining.remove(at: sourceIndex)
+
+        if remaining.isEmpty {
+            return removeWordReplacement(replacement, context: context)
+        }
+
+        replacement.originalText = WordReplacementVariants.serialize(remaining)
+        do {
+            try context.save()
+            return nil
+        } catch {
+            context.rollback()
+            return String(
+                format: String(localized: "Failed to remove replacement source: %@"),
                 error.localizedDescription
             )
         }
