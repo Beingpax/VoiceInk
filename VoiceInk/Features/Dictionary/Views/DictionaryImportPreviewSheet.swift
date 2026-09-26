@@ -129,6 +129,7 @@ struct DictionaryImportPreviewSheet: View {
                 .font(.system(size: 12, weight: .semibold))
 
             VStack(spacing: 8) {
+                summaryRow("Sections", value: String(localized: "\(summary.sectionsToImport) sections"))
                 summaryRow(
                     "Vocabulary",
                     value: String(localized: "\(summary.vocabularyToImport) entries")
@@ -180,7 +181,7 @@ struct DictionaryImportPreviewSheet: View {
                     summaryRow(
                         "Current Entries Removed",
                         value: String(
-                            summary.vocabularyToRemove + summary.replacementsToRemove
+                            summary.vocabularyToRemove + summary.replacementsToRemove + summary.sectionsToRemove
                         ),
                         color: AppTheme.Status.error
                     )
@@ -248,7 +249,7 @@ struct DictionaryImportPreviewSheet: View {
     }
 
     private var importModeHelp: LocalizedStringKey {
-        "Merge adds new entries while keeping the current dictionary and skips duplicates or conflicts. Replace removes the current vocabulary and word replacements before importing."
+        "Merge adds new entries while keeping the current dictionary and skips duplicates or conflicts. Replace removes the current vocabulary, sections, and word replacements before importing."
     }
 
     private var hasImportableEntries: Bool {
@@ -266,9 +267,13 @@ struct DictionaryImportPreviewSheet: View {
         let currentReplacements = String(
             localized: "\(summary.replacementsToRemove) current word replacements"
         )
+        let currentSections = String(
+            localized: "\(summary.sectionsToRemove) current sections"
+        )
         return String(
-            format: String(localized: "This removes %@ and %@. This action cannot be undone."),
+            format: String(localized: "This removes %@, %@, and %@. This action cannot be undone."),
             currentVocabulary,
+            currentSections,
             currentReplacements
         )
     }

@@ -105,9 +105,11 @@ struct GeneralBackup: Codable {
 
 struct WordBackup: Codable {
     let word: String
+    let sectionID: UUID?
 
-    init(word: String) {
+    init(word: String, sectionID: UUID? = nil) {
         self.word = word
+        self.sectionID = sectionID
     }
 }
 
@@ -117,13 +119,14 @@ struct BackupFile: Codable {
     let modeConfigs: [ModeConfig]
     let modeShortcuts: [String: ShortcutBackup]?
     let vocabularyWords: [WordBackup]?
+    let vocabularySections: [DictionarySectionEntry]?
     let wordReplacements: [String: String]?
     let generalSettings: GeneralBackup?
     let customEmojis: [String]?
     let customCloudModels: [CustomModelBackup]?
 
     private enum CodingKeys: String, CodingKey {
-        case version, customPrompts, modeConfigs, modeShortcuts, vocabularyWords, wordReplacements, generalSettings,
+        case version, customPrompts, modeConfigs, modeShortcuts, vocabularyWords, vocabularySections, wordReplacements, generalSettings,
             customEmojis, customCloudModels
         case legacyModeConfigs = "powerModeConfigs"
         case legacyModeShortcuts = "powerModeShortcuts"
@@ -132,13 +135,15 @@ struct BackupFile: Codable {
     init(
         version: String, customPrompts: [CustomPrompt], modeConfigs: [ModeConfig],
         modeShortcuts: [String: ShortcutBackup]?, vocabularyWords: [WordBackup]?, wordReplacements: [String: String]?,
-        generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?
+        generalSettings: GeneralBackup?, customEmojis: [String]?, customCloudModels: [CustomModelBackup]?,
+        vocabularySections: [DictionarySectionEntry]? = nil
     ) {
         self.version = version
         self.customPrompts = customPrompts
         self.modeConfigs = modeConfigs
         self.modeShortcuts = modeShortcuts
         self.vocabularyWords = vocabularyWords
+        self.vocabularySections = vocabularySections
         self.wordReplacements = wordReplacements
         self.generalSettings = generalSettings
         self.customEmojis = customEmojis
@@ -157,6 +162,7 @@ struct BackupFile: Codable {
             try container.decodeIfPresent([String: ShortcutBackup].self, forKey: .modeShortcuts)
             ?? container.decodeIfPresent([String: ShortcutBackup].self, forKey: .legacyModeShortcuts)
         vocabularyWords = try container.decodeIfPresent([WordBackup].self, forKey: .vocabularyWords)
+        vocabularySections = try container.decodeIfPresent([DictionarySectionEntry].self, forKey: .vocabularySections)
         wordReplacements = try container.decodeIfPresent([String: String].self, forKey: .wordReplacements)
         generalSettings = try container.decodeIfPresent(GeneralBackup.self, forKey: .generalSettings)
         customEmojis = try container.decodeIfPresent([String].self, forKey: .customEmojis)
@@ -170,6 +176,7 @@ struct BackupFile: Codable {
         try container.encode(modeConfigs, forKey: .modeConfigs)
         try container.encodeIfPresent(modeShortcuts, forKey: .modeShortcuts)
         try container.encodeIfPresent(vocabularyWords, forKey: .vocabularyWords)
+        try container.encodeIfPresent(vocabularySections, forKey: .vocabularySections)
         try container.encodeIfPresent(wordReplacements, forKey: .wordReplacements)
         try container.encodeIfPresent(generalSettings, forKey: .generalSettings)
         try container.encodeIfPresent(customEmojis, forKey: .customEmojis)
