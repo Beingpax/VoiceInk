@@ -4,7 +4,7 @@ struct DictionaryArchive: Codable, Sendable {
     // This identifier and schema version are independent of the app version so
     // dictionary files remain portable across VoiceInk releases.
     static let formatIdentifier = "voiceink.dictionary"
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     let format: String
     let schemaVersion: Int
@@ -12,12 +12,14 @@ struct DictionaryArchive: Codable, Sendable {
     let appVersion: String?
     let vocabulary: [DictionaryVocabularyEntry]
     let replacements: [DictionaryReplacementEntry]
+    let sections: [DictionarySectionEntry]
 
     init(
         exportedAt: Date = Date(),
         appVersion: String? = nil,
         vocabulary: [DictionaryVocabularyEntry],
-        replacements: [DictionaryReplacementEntry]
+        replacements: [DictionaryReplacementEntry],
+        sections: [DictionarySectionEntry] = []
     ) {
         self.format = Self.formatIdentifier
         self.schemaVersion = Self.currentSchemaVersion
@@ -25,13 +27,41 @@ struct DictionaryArchive: Codable, Sendable {
         self.appVersion = appVersion
         self.vocabulary = vocabulary
         self.replacements = replacements
+        self.sections = sections
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case format, schemaVersion, exportedAt, appVersion, vocabulary, replacements, sections
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        format = try values.decode(String.self, forKey: .format)
+        schemaVersion = try values.decode(Int.self, forKey: .schemaVersion)
+        exportedAt = try values.decode(Date.self, forKey: .exportedAt)
+        appVersion = try values.decodeIfPresent(String.self, forKey: .appVersion)
+        vocabulary = try values.decode([DictionaryVocabularyEntry].self, forKey: .vocabulary)
+        replacements = try values.decode([DictionaryReplacementEntry].self, forKey: .replacements)
+        sections = try values.decodeIfPresent([DictionarySectionEntry].self, forKey: .sections) ?? []
+    }
 }
 
 struct DictionaryVocabularyEntry: Codable, Sendable {
     let term: String
     let createdAt: Date?
+    let sectionID: UUID?
+
+    init(term: String, createdAt: Date?, sectionID: UUID? = nil) {
+        self.term = term
+        self.createdAt = createdAt
+        self.sectionID = sectionID
+    }
+}
+
+struct DictionarySectionEntry: Codable, Sendable {
+    let id: UUID
+    let name: String
+    let description: String
 }
 
 struct DictionaryReplacementEntry: Codable, Sendable {
@@ -55,6 +85,7 @@ struct DictionaryImportPayload: Identifiable, Sendable {
 }
 
 struct DictionaryImportSummary: Sendable {
+    let sectionsToImport: Int
     let vocabularyToImport: Int
     let replacementRulesToImport: Int
     let replacementSourcesToImport: Int
@@ -66,6 +97,7 @@ struct DictionaryImportSummary: Sendable {
     let cyclicReplacementCount: Int
     let vocabularyToRemove: Int
     let replacementsToRemove: Int
+    let sectionsToRemove: Int
 
     var skippedEntryCount: Int {
         duplicateVocabularyCount
@@ -77,7 +109,7 @@ struct DictionaryImportSummary: Sendable {
     }
 
     var hasImportableEntries: Bool {
-        vocabularyToImport > 0 || replacementRulesToImport > 0
+        sectionsToImport > 0 || vocabularyToImport > 0 || replacementRulesToImport > 0
     }
 }
 
@@ -90,17 +122,25 @@ struct DictionaryImportResult: Sendable {
             String(localized: "Imported \(summary.replacementRulesToImport) word replacement rules."),
         ]
 
-        if summary.vocabularyToRemove + summary.replacementsToRemove > 0 {
+        if summary.sectionsToImport > 0 {
+            lines.insert(String(localized: "Imported \(summary.sectionsToImport) vocabulary sections."), at: 0)
+        }
+
+        if summary.vocabularyToRemove + summary.replacementsToRemove + summary.sectionsToRemove > 0 {
             let removedVocabulary = String(
                 localized: "\(summary.vocabularyToRemove) previous vocabulary entries"
             )
             let removedReplacements = String(
                 localized: "\(summary.replacementsToRemove) previous word replacements"
             )
+            let removedSections = String(
+                localized: "\(summary.sectionsToRemove) previous sections"
+            )
             lines.append(
                 String(
-                    format: String(localized: "Removed %@ and %@."),
+                    format: String(localized: "Removed %@, %@, and %@."),
                     removedVocabulary,
+                    removedSections,
                     removedReplacements
                 )
             )
@@ -188,7 +228,7 @@ extension DictionaryImportExportService {
             throw DictionaryArchiveError.invalidFile
         }
 
-        guard archive.schemaVersion == DictionaryArchive.currentSchemaVersion else {
+        guard (1...DictionaryArchive.currentSchemaVersion).contains(archive.schemaVersion) else {
             throw DictionaryArchiveError.unsupportedVersion(archive.schemaVersion)
         }
         return archive

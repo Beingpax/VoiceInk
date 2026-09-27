@@ -225,7 +225,7 @@ enum BackupImporter {
 
     @MainActor
     private static func importDictionary(from backup: BackupFile, modelContext: ModelContext) async throws {
-        guard backup.vocabularyWords != nil || backup.wordReplacements != nil else {
+        guard backup.vocabularyWords != nil || backup.wordReplacements != nil || backup.vocabularySections != nil else {
             print("No new dictionary entries were imported.")
             DictionaryService.cleanUpDictionaryContent(context: modelContext, source: "settings import")
             return
@@ -243,9 +243,10 @@ enum BackupImporter {
 
         let archive = DictionaryArchive(
             vocabulary: (backup.vocabularyWords ?? []).map {
-                DictionaryVocabularyEntry(term: $0.word, createdAt: nil)
+                DictionaryVocabularyEntry(term: $0.word, createdAt: nil, sectionID: $0.sectionID)
             },
-            replacements: replacementEntries
+            replacements: replacementEntries,
+            sections: backup.vocabularySections ?? []
         )
 
         let result = try await DictionaryImportExportService.apply(
@@ -255,7 +256,8 @@ enum BackupImporter {
         )
         DictionaryService.cleanUpDictionaryContent(context: modelContext, source: "settings import")
         print(
-            "Successfully imported \(result.summary.vocabularyToImport) vocabulary entries and "
+            "Successfully imported \(result.summary.sectionsToImport) vocabulary sections, "
+                + "\(result.summary.vocabularyToImport) vocabulary entries and "
                 + "\(result.summary.replacementRulesToImport) word replacement rules."
         )
         if result.summary.skippedEntryCount > 0 {

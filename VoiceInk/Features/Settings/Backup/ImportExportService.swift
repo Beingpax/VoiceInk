@@ -140,7 +140,14 @@ class ImportExportService {
         var exportedDictionaryItems: [WordBackup]? = nil
         let vocabularyDescriptor = FetchDescriptor<VocabularyWord>()
         if let items = try? modelContext.fetch(vocabularyDescriptor), !items.isEmpty {
-            exportedDictionaryItems = items.map { WordBackup(word: $0.word) }
+            exportedDictionaryItems = items.map { WordBackup(word: $0.word, sectionID: $0.sectionID) }
+        }
+
+        var vocabularySections: [DictionarySectionEntry]?
+        if let sections = try? modelContext.fetch(FetchDescriptor<VocabularySection>()), !sections.isEmpty {
+            vocabularySections = sections.map {
+                DictionarySectionEntry(id: $0.id, name: $0.name, description: $0.sectionDescription)
+            }
         }
 
         // Fetch word replacements from SwiftData
@@ -201,7 +208,8 @@ class ImportExportService {
             wordReplacements: exportedWordReplacements,
             generalSettings: generalSettingsToExport,
             customEmojis: emojiManager.customEmojis,
-            customCloudModels: customModels
+            customCloudModels: customModels,
+            vocabularySections: vocabularySections
         )
 
         let encoder = JSONEncoder()

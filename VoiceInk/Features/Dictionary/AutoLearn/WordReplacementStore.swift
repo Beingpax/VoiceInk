@@ -26,9 +26,11 @@ actor WordReplacementStore {
                     }
                 )
                 var vocabularyKeys = Set(
-                    try modelContext.fetch(FetchDescriptor<VocabularyWord>()).map {
-                        WordReplacementVariants.key(for: $0.word)
-                    }
+                    try modelContext.fetch(FetchDescriptor<VocabularyWord>())
+                        .filter { $0.sectionID == nil }
+                        .map {
+                            WordReplacementVariants.key(for: $0.word)
+                        }
                 )
                 let candidatesByID = Dictionary(
                     uniqueKeysWithValues: candidates.map { ($0.candidateID, $0) }
