@@ -8,13 +8,14 @@ struct HistoryView: View {
     }
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var searchText = ""
-    @State private var expandedId: UUID?
+    @State private var detailTranscription: Transcription?
+    @FocusState private var isSearchFocused: Bool
     @State private var selectedTranscriptions: Set<Transcription> = []
     @State private var showDeleteConfirmation = false
-    @State private var isPanelPresented = false
-    @State private var panelMode: HistoryPanelMode = .info
-    @State private var panelTranscriptionId: UUID?
+    @State private var isShowingInfo = false
+    @State private var activePanel: HistoryPanel?
     @State private var displayedTranscriptions: [Transcription] = []
     @State private var isLoading = false
     @State private var hasMoreContent = true
@@ -60,14 +61,12 @@ struct HistoryView: View {
                         || (transcription.enhancedText?.localizedStandardContains(query) ?? false)
                 }
             }
-        } else {
-            if let cursor {
-                let cursorTimestamp = cursor.timestamp
-                let cursorID = cursor.id
-                descriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.timestamp < cursorTimestamp
-                        || (transcription.timestamp == cursorTimestamp && transcription.id < cursorID)
-                }
+        } else if let cursor {
+            let cursorTimestamp = cursor.timestamp
+            let cursorID = cursor.id
+            descriptor.predicate = #Predicate<Transcription> { transcription in
+                transcription.timestamp < cursorTimestamp
+                    || (transcription.timestamp == cursorTimestamp && transcription.id < cursorID)
             }
         }
 
@@ -81,51 +80,63 @@ struct HistoryView: View {
         !displayedTranscriptions.isEmpty && displayedTranscriptions.allSatisfy { selectedTranscriptions.contains($0) }
     }
 
-    private var panelTranscription: Transcription? {
-        guard let id = panelTranscriptionId else { return nil }
-        return displayedTranscriptions.first { $0.id == id }
+    private func openDetail(_ transcription: Transcription) {
+        activePanel = nil
+        isShowingInfo = false
+        isSearchFocused = false
+        detailTranscription = transcription
     }
 
-    private func openPanel(mode: HistoryPanelMode, transcriptionID: UUID? = nil) {
-        panelMode = mode
-        panelTranscriptionId = transcriptionID
-
-        isPanelPresented = true
-    }
-
-    private func closePanel() {
-        isPanelPresented = false
-        panelMode = .info
+    private func closeDetail() {
+        activePanel = nil
+        isShowingInfo = false
+        detailTranscription = nil
+        isSearchFocused = true
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            Divider()
+        ZStack {
+            // Keep the list mounted so returning from details preserves its scroll position.
+            historyContent
+                .opacity(detailTranscription == nil ? 1 : 0)
+                .allowsHitTesting(detailTranscription == nil)
+                .disabled(detailTranscription != nil)
+                .accessibilityHidden(detailTranscription != nil)
 
-            if displayedTranscriptions.isEmpty && !isLoading {
-                emptyStateView
-            } else {
-                cardListView
-            }
-
-            if !selectedTranscriptions.isEmpty {
-                Divider()
-                selectionBar
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            if let transcription = detailTranscription {
+                TranscriptionDetailView(
+                    transcription: transcription,
+                    isInfoPresented: $isShowingInfo,
+                    onBack: closeDetail,
+                    onTranscriptionUpdated: { updated in
+                        guard detailTranscription?.id == transcription.id else { return }
+                        isShowingInfo = false
+                        detailTranscription = updated
+                    }
+                )
+                .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: selectedTranscriptions.isEmpty)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: detailTranscription?.id)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(.container, edges: .top)
         .sidePanel(
             isPresented: .init(
-                get: { isPanelPresented },
-                set: { newValue in
-                    if !newValue { closePanel() }
-                }
-            )
+                get: { activePanel != nil },
+                set: { if !$0 { activePanel = nil } }
+            ),
+            dismissOnExitCommand: false
         ) {
             panelContent
+        }
+        .onExitCommand {
+            if isShowingInfo {
+                isShowingInfo = false
+            } else if activePanel != nil {
+                activePanel = nil
+            } else if detailTranscription != nil {
+                closeDetail()
+            }
         }
         .alert("Delete Selected Items?", isPresented: $showDeleteConfirmation) {
             Button("Delete", role: .destructive) {
@@ -141,6 +152,7 @@ struct HistoryView: View {
         }
         .onAppear {
             isViewCurrentlyVisible = true
+            isSearchFocused = true
             Task { await loadInitialContent() }
         }
         .onDisappear {
@@ -163,194 +175,119 @@ struct HistoryView: View {
         }
     }
 
-    // MARK: - Top Bar
-
-    private var topBar: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                    .font(.system(size: 12))
-                TextField("Search transcriptions...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
+    private var historyContent: some View {
+        QuickPanelScaffold {
+            if displayedTranscriptions.isEmpty && !isLoading {
+                HistoryEmptyState(
+                    hasSearchQuery: !searchText.isEmpty,
+                    emptyMessage: "Your transcription history will appear here"
+                )
+            } else {
+                historyList
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(AppTheme.Surface.card)
-            )
-            .frame(maxWidth: .infinity)
+        } header: {
+            searchHeader
+        } footer: {
+            selectionBar
+        }
+    }
 
-            AppIconButton(
-                systemName: "gearshape",
-                help: "History settings",
-                size: 30,
-                iconSize: 13,
-                cornerRadius: AppTheme.Radius.pill
-            ) {
-                openPanel(mode: .historySettings)
+    // MARK: - Search Header
+
+    private var searchHeader: some View {
+        HistorySearchHeader(
+            searchText: $searchText,
+            searchFocus: $isSearchFocused,
+            isSearching: isLoading
+        ) {
+            Spacer()
+            HistoryIconButton(systemName: "gearshape", help: "History settings") {
+                activePanel = .settings
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
     }
 
     private var selectionBar: some View {
-        HStack(spacing: 16) {
-            Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
+        HStack(spacing: 8) {
+            if !selectedTranscriptions.isEmpty {
+                Text(String(format: String(localized: "%lld selected"), Int64(selectedTranscriptions.count)))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(AppTheme.Text.secondary)
 
-            Spacer()
+                Spacer(minLength: 8)
 
-            Button(action: {
-                openPanel(mode: .analysis)
-            }) {
-                Label("Analyze", systemImage: "chart.bar.xaxis")
-                    .font(.system(size: 12, weight: .medium))
+                HistoryCommandButton("Analyze", systemImage: "chart.bar.xaxis") {
+                    activePanel = .analysis
+                }
+
+                HistoryCommandButton("Export", systemImage: "square.and.arrow.up") {
+                    exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
+                }
+
+                HistoryCommandButton("Delete", systemImage: "trash", isDestructive: true) {
+                    showDeleteConfirmation = true
+                }
             }
-            .buttonStyle(.plain)
-            .foregroundColor(.secondary)
-
-            Button(action: {
-                exportService.exportTranscriptionsToCSV(transcriptions: Array(selectedTranscriptions))
-            }) {
-                Label("Export", systemImage: "square.and.arrow.up")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .buttonStyle(.plain)
-            .foregroundColor(.secondary)
-
-            Button(action: { showDeleteConfirmation = true }) {
-                Label("Delete", systemImage: "trash")
-                    .font(.system(size: 12, weight: .medium))
-            }
-            .buttonStyle(.plain)
-            .foregroundColor(AppTheme.Status.error.opacity(0.80))
-
-            Divider()
-                .frame(height: 16)
 
             if allSelected {
-                Button("Deselect All") {
+                HistoryCommandButton("Deselect All") {
                     selectedTranscriptions.removeAll()
                 }
-                .font(.system(size: 12, weight: .medium))
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
             } else {
-                Button("Select All") {
+                HistoryCommandButton("Select All") {
                     Task { await selectAllTranscriptions() }
                 }
-                .font(.system(size: 12, weight: .medium))
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
+                .disabled(displayedTranscriptions.isEmpty)
+            }
+
+            if selectedTranscriptions.isEmpty {
+                Spacer()
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
-        .background(
-            AppTheme.Surface.window
-                .shadow(color: Color.black.opacity(0.1), radius: 3, y: -2)
-        )
+        .padding(.horizontal, 10)
+        .frame(height: HistoryLayout.actionBarHeight)
     }
 
-    // MARK: - Empty State
+    // MARK: - History List
 
-    private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "No transcriptions yet" : "No results found")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.secondary)
-            Text(searchText.isEmpty ? "Your transcription history will appear here" : "Try a different search term")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary.opacity(0.8))
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Card List
-
-    private var cardListView: some View {
-        Form {
+    private var historyList: some View {
+        HistoryList {
             ForEach(displayedTranscriptions) { transcription in
-                Section {
-                    HistoryCardRow(
-                        transcription: transcription,
-                        isExpanded: expandedId == transcription.id,
-                        isChecked: selectedTranscriptions.contains(transcription),
-                        onToggleExpand: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                expandedId = expandedId == transcription.id ? nil : transcription.id
-                            }
-                        },
-                        onToggleCheck: { toggleSelection(transcription) },
-                        onShowInfo: {
-                            openPanel(mode: .info, transcriptionID: transcription.id)
-                        }
-                    )
-                }
+                HistoryTranscriptionRow(
+                    transcription: transcription,
+                    isSelected: selectedTranscriptions.contains(transcription),
+                    onSelect: { openDetail(transcription) },
+                    onToggleCheck: { toggleSelection(transcription) },
+                    showsCopyButton: true
+                )
+                .id(transcription.id)
             }
 
             if hasMoreContent {
-                Section {
-                    Button(action: {
-                        Task { await loadMoreContent() }
-                    }) {
-                        HStack(spacing: 8) {
-                            if isLoading {
-                                ProgressView().controlSize(.small)
-                            }
-                            Text(isLoading ? "Loading..." : "Load More")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLoading)
+                HistoryCommandButton("Load More") {
+                    Task { await loadMoreContent() }
                 }
+                .disabled(isLoading)
+                .padding(.vertical, 8)
             }
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Side Panel
 
     @ViewBuilder
     private var panelContent: some View {
-        switch panelMode {
-        case .info:
-            infoPanelContent
-        case .analysis:
-            HistoryAnalysisPanelView(
-                transcriptions: Array(selectedTranscriptions),
-                onClose: {
-                    closePanel()
-                }
-            )
-            .id(selectedTranscriptions.count)
-        case .historySettings:
-            HistorySettingsPanel(onClose: closePanel)
-        }
-    }
-
-    @ViewBuilder
-    private var infoPanelContent: some View {
-        if let transcription = panelTranscription {
-            TranscriptionInfoSidePanel(transcription: transcription, onClose: closePanel)
-                .id(transcription.id)
-        } else {
-            Color.clear
-                .task { closePanel() }
+        if let activePanel {
+            switch activePanel {
+            case .analysis:
+                HistoryAnalysisPanelView(
+                    transcriptions: Array(selectedTranscriptions),
+                    onClose: { self.activePanel = nil }
+                )
+                .id(selectedTranscriptions.count)
+            case .settings:
+                HistorySettingsPanel(onClose: { self.activePanel = nil })
+            }
         }
     }
 
@@ -410,10 +347,7 @@ struct HistoryView: View {
     }
 
     private func performDeletion(for transcription: Transcription) {
-        if let urlString = transcription.audioFileURL,
-            let url = URL(string: urlString),
-            FileManager.default.fileExists(atPath: url.path)
-        {
+        if let url = transcription.availableHistoryAudioURL {
             do {
                 try FileManager.default.removeItem(at: url)
             } catch {
@@ -421,12 +355,8 @@ struct HistoryView: View {
             }
         }
 
-        if expandedId == transcription.id {
-            expandedId = nil
-        }
-        if panelTranscriptionId == transcription.id {
-            panelTranscriptionId = nil
-            closePanel()
+        if detailTranscription?.id == transcription.id {
+            closeDetail()
         }
 
         selectedTranscriptions.remove(transcription)
@@ -451,207 +381,30 @@ struct HistoryView: View {
         }
     }
 
+    @MainActor
     private func selectAllTranscriptions() async {
         do {
             var allDescriptor = FetchDescriptor<Transcription>()
 
             if !searchText.isEmpty {
+                let query = searchText
                 allDescriptor.predicate = #Predicate<Transcription> { transcription in
-                    transcription.text.localizedStandardContains(searchText)
-                        || (transcription.enhancedText?.localizedStandardContains(searchText) ?? false)
+                    transcription.text.localizedStandardContains(query)
+                        || (transcription.enhancedText?.localizedStandardContains(query) ?? false)
                 }
             }
 
             allDescriptor.propertiesToFetch = [\.id]
             let allTranscriptions = try modelContext.fetch(allDescriptor)
-            let visibleIds = Set(displayedTranscriptions.map { $0.id })
-
-            await MainActor.run {
-                selectedTranscriptions = Set(displayedTranscriptions)
-
-                for transcription in allTranscriptions {
-                    if !visibleIds.contains(transcription.id) {
-                        selectedTranscriptions.insert(transcription)
-                    }
-                }
-            }
+            selectedTranscriptions = Set(displayedTranscriptions)
+            selectedTranscriptions.formUnion(allTranscriptions)
         } catch {
             print("Error selecting all transcriptions: \(error)")
         }
     }
 }
 
-private enum HistoryPanelMode {
-    case info
+private enum HistoryPanel {
     case analysis
-    case historySettings
-}
-
-// MARK: - History Card Row
-
-private struct HistoryCardRow: View {
-    let transcription: Transcription
-    let isExpanded: Bool
-    let isChecked: Bool
-    let onToggleExpand: () -> Void
-    let onToggleCheck: () -> Void
-    let onShowInfo: () -> Void
-
-    @State private var selectedTab: TranscriptionTab = .original
-    @State private var didCopyCollapsedText = false
-
-    private var preferredCopyText: String {
-        guard let enhancedText = transcription.enhancedText, !enhancedText.isEmpty else {
-            return transcription.text
-        }
-        return enhancedText
-    }
-
-    private var displayText: String {
-        switch selectedTab {
-        case .original:
-            return transcription.text
-        case .enhanced:
-            return transcription.enhancedText ?? ""
-        }
-    }
-
-    private var hasAudioFile: Bool {
-        if let urlString = transcription.audioFileURL,
-            let url = URL(string: urlString),
-            FileManager.default.fileExists(atPath: url.path)
-        {
-            return true
-        }
-        return false
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 10) {
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { isChecked },
-                        set: { _ in onToggleCheck() }
-                    )
-                )
-                .toggleStyle(CircularCheckboxStyle())
-                .labelsHidden()
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Text(transcription.timestamp, format: .dateTime.month(.abbreviated).day().hour().minute())
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
-
-                        if !isExpanded {
-                            Button {
-                                copyCollapsedText()
-                            } label: {
-                                Image(systemName: didCopyCollapsedText ? "checkmark" : "doc.on.doc")
-                                    .font(.system(size: 9, weight: .medium))
-                                    .foregroundColor(.secondary)
-                                    .frame(width: 14, height: 14)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .help("Copy transcription")
-                            .accessibilityLabel("Copy transcription")
-                        }
-                    }
-
-                    if !isExpanded {
-                        Text(preferredCopyText)
-                            .font(.system(size: 13))
-                            .lineLimit(2)
-                            .foregroundColor(.primary)
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
-            }
-            .contentShape(Rectangle())
-            .onTapGesture { onToggleExpand() }
-
-            if isExpanded {
-                expandedContent
-                    .padding(.top, 10)
-            }
-        }
-    }
-
-    private func copyCollapsedText() {
-        let _ = ClipboardManager.copyToClipboard(preferredCopyText)
-        withAnimation { didCopyCollapsedText = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation { didCopyCollapsedText = false }
-        }
-    }
-
-    // MARK: - Expanded Content
-
-    private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Tabs
-            if transcription.enhancedText != nil {
-                HStack(spacing: 4) {
-                    ForEach(TranscriptionTab.allCases, id: \.self) { tab in
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedTab = tab
-                            }
-                        } label: {
-                            Text(LocalizedStringKey(tab.rawValue))
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(selectedTab == tab ? .primary : .secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(selectedTab == tab ? AppTheme.Surface.controlActive : Color.clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Spacer()
-                }
-            }
-
-            ScrollView {
-                MarkdownContentView(
-                    displayText,
-                    fontSize: 14,
-                    foregroundColor: AppTheme.Text.primary
-                )
-            }
-            .frame(maxHeight: 350)
-            .hoverCopyButton(textToCopy: displayText)
-
-            if hasAudioFile, let urlString = transcription.audioFileURL,
-                let url = URL(string: urlString)
-            {
-                Divider()
-                AudioPlayerView(url: url, transcription: transcription, onInfoTap: onShowInfo)
-                    .padding(.vertical, 4)
-            } else {
-                HStack {
-                    Spacer()
-                    Button(action: onShowInfo) {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .help("View details")
-                }
-            }
-        }
-    }
+    case settings
 }

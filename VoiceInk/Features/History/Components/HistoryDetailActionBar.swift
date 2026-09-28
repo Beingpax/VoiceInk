@@ -2,19 +2,20 @@ import AppKit
 import SwiftData
 import SwiftUI
 
-struct QuickHistoryDetailActionBar: View {
+struct HistoryDetailActionBar: View {
     let transcription: Transcription
     let audioURL: URL?
     let isInfoPresented: Bool
     let onToggleInfo: () -> Void
-    let onPaste: () -> Void
     let onTranscriptionUpdated: (Transcription) -> Void
+    var onPaste: (() -> Void)? = nil
 
     @EnvironmentObject private var engine: VoiceInkEngine
     @EnvironmentObject private var enhancementService: AIEnhancementService
     @Environment(\.modelContext) private var modelContext
     @ObservedObject private var modeManager = ModeManager.shared
 
+    @State private var didCopy = false
     @State private var isShowingModes = false
     @State private var isShowingPrompts = false
     @State private var isWorking = false
@@ -48,13 +49,10 @@ struct QuickHistoryDetailActionBar: View {
             finderButton
             infoButton
             Spacer(minLength: 8)
-            pasteButton
+            textActionButton
         }
         .padding(.horizontal, 10)
-        .frame(height: 44)
-        .onChange(of: transcription.id) { _, _ in
-            selectedPromptOverride = nil
-        }
+        .frame(height: HistoryLayout.actionBarHeight)
     }
 
     private var modeButton: some View {
@@ -102,86 +100,66 @@ struct QuickHistoryDetailActionBar: View {
         .help("Select a prompt and enhance")
     }
 
-    private var pasteButton: some View {
-        Button(action: onPaste) {
-            HStack(spacing: 7) {
-                Text("Paste Text")
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                Text("↵")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(AppTheme.Text.muted)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(AppTheme.Surface.controlActive, in: RoundedRectangle(cornerRadius: 5))
+    private var textActionButton: some View {
+        HistoryCommandButton(
+            onPaste == nil ? "Copy transcription" : "Paste Text",
+            systemImage: onPaste == nil ? (didCopy ? "checkmark" : "doc.on.doc") : nil,
+            shortcut: onPaste == nil ? nil : "↵",
+            minimumWidth: 112,
+            action: performTextAction
+        )
+        .help(
+            onPaste == nil
+                ? "Copy transcription"
+                : "Paste enhanced text when available, otherwise paste the original transcription"
+        )
+    }
+
+    private func performTextAction() {
+        if let onPaste {
+            onPaste()
+        } else {
+            let _ = ClipboardManager.copyToClipboard(transcription.preferredHistoryText)
+            didCopy = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                didCopy = false
             }
-            .font(.system(size: 11, weight: .medium))
-            .foregroundStyle(AppTheme.Text.secondary)
-            .padding(.horizontal, 10)
-            .frame(minWidth: 112)
-            .frame(height: 32)
-            .fixedSize(horizontal: true, vertical: false)
-            .background(QuickPanelButtonBackground())
         }
-        .buttonStyle(.plain)
-        .help("Paste enhanced text when available, otherwise paste the original transcription")
     }
 
     private var retryButton: some View {
-        Button {
+        HistoryIconButton(
+            systemName: "arrow.clockwise",
+            help: "Retranscribe with the selected mode",
+            isLoading: isWorking
+        ) {
             guard let selectedMode else {
                 showError(String(localized: "No mode selected"))
                 return
             }
             retranscribe(using: selectedMode)
-        } label: {
-            Group {
-                if isWorking {
-                    ProgressView()
-                        .controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 12, weight: .medium))
-                }
-            }
-            .foregroundStyle(AppTheme.Text.secondary)
-            .frame(width: 34, height: 32)
-            .background(QuickPanelButtonBackground())
         }
-        .buttonStyle(.plain)
         .disabled(isWorking || audioURL == nil)
-        .help("Retranscribe with the selected mode")
     }
 
     private var finderButton: some View {
-        Button {
+        HistoryIconButton(systemName: "folder", help: "Show recording in Finder") {
             guard let audioURL else { return }
             NSWorkspace.shared.selectFile(
                 audioURL.path,
                 inFileViewerRootedAtPath: audioURL.deletingLastPathComponent().path
             )
-        } label: {
-            Image(systemName: "folder")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .frame(width: 34, height: 32)
-                .background(QuickPanelButtonBackground())
         }
-        .buttonStyle(.plain)
         .disabled(audioURL == nil)
-        .help("Show recording in Finder")
     }
 
     private var infoButton: some View {
-        Button(action: onToggleInfo) {
-            Image(systemName: "info.circle")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(AppTheme.Text.secondary)
-                .frame(width: 34, height: 32)
-                .background(QuickPanelButtonBackground(isSelected: isInfoPresented))
-        }
-        .buttonStyle(.plain)
-        .help(isInfoPresented ? "Hide transcription info" : "Show transcription info")
+        HistoryIconButton(
+            systemName: "info.circle",
+            help: isInfoPresented ? "Hide transcription info" : "Show transcription info",
+            isSelected: isInfoPresented,
+            action: onToggleInfo
+        )
     }
 
     private func actionLabel<Icon: View>(title: String, @ViewBuilder icon: () -> Icon) -> some View {
@@ -198,7 +176,7 @@ struct QuickHistoryDetailActionBar: View {
         .foregroundStyle(AppTheme.Text.secondary)
         .padding(.horizontal, 10)
         .frame(maxWidth: 140)
-        .frame(height: 32)
+        .frame(height: HistoryLayout.buttonHeight)
         .clipped()
         .background(QuickPanelButtonBackground())
         .fixedSize(horizontal: true, vertical: false)
@@ -375,105 +353,5 @@ struct QuickHistoryDetailActionBar: View {
 
     private func showError(_ title: String) {
         NotificationManager.shared.showNotification(title: title, type: .error, duration: 3.0)
-    }
-}
-
-struct QuickHistoryWindowDragArea: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        DraggableAreaView()
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    private final class DraggableAreaView: NSView {
-        override var mouseDownCanMoveWindow: Bool { true }
-
-        override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-            true
-        }
-
-        override func mouseDown(with event: NSEvent) {
-            window?.performDrag(with: event)
-        }
-    }
-}
-
-struct QuickHistoryRow: View {
-    let transcription: Transcription
-    let isSelected: Bool
-    let onSelect: () -> Void
-    let onPaste: () -> Void
-
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble.left")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .frame(width: 26)
-
-                Text(transcription.preferredHistoryText)
-                    .font(.system(size: 13))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                if transcription.hasEnhancedHistoryText {
-                    enhancedBadge
-                } else {
-                    Text(transcription.timestamp, format: .relative(presentation: .named))
-                        .font(.system(size: 10))
-                        .foregroundStyle(AppTheme.Text.secondary)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-
-                if let modelName = transcription.transcriptionModelName, !modelName.isEmpty {
-                    modelBadge(modelName)
-                }
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 46)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(isSelected ? AppTheme.Selection.fill : (isHovered ? AppTheme.Surface.subtle : .clear))
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            TapGesture(count: 2)
-                .onEnded(onPaste)
-        )
-        .onHover { isHovered = $0 }
-        .accessibilityLabel(transcription.hasEnhancedHistoryText ? "Enhanced transcription" : "Original transcription")
-        .accessibilityValue(transcription.preferredHistoryText)
-        .accessibilityHint("Selects this transcription. Double-click to paste.")
-    }
-
-    private var enhancedBadge: some View {
-        Text("Enhanced")
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(AppTheme.Text.secondary)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.horizontal, 7)
-            .frame(maxWidth: 64)
-            .frame(height: 24)
-            .background(AppTheme.Surface.controlActive, in: RoundedRectangle(cornerRadius: 7))
-    }
-
-    private func modelBadge(_ modelName: String) -> some View {
-        Text(modelName)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(AppTheme.Text.secondary)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .padding(.horizontal, 7)
-            .frame(maxWidth: 84)
-            .frame(height: 24)
-            .background(AppTheme.Surface.controlActive, in: RoundedRectangle(cornerRadius: 7))
     }
 }

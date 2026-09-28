@@ -20,8 +20,10 @@ struct QuickPanelScaffold<Content: View, Header: View, Footer: View>: View {
     private let content: Content
     private let header: Header
     private let footer: Footer?
+    private let footerHeight: CGFloat
 
     init(
+        footerHeight: CGFloat = QuickPanelMetrics.footerHeight,
         @ViewBuilder content: () -> Content,
         @ViewBuilder header: () -> Header,
         @ViewBuilder footer: () -> Footer
@@ -29,6 +31,7 @@ struct QuickPanelScaffold<Content: View, Header: View, Footer: View>: View {
         self.content = content()
         self.header = header()
         self.footer = footer()
+        self.footerHeight = footerHeight
     }
 
     var body: some View {
@@ -43,7 +46,7 @@ struct QuickPanelScaffold<Content: View, Header: View, Footer: View>: View {
                 Spacer(minLength: 0)
 
                 if let footer {
-                    QuickPanelScrollEdge(edge: .bottom) {
+                    QuickPanelScrollEdge(edge: .bottom, contentHeight: footerHeight) {
                         footer
                     }
                 }
@@ -61,12 +64,21 @@ extension QuickPanelScaffold where Footer == EmptyView {
         self.content = content()
         self.header = header()
         self.footer = nil
+        self.footerHeight = QuickPanelMetrics.footerHeight
     }
 }
 
 struct QuickPanelScrollEdge<Content: View>: View {
     let edge: QuickPanelEdge
+    var contentHeight: CGFloat? = nil
     @ViewBuilder let content: () -> Content
+
+    private var edgeHeight: CGFloat {
+        let height = contentHeight ?? (edge == .top
+            ? QuickPanelMetrics.headerHeight
+            : QuickPanelMetrics.footerHeight)
+        return height + QuickPanelMetrics.fadeLength
+    }
 
     var body: some View {
         ZStack(alignment: edge == .top ? .top : .bottom) {
@@ -82,11 +94,7 @@ struct QuickPanelScrollEdge<Content: View>: View {
             content()
                 .padding(edge == .top ? .top : .bottom, 8)
         }
-        .frame(
-            height: edge == .top
-                ? QuickPanelMetrics.topEdgeHeight
-                : QuickPanelMetrics.bottomEdgeHeight
-        )
+        .frame(height: edgeHeight)
     }
 
     private var edgeMask: some View {
