@@ -35,8 +35,8 @@ struct ModeTriggerSection: View {
             }
 
             HStack {
-                Text("Keyboard Shortcut")
-                InfoTip("Assign a unique keyboard shortcut to instantly activate this mode and start recording.")
+                Text("Shortcut")
+                InfoTip("Assign a unique keyboard or mouse shortcut to instantly activate this mode and start recording.")
 
                 Spacer()
 

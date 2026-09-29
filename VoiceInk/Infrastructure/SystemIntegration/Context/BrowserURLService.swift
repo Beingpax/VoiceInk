@@ -7,6 +7,7 @@ enum BrowserType {
     case arc
     case dia
     case chrome
+    case comet
     case edge
     case brave
     case opera
@@ -20,6 +21,7 @@ enum BrowserType {
         case .arc: return "arcURL"
         case .dia: return "diaURL"
         case .chrome: return "chromeURL"
+        case .comet: return "cometURL"
         case .edge: return "edgeURL"
         case .brave: return "braveURL"
         case .opera: return "operaURL"
@@ -35,6 +37,7 @@ enum BrowserType {
         case .arc: return "company.thebrowser.Browser"
         case .dia: return "company.thebrowser.dia"
         case .chrome: return "com.google.Chrome"
+        case .comet: return "ai.perplexity.comet"
         case .edge: return "com.microsoft.edgemac"
         case .brave: return "com.brave.Browser"
         case .opera: return "com.operasoftware.Opera"
@@ -50,6 +53,7 @@ enum BrowserType {
         case .arc: return "Arc"
         case .dia: return "Dia"
         case .chrome: return "Google Chrome"
+        case .comet: return "Comet"
         case .edge: return "Microsoft Edge"
         case .brave: return "Brave"
         case .opera: return "Opera"
@@ -60,7 +64,7 @@ enum BrowserType {
     }
 
     static var allCases: [BrowserType] {
-        [.safari, .arc, .dia, .chrome, .edge, .brave, .opera, .vivaldi, .orion, .yandex]
+        [.safari, .arc, .dia, .chrome, .comet, .edge, .brave, .opera, .vivaldi, .orion, .yandex]
     }
 
     static var installedBrowsers: [BrowserType] {

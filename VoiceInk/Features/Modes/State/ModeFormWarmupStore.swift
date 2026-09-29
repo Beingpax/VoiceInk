@@ -71,11 +71,13 @@ struct ModeFormWarmupSnapshot {
 
     func transcriptionModel(named name: String?) -> (any TranscriptionModel)? {
         guard let name else { return nil }
-        return allTranscriptionModels.first { $0.name == name }
+        return TranscriptionModelRegistry.model(forSelectionKey: name, in: allTranscriptionModels)
     }
 
     func hasUsableTranscriptionModel(named name: String) -> Bool {
-        usableTranscriptionModels.contains { $0.name == name }
+        transcriptionModel(named: name).map { model in
+            usableTranscriptionModels.contains { $0.selectionKey == model.selectionKey }
+        } ?? false
     }
 }
 

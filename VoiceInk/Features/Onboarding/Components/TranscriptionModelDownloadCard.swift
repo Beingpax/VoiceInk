@@ -6,6 +6,7 @@ struct TranscriptionModelDownloadCard: View {
     let isDownloading: Bool
     let status: FluidAudioDownloadStatus?
     let onDownload: () -> Void
+    let onCancel: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -117,30 +118,26 @@ struct TranscriptionModelDownloadCard: View {
                 .progressViewStyle(.linear)
                 .tint(AppTheme.Accent.primary)
         }
-        .animation(.smooth, value: status.fractionCompleted)
     }
 
     private var downloadButton: some View {
-        Button(action: onDownload) {
+        Button(action: isDownloading ? onCancel : onDownload) {
             HStack(spacing: 6) {
-                if isDownloading {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-
                 Text(downloadButtonTitle)
+                Image(systemName: isDownloading ? "xmark.circle" : "arrow.down.circle")
             }
             .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(canDownload ? AppTheme.Action.primaryForeground : AppTheme.Action.disabledForeground)
+            .foregroundColor(
+                isDownloading ? AppTheme.Action.destructiveForeground : AppTheme.Action.primaryForeground
+            )
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(
                 Capsule()
-                    .fill(canDownload ? AppTheme.Action.primaryFill : AppTheme.Action.disabledFill)
+                    .fill(isDownloading ? AppTheme.Action.destructiveFill : AppTheme.Action.primaryFill)
             )
         }
         .buttonStyle(.plain)
-        .disabled(!canDownload)
     }
 
     private var statusBadge: some View {
@@ -154,7 +151,7 @@ struct TranscriptionModelDownloadCard: View {
 
     private var downloadButtonTitle: LocalizedStringKey {
         if isDownloading {
-            return "Downloading..."
+            return "Cancel"
         }
 
         if status != nil {
@@ -162,9 +159,5 @@ struct TranscriptionModelDownloadCard: View {
         }
 
         return "Download Model"
-    }
-
-    private var canDownload: Bool {
-        !isDownloading
     }
 }

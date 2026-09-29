@@ -445,7 +445,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
 
         // Get the device's native format (input scope, element 1)
         var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        var status = AudioUnitGetProperty(
+        let status = AudioUnitGetProperty(
             audioUnit,
             kAudioUnitProperty_StreamFormat,
             kAudioUnitScope_Input,
@@ -1124,7 +1124,7 @@ final class CoreAudioRecorder: @unchecked Sendable {
         )
 
         var propertySize = UInt32(MemoryLayout<CFString>.size)
-        var property: CFString?
+        var property = "" as CFString
 
         let status = AudioObjectGetPropertyData(
             deviceID,
@@ -1135,8 +1135,8 @@ final class CoreAudioRecorder: @unchecked Sendable {
             &property
         )
 
-        if status == noErr, let cfString = property {
-            return cfString as String
+        if status == noErr {
+            return property as String
         }
         return nil
     }

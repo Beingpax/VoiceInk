@@ -3,22 +3,26 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>2.13</title>
-            <pubDate>Thu, 27 Aug 2026 22:54:28 +0545</pubDate>
-            <sparkle:version>213</sparkle:version>
-            <sparkle:shortVersionString>2.13</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h3>What's New in VoiceInk 2.13</h3>
+            <title>2.21</title>
+            <pubDate>Mon, 28 Sep 2026 19:43:04 +0545</pubDate>
+            <sparkle:version>221</sparkle:version>
+            <sparkle:shortVersionString>2.21</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h3>What's New in VoiceInk 2.21</h3>
 <ul>
-  <li>✨ Added Gemini 3.5 Transcribe support</li>
-  <li>✨ Added SenseVoice Small support</li>
-  <li>⌨️ Improved cancellation handling</li>
-  <li>🎙️ Fixed the recorder panel issue — by @AlexSarbu</li>
-  <li>🎧 Fixed microphone routing issue in clamshell mode</li>
-  <li>🐛 Minor bug fixes and improvements</li>
+  <li>🦜 Added support for Parakeet Ultra</li>
+  <li>🌐 Added support for OpenRouter transcription models</li>
+  <li>🤖 Added GPT-6 Luna and GPT-6 Sol enhancement models</li>
+  <li>⚙️ Support for custom AI enhancement model IDs</li>
+  <li>⌨️ Added double-tap recording shortcuts</li>
+  <li>↩️ Made Auto Send a global setting with automatic Return delivery</li>
+  <li>📋 Added mode duplication and context menu actions</li>
+  <li>🧠 Added local CLI support for Dictionary Auto Learn</li>
+  <li>📝 Improved dictionary editing and replacement rules</li>
+  <li>🛠️ Minor bug fixes and improvements</li>
 </ul>
 ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.13/VoiceInk.dmg" length="50174451" type="application/octet-stream" sparkle:edSignature="EZyhSWJgi1u+VLfXBrlEci/V9T4bolvqsBIO2+1vHICIdb5gnq4IwSkk0FN9wagAm+f3v2UfIBEfQSSDC8OhAA=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.21/VoiceInk.dmg" length="51053559" type="application/octet-stream" sparkle:edSignature="ilXFZq09qe/9bQ9zAXr3AbwL5moVNyGVMj/dcQikvnagiZ+qRKBLhmlIF3O2CmEEppFaLSZPhPgXiQKL4AkJDQ=="/>
         </item>
     </channel>
 </rss>

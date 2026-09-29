@@ -22,10 +22,10 @@ enum LocalCLITemplate: String, CaseIterable, Identifiable {
         case .pi:
             return "pi -ne -ns -p --no-tools --system-prompt \"$VOICEINK_SYSTEM_PROMPT\" \"$VOICEINK_USER_PROMPT\""
         case .claude:
-            return "claude -p \"$VOICEINK_FULL_PROMPT\""
+            return "claude -p --model claude-sonnet-5 --effort low \"$VOICEINK_FULL_PROMPT\""
         case .codex:
             return
-                "TMPFILE=$(mktemp) && codex exec --skip-git-repo-check --output-last-message \"$TMPFILE\" \"$VOICEINK_FULL_PROMPT\" > /dev/null 2>&1 && cat \"$TMPFILE\" && rm \"$TMPFILE\""
+                "codex exec -m gpt-5.6-luna -c model_reasoning_effort=low --skip-git-repo-check --ephemeral \"$VOICEINK_FULL_PROMPT\""
         case .copilot:
             return "copilot -p \"$VOICEINK_FULL_PROMPT\" -s --no-ask-user --available-tools=__none__ 2>/dev/null"
         }
@@ -129,10 +129,13 @@ final class LocalCLIService {
                 environment["VOICEINK_FULL_PROMPT"] = fullPrompt
                 process.environment = environment
 
-                let inputPipe = Pipe()
+                let usesArgumentPrompt =
+                    commandTemplate == LocalCLITemplate.codex.commandTemplate
+                    || commandTemplate == LocalCLITemplate.claude.commandTemplate
+                let inputPipe = usesArgumentPrompt ? nil : Pipe()
                 let outputPipe = Pipe()
                 let errorPipe = Pipe()
-                process.standardInput = inputPipe
+                process.standardInput = inputPipe ?? FileHandle.nullDevice
                 process.standardOutput = outputPipe
                 process.standardError = errorPipe
 
@@ -143,10 +146,12 @@ final class LocalCLIService {
                     return
                 }
 
-                if let inputData = fullPrompt.data(using: .utf8) {
-                    inputPipe.fileHandleForWriting.write(inputData)
+                if let inputPipe {
+                    if let inputData = fullPrompt.data(using: .utf8) {
+                        inputPipe.fileHandleForWriting.write(inputData)
+                    }
+                    try? inputPipe.fileHandleForWriting.close()
                 }
-                try? inputPipe.fileHandleForWriting.close()
 
                 let semaphore = DispatchSemaphore(value: 0)
                 process.terminationHandler = { _ in

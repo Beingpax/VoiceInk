@@ -2,10 +2,12 @@ import Foundation
 import SwiftData
 
 /// A utility class that manages automatic cleanup of audio files while preserving transcript data
-class AudioCleanupManager {
+@MainActor
+final class AudioCleanupManager {
     static let shared = AudioCleanupManager()
 
     private var cleanupTimer: Timer?
+    private var modelContext: ModelContext?
     private let cleanupCheckInterval: TimeInterval = 86400  // Check once per day (in seconds)
 
     private init() {}
@@ -14,11 +16,13 @@ class AudioCleanupManager {
     func startAutomaticCleanup(modelContext: ModelContext) {
         // Cancel any existing timer
         cleanupTimer?.invalidate()
+        self.modelContext = modelContext
 
         // Schedule regular cleanup
         cleanupTimer = Timer.scheduledTimer(withTimeInterval: cleanupCheckInterval, repeats: true) { [weak self] _ in
-            Task { [weak self] in
-                await self?.runAutomaticCleanupIfNeeded(modelContext: modelContext)
+            Task { @MainActor [weak self] in
+                guard let self, let modelContext = self.modelContext else { return }
+                await self.runAutomaticCleanupIfNeeded(modelContext: modelContext)
             }
         }
     }
@@ -40,6 +44,7 @@ class AudioCleanupManager {
     func stopAutomaticCleanup() {
         cleanupTimer?.invalidate()
         cleanupTimer = nil
+        modelContext = nil
     }
 
     /// Get information about the files that would be cleaned up
@@ -56,8 +61,7 @@ class AudioCleanupManager {
         }
 
         do {
-            // Execute SwiftData operations on the main thread
-            return try await MainActor.run {
+            return try { () throws -> (Int, Int64, [Transcription]) in
                 // Create a predicate to find transcriptions with audio files older than the cutoff date
                 let descriptor = FetchDescriptor<Transcription>(
                     predicate: #Predicate<Transcription> { transcription in
@@ -88,7 +92,7 @@ class AudioCleanupManager {
                 }
 
                 return (fileCount, totalSize, eligibleTranscriptions)
-            }
+            }()
         } catch {
             return (0, 0, [])
         }
@@ -110,8 +114,7 @@ class AudioCleanupManager {
         }
 
         do {
-            // Execute SwiftData operations on the main thread
-            try await MainActor.run {
+            try { () throws -> Void in
                 // Create a predicate to find transcriptions with audio files older than the cutoff date
                 let descriptor = FetchDescriptor<Transcription>(
                     predicate: #Predicate<Transcription> { transcription in
@@ -140,7 +143,7 @@ class AudioCleanupManager {
                 if deletedCount > 0 {
                     try modelContext.save()
                 }
-            }
+            }()
         } catch {
             // Silently fail - cleanup is non-critical
         }
@@ -166,36 +169,29 @@ class AudioCleanupManager {
     func runCleanupForTranscriptions(modelContext: ModelContext, transcriptions: [Transcription]) async -> (
         deletedCount: Int, errorCount: Int
     ) {
-        do {
-            // Execute SwiftData operations on the main thread
-            return try await MainActor.run {
-                var deletedCount = 0
-                var errorCount = 0
+        var deletedCount = 0
+        var errorCount = 0
 
-                for transcription in transcriptions {
-                    if let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString),
-                        FileManager.default.fileExists(atPath: url.path)
-                    {
-                        do {
-                            try FileManager.default.removeItem(at: url)
-                            transcription.audioFileURL = nil
-                            deletedCount += 1
-                        } catch {
-                            errorCount += 1
-                        }
-                    }
+        for transcription in transcriptions {
+            if let urlString = transcription.audioFileURL,
+                let url = URL(string: urlString),
+                FileManager.default.fileExists(atPath: url.path)
+            {
+                do {
+                    try FileManager.default.removeItem(at: url)
+                    transcription.audioFileURL = nil
+                    deletedCount += 1
+                } catch {
+                    errorCount += 1
                 }
-
-                if deletedCount > 0 || errorCount > 0 {
-                    try? modelContext.save()
-                }
-
-                return (deletedCount, errorCount)
             }
-        } catch {
-            return (0, 0)
         }
+
+        if deletedCount > 0 || errorCount > 0 {
+            try? modelContext.save()
+        }
+
+        return (deletedCount, errorCount)
     }
 
     /// Format file size in human-readable form

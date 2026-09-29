@@ -16,8 +16,8 @@ class ScreenCaptureService: ObservableObject {
     }
 
     private static let captureTimeout: TimeInterval = 3.0
-    private static let maximumCaptureDimension: CGFloat = 2800
-    private static let focusedWindowFrameTolerance: CGFloat = 96
+    nonisolated private static let maximumCaptureDimension: CGFloat = 2800
+    nonisolated private static let focusedWindowFrameTolerance: CGFloat = 96
 
     static func requestScreenCapturePermissionRegistration() async -> Bool {
         if CGPreflightScreenCaptureAccess() {

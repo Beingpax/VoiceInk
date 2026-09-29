@@ -6,6 +6,7 @@ class ModeShortcutManager {
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
+    private var monitoredActions = Set<ShortcutAction>()
 
     init(
         modeProvider: @escaping @MainActor () -> RecordingShortcutManager.Mode,
@@ -59,7 +60,12 @@ class ModeShortcutManager {
         }
     }
 
+    func recordingModeDidChange() {
+        shortcutMonitor.updateStandaloneModifierActions(standaloneModifierActions)
+    }
+
     private func refreshModeShortcuts(reason: String) {
+        shortcutModeHandler.clearPendingModeDoubleTaps()
         let enabledConfigurations = ModeManager.shared.enabledConfigurations
         var missingShortcutModeIDs: [String] = []
         let shortcuts = enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) { result, config in
@@ -70,6 +76,7 @@ class ModeShortcutManager {
                 missingShortcutModeIDs.append(config.id.uuidString)
             }
         }
+        monitoredActions = Set(shortcuts.keys)
 
         let summary = shortcuts.map { "\($0.key.storageName)=\($0.value.diagnosticDescription)" }.sorted().joined(separator: " | ")
         ShortcutDiagnostics.notice(
@@ -79,7 +86,8 @@ class ModeShortcutManager {
         let didStart = shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: Set(shortcuts.keys),
-            onKeyDown: { [weak self] action, eventTime in
+            standaloneModifierActions: standaloneModifierActions,
+            onShortcutDown: { [weak self] action, eventTime in
                 ShortcutDiagnostics.notice(
                     "mode-manager dispatch-received action=\(action.storageName) transition=keyDown eventUptime=\(eventTime)"
                 )
@@ -97,7 +105,7 @@ class ModeShortcutManager {
                         return
                     }
 
-                    await self.shortcutModeHandler.handleKeyDown(
+                    await self.shortcutModeHandler.handleShortcutDown(
                         action: action,
                         eventTime: eventTime,
                         mode: self.modeProvider(),
@@ -105,7 +113,7 @@ class ModeShortcutManager {
                     )
                 }
             },
-            onKeyUp: { [weak self] action, eventTime in
+            onShortcutUp: { [weak self] action, eventTime in
                 ShortcutDiagnostics.notice(
                     "mode-manager dispatch-received action=\(action.storageName) transition=keyUp eventUptime=\(eventTime)"
                 )
@@ -123,7 +131,7 @@ class ModeShortcutManager {
                         return
                     }
 
-                    await self.shortcutModeHandler.handleKeyUp(
+                    await self.shortcutModeHandler.handleShortcutUp(
                         action: action,
                         eventTime: eventTime,
                         mode: self.modeProvider(),
@@ -150,9 +158,18 @@ class ModeShortcutManager {
                     }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
+            },
+            onStandaloneModifierChord: { [weak self] action in
+                MainActor.assumeIsolated {
+                    self?.shortcutModeHandler.clearPendingDoubleTap(for: action)
+                }
             }
         )
         ShortcutDiagnostics.notice("mode-manager refresh end reason=\(reason) monitorStarted=\(didStart)")
+    }
+
+    private var standaloneModifierActions: Set<ShortcutAction> {
+        modeProvider() == .toggle || modeProvider() == .doubleTap ? monitoredActions : []
     }
 
     private func modeId(for action: ShortcutAction) -> UUID? {

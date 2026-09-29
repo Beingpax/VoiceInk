@@ -2,7 +2,8 @@ import Foundation
 import OSLog
 import SwiftData
 
-class TranscriptionAutoCleanupService {
+@MainActor
+final class TranscriptionAutoCleanupService {
     static let shared = TranscriptionAutoCleanupService()
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "TranscriptionAutoCleanupService")
@@ -27,10 +28,12 @@ class TranscriptionAutoCleanupService {
         )
 
         if UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled) {
+            let modelContainer = modelContext.container
             Task { [weak self] in
-                guard let self = self, let modelContext = self.modelContext else { return }
-                await self.sweepOldTranscriptions(modelContext: modelContext)
-                await self.cleanupOrphanAudioFiles(modelContext: modelContext)
+                let worker = await Self.makeWorker(modelContainer: modelContainer)
+                guard let self else { return }
+                await self.sweepOldTranscriptions(worker: worker)
+                await self.cleanupOrphanAudioFiles(worker: worker)
             }
         }
     }
@@ -40,7 +43,8 @@ class TranscriptionAutoCleanupService {
     }
 
     func runManualCleanup(modelContext: ModelContext) async {
-        await sweepOldTranscriptions(modelContext: modelContext)
+        let worker = await Self.makeWorker(modelContainer: modelContext.container)
+        await sweepOldTranscriptions(worker: worker)
     }
 
     @objc private func handleTranscriptionCompleted(_ notification: Notification) {
@@ -50,9 +54,10 @@ class TranscriptionAutoCleanupService {
         let minutes = UserDefaults.standard.integer(forKey: CleanupSettingsKeys.transcriptionRetentionMinutes)
         if minutes > 0 {
             if let modelContext = self.modelContext {
+                let modelContainer = modelContext.container
                 Task { [weak self] in
-                    guard let self = self else { return }
-                    await self.sweepOldTranscriptions(modelContext: modelContext)
+                    let worker = await Self.makeWorker(modelContainer: modelContainer)
+                    await self?.sweepOldTranscriptions(worker: worker)
                 }
             }
             return
@@ -85,7 +90,7 @@ class TranscriptionAutoCleanupService {
         }
     }
 
-    private func sweepOldTranscriptions(modelContext: ModelContext) async {
+    private func sweepOldTranscriptions(worker: TranscriptionCleanupWorker) async {
         guard UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled) else {
             return
         }
@@ -95,34 +100,11 @@ class TranscriptionAutoCleanupService {
 
         let cutoffDate = Date().addingTimeInterval(TimeInterval(-effectiveMinutes * 60))
 
-        let modelContainer = await MainActor.run { modelContext.container }
-
         do {
-            let backgroundContext = ModelContext(modelContainer)
-
-            let descriptor = FetchDescriptor<Transcription>(
-                predicate: #Predicate<Transcription> { transcription in
-                    transcription.timestamp < cutoffDate
-                }
-            )
-            let items = try backgroundContext.fetch(descriptor)
-            var deletedCount = 0
-            for transcription in items {
-                if let urlString = transcription.audioFileURL,
-                    let url = URL(string: urlString),
-                    FileManager.default.fileExists(atPath: url.path)
-                {
-                    try? FileManager.default.removeItem(at: url)
-                }
-                backgroundContext.delete(transcription)
-                deletedCount += 1
-            }
+            let deletedCount = try await worker.sweepOldTranscriptions(before: cutoffDate)
             if deletedCount > 0 {
-                try backgroundContext.save()
                 logger.notice("Cleaned up \(deletedCount, privacy: .public) old transcription(s)")
-                await MainActor.run {
-                    NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
-                }
+                NotificationCenter.default.post(name: .transcriptionDeleted, object: nil)
             }
         } catch {
             logger.error("Failed during transcription cleanup: \(error, privacy: .public)")
@@ -130,48 +112,84 @@ class TranscriptionAutoCleanupService {
     }
 
     /// Deletes audio files in Recordings directory that have no corresponding Transcription record
-    private func cleanupOrphanAudioFiles(modelContext: ModelContext) async {
+    private func cleanupOrphanAudioFiles(worker: TranscriptionCleanupWorker) async {
         guard UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled) else {
             return
         }
 
-        let modelContainer = await MainActor.run { modelContext.container }
-
         do {
-            let backgroundContext = ModelContext(modelContainer)
-
-            var descriptor = FetchDescriptor<Transcription>()
-            descriptor.propertiesToFetch = [\.audioFileURL]
-
-            let transcriptions = try backgroundContext.fetch(descriptor)
-            let referencedFiles = Set(
-                transcriptions.compactMap { transcription -> String? in
-                    guard let urlString = transcription.audioFileURL,
-                        let url = URL(string: urlString)
-                    else { return nil }
-                    return url.lastPathComponent
-                })
-
-            guard FileManager.default.fileExists(atPath: recordingsDirectory.path) else { return }
-            let filesInDirectory = try FileManager.default.contentsOfDirectory(
-                at: recordingsDirectory,
-                includingPropertiesForKeys: nil
-            )
-
-            var deletedCount = 0
-            for fileURL in filesInDirectory {
-                let fileName = fileURL.lastPathComponent
-                if !referencedFiles.contains(fileName) {
-                    try? FileManager.default.removeItem(at: fileURL)
-                    deletedCount += 1
-                }
-            }
-
+            let deletedCount = try await worker.cleanupOrphanAudioFiles(in: recordingsDirectory)
             if deletedCount > 0 {
                 logger.notice("Cleaned up \(deletedCount, privacy: .public) orphan audio file(s)")
             }
         } catch {
             logger.error("Failed during orphan audio cleanup: \(error, privacy: .public)")
         }
+    }
+
+    private nonisolated static func makeWorker(
+        modelContainer: ModelContainer
+    ) async -> TranscriptionCleanupWorker {
+        await Task.detached(priority: .utility) {
+            TranscriptionCleanupWorker(modelContainer: modelContainer)
+        }.value
+    }
+}
+
+@ModelActor
+private actor TranscriptionCleanupWorker {
+    func sweepOldTranscriptions(before cutoffDate: Date) throws -> Int {
+        let descriptor = FetchDescriptor<Transcription>(
+            predicate: #Predicate<Transcription> { transcription in
+                transcription.timestamp < cutoffDate
+            }
+        )
+        let transcriptions = try modelContext.fetch(descriptor)
+
+        for transcription in transcriptions {
+            if let urlString = transcription.audioFileURL,
+                let url = URL(string: urlString),
+                FileManager.default.fileExists(atPath: url.path)
+            {
+                try? FileManager.default.removeItem(at: url)
+            }
+            modelContext.delete(transcription)
+        }
+
+        if !transcriptions.isEmpty {
+            try modelContext.save()
+        }
+        return transcriptions.count
+    }
+
+    func cleanupOrphanAudioFiles(in recordingsDirectory: URL) throws -> Int {
+        var descriptor = FetchDescriptor<Transcription>()
+        descriptor.propertiesToFetch = [\.audioFileURL]
+
+        let transcriptions = try modelContext.fetch(descriptor)
+        let referencedFiles = Set(
+            transcriptions.compactMap { transcription -> String? in
+                guard let urlString = transcription.audioFileURL,
+                    let url = URL(string: urlString)
+                else { return nil }
+                return url.lastPathComponent
+            })
+
+        guard FileManager.default.fileExists(atPath: recordingsDirectory.path) else { return 0 }
+        let filesInDirectory = try FileManager.default.contentsOfDirectory(
+            at: recordingsDirectory,
+            includingPropertiesForKeys: nil
+        )
+
+        var deletedCount = 0
+        for fileURL in filesInDirectory where !referencedFiles.contains(fileURL.lastPathComponent) {
+            do {
+                try FileManager.default.removeItem(at: fileURL)
+                deletedCount += 1
+            } catch {
+                // Orphan cleanup is best-effort; continue with the remaining files.
+            }
+        }
+        return deletedCount
     }
 }

@@ -57,6 +57,33 @@ enum AppTheme {
         static let orange = Color(nsColor: .systemOrange)
     }
 
+    enum Insights {
+        static let page = neutral(light: 0.995, dark: 0.065)
+        static let card = neutral(light: 0.955, dark: 0.105)
+        static let elevated = neutral(light: 1.0, dark: 0.145)
+        static let hover = Color.primary.opacity(0.045)
+        static let border = AppTheme.Border.tint
+        static let productivity = Color(nsColor: .systemBlue)
+        static let activity = Color(nsColor: .systemTeal)
+        static let selection = productivity.opacity(0.12)
+        static let selectionText = dynamic(
+            light: NSColor(srgbRed: 0.10, green: 0.32, blue: 0.66, alpha: 1),
+            dark: NSColor(srgbRed: 0.42, green: 0.68, blue: 1.0, alpha: 1)
+        )
+        static let grid = Color.primary.opacity(0.075)
+
+        private static func neutral(light: CGFloat, dark: CGFloat) -> Color {
+            dynamic(light: NSColor(white: light, alpha: 1), dark: NSColor(white: dark, alpha: 1))
+        }
+
+        private static func dynamic(light: NSColor, dark: NSColor) -> Color {
+            Color(nsColor: NSColor(name: nil) { appearance in
+                let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+                return isDark ? dark : light
+            })
+        }
+    }
+
     enum Sidebar {
         static let dashboard = Color(nsColor: .systemOrange)
         static let modes = Color(nsColor: .systemIndigo)
@@ -92,6 +119,8 @@ enum AppTheme {
     enum Action {
         static let primaryFill = Accent.primary
         static let primaryForeground = Text.onAccent
+        static let destructiveFill = Color(nsColor: .systemRed)
+        static let destructiveForeground = Text.onAccent
         static let secondaryForeground = Text.primary
         static let disabledFill = Surface.controlActive
         static let disabledForeground = Text.disabled

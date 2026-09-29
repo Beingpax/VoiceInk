@@ -298,6 +298,19 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
         )
     }
 
+    func finishRecordingAndSend() async {
+        guard isRecorderPanelVisible, let engine, engine.recordingState == .recording else { return }
+        await engine.toggleRecord(sendAfterPaste: true)
+    }
+
+    var isActivelyRecording: Bool {
+        isRecorderPanelVisible && engine?.recordingState == .recording
+    }
+
+    var recordingStatePublisher: AnyPublisher<RecordingState, Never>? {
+        engine?.$recordingState.eraseToAnyPublisher()
+    }
+
     func dismissRecorderPanel() async {
         guard let engine = engine else {
             ShortcutDiagnostics.error("recorder-ui dismiss result=rejected reason=engine-unavailable")

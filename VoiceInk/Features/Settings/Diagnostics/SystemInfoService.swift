@@ -38,8 +38,6 @@ final class SystemInfoService {
             HOTKEY SETTINGS:
             Primary Shortcut: \(getPrimaryShortcut())
             Secondary Shortcut: \(getSecondaryShortcut())
-            Middle-Click Recording: \(UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled"))
-            Middle-Click Activation Delay: \(UserDefaults.standard.integer(forKey: "middleClickActivationDelay")) ms
 
             SHORTCUT RUNTIME HEALTH:
             \(ShortcutDiagnostics.healthReport())
@@ -169,7 +167,7 @@ final class SystemInfoService {
         }
 
         let model = mode.selectedTranscriptionModelName.flatMap { modelName in
-            TranscriptionModelRegistry.models.first { $0.name == modelName }
+            TranscriptionModelRegistry.model(forSelectionKey: modelName, in: TranscriptionModelRegistry.models)
         }
         let modelDescription = model?.displayName
             ?? mode.selectedTranscriptionModelName

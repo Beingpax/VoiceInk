@@ -3,12 +3,7 @@ import SwiftUI
 
 struct FluidAudioModelCardView: View {
     let model: FluidAudioModel
-    @ObservedObject var fluidAudioModelManager: FluidAudioModelManager
-
-    init(model: FluidAudioModel, fluidAudioModelManager: FluidAudioModelManager) {
-        self.model = model
-        _fluidAudioModelManager = ObservedObject(wrappedValue: fluidAudioModelManager)
-    }
+    @EnvironmentObject private var fluidAudioModelManager: FluidAudioModelManager
 
     var isDownloaded: Bool {
         fluidAudioModelManager.isFluidAudioModelDownloaded(model)
@@ -100,7 +95,6 @@ struct FluidAudioModelCardView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top, 8)
-                .animation(.smooth, value: status.fractionCompleted)
             }
         }
     }
@@ -111,22 +105,25 @@ struct FluidAudioModelCardView: View {
                 modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
                 Button(action: {
-                    Task {
-                        await fluidAudioModelManager.downloadFluidAudioModel(model)
+                    if isDownloading {
+                        fluidAudioModelManager.cancelDownload(model)
+                    } else {
+                        fluidAudioModelManager.startDownload(model)
                     }
                 }) {
                     HStack(spacing: 4) {
-                        Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
-                        Image(systemName: "arrow.down.circle")
+                        Text(LocalizedStringKey(isDownloading ? "Cancel" : "Download"))
+                        Image(systemName: isDownloading ? "xmark.circle" : "arrow.down.circle")
                     }
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(AppTheme.Accent.primary))
+                    .background(
+                        Capsule().fill(isDownloading ? AppTheme.Action.destructiveFill : AppTheme.Accent.primary)
+                    )
                 }
                 .buttonStyle(.plain)
-                .disabled(isDownloading)
             }
 
             if isDownloaded && !isDownloading {

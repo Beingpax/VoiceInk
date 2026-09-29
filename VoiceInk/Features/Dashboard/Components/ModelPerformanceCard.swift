@@ -13,17 +13,15 @@ struct ModelPerformanceCard: View {
     }
 
     private func previewRows(for kind: ModelInsightKind) -> [ModelPreviewRow] {
-        Array(
-            summaries
-                .filter { $0.kind == kind }
-                .map(Self.previewRow)
-                .sortedByUsagePriority()
-                .prefix(3)
-        )
+        summaries
+            .filter { $0.kind == kind }
+            .sortedForPerformanceDisplay()
+            .prefix(3)
+            .map(Self.previewRow)
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             ModelPreviewCardHeader(
                 title: "AI Model Performance",
                 viewMoreHelp: String(localized: "Open detailed model performance"),
@@ -47,9 +45,7 @@ struct ModelPerformanceCard: View {
             )
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .dashboardInsightCardStyle(padding: 20, alignment: .topLeading)
     }
 
     private static func previewRow(from summary: ModelPerformanceSummary) -> ModelPreviewRow {

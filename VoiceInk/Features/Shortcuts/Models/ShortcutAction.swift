@@ -7,10 +7,11 @@ enum ShortcutAction: Hashable {
     case pasteLastEnhancement
     case retryLastTranscription
     case cancelRecorder
-    case openHistoryWindow
+    case openQuickHistory
     case quickAddToDictionary
     case mode(UUID)
     case recorderPanelEscape
+    case recorderPanelReturn
     case recorderPanelMode(Int)
 
     var userDefaultsKey: String {
@@ -19,7 +20,7 @@ enum ShortcutAction: Hashable {
 
     var isStored: Bool {
         switch self {
-        case .recorderPanelEscape, .recorderPanelMode:
+        case .recorderPanelEscape, .recorderPanelReturn, .recorderPanelMode:
             return false
         default:
             return true
@@ -40,7 +41,7 @@ enum ShortcutAction: Hashable {
             return "retryLastTranscription"
         case .cancelRecorder:
             return "cancelRecorder"
-        case .openHistoryWindow:
+        case .openQuickHistory:
             return "openHistoryWindow"
         case .quickAddToDictionary:
             return "quickAddToDictionary"
@@ -48,6 +49,8 @@ enum ShortcutAction: Hashable {
             return "mode_\(id.uuidString)"
         case .recorderPanelEscape:
             return "recorderPanelEscape"
+        case .recorderPanelReturn:
+            return "recorderPanelReturn"
         case .recorderPanelMode(let index):
             return "recorderPanelMode_\(index)"
         }
@@ -67,8 +70,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Retry Last Transcription")
         case .cancelRecorder:
             return String(localized: "Cancel Recording")
-        case .openHistoryWindow:
-            return String(localized: "Open History Window")
+        case .openQuickHistory:
+            return String(localized: "Open Quick History")
         case .quickAddToDictionary:
             return String(localized: "Quick Add to Dictionary")
         case .mode(let id):
@@ -83,6 +86,8 @@ enum ShortcutAction: Hashable {
             return String(localized: "Mode")
         case .recorderPanelEscape:
             return String(localized: "Recorder Cancel")
+        case .recorderPanelReturn:
+            return String(localized: "Auto Send")
         case .recorderPanelMode(let index):
             return String(format: String(localized: "Select Mode %@"), Self.displayNumber(forRecorderPanelIndex: index))
         }
@@ -92,7 +97,7 @@ enum ShortcutAction: Hashable {
         .pasteLastTranscription,
         .pasteLastEnhancement,
         .retryLastTranscription,
-        .openHistoryWindow,
+        .openQuickHistory,
         .quickAddToDictionary,
     ]
 
@@ -107,7 +112,7 @@ enum ShortcutAction: Hashable {
         .pasteLastEnhancement,
         .retryLastTranscription,
         .cancelRecorder,
-        .openHistoryWindow,
+        .openQuickHistory,
         .quickAddToDictionary,
     ]
 

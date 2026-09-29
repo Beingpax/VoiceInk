@@ -20,7 +20,6 @@ struct ModeConfigDraft {
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var outputMode: ModeOutputMode
-    var autoSendKey: AutoSendKey
     var customCommand: String
     var isDefault: Bool
     var isTranscriptionFormattingExpanded: Bool
@@ -51,7 +50,6 @@ struct ModeConfigDraft {
             selectedAIProvider = inheritedConfig?.selectedAIProvider
             selectedAIModel = inheritedConfig?.selectedAIModel
             outputMode = .paste
-            autoSendKey = .none
             customCommand = inheritedConfig?.customCommand?.command ?? ""
             isDefault = false
             isTranscriptionFormattingExpanded = false
@@ -78,7 +76,6 @@ struct ModeConfigDraft {
             selectedAIProvider = latestConfig.selectedAIProvider
             selectedAIModel = latestConfig.selectedAIModel
             outputMode = latestConfig.outputMode
-            autoSendKey = latestConfig.autoSendKey
             customCommand = latestConfig.customCommand?.command ?? ""
             isDefault = latestConfig.isDefault
             isTranscriptionFormattingExpanded = false
@@ -112,7 +109,7 @@ struct ModeConfigDraft {
         let availableModels = snapshot.availableModels(for: provider)
         if let selectedAIModel,
             !selectedAIModel.isEmpty,
-            (availableModels.isEmpty || availableModels.contains(selectedAIModel))
+            (provider.supportsCustomModelID || availableModels.isEmpty || availableModels.contains(selectedAIModel))
         {
             return
         }
@@ -127,7 +124,7 @@ struct ModeConfigDraft {
             return
         }
 
-        selectedTranscriptionModelName = snapshot.usableTranscriptionModels.first?.name
+        selectedTranscriptionModelName = snapshot.usableTranscriptionModels.first?.selectionKey
     }
 
     mutating func ensurePromptSelection(firstPromptId: UUID?) {
@@ -153,17 +150,12 @@ struct ModeConfigDraft {
             outputMode = .paste
         }
 
-        if !outputMode.usesPasteOptions {
-            autoSendKey = .none
-        }
-
         if outputMode == .respond {
             isDefault = false
         }
     }
 
     func makeConfig(mode: ConfigurationMode) -> ModeConfig {
-        let savedAutoSendKey: AutoSendKey = outputMode.usesPasteOptions ? autoSendKey : .none
         let savedIsDefault = outputMode == .respond ? false : isDefault
         let savedCustomCommand = makeCustomCommand()
 
@@ -189,7 +181,6 @@ struct ModeConfigDraft {
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 outputMode: outputMode,
-                autoSendKey: savedAutoSendKey,
                 customCommand: savedCustomCommand,
                 isDefault: savedIsDefault
             )
@@ -214,7 +205,6 @@ struct ModeConfigDraft {
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.outputMode = outputMode
-            updatedConfig.autoSendKey = savedAutoSendKey
             updatedConfig.customCommand = savedCustomCommand
             updatedConfig.isDefault = savedIsDefault
             return updatedConfig

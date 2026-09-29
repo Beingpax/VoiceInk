@@ -1,14 +1,7 @@
 import SwiftData
 import SwiftUI
 
-enum SortMode: String {
-    case originalAsc = "originalAsc"
-    case originalDesc = "originalDesc"
-    case replacementAsc = "replacementAsc"
-    case replacementDesc = "replacementDesc"
-}
-
-enum SortColumn {
+private enum WordReplacementSortColumn {
     case original
     case replacement
 }
@@ -19,52 +12,62 @@ struct WordReplacementView: View {
     @State private var showAlert = false
     @State private var editingReplacement: WordReplacement? = nil
     @State private var alertMessage = ""
-    @State private var sortMode: SortMode = .originalAsc
+    @State private var sortMode: WordReplacementSortMode = .originalAsc
     @State private var originalWord = ""
     @State private var replacementWord = ""
     @State private var showInfoPopover = false
 
     init() {
-        if let savedSort = UserDefaults.standard.string(forKey: "wordReplacementSortMode"),
-            let mode = SortMode(rawValue: savedSort)
-        {
-            _sortMode = State(initialValue: mode)
-        }
+        _sortMode = State(initialValue: DictionarySortService.shared.savedWordReplacementMode())
     }
 
     private var sortedReplacements: [WordReplacement] {
-        switch sortMode {
-        case .originalAsc:
-            return wordReplacements.sorted {
-                $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedAscending
-            }
-        case .originalDesc:
-            return wordReplacements.sorted {
-                $0.originalText.localizedCaseInsensitiveCompare($1.originalText) == .orderedDescending
-            }
-        case .replacementAsc:
-            return wordReplacements.sorted {
-                $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedAscending
-            }
-        case .replacementDesc:
-            return wordReplacements.sorted {
-                $0.replacementText.localizedCaseInsensitiveCompare($1.replacementText) == .orderedDescending
-            }
-        }
+        DictionarySortService.shared.sortWordReplacements(wordReplacements, by: sortMode)
     }
 
-    private func toggleSort(for column: SortColumn) {
+    private func toggleSort(for column: WordReplacementSortColumn) {
+        let service = DictionarySortService.shared
         switch column {
         case .original:
-            sortMode = (sortMode == .originalAsc) ? .originalDesc : .originalAsc
+            switch sortMode {
+            case .originalAsc: sortMode = .originalDesc
+            case .originalDesc: sortMode = .newest
+            case .newest: sortMode = .oldest
+            case .oldest, .replacementAsc, .replacementDesc: sortMode = .originalAsc
+            }
         case .replacement:
-            sortMode = (sortMode == .replacementAsc) ? .replacementDesc : .replacementAsc
+            switch sortMode {
+            case .replacementAsc: sortMode = .replacementDesc
+            case .replacementDesc: sortMode = .newest
+            case .newest: sortMode = .oldest
+            case .oldest, .originalAsc, .originalDesc: sortMode = .replacementAsc
+            }
         }
-        UserDefaults.standard.set(sortMode.rawValue, forKey: "wordReplacementSortMode")
+        service.saveWordReplacementMode(sortMode)
+    }
+
+    private var dateSortIconName: String? {
+        switch sortMode {
+        case .newest: "clock.arrow.circlepath"
+        case .oldest: "clock"
+        case .originalAsc, .originalDesc, .replacementAsc, .replacementDesc: nil
+        }
     }
 
     private var shouldShowAddButton: Bool {
-        !originalWord.isEmpty || !replacementWord.isEmpty
+        !trimmedOriginal.isEmpty || !trimmedReplacement.isEmpty
+    }
+
+    private var trimmedOriginal: String {
+        originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedReplacement: String {
+        replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasValidOriginalVariants: Bool {
+        !WordReplacementVariants.parse(trimmedOriginal).isEmpty
     }
 
     var body: some View {
@@ -73,6 +76,7 @@ struct WordReplacementView: View {
                 TextField("", text: $originalWord, prompt: Text("Original text (use commas for multiple)"))
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
+                    .onSubmit { addReplacement() }
                     .labelsHidden()
 
                 Image(systemName: "arrow.right")
@@ -89,7 +93,7 @@ struct WordReplacementView: View {
                 if shouldShowAddButton {
                     AddIconButton(
                         helpText: "Add word replacement",
-                        isDisabled: originalWord.isEmpty || replacementWord.isEmpty,
+                        isDisabled: trimmedOriginal.isEmpty || trimmedReplacement.isEmpty || !hasValidOriginalVariants,
                         action: addReplacement
                     )
                 }
@@ -120,6 +124,10 @@ struct WordReplacementView: View {
                                     Image(systemName: sortMode == .originalAsc ? "chevron.up" : "chevron.down")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                } else if let dateSortIconName {
+                                    Image(systemName: dateSortIconName)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,6 +150,10 @@ struct WordReplacementView: View {
                                     Image(systemName: sortMode == .replacementAsc ? "chevron.up" : "chevron.down")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
+                                } else if let dateSortIconName {
+                                    Image(systemName: dateSortIconName)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -160,7 +172,10 @@ struct WordReplacementView: View {
                                 original: replacement.originalText,
                                 replacement: replacement.replacementText,
                                 onDelete: { removeReplacement(replacement) },
-                                onEdit: { editingReplacement = replacement }
+                                onEdit: { editingReplacement = replacement },
+                                onRemoveSource: { source in
+                                    removeSource(source, from: replacement)
+                                }
                             )
 
                             if replacement.persistentModelID != sortedReplacements.last?.persistentModelID {
@@ -171,6 +186,7 @@ struct WordReplacementView: View {
                 }
                 .padding(.top, 4)
             }
+
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(isPresented: isEditingReplacement) {
@@ -186,8 +202,10 @@ struct WordReplacementView: View {
     }
 
     private func addReplacement() {
-        let original = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        let replacement = replacementWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = trimmedOriginal
+        let replacement = trimmedReplacement
+        guard !original.isEmpty, !replacement.isEmpty,
+            !WordReplacementVariants.parse(original).isEmpty else { return }
         if let error = DictionaryService.addWordReplacement(
             original: original, replacement: replacement, existing: Array(wordReplacements), context: modelContext)
         {
@@ -200,17 +218,26 @@ struct WordReplacementView: View {
     }
 
     private func removeReplacement(_ replacement: WordReplacement) {
-        modelContext.delete(replacement)
-
-        do {
-            try modelContext.save()
-        } catch {
-            // Rollback the delete to restore UI consistency
-            modelContext.rollback()
-            alertMessage = String(
-                format: String(localized: "Failed to remove replacement: %@"), error.localizedDescription)
+        if let error = DictionaryService.removeWordReplacement(replacement, context: modelContext) {
+            alertMessage = error
             showAlert = true
         }
+    }
+
+    private func removeSource(_ source: String, from replacement: WordReplacement) {
+        let sources = WordReplacementVariants.parse(replacement.originalText)
+        guard sources.contains(source) else { return }
+
+        if let error = DictionaryService.removeWordReplacementSource(
+            source,
+            from: replacement,
+            context: modelContext
+        ) {
+            alertMessage = error
+            showAlert = true
+            return
+        }
+        NotificationCenter.default.post(name: .wordReplacementsDidChange, object: nil)
     }
 
     private var isEditingReplacement: Binding<Bool> {
@@ -243,6 +270,10 @@ struct WordReplacementInfoPopover: View {
                     .background(Color(.textBackgroundColor))
                     .cornerRadius(6)
             }
+
+            Text("Scroll horizontally to view all phrases.")
+                .font(.caption)
+                .foregroundColor(.secondary)
 
             Divider()
 
@@ -314,62 +345,86 @@ struct ReplacementRow: View {
     let replacement: String
     let onDelete: () -> Void
     let onEdit: () -> Void
-    @State private var isEditHovered = false
-    @State private var isDeleteHovered = false
+    let onRemoveSource: (String) -> Void
+
+    private var sources: [String] {
+        WordReplacementVariants.parse(original)
+    }
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(original)
-                .font(.system(size: 13))
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(sources, id: \.self) { source in
+                        ReplacementSourcePill(
+                            source: source,
+                            showsRemoveButton: sources.count > 1
+                        ) {
+                            onRemoveSource(source)
+                        }
+                    }
+                }
+            }
+            .scrollIndicators(.never)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help(original)
 
             Image(systemName: "arrow.right")
                 .foregroundColor(.secondary)
                 .font(.system(size: 10))
                 .frame(width: 10)
 
-            ZStack(alignment: .trailing) {
-                Text(replacement)
-                    .font(.system(size: 13))
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.trailing, 50)
+            HStack(spacing: 6) {
+                ScrollView(.horizontal) {
+                    Text(replacement)
+                        .font(.system(size: 13))
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .scrollIndicators(.never)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(replacement)
 
                 HStack(spacing: 6) {
                     Button(action: onEdit) {
                         Image(systemName: "pencil.circle.fill")
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundColor(isEditHovered ? AppTheme.Accent.primary : .secondary)
+                            .foregroundStyle(AppTheme.Text.primary)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.borderless)
                     .help("Edit replacement")
-                    .onHover { hover in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isEditHovered = hover
-                        }
-                    }
 
                     Button(action: onDelete) {
                         Image(systemName: "xmark.circle.fill")
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(isDeleteHovered ? AppTheme.Status.error : .secondary)
+                            .foregroundStyle(AppTheme.Text.primary)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.borderless)
                     .help("Remove replacement")
-                    .onHover { hover in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            isDeleteHovered = hover
-                        }
-                    }
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 4)
+    }
+}
+
+private struct ReplacementSourcePill: View {
+    let source: String
+    let showsRemoveButton: Bool
+    let onRemove: () -> Void
+
+    var body: some View {
+        DictionaryPill(
+            onRemove: showsRemoveButton ? onRemove : nil,
+            removeHelp: "Remove \(source) from Word Replacements",
+            removeAccessibilityLabel: "Remove \(source) from Word Replacements"
+        ) {
+            Text(source)
+                .fixedSize(horizontal: true, vertical: false)
+        }
     }
 }

@@ -4,6 +4,7 @@ import SwiftUI
 enum ModeValidationError: Error, Identifiable {
     case emptyName
     case missingTranscriptionModel
+    case missingEnhancementModel
     case emptyCustomCommand
     case duplicateName(String)
     case duplicateAppTrigger(String, String)  // (app name, existing mode name)
@@ -13,6 +14,7 @@ enum ModeValidationError: Error, Identifiable {
         switch self {
         case .emptyName: return "emptyName"
         case .missingTranscriptionModel: return "missingTranscriptionModel"
+        case .missingEnhancementModel: return "missingEnhancementModel"
         case .emptyCustomCommand: return "emptyCustomCommand"
         case .duplicateName: return "duplicateName"
         case .duplicateAppTrigger: return "duplicateAppTrigger"
@@ -26,6 +28,8 @@ enum ModeValidationError: Error, Identifiable {
             return String(localized: "Mode name cannot be empty.")
         case .missingTranscriptionModel:
             return String(localized: "A transcription model must be selected.")
+        case .missingEnhancementModel:
+            return String(localized: "Enter a model ID for AI enhancement.")
         case .emptyCustomCommand:
             return String(localized: "Custom command cannot be empty.")
         case .duplicateName(let name):
@@ -65,6 +69,15 @@ struct ModeValidator {
 
         if config.selectedTranscriptionModelName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
             errors.append(.missingTranscriptionModel)
+        }
+
+        if config.isAIEnhancementEnabled,
+            let providerName = config.selectedAIProvider,
+            let provider = AIProvider(rawValue: providerName),
+            provider.supportsCustomModelID,
+            config.selectedAIModel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false
+        {
+            errors.append(.missingEnhancementModel)
         }
 
         if config.outputMode == .customCommand,

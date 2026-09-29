@@ -279,13 +279,13 @@ enum ShortcutMigration {
             return ["retryLastTranscription"]
         case .cancelRecorder:
             return ["cancelRecorder"]
-        case .openHistoryWindow:
+        case .openQuickHistory:
             return ["openHistoryWindow"]
         case .quickAddToDictionary:
             return ["quickAddToDictionary"]
         case .mode(let id):
             return ["mode_\(id.uuidString)", "powerMode_\(id.uuidString)"]
-        case .recorderPanelEscape, .recorderPanelMode:
+        case .recorderPanelEscape, .recorderPanelReturn, .recorderPanelMode:
             return []
         }
     }

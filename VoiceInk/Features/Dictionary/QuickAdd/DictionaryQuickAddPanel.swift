@@ -9,7 +9,7 @@ final class DictionaryQuickAddManager {
     static let shared = DictionaryQuickAddManager()
     private init() {}
 
-    private var panel: DictionaryQuickAddPanel?
+    private var panel: PersistentQuickPanel?
     private var hostingController: NSHostingController<AnyView>?
     private var previousApp: NSRunningApplication?
 
@@ -25,12 +25,22 @@ final class DictionaryQuickAddManager {
         previousApp = NSWorkspace.shared.frontmostApplication
 
         let initialSize = NSSize(width: 500, height: DictionaryQuickAddView.Mode.vocabulary.panelHeight)
-        let newPanel = DictionaryQuickAddPanel(manager: self, size: initialSize)
+        let newPanel = PersistentQuickPanel(
+            size: initialSize,
+            positionDefaultsKey: "VoiceInkDictionaryQuickAddOrigin",
+            defaultVerticalOffset: 60
+        )
+        newPanel.onEscape = { [weak self] in
+            self?.hide()
+        }
+        newPanel.onDismissRequest = { [weak self] in
+            self?.hide(restorePreviousApplication: false)
+        }
 
         let view = DictionaryQuickAddView(
             onDismiss: { [weak self] in self?.hide() },
             onResize: { [weak self] height in
-                self?.panel?.resize(to: NSSize(width: 500, height: height))
+                self?.panel?.resizeKeepingTopEdge(to: NSSize(width: 500, height: height))
             }
         )
         .modelContainer(modelContainer)
@@ -42,78 +52,17 @@ final class DictionaryQuickAddManager {
         newPanel.makeKeyAndOrderFront(nil)
     }
 
-    func hide() {
+    func hide(restorePreviousApplication: Bool = true) {
         guard isVisible else { return }
+        panel?.persistPosition()
         panel?.orderOut(nil)
+        panel?.close()
         panel = nil
         hostingController = nil
-        previousApp?.activate(options: .activateIgnoringOtherApps)
+        if restorePreviousApplication {
+            previousApp?.activate()
+        }
         previousApp = nil
-    }
-}
-
-// MARK: - Panel
-
-class DictionaryQuickAddPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
-
-    private weak var manager: DictionaryQuickAddManager?
-
-    init(manager: DictionaryQuickAddManager, size: NSSize) {
-        self.manager = manager
-        let origin = DictionaryQuickAddPanel.centeredOrigin(for: size)
-        super.init(
-            contentRect: NSRect(origin: origin, size: size),
-            styleMask: [.nonactivatingPanel, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        isFloatingPanel = true
-        level = .floating
-        hidesOnDeactivate = false
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        isMovable = true
-        isMovableByWindowBackground = true
-        backgroundColor = .clear
-        isOpaque = false
-        hasShadow = true
-        titlebarAppearsTransparent = true
-        titleVisibility = .hidden
-        standardWindowButton(.closeButton)?.isHidden = true
-    }
-
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 {  // Escape
-            manager?.hide()
-        } else {
-            super.keyDown(with: event)
-        }
-    }
-
-    override func resignKey() {
-        super.resignKey()
-        DispatchQueue.main.async { [weak self] in
-            self?.manager?.hide()
-        }
-    }
-
-    func resize(to size: NSSize) {
-        let currentFrame = frame
-        let x = currentFrame.midX - size.width / 2
-        let y = currentFrame.maxY - size.height
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.18
-            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            animator().setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
-        }
-    }
-
-    private static func centeredOrigin(for size: NSSize) -> NSPoint {
-        let screen = NSScreen.main ?? NSScreen.screens[0]
-        let x = screen.visibleFrame.midX - size.width / 2
-        let y = screen.visibleFrame.midY - size.height / 2 + 60
-        return NSPoint(x: x, y: y)
     }
 }
 
@@ -139,8 +88,8 @@ struct DictionaryQuickAddView: View {
 
         var panelHeight: CGFloat {
             switch self {
-            case .vocabulary: return 130
-            case .replacement: return 164
+            case .vocabulary: return 160
+            case .replacement: return 184
             }
         }
     }
@@ -162,19 +111,23 @@ struct DictionaryQuickAddView: View {
     let onResize: (CGFloat) -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            modeBar
-            Divider().opacity(0.4)
-            inputArea
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundColor(AppTheme.Status.error)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 6)
+        QuickPanelScaffold {
+            VStack(spacing: 0) {
+                inputArea
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.Status.error)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 6)
+                }
             }
-            Divider().opacity(0.4)
-            hintBar
+            .padding(.top, 52)
+            .padding(.bottom, 52)
+        } header: {
+            modeBar
+        } footer: {
+            actionBar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))
@@ -231,6 +184,11 @@ struct DictionaryQuickAddView: View {
                 .buttonStyle(.plain)
             }
             Spacer()
+
+            QuickPanelEscapeButton(
+                help: "Dismiss",
+                action: onDismiss
+            )
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
@@ -295,31 +253,57 @@ struct DictionaryQuickAddView: View {
         .padding(.vertical, 12)
     }
 
-    // MARK: - Hint Bar
+    // MARK: - Action Bar
 
-    private var hintBar: some View {
+    private var actionBar: some View {
         HStack {
             Spacer()
-            HStack(spacing: 14) {
-                HStack(spacing: 4) {
-                    KeyHint("↵")
-                    Text("Add")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
+
+            Button(action: submitCurrentInput) {
+                HStack(spacing: 7) {
+                    Text("Add Now")
+                    Text("↵")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(AppTheme.Text.muted)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 3)
+                        .background(AppTheme.Surface.controlActive, in: RoundedRectangle(cornerRadius: 5))
                 }
-                HStack(spacing: 4) {
-                    KeyHint("esc")
-                    Text("Dismiss")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(AppTheme.Text.secondary)
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .fixedSize(horizontal: true, vertical: false)
+                .background(QuickPanelButtonBackground())
             }
+            .buttonStyle(.plain)
+            .disabled(!canSubmitCurrentInput)
+            .help("Add Now")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .frame(height: 44)
     }
 
     // MARK: - Actions
+
+    private var canSubmitCurrentInput: Bool {
+        switch mode {
+        case .vocabulary:
+            return !wordInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .replacement:
+            return !originalInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !replacementInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    private func submitCurrentInput() {
+        switch mode {
+        case .vocabulary:
+            submitVocabulary()
+        case .replacement:
+            submitReplacement()
+        }
+    }
 
     private func submitVocabulary() {
         let input = wordInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -344,28 +328,5 @@ struct DictionaryQuickAddView: View {
             return
         }
         onDismiss()
-    }
-}
-
-// MARK: - Key Hint
-
-private struct KeyHint: View {
-    let label: LocalizedStringKey
-    init(_ label: LocalizedStringKey) { self.label = label }
-
-    var body: some View {
-        Text(label)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(AppTheme.Surface.control.opacity(0.7))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .strokeBorder(AppTheme.Border.subtle, lineWidth: 0.5)
-                    )
-            )
     }
 }

@@ -13,8 +13,14 @@ struct VisualEffectView: NSViewRepresentable {
     }
 
     func updateNSView(_ visualEffectView: NSVisualEffectView, context: Context) {
-        visualEffectView.material = material
-        visualEffectView.blendingMode = blendingMode
-        visualEffectView.state = .active
+        if visualEffectView.material != material {
+            visualEffectView.material = material
+        }
+        if visualEffectView.blendingMode != blendingMode {
+            visualEffectView.blendingMode = blendingMode
+        }
+        if visualEffectView.state != .active {
+            visualEffectView.state = .active
+        }
     }
 }

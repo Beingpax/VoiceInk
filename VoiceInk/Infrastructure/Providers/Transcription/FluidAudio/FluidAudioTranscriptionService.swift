@@ -6,6 +6,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
     private var asrManager: AsrManager?
     private var unifiedAsrManager: UnifiedAsrManager?
     private var nemotronAsrManager: StreamingNemotronMultilingualAsrManager?
+    private var vadManager: VadManager?
     private var activeVersion: AsrModelVersion?
     private var activeNemotronModelName: String?
     private var cachedModels: AsrModels?
@@ -32,6 +33,7 @@ class FluidAudioTranscriptionService: TranscriptionService {
         unifiedAsrManager = nil
         nemotronAsrManager = nil
         asrManager = nil
+        vadManager = nil
         activeVersion = nil
         activeNemotronModelName = nil
     }
@@ -144,7 +146,8 @@ class FluidAudioTranscriptionService: TranscriptionService {
                 throw ASRError.notInitialized
             }
 
-            let speechAudio = try loadAudioSamples(from: audioURL)
+            let speechAudio = try await preparedSpeechAudio(from: audioURL)
+            guard !speechAudio.isEmpty else { return "" }
             let text = try await unifiedAsrManager.transcribe(speechAudio)
             return text
         }
@@ -163,7 +166,8 @@ class FluidAudioTranscriptionService: TranscriptionService {
             await nemotronAsrManager.setLanguage(languageHint)
             await nemotronAsrManager.reset()
 
-            var speechAudio = try loadAudioSamples(from: audioURL)
+            var speechAudio = try await preparedSpeechAudio(from: audioURL)
+            guard !speechAudio.isEmpty else { return "" }
             let trailingSilenceSamples = 16_000
             let maxSingleChunkSamples = 240_000
             if speechAudio.count + trailingSilenceSamples <= maxSingleChunkSamples {
@@ -187,11 +191,22 @@ class FluidAudioTranscriptionService: TranscriptionService {
             model: model
         )
         var decoderState = TdtDecoderState.make(decoderLayers: await asrManager.decoderLayerCount)
-        let result = try await asrManager.transcribe(
-            audioURL,
-            decoderState: &decoderState,
-            language: languageHint
-        )
+        let result: ASRResult
+        if UserDefaults.standard.bool(forKey: "IsVADEnabled") {
+            let speechAudio = try await preparedSpeechAudio(from: audioURL)
+            guard !speechAudio.isEmpty else { return "" }
+            result = try await asrManager.transcribe(
+                speechAudio,
+                decoderState: &decoderState,
+                language: languageHint
+            )
+        } else {
+            result = try await asrManager.transcribe(
+                audioURL,
+                decoderState: &decoderState,
+                language: languageHint
+            )
+        }
 
         return result.text
     }
@@ -200,7 +215,73 @@ class FluidAudioTranscriptionService: TranscriptionService {
         try audioConverter.resampleAudioFile(audioURL)
     }
 
-    // Releases ASR resources but preserves cached models for reuse
+    private func preparedSpeechAudio(from audioURL: URL) async throws -> [Float] {
+        let samples = try loadAudioSamples(from: audioURL)
+        return try await preparedSpeechAudio(in: samples)
+    }
+
+    func preparedSpeechAudio(in samples: [Float]) async throws -> [Float] {
+        guard let segments = try await detectedSpeechAudio(in: samples) else {
+            return samples
+        }
+
+        var speechAudio = segments.flatMap { $0 }
+        guard !speechAudio.isEmpty else { return [] }
+        let minimumSamples = ASRConstants.minimumRequiredSamples(forSampleRate: ASRConstants.sampleRate)
+        if speechAudio.count < minimumSamples {
+            speechAudio += [Float](repeating: 0, count: minimumSamples - speechAudio.count)
+        }
+        return speechAudio
+    }
+
+    // Streaming callers retain each segment's original position for word timestamps.
+    func detectedSpeechSegments(in samples: [Float]) async throws -> [VadSegment]? {
+        guard UserDefaults.standard.bool(forKey: "IsVADEnabled") else {
+            return nil
+        }
+
+        do {
+            try Task.checkCancellation()
+            let manager = try await getOrLoadVadManager()
+            let segments = try await manager.segmentSpeech(samples)
+            try Task.checkCancellation()
+            return segments
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            logger.notice("VAD failed; using full audio: \(error, privacy: .public)")
+            return nil
+        }
+    }
+
+    private func getOrLoadVadManager() async throws -> VadManager {
+        if let vadManager { return vadManager }
+        let manager = try await VadManager(config: VadConfig(defaultThreshold: 0.7))
+        vadManager = manager
+        return manager
+    }
+
+    // Nil means VAD is disabled or unavailable; callers preserve the original audio.
+    private func detectedSpeechAudio(in samples: [Float]) async throws -> [[Float]]? {
+        guard UserDefaults.standard.bool(forKey: "IsVADEnabled") else {
+            return nil
+        }
+
+        do {
+            try Task.checkCancellation()
+            let manager = try await getOrLoadVadManager()
+            let segments = try await manager.segmentSpeechAudio(samples)
+            try Task.checkCancellation()
+            return segments
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            logger.notice("VAD failed; using full audio: \(error, privacy: .public)")
+            return nil
+        }
+    }
+
+    // Releases ASR/VAD resources but preserves cached models for reuse
     func cleanup() async {
         await cleanupLoadedManagers()
     }

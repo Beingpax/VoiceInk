@@ -58,6 +58,7 @@ class TranscriptionPipeline {
         enhancementConfiguration: @escaping () -> EnhancementRuntimeConfiguration?,
         recordingContextSnapshot: @escaping () async -> RecordingContextSnapshot? = { nil },
         outputConfiguration: @escaping () -> OutputRuntimeConfiguration,
+        sendAfterPaste: Bool = false,
         onStateChange: @escaping (RecordingState) -> Void,
         shouldCancel: () -> Bool,
         onCancel: @escaping () async -> Void,
@@ -187,16 +188,18 @@ class TranscriptionPipeline {
 
                     do {
                         let contextSnapshot = await recordingContextSnapshot()
+                        transcription.aiEnhancementModelName =
+                            resolvedEnhancementConfiguration.modelName
+                            ?? resolvedEnhancementConfiguration.provider?.defaultModel
+                        transcription.promptName = resolvedEnhancementConfiguration.prompt?.title
                         let enhancementResult = try await enhancementService.enhance(
                             textForAI,
                             configuration: resolvedEnhancementConfiguration,
                             contextSnapshot: contextSnapshot
                         )
                         transcription.enhancedText = enhancementResult.text
-                        transcription.aiEnhancementModelName =
-                            resolvedEnhancementConfiguration.modelName
-                            ?? resolvedEnhancementConfiguration.provider?.defaultModel
-                        transcription.promptName = enhancementResult.promptName
+                        transcription.promptName =
+                            enhancementResult.promptName ?? resolvedEnhancementConfiguration.prompt?.title
                         transcription.enhancementDuration = enhancementResult.duration
                         transcription.aiRequestSystemMessage = enhancementResult.systemMessage
                         transcription.aiRequestUserMessage = enhancementResult.userMessage
@@ -278,7 +281,8 @@ class TranscriptionPipeline {
                 output: outputForDelivery ?? outputConfiguration(),
                 responseConfig: responseConfig,
                 responseError: responseError,
-                isAssistantFollowUp: assistant.isFollowUp
+                isAssistantFollowUp: assistant.isFollowUp,
+                sendAfterPaste: sendAfterPaste
             ),
             actions: TranscriptionDelivery.Actions(
                 setState: onStateChange,

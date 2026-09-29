@@ -24,7 +24,7 @@ struct InfoTip: View {
             .contentShape(Rectangle())
             .popover(isPresented: $isShowingTip) {
                 VStack(alignment: .leading, spacing: 0) {
-                    if let url = learnMoreLink {
+                    if learnMoreLink != nil {
                         (Text(message)
                             .foregroundColor(.secondary)
                             + Text(" ")

@@ -2,36 +2,31 @@ import SwiftUI
 
 struct DashboardInsightsView: View {
     @Binding var selectedPeriod: DashboardInsightPeriod
-    let productivityPoints: [DashboardProductivityPoint]
+    let dailyActivityPoints: [DashboardProductivityPoint]
+    let allTimeDailyActivityPoints: [DashboardProductivityPoint]
     let peakHoursSummary: DashboardPeakHoursSummary
     let isPeakHoursLocked: Bool
     let timeSavedSummary: DashboardTimeSavedSummary
     let modelUsage: ModelUsageSummary
     let modelPerformanceSummaries: [ModelPerformanceSummary]
-    let updatedAtText: String
-    let isRefreshingStats: Bool
     let onBack: () -> Void
-    let onRefreshStats: () -> Void
     let onViewModelUsage: () -> Void
     let onViewModelPerformance: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 20) {
             header
 
-            DashboardProductivitySummaryStrip(
+            DashboardEditorialSummaryCard(
                 summary: timeSavedSummary
             )
 
-            DashboardProductivityCard(
-                period: $selectedPeriod,
-                points: productivityPoints,
-                updatedAtText: updatedAtText,
-                isRefreshingStats: isRefreshingStats,
-                onRefreshStats: onRefreshStats
+            DashboardActivityCalendarCard(
+                points: allTimeDailyActivityPoints,
+                selectedPoints: dailyActivityPoints,
+                peakHoursSummary: peakHoursSummary,
+                isPeakHoursLocked: isPeakHoursLocked
             )
-
-            insightSummaryCards
 
             ModelUsageCard(
                 summary: modelUsage,
@@ -46,46 +41,34 @@ struct DashboardInsightsView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    private var insightSummaryCards: some View {
-        HStack(alignment: .top, spacing: DashboardLayout.columnSpacing) {
-            DashboardPeakHoursCard(summary: peakHoursSummary, isLocked: isPeakHoursLocked)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-
-            DashboardTimeSavedCard(summary: timeSavedSummary, period: selectedPeriod)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-        }
-        .frame(height: 196)
-    }
-
     private var header: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .center, spacing: 14) {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(DashboardInsightButtonStyle())
+            .help("Back to dashboard")
+            .accessibilityLabel("Back to dashboard")
+
             VStack(alignment: .leading, spacing: 3) {
                 Text("VoiceInk Insights")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(AppTheme.Text.primary)
 
                 Text("A closer look at your VoiceInk usage.")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 13))
                     .foregroundStyle(AppTheme.Text.secondary)
             }
+            .layoutPriority(1)
 
-            Spacer()
+            Spacer(minLength: 16)
 
-            HStack(spacing: 8) {
-                AppIconButton(
-                    systemName: "chevron.left",
-                    help: "Back to dashboard",
-                    size: 34,
-                    iconSize: 12,
-                    cornerRadius: 17,
-                    action: onBack
-                )
-
-                InsightPeriodPicker(
-                    title: "Insights period",
-                    selection: $selectedPeriod
-                )
-            }
+            InsightPeriodPicker(
+                title: "Insights period",
+                selection: $selectedPeriod
+            )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

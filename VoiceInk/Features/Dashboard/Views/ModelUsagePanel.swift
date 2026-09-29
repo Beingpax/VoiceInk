@@ -5,53 +5,15 @@ struct ModelUsagePanel: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .overlay(Divider().opacity(0.5), alignment: .bottom)
-                .zIndex(1)
-
-            ZStack(alignment: .bottomTrailing) {
-                ModelUsagePanelContent(summary: summary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                recommendedModelsOverlay
-            }
+        QuickPanelScaffold {
+            ModelUsagePanelContent(summary: summary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } header: {
+            ModelInsightPanelHeader(title: "AI Model Usage", onClose: onClose)
+        } footer: {
+            RecommendedModelsFooter()
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("AI Model Usage")
-                .font(.headline.weight(.semibold))
-
-            Spacer()
-
-            AppIconButton(
-                systemName: "xmark",
-                help: "Close",
-                size: 28,
-                iconSize: 14,
-                cornerRadius: AppTheme.Radius.control,
-                action: onClose
-            )
-        }
-    }
-
-    private var recommendedModelsOverlay: some View {
-        Button(action: ModelLinks.openRecommendedModels) {
-            ModelActionLabel(
-                title: "Recommended Models",
-                icon: "sparkles",
-                isPrimary: true
-            )
-        }
-        .buttonStyle(.plain)
-        .fixedSize(horizontal: true, vertical: true)
-        .help(String(localized: "Open recommended AI models"))
-        .padding(.trailing, 20)
-        .padding(.bottom, 16)
+        .background(AppTheme.Insights.page)
     }
 }
 
@@ -67,7 +29,7 @@ private struct ModelUsagePanelContent: View {
                         valueTitle: "Est. duration",
                         emptyTitle: "No audio duration",
                         emptyIcon: "waveform",
-                        tint: AppTheme.Status.infoStrong,
+                        tint: AppTheme.Insights.productivity,
                         rows: summary.transcriptionModels.map { summary in
                             ModelUsageDistributionRowData(
                                 name: summary.name,
@@ -83,7 +45,7 @@ private struct ModelUsagePanelContent: View {
                         valueTitle: "Est. tokens",
                         emptyTitle: "No token estimates",
                         emptyIcon: "number",
-                        tint: AppTheme.Status.positive,
+                        tint: AppTheme.Insights.activity,
                         rows: summary.enhancementModels.map { summary in
                             ModelUsageDistributionRowData(
                                 name: summary.name,
@@ -95,25 +57,12 @@ private struct ModelUsagePanelContent: View {
                     )
                 }
                 .padding(.horizontal, 18)
-                .padding(.top, 18)
-                .padding(.bottom, 86)
+                .padding(.top, 76)
+                .padding(.bottom, 72)
             }
         } else {
-            emptyState
+            ModelInsightPanelEmptyState(title: "No model usage for this period")
         }
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 32, weight: .light))
-                .foregroundColor(.secondary)
-
-            Text("No model usage for this period")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -125,51 +74,24 @@ private struct ModelUsageSection: View {
     let tint: Color
     let rows: [ModelUsageDistributionRowData]
 
-    private var totalAmount: Double {
-        rows.reduce(0) { $0 + $1.amount }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(title)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        let totalAmount = rows.reduce(0) { $0 + $1.amount }
 
-                Text(valueTitle)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(AppTheme.Text.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-                    .frame(width: 74, alignment: .trailing)
-                    .padding(.trailing, 4)
-            }
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(AppTheme.Text.primary)
-            .lineLimit(1)
-
-            if rows.isEmpty {
-                InsightEmptyState(title: emptyTitle, icon: emptyIcon)
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(rows) { row in
-                        ModelUsageDistributionRow(
-                            row: row,
-                            share: share(for: row),
-                            tint: tint
-                        )
-                    }
-                }
-            }
+        ModelInsightSection(
+            title: title,
+            valueTitle: valueTitle,
+            valueColumnWidth: 74,
+            emptyTitle: emptyTitle,
+            emptyIcon: emptyIcon,
+            rows: rows
+        ) { row, columnWidth in
+            ModelUsageDistributionRow(
+                row: row,
+                share: totalAmount > 0 ? row.amount / totalAmount : 0,
+                tint: tint,
+                valueColumnWidth: columnWidth
+            )
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    private func share(for row: ModelUsageDistributionRowData) -> Double {
-        guard totalAmount > 0 else {
-            return 0
-        }
-
-        return row.amount / totalAmount
     }
 }
 
@@ -177,6 +99,7 @@ private struct ModelUsageDistributionRow: View {
     let row: ModelUsageDistributionRowData
     let share: Double
     let tint: Color
+    let valueColumnWidth: CGFloat
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -185,7 +108,7 @@ private struct ModelUsageDistributionRow: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(row.name)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(AppTheme.Text.primary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.72)
@@ -194,7 +117,7 @@ private struct ModelUsageDistributionRow: View {
 
                     Text(share, format: .percent.precision(.fractionLength(0)))
                         .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(AppTheme.Text.muted)
+                        .foregroundStyle(AppTheme.Text.secondary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                         .frame(width: 34, alignment: .trailing)
@@ -205,23 +128,16 @@ private struct ModelUsageDistributionRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Text(row.value)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundStyle(AppTheme.Text.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .frame(width: 58, alignment: .trailing)
+            ModelInsightValueText(text: row.value, width: valueColumnWidth)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(AppCardBackground(cornerRadius: 10))
+        .modelInsightRowStyle()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.name)
         .accessibilityValue(accessibilityValue)
     }
 
     private var accessibilityValue: String {
-        String(localized: "\(row.kindTitle), \(row.value), \(share.formatted(.percent.precision(.fractionLength(0))))")
+        String(localized: "\(row.kind.localizedTitle), \(row.value), \(share.formatted(.percent.precision(.fractionLength(0))))")
     }
 }
 
@@ -231,10 +147,6 @@ private struct ModelUsageDistributionRowData: Identifiable {
     let kind: ModelInsightKind
     let value: String
     let amount: Double
-
-    var kindTitle: String {
-        kind == .transcription ? String(localized: "Transcription") : String(localized: "Enhancement")
-    }
 }
 
 private struct ModelUsageShareBar: View {
@@ -251,12 +163,12 @@ private struct ModelUsageShareBar: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(AppTheme.Surface.subtle)
+                    .fill(tint.opacity(0.12))
 
                 if normalizedShare > 0 {
                     Capsule()
-                        .fill(tint.opacity(0.82))
-                        .frame(width: max(6, filledWidth))
+                        .fill(tint)
+                        .frame(width: min(geometry.size.width, max(4, filledWidth)))
                 }
             }
         }

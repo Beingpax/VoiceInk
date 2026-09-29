@@ -24,12 +24,11 @@ enum ModelFilter: String, CaseIterable, Identifiable {
 struct ModelManagementView: View {
     @EnvironmentObject private var aiService: AIService
     @EnvironmentObject private var whisperModelManager: WhisperModelManager
-    @EnvironmentObject private var fluidAudioModelManager: FluidAudioModelManager
     @EnvironmentObject private var transcriptionModelManager: TranscriptionModelManager
     @StateObject private var customModelManager = CustomCloudModelManager.shared
     @StateObject private var customAIProviderManager = CustomAIProviderManager.shared
     @ObservedObject private var warmupCoordinator = WhisperModelWarmupCoordinator.shared
-    @ObservedObject private var voiceInkRefineService = VoiceInkRefineService.shared
+    private let voiceInkRefineService = VoiceInkRefineService.shared
 
     @State private var selectedFilter: ModelFilter = .local
     @State private var activePanel: ModelManagementPanel?
@@ -245,7 +244,7 @@ struct ModelManagementView: View {
         VStack(spacing: 12) {
             VoiceInkRefineModelCardView(
                 service: voiceInkRefineService,
-                deleteAction: confirmDeleteVoiceInkRefineModel
+                deleteAction: deleteVoiceInkRefineModel
             )
 
             ForEach(appleSpeechModels, id: \.id) { model in
@@ -272,17 +271,21 @@ struct ModelManagementView: View {
 
         return ModelCardView(
             model: model,
-            fluidAudioModelManager: fluidAudioModelManager,
             isDownloaded: whisperModelManager.availableModels.contains { $0.name == model.name },
             downloadProgress: whisperModelManager.downloadProgress,
             modelURL: whisperModelManager.availableModels.first { $0.name == model.name }?.url,
             isWarming: isWarming,
             deleteAction: {
-                confirmDeleteLocalModel(model)
+                deleteLocalModel(model)
             },
             downloadAction: {
                 if let whisperModel = model as? WhisperModel {
-                    Task { await whisperModelManager.downloadModel(whisperModel) }
+                    whisperModelManager.startDownload(whisperModel)
+                }
+            },
+            cancelDownloadAction: {
+                if let whisperModel = model as? WhisperModel {
+                    whisperModelManager.cancelDownload(whisperModel)
                 }
             }
         )
@@ -363,22 +366,14 @@ struct ModelManagementView: View {
         localModels.filter { $0.provider != .nativeApple }
     }
 
-    private func confirmDeleteLocalModel(_ model: any TranscriptionModel) {
+    private func deleteLocalModel(_ model: any TranscriptionModel) {
         guard let downloadedModel = whisperModelManager.availableModels.first(where: { $0.name == model.name }) else {
             return
         }
 
-        alertTitle = String(localized: "Delete Model")
-        alertMessage = String(
-            format: String(localized: "Are you sure you want to delete the model '%@'?"),
-            downloadedModel.name
-        )
-        deleteActionClosure = {
-            Task {
-                await whisperModelManager.deleteModel(downloadedModel)
-            }
+        Task {
+            await whisperModelManager.deleteModel(downloadedModel)
         }
-        isShowingDeleteAlert = true
     }
 
     private func confirmDeleteCustomModel(_ model: CustomCloudModel) {
@@ -394,17 +389,10 @@ struct ModelManagementView: View {
         isShowingDeleteAlert = true
     }
 
-    private func confirmDeleteVoiceInkRefineModel() {
-        alertTitle = String(localized: "Delete VoiceInk Refine?")
-        alertMessage = String(
-            localized: "The model will need to be downloaded again before a Mode can use it."
-        )
-        deleteActionClosure = {
-            Task {
-                await voiceInkRefineService.deleteModel()
-            }
+    private func deleteVoiceInkRefineModel() {
+        Task {
+            await voiceInkRefineService.deleteModel()
         }
-        isShowingDeleteAlert = true
     }
 
     private func confirmDeleteCustomEnhancementModel(_ provider: CustomAIProviderConfig) {

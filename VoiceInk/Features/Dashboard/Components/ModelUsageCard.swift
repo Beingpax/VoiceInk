@@ -10,37 +10,29 @@ struct ModelUsageCard: View {
     let onViewMore: () -> Void
 
     private var transcriptionRows: [ModelPreviewRow] {
-        Array(
-            summary.transcriptionModels
-                .map { item in
-                    ModelPreviewRow(
-                        name: item.name,
-                        kind: .transcription,
-                        value: ModelUsageFormatting.duration(item.totalAudioDuration),
-                        sessionCount: item.sessionCount
-                    )
-                }
-                .prefix(3)
-        )
+        summary.transcriptionModels.prefix(3).map { item in
+            ModelPreviewRow(
+                name: item.name,
+                kind: .transcription,
+                value: ModelUsageFormatting.duration(item.totalAudioDuration),
+                sessionCount: item.sessionCount
+            )
+        }
     }
 
     private var enhancementRows: [ModelPreviewRow] {
-        Array(
-            summary.enhancementModels
-                .map { item in
-                    ModelPreviewRow(
-                        name: item.name,
-                        kind: .enhancement,
-                        value: ModelUsageFormatting.tokenCount(item.estimatedTokens),
-                        sessionCount: item.sessionCount
-                    )
-                }
-                .prefix(3)
-        )
+        summary.enhancementModels.prefix(3).map { item in
+            ModelPreviewRow(
+                name: item.name,
+                kind: .enhancement,
+                value: ModelUsageFormatting.tokenCount(item.estimatedTokens),
+                sessionCount: item.sessionCount
+            )
+        }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 16) {
             ModelPreviewCardHeader(
                 title: "AI Model Usage",
                 infoTip: ModelUsageText.estimateInfo,
@@ -65,9 +57,7 @@ struct ModelUsageCard: View {
             )
         }
         .fixedSize(horizontal: false, vertical: true)
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(DashboardInsightCardBackground(cornerRadius: 16))
+        .dashboardInsightCardStyle(padding: 20, alignment: .topLeading)
     }
 }
 

@@ -1,15 +1,16 @@
 import AppKit
 import SwiftUI
 
-class NotificationManager {
+@MainActor
+final class NotificationManager {
     static let shared = NotificationManager()
 
     private var notificationWindow: NSPanel?
     private var dismissTimer: Timer?
+    private var notificationID: UUID?
 
     private init() {}
 
-    @MainActor
     func showNotification(
         title: String,
         type: AppNotificationView.NotificationType,
@@ -19,6 +20,8 @@ class NotificationManager {
     ) {
         dismissTimer?.invalidate()
         dismissTimer = nil
+        let notificationID = UUID()
+        self.notificationID = notificationID
 
         if let existingWindow = notificationWindow {
             existingWindow.close()
@@ -36,7 +39,7 @@ class NotificationManager {
             duration: duration,
             onClose: { [weak self] in
                 Task { @MainActor in
-                    self?.dismissNotification()
+                    self?.dismissNotification(ifCurrent: notificationID)
                 }
             },
             onTap: onTap,
@@ -76,11 +79,12 @@ class NotificationManager {
             withTimeInterval: duration,
             repeats: false
         ) { [weak self] _ in
-            self?.dismissNotification()
+            Task { @MainActor in
+                self?.dismissNotification(ifCurrent: notificationID)
+            }
         }
     }
 
-    @MainActor
     private func positionWindow(_ window: NSWindow) {
         let activeScreen = NSApp.keyWindow?.screen ?? NSScreen.main ?? NSScreen.screens[0]
         let screenRect = activeScreen.visibleFrame
@@ -98,11 +102,11 @@ class NotificationManager {
         window.setFrameOrigin(NSPoint(x: notificationX, y: notificationY))
     }
 
-    @MainActor
     func dismissNotification() {
         guard let window = notificationWindow else { return }
 
         notificationWindow = nil
+        notificationID = nil
 
         dismissTimer?.invalidate()
         dismissTimer = nil
@@ -117,5 +121,10 @@ class NotificationManager {
                 window.close()
 
             })
+    }
+
+    private func dismissNotification(ifCurrent notificationID: UUID) {
+        guard self.notificationID == notificationID else { return }
+        dismissNotification()
     }
 }

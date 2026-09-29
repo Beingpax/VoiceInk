@@ -122,52 +122,20 @@ struct EditReplacementSheet: View {
 
     // MARK: – Actions
     private func saveChanges() {
-        let newOriginal = originalWord.trimmingCharacters(in: .whitespacesAndNewlines)
-        let newReplacement = replacementWord
-        let tokens =
-            newOriginal
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard !tokens.isEmpty, !newReplacement.isEmpty else { return }
+        guard !WordReplacementVariants.parse(originalWord).isEmpty,
+            !replacementWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
 
-        // Check for duplicates (excluding current replacement)
-        let newTokensPairs = tokens.map { (original: $0, lowercased: $0.lowercased()) }
-
-        let descriptor = FetchDescriptor<WordReplacement>()
-        if let allReplacements = try? modelContext.fetch(descriptor) {
-            for existingReplacement in allReplacements {
-                // Skip checking against itself
-                if existingReplacement.persistentModelID == replacement.persistentModelID {
-                    continue
-                }
-
-                let existingTokens = existingReplacement.originalText
-                    .split(separator: ",")
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-                    .filter { !$0.isEmpty }
-
-                for tokenPair in newTokensPairs {
-                    if existingTokens.contains(tokenPair.lowercased) {
-                        alertMessage = String(
-                            format: String(localized: "'%@' already exists in word replacements"), tokenPair.original)
-                        showAlert = true
-                        return
-                    }
-                }
-            }
-        }
-
-        // Update the replacement
-        replacement.originalText = newOriginal
-        replacement.replacementText = newReplacement
-
-        do {
-            try modelContext.save()
-            dismiss()
-        } catch {
-            alertMessage = String(format: String(localized: "Failed to save changes: %@"), error.localizedDescription)
+        if let error = DictionaryService.updateWordReplacement(
+            replacement,
+            original: originalWord,
+            replacementText: replacementWord,
+            context: modelContext
+        ) {
+            alertMessage = error
             showAlert = true
+            return
         }
+        dismiss()
     }
 }

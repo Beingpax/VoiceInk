@@ -95,7 +95,7 @@ class OllamaService: ObservableObject {
                 model: requestModel,
                 prompt: text,
                 systemPrompt: systemPrompt,
-                temperature: defaultTemperature,
+                options: OllamaGenerationOptions(temperature: defaultTemperature),
                 think: false,
                 timeout: timeout
             )

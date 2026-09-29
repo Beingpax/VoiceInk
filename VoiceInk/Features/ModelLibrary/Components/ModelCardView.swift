@@ -3,7 +3,6 @@ import SwiftUI
 
 struct ModelCardView: View {
     let model: any TranscriptionModel
-    let fluidAudioModelManager: FluidAudioModelManager
     let isDownloaded: Bool
     let downloadProgress: [String: Double]
     let modelURL: URL?
@@ -12,6 +11,7 @@ struct ModelCardView: View {
     // Actions
     var deleteAction: () -> Void
     var downloadAction: () -> Void
+    var cancelDownloadAction: () -> Void
     var body: some View {
         Group {
             switch model.provider {
@@ -24,7 +24,8 @@ struct ModelCardView: View {
                         modelURL: modelURL,
                         isWarming: isWarming,
                         deleteAction: deleteAction,
-                        downloadAction: downloadAction
+                        downloadAction: downloadAction,
+                        cancelDownloadAction: cancelDownloadAction
                     )
                 } else if let importedModel = model as? ImportedWhisperModel {
                     ImportedWhisperModelCardView(
@@ -36,10 +37,7 @@ struct ModelCardView: View {
                 }
             case .fluidAudio:
                 if let fluidAudioModel = model as? FluidAudioModel {
-                    FluidAudioModelCardView(
-                        model: fluidAudioModel,
-                        fluidAudioModelManager: fluidAudioModelManager
-                    )
+                    FluidAudioModelCardView(model: fluidAudioModel)
                 }
             case .transcribeCpp:
                 if let transcribeCppModel = model as? TranscribeCppModel {

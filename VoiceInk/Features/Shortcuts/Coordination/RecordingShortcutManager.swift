@@ -31,6 +31,9 @@ class RecordingShortcutManager: ObservableObject {
             )
             UserDefaults.standard.set(primaryRecordingShortcutMode.rawValue, forKey: "primaryRecordingShortcutMode")
             primaryRecordingShortcutModeSource.primaryMode = primaryRecordingShortcutMode
+            shortcutModeHandler.resetShortcutState(for: .primaryRecording)
+            modeShortcutManager.recordingModeDidChange()
+            updateStandaloneModifierActions()
         }
     }
     @Published var secondaryRecordingShortcutMode: Mode {
@@ -39,26 +42,10 @@ class RecordingShortcutManager: ObservableObject {
                 "recording-manager setting=secondaryMode old=\(oldValue.rawValue) new=\(secondaryRecordingShortcutMode.rawValue)"
             )
             UserDefaults.standard.set(secondaryRecordingShortcutMode.rawValue, forKey: "secondaryRecordingShortcutMode")
+            shortcutModeHandler.resetShortcutState(for: .secondaryRecording)
+            updateStandaloneModifierActions()
         }
     }
-    @Published var isMiddleClickToggleEnabled: Bool {
-        didSet {
-            ShortcutDiagnostics.notice(
-                "recording-manager setting=middleClickEnabled old=\(oldValue) new=\(isMiddleClickToggleEnabled)"
-            )
-            UserDefaults.standard.set(isMiddleClickToggleEnabled, forKey: "isMiddleClickToggleEnabled")
-            refreshShortcutMonitoring(reason: "middle-click-setting-changed")
-        }
-    }
-    @Published var middleClickActivationDelay: Int {
-        didSet {
-            ShortcutDiagnostics.notice(
-                "recording-manager setting=middleClickDelay old=\(oldValue) new=\(middleClickActivationDelay)"
-            )
-            UserDefaults.standard.set(middleClickActivationDelay, forKey: "middleClickActivationDelay")
-        }
-    }
-
     private var engine: VoiceInkEngine
     private var recorderUIManager: RecorderUIManager
     private var recorderPanelShortcutManager: RecorderPanelShortcutManager
@@ -73,25 +60,18 @@ class RecordingShortcutManager: ObservableObject {
     private let primaryRecordingShortcutModeSource: RecordingShortcutModeSource
     private static let secureInputDiagnosticsIntervalNanoseconds: UInt64 = 1_000_000_000
 
-    // MARK: - Helper Properties
-    private var canHandleShortcutAction: Bool {
-        Self.canHandleShortcutAction(for: engine.recordingState)
-    }
-
-    // Middle-click event monitoring
-    private var middleClickMonitors: [Any?] = []
-    private var middleClickTask: Task<Void, Never>?
-
     enum Mode: String, CaseIterable {
         case toggle = "toggle"
         case pushToTalk = "pushToTalk"
         case hybrid = "hybrid"
+        case doubleTap = "doubleTap"
 
         var displayName: String {
             switch self {
             case .toggle: return String(localized: "Toggle")
             case .pushToTalk: return String(localized: "Push to Talk")
             case .hybrid: return String(localized: "Hybrid")
+            case .doubleTap: return String(localized: "Double Tap")
             }
         }
     }
@@ -131,9 +111,6 @@ class RecordingShortcutManager: ObservableObject {
         self.secondaryRecordingShortcutMode = ShortcutMigration.migrateShortcutMode(
             for: .secondaryRecording
         )
-
-        self.isMiddleClickToggleEnabled = UserDefaults.standard.bool(forKey: "isMiddleClickToggleEnabled")
-        self.middleClickActivationDelay = UserDefaults.standard.integer(forKey: "middleClickActivationDelay")
 
         let shortcutModeHandler = RecordingShortcutModeHandler(
             canHandleShortcutAction: {
@@ -199,72 +176,7 @@ class RecordingShortcutManager: ObservableObject {
         removeAllMonitoring(reason: "refresh.\(reason)")
 
         refreshShortcutMonitor()
-        setupMiddleClickMonitoring()
         ShortcutDiagnostics.notice("recording-manager refresh end reason=\(reason)")
-    }
-
-    private func setupMiddleClickMonitoring() {
-        guard isMiddleClickToggleEnabled else {
-            ShortcutDiagnostics.notice("middle-click-monitor result=skipped-disabled")
-            return
-        }
-
-        // Mouse Down
-        let downMonitor = NSEvent.addGlobalMonitorForEvents(matching: .otherMouseDown) { [weak self] event in
-            guard let self = self else {
-                ShortcutDiagnostics.notice("middle-click event=down result=ignored-manager-released")
-                return
-            }
-            guard event.buttonNumber == 2 else { return }
-
-            ShortcutDiagnostics.notice(
-                "middle-click event=down delayMs=\(self.middleClickActivationDelay) engineState=\(String(describing: self.engine.recordingState)) recorderVisible=\(self.recorderUIManager.isRecorderPanelVisible)"
-            )
-
-            self.middleClickTask?.cancel()
-            self.middleClickTask = Task {
-                do {
-                    let delay = UInt64(self.middleClickActivationDelay) * 1_000_000  // ms to ns
-                    try await Task.sleep(nanoseconds: delay)
-
-                    guard self.isMiddleClickToggleEnabled else {
-                        ShortcutDiagnostics.notice("middle-click result=ignored-disabled-after-delay")
-                        return
-                    }
-                    guard !Task.isCancelled else {
-                        ShortcutDiagnostics.notice("middle-click result=ignored-task-cancelled")
-                        return
-                    }
-
-                    Task { @MainActor in
-                        guard self.canHandleShortcutAction else {
-                            ShortcutDiagnostics.notice(
-                                "middle-click result=rejected-engine-state state=\(String(describing: self.engine.recordingState))"
-                            )
-                            return
-                        }
-                        ShortcutDiagnostics.notice("middle-click result=toggle-recorder")
-                        await self.recorderUIManager.toggleRecorderPanel()
-                    }
-                } catch {
-                    ShortcutDiagnostics.notice(
-                        "middle-click result=delay-cancelled error=\(error.localizedDescription)"
-                    )
-                }
-            }
-        }
-
-        // Mouse Up
-        let upMonitor = NSEvent.addGlobalMonitorForEvents(matching: .otherMouseUp) { [weak self] event in
-            guard let self = self, event.buttonNumber == 2 else { return }
-            ShortcutDiagnostics.notice("middle-click event=up result=cancel-pending-activation")
-            self.middleClickTask?.cancel()
-        }
-
-        middleClickMonitors = [downMonitor, upMonitor]
-        ShortcutDiagnostics.notice(
-            "middle-click-monitor result=installed down=\(downMonitor == nil ? "failed" : "ok") up=\(upMonitor == nil ? "failed" : "ok")"
-        )
     }
 
     private func refreshShortcutMonitor() {
@@ -292,7 +204,8 @@ class RecordingShortcutManager: ObservableObject {
         let didStart = shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: interruptibleRecordingActions,
-            onKeyDown: { [weak self] action, eventTime in
+            standaloneModifierActions: standaloneModifierActions,
+            onShortcutDown: { [weak self] action, eventTime in
                 ShortcutDiagnostics.notice(
                     "recording-manager dispatch-received action=\(action.storageName) transition=keyDown eventUptime=\(eventTime)"
                 )
@@ -309,14 +222,14 @@ class RecordingShortcutManager: ObservableObject {
                         )
                         return
                     }
-                    await self.shortcutModeHandler.handleKeyDown(
+                    await self.shortcutModeHandler.handleShortcutDown(
                         action: action,
                         eventTime: eventTime,
                         mode: mode
                     )
                 }
             },
-            onKeyUp: { [weak self] action, eventTime in
+            onShortcutUp: { [weak self] action, eventTime in
                 ShortcutDiagnostics.notice(
                     "recording-manager dispatch-received action=\(action.storageName) transition=keyUp eventUptime=\(eventTime)"
                 )
@@ -328,7 +241,7 @@ class RecordingShortcutManager: ObservableObject {
                         return
                     }
                     if let mode = self.recordingMode(for: action) {
-                        await self.shortcutModeHandler.handleKeyUp(
+                        await self.shortcutModeHandler.handleShortcutUp(
                             action: action,
                             eventTime: eventTime,
                             mode: mode
@@ -357,12 +270,32 @@ class RecordingShortcutManager: ObservableObject {
                     }
                     await self.shortcutModeHandler.handleInterruption(action: action)
                 }
+            },
+            onStandaloneModifierChord: { [weak self] action in
+                MainActor.assumeIsolated {
+                    self?.shortcutModeHandler.clearPendingDoubleTap(for: action)
+                }
             }
         )
         let summary = shortcuts.map { "\($0.key.storageName)=\($0.value.diagnosticDescription)" }.sorted().joined(separator: " | ")
         ShortcutDiagnostics.notice(
             "recording-manager monitor-start result=\(didStart) count=\(shortcuts.count) interruptible=\(interruptibleRecordingActions.count) shortcuts={\(summary.isEmpty ? "none" : summary)}"
         )
+    }
+
+    private var standaloneModifierActions: Set<ShortcutAction> {
+        var actions = Set<ShortcutAction>()
+        if primaryRecordingShortcutMode == .toggle || primaryRecordingShortcutMode == .doubleTap {
+            actions.insert(.primaryRecording)
+        }
+        if secondaryRecordingShortcutMode == .toggle || secondaryRecordingShortcutMode == .doubleTap {
+            actions.insert(.secondaryRecording)
+        }
+        return actions
+    }
+
+    private func updateStandaloneModifierActions() {
+        shortcutMonitor.updateStandaloneModifierActions(standaloneModifierActions)
     }
 
     private func recordingMode(for action: ShortcutAction) -> Mode? {
@@ -392,11 +325,8 @@ class RecordingShortcutManager: ObservableObject {
                 serviceRegistry: engine.serviceRegistry,
                 enhancementService: engine.enhancementService
             )
-        case .openHistoryWindow:
-            HistoryWindowController.shared.showHistoryWindow(
-                modelContainer: engine.modelContext.container,
-                engine: engine
-            )
+        case .openQuickHistory:
+            QuickHistoryController.shared.show(modelContext: engine.modelContext, engine: engine)
         case .quickAddToDictionary:
             DictionaryQuickAddManager.shared.toggle(modelContainer: engine.modelContext.container)
         default:
@@ -408,17 +338,9 @@ class RecordingShortcutManager: ObservableObject {
 
     private func removeAllMonitoring(reason: String) {
         ShortcutDiagnostics.notice(
-            "recording-manager remove-monitoring reason=\(reason) middleClickMonitorCount=\(middleClickMonitors.compactMap { $0 }.count)"
+            "recording-manager remove-monitoring reason=\(reason)"
         )
         shortcutMonitor.stop(reason: reason)
-
-        for monitor in middleClickMonitors {
-            if let monitor = monitor {
-                NSEvent.removeMonitor(monitor)
-            }
-        }
-        middleClickMonitors = []
-        middleClickTask?.cancel()
 
         shortcutModeHandler.reset()
     }
@@ -564,10 +486,13 @@ final class RecordingShortcutModeHandler {
     private var activeRecordingShortcutAction: ShortcutAction?
     private var interruptedRecordingActions = Set<ShortcutAction>()
     private var activeShortcutCanCancelAccidentalStart = false
+    private var activeShortcutIsDoubleTap = false
     private var lastShortcutPressTime: Date?
+    private var pendingDoubleTapReleaseTimes: [ShortcutAction: TimeInterval] = [:]
 
     private let shortcutPressCooldown: TimeInterval = 0.5
     private let hybridPressThreshold: TimeInterval = 0.5
+    private let doubleTapThreshold: TimeInterval = 0.7
 
     init(
         canHandleShortcutAction: @escaping @MainActor () -> Bool,
@@ -593,9 +518,36 @@ final class RecordingShortcutModeHandler {
         activeRecordingShortcutAction = nil
         interruptedRecordingActions.removeAll()
         activeShortcutCanCancelAccidentalStart = false
+        activeShortcutIsDoubleTap = false
+        clearPendingDoubleTaps()
     }
 
-    func handleKeyDown(
+    func clearPendingDoubleTaps() {
+        pendingDoubleTapReleaseTimes.removeAll()
+    }
+
+    func clearPendingDoubleTap(for action: ShortcutAction) {
+        pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+    }
+
+    func clearPendingModeDoubleTaps() {
+        pendingDoubleTapReleaseTimes = pendingDoubleTapReleaseTimes.filter { action, _ in
+            if case .mode = action { return false }
+            return true
+        }
+    }
+
+    func resetShortcutState(for action: ShortcutAction) {
+        pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+        guard activeRecordingShortcutAction == action else { return }
+        isShortcutPressed = false
+        shortcutPressStartTime = nil
+        activeRecordingShortcutAction = nil
+        activeShortcutCanCancelAccidentalStart = false
+        activeShortcutIsDoubleTap = false
+    }
+
+    func handleShortcutDown(
         action: ShortcutAction,
         eventTime: TimeInterval,
         mode: RecordingShortcutManager.Mode,
@@ -614,7 +566,15 @@ final class RecordingShortcutModeHandler {
             return
         }
 
-        if let lastTrigger = lastShortcutPressTime,
+        if mode == .doubleTap && (!canHandleShortcutAction() || recordingState() == .starting) {
+            ShortcutDiagnostics.notice(
+                "mode-handler keyDown action=\(action.storageName) result=rejected reason=double-tap-engine-state engineState=\(String(describing: recordingState()))"
+            )
+            clearPendingDoubleTap(for: action)
+            return
+        }
+
+        if mode != .doubleTap, let lastTrigger = lastShortcutPressTime,
             Date().timeIntervalSince(lastTrigger) < shortcutPressCooldown
         {
             ShortcutDiagnostics.notice(
@@ -631,8 +591,11 @@ final class RecordingShortcutModeHandler {
         }
         isShortcutPressed = true
         activeRecordingShortcutAction = action
-        activeShortcutCanCancelAccidentalStart = canCurrentShortcutPressCancelAccidentalStart
-        lastShortcutPressTime = Date()
+        activeShortcutIsDoubleTap = mode == .doubleTap
+        activeShortcutCanCancelAccidentalStart = mode != .doubleTap && canCurrentShortcutPressCancelAccidentalStart
+        if mode != .doubleTap {
+            lastShortcutPressTime = Date()
+        }
         shortcutPressStartTime = eventTime
 
         switch mode {
@@ -686,13 +649,16 @@ final class RecordingShortcutModeHandler {
                     "mode-handler keyDown action=\(action.storageName) result=no-toggle reason=recorder-already-visible mode=pushToTalk"
                 )
             }
+
+        case .doubleTap:
+            break
         }
         ShortcutDiagnostics.notice(
             "mode-handler keyDown end action=\(action.storageName) engineState=\(String(describing: recordingState())) recorderVisible=\(isRecorderVisible())"
         )
     }
 
-    func handleKeyUp(
+    func handleShortcutUp(
         action: ShortcutAction,
         eventTime: TimeInterval,
         mode: RecordingShortcutManager.Mode,
@@ -717,6 +683,7 @@ final class RecordingShortcutModeHandler {
         isShortcutPressed = false
         activeRecordingShortcutAction = nil
         activeShortcutCanCancelAccidentalStart = false
+        activeShortcutIsDoubleTap = false
 
         switch mode {
         case .toggle:
@@ -761,6 +728,36 @@ final class RecordingShortcutModeHandler {
                     "mode-handler keyUp action=\(action.storageName) result=hands-free-enabled reason=hybrid-short-or-not-recording duration=\(pressDuration) engineState=\(String(describing: recordingState()))"
                 )
             }
+
+        case .doubleTap:
+            guard canHandleShortcutAction(), recordingState() != .starting else {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=rejected reason=double-tap-engine-state engineState=\(String(describing: recordingState()))"
+                )
+                clearPendingDoubleTap(for: action)
+                break
+            }
+            let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
+            if pressDuration < 0 || pressDuration > doubleTapThreshold {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=double-tap-cleared reason=press-duration duration=\(pressDuration) threshold=\(doubleTapThreshold)"
+                )
+                pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+            } else if let firstRelease = pendingDoubleTapReleaseTimes.removeValue(forKey: action),
+                eventTime - firstRelease >= 0,
+                eventTime - firstRelease <= doubleTapThreshold
+            {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=toggle-recorder reason=double-tap interval=\(eventTime - firstRelease)"
+                )
+                await toggleRecorderPanel(modeId)
+                isHandsFreeRecording = isRecorderVisible()
+            } else {
+                ShortcutDiagnostics.notice(
+                    "mode-handler keyUp action=\(action.storageName) result=waiting-for-second-tap releaseUptime=\(eventTime)"
+                )
+                pendingDoubleTapReleaseTimes[action] = eventTime
+            }
         }
 
         shortcutPressStartTime = nil
@@ -784,6 +781,19 @@ final class RecordingShortcutModeHandler {
                     "mode-handler interruption action=\(action.storageName) result=ignored reason=not-active-and-cannot-cancel"
                 )
             }
+            return
+        }
+
+        if activeShortcutIsDoubleTap {
+            ShortcutDiagnostics.notice(
+                "mode-handler interruption action=\(action.storageName) result=double-tap-cleared"
+            )
+            isShortcutPressed = false
+            shortcutPressStartTime = nil
+            activeRecordingShortcutAction = nil
+            activeShortcutCanCancelAccidentalStart = false
+            activeShortcutIsDoubleTap = false
+            pendingDoubleTapReleaseTimes.removeValue(forKey: action)
             return
         }
 

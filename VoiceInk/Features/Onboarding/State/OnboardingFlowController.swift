@@ -316,9 +316,7 @@ final class OnboardingFlowController {
             return
         }
 
-        Task {
-            await modelManager.downloadFluidAudioModel(model)
-        }
+        modelManager.startDownload(model)
     }
 
     func moveToExperienceStep(

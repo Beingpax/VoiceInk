@@ -5,6 +5,7 @@ struct Shortcut: Codable, Equatable {
     enum Kind: String, Codable {
         case key
         case modifierOnly
+        case mouseButton
     }
 
     private static let genericModifierKeyCode = UInt16.max
@@ -41,6 +42,8 @@ struct Shortcut: Codable, Equatable {
             }
 
             return modifierFlags.shortcutDisplayTokens
+        case .mouseButton:
+            return modifierFlags.shortcutDisplayTokens + [Self.mouseButtonName(for: keyCode)]
         }
     }
 
@@ -67,6 +70,10 @@ struct Shortcut: Codable, Equatable {
         )
     }
 
+    static func mouseButton(buttonNumber: UInt16, modifierFlags: NSEvent.ModifierFlags = []) -> Self {
+        Self(kind: .mouseButton, keyCode: buttonNumber, modifierFlags: modifierFlags)
+    }
+
     static var rightCommand: Self {
         .modifierOnly(keyCode: UInt16(kVK_RightCommand), modifierFlags: [.command])
     }
@@ -87,6 +94,14 @@ struct Shortcut: Codable, Equatable {
     {
         kind == .key && keyCode == eventKeyCode
             && modifierFlags == Self.normalizedModifierFlags(eventModifierFlags, forKeyCode: eventKeyCode)
+    }
+
+    func matchesMouseEvent(
+        buttonNumber eventButtonNumber: UInt16,
+        modifierFlags eventModifierFlags: NSEvent.ModifierFlags
+    ) -> Bool {
+        kind == .mouseButton && keyCode == eventButtonNumber
+            && modifierFlags == Self.normalizedModifierFlags(eventModifierFlags, forKeyCode: nil)
     }
 
     func matchesModifierEvent(keyCode eventKeyCode: UInt16, modifierFlags eventModifierFlags: NSEvent.ModifierFlags)
@@ -127,7 +142,13 @@ struct Shortcut: Codable, Equatable {
             return true
         case .key:
             return keyCode != eventKeyCode
+        case .mouseButton:
+            return false
         }
+    }
+
+    static func isSupportedMouseButtonNumber(_ buttonNumber: UInt16) -> Bool {
+        (2...31).contains(buttonNumber)
     }
 
     static func isModifierKeyCode(_ keyCode: UInt16) -> Bool {
@@ -232,6 +253,14 @@ struct Shortcut: Codable, Equatable {
         }
 
         return qwertyFallbackKeyNames[keyCode] ?? "Key \(keyCode)"
+    }
+
+    private static func mouseButtonName(for buttonNumber: UInt16) -> String {
+        if buttonNumber == 2 {
+            return String(localized: "Middle Click")
+        }
+
+        return String(format: String(localized: "Mouse %d"), Int(buttonNumber) + 1)
     }
 
     private static func characterForCurrentKeyboardLayout(keyCode: UInt16) -> String? {

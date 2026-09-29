@@ -1,5 +1,4 @@
 import AppKit
-import SwiftData
 import SwiftUI
 
 class MenuBarManager: ObservableObject {
@@ -10,7 +9,6 @@ class MenuBarManager: ObservableObject {
         }
     }
 
-    private var modelContainer: ModelContainer?
     private var engine: VoiceInkEngine?
     private var configuredActivationPolicy: NSApplication.ActivationPolicy {
         isMenuBarOnly ? .accessory : .regular
@@ -44,8 +42,7 @@ class MenuBarManager: ObservableObject {
         AppPresentationPolicy.restoreAccessoryIfNeededAfterUserFacingWindowClosed()
     }
 
-    func configure(modelContainer: ModelContainer, engine: VoiceInkEngine) {
-        self.modelContainer = modelContainer
+    func configure(engine: VoiceInkEngine) {
         self.engine = engine
     }
 
@@ -83,26 +80,12 @@ class MenuBarManager: ObservableObject {
         }
     }
 
-    func openHistoryWindow() {
-        guard let modelContainer = modelContainer,
-            let engine = engine
-        else {
-            return
-        }
+    func openQuickHistory() {
+        guard let engine else { return }
 
-        let openWindow = { [weak self] in
-            self?.activateForPresentedWindow()
-
-            HistoryWindowController.shared.showHistoryWindow(
-                modelContainer: modelContainer,
-                engine: engine
-            )
-        }
-
-        if Thread.isMainThread {
-            openWindow()
-        } else {
-            DispatchQueue.main.async(execute: openWindow)
+        // Let the MenuBarExtra close before making the nonactivating panel key.
+        DispatchQueue.main.async {
+            QuickHistoryController.shared.show(modelContext: engine.modelContext, engine: engine)
         }
     }
 }

@@ -4,7 +4,7 @@
   <p>Voice to text app for macOS to transcribe what you say to text almost instantly</p>
 
   [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-  ![Platform](https://img.shields.io/badge/platform-macOS%2014.0%2B-brightgreen)
+  ![Platform](https://img.shields.io/badge/platform-macOS%2015.0%2B-brightgreen)
   [![GitHub release (latest by date)](https://img.shields.io/github/v/release/Beingpax/VoiceInk)](https://github.com/Beingpax/VoiceInk/releases)
   ![GitHub all releases](https://img.shields.io/github/downloads/Beingpax/VoiceInk/total)
   ![GitHub stars](https://img.shields.io/github/stars/Beingpax/VoiceInk?style=social)
@@ -34,7 +34,7 @@ My goal is to make it **the most efficient and privacy-focused voice-to-text sol
 - 🔒 **Privacy First**: 100% offline processing ensures your data never leaves your device
 - ⚡ **Modes**: Intelligent app detection automatically applies your perfect pre-configured settings based on the app/ URL you're on
 - 🧠 **Context Aware**: Smart AI that understands your screen content and adapts to the context
-- 🎯 **Global Shortcuts**: Configurable keyboard shortcuts for quick recording and push-to-talk functionality
+- 🎯 **Global Shortcuts**: Configurable keyboard or mouse shortcuts for quick recording and push-to-talk functionality
 - 📝 **Personal Dictionary**: Train the AI to understand your unique terminology with custom words, industry terms, and smart text replacements
 - 🔄 **Smart Modes**: Instantly switch between AI-powered modes optimized for different writing styles and contexts
 - 🤖 **AI Assistant**: Built-in voice assistant mode for a quick chatGPT like conversational assistant
@@ -56,7 +56,7 @@ As an open-source project, you can build VoiceInk yourself by following the inst
 
 ## Requirements
 
-- macOS 14.4 or later
+- macOS 15.0 or later
 
 ## Documentation
 

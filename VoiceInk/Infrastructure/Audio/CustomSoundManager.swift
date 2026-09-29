@@ -289,8 +289,9 @@ class CustomSoundManager: ObservableObject {
         notifyCustomSoundsChanged()
     }
 
-    func setCustomSound(url: URL, for type: SoundType) -> Result<Void, CustomSoundError> {
-        let result = validateAudioFile(url: url)
+    @MainActor
+    func setCustomSound(url: URL, for type: SoundType) async -> Result<Void, CustomSoundError> {
+        let result = await validateAudioFile(url: url)
         switch result {
         case .success:
             let copyResult = copySoundFile(from: url, standardName: type.standardName)
@@ -369,13 +370,23 @@ class CustomSoundManager: ObservableObject {
         }
     }
 
-    private func validateAudioFile(url: URL) -> Result<Void, CustomSoundError> {
+    private func validateAudioFile(url: URL) async -> Result<Void, CustomSoundError> {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return .failure(.fileNotFound)
         }
 
-        let asset = AVAsset(url: url)
-        let duration = asset.duration.seconds
+        do {
+            _ = try AVAudioPlayer(contentsOf: url)
+        } catch {
+            return .failure(.invalidAudioFile)
+        }
+
+        let duration: TimeInterval
+        do {
+            duration = try await AVAsset(url: url).load(.duration).seconds
+        } catch {
+            return .failure(.invalidAudioFile)
+        }
 
         guard duration.isFinite && duration > 0 else {
             return .failure(.invalidAudioFile)
@@ -383,12 +394,6 @@ class CustomSoundManager: ObservableObject {
 
         if duration > maxSoundDuration {
             return .failure(.durationTooLong(duration: duration, maxDuration: maxSoundDuration))
-        }
-
-        do {
-            _ = try AVAudioPlayer(contentsOf: url)
-        } catch {
-            return .failure(.invalidAudioFile)
         }
 
         return .success(())

@@ -45,7 +45,10 @@ setup: whisper
 	@echo "Please ensure your Xcode project references the framework from this new location."
 
 build: setup
-	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" build
+	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug CODE_SIGN_IDENTITY="" \
+		-skipPackagePluginValidation \
+		-skipMacroValidation \
+		build
 
 # Build locally with stable Apple Development signing when available.
 local: check setup
@@ -78,6 +81,8 @@ local: check setup
 		DEVELOPMENT_TEAM="" \
 		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoiceInk/VoiceInk.local.entitlements" \
 		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
+		-skipPackagePluginValidation \
+		-skipMacroValidation \
 		build
 	@APP_PATH="$(LOCAL_DERIVED_DATA)/Build/Products/Release/VoiceInk.app" && \
 	if [ -d "$$APP_PATH" ]; then \

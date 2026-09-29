@@ -142,7 +142,7 @@ class LastTranscriptionService: ObservableObject {
                 let textToCopy =
                     result.enhancementFailure == nil && newTranscription.enhancedText?.isEmpty == false
                     ? newTranscription.enhancedText! : newTranscription.text
-                ClipboardManager.copyToClipboard(textToCopy)
+                _ = ClipboardManager.copyToClipboard(textToCopy)
 
                 if let enhancementFailure = result.enhancementFailure {
                     NotificationManager.shared.showNotification(

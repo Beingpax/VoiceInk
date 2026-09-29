@@ -1,17 +1,24 @@
 import Foundation
 import LLMkit
 
+struct AIChatCompletionResult: Sendable {
+    let text: String
+    let openRouterCompletion: OpenRouterCompletion?
+}
+
 extension AIService {
-    func completeChat(
+    func performChatCompletion(
         provider: AIProvider,
         modelName: String?,
         messages: [ChatMessage],
         systemPrompt: String? = nil,
+        localUserPrompt: String? = nil,
         timeout: TimeInterval = 30
-    ) async throws -> String {
+    ) async throws -> AIChatCompletionResult {
         let resolvedModel = modelName?.isEmpty == false ? modelName! : selectedModel(for: provider)
 
         let result: String
+        var openRouterCompletion: OpenRouterCompletion? = nil
         switch provider {
         case .gemini:
             result = try await GeminiLLMClient.chatCompletion(
@@ -31,6 +38,29 @@ extension AIService {
                 systemPrompt: systemPrompt,
                 timeout: timeout
             )
+        case .openRouter:
+            let policy = OpenRouterRequestPolicy.lowLatency(
+                modelName: resolvedModel,
+                modelMetadata: openRouterModelMetadata(for: resolvedModel)
+            )
+            let completion = try await OpenRouterClient.chatCompletion(
+                apiKey: try chatAPIKey(for: provider, modelName: resolvedModel),
+                model: policy.model,
+                messages: messages,
+                systemPrompt: systemPrompt,
+                temperature: policy.temperature,
+                reasoning: policy.reasoning,
+                provider: policy.provider,
+                includeRouterMetadata: true,
+                appReferer: URL(string: "https://tryvoiceink.com"),
+                appTitle: "VoiceInk",
+                timeout: timeout
+            )
+            guard !OpenRouterRequestPolicy.outputWasTruncated(finishReason: completion.finishReason) else {
+                throw EnhancementError.outputTruncated
+            }
+            result = completion.text
+            openRouterCompletion = completion
         case .custom:
             guard
                 let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: resolvedModel),
@@ -53,7 +83,7 @@ extension AIService {
             )
         case .ollama:
             result = try await enhanceWithOllama(
-                text: chatPrompt(from: messages),
+                text: localUserPrompt ?? chatPrompt(from: messages),
                 systemPrompt: systemPrompt ?? "",
                 model: resolvedModel,
                 timeout: timeout
@@ -61,7 +91,7 @@ extension AIService {
         case .localCLI:
             result = try await enhanceWithLocalCLI(
                 systemPrompt: systemPrompt ?? "",
-                userPrompt: chatPrompt(from: messages)
+                userPrompt: localUserPrompt ?? chatPrompt(from: messages)
             )
         default:
             guard let baseURL = URL(string: provider.baseURL) else {
@@ -88,7 +118,29 @@ extension AIService {
             )
         }
 
-        return AIEnhancementOutputFilter.filter(result)
+        return AIChatCompletionResult(text: result, openRouterCompletion: openRouterCompletion)
+    }
+
+    func completeChat(
+        provider: AIProvider,
+        modelName: String?,
+        messages: [ChatMessage],
+        systemPrompt: String? = nil,
+        timeout: TimeInterval = 30
+    ) async throws -> String {
+        let completion = try await performChatCompletion(
+            provider: provider,
+            modelName: modelName,
+            messages: messages,
+            systemPrompt: systemPrompt,
+            timeout: timeout
+        )
+        let result = completion.text
+        let filteredResult = AIEnhancementOutputFilter.filter(result)
+        guard provider != .openRouter || !filteredResult.isEmpty else {
+            throw EnhancementError.enhancementFailed
+        }
+        return filteredResult
     }
 
     private func chatAPIKey(for provider: AIProvider, modelName: String) throws -> String {

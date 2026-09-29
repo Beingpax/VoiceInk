@@ -24,6 +24,19 @@ struct HistorySettingsPanel: View {
 
             Form {
                 Section {
+                    LabeledContent("Open Quick History") {
+                        ShortcutRecorder(action: .openQuickHistory)
+                            .controlSize(.small)
+                    }
+                } header: {
+                    sectionHeader(
+                        "Quick History",
+                        tip:
+                            "Open recent transcriptions without opening the main VoiceInk window. Search, select, and press Return to paste into your current app."
+                    )
+                }
+
+                Section {
                     Toggle("Auto-delete Transcript History", isOn: $isTranscriptionCleanupEnabled)
 
                     if isTranscriptionCleanupEnabled {

@@ -92,15 +92,16 @@ struct ShortcutRecorder: View {
     private static let shortcutRecordingDidStart = Notification.Name("ShortcutRecorderRecordingDidStart")
 }
 
-private struct ShortcutVisualization: View {
+struct ShortcutVisualization: View {
     let shortcut: Shortcut?
     let isRecording: Bool
+    var isCompact = false
 
     var body: some View {
         HStack(spacing: 4) {
             if let shortcut {
                 ForEach(Array(shortcut.displayTokens.enumerated()), id: \.offset) { _, token in
-                    ShortcutKeyCap(title: token, isRecording: isRecording)
+                    ShortcutKeyCap(title: token, isRecording: isRecording, isCompact: isCompact)
                 }
             } else {
                 Text(isRecording ? LocalizedStringKey("Press shortcut") : LocalizedStringKey("Record"))
@@ -110,15 +111,15 @@ private struct ShortcutVisualization: View {
                     .foregroundStyle(isRecording ? .primary : .secondary)
             }
         }
-        .padding(4)
-        .frame(minWidth: shortcut == nil ? 104 : nil, minHeight: 26)
+        .padding(isCompact ? 2 : 4)
+        .frame(minWidth: shortcut == nil ? 104 : nil, minHeight: isCompact ? 20 : 26)
         .fixedSize(horizontal: true, vertical: false)
         .background {
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: isCompact ? 5 : 6)
                 .fill(isRecording ? AppTheme.Accent.fill : AppTheme.Surface.control)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: isCompact ? 5 : 6)
                 .stroke(isRecording ? AppTheme.Accent.border : AppTheme.Border.subtle, lineWidth: 1)
         }
     }
@@ -127,21 +128,22 @@ private struct ShortcutVisualization: View {
 private struct ShortcutKeyCap: View {
     let title: String
     let isRecording: Bool
+    let isCompact: Bool
 
     var body: some View {
         Text(title)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .font(.system(size: isCompact ? 9 : 11, weight: .semibold, design: .rounded))
             .lineLimit(1)
             .minimumScaleFactor(0.75)
             .foregroundStyle(foregroundColor)
-            .padding(.horizontal, 5)
-            .frame(minHeight: 18)
+            .padding(.horizontal, isCompact ? 4 : 5)
+            .frame(minHeight: isCompact ? 14 : 18)
             .background {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: isCompact ? 3 : 4)
                     .fill(backgroundColor)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: isCompact ? 3 : 4)
                     .stroke(borderColor, lineWidth: 1)
             }
     }
@@ -239,7 +241,9 @@ final class ShortcutRecorderModel: ObservableObject {
     }
 
     private func installRecordingMonitor() {
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.keyDown, .flagsChanged, .otherMouseDown]
+        ) { [weak self] event in
             guard let self else { return event }
             let shouldConsume = self.handleRecordingEvent(event)
             return shouldConsume ? nil : event
@@ -267,6 +271,8 @@ final class ShortcutRecorderModel: ObservableObject {
             return handleKeyDown(keyCode: event.keyCode, modifierFlags: event.modifierFlags)
         case .flagsChanged:
             return handleFlagsChanged(keyCode: event.keyCode, modifierFlags: event.modifierFlags)
+        case .otherMouseDown:
+            return handleMouseDown(buttonNumber: event.buttonNumber, modifierFlags: event.modifierFlags)
         default:
             return false
         }
@@ -297,6 +303,22 @@ final class ShortcutRecorderModel: ObservableObject {
         let shortcut = Shortcut.key(keyCode: keyCode, modifierFlags: modifiers)
         ShortcutDiagnostics.notice(
             "shortcut-capture event=keyDown keyCode=\(keyCode) modifiers=0x\(String(modifiers.rawValue, radix: 16)) candidate=\(shortcut.diagnosticDescription)"
+        )
+        previewShortcut = shortcut
+        finish(with: shortcut)
+        return true
+    }
+
+    private func handleMouseDown(buttonNumber: Int, modifierFlags: NSEvent.ModifierFlags) -> Bool {
+        guard let buttonNumber = UInt16(exactly: buttonNumber),
+            Shortcut.isSupportedMouseButtonNumber(buttonNumber)
+        else {
+            return false
+        }
+
+        let shortcut = Shortcut.mouseButton(
+            buttonNumber: buttonNumber,
+            modifierFlags: Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil)
         )
         previewShortcut = shortcut
         finish(with: shortcut)

@@ -1,17 +1,6 @@
 import Foundation
 import SwiftData
 
-enum BackupImportError: LocalizedError {
-    case saveFailed(String, Error)
-
-    var errorDescription: String? {
-        switch self {
-        case .saveFailed(let item, let error):
-            return String(format: String(localized: "Failed to save imported %@: %@"), item, error.localizedDescription)
-        }
-    }
-}
-
 enum BackupImporter {
     private static let keyIsTextFormattingEnabled = "IsTextFormattingEnabled"
 
@@ -21,11 +10,11 @@ enum BackupImporter {
         recordingShortcutManager: RecordingShortcutManager, menuBarManager: MenuBarManager,
         mediaController: MediaController, playbackController: PlaybackController, recorderUIManager: RecorderUIManager,
         modelContext: ModelContext, transcriptionModelManager: TranscriptionModelManager
-    ) throws {
+    ) async throws {
         var shouldRepairModePromptSelections = false
 
         if categories.contains(.dictionary) {
-            try importDictionary(from: backup, modelContext: modelContext)
+            try await importDictionary(from: backup, modelContext: modelContext)
         }
 
         if categories.contains(.general) {
@@ -119,7 +108,7 @@ enum BackupImporter {
             ShortcutStore.setShortcut(cancelShortcut.shortcut, for: .cancelRecorder)
         }
         if let historyShortcut = general.openHistoryWindowShortcut {
-            ShortcutStore.setShortcut(historyShortcut.shortcut, for: .openHistoryWindow)
+            ShortcutStore.setShortcut(historyShortcut.shortcut, for: .openQuickHistory)
         }
         if let dictionaryShortcut = general.quickAddToDictionaryShortcut {
             ShortcutStore.setShortcut(dictionaryShortcut.shortcut, for: .quickAddToDictionary)
@@ -144,12 +133,6 @@ enum BackupImporter {
             let secondaryMode = RecordingShortcutManager.Mode(rawValue: secondaryModeRawValue)
         {
             recordingShortcutManager.secondaryRecordingShortcutMode = secondaryMode
-        }
-        if let middleClickEnabled = general.isMiddleClickToggleEnabled {
-            recordingShortcutManager.isMiddleClickToggleEnabled = middleClickEnabled
-        }
-        if let middleClickDelay = general.middleClickActivationDelay {
-            recordingShortcutManager.middleClickActivationDelay = middleClickDelay
         }
         if let launch = general.launchAtLoginEnabled {
             LaunchAtLoginManager.shared.setEnabled(launch)
@@ -209,88 +192,74 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
+        if let finishAndSendKey = general.finishAndSendKey.flatMap(FinishAndSendKey.init(rawValue:)) {
+            UserDefaults.standard.set(finishAndSendKey.rawValue, forKey: FinishAndSendSettings.key)
+        }
+        let importedReviewSchedule = general.autoLearnReviewSchedule.flatMap {
+            AutoLearnReviewSchedule(rawValue: $0)
+        }
+        if let importedReviewSchedule {
+            UserDefaults.standard.set(importedReviewSchedule.rawValue, forKey: AutoLearnSettings.reviewScheduleKey)
+        }
+        if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
+            UserDefaults.standard.set(autoLearnEnabled, forKey: AutoLearnSettings.isEnabledKey)
+        }
+        if let provider = general.autoLearnProvider {
+            UserDefaults.standard.set(provider, forKey: AutoLearnSettings.providerKey)
+        }
+        if let model = general.autoLearnModel {
+            UserDefaults.standard.set(model, forKey: AutoLearnSettings.modelKey)
+        }
+        if general.isAutoLearnDictionaryEnabled != nil || importedReviewSchedule != nil {
+            Task {
+                if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
+                    await AutoLearnService.shared.settingDidChange(isEnabled: autoLearnEnabled)
+                } else {
+                    await AutoLearnService.shared.reviewScheduleDidChange()
+                }
+            }
+        }
 
         print("Successfully imported general settings.")
     }
 
     @MainActor
-    private static func importDictionary(from backup: BackupFile, modelContext: ModelContext) throws {
-        var insertedWords = 0
-        var insertedReplacements = 0
-        var skippedInvalidReplacements = 0
-
-        if let words = backup.vocabularyWords {
-            let descriptor = FetchDescriptor<VocabularyWord>()
-            let existingWords = try modelContext.fetch(descriptor)
-            var existingWordsSet = Set(existingWords.map { $0.word.lowercased() })
-
-            for item in words {
-                let word = item.word.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !word.isEmpty else { continue }
-
-                let lowercasedWord = word.lowercased()
-                if !existingWordsSet.contains(lowercasedWord) {
-                    modelContext.insert(VocabularyWord(word: word))
-                    existingWordsSet.insert(lowercasedWord)
-                    insertedWords += 1
-                }
-            }
-        } else {
-            print("No vocabulary words found in the imported file. Existing items remain unchanged.")
-        }
-
-        if let replacements = backup.wordReplacements {
-            let descriptor = FetchDescriptor<WordReplacement>()
-            let existingReplacements = try modelContext.fetch(descriptor)
-
-            var existingKeys = Set<String>()
-            for existing in existingReplacements {
-                existingKeys.formUnion(tokens(from: existing.originalText))
-            }
-
-            for (original, replacement) in replacements {
-                let trimmedOriginal = original.trimmingCharacters(in: .whitespacesAndNewlines)
-                let trimmedReplacement = replacement.trimmingCharacters(in: .whitespacesAndNewlines)
-                let importTokens = tokens(from: trimmedOriginal)
-                guard !importTokens.isEmpty, !trimmedReplacement.isEmpty else {
-                    skippedInvalidReplacements += 1
-                    continue
-                }
-
-                let hasConflict = importTokens.contains { existingKeys.contains($0) }
-
-                if !hasConflict {
-                    modelContext.insert(
-                        WordReplacement(originalText: trimmedOriginal, replacementText: trimmedReplacement))
-                    existingKeys.formUnion(importTokens)
-                    insertedReplacements += 1
-                }
-            }
-        } else {
-            print("No word replacements found in the imported file. Existing replacements remain unchanged.")
-        }
-
-        guard insertedWords > 0 || insertedReplacements > 0 else {
+    private static func importDictionary(from backup: BackupFile, modelContext: ModelContext) async throws {
+        guard backup.vocabularyWords != nil || backup.wordReplacements != nil else {
             print("No new dictionary entries were imported.")
-            if skippedInvalidReplacements > 0 {
-                print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
-            }
-            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
+            DictionaryService.cleanUpDictionaryContent(context: modelContext, source: "settings import")
             return
         }
 
-        do {
-            try modelContext.save()
-            print(
-                "Successfully imported \(insertedWords) vocabulary words and \(insertedReplacements) word replacements to SwiftData."
-            )
-            if skippedInvalidReplacements > 0 {
-                print("Skipped \(skippedInvalidReplacements) invalid word replacements from the imported file.")
+        let replacementEntries = (backup.wordReplacements ?? [:])
+            .sorted { $0.key < $1.key }
+            .map { original, replacement in
+                DictionaryReplacementEntry(
+                    sources: WordReplacementVariants.parse(original),
+                    replacement: replacement,
+                    createdAt: nil
+                )
             }
-            DictionaryService.removeExactDuplicateContent(context: modelContext, source: "settings import")
-        } catch {
-            modelContext.rollback()
-            throw BackupImportError.saveFailed("dictionary entries", error)
+
+        let archive = DictionaryArchive(
+            vocabulary: (backup.vocabularyWords ?? []).map {
+                DictionaryVocabularyEntry(term: $0.word, createdAt: nil)
+            },
+            replacements: replacementEntries
+        )
+
+        let result = try await DictionaryImportExportService.apply(
+            archive: archive,
+            mode: .merge,
+            modelContext: modelContext
+        )
+        DictionaryService.cleanUpDictionaryContent(context: modelContext, source: "settings import")
+        print(
+            "Successfully imported \(result.summary.vocabularyToImport) vocabulary entries and "
+                + "\(result.summary.replacementRulesToImport) word replacement rules."
+        )
+        if result.summary.skippedEntryCount > 0 {
+            print("Skipped \(result.summary.skippedEntryCount) dictionary entries.")
         }
     }
 
@@ -310,10 +279,4 @@ enum BackupImporter {
         print("Successfully imported \(models.count) custom model definitions.")
     }
 
-    private static func tokens(from text: String) -> [String] {
-        text
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-            .filter { !$0.isEmpty }
-    }
 }

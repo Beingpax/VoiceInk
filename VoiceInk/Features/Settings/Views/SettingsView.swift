@@ -2,6 +2,7 @@ import Carbon.HIToolbox
 import Cocoa
 import SwiftUI
 
+@MainActor
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var updaterViewModel: UpdaterViewModel
@@ -13,7 +14,7 @@ struct SettingsView: View {
     @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
     @ObservedObject private var mediaController = MediaController.shared
     @ObservedObject private var playbackController = PlaybackController.shared
-    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = true
+    @AppStorage(OnboardingSettings.completedV2Key) private var hasCompletedOnboardingV2 = true
     @AppStorage("enableAnnouncements") private var enableAnnouncements = true
     @AppStorage("restoreClipboardAfterPaste") private var restoreClipboardAfterPaste = true
     @AppStorage("clipboardRestoreDelay") private var clipboardRestoreDelay = 2.0
@@ -23,11 +24,12 @@ struct SettingsView: View {
     @AppStorage(AppLanguagePreference.userDefaultsKey) private var appLanguagePreference = AppLanguagePreference
         .systemValue
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
+    @AppStorage(FinishAndSendSettings.key) private var finishAndSendKey = FinishAndSendKey.none.rawValue
     @State private var showResetOnboardingAlert = false
     @State private var showLanguageRestartAlert = false
     @State private var cancelRecordingShortcutRecorderResetID = 0
+    @State private var isImportingSettings = false
 
-    @State private var isMiddleClickExpanded = false
     @State private var isRestoreClipboardExpanded = false
 
     var body: some View {
@@ -71,8 +73,12 @@ struct SettingsView: View {
                         withAnimation { recordingShortcutManager.secondaryRecordingShortcut = .custom }
                     }
                 }
+
             } header: {
-                Text("Shortcuts")
+                HStack(spacing: 4) {
+                    Text("Shortcuts")
+                    InfoTip("Supports keyboard combinations and mouse buttons.")
+                }
             }
 
             Section("Additional Shortcuts") {
@@ -125,31 +131,20 @@ struct SettingsView: View {
                     }
                 }
 
-                ExpandableSettingsRow(
-                    isExpanded: $isMiddleClickExpanded,
-                    isEnabled: $recordingShortcutManager.isMiddleClickToggleEnabled,
-                    label: "Middle-Click Recording"
-                ) {
-                    LabeledContent("Activation Delay") {
-                        HStack {
-                            TextField(
-                                "", value: $recordingShortcutManager.middleClickActivationDelay,
-                                formatter: {
-                                    let formatter = NumberFormatter()
-                                    formatter.minimum = 0
-                                    return formatter
-                                }()
-                            )
-                            .textFieldStyle(.roundedBorder)
-                            .frame(width: 60)
-                            Text("ms")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
             }
 
             Section("Pasting") {
+                Picker(selection: $finishAndSendKey) {
+                    ForEach(FinishAndSendKey.allCases, id: \.self) { key in
+                        Text(key.displayName).tag(key.rawValue)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Auto Send")
+                        InfoTip("Press Return while recording to stop and deliver the result. VoiceInk will then paste the result and press the selected key to send it. Choose None to disable this feature.")
+                    }
+                }
+
                 ExpandableSettingsRow(
                     isExpanded: $isRestoreClipboardExpanded,
                     isEnabled: $restoreClipboardAfterPaste,
@@ -292,17 +287,23 @@ struct SettingsView: View {
 
                 LabeledContent("Import Settings") {
                     Button("Import") {
-                        ImportExportService.shared.importSettings(
-                            enhancementService: enhancementService,
-                            recordingShortcutManager: recordingShortcutManager,
-                            menuBarManager: menuBarManager,
-                            mediaController: mediaController,
-                            playbackController: playbackController,
-                            recorderUIManager: recorderUIManager,
-                            modelContext: modelContext,
-                            transcriptionModelManager: transcriptionModelManager
-                        )
+                        guard !isImportingSettings else { return }
+                        isImportingSettings = true
+                        Task { @MainActor in
+                            defer { isImportingSettings = false }
+                            await ImportExportService.shared.importSettings(
+                                enhancementService: enhancementService,
+                                recordingShortcutManager: recordingShortcutManager,
+                                menuBarManager: menuBarManager,
+                                mediaController: mediaController,
+                                playbackController: playbackController,
+                                recorderUIManager: recorderUIManager,
+                                modelContext: modelContext,
+                                transcriptionModelManager: transcriptionModelManager
+                            )
+                        }
                     }
+                    .disabled(isImportingSettings)
                 }
             } header: {
                 Text("Backup")

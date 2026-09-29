@@ -15,7 +15,7 @@ struct MenuBarView: View {
     @ObservedObject private var launchAtLoginManager = LaunchAtLoginManager.shared
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject var audioDeviceManager = AudioDeviceManager.shared
-    @AppStorage("hasCompletedOnboardingV2") private var hasCompletedOnboardingV2 = false
+    @AppStorage(OnboardingSettings.completedV2Key) private var hasCompletedOnboardingV2 = false
 
     var body: some View {
         VStack {
@@ -124,8 +124,8 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("c", modifiers: [.command, .shift])
 
-            Button("History") {
-                menuBarManager.openHistoryWindow()
+            Button("Quick History") {
+                menuBarManager.openQuickHistory()
             }
             .keyboardShortcut("h", modifiers: [.command, .shift])
 

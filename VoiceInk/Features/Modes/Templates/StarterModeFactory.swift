@@ -91,7 +91,6 @@ enum StarterModeFactory {
             selectedAIProvider: template.usesAIEnhancement ? provider.rawValue : nil,
             selectedAIModel: template.usesAIEnhancement ? (modelName ?? provider.defaultModel) : nil,
             outputMode: template.outputMode,
-            autoSendKey: .none,
             isEnabled: true,
             isDefault: template.isDefault
         )

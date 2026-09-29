@@ -37,9 +37,15 @@ enum ShortcutDiagnostics {
         var keyDownEventCount = 0
         var keyUpEventCount = 0
         var flagsChangedEventCount = 0
+        var mouseDownEventCount = 0
+        var mouseDraggedEventCount = 0
+        var mouseUpEventCount = 0
         var lastKeyDownAt: Date?
         var lastKeyUpAt: Date?
         var lastFlagsChangedAt: Date?
+        var lastMouseDownAt: Date?
+        var lastMouseDraggedAt: Date?
+        var lastMouseUpAt: Date?
         var lastDisabledReason: String?
         var lastUpdateAt = Date()
     }
@@ -123,6 +129,15 @@ enum ShortcutDiagnostics {
             case .flagsChanged:
                 health.flagsChangedEventCount += 1
                 health.lastFlagsChangedAt = eventDate
+            case .otherMouseDown:
+                health.mouseDownEventCount += 1
+                health.lastMouseDownAt = eventDate
+            case .otherMouseDragged:
+                health.mouseDraggedEventCount += 1
+                health.lastMouseDraggedAt = eventDate
+            case .otherMouseUp:
+                health.mouseUpEventCount += 1
+                health.lastMouseUpAt = eventDate
             default:
                 break
             }
@@ -209,6 +224,9 @@ enum ShortcutDiagnostics {
         "keyDownCount=\(health.keyDownEventCount) lastKeyDownAgeSeconds=\(ageSummary(health.lastKeyDownAt, referenceDate: referenceDate)) "
             + "keyUpCount=\(health.keyUpEventCount) lastKeyUpAgeSeconds=\(ageSummary(health.lastKeyUpAt, referenceDate: referenceDate)) "
             + "flagsChangedCount=\(health.flagsChangedEventCount) lastFlagsChangedAgeSeconds=\(ageSummary(health.lastFlagsChangedAt, referenceDate: referenceDate))"
+            + " mouseDownCount=\(health.mouseDownEventCount) lastMouseDownAgeSeconds=\(ageSummary(health.lastMouseDownAt, referenceDate: referenceDate))"
+            + " mouseDraggedCount=\(health.mouseDraggedEventCount) lastMouseDraggedAgeSeconds=\(ageSummary(health.lastMouseDraggedAt, referenceDate: referenceDate))"
+            + " mouseUpCount=\(health.mouseUpEventCount) lastMouseUpAgeSeconds=\(ageSummary(health.lastMouseUpAt, referenceDate: referenceDate))"
     }
 
     private static func ageSummary(_ date: Date?, referenceDate: Date) -> String {

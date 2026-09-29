@@ -1,53 +1,97 @@
 import SwiftUI
 
 struct DashboardInsightCardBackground: View {
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     var cornerRadius: CGFloat = DashboardLayout.cardCornerRadius
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.86))
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color(nsColor: .windowBackgroundColor).opacity(0.62), location: 0),
-                            .init(color: Color(nsColor: .controlBackgroundColor).opacity(0.38), location: 0.46),
-                            .init(color: AppTheme.Surface.subtle.opacity(0.62), location: 1),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+        shape
+            .fill(AppTheme.Insights.card)
+            .overlay {
+                if colorSchemeContrast == .increased {
+                    shape
+                        .strokeBorder(AppTheme.Insights.border, lineWidth: 1)
+                }
+            }
+    }
+}
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.075), location: 0),
-                            .init(color: Color.clear, location: 0.42),
-                            .init(color: Color.black.opacity(0.045), location: 1),
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+extension View {
+    func dashboardInsightCardStyle(
+        padding: CGFloat = 22,
+        alignment: Alignment = .leading
+    ) -> some View {
+        self.padding(padding)
+            .frame(maxWidth: .infinity, alignment: alignment)
+            .background(DashboardInsightCardBackground())
+    }
+}
 
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        stops: [
-                            .init(color: Color.white.opacity(0.20), location: 0),
-                            .init(color: AppTheme.Border.subtle.opacity(0.60), location: 0.55),
-                            .init(color: Color.primary.opacity(0.08), location: 1),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+struct DashboardInsightRowBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(AppTheme.Insights.elevated)
+    }
+}
+
+struct DashboardInsightButtonStyle: ButtonStyle {
+    var isSelected = false
+    var isQuiet = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        DashboardInsightButtonBody(
+            label: configuration.label,
+            isPressed: configuration.isPressed,
+            isSelected: isSelected,
+            isQuiet: isQuiet
+        )
+    }
+}
+
+private struct DashboardInsightButtonBody<Label: View>: View {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovered = false
+
+    let label: Label
+    let isPressed: Bool
+    let isSelected: Bool
+    let isQuiet: Bool
+
+    private var backgroundColor: Color {
+        if isSelected {
+            return AppTheme.Insights.selection
         }
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        return isQuiet ? .clear : AppTheme.Insights.elevated
+    }
+
+    private var opacity: Double {
+        guard isEnabled else { return 0.45 }
+        return isPressed ? 0.8 : 1
+    }
+
+    var body: some View {
+        label
+            .foregroundStyle(isSelected ? AppTheme.Insights.selectionText : AppTheme.Text.primary)
+            .background {
+                Capsule()
+                    .fill(backgroundColor)
+                    .overlay {
+                        if isHovered || isPressed {
+                            Capsule().fill(AppTheme.Insights.hover)
+                        }
+                    }
+            }
+            .overlay {
+                if isSelected {
+                    Capsule().strokeBorder(AppTheme.Insights.productivity.opacity(0.4), lineWidth: 1)
+                }
+            }
+            .contentShape(Capsule())
+            .opacity(opacity)
+            .onHover { isHovered = $0 }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isHovered)
     }
 }

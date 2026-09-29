@@ -120,7 +120,7 @@ final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider {
         case .timeout:
             return StreamingTranscriptionError.timeout
         default:
-            return StreamingTranscriptionError.serverError(llmError.localizedDescription ?? "Unknown error")
+            return StreamingTranscriptionError.serverError(llmError.localizedDescription)
         }
     }
 }

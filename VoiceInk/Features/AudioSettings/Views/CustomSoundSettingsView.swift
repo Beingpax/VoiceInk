@@ -134,11 +134,13 @@ struct CustomSoundSettingsView: View {
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
 
-            let result = customSoundManager.setCustomSound(url: url, for: type)
-            if case .failure(let error) = result {
-                alertTitle = "Invalid Audio File"
-                alertMessage = error.localizedDescription
-                showingAlert = true
+            Task { @MainActor in
+                let result = await customSoundManager.setCustomSound(url: url, for: type)
+                if case .failure(let error) = result {
+                    alertTitle = "Invalid Audio File"
+                    alertMessage = error.localizedDescription
+                    showingAlert = true
+                }
             }
         }
     }

@@ -29,9 +29,8 @@ class AIEnhancementService: ObservableObject {
     private let aiService: AIService
     private let screenCaptureService: ScreenCaptureService
     private let customVocabularyService: CustomVocabularyService
-    private var baseTimeout: TimeInterval {
-        let stored = UserDefaults.standard.integer(forKey: "EnhancementTimeoutSeconds")
-        return stored > 0 ? TimeInterval(stored) : 7
+    private var requestTimeout: TimeInterval {
+        EnhancementRequestSettings.timeout
     }
     private let rateLimitInterval: TimeInterval = 1.0
     private var lastRequestTime: Date?
@@ -234,146 +233,59 @@ class AIEnhancementService: ObservableObject {
             contextSnapshot: contextSnapshot
         )
 
-        if provider == .ollama {
-            do {
-                let result = try await aiService.enhanceWithOllama(
-                    text: formattedText,
-                    systemPrompt: systemMessage,
-                    model: modelName,
-                    timeout: baseTimeout
-                )
-                return (
-                    AIEnhancementOutputFilter.filter(result),
-                    systemMessage,
-                    formattedText
-                )
-            } catch {
-                if let localError = error as? LocalAIError {
-                    switch localError {
-                    case .timeout:
-                        throw EnhancementError.timeout
-                    default:
-                        throw EnhancementError.customError(
-                            localError.errorDescription ?? "An unknown Ollama error occurred.")
-                    }
-                } else {
-                    throw EnhancementError.customError(error.localizedDescription)
-                }
-            }
+        if provider != .openRouter, provider != .ollama, provider != .localCLI {
+            try await waitForRateLimit()
         }
-
-        if provider == .localCLI {
-            do {
-                let result = try await aiService.enhanceWithLocalCLI(
-                    systemPrompt: systemMessage, userPrompt: formattedText)
-                return (
-                    AIEnhancementOutputFilter.filter(result),
-                    systemMessage,
-                    formattedText
-                )
-            } catch {
-                if let localError = error as? LocalCLIError {
-                    throw EnhancementError.customError(
-                        localError.errorDescription ?? "An unknown Local CLI error occurred.")
-                } else {
-                    throw EnhancementError.customError(error.localizedDescription)
-                }
-            }
-        }
-
-        try await waitForRateLimit()
 
         do {
-            let result: String
-            switch provider {
-            case .gemini:
-                result = try await GeminiLLMClient.chatCompletion(
-                    apiKey: try apiKey(for: provider, modelName: modelName),
-                    model: modelName,
-                    messages: [.user(formattedText)],
-                    systemPrompt: systemMessage,
-                    thinkingLevel: ReasoningConfig.geminiThinkingLevel(for: modelName),
-                    store: false,
-                    timeout: baseTimeout
-                )
-            case .anthropic:
-                result = try await AnthropicLLMClient.chatCompletion(
-                    apiKey: try apiKey(for: provider, modelName: modelName),
-                    model: modelName,
-                    messages: [.user(formattedText)],
-                    systemPrompt: systemMessage,
-                    timeout: baseTimeout
-                )
-            case .custom:
-                guard
-                    let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: modelName),
-                    let baseURL = URL(string: customConfiguration.baseURL)
-                else {
-                    throw EnhancementError.notConfigured
-                }
-                result = try await OpenAILLMClient.chatCompletion(
-                    baseURL: baseURL,
-                    apiKey: customConfiguration.apiKey,
-                    model: customConfiguration.modelName,
-                    messages: [.user(formattedText)],
-                    systemPrompt: systemMessage,
-                    temperature: 0.3,
-                    timeout: baseTimeout
-                )
-            default:
-                guard let baseURL = URL(string: provider.baseURL) else {
-                    throw EnhancementError.customError(
-                        "\(provider.rawValue) has an invalid API endpoint URL. Please update it in AI settings.")
-                }
-                let reasoningEffort = ReasoningConfig.getReasoningParameter(
-                    for: provider,
-                    modelName: modelName
-                )
-                let extraBody = ReasoningConfig.getExtraBodyParameters(
-                    for: provider,
-                    modelName: modelName
-                )
-                result = try await OpenAILLMClient.chatCompletion(
-                    baseURL: baseURL,
-                    apiKey: try apiKey(for: provider, modelName: modelName),
-                    model: modelName,
-                    messages: [.user(formattedText)],
-                    systemPrompt: systemMessage,
-                    temperature: 0.3,
-                    reasoningEffort: reasoningEffort,
-                    extraBody: extraBody,
-                    timeout: baseTimeout
+            let completion = try await aiService.performChatCompletion(
+                provider: provider,
+                modelName: modelName,
+                messages: [.user(formattedText)],
+                systemPrompt: systemMessage,
+                localUserPrompt: formattedText,
+                timeout: requestTimeout
+            )
+            if let openRouterCompletion = completion.openRouterCompletion {
+                let routedProvider = openRouterCompletion.provider ?? "unknown"
+                let routingAttempt = openRouterCompletion.metadata?.attempt ?? 0
+                let reasoningTokens = openRouterCompletion.usage?.reasoningTokens ?? 0
+                logger.debug(
+                    "OpenRouter completed requestedModel=\(modelName, privacy: .public) routedProvider=\(routedProvider, privacy: .public) routingAttempt=\(routingAttempt, privacy: .public) reasoningTokens=\(reasoningTokens, privacy: .public)"
                 )
             }
+            let filteredResult = AIEnhancementOutputFilter.filter(
+                completion.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            guard provider == .ollama || provider == .localCLI || !filteredResult.isEmpty else {
+                throw EnhancementError.enhancementFailed
+            }
             return (
-                AIEnhancementOutputFilter.filter(
-                    result.trimmingCharacters(in: .whitespacesAndNewlines)
-                ),
+                filteredResult,
                 systemMessage,
                 formattedText
             )
         } catch let error as LLMKitError {
             throw mapLLMKitError(error)
+        } catch let error as LocalAIError {
+            if case .timeout = error {
+                throw EnhancementError.timeout
+            }
+            throw EnhancementError.customError(
+                error.errorDescription ?? "An unknown Ollama error occurred."
+            )
+        } catch let error as LocalCLIError {
+            if case .timeout = error {
+                throw EnhancementError.timeout
+            }
+            throw EnhancementError.customError(
+                error.errorDescription ?? "An unknown Local CLI error occurred."
+            )
         } catch let error as EnhancementError {
             throw error
         } catch {
             throw EnhancementError.customError(error.localizedDescription)
         }
-    }
-
-    private func apiKey(for provider: AIProvider, modelName: String) throws -> String {
-        if provider == .custom {
-            guard let customConfiguration = CustomAIProviderManager.shared.requestConfiguration(forModel: modelName)
-            else {
-                throw EnhancementError.notConfigured
-            }
-            return customConfiguration.apiKey
-        }
-
-        guard let key = APIKeyManager.shared.getAPIKey(forProvider: provider.rawValue), !key.isEmpty else {
-            throw EnhancementError.notConfigured
-        }
-        return key
     }
 
     private func mapLLMKitError(_ error: LLMKitError) -> EnhancementError {
@@ -382,6 +294,7 @@ class AIEnhancementService: ObservableObject {
             return .notConfigured
         case .httpError(let statusCode, let message):
             if statusCode == 429 { return .rateLimitExceeded }
+            if statusCode == 408 { return .timeout }
             if (500...599).contains(statusCode) { return .serverError }
             return .customError("HTTP \(statusCode): \(message)")
         case .noResultReturned:
@@ -391,27 +304,27 @@ class AIEnhancementService: ObservableObject {
         case .timeout:
             return .timeout
         case .invalidURL, .decodingError, .encodingError:
-            return .customError(error.localizedDescription ?? "An unknown error occurred.")
+            return .customError(error.localizedDescription)
         case .unsupportedModel(let model):
             return .customError("Unsupported model: \(model)")
         }
     }
 
     private var retryOnTimeout: Bool {
-        UserDefaults.standard.bool(forKey: "EnhancementRetryOnTimeout")
+        EnhancementRequestSettings.retryOnTimeout
     }
 
     private func makeRequestWithRetry(
         text: String,
         configuration: EnhancementRuntimeConfiguration,
         contextSnapshot: RecordingContextSnapshot?,
-        maxRetries: Int = 3,
+        maxAttempts: Int = EnhancementRequestSettings.maximumAttempts,
         initialDelay: TimeInterval = 1.0
     ) async throws -> (text: String, systemMessage: String?, userMessage: String?) {
         var retries = 0
         var currentDelay = initialDelay
 
-        while retries < maxRetries {
+        while retries < maxAttempts {
             do {
                 return try await makeRequest(
                     text: text,
@@ -422,25 +335,25 @@ class AIEnhancementService: ObservableObject {
                 switch error {
                 case .networkError, .serverError, .rateLimitExceeded:
                     retries += 1
-                    if retries < maxRetries {
+                    if retries < maxAttempts {
                         logger.warning(
-                            "Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                            "Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxAttempts, privacy: .public))"
                         )
                         try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
                         currentDelay *= 2
                     } else {
-                        logger.error("Request failed after \(maxRetries, privacy: .public) retries.")
+                        logger.error("Request failed after \(maxAttempts, privacy: .public) attempts.")
                         throw error
                     }
                 case .timeout:
                     if retryOnTimeout {
                         retries += 1
-                        if retries < maxRetries {
+                        if retries < maxAttempts {
                             logger.warning(
-                                "Request timed out, retrying immediately... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                                "Request timed out, retrying immediately... (Attempt \(retries, privacy: .public)/\(maxAttempts, privacy: .public))"
                             )
                         } else {
-                            logger.error("Request timed out after \(maxRetries, privacy: .public) retries.")
+                            logger.error("Request timed out after \(maxAttempts, privacy: .public) attempts.")
                             throw error
                         }
                     } else {
@@ -457,14 +370,14 @@ class AIEnhancementService: ObservableObject {
                         nsError.code)
                 {
                     retries += 1
-                    if retries < maxRetries {
+                    if retries < maxAttempts {
                         logger.warning(
-                            "Request failed with network error, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxRetries, privacy: .public))"
+                            "Request failed with network error, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxAttempts, privacy: .public))"
                         )
                         try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
                         currentDelay *= 2
                     } else {
-                        logger.error("Request failed after \(maxRetries, privacy: .public) retries with network error.")
+                        logger.error("Request failed after \(maxAttempts, privacy: .public) attempts with network error.")
                         throw EnhancementError.networkError
                     }
                 } else {
@@ -488,7 +401,8 @@ class AIEnhancementService: ObservableObject {
             let requestResult = try await makeRequestWithRetry(
                 text: text,
                 configuration: configuration,
-                contextSnapshot: contextSnapshot
+                contextSnapshot: contextSnapshot,
+                maxAttempts: EnhancementRequestSettings.maximumAttempts
             )
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
@@ -516,11 +430,8 @@ class AIEnhancementService: ObservableObject {
             return
         }
 
-        if let capturedText = await screenCaptureService.captureAndExtractText() {
-            await MainActor.run {
-                self.objectWillChange.send()
-            }
-        }
+        guard await screenCaptureService.captureAndExtractText() != nil else { return }
+        objectWillChange.send()
     }
 
     func captureClipboardContext() {
@@ -602,6 +513,7 @@ enum EnhancementError: Error {
     case notConfigured
     case invalidResponse
     case enhancementFailed
+    case outputTruncated
     case networkError
     case serverError
     case rateLimitExceeded
@@ -618,6 +530,8 @@ extension EnhancementError: LocalizedError {
             return String(localized: "Invalid response from AI provider.")
         case .enhancementFailed:
             return String(localized: "AI enhancement failed to process the text.")
+        case .outputTruncated:
+            return String(localized: "The AI provider stopped before completing the enhancement.")
         case .networkError:
             return String(localized: "Network connection failed. Check your internet.")
         case .serverError:

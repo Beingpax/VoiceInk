@@ -4,6 +4,8 @@ import Foundation
 // MARK: - Data Types
 
 struct TimedWord {
+    private static let sentenceEnders: Set<Character> = [".", "!", "?", ";"]
+
     let text: String
     let normalizedText: String
     let startTime: Double
@@ -25,6 +27,13 @@ struct TimedWord {
                 .filter { $0.isLetter || $0.isNumber || $0.isWhitespace }
         )
         .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Sentence-ending punctuation attached to this word. Other punctuation and
+    /// capitalization intentionally do not participate in word agreement.
+    var sentenceEndingPunctuation: Character? {
+        guard let lastCharacter = text.last, Self.sentenceEnders.contains(lastCharacter) else { return nil }
+        return lastCharacter
     }
 }
 
@@ -94,7 +103,8 @@ final class WordAgreementEngine {
             return makeResult(hypothesisWords: words, newlyConfirmedWords: [])
         }
 
-        let commonPrefix = findLongestCommonPrefix(current: words, previous: previousWords)
+        let previousPassWords = previousWords
+        let commonPrefix = findLongestCommonPrefix(current: words, previous: previousPassWords)
         previousWords = words
 
         if commonPrefix.count >= config.minWordsToConfirm {
@@ -111,6 +121,15 @@ final class WordAgreementEngine {
         let confirmUpTo = applyPunctuationRule(words: Array(words.prefix(commonPrefix.count)))
 
         guard confirmUpTo > 0 else {
+            return makeResult(hypothesisWords: words, newlyConfirmedWords: [])
+        }
+
+        // Lexical agreement deliberately ignores punctuation. Validate sentence boundaries
+        // separately so punctuation churn cannot either be frozen or invalidate stable words.
+        guard sentenceBoundariesAgree(
+            current: Array(words.prefix(confirmUpTo)),
+            previous: Array(previousPassWords.prefix(confirmUpTo))
+        ) else {
             return makeResult(hypothesisWords: words, newlyConfirmedWords: [])
         }
 
@@ -215,15 +234,21 @@ final class WordAgreementEngine {
         return Array(current.prefix(prefixLength))
     }
 
+    private func sentenceBoundariesAgree(current: [TimedWord], previous: [TimedWord]) -> Bool {
+        guard current.count == previous.count else { return false }
+
+        return zip(current, previous).allSatisfy { currentWord, previousWord in
+            currentWord.sentenceEndingPunctuation == previousWord.sentenceEndingPunctuation
+        }
+    }
+
     // Confirms at sentence boundaries; needs 3 enders, keeps last 2 sentences as hypothesis.
     private func applyPunctuationRule(words: [TimedWord]) -> Int {
         guard !words.isEmpty else { return 0 }
 
-        let sentenceEnders: Set<Character> = [".", "!", "?", ";"]
-
         var punctuationIndices: [Int] = []
         for i in 0..<words.count {
-            if let lastChar = words[i].text.last, sentenceEnders.contains(lastChar) {
+            if words[i].sentenceEndingPunctuation != nil {
                 punctuationIndices.append(i)
             }
         }

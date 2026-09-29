@@ -122,7 +122,7 @@ final class DeepgramStreamingProvider: StreamingTranscriptionProvider {
         case .networkError(let detail):
             return StreamingTranscriptionError.connectionFailed(detail)
         default:
-            return StreamingTranscriptionError.serverError(llmError.localizedDescription ?? "Unknown error")
+            return StreamingTranscriptionError.serverError(llmError.localizedDescription)
         }
     }
 }

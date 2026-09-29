@@ -180,13 +180,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
     }
 
-    func getEnhancementService() -> AIEnhancementService? {
-        return enhancementService
-    }
-
     // MARK: - Toggle Record
 
-    func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false) async {
+    func toggleRecord(modeId: UUID? = nil, isAssistantFollowUp: Bool = false, sendAfterPaste: Bool = false) async {
         ShortcutDiagnostics.notice(
             "engine-toggle begin modeId=\(modeId?.uuidString ?? "none") assistantFollowUpRequested=\(isAssistantFollowUp) state=\(String(describing: recordingState)) recorderVisible=\(recorderUIManager?.isRecorderPanelVisible ?? false)"
         )
@@ -220,7 +216,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                     await runPipeline(
                         on: transcription,
                         audioURL: recordedFile,
-                        contextStore: activeRecordingContextStore
+                        contextStore: activeRecordingContextStore,
+                        sendAfterPaste: sendAfterPaste
                     )
                 } else {
                     await finishActiveRecorderCancellation()
@@ -304,6 +301,13 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             ShortcutDiagnostics.notice(
                                 "engine-record-start result=recording startId=\(startID.uuidString)"
                             )
+
+                            // Only retire the previous paste session once recording
+                            // has actually started. Preflight/permission failures
+                            // must leave it available for Auto Learn capture.
+                            if AutoLearnSettings.isEnabled {
+                                await AutoLearnService.shared.recordingDidStart()
+                            }
 
                             await activeModeTask.value
 
@@ -559,7 +563,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
     private func runPipeline(
         on transcription: Transcription,
         audioURL: URL,
-        contextStore: RecordingContextSnapshotStore?
+        contextStore: RecordingContextSnapshotStore?,
+        sendAfterPaste: Bool
     ) async {
         ShortcutDiagnostics.notice(
             "engine-pipeline begin transcriptionId=\(transcription.id.uuidString) state=\(String(describing: recordingState)) hasSession=\(currentSession != nil)"
@@ -614,6 +619,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
             outputConfiguration: {
                 ModeRuntimeResolver.outputConfiguration()
             },
+            sendAfterPaste: sendAfterPaste,
             onStateChange: { [weak self] state in
                 guard let self, self.activePipelineTranscriptionID == transcriptionID else { return }
                 self.recordingState = state

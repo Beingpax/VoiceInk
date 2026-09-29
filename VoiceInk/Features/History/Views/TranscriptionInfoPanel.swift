@@ -1,85 +1,122 @@
 import SwiftUI
 
-/// Reusable component that displays transcription Details and AI Request sections.
-/// Used in both the inline history side panel and the separate history window's metadata view.
+struct TranscriptionInfoSidePanel: View {
+    let transcription: Transcription
+    let onClose: () -> Void
+
+    var body: some View {
+        QuickPanelScaffold {
+            TranscriptionInfoPanel(transcription: transcription)
+        } header: {
+            header
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Text("Info")
+                .font(.headline)
+                .fontWeight(.semibold)
+
+            Spacer()
+
+            AppIconButton(
+                systemName: "xmark",
+                help: "Close",
+                size: 28,
+                iconSize: 14,
+                cornerRadius: AppTheme.Radius.control,
+                action: onClose
+            )
+        }
+        .padding(.horizontal, 20)
+        .frame(height: QuickPanelMetrics.headerHeight)
+    }
+}
+
+/// Reusable component that displays transcription details and the recorded AI request.
 struct TranscriptionInfoPanel: View {
     let transcription: Transcription
 
     var body: some View {
-        Form {
-            detailsSection
-            aiRequestSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                detailsSection
+                aiRequestSection
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, QuickPanelMetrics.topEdgeHeight)
+            .padding(.bottom, 20)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
+        .scrollIndicators(.never)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Details Section
 
     private var detailsSection: some View {
-        Section {
-            metadataRow(
-                icon: "calendar",
-                label: "Date",
-                value: transcription.timestamp.formatted(date: .abbreviated, time: .shortened)
-            )
-
-            metadataRow(
-                icon: "hourglass",
-                label: "Duration",
-                value: transcription.duration.formatTiming()
-            )
-
-            if let modelName = transcription.transcriptionModelName {
-                metadataRow(
-                    icon: "cpu.fill",
-                    label: "Transcription Model",
-                    value: modelName
+        infoSection("Details") {
+            VStack(spacing: 12) {
+                TranscriptionMetadataRow(
+                    icon: "calendar",
+                    label: "Date",
+                    value: transcription.timestamp.formatted(date: .abbreviated, time: .shortened)
                 )
 
-                if let duration = transcription.transcriptionDuration {
-                    metadataRow(
-                        icon: "clock.fill",
-                        label: "Transcription Time",
-                        value: duration.formatTiming()
+                TranscriptionMetadataRow(
+                    icon: "hourglass",
+                    label: "Duration",
+                    value: transcription.duration.formatTiming()
+                )
+
+                if let modelName = transcription.transcriptionModelName {
+                    TranscriptionMetadataRow(
+                        icon: "cpu.fill",
+                        label: "Transcription Model",
+                        value: modelName
+                    )
+
+                    if let duration = transcription.transcriptionDuration {
+                        TranscriptionMetadataRow(
+                            icon: "clock.fill",
+                            label: "Transcription Time",
+                            value: duration.formatTiming()
+                        )
+                    }
+                }
+
+                if let aiModel = transcription.aiEnhancementModelName {
+                    TranscriptionMetadataRow(
+                        icon: "sparkles",
+                        label: "Enhancement Model",
+                        value: aiModel
+                    )
+
+                    if let duration = transcription.enhancementDuration {
+                        TranscriptionMetadataRow(
+                            icon: "clock.fill",
+                            label: "Enhancement Time",
+                            value: duration.formatTiming()
+                        )
+                    }
+                }
+
+                if let promptName = transcription.promptName {
+                    TranscriptionMetadataRow(
+                        icon: "text.bubble.fill",
+                        label: "Prompt",
+                        value: promptName
+                    )
+                }
+
+                if let modeName = transcription.modeName {
+                    TranscriptionMetadataRow(
+                        icon: "bolt.fill",
+                        label: "Mode",
+                        value: modeName
                     )
                 }
             }
-
-            if let aiModel = transcription.aiEnhancementModelName {
-                metadataRow(
-                    icon: "sparkles",
-                    label: "Enhancement Model",
-                    value: aiModel
-                )
-
-                if let duration = transcription.enhancementDuration {
-                    metadataRow(
-                        icon: "clock.fill",
-                        label: "Enhancement Time",
-                        value: duration.formatTiming()
-                    )
-                }
-            }
-
-            if let promptName = transcription.promptName {
-                metadataRow(
-                    icon: "text.bubble.fill",
-                    label: "Prompt",
-                    value: promptName
-                )
-            }
-
-            if let modeName = transcription.modeName {
-                metadataRow(
-                    icon: "bolt.fill",
-                    label: "Mode",
-                    value: modeName
-                )
-            }
-        } header: {
-            Text("Details")
         }
     }
 
@@ -88,7 +125,7 @@ struct TranscriptionInfoPanel: View {
     @ViewBuilder
     private var aiRequestSection: some View {
         if transcription.aiRequestSystemMessage != nil || transcription.aiRequestUserMessage != nil {
-            Section {
+            infoSection("AI Request") {
                 VStack(alignment: .leading, spacing: 12) {
                     if let systemMsg = transcription.aiRequestSystemMessage, !systemMsg.isEmpty {
                         requestMessageBlock(title: "System Prompt", message: systemMsg)
@@ -106,13 +143,27 @@ struct TranscriptionInfoPanel: View {
                     alignment: .topTrailing,
                     padding: EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
                 )
-            } header: {
-                Text("AI Request")
             }
         }
     }
 
     // MARK: - Helpers
+
+    private func infoSection<Content: View>(
+        _ title: LocalizedStringKey,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(AppTheme.Text.secondary)
+
+            content()
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(HistoryCardBackground())
+        }
+    }
 
     private var aiRequestTokenEstimate: some View {
         HStack(spacing: 6) {
@@ -160,8 +211,14 @@ struct TranscriptionInfoPanel: View {
                 .foregroundColor(.primary)
         }
     }
+}
 
-    private func metadataRow(icon: String, label: LocalizedStringKey, value: String) -> some View {
+private struct TranscriptionMetadataRow: View {
+    let icon: String
+    let label: LocalizedStringKey
+    let value: String
+
+    var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 11, weight: .medium))
@@ -171,6 +228,9 @@ struct TranscriptionInfoPanel: View {
             Text(label)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .layoutPriority(1)
 
             Spacer(minLength: 0)
 
@@ -178,7 +238,8 @@ struct TranscriptionInfoPanel: View {
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.trailing)
         }
     }
-
 }

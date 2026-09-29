@@ -197,10 +197,12 @@ private struct WhisperPromptSettingsSection: View {
 }
 
 private struct EnhancementModelSettingsView: View {
-    @AppStorage("SkipShortEnhancement") private var isSkipShortEnhancementEnabled = true
+    @AppStorage("SkipShortEnhancement") private var isSkipShortEnhancementEnabled = false
     @AppStorage("ShortEnhancementWordThreshold") private var shortEnhancementWordThreshold = 3
-    @AppStorage("EnhancementTimeoutSeconds") private var enhancementTimeoutSeconds = 7
-    @AppStorage("EnhancementRetryOnTimeout") private var retryOnTimeout = true
+    @AppStorage(EnhancementRequestSettings.timeoutKey) private var enhancementTimeoutSeconds =
+        EnhancementRequestSettings.defaultTimeoutSeconds
+    @AppStorage(EnhancementRequestSettings.retryOnTimeoutKey) private var retryOnTimeout =
+        EnhancementRequestSettings.defaultRetryOnTimeout
     @State private var isShortEnhancementExpanded = false
 
     var body: some View {

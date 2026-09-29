@@ -520,8 +520,8 @@ class AudioDeviceManager: ObservableObject {
         guard deviceID != 0 else { return nil }
 
         var address = createPropertyAddress(selector: selector, scope: scope)
-        var propertySize = UInt32(MemoryLayout<CFString?>.size)
-        var property: CFString?
+        var propertySize = UInt32(MemoryLayout<CFString>.size)
+        var property = "" as CFString
 
         let status = AudioObjectGetPropertyData(
             deviceID,

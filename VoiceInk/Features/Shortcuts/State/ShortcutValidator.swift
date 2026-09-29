@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 enum ShortcutValidationError: Equatable {
     case plainKeyRequiresModifier
     case shiftTypingKeyRequiresAdditionalModifier
+    case unsupportedMouseButton
     case reservedBySystem
     case alreadyUsedBy(String)
 
@@ -13,6 +14,8 @@ enum ShortcutValidationError: Equatable {
             return String(format: String(localized: "Shortcut not allowed: %@"), shortcut.displayString)
         case .shiftTypingKeyRequiresAdditionalModifier:
             return String(format: String(localized: "Shortcut not allowed: %@"), shortcut.displayString)
+        case .unsupportedMouseButton:
+            return String(format: String(localized: "Mouse shortcut not allowed: %@"), shortcut.displayString)
         case .reservedBySystem:
             return String(format: String(localized: "Shortcut reserved by macOS: %@"), shortcut.displayString)
         case .alreadyUsedBy(let actionName):
@@ -72,6 +75,8 @@ enum ShortcutValidator {
             }
 
             return nil
+        case .mouseButton:
+            return Shortcut.isSupportedMouseButtonNumber(shortcut.keyCode) ? nil : .unsupportedMouseButton
         }
     }
 

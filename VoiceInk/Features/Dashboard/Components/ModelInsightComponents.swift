@@ -14,9 +14,8 @@ struct ModelDetailActionLabel: View {
                 .font(.system(size: 10, weight: .bold))
         }
         .font(.system(size: 12, weight: .semibold))
-        .foregroundStyle(AppTheme.Text.secondary)
-        .padding(.horizontal, 8)
-        .frame(height: 28)
+        .padding(.horizontal, 12)
+        .frame(height: 32)
         .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
@@ -26,51 +25,57 @@ struct InsightPeriodPicker: View {
     @Binding var selection: DashboardInsightPeriod
 
     var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) {
+                ForEach(DashboardInsightPeriod.allCases) { period in
+                    Button {
+                        selection = period
+                    } label: {
+                        Text(period.pickerTitle)
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 16)
+                            .frame(height: 34)
+                    }
+                    .buttonStyle(DashboardInsightButtonStyle(isSelected: period == selection, isQuiet: true))
+                    .accessibilityAddTraits(period == selection ? [.isSelected] : [])
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+
+            compactPicker
+        }
+        .padding(5)
+        .background(AppTheme.Insights.card, in: Capsule())
+        .frame(maxWidth: .infinity, alignment: .trailing)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+    }
+
+    private var compactPicker: some View {
         Menu {
             ForEach(DashboardInsightPeriod.allCases) { period in
                 Button {
                     selection = period
                 } label: {
-                    HStack {
+                    if period == selection {
+                        Label(period.pickerTitle, systemImage: "checkmark")
+                    } else {
                         Text(period.pickerTitle)
-
-                        if period == selection {
-                            Spacer()
-
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .semibold))
-                        }
                     }
                 }
             }
         } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: 8) {
                 Image(systemName: "calendar")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.86))
-
                 Text(selection.pickerTitle)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(AppTheme.Text.secondary.opacity(0.70))
+                    .font(.system(size: 9, weight: .semibold))
             }
-            .padding(.leading, 11)
-            .padding(.trailing, 10)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(AppTheme.Insights.selectionText)
+            .padding(.horizontal, 14)
             .frame(height: 34)
-            .background(
-                RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    .fill(AppTheme.Surface.subtle.opacity(0.82))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 17, style: .continuous)
-                            .stroke(AppTheme.Border.subtle.opacity(0.70), lineWidth: 1)
-                    )
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .background(AppTheme.Insights.selection, in: Capsule())
         }
         .buttonStyle(.plain)
         .fixedSize()
@@ -103,15 +108,15 @@ struct ModelActionLabel: View {
         .foregroundStyle(isPrimary ? Color.white : AppTheme.Text.primary)
         .padding(.horizontal, isPrimary ? 14 : 12)
         .frame(height: 34)
-        .background(isPrimary ? AppTheme.Accent.primary : AppTheme.Surface.subtle)
+        .background(isPrimary ? AppTheme.Insights.productivity : AppTheme.Insights.card)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(
+        .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(
-                    isPrimary ? AppTheme.Accent.border.opacity(0.45) : AppTheme.Border.subtle.opacity(0.65),
-                    lineWidth: 1)
-        )
-        .shadow(color: Color.clear, radius: 0)
+                    isPrimary ? Color.clear : AppTheme.Insights.border,
+                    lineWidth: 1
+                )
+        }
     }
 }
 
@@ -141,9 +146,9 @@ struct ModelPreviewCardHeader: View {
     let onViewMore: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: 10) {
             Text(title)
-                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(AppTheme.Text.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.84)
@@ -171,20 +176,15 @@ struct ModelPreviewRow: Identifiable {
     let kind: ModelInsightKind
     let value: String
     let sessionCount: Int
-
-    var kindTitle: String {
-        kind == .transcription ? String(localized: "Transcription") : String(localized: "Enhancement")
-    }
 }
 
-extension Array where Element == ModelPreviewRow {
-    func sortedByUsagePriority() -> [ModelPreviewRow] {
-        sorted { lhs, rhs in
-            if lhs.sessionCount != rhs.sessionCount {
-                return lhs.sessionCount > rhs.sessionCount
-            }
-
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+extension ModelInsightKind {
+    var localizedTitle: String {
+        switch self {
+        case .transcription:
+            return String(localized: "Transcription")
+        case .enhancement:
+            return String(localized: "Enhancement")
         }
     }
 }
@@ -210,66 +210,50 @@ struct ModelPreviewColumnsRow: View {
         if leftRows.isEmpty && rightRows.isEmpty {
             InsightEmptyState(title: overallEmptyTitle, icon: overallEmptyIcon)
         } else {
-            HStack(alignment: .top, spacing: 18) {
-                ModelPreviewColumn(
-                    title: leftTitle,
-                    valueTitle: leftValueTitle,
-                    emptyTitle: leftEmptyTitle,
-                    emptyIcon: leftEmptyIcon,
-                    rows: leftRows,
-                    valueColumnWidth: valueColumnWidth
-                )
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 18) {
+                    leftColumn
+                    Divider().overlay(AppTheme.Insights.grid)
+                    rightColumn
+                }
+                .frame(minWidth: 580)
+                .fixedSize(horizontal: false, vertical: true)
 
-                Divider()
-                    .opacity(0.45)
-
-                ModelPreviewColumn(
-                    title: rightTitle,
-                    valueTitle: rightValueTitle,
-                    emptyTitle: rightEmptyTitle,
-                    emptyIcon: rightEmptyIcon,
-                    rows: rightRows,
-                    valueColumnWidth: valueColumnWidth
-                )
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
-private struct ModelPreviewColumn: View {
-    let title: LocalizedStringKey
-    let valueTitle: LocalizedStringKey
-    let emptyTitle: LocalizedStringKey
-    let emptyIcon: String
-    let rows: [ModelPreviewRow]
-    let valueColumnWidth: CGFloat
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(title)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Text(valueTitle)
-                    .frame(width: valueColumnWidth, alignment: .trailing)
-                    .padding(.trailing, 4)
-            }
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(AppTheme.Text.secondary)
-            .lineLimit(1)
-
-            if rows.isEmpty {
-                InsightEmptyState(title: emptyTitle, icon: emptyIcon)
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(rows) { row in
-                        ModelPreviewRowView(row: row, valueColumnWidth: valueColumnWidth)
-                    }
+                VStack(alignment: .leading, spacing: 20) {
+                    leftColumn
+                    Divider()
+                    rightColumn
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var leftColumn: some View {
+        ModelInsightSection(
+            title: leftTitle,
+            valueTitle: leftValueTitle,
+            valueColumnWidth: valueColumnWidth,
+            emptyTitle: leftEmptyTitle,
+            emptyIcon: leftEmptyIcon,
+            rows: leftRows,
+            presentation: .preview
+        ) { row, columnWidth in
+            ModelPreviewRowView(row: row, valueColumnWidth: columnWidth)
+        }
+    }
+
+    private var rightColumn: some View {
+        ModelInsightSection(
+            title: rightTitle,
+            valueTitle: rightValueTitle,
+            valueColumnWidth: valueColumnWidth,
+            emptyTitle: rightEmptyTitle,
+            emptyIcon: rightEmptyIcon,
+            rows: rightRows,
+            presentation: .preview
+        ) { row, columnWidth in
+            ModelPreviewRowView(row: row, valueColumnWidth: columnWidth)
+        }
     }
 }
 
@@ -281,309 +265,66 @@ private struct ModelPreviewRowView: View {
         HStack(alignment: .center, spacing: 10) {
             ModelProviderIcon(modelName: row.name, kind: row.kind, size: 22)
 
-            Text(row.name)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AppTheme.Text.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(row.name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(AppTheme.Text.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
 
-            Text(row.value)
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundStyle(AppTheme.Text.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-                .frame(width: valueColumnWidth, alignment: .trailing)
+                Text("\(row.sessionCount) sessions")
+                    .font(.system(size: 11))
+                    .foregroundStyle(AppTheme.Text.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            ModelInsightValueText(
+                text: row.value,
+                width: valueColumnWidth,
+                minimumScaleFactor: 0.76
+            )
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 10)
-        .background(AppCardBackground(cornerRadius: 10))
+        .modelInsightRowStyle()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.name)
         .accessibilityValue(accessibilityValue)
     }
 
     private var accessibilityValue: String {
-        String(localized: "\(row.kindTitle), \(row.value)")
+        String(localized: "\(row.kind.localizedTitle), \(row.value), \(sessionCountText)")
+    }
+
+    private var sessionCountText: String {
+        String(localized: "\(row.sessionCount) sessions")
     }
 }
 
-struct ModelProviderIcon: View {
-    let modelName: String
-    let kind: ModelInsightKind
-    var size: CGFloat = 24
+struct ModelInsightValueText: View {
+    let text: String
+    let width: CGFloat
+    var minimumScaleFactor: CGFloat = 0.72
 
     var body: some View {
-        let identity = ModelProviderIdentity.resolve(modelName: modelName, kind: kind)
-
-        ProviderBrandIcon(
-            descriptor: identity.descriptor,
-            fallbackSystemImage: identity.fallbackSystemImage,
-            isSelected: false,
-            size: size,
-            iconSize: max(12, size * 0.54)
-        )
-        .help(identity.providerName)
+        Text(text)
+            .font(.system(size: 13, weight: .semibold))
+            .monospacedDigit()
+            .foregroundStyle(AppTheme.Text.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(minimumScaleFactor)
+            .frame(width: width, alignment: .trailing)
     }
 }
 
-private struct ModelProviderIdentity {
-    let providerName: String
-    let descriptor: ProviderDescriptor
-    let fallbackSystemImage: String
+enum ModelInsightRowLayout {
+    static let horizontalPadding: CGFloat = 12
+    static let verticalPadding: CGFloat = 10
+}
 
-    static func resolve(modelName: String, kind: ModelInsightKind) -> ModelProviderIdentity {
-        switch kind {
-        case .transcription:
-            return resolveTranscription(modelName)
-        case .enhancement:
-            return resolveEnhancement(modelName)
-        }
-    }
-
-    private static func resolveTranscription(_ modelName: String) -> ModelProviderIdentity {
-        let trimmedName = normalized(modelName)
-
-        if let model = TranscriptionModelRegistry.models.first(where: { model in
-            namesMatch(model.displayName, trimmedName) || namesMatch(model.name, trimmedName)
-        }) {
-            if let transcribeCppModel = model as? TranscribeCppModel {
-                return transcribeCppIdentity(publisher: transcribeCppModel.publisher)
-            }
-            return identity(for: model.provider)
-        }
-
-        if trimmedName.localizedCaseInsensitiveContains("parakeet")
-            || trimmedName.localizedCaseInsensitiveContains("nemotron")
-        {
-            return identity(for: .fluidAudio)
-        }
-
-        if trimmedName.localizedCaseInsensitiveContains("cohere") {
-            return transcribeCppIdentity(publisher: "Cohere")
-        }
-
-        if trimmedName.localizedCaseInsensitiveContains("apple") {
-            return identity(for: .nativeApple)
-        }
-
-        if trimmedName.localizedCaseInsensitiveContains("whisper")
-            || trimmedName.localizedCaseInsensitiveContains("large")
-            || trimmedName.localizedCaseInsensitiveContains("base")
-            || trimmedName.localizedCaseInsensitiveContains("tiny")
-        {
-            return identity(for: .whisper)
-        }
-
-        return unknownIdentity(
-            providerName: String(localized: "Transcription Model"), fallbackSystemImage: "captions.bubble.fill")
-    }
-
-    private static func resolveEnhancement(_ modelName: String) -> ModelProviderIdentity {
-        let trimmedName = normalized(modelName)
-
-        if let customProvider = CustomAIProviderManager.shared.provider(forModel: trimmedName) {
-            return ModelProviderIdentity(
-                providerName: customProvider.name,
-                descriptor: descriptor(displayName: customProvider.name, providerKey: "Custom"),
-                fallbackSystemImage: "slider.horizontal.3"
-            )
-        }
-
-        let matchingProviders = AIProvider.allCases.filter { provider in
-            providerMatches(provider, modelName: trimmedName)
-        }
-
-        if matchingProviders.count == 1,
-            let provider = matchingProviders.first
-        {
-            return identity(for: provider)
-        }
-
-        if isSavedOpenRouterModel(trimmedName) {
-            return identity(for: .openRouter)
-        }
-
-        if matchingProviders.isEmpty,
-            isOpenRouterModelIdentifier(trimmedName)
-        {
-            return identity(for: .openRouter)
-        }
-
-        if matchingProviders.isEmpty,
-            let provider = inferredEnhancementProvider(from: trimmedName)
-        {
-            return identity(for: provider)
-        }
-
-        return unknownIdentity(providerName: String(localized: "Enhancement Model"), fallbackSystemImage: "cpu")
-    }
-
-    private static func identity(for provider: ModelProvider) -> ModelProviderIdentity {
-        let cloudProvider = CloudProviderRegistry.provider(for: provider)
-        let aiProvider = AIProvider(rawValue: provider.rawValue)
-        let displayName: String
-        let providerKey: String
-        let fallbackSystemImage: String
-
-        switch provider {
-        case .whisper:
-            displayName = "Whisper"
-            providerKey = "Whisper"
-            fallbackSystemImage = "captions.bubble.fill"
-        case .fluidAudio:
-            displayName = "Parakeet"
-            providerKey = "Parakeet"
-            fallbackSystemImage = "waveform"
-        case .transcribeCpp:
-            displayName = "On-Device"
-            providerKey = "On-Device"
-            fallbackSystemImage = "waveform.badge.magnifyingglass"
-        case .nativeApple:
-            displayName = "Apple Speech"
-            providerKey = "Native Apple"
-            fallbackSystemImage = "apple.logo"
-        case .custom:
-            displayName = "Custom"
-            providerKey = "Custom"
-            fallbackSystemImage = "slider.horizontal.3"
-        default:
-            displayName = cloudProvider?.providerKey ?? provider.rawValue
-            providerKey = cloudProvider?.providerKey ?? provider.rawValue
-            fallbackSystemImage = "cloud.fill"
-        }
-
-        return ModelProviderIdentity(
-            providerName: displayName,
-            descriptor: descriptor(
-                displayName: displayName,
-                providerKey: providerKey,
-                aiProvider: aiProvider,
-                cloudProvider: cloudProvider
-            ),
-            fallbackSystemImage: fallbackSystemImage
-        )
-    }
-
-    private static func transcribeCppIdentity(publisher: String) -> ModelProviderIdentity {
-        ModelProviderIdentity(
-            providerName: publisher,
-            descriptor: descriptor(displayName: publisher, providerKey: publisher),
-            fallbackSystemImage: "waveform.badge.magnifyingglass"
-        )
-    }
-
-    private static func identity(for provider: AIProvider) -> ModelProviderIdentity {
-        let cloudProvider = CloudProviderRegistry.allProviders.first {
-            $0.providerKey.caseInsensitiveCompare(provider.rawValue) == .orderedSame
-        }
-        let fallbackSystemImage: String
-
-        switch provider {
-        case .voiceInkRefine:
-            fallbackSystemImage = "sparkles"
-        case .ollama:
-            fallbackSystemImage = "server.rack"
-        case .localCLI:
-            fallbackSystemImage = "terminal"
-        case .custom:
-            fallbackSystemImage = "slider.horizontal.3"
-        default:
-            fallbackSystemImage = "cloud.fill"
-        }
-
-        return ModelProviderIdentity(
-            providerName: provider.rawValue,
-            descriptor: descriptor(
-                displayName: provider.rawValue,
-                providerKey: provider.rawValue,
-                aiProvider: provider,
-                cloudProvider: cloudProvider
-            ),
-            fallbackSystemImage: fallbackSystemImage
-        )
-    }
-
-    private static func unknownIdentity(providerName: String, fallbackSystemImage: String) -> ModelProviderIdentity {
-        ModelProviderIdentity(
-            providerName: providerName,
-            descriptor: descriptor(displayName: providerName, providerKey: providerName),
-            fallbackSystemImage: fallbackSystemImage
-        )
-    }
-
-    private static func descriptor(
-        displayName: String,
-        providerKey: String,
-        aiProvider: AIProvider? = nil,
-        cloudProvider: (any CloudProvider)? = nil
-    ) -> ProviderDescriptor {
-        ProviderDescriptor(
-            displayName: displayName,
-            providerKey: providerKey,
-            aiProvider: aiProvider,
-            cloudProvider: cloudProvider
-        )
-    }
-
-    private static func providerMatches(_ provider: AIProvider, modelName: String) -> Bool {
-        if namesMatch(provider.defaultModel, modelName) {
-            return true
-        }
-
-        return provider.availableModels.contains { availableModel in
-            namesMatch(availableModel, modelName)
-        }
-    }
-
-    private static func isSavedOpenRouterModel(_ modelName: String) -> Bool {
-        guard let models = UserDefaults.standard.array(forKey: "openRouterModels") as? [String] else {
-            return false
-        }
-
-        return models.contains { namesMatch($0, modelName) }
-    }
-
-    private static func isOpenRouterModelIdentifier(_ modelName: String) -> Bool {
-        let components = modelName.split(separator: "/", omittingEmptySubsequences: false)
-        return components.count == 2
-            && components.allSatisfy {
-                !String($0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            }
-    }
-
-    private static func inferredEnhancementProvider(from modelName: String) -> AIProvider? {
-        let lowercaseName = modelName.lowercased()
-
-        if lowercaseName.hasPrefix("gemini-") {
-            return .gemini
-        }
-
-        if lowercaseName.hasPrefix("claude-") {
-            return .anthropic
-        }
-
-        if lowercaseName.hasPrefix("mistral-") {
-            return .mistral
-        }
-
-        if lowercaseName.hasPrefix("zai-") {
-            return .cerebras
-        }
-
-        if lowercaseName.hasPrefix("gpt-") {
-            return .openAI
-        }
-
-        return nil
-    }
-
-    private static func namesMatch(_ lhs: String, _ rhs: String) -> Bool {
-        normalized(lhs).caseInsensitiveCompare(normalized(rhs)) == .orderedSame
-    }
-
-    private static func normalized(_ value: String) -> String {
-        value.trimmingCharacters(in: .whitespacesAndNewlines)
+extension View {
+    func modelInsightRowStyle() -> some View {
+        padding(.horizontal, ModelInsightRowLayout.horizontalPadding)
+            .padding(.vertical, ModelInsightRowLayout.verticalPadding)
+            .background(DashboardInsightRowBackground())
     }
 }

@@ -329,17 +329,16 @@ class StreamingTranscriptionService {
         let source = chunkSource
         let provider = provider
         let metrics = metrics
+        let logger = logger
 
-        sendTask = Task.detached { [weak self] in
+        sendTask = Task.detached {
             for await chunk in source.stream {
                 do {
                     try await provider?.sendAudioChunk(chunk)
                     metrics.recordSent(chunk.count)
                 } catch {
                     let desc = error.localizedDescription
-                    await MainActor.run {
-                        self?.logger.error("Failed to send audio chunk: \(desc, privacy: .public)")
-                    }
+                    logger.error("Failed to send audio chunk: \(desc, privacy: .public)")
                 }
             }
         }

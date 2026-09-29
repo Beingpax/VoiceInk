@@ -97,7 +97,6 @@ struct VoiceInkRefineModelCardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 8)
-            .animation(.smooth, value: service.downloadProgress)
         }
 
         if let downloadError = service.downloadError {
@@ -116,11 +115,20 @@ struct VoiceInkRefineModelCardView: View {
                 modelStatusPill("Unavailable", systemImage: "exclamationmark.triangle")
             case .available:
                 if service.isDownloading {
-                    Button("Cancel") {
+                    Button {
                         service.cancelDownload()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Cancel")
+                            Image(systemName: "xmark.circle")
+                        }
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(AppTheme.Action.destructiveFill))
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .buttonStyle(.plain)
                 } else if service.isDownloaded {
                     modelStatusPill("Downloaded", systemImage: "checkmark.circle")
 

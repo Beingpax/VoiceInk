@@ -12,6 +12,7 @@ struct WhisperModelCardView: View {
     // Actions
     var deleteAction: () -> Void
     var downloadAction: () -> Void
+    var cancelDownloadAction: () -> Void
     private var isDownloading: Bool {
         downloadProgress.keys.contains(model.name + "_main") || downloadProgress.keys.contains(model.name + "_coreml")
     }
@@ -109,11 +110,11 @@ struct WhisperModelCardView: View {
             if isDownloaded {
                 modelStatusPill("Downloaded", systemImage: "checkmark.circle")
             } else {
-                Button(action: downloadAction) {
+                Button(action: isDownloading ? cancelDownloadAction : downloadAction) {
                     HStack(spacing: 4) {
-                        Text(LocalizedStringKey(isDownloading ? "Downloading..." : "Download"))
+                        Text(LocalizedStringKey(isDownloading ? "Cancel" : "Download"))
                             .font(.system(size: 12, weight: .medium))
-                        Image(systemName: "arrow.down.circle")
+                        Image(systemName: isDownloading ? "xmark.circle" : "arrow.down.circle")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.white)
@@ -121,12 +122,11 @@ struct WhisperModelCardView: View {
                     .padding(.vertical, 6)
                     .background(
                         Capsule()
-                            .fill(AppTheme.Accent.primary)
+                            .fill(isDownloading ? AppTheme.Action.destructiveFill : AppTheme.Accent.primary)
                             .shadow(color: AppTheme.Accent.shadow, radius: 2, x: 0, y: 1)
                     )
                 }
                 .buttonStyle(.plain)
-                .disabled(isDownloading)
             }
 
             if isDownloaded {

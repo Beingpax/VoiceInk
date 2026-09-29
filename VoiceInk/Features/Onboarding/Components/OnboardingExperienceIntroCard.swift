@@ -43,7 +43,7 @@ struct OnboardingExperienceIntroCard: View {
             return shortcutIntroTitle
         }
 
-        return hasShortcut ? "Keyboard shortcut:" : "Choose a shortcut to get started."
+        return hasShortcut ? "Shortcut:" : "Choose a shortcut to get started."
     }
 
     private var showsShortcutControl: Bool {

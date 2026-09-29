@@ -112,7 +112,7 @@ class AudioProcessor {
                     }
                 )
 
-                if let error = error {
+                if error != nil {
                     throw AudioProcessingError.conversionFailed
                 }
 

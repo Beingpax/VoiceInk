@@ -92,7 +92,7 @@ struct ContentView: View {
         case .transcribeAudio:
             AudioTranscribeView()
         case .history:
-            InlineHistoryView()
+            HistoryView()
         case .audio:
             AudioSetupView()
         case .dictionary:
