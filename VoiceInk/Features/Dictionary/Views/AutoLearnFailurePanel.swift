@@ -4,6 +4,7 @@ struct AutoLearnFailurePanel: View {
     let onClose: () -> Void
 
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnEnabled = true
+    @AppStorage(AutoLearnSettings.aiReviewEnabledKey) private var isAIReviewEnabled = true
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasFailure = false
     @AppStorage(AutoLearnSettings.failureMessageKey) private var failureMessage = ""
     @State private var pendingCount: Int?
@@ -14,7 +15,11 @@ struct AutoLearnFailurePanel: View {
 
             Form {
                 Section {
-                    AutoLearnModelSelectionView(retriesOnChange: false)
+                    if isAIReviewEnabled {
+                        AutoLearnModelSelectionView(retriesOnChange: false)
+                    } else {
+                        Text("Corrections are reviewed on your Mac.")
+                    }
                 } header: {
                     AutoLearnSectionHeader()
                 }
@@ -62,6 +67,9 @@ struct AutoLearnFailurePanel: View {
         guard let pendingCount else {
             return "The pending corrections could not be read. Retry to try again."
         }
+        if !isAIReviewEnabled {
+            return "Pending corrections: \(pendingCount). Retry to review them on your Mac."
+        }
         return "Pending corrections: \(pendingCount). Choose another model or provider above, then retry."
     }
 
@@ -71,7 +79,7 @@ struct AutoLearnFailurePanel: View {
 
     private var errorDescription: String {
         failureMessage.isEmpty
-            ? String(localized: "The selected provider or model could not review the pending corrections.")
+            ? String(localized: "The pending corrections could not be reviewed.")
             : failureMessage
     }
 

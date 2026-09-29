@@ -88,7 +88,9 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         return !connectedProviders.isEmpty
     }
 
-    func review(_ candidates: [AutoLearnReviewCandidate]) async throws -> AutoLearnReviewResult {
+    func review(_ candidates: [AutoLearnReviewCandidate], batchID: UUID = UUID()) async throws -> AutoLearnReviewResult {
+        try Task.checkCancellation()
+        guard AutoLearnSettings.isAIReviewEnabled else { throw CancellationError() }
         guard !candidates.isEmpty else {
             return AutoLearnReviewResult(reviewDecisions: [], unresolvedReviews: [])
         }
@@ -118,19 +120,36 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         let requestText = String(decoding: requestData, as: UTF8.self)
 
         let loggedModelName = modelName ?? "provider-default"
+        let startedAt = Date()
         logger.notice(
-            "Auto Learn review started provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
+            "Auto Learn review started batchID=\(batchID.uuidString, privacy: .public) provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) candidates=\(candidates.count, privacy: .public)"
         )
-        let responseText = try await aiService.reviewAutoLearnCandidates(
-            payload: requestText,
-            systemPrompt: Self.reviewPrompt,
-            provider: provider,
-            modelName: modelName
-        )
+        let responseText: String
+        do {
+            try Task.checkCancellation()
+            guard AutoLearnSettings.isAIReviewEnabled else { throw CancellationError() }
+            responseText = try await aiService.reviewAutoLearnCandidates(
+                payload: requestText,
+                systemPrompt: Self.reviewPrompt,
+                provider: provider,
+                modelName: modelName
+            )
+        } catch {
+            let nsError = error as NSError
+            logger.error(
+                "Auto Learn request failed batchID=\(batchID.uuidString, privacy: .public) provider=\(provider.rawValue, privacy: .public) model=\(loggedModelName, privacy: .public) domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public) cancelled=\(Task.isCancelled, privacy: .public)"
+            )
+            throw error
+        }
         let candidateReviewDecisions = try decodeResponse(
             responseText,
             provider: provider,
-            modelName: loggedModelName
+            modelName: loggedModelName,
+            batchID: batchID
+        )
+        let durationMilliseconds = Int(Date().timeIntervalSince(startedAt) * 1_000)
+        logger.notice(
+            "Auto Learn response decoded batchID=\(batchID.uuidString, privacy: .public) decisions=\(candidateReviewDecisions.count, privacy: .public) responseCharacters=\(responseText.count, privacy: .public) durationMilliseconds=\(durationMilliseconds, privacy: .public)"
         )
         let expectedCandidateIDs = Set(candidates.indices)
         let decisionsByCandidateID = Dictionary(grouping: candidateReviewDecisions) {
@@ -140,7 +159,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         for unknownCandidateID in decisionsByCandidateID.keys
         where !expectedCandidateIDs.contains(unknownCandidateID) {
             logger.warning(
-                "Ignoring Auto Learn decision with unknown candidate ID=\(unknownCandidateID, privacy: .public)"
+                "Ignoring Auto Learn decision batchID=\(batchID.uuidString, privacy: .public) unknownCandidateID=\(unknownCandidateID, privacy: .public)"
             )
         }
 
@@ -205,6 +224,29 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
             }
         }
 
+        // Correlate each saved edit with its decision without logging any text.
+        let validatedByID = Dictionary(grouping: reviewDecisions, by: \.candidateID)
+        let unresolvedByID = Dictionary(grouping: unresolvedReviews, by: \.candidateID)
+        for (index, candidate) in candidates.enumerated() {
+            if let unresolved = unresolvedByID[candidate.candidateID]?.first {
+                let action = unresolved.learningAction?.rawValue ?? "none"
+                logger.warning(
+                    "Auto Learn candidate reviewed batchID=\(batchID.uuidString, privacy: .public) candidateID=\(candidate.candidateID.uuidString, privacy: .public) responseCandidateID=\(index, privacy: .public) outcome=unresolved reason=\(unresolved.reason.rawValue, privacy: .public) action=\(action, privacy: .public)"
+                )
+            } else {
+                let decisions = validatedByID[candidate.candidateID] ?? []
+                let rejected = decisions.contains { $0.learningAction == .rejectCorrection }
+                let outcome = rejected ? "rejected" : "accepted"
+                let reason = rejected
+                    ? (decisionsByCandidateID[index]?.first?.learningAction == .rejectCorrection ? "aiRejected" : "caseOnlyChange")
+                    : "validated"
+                let actions = decisions.map { $0.learningAction.rawValue }.joined(separator: ",")
+                logger.notice(
+                    "Auto Learn candidate reviewed batchID=\(batchID.uuidString, privacy: .public) candidateID=\(candidate.candidateID.uuidString, privacy: .public) responseCandidateID=\(index, privacy: .public) outcome=\(outcome, privacy: .public) reason=\(reason, privacy: .public) actions=\(actions, privacy: .public)"
+                )
+            }
+        }
+
         return AutoLearnReviewResult(
             reviewDecisions: reviewDecisions,
             unresolvedReviews: unresolvedReviews
@@ -252,13 +294,14 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         guard let correctedVocabularyTerm = decision.correctedVocabularyTerm?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         else {
-            return (nil, .missingRequiredActionValues)
+            return (nil, .missingCorrectedTerm)
         }
-        guard !correctedVocabularyTerm.isEmpty,
-            correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters,
-            isGrounded(correctedVocabularyTerm, in: correctedContexts)
-        else {
-            return (nil, .invalidRequiredActionValues)
+        guard !correctedVocabularyTerm.isEmpty else { return (nil, .emptyCorrectedTerm) }
+        guard correctedVocabularyTerm.count <= AutoLearnLimits.maximumCandidateCharacters else {
+            return (nil, .correctedTermTooLong)
+        }
+        guard isGrounded(correctedVocabularyTerm, in: correctedContexts) else {
+            return (nil, .correctedTermNotInContext)
         }
 
         if decision.learningAction == .addVocabularyOnly {
@@ -276,15 +319,16 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         guard let incorrectTextToReplace = decision.incorrectTextToReplace?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         else {
-            return (nil, .missingRequiredActionValues)
+            return (nil, .missingOriginalTerm)
         }
-        guard !incorrectTextToReplace.isEmpty,
-            incorrectTextToReplace != correctedVocabularyTerm,
-            incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters,
-            !incorrectTextToReplace.contains(","),
-            isExactSubstring(incorrectTextToReplace, of: candidate.originalText)
-        else {
-            return (nil, .invalidRequiredActionValues)
+        guard !incorrectTextToReplace.isEmpty else { return (nil, .emptyOriginalTerm) }
+        guard incorrectTextToReplace != correctedVocabularyTerm else { return (nil, .unchangedTerm) }
+        guard incorrectTextToReplace.count <= AutoLearnLimits.maximumCandidateCharacters else {
+            return (nil, .originalTermTooLong)
+        }
+        guard !incorrectTextToReplace.contains(",") else { return (nil, .originalTermContainsComma) }
+        guard isExactSubstring(incorrectTextToReplace, of: candidate.originalText) else {
+            return (nil, .originalTermNotInContext)
         }
 
         if differsOnlyByLetterCase(incorrectTextToReplace, correctedVocabularyTerm) {
@@ -376,7 +420,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
     private func decodeResponse(
         _ text: String,
         provider: AIProvider,
-        modelName: String
+        modelName: String,
+        batchID: UUID
     ) throws -> [CandidateReviewDecision] {
         let payload = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if payload.hasPrefix("```") {
@@ -384,6 +429,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 payload,
                 provider: provider,
                 modelName: modelName,
+                batchID: batchID,
                 reason: "markdown-code-fence"
             )
             throw ReviewError.invalidResponse
@@ -399,6 +445,7 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
                 payload,
                 provider: provider,
                 modelName: modelName,
+                batchID: batchID,
                 reason: diagnostic.reason,
                 shape: diagnostic.shape
             )
@@ -410,12 +457,13 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         _ payload: String,
         provider: AIProvider,
         modelName: String,
+        batchID: UUID,
         reason: String,
         shape: String = "unknown"
     ) {
         let preview = String(payload.prefix(1_000))
         logger.error(
-            "Auto Learn response invalid provider=\(provider.rawValue, privacy: .public) model=\(modelName, privacy: .public) reason=\(reason, privacy: .public) shape=\(shape, privacy: .public) characters=\(payload.count, privacy: .public) responsePreview=\(preview, privacy: .private)"
+            "Auto Learn response invalid batchID=\(batchID.uuidString, privacy: .public) provider=\(provider.rawValue, privacy: .public) model=\(modelName, privacy: .public) reason=\(reason, privacy: .public) shape=\(shape, privacy: .public) characters=\(payload.count, privacy: .public) responsePreview=\(preview, privacy: .private)"
         )
     }
 

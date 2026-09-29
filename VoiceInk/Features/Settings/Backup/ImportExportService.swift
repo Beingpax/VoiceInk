@@ -187,6 +187,7 @@ class ImportExportService {
             clipboardRestoreDelay: UserDefaults.standard.double(forKey: "clipboardRestoreDelay"),
             finishAndSendKey: FinishAndSendSettings.selectedKey.rawValue,
             isAutoLearnDictionaryEnabled: AutoLearnSettings.isEnabled,
+            isAutoLearnAIReviewEnabled: AutoLearnSettings.isAIReviewEnabled,
             autoLearnReviewSchedule: AutoLearnSettings.reviewSchedule.rawValue,
             autoLearnProvider: AutoLearnSettings.selectedProvider?.rawValue,
             autoLearnModel: AutoLearnSettings.selectedModel

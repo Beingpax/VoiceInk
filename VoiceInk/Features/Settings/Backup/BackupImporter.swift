@@ -204,16 +204,22 @@ enum BackupImporter {
         if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
             UserDefaults.standard.set(autoLearnEnabled, forKey: AutoLearnSettings.isEnabledKey)
         }
+        if let aiReviewEnabled = general.isAutoLearnAIReviewEnabled {
+            UserDefaults.standard.set(aiReviewEnabled, forKey: AutoLearnSettings.aiReviewEnabledKey)
+        }
         if let provider = general.autoLearnProvider {
             UserDefaults.standard.set(provider, forKey: AutoLearnSettings.providerKey)
         }
         if let model = general.autoLearnModel {
             UserDefaults.standard.set(model, forKey: AutoLearnSettings.modelKey)
         }
-        if general.isAutoLearnDictionaryEnabled != nil || importedReviewSchedule != nil {
+        if general.isAutoLearnDictionaryEnabled != nil || importedReviewSchedule != nil
+            || general.isAutoLearnAIReviewEnabled != nil {
             Task {
                 if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
                     await AutoLearnService.shared.settingDidChange(isEnabled: autoLearnEnabled)
+                } else if general.isAutoLearnAIReviewEnabled != nil {
+                    await AutoLearnService.shared.reviewMethodDidChange()
                 } else {
                     await AutoLearnService.shared.reviewScheduleDidChange()
                 }

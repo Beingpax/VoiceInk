@@ -190,6 +190,7 @@ struct AutoLearnModelSelectionView: View {
     private func retryAfterConfigurationChange() {
         guard retriesOnChange,
             isAutoLearnDictionaryEnabled,
+            AutoLearnSettings.isAIReviewEnabled,
             hasAutoLearnFailure,
             AutoLearnSettings.reviewSchedule != .manually
         else { return }

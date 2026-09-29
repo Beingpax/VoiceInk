@@ -1,6 +1,8 @@
 import SwiftUI
+import OSLog
 
 struct AutoLearnReviewPanel: View {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AutoLearnReviewUI")
     fileprivate enum ReviewComponent: Hashable {
         case replacement
         case vocabulary
@@ -226,12 +228,17 @@ struct AutoLearnReviewPanel: View {
         await reloadProposals(selectNewItems: true)
         isReviewing = false
 
-        let pendingCount = (try? await AutoLearnService.shared.pendingReviewCount()) ?? 0
+        let pendingResult = try? await AutoLearnService.shared.pendingReviewCount()
+        let pendingCount = pendingResult ?? 0
+        let loggedPendingCount = pendingResult.map { String($0) } ?? "unavailable"
         if pendingCount > 0, errorMessage == nil {
             errorMessage = String(
-                localized: "Some corrections could not be reviewed. Check the selected AI provider and try again."
+                localized: AutoLearnSettings.isAIReviewEnabled
+                    ? "Some corrections could not be reviewed. Check the selected AI provider and try again."
+                    : "Some corrections could not be reviewed. Try again."
             )
         }
+        logger.notice("Auto Learn review panel ready proposals=\(self.proposals.count, privacy: .public) pendingCandidates=\(loggedPendingCount, privacy: .public) hasError=\(self.errorMessage != nil, privacy: .public)")
     }
 
     @MainActor
@@ -245,6 +252,8 @@ struct AutoLearnReviewPanel: View {
             proposals = loaded
         } catch {
             errorMessage = error.localizedDescription
+            let nsError = error as NSError
+            logger.error("Auto Learn review proposals could not be loaded domain=\(nsError.domain, privacy: .public) code=\(nsError.code, privacy: .public)")
         }
     }
 

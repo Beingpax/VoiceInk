@@ -4,10 +4,20 @@ import SwiftData
 @ModelActor
 actor WordReplacementStore {
     private enum MutationError: Error { case invalidReplacementSource }
+
+    /// Read-only evidence for local review. Include approved replacement
+    /// destinations as well as vocabulary; local review never creates vocabulary.
+    func knownTerms() throws -> Set<String> {
+        let vocabulary = try modelContext.fetch(FetchDescriptor<VocabularyWord>()).map(\.word)
+        let destinations = try modelContext.fetch(FetchDescriptor<WordReplacement>()).map(\.replacementText)
+        return Set(vocabulary + destinations)
+    }
+
     func apply(
         _ decisions: [AutoLearnReviewDecision],
         candidates: [AutoLearnReviewCandidate]
     ) throws -> AutoLearnMutationSummary {
+        try Task.checkCancellation()
         guard !decisions.isEmpty else { return .empty }
 
         var createdCount = 0
@@ -35,6 +45,7 @@ actor WordReplacementStore {
                 )
 
                 for decision in decisions {
+                    try Task.checkCancellation()
                     guard let candidate = candidatesByID[decision.candidateID],
                         decision.learningAction != .rejectCorrection,
                         let correctedVocabularyTerm = decision.correctedVocabularyTerm
@@ -101,7 +112,9 @@ actor WordReplacementStore {
                         )
                     }
                 }
+                try Task.checkCancellation()
             }
+            try Task.checkCancellation()
             try modelContext.save()
         } catch {
             modelContext.rollback()

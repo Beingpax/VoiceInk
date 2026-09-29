@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import OSLog
 
@@ -19,7 +20,9 @@ final class LogExporter {
             loadedDates = dates
         }
 
-        sessionStartDates = [Date()] + loadedDates
+        // The first export can happen long after launch; include earlier failures.
+        let sessionStartDate = NSRunningApplication.current.launchDate ?? Date()
+        sessionStartDates = [sessionStartDate] + loadedDates
         sessionStartDates = Array(sessionStartDates.prefix(maxSessionsToKeep))
         saveSessions()
 

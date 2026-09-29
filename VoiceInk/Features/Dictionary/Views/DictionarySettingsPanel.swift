@@ -12,6 +12,7 @@ struct DictionarySettingsPanel: View {
     let onDismiss: () -> Void
     let onReviewNow: () -> Void
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
+    @AppStorage(AutoLearnSettings.aiReviewEnabledKey) private var isAIReviewEnabled = true
     @AppStorage(AutoLearnSettings.reviewScheduleKey)
     private var reviewScheduleRawValue = AutoLearnReviewSchedule.immediately.rawValue
     @State private var pendingCorrectionCount = 0
@@ -39,7 +40,18 @@ struct DictionarySettingsPanel: View {
                         }
 
                     if isAutoLearnDictionaryEnabled {
-                        AutoLearnModelSelectionView()
+                        Toggle("AI Review", isOn: $isAIReviewEnabled)
+                            .onChange(of: isAIReviewEnabled) { _, _ in
+                                Task { await AutoLearnService.shared.reviewMethodDidChange() }
+                            }
+
+                        if isAIReviewEnabled {
+                            AutoLearnModelSelectionView()
+                        } else {
+                            Text("Uses on-device spelling and name recognition. Clear spelling corrections become word replacements; uncertain names require approval. Vocabulary is not added.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
 
                         LabeledContent {
                             Picker("", selection: $reviewScheduleRawValue) {
@@ -57,7 +69,9 @@ struct DictionarySettingsPanel: View {
                             HStack(spacing: 4) {
                                 Text("Review corrections")
                                 InfoTip(
-                                    "Choose when saved corrections are sent to your AI provider. Manual review keeps them local until you select Review Now."
+                                    isAIReviewEnabled
+                                        ? "Choose when saved corrections are sent to your AI provider. Manual review keeps them local until you select Review Now."
+                                        : "Choose when corrections are checked on your Mac. Manual review waits until you select Review Now. Uncertain names always require approval."
                                 )
                             }
                         }

@@ -24,15 +24,26 @@ enum CloudTranscriptionSettings {
 
 enum AutoLearnSettings {
     static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
+    static let aiReviewEnabledKey = "AutoLearnDictionaryAIReviewEnabled"
     static let providerKey = "AutoLearnDictionaryProvider"
     static let modelKey = "AutoLearnDictionaryModel"
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
     static let failureAcknowledgedKey = "AutoLearnDictionaryFailureAcknowledged"
+    static let isAIReviewFailureKey = "AutoLearnDictionaryIsAIReviewFailure"
     static let reviewScheduleKey = "AutoLearnDictionaryReviewSchedule"
 
     static var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: isEnabledKey)
+    }
+
+    static var isAIReviewEnabled: Bool {
+        aiReviewEnabled(defaults: .standard)
+    }
+
+    // Existing installations keep AI review until the user explicitly opts out.
+    static func aiReviewEnabled(defaults: UserDefaults) -> Bool {
+        defaults.object(forKey: aiReviewEnabledKey) as? Bool ?? true
     }
 
     static var selectedProvider: AIProvider? {
@@ -78,7 +89,7 @@ enum AutoLearnSettings {
         }
     }
 
-    static func recordFailure(_ error: Error) {
+    static func recordFailure(_ error: Error, isAIReviewFailure: Bool = false) {
         let nsError = error as NSError
         var details = [nsError.localizedDescription]
         if let reason = nsError.localizedFailureReason,
@@ -98,17 +109,19 @@ enum AutoLearnSettings {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
         UserDefaults.standard.set(
-            message.isEmpty ? "The selected provider or model could not review corrections." : message,
+            message.isEmpty ? "The pending corrections could not be reviewed." : message,
             forKey: failureMessageKey
         )
         UserDefaults.standard.set(false, forKey: failureAcknowledgedKey)
         UserDefaults.standard.set(true, forKey: hasFailureKey)
+        UserDefaults.standard.set(isAIReviewFailure, forKey: self.isAIReviewFailureKey)
     }
 
     static func clearFailure() {
         UserDefaults.standard.set(false, forKey: hasFailureKey)
         UserDefaults.standard.removeObject(forKey: failureMessageKey)
         UserDefaults.standard.removeObject(forKey: failureAcknowledgedKey)
+        UserDefaults.standard.removeObject(forKey: isAIReviewFailureKey)
     }
 
     static func acknowledgeCurrentFailure(defaults: UserDefaults = .standard) {
@@ -152,6 +165,7 @@ enum AppDefaults {
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
             CloudTranscriptionSettings.timeoutKey: CloudTranscriptionSettings.defaultTimeout,
             AutoLearnSettings.isEnabledKey: true,
+            AutoLearnSettings.aiReviewEnabledKey: true,
             AutoLearnSettings.reviewScheduleKey: AutoLearnReviewSchedule.immediately.rawValue,
 
             // Cleanup

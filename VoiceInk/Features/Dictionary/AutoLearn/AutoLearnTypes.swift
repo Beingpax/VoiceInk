@@ -46,12 +46,14 @@ struct AutoLearnFieldSnapshot: Sendable {
 struct DetectedCorrectionCandidate: Hashable, Sendable {
     let originalText: String
     let correctedText: String
+    var languageCode: String? = nil
 }
 
 struct AutoLearnReviewCandidate: Sendable {
     let candidateID: UUID
     let originalText: String
     let correctedText: String
+    var languageCode: String? = nil
 }
 
 enum AutoLearnReviewAction: String, Codable, Sendable {
@@ -73,6 +75,16 @@ enum AutoLearnUnresolvedReason: String, Sendable {
     case conflictingDecisions
     case missingRequiredActionValues
     case invalidRequiredActionValues
+    case missingCorrectedTerm
+    case emptyCorrectedTerm
+    case correctedTermTooLong
+    case correctedTermNotInContext
+    case missingOriginalTerm
+    case emptyOriginalTerm
+    case unchangedTerm
+    case originalTermTooLong
+    case originalTermContainsComma
+    case originalTermNotInContext
 }
 
 struct AutoLearnUnresolvedReview: Sendable {
@@ -86,6 +98,9 @@ struct AutoLearnUnresolvedReview: Sendable {
 struct AutoLearnReviewResult: Sendable {
     let reviewDecisions: [AutoLearnReviewDecision]
     let unresolvedReviews: [AutoLearnUnresolvedReview]
+    /// Local name recognition is evidence of an entity, not evidence that a
+    /// global replacement is safe. These decisions always need user approval.
+    var approvalDecisions: [AutoLearnReviewDecision] = []
 }
 
 struct AutoLearnReviewProposal: Codable, Identifiable, Sendable {

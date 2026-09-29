@@ -1,6 +1,49 @@
 import Foundation
 
 enum CorrectionDiffEngine {
+    struct Edit: Sendable {
+        let originalRange: NSRange
+        let correctedRange: NSRange
+    }
+
+    /// Recover the precise changed span from a contextual snippet. Multiple
+    /// edits, insertions and deletions are deliberately ineligible locally.
+    static func singleEdit(from revision: AutoLearnRevision) -> Edit? {
+        let originalSegments = segments(in: revision.original)
+        let correctedSegments = segments(in: revision.corrected)
+        guard originalSegments.count <= AutoLearnLimits.maximumDiffSegments,
+            correctedSegments.count <= AutoLearnLimits.maximumDiffSegments
+        else { return nil }
+        let hunks = segmentHunks(from: originalSegments, to: correctedSegments)
+        guard hunks.count == 1, let hunk = hunks.first,
+            let firstOriginal = hunk.originalRange.first,
+            let lastOriginal = hunk.originalRange.last,
+            let firstCorrected = hunk.correctedRange.first,
+            let lastCorrected = hunk.correctedRange.last,
+            hunk.originalRange.count <= AutoLearnLimits.maximumCandidateSegments,
+            hunk.correctedRange.count <= AutoLearnLimits.maximumCandidateSegments
+        else { return nil }
+
+        func cleanedRange(_ range: Range<String.Index>, in text: String) -> Range<String.Index>? {
+            let raw = String(text[range])
+            let value = String(cleanedEdgeCharacters(Array(raw)))
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return nil }
+            return text.range(of: value, options: .literal, range: range)
+        }
+        guard let sourceRange = cleanedRange(
+            originalSegments[firstOriginal].range.lowerBound..<originalSegments[lastOriginal].range.upperBound,
+            in: revision.original
+        ), let targetRange = cleanedRange(
+            correctedSegments[firstCorrected].range.lowerBound..<correctedSegments[lastCorrected].range.upperBound,
+            in: revision.corrected
+        ) else { return nil }
+        return Edit(
+            originalRange: NSRange(sourceRange, in: revision.original),
+            correctedRange: NSRange(targetRange, in: revision.corrected)
+        )
+    }
+
     private struct TextSegment: Equatable {
         let text: String
         let range: Range<String.Index>

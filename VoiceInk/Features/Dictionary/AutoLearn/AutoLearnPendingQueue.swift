@@ -1,6 +1,8 @@
 import Foundation
+import OSLog
 
 actor AutoLearnPendingQueue {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AutoLearnQueue")
     private enum ReviewStatus: String, Codable {
         case pending
         case reviewing
@@ -10,13 +12,15 @@ actor AutoLearnPendingQueue {
         let candidateID: UUID
         let originalText: String
         let correctedText: String
+        let languageCode: String?
         var reviewStatus: ReviewStatus
 
         var reviewCandidate: AutoLearnReviewCandidate {
             AutoLearnReviewCandidate(
                 candidateID: candidateID,
                 originalText: originalText,
-                correctedText: correctedText
+                correctedText: correctedText,
+                languageCode: languageCode
             )
         }
 
@@ -25,6 +29,7 @@ actor AutoLearnPendingQueue {
             case originalText
             case correctedText
             case reviewStatus
+            case languageCode
             case detectedOriginalText
             case userCorrectedText
             case originalTextContext
@@ -35,11 +40,13 @@ actor AutoLearnPendingQueue {
             candidateID: UUID,
             originalText: String,
             correctedText: String,
+            languageCode: String?,
             reviewStatus: ReviewStatus
         ) {
             self.candidateID = candidateID
             self.originalText = originalText
             self.correctedText = correctedText
+            self.languageCode = languageCode
             self.reviewStatus = reviewStatus
         }
 
@@ -47,6 +54,7 @@ actor AutoLearnPendingQueue {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             candidateID = try container.decode(UUID.self, forKey: .candidateID)
             reviewStatus = try container.decode(ReviewStatus.self, forKey: .reviewStatus)
+            languageCode = try container.decodeIfPresent(String.self, forKey: .languageCode)
 
             if let value = try container.decodeIfPresent(String.self, forKey: .originalText) {
                 originalText = value
@@ -77,6 +85,7 @@ actor AutoLearnPendingQueue {
             try container.encode(originalText, forKey: .originalText)
             try container.encode(correctedText, forKey: .correctedText)
             try container.encode(reviewStatus, forKey: .reviewStatus)
+            try container.encodeIfPresent(languageCode, forKey: .languageCode)
         }
     }
 
@@ -85,13 +94,13 @@ actor AutoLearnPendingQueue {
     private var queuedCorrections: [QueuedCorrection] = []
     private var queuedCorrectionsWereLoaded = false
 
-    init(fileManager: FileManager = .default) {
+    init(fileManager: FileManager = .default, fileURL: URL? = nil) {
         self.fileManager = fileManager
         let applicationSupport = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        queueFileURL = applicationSupport
+        queueFileURL = fileURL ?? applicationSupport
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
             .appendingPathComponent("auto-learn-pending-corrections.json")
     }
@@ -108,6 +117,7 @@ actor AutoLearnPendingQueue {
         if changed {
             do { try save() } catch { queuedCorrections = snapshot; throw error }
         }
+        logger.notice("Auto Learn queue loaded outstanding=\(self.queuedCorrections.count, privacy: .public) interruptedReviewsRecovered=\(snapshot.filter { $0.reviewStatus == .reviewing }.count, privacy: .public)")
     }
 
     func enqueue(_ candidates: [DetectedCorrectionCandidate]) throws -> Int {
@@ -119,7 +129,8 @@ actor AutoLearnPendingQueue {
             queuedCorrections.map {
                 pairKey(
                     originalText: $0.originalText,
-                    correctedText: $0.correctedText
+                    correctedText: $0.correctedText,
+                    languageCode: $0.languageCode
                 )
             }
         )
@@ -135,7 +146,8 @@ actor AutoLearnPendingQueue {
 
             let correctionPairKey = pairKey(
                 originalText: originalText,
-                correctedText: correctedText
+                correctedText: correctedText,
+                languageCode: candidate.languageCode
             )
             guard knownPairs.insert(correctionPairKey).inserted else { continue }
             queuedCorrections.append(
@@ -143,6 +155,7 @@ actor AutoLearnPendingQueue {
                     candidateID: UUID(),
                     originalText: originalText,
                     correctedText: correctedText,
+                    languageCode: candidate.languageCode,
                     reviewStatus: .pending
                 )
             )
@@ -155,6 +168,9 @@ actor AutoLearnPendingQueue {
             } catch {
                 queuedCorrections = originalQueuedCorrections
                 throw error
+            }
+            for correction in queuedCorrections.suffix(insertedCount) {
+                logger.notice("Auto Learn candidate saved candidateID=\(correction.candidateID.uuidString, privacy: .public) status=pending originalCharacters=\(correction.originalText.count, privacy: .public) correctedCharacters=\(correction.correctedText.count, privacy: .public)")
             }
         }
         return insertedCount
@@ -269,9 +285,11 @@ actor AutoLearnPendingQueue {
 
     private func pairKey(
         originalText: String,
-        correctedText: String
+        correctedText: String,
+        languageCode: String?
     ) -> String {
         WordReplacementVariants.key(for: originalText) + "\u{0}"
             + WordReplacementVariants.destinationKey(for: correctedText)
+            + "\u{0}" + (languageCode ?? "")
     }
 }
