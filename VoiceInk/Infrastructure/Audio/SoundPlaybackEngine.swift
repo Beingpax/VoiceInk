@@ -61,8 +61,8 @@ final class SoundPlaybackEngine: @unchecked Sendable {
             customStopSound?.stop()
         }
 
-        customStartSound = makePlayer(from: startURL, volume: 0.3)
-        customStopSound = makePlayer(from: stopURL, volume: 0.3)
+        customStartSound = makePlayer(from: startURL, volume: 1.0)
+        customStopSound = makePlayer(from: stopURL, volume: 1.0)
     }
 
     private func play(_ sound: Sound) {
