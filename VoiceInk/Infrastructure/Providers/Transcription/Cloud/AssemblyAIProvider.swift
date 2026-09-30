@@ -5,11 +5,20 @@ import SwiftData
 struct AssemblyAIProvider: CloudProvider {
     let modelProvider: ModelProvider = .assemblyAI
     let providerKey: String = "AssemblyAI"
-    let languageCodes: [String]? = Languages.universal35Codes
+    let languageCodes: [String]? = Languages.universal36Codes
     let includesAutoDetect: Bool = true
 
     var models: [CloudModel] {
         [
+            CloudModel(
+                name: "universal-3-6-pro",
+                displayName: "Universal-3.6 Pro",
+                description: "Flagship realtime transcription across 32 languages. Uses Universal-3.5 Pro or Universal-2 for file transcription.",
+                provider: .assemblyAI,
+                isMultilingual: true,
+                supportsStreaming: true,
+                supportedLanguages: Languages.universal36
+            ),
             CloudModel(
                 name: "universal-3-5-pro",
                 displayName: "Universal-3.5 Pro",
@@ -39,7 +48,7 @@ struct AssemblyAIProvider: CloudProvider {
             audioData: audioData,
             fileName: fileName,
             apiKey: apiKey,
-            model: model,
+            model: try Self.batchModel(for: model, language: language),
             language: language,
             customVocabulary: customVocabulary,
             maxWaitSeconds: timeout,
@@ -55,13 +64,33 @@ struct AssemblyAIProvider: CloudProvider {
         return await AssemblyAIClient.verifyAPIKey(key)
     }
 
+    // The 3.6 Pro model is streaming-only. Explicitly route recorded audio and
+    // streaming failures to a prerecorded model supporting the selected language.
+    static func batchModel(for model: String, language: String?) throws -> String {
+        guard model == "universal-3-6-pro" else { return model }
+        if let language, language != "auto", !language.isEmpty,
+           !Languages.universal35Codes.contains(language) {
+            guard Languages.universal2Codes.contains(language) else {
+                throw LLMKitError.networkError("AssemblyAI supports this language only in realtime. Enable realtime transcription to use it.")
+            }
+            return "universal-2"
+        }
+        return "universal-3-5-pro"
+    }
+
     private enum Languages {
-        static let universal35Codes = [
-            "en", "es", "fr", "de", "it", "pt", "ar", "da", "nl",
-            "he", "hi", "ja", "zh", "vi", "fi", "no", "sv", "tr",
+        static let universal36Codes = [
+            "af", "ar", "yue", "ca", "da", "nl", "en", "et", "fi", "fr", "gl",
+            "de", "he", "hi", "it", "ja", "ko", "zh", "mr", "no", "nn", "fa",
+            "pt", "ro", "ru", "es", "sv", "tr", "ur", "vi", "xh", "zu",
         ]
 
-        private static let universal2Codes = [
+        static let universal35Codes = [
+            "en", "es", "fr", "de", "it", "pt", "ar", "da", "nl",
+            "he", "hi", "ja", "zh", "vi", "fi", "no", "sv", "tr", "ca",
+        ]
+
+        static let universal2Codes = [
             "en", "en_au", "en_uk", "en_us", "es", "fr", "de", "it", "pt", "nl",
             "hi", "ja", "zh", "fi", "ko", "pl", "ru", "tr", "uk", "vi", "af",
             "sq", "am", "ar", "hy", "as", "az", "ba", "eu", "be", "bn", "bs",
@@ -74,6 +103,7 @@ struct AssemblyAIProvider: CloudProvider {
             "tk", "ur", "uz", "cy", "yi", "yo",
         ]
 
+        static let universal36 = LanguageDictionary.forCodes(universal36Codes, includesAutoDetect: true)
         static let universal35 = LanguageDictionary.forCodes(universal35Codes, includesAutoDetect: true)
         static let universal2 = LanguageDictionary.forCodes(universal2Codes, includesAutoDetect: true)
     }

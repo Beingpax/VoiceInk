@@ -2,13 +2,15 @@ import Foundation
 import LLMkit
 import SwiftData
 
-/// AssemblyAI streaming provider wrapping `LLMkit.AssemblyAIStreamingClient`.
+/// AssemblyAI streaming provider with explicit end-of-session finalization.
 final class AssemblyAIStreamingProvider: StreamingTranscriptionProvider {
 
     private let client = LLMkit.AssemblyAIStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
     private let modelContext: ModelContext
+
+    var finalizationEvents: AsyncStream<String>? { client.finalizationEvents }
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
