@@ -145,7 +145,7 @@ enum AIProvider: String, CaseIterable {
                 "mistral-large-latest",
             ]
         case .elevenLabs:
-            return ["scribe_v2"]
+            return ["scribe_v2", "scribe_v2_medical"]
         case .deepgram:
             return ["whisper-1"]
         case .soniox:
