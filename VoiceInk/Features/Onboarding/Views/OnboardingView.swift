@@ -225,6 +225,24 @@ struct OnboardingView: View {
 
         }
         .frame(minWidth: 820, minHeight: 680)
+        .overlay(alignment: .topTrailing) {
+            if showsSkipButton && coordinator.requiredPermissionsGranted {
+                Button("Skip") {
+                    coordinator.flow.skipOnboarding {
+                        hasCompletedOnboardingV2 = true
+                    }
+                }
+                .buttonStyle(.borderless)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(AppTheme.Action.secondaryForeground)
+                .padding(8)
+                .contentShape(Rectangle())
+                .help("Skip the remaining onboarding steps")
+                .accessibilityLabel("Skip onboarding")
+                .padding(.trailing, 28)
+                .padding(.top, 20)
+            }
+        }
         .animation(.easeInOut(duration: 0.22), value: coordinator.stage)
         .onAppear {
             coordinator.flow.ensureDefaultOnboardingTranscriptionProvider()
@@ -274,6 +292,15 @@ struct OnboardingView: View {
         .onChange(of: coordinator.stage) { _, _ in
             coordinator.flow.activateExperienceModeForDemo()
             coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
+        }
+    }
+
+    private var showsSkipButton: Bool {
+        switch coordinator.stage {
+        case .permissions, .microphone, .model, .api:
+            return false
+        case .experience, .contextAwareness, .trust, .license:
+            return true
         }
     }
 

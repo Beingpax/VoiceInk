@@ -126,7 +126,8 @@ struct AutoLearnModelSelectionView: View {
     private func defaultModel(for provider: AIProvider) -> String {
         let models = aiService.availableModels(for: provider)
         let selectedModel = aiService.selectedModel(for: provider)
-        return models.contains(selectedModel) ? selectedModel : models.first ?? selectedModel
+        if models.contains(selectedModel) { return selectedModel }
+        return models.contains(provider.defaultModel) ? provider.defaultModel : models.first ?? selectedModel
     }
 
     private func prepareSelectionIfNeeded() {

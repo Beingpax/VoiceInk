@@ -62,7 +62,7 @@ enum AIProvider: String, CaseIterable {
         case .cerebras:
             return "qwen-3.8-27b"
         case .groq:
-            return "openai/gpt-oss-120b"
+            return "qwen/qwen3.8-27b"
         case .gemini:
             return "gemini-3.8-flash"
         case .anthropic:
@@ -90,7 +90,7 @@ enum AIProvider: String, CaseIterable {
         case .custom:
             return CustomAIProviderManager.shared.defaultModelName
         case .openRouter:
-            return "openai/gpt-oss-120b"
+            return "qwen/qwen3.8-27b"
         }
     }
 
@@ -98,14 +98,14 @@ enum AIProvider: String, CaseIterable {
         switch self {
         case .cerebras:
             return [
-                "gpt-oss-120b",
                 "qwen-3.8-27b",
+                "gpt-oss-120b",
             ]
         case .groq:
             return [
+                "qwen/qwen3.8-27b",
                 "openai/gpt-oss-120b",
                 "openai/gpt-oss-20b",
-                "qwen/qwen3.8-27b",
             ]
         case .gemini:
             return [
@@ -487,7 +487,8 @@ class AIService: ObservableObject {
         let availableModels = availableModels(for: provider)
         return provider.supportsCustomModelID || availableModels.contains(selectedModel)
             ? selectedModel
-            : availableModels.first ?? selectedModel
+            : (availableModels.contains(provider.defaultModel) ? provider.defaultModel : availableModels.first)
+                ?? selectedModel
     }
 
     private func loadSavedModelSelections() {

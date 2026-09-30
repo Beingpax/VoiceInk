@@ -24135,6 +24135,9 @@
         }
       }
     },
+    "Skip" : {
+
+    },
     "Skip API Setup" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -24158,6 +24161,9 @@
         }
       }
     },
+    "Skip onboarding" : {
+
+    },
     "Skip short transcriptions" : {
       "localizations" : {
         "de" : {
@@ -24179,6 +24185,9 @@
           }
         }
       }
+    },
+    "Skip the remaining onboarding steps" : {
+
     },
     "Skipped %lld duplicate, conflicting, invalid, or cyclic entries." : {
       "localizations" : {
