@@ -91,6 +91,7 @@ If you encounter any issues or have questions, please:
 ### Core Technology
 - [whisper.cpp](https://github.com/ggerganov/whisper.cpp) - High-performance inference of OpenAI's Whisper model
 - [FluidAudio](https://github.com/FluidInference/FluidAudio) - Used for Parakeet model implementation
+- [Orukeet](https://huggingface.co/oruk/orukeet) by Oruk, an adaptation of NVIDIA Parakeet TDT v3 with [CC BY-SA 4.0 weights](https://huggingface.co/oruk/orukeet/blob/main/LICENSE-WEIGHTS).
 - [TranscribeCpp for Swift](https://github.com/Beingpax/Transcribe-cpp-swift) - SwiftPM distribution of [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp), used for local GGUF transcription models
 - [SenseVoice Small](https://huggingface.co/FunAudioLLM/SenseVoiceSmall) by FunAudioLLM / Alibaba - Multilingual model available under the [FunASR Model Open Source License Agreement](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE)
 

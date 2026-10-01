@@ -127,9 +127,13 @@ struct TranscribeCppModel: TranscriptionModel, Sendable {
     let size: String
     let speed: Double
     let accuracy: Double
-    let ramUsage: Double
+    /// Nil until this runtime/model combination has a measured memory footprint.
+    let ramUsage: Double?
     let publisher: String
     let supportedLanguages: [String: String]
+
+    /// Zero ratings mean this model has not been rated; do not display them as measured scores.
+    var hasPerformanceRatings: Bool { speed > 0 && accuracy > 0 }
 
     var isMultilingualModel: Bool { supportedLanguages.count > 1 }
 }
