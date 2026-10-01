@@ -60,7 +60,9 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         let models = try await fluidAudioService.getOrLoadModels(for: version)
 
         let manager = AsrManager(config: .default)
-        try await manager.loadModels(models)
+        try await TranscriptionDiagnostics.measure("streaming-manager-load", logger: logger) {
+            try await manager.loadModels(models)
+        }
         self.asrManager = manager
         self.decoderLayerCount = await manager.decoderLayerCount
         self.languageHint = FluidAudioTranscriptionService.languageHint(from: language, model: model)
@@ -101,7 +103,9 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
         await transcriptionTask?.value
         transcriptionTask = nil
 
-        await asrManager?.cleanup()
+        _ = try? await TranscriptionDiagnostics.measure("streaming-manager-cleanup", logger: logger) {
+            await asrManager?.cleanup()
+        }
         asrManager = nil
         decoderLayerCount = 0
         languageHint = nil
@@ -191,11 +195,11 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
                 // Decoder padding is synthetic; recorded silence outside speech segments is excluded.
                 speechAudio += [Float](repeating: 0, count: 16_000)
                 var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-                let result = try await asrManager.transcribe(
-                    speechAudio,
-                    decoderState: &state,
-                    language: languageHint
-                )
+                let result = try await TranscriptionDiagnostics.measure(
+                    "streaming-prediction", logger: logger, details: "samples=\(speechAudio.count)"
+                ) {
+                    try await asrManager.transcribe(speechAudio, decoderState: &state, language: languageHint)
+                }
                 let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !text.isEmpty { textParts.append(text) }
                 passConfidence = min(passConfidence, result.confidence)
@@ -248,7 +252,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             }
 
         } catch {
-            logger.error("Transcription pass failed: \(error, privacy: .public)")
+            logger.error("Transcription pass failed id=\(TranscriptionDiagnostics.recordingID ?? "-", privacy: .public): \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
             eventsContinuation?.yield(.error(error))
         }
     }
@@ -270,6 +274,7 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             }
             return Array(audioBuffer[bufferRelativeSeek...])
         }) else {
+            TranscriptionDiagnostics.recording?.add("finalization", "no-remaining-audio")
             return nil
         }
 
@@ -279,16 +284,16 @@ final class FluidAudioStreamingProvider: StreamingTranscriptionProvider {
             // Keep short spoken tails and final punctuation with decoder padding.
             speechAudio += [Float](repeating: 0, count: 16_000)
             var state = TdtDecoderState.make(decoderLayers: decoderLayerCount)
-            let result = try await asrManager.transcribe(
-                speechAudio,
-                decoderState: &state,
-                language: languageHint
-            )
+            let result = try await TranscriptionDiagnostics.measure(
+                "streaming-final-prediction", logger: logger, details: "samples=\(speechAudio.count)"
+            ) {
+                try await asrManager.transcribe(speechAudio, decoderState: &state, language: languageHint)
+            }
             let text = result.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             return text
         } catch {
-            logger.error("Final transcription failed: \(error, privacy: .public)")
+            logger.error("Final transcription failed id=\(TranscriptionDiagnostics.recordingID ?? "-", privacy: .public): \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
             return nil
         }
     }

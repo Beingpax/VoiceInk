@@ -111,7 +111,11 @@ class TranscriptionPipeline {
                     context: transcriptionConfiguration.requestContext
                 )
             }
+            let rawCharacterCount = text.count
             text = TranscriptionOutputFilter.filter(text)
+            if model.provider == .fluidAudio, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                logger.notice("ASR pipeline empty result id=\(session?.diagnosticID ?? "-", privacy: .public) model=\(model.name, privacy: .public) rawChars=\(rawCharacterCount, privacy: .public) filteredChars=\(text.count, privacy: .public)")
+            }
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
             if shouldCancel() {

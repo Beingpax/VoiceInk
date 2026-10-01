@@ -6,6 +6,7 @@ final class LogExporter {
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "LogExporter")
     private let subsystem = "com.prakashjoshipax.voiceink"
+    private let fluidAudioSubsystem = "com.fluidinference"
     private let exportWindow: TimeInterval = 30 * 60
 
     private init() {
@@ -31,7 +32,8 @@ final class LogExporter {
         }
 
         let store = try OSLogStore(scope: .system)
-        let predicate = NSPredicate(format: "subsystem == %@", subsystem)
+        let processName = ProcessInfo.processInfo.processName
+        let predicate = NSPredicate(format: "subsystem IN %@", [subsystem, fluidAudioSubsystem])
 
         var logLines: [String] = []
         let dateFormatter = DateFormatter()
@@ -39,7 +41,8 @@ final class LogExporter {
 
         logLines.append("=== VoiceInk Diagnostic Logs ===")
         logLines.append("Export Date: \(dateFormatter.string(from: exportDate))")
-        logLines.append("Subsystem: \(subsystem)")
+        logLines.append("Subsystems: \(subsystem), \(fluidAudioSubsystem)")
+        logLines.append("FluidAudio Process: \(processName)")
         logLines.append("Log Window: Last 30 minutes")
         logLines.append("From: \(dateFormatter.string(from: startDate))")
         logLines.append("To: \(dateFormatter.string(from: exportDate))")
@@ -56,13 +59,16 @@ final class LogExporter {
             guard let logEntry = entry as? OSLogEntryLog else { continue }
             guard logEntry.date >= startDate else { continue }
             if logEntry.date > exportDate { break }
+            // Keep SDK logs from this app, including launches earlier in the window.
+            // Other apps can also use FluidAudio's shared subsystem.
+            if logEntry.subsystem == fluidAudioSubsystem, logEntry.process != processName { continue }
 
             let timestamp = dateFormatter.string(from: logEntry.date)
             let level = logLevelString(logEntry.level)
             let category = logEntry.category
             let message = logEntry.composedMessage
 
-            logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
+            logLines.append("[\(timestamp)] [\(level)] [\(logEntry.subsystem)] [\(category)] \(message)")
             logCount += 1
         }
 

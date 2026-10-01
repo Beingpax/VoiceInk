@@ -4,6 +4,7 @@ import os
 /// Encapsulates a single recording-to-transcription lifecycle (streaming or file-based).
 @MainActor
 protocol TranscriptionSession: AnyObject {
+    var diagnosticID: String { get }
     /// Prepares the session. Returns an audio chunk callback for streaming, or nil for file-based.
     func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)?
 
@@ -19,6 +20,8 @@ protocol TranscriptionSession: AnyObject {
 /// File-based session: records to file, uploads after stop.
 @MainActor
 final class FileTranscriptionSession: TranscriptionSession {
+    private let diagnostics = TranscriptionDiagnostics.Recording()
+    var diagnosticID: String { diagnostics.id }
     private let service: TranscriptionService
     private var model: (any TranscriptionModel)?
     private var context: TranscriptionRequestContext = .currentDefaults
@@ -30,6 +33,7 @@ final class FileTranscriptionSession: TranscriptionSession {
     func prepare(configuration: TranscriptionRuntimeConfiguration) async throws -> ((Data) -> Void)? {
         self.model = configuration.model
         self.context = configuration.requestContext.scoped(to: configuration.model)
+        TranscriptionDiagnostics.configuration(model: configuration.model, context: context, realtime: false, id: diagnosticID)
         return nil
     }
 
@@ -37,7 +41,9 @@ final class FileTranscriptionSession: TranscriptionSession {
         guard let model = model else {
             throw VoiceInkEngineError.transcriptionFailed
         }
-        return try await service.transcribe(audioURL: audioURL, model: model, context: context)
+        return try await TranscriptionDiagnostics.transcribe(audioURL: audioURL, model: model, recording: diagnostics) {
+            try await service.transcribe(audioURL: audioURL, model: model, context: context)
+        }
     }
 
     func cancel() {
@@ -50,6 +56,8 @@ final class FileTranscriptionSession: TranscriptionSession {
 /// Streaming session with automatic fallback to file-based upload on failure.
 @MainActor
 final class StreamingTranscriptionSession: TranscriptionSession {
+    private let diagnostics = TranscriptionDiagnostics.Recording()
+    var diagnosticID: String { diagnostics.id }
     private let streamingService: StreamingTranscriptionService
     private let fallbackService: TranscriptionService
     private var model: (any TranscriptionModel)?
@@ -70,7 +78,8 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         self.model = model
         self.context = context
-        logger.notice("Streaming session prepare model=\(model.displayName, privacy: .public)")
+        TranscriptionDiagnostics.configuration(model: model, context: context, realtime: true, id: diagnosticID)
+        logger.notice("Streaming session prepare id=\(self.diagnosticID, privacy: .public) model=\(model.displayName, privacy: .public)")
 
         // Return callback immediately; WebSocket connects in background
         let service = streamingService
@@ -93,20 +102,28 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
             do {
                 let start = Date()
-                try await self.streamingService.startStreaming(model: model, context: context)
+                try await TranscriptionDiagnostics.$recording.withValue(self.diagnostics) {
+                    if model.provider == .fluidAudio {
+                        try await TranscriptionDiagnostics.measure("streaming-connect", logger: self.logger) {
+                            try await self.streamingService.startStreaming(model: model, context: context)
+                        }
+                    } else {
+                        try await self.streamingService.startStreaming(model: model, context: context)
+                    }
+                }
                 guard !Task.isCancelled else {
                     self.streamingService.cancel()
                     return
                 }
                 self.logger.notice(
-                    "Streaming session connected model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s"
+                    "Streaming session connected id=\(self.diagnosticID, privacy: .public) model=\(model.displayName, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s"
                 )
             } catch is CancellationError {
                 self.streamingService.cancel()
             } catch {
                 guard !Task.isCancelled else { return }
-                let desc = error.localizedDescription
-                self.logger.error("❌ Failed to start streaming, will fall back to batch: \(desc, privacy: .public)")
+                let desc = TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false)
+                self.logger.error("Failed to start streaming id=\(self.diagnosticID, privacy: .public), will fall back to batch: \(desc, privacy: .public)")
                 self.streamingFailed = true
             }
         }
@@ -115,6 +132,13 @@ final class StreamingTranscriptionSession: TranscriptionSession {
     }
 
     func transcribe(audioURL: URL) async throws -> String {
+        guard let model else { throw VoiceInkEngineError.transcriptionFailed }
+        return try await TranscriptionDiagnostics.transcribe(audioURL: audioURL, model: model, recording: diagnostics) {
+            try await transcribeRecording(audioURL: audioURL)
+        }
+    }
+
+    private func transcribeRecording(audioURL: URL) async throws -> String {
         guard let model = model else {
             throw VoiceInkEngineError.transcriptionFailed
         }
@@ -122,19 +146,19 @@ final class StreamingTranscriptionSession: TranscriptionSession {
         if !streamingFailed {
             do {
                 let start = Date()
-                logger.notice("Streaming stop/transcribe started model=\(model.displayName, privacy: .public)")
+                logger.notice("Streaming stop/transcribe started id=\(self.diagnosticID, privacy: .public) model=\(model.displayName, privacy: .public)")
                 let result = try await streamingService.stopAndFinalize()
                 switch result {
                 case .finalized(let text):
                     logger.notice(
-                        "Streaming transcript received elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
+                        "Streaming transcript received id=\(self.diagnosticID, privacy: .public) elapsed=\(Date().timeIntervalSince(start), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
                     )
                     return text
                 case .requiresBatchFallback:
-                    logger.notice("Streaming provider requested full batch transcription")
+                    logger.notice("Streaming provider requested full batch transcription id=\(self.diagnosticID, privacy: .public)")
                 }
             } catch {
-                logger.error("❌ Streaming failed, falling back to batch: \(error, privacy: .public)")
+                logger.error("Streaming failed id=\(self.diagnosticID, privacy: .public), falling back to batch: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
                 startupTask?.cancel()
                 startupTask = nil
                 startupTaskID = nil
@@ -149,11 +173,11 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         let fallbackStart = Date()
         logger.notice(
-            "Using batch fallback for \(model.displayName, privacy: .public) file=\(audioURL.lastPathComponent, privacy: .public)"
+            "Using batch fallback id=\(self.diagnosticID, privacy: .public) model=\(model.displayName, privacy: .public)"
         )
         let text = try await fallbackService.transcribe(audioURL: audioURL, model: model, context: context)
         logger.notice(
-            "Batch fallback completed elapsed=\(Date().timeIntervalSince(fallbackStart), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
+            "Batch fallback completed id=\(self.diagnosticID, privacy: .public) elapsed=\(Date().timeIntervalSince(fallbackStart), format: .fixed(precision: 3), privacy: .public)s chars=\(text.count, privacy: .public)"
         )
         return text
     }

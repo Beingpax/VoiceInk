@@ -249,6 +249,7 @@
 				E11473AE2CBE0F0A00318EE4 /* Resources */,
 				E1A8C8CD2E1257B7003E58EC /* Embed Frameworks */,
 				E1FA000C2FA7000000000001 /* Embed XPC Services */,
+				6BA6D42615284A54B843F6C5 /* FluidAudio Revision */,
 			);
 			buildRules = (
 			);
@@ -442,6 +443,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		6BA6D42615284A54B843F6C5 /* FluidAudio Revision */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = (
+				"$(BUILD_DIR)/../../SourcePackages/workspace-state.json",
+				"$(SRCROOT)/scripts/write-fluid-audio-revision.py",
+			);
+			name = "FluidAudio Revision";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/FluidAudioRevision.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/bin/python3 \"$SCRIPT_INPUT_FILE_1\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		E11473AC2CBE0F0A00318EE4 /* Sources */ = {

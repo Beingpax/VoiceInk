@@ -130,6 +130,7 @@ class StreamingTranscriptionService {
     private var stopStartedAt: Date?
     private var firstPartialLogged = false
     private var firstCommitLogged = false
+    private var diagnostics: TranscriptionDiagnostics.Recording?
 
     init(
         modelContext: ModelContext, fluidAudioService: FluidAudioTranscriptionService? = nil,
@@ -156,6 +157,7 @@ class StreamingTranscriptionService {
 
     /// Start a streaming transcription session for the given model.
     func startStreaming(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws {
+        diagnostics = TranscriptionDiagnostics.recording
         let start = Date()
         state = .connecting
         committedSegments = []
@@ -199,6 +201,15 @@ class StreamingTranscriptionService {
 
     /// Stops streaming and follows the provider's requested finalization path.
     func stopAndFinalize() async throws -> StreamingStopResult {
+        if fluidAudioService != nil {
+            return try await TranscriptionDiagnostics.measure("streaming-stop", logger: logger) {
+                try await stopStreaming()
+            }
+        }
+        return try await stopStreaming()
+    }
+
+    private func stopStreaming() async throws -> StreamingStopResult {
         guard let provider = provider, state == .streaming else {
             throw StreamingTranscriptionError.notConnected
         }
@@ -238,7 +249,7 @@ class StreamingTranscriptionService {
         } catch {
             commitSignal?.finish()
             commitSignal = nil
-            logger.error("Failed to send commit: \(error, privacy: .public)")
+            logger.error("Failed to send commit: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
             state = .failed
             await cleanupStreaming()
             throw error
@@ -286,9 +297,12 @@ class StreamingTranscriptionService {
 
         let providerToDisconnect = provider
         provider = nil
+        let diagnostics = diagnostics
 
         Task {
-            await providerToDisconnect?.disconnect()
+            await TranscriptionDiagnostics.$recording.withValue(diagnostics) {
+                await providerToDisconnect?.disconnect()
+            }
         }
 
         committedSegments = []
@@ -330,15 +344,18 @@ class StreamingTranscriptionService {
         let provider = provider
         let metrics = metrics
         let logger = logger
+        let diagnostics = diagnostics
 
         sendTask = Task.detached {
             for await chunk in source.stream {
                 do {
-                    try await provider?.sendAudioChunk(chunk)
+                    try await TranscriptionDiagnostics.$recording.withValue(diagnostics) {
+                        try await provider?.sendAudioChunk(chunk)
+                    }
                     metrics.recordSent(chunk.count)
                 } catch {
-                    let desc = error.localizedDescription
-                    logger.error("Failed to send audio chunk: \(desc, privacy: .public)")
+                    let desc = TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false)
+                    logger.error("Failed to send audio chunk id=\(diagnostics?.id ?? "-", privacy: .public): \(desc, privacy: .public)")
                 }
             }
         }
@@ -411,7 +428,7 @@ class StreamingTranscriptionService {
                     break
                 case .error(let error):
                     await MainActor.run {
-                        self.logger.error("Streaming event error: \(error, privacy: .public)")
+                        self.logger.error("Streaming event error: \(TranscriptionDiagnostics.errorDetails(error, includeUnderlying: false), privacy: .public)")
                     }
                 }
             }

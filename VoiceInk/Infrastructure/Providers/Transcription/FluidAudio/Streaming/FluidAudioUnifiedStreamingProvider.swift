@@ -29,7 +29,12 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
         await manager.setPartialTranscriptCallback { partial in
             continuation?.yield(.partial(text: partial))
         }
-        try await manager.loadModels(from: FluidAudioModelManager.parakeetUnifiedCacheDirectory())
+        try await TranscriptionDiagnostics.measure(
+            "unified-streaming-model-load", logger: logger,
+            details: "model=\(model.name) encoderPrecision=\(FluidAudioModelManager.parakeetUnifiedPrecision) configuration=SDK-default"
+        ) {
+            try await manager.loadModels(from: FluidAudioModelManager.parakeetUnifiedCacheDirectory())
+        }
         self.manager = manager
         eventsContinuation?.yield(.sessionStarted)
         logger.notice("Parakeet Unified streaming started for \(model.displayName, privacy: .public)")
@@ -46,8 +51,12 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
             throw StreamingTranscriptionError.audioConversionFailed
         }
 
-        try await manager.appendAudio(buffer)
-        try await manager.processBufferedAudio()
+        try await TranscriptionDiagnostics.measure(
+            "unified-streaming-processing", logger: logger, details: "bytes=\(data.count)"
+        ) {
+            try await manager.appendAudio(buffer)
+            try await manager.processBufferedAudio()
+        }
     }
 
     func commit() async throws {
@@ -55,13 +64,17 @@ final class FluidAudioUnifiedStreamingProvider: StreamingTranscriptionProvider {
             throw StreamingTranscriptionError.notConnected
         }
 
-        let finalText = try await manager.finish()
+        let finalText = try await TranscriptionDiagnostics.measure("unified-streaming-finish", logger: logger) {
+            try await manager.finish()
+        }
         let text = finalText.trimmingCharacters(in: .whitespacesAndNewlines)
         eventsContinuation?.yield(.committed(text: text))
     }
 
     func disconnect() async {
-        await manager?.cleanup()
+        _ = try? await TranscriptionDiagnostics.measure("unified-streaming-cleanup", logger: logger) {
+            await manager?.cleanup()
+        }
         manager = nil
         eventsContinuation?.finish()
         logger.notice("Parakeet Unified streaming disconnected")

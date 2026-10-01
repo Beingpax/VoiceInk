@@ -50,6 +50,15 @@ class FluidAudioModelManager: ObservableObject {
     }
 
     nonisolated static let parakeetUnifiedPrecision: UnifiedEncoderPrecision = .int8
+    nonisolated static var diagnosticComputeUnits: String {
+        switch AsrModels.defaultConfiguration().computeUnits {
+        case .cpuOnly: return "cpuOnly"
+        case .cpuAndGPU: return "cpuAndGPU"
+        case .cpuAndNeuralEngine: return "cpuAndNeuralEngine"
+        case .all: return "all"
+        @unknown default: return "unknown"
+        }
+    }
     nonisolated static let parakeetUnifiedStreamingConfig = UnifiedConfig(
         leftFrames: 70,
         chunkFrames: 7,
