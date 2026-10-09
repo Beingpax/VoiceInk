@@ -146,6 +146,11 @@ final class CoreAudioRecorder: @unchecked Sendable {
             return
         }
 
+        if audioUnit != nil {
+            logger.notice(
+                "Rebuilding prepared audio input for device \(deviceID, privacy: .public): device or capture format changed"
+            )
+        }
         teardownPreparedAudioUnit()
         currentDeviceID = deviceID
 
@@ -230,9 +235,30 @@ final class CoreAudioRecorder: @unchecked Sendable {
         logDroppedInputBufferCounters(context: "stop")
 
         closeOutputFile()
+
+        // A recording that captured no frames means the prepared AUHAL delivered
+        // nothing (stale format, or the device went away mid-session). Drop the
+        // preparation so the next recording builds a fresh connection instead of
+        // failing the same way until the app is restarted.
+        if let url = recordingURL, capturedNoAudio(at: url) {
+            logger.notice(
+                "Recording captured no audio; discarding the prepared audio input so the next recording rebuilds it"
+            )
+            recordingURL = nil
+            invalidatePreparation()
+        }
         recordingURL = nil
 
         resetMeters()
+    }
+
+    /// True when the finished recording holds less than ~150 ms of audio.
+    private func capturedNoAudio(at url: URL) -> Bool {
+        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let size = (attributes?[.size] as? NSNumber)?.intValue ?? 0
+        // 16 kHz mono 16-bit is 32,000 bytes per second; a WAV header adds a few
+        // hundred more. Anything this small cannot be speech.
+        return size <= 8_192
     }
 
     /// Releases the prepared AUHAL and buffers. Use for app shutdown or hard recovery.
@@ -697,7 +723,36 @@ final class CoreAudioRecorder: @unchecked Sendable {
     }
 
     private func isPrepared(for deviceID: AudioDeviceID) -> Bool {
-        audioUnit != nil && isAudioUnitInitialized && currentDeviceID == deviceID && isDeviceAvailable(deviceID)
+        guard let audioUnit, isAudioUnitInitialized,
+            currentDeviceID == deviceID, isDeviceAvailable(deviceID)
+        else { return false }
+
+        // A DAW or a Bluetooth/Continuity route change can reconfigure an existing
+        // device without changing its ID. The cached AUHAL client format then goes
+        // stale: starting still succeeds, but the recording contains zero audio
+        // frames ("no input"). Rebuild the prepared unit when the configuration no
+        // longer matches the hardware.
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyNominalSampleRate,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var sampleRate: Double = 0
+        var size = UInt32(MemoryLayout<Double>.size)
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &sampleRate) == noErr,
+            sampleRate == deviceFormat.mSampleRate
+        else { return false }
+
+        var currentFormat = AudioStreamBasicDescription()
+        size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        guard AudioUnitGetProperty(
+            audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 1,
+            &currentFormat, &size
+        ) == noErr else { return false }
+
+        return currentFormat.mSampleRate == deviceFormat.mSampleRate
+            && currentFormat.mChannelsPerFrame == deviceFormat.mChannelsPerFrame
+            && renderFrameCapacity(for: deviceID) <= renderBufferSize / captureChannelCount
     }
 
     private func validateDevice(_ deviceID: AudioDeviceID) throws {
