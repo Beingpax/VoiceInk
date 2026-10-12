@@ -37,7 +37,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ### Development Process
 
 1. Ensure you have all the requirements installed:
-   - macOS 14.4 or later
+   - macOS 15.0 or later
    - Latest version of Xcode
    - Latest version of Swift
    - whisper.cpp properly set up

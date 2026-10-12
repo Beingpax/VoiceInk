@@ -3,22 +3,26 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>2.1</title>
-            <description><![CDATA[
-                <h3>What's New in VoiceInk 2.1</h3>
-                <ul>
-                    <li>🗣️ Fixed Apple Speech-related issues</li>
-                    <li>⚙️ Improved mode setup, availability, and model selection</li>
-                    <li>🌐 Added Dia browser support for URL-based mode triggers</li>
-                    <li>🤖 Added support for the latest Gemini enhancement models</li>
-                    <li>🛠️ Added minor improvements and bug fixes</li>
-                </ul>
-            ]]></description>
-            <pubDate>Mon, 27 Jul 2026 10:39:52 +0545</pubDate>
-            <sparkle:version>210</sparkle:version>
-            <sparkle:shortVersionString>2.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.4</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.1/VoiceInk.dmg" length="31663756" type="application/octet-stream" sparkle:edSignature="o4ffXcTieTzCGDyLtV2DXQyPrQaygAq3hmlHSw+rf+ylT+QNM/zBKakqwXlJj3vSs3fEb+qhDwg0XM6VKieGAA=="/>
+            <title>2.21</title>
+            <pubDate>Mon, 28 Sep 2026 19:43:04 +0545</pubDate>
+            <sparkle:version>221</sparkle:version>
+            <sparkle:shortVersionString>2.21</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h3>What's New in VoiceInk 2.21</h3>
+<ul>
+  <li>🦜 Added support for Parakeet Ultra</li>
+  <li>🌐 Added support for OpenRouter transcription models</li>
+  <li>🤖 Added GPT-6 Luna and GPT-6 Sol enhancement models</li>
+  <li>⚙️ Support for custom AI enhancement model IDs</li>
+  <li>⌨️ Added double-tap recording shortcuts</li>
+  <li>↩️ Made Auto Send a global setting with automatic Return delivery</li>
+  <li>📋 Added mode duplication and context menu actions</li>
+  <li>🧠 Added local CLI support for Dictionary Auto Learn</li>
+  <li>📝 Improved dictionary editing and replacement rules</li>
+  <li>🛠️ Minor bug fixes and improvements</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.21/VoiceInk.dmg" length="51053559" type="application/octet-stream" sparkle:edSignature="ilXFZq09qe/9bQ9zAXr3AbwL5moVNyGVMj/dcQikvnagiZ+qRKBLhmlIF3O2CmEEppFaLSZPhPgXiQKL4AkJDQ=="/>
         </item>
     </channel>
 </rss>

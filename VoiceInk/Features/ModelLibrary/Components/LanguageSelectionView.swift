@@ -1,0 +1,216 @@
+import SwiftUI
+
+// Define a display mode for flexible usage
+enum LanguageDisplayMode {
+    case full  // For settings page with descriptions
+    case menuItem  // For menu bar with compact layout
+}
+
+struct LanguageSelectionView: View {
+    @ObservedObject var transcriptionModelManager: TranscriptionModelManager
+    @AppStorage("SelectedLanguage") private var selectedLanguage: String = "en"
+    // Add display mode parameter with full as the default
+    var displayMode: LanguageDisplayMode = .full
+    @ObservedObject var whisperPrompt: WhisperPrompt
+
+    private func updateLanguage(_ language: String) {
+        guard selectedLanguage != language else { return }
+
+        // Update UI state - the UserDefaults updating is now automatic with @AppStorage
+        selectedLanguage = language
+
+        // Force the prompt to update for the new language
+        whisperPrompt.updateTranscriptionPrompt()
+
+        // Post notification for language change
+        NotificationCenter.default.post(name: .languageDidChange, object: nil)
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
+    }
+
+    private func hasLanguageChoices() -> Bool {
+        guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
+            return false
+        }
+        return currentModel.supportedLanguages.count > 1
+    }
+
+    private func isNativeAppleModelSelected() -> Bool {
+        transcriptionModelManager.currentTranscriptionModel?.provider == .nativeApple
+    }
+
+    private func availableLanguagesForCurrentModel() -> [String: String] {
+        guard let currentModel = transcriptionModelManager.currentTranscriptionModel else {
+            return ["en": "English"]  // Default to English if no model found
+        }
+        return TranscriptionLanguageSupport.languages(for: currentModel)
+    }
+
+    private func useCompatibleLanguageForCurrentModel() {
+        guard let currentModel = transcriptionModelManager.currentTranscriptionModel else { return }
+        updateLanguage(TranscriptionLanguageSupport.validLanguageOrFallback(selectedLanguage, for: currentModel))
+    }
+
+    // Get the display name of the current language
+    private func currentLanguageDisplayName() -> String {
+        return availableLanguagesForCurrentModel()[selectedLanguage] ?? "Unknown"
+    }
+
+    private var selectedLanguageBinding: Binding<String> {
+        Binding(
+            get: { selectedLanguage },
+            set: { updateLanguage($0) }
+        )
+    }
+
+    private var nativeAppleAssetControl: some View {
+        NativeAppleLanguageAssetControl(
+            localeIdentifier: selectedLanguage,
+            isVisible: true
+        )
+        .layoutPriority(1)
+    }
+
+    var body: some View {
+        Group {
+            switch displayMode {
+            case .full:
+                fullView
+            case .menuItem:
+                menuItemView
+            }
+        }
+        .onAppear {
+            useCompatibleLanguageForCurrentModel()
+        }
+        .onChange(of: transcriptionModelManager.currentTranscriptionModel?.name) { _, _ in
+            useCompatibleLanguageForCurrentModel()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .AppSettingsDidChange)) { _ in
+            useCompatibleLanguageForCurrentModel()
+        }
+    }
+
+    // The original full view layout for settings page
+    private var fullView: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            languageSelectionSection
+        }
+    }
+
+    private var languageSelectionSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Transcription Language")
+                .font(.headline)
+
+            if transcriptionModelManager.currentTranscriptionModel != nil {
+                if hasLanguageChoices() {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Picker("Select Language", selection: selectedLanguageBinding) {
+                                ForEach(
+                                    availableLanguagesForCurrentModel().sorted(by: {
+                                        if $0.key == "auto" { return true }
+                                        if $1.key == "auto" { return false }
+                                        return $0.value < $1.value
+                                    }), id: \.key
+                                ) { key, value in
+                                    Text(value).tag(key)
+                                }
+                            }
+                            .pickerStyle(MenuPickerStyle())
+                            .frame(maxWidth: isNativeAppleModelSelected() ? 280 : .infinity, alignment: .leading)
+
+                            if isNativeAppleModelSelected() {
+                                nativeAppleAssetControl
+                            }
+                        }
+
+                        Text(
+                            "Select a supported transcription language or locale. Automatic multilingual transcription is shown when available."
+                        )
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    }
+                } else {
+                    // For English-only models, force set language to English
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Language: English")
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+
+                        Text(
+                            "This is an English-optimized model and only supports English transcription."
+                        )
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    }
+                    .onAppear {
+                        // Ensure English is set when viewing English-only model
+                        updateLanguage("en")
+                    }
+                }
+            } else {
+                Text("No model selected")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.Surface.control)
+        .cornerRadius(10)
+    }
+
+    // New compact view for menu bar
+    private var menuItemView: some View {
+        Group {
+            if hasLanguageChoices() {
+                HStack(spacing: 8) {
+                    Menu {
+                        ForEach(
+                            availableLanguagesForCurrentModel().sorted(by: {
+                                if $0.key == "auto" { return true }
+                                if $1.key == "auto" { return false }
+                                return $0.value < $1.value
+                            }), id: \.key
+                        ) { key, value in
+                            Button {
+                                updateLanguage(key)
+                            } label: {
+                                HStack {
+                                    Text(value)
+                                    if selectedLanguage == key {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(String(format: String(localized: "Language: %@"), currentLanguageDisplayName()))
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.system(size: 10))
+                        }
+                    }
+
+                    if isNativeAppleModelSelected() {
+                        nativeAppleAssetControl
+                    }
+                }
+            } else {
+                // For English-only models
+                Button {
+                    // Do nothing, just showing info
+                } label: {
+                    Text("Language: English (only)")
+                        .foregroundColor(.secondary)
+                }
+                .disabled(true)
+                .onAppear {
+                    // Ensure English is set for English-only models
+                    updateLanguage("en")
+                }
+            }
+        }
+    }
+}
