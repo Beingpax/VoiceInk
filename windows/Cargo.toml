@@ -1,0 +1,76 @@
+[package]
+name = "voiceink-windows"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+description = "VoiceInk for Windows: voice-to-text dictation that pastes into any app"
+license = "GPL-3.0-only"
+repository = "https://github.com/PuppetMaster2k/VoiceInkW"
+publish = false
+
+[[bin]]
+name = "voiceink"
+path = "src/main.rs"
+
+[lib]
+name = "voiceink"
+path = "src/lib.rs"
+
+[features]
+default = []
+# Offline transcription with whisper.cpp (needs CMake + a C++ toolchain at build time).
+local-whisper = ["dep:whisper-rs"]
+
+[build-dependencies]
+embed-resource = "3"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+log = "0.4"
+simplelog = "0.12"
+base64 = "0.22"
+whisper-rs = { version = "0.16", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+ureq = { version = "2.12", default-features = false, features = ["json", "gzip", "native-tls"] }
+native-tls = "0.2"
+
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.62"
+features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Media_Audio",
+    "Win32_Media_Audio_Endpoints",
+    "Win32_Security",
+    "Win32_Security_Cryptography",
+    "Win32_System_Com",
+    "Win32_System_Console",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_DataExchange",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_Devices_FunctionDiscovery",
+    "Win32_UI_Accessibility",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_PropertiesSystem",
+    "Win32_UI_WindowsAndMessaging",
+]
+
+[target.'cfg(not(windows))'.dependencies]
+ureq = { version = "2.12", features = ["json"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
