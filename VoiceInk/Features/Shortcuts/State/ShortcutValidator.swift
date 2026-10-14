@@ -8,6 +8,16 @@ enum ShortcutValidationError: Equatable {
     case reservedBySystem
     case alreadyUsedBy(String)
 
+    var diagnosticReason: String {
+        switch self {
+        case .plainKeyRequiresModifier: return "modifier-required"
+        case .shiftTypingKeyRequiresAdditionalModifier: return "additional-modifier-required"
+        case .unsupportedMouseButton: return "unsupported-mouse-button"
+        case .reservedBySystem: return "system-reserved"
+        case .alreadyUsedBy: return "shortcut-conflict"
+        }
+    }
+
     func notificationTitle(for shortcut: Shortcut) -> String {
         switch self {
         case .plainKeyRequiresModifier:
@@ -26,7 +36,7 @@ enum ShortcutValidationError: Equatable {
 
 enum ShortcutValidator {
     static func validationError(for shortcut: Shortcut, action: ShortcutAction) -> ShortcutValidationError? {
-        if let error = userRecordingShortcutError(for: shortcut, action: action) {
+        if let error = inputShapeError(for: shortcut, action: action) {
             return error
         }
 
@@ -45,7 +55,7 @@ enum ShortcutValidator {
         return nil
     }
 
-    private static func userRecordingShortcutError(
+    static func inputShapeError(
         for shortcut: Shortcut,
         action: ShortcutAction
     ) -> ShortcutValidationError? {
