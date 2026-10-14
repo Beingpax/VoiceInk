@@ -6,8 +6,8 @@ use std::time::Duration;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYBD_EVENT_FLAGS,
     KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, VIRTUAL_KEY, VK_C, VK_CONTROL,
-    VK_INSERT, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RETURN,
-    VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SHIFT, VK_V,
+    VK_INSERT, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RCONTROL, VK_RETURN, VK_RMENU, VK_RSHIFT,
+    VK_RWIN, VK_SHIFT, VK_V,
 };
 
 const PRE_PASTE_DELAY: Duration = Duration::from_millis(60);
@@ -201,14 +201,13 @@ pub fn paste_text(text: &str, settings: &OutputSettings, send_key: SendKey) -> R
 pub fn copy_selection() -> Option<String> {
     let snapshot = Snapshot::capture();
     let before = clipboard::sequence_number();
-    // Let a physically held Ctrl (e.g. RightCtrl hotkey) be part of the chord.
-    let ctrl_held = unsafe { GetAsyncKeyState(VK_LCONTROL.0 as i32) } as u16 & 0x8000 != 0
-        || unsafe { GetAsyncKeyState(VK_RCONTROL.0 as i32) } as u16 & 0x8000 != 0;
-    if ctrl_held {
-        send(&[key(VK_C, false), key(VK_C, true)]);
-    } else {
-        chord(VK_CONTROL, VK_C);
-    }
+    // A held Shift/Alt from a shortcut like Ctrl+Shift+Space would turn Ctrl+C
+    // into a different command (e.g. Ctrl+Shift+C opens DevTools in browsers).
+    release_held_modifiers();
+    // Always send a complete Ctrl+C chord. Relying on a physically held Ctrl
+    // races with the user releasing the shortcut, and a bare "c" would then
+    // overwrite the selection.
+    chord(VK_CONTROL, VK_C);
 
     let deadline = std::time::Instant::now() + Duration::from_millis(250);
     while clipboard::sequence_number() == before && std::time::Instant::now() < deadline {

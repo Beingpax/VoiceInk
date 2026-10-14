@@ -1,5 +1,9 @@
 //! Post-recording pipeline, ported from `TranscriptionPipeline.swift`:
-//! transcribe → filter → trigger words → format → word replacements → AI enhance.
+//! transcribe → filter → trigger words → format → word replacements →
+//! snippets → AI enhance → inline snippet expansion.
+//!
+//! Command Mode recordings take a separate path: the transcript is an
+//! instruction that the LLM applies to the selected text (see [`run_command`]).
 //!
 //! The pipeline is platform independent; the Windows layer feeds it audio and
 //! foreground-window context and performs the delivery (paste / command).
@@ -28,6 +32,8 @@ pub struct PipelineInput {
     pub foreground: ForegroundInfo,
     pub clipboard_text: Option<String>,
     pub selected_text: Option<String>,
+    /// Command Mode: the recording is an instruction for `selected_text`.
+    pub command: bool,
 }
 
 /// What should happen with the final text.
@@ -142,6 +148,10 @@ pub fn run(
         raw.trim().to_string()
     };
 
+    if input.command {
+        return run_command(config, input, entry, &text, cancel, on_stage);
+    }
+
     // 3. Spoken trigger words switch the mode.
     if let Some(d) = modes::detect_trigger(&text, &config.modes) {
         mode = config.modes.get(d.mode_index);
@@ -159,10 +169,20 @@ pub fn run(
 
     let mut final_text = text.clone();
     let mut warning = None;
+    let now = chrono::Local::now();
 
-    // 6. AI enhancement.
-    let skip_short = config.enhancement.skip_short_transcripts
-        && text::word_count(&text) <= config.enhancement.short_transcript_word_threshold.max(1);
+    // 6. Saying just a snippet's trigger inserts the snippet verbatim.
+    let snippet = text::snippets::exact_match(&text, &config.snippets);
+    if let Some(snippet) = snippet {
+        final_text = text::snippets::render(&snippet.text, now);
+        entry.delivered_text = Some(final_text.clone());
+    }
+
+    // 7. AI enhancement.
+    let skip_short = snippet.is_some()
+        || (config.enhancement.skip_short_transcripts
+            && text::word_count(&text)
+                <= config.enhancement.short_transcript_word_threshold.max(1));
     let prompt = config.active_prompt(Some(&resolved.prompt_id));
     if resolved.enhancement_enabled && !skip_short && !text.is_empty() {
         if let Some(prompt) = prompt {
@@ -223,6 +243,16 @@ pub fn run(
         return canceled(entry);
     }
 
+    // 8. Snippet triggers inside a longer dictation are expanded after the
+    // LLM ran, so it never rewrites the saved text.
+    if snippet.is_none() && !config.snippets.is_empty() {
+        let expanded = text::snippets::expand_inline(&final_text, &config.snippets, now);
+        if expanded != final_text {
+            entry.delivered_text = Some(expanded.clone());
+            final_text = expanded;
+        }
+    }
+
     // A failed enhancement still delivers the cleaned transcript.
     let delivery = (!final_text.trim().is_empty()).then(|| Delivery {
         text: final_text,
@@ -236,6 +266,110 @@ pub fn run(
         delivery,
         warning,
         error: None,
+    }
+}
+
+/// Command Mode: sends the spoken instruction and the selected text to the
+/// LLM and pastes the answer (replacing the selection, which is still
+/// selected in the target app). Nothing is pasted when the request fails, so
+/// the selection is never overwritten with the raw instruction.
+fn run_command(
+    config: &Config,
+    input: &PipelineInput,
+    mut entry: Entry,
+    transcript: &str,
+    cancel: &AtomicBool,
+    on_stage: &dyn Fn(Stage),
+) -> PipelineOutput {
+    let fail = |mut entry: Entry, message: String| {
+        entry.status = Status::Failed;
+        entry.enhancement_error = Some(message.clone());
+        PipelineOutput {
+            entry,
+            delivery: None,
+            warning: None,
+            error: Some(message),
+        }
+    };
+
+    let instruction = text::apply_replacements(transcript, &config.replacements);
+    entry.text = instruction.clone();
+    entry.mode_name = Some("Command".into());
+    if instruction.trim().is_empty() {
+        return fail(entry, "No instruction was recognized.".into());
+    }
+
+    let (provider, model) = config.command.resolve(&config.enhancement);
+    if !enhancement::is_configured(&config.enhancement, provider) {
+        return fail(
+            entry,
+            format!(
+                "Command Mode needs an AI provider: add a {} API key.",
+                provider.display_name()
+            ),
+        );
+    }
+    if cancel.load(Ordering::SeqCst) {
+        entry.status = Status::Canceled;
+        return PipelineOutput {
+            entry,
+            delivery: None,
+            warning: None,
+            error: None,
+        };
+    }
+
+    on_stage(Stage::Enhancing);
+    let selected = input
+        .selected_text
+        .as_deref()
+        .filter(|s| !s.trim().is_empty());
+    let (system, user) =
+        crate::prompts::build_command_messages(&instruction, selected, &config.vocabulary);
+    entry.enhancement_model = Some(format!("{} {}", provider.display_name(), model));
+    entry.prompt_name = Some(
+        if selected.is_some() {
+            "Command (edit selection)"
+        } else {
+            "Command (write)"
+        }
+        .into(),
+    );
+
+    match enhancement::complete_messages(
+        &config.enhancement,
+        provider,
+        &model,
+        "Command Mode",
+        system,
+        user,
+    ) {
+        Ok(result) => {
+            entry.enhancement_secs = Some(result.duration.as_secs_f64());
+            entry.delivered_text = Some(result.text.clone());
+            if cancel.load(Ordering::SeqCst) {
+                entry.status = Status::Canceled;
+                return PipelineOutput {
+                    entry,
+                    delivery: None,
+                    warning: None,
+                    error: None,
+                };
+            }
+            let delivery = (!result.text.trim().is_empty()).then_some(Delivery {
+                text: result.text,
+                output: OutputMode::Paste,
+                custom_command: None,
+                send_key: SendKey::None,
+            });
+            PipelineOutput {
+                entry,
+                delivery,
+                warning: None,
+                error: None,
+            }
+        }
+        Err(e) => fail(entry, format!("Command failed: {e}")),
     }
 }
 
@@ -412,6 +546,133 @@ mod tests {
         assert!(out.warning.unwrap().starts_with("Enhancement failed"));
         assert_eq!(out.delivery.unwrap().text, "plain words here");
         assert_eq!(out.entry.final_text(), "plain words here");
+    }
+
+    #[test]
+    fn command_mode_edits_selection() {
+        let (base, server) = fake_server(vec![
+            (
+                "/v1/audio/transcriptions",
+                200,
+                r#"{"text":"Make this more formal."}"#,
+            ),
+            (
+                "/v1/chat/completions",
+                200,
+                r#"{"choices":[{"message":{"content":"Good afternoon, how are you?"}}]}"#,
+            ),
+        ]);
+        let mut cfg = local_config(&base);
+        cfg.enhancement.enabled = false; // Command Mode works regardless.
+        let input = PipelineInput {
+            samples: vec![0.0; 8000],
+            selected_text: Some("hey whats up".into()),
+            command: true,
+            ..Default::default()
+        };
+        let out = run(&cfg, &input, &AtomicBool::new(false), &|_| {});
+        let seen = server.join().unwrap();
+
+        assert!(out.error.is_none(), "{:?}", out.error);
+        assert_eq!(out.entry.mode_name.as_deref(), Some("Command"));
+        assert_eq!(out.entry.text, "Make this more formal.");
+        assert_eq!(out.entry.final_text(), "Good afternoon, how are you?");
+        let d = out.delivery.unwrap();
+        assert_eq!(d.text, "Good afternoon, how are you?");
+        assert_eq!(d.output, OutputMode::Paste);
+        assert!(
+            seen[1].contains("<SELECTED_TEXT>\\nhey whats up\\n</SELECTED_TEXT>"),
+            "{}",
+            seen[1]
+        );
+        assert!(seen[1].contains("<INSTRUCTION>\\nMake this more formal.\\n</INSTRUCTION>"));
+    }
+
+    #[test]
+    fn command_failure_pastes_nothing() {
+        let (base, server) = fake_server(vec![
+            (
+                "/v1/audio/transcriptions",
+                200,
+                r#"{"text":"translate to German"}"#,
+            ),
+            (
+                "/v1/chat/completions",
+                500,
+                r#"{"error":{"message":"overloaded"}}"#,
+            ),
+        ]);
+        let cfg = local_config(&base);
+        let input = PipelineInput {
+            samples: vec![0.0; 8000],
+            selected_text: Some("hello".into()),
+            command: true,
+            ..Default::default()
+        };
+        let out = run(&cfg, &input, &AtomicBool::new(false), &|_| {});
+        server.join().unwrap();
+        assert!(out.delivery.is_none());
+        assert_eq!(out.entry.status, Status::Failed);
+        assert!(out.error.unwrap().starts_with("Command failed"));
+    }
+
+    #[test]
+    fn exact_snippet_skips_enhancement() {
+        // Only the transcription request is served: enhancement must not run.
+        let (base, server) = fake_server(vec![(
+            "/v1/audio/transcriptions",
+            200,
+            r#"{"text":"My calendar link."}"#,
+        )]);
+        let mut cfg = local_config(&base);
+        cfg.snippets = vec![text::Snippet {
+            trigger: "my calendar link".into(),
+            text: "https://cal.example.com/me".into(),
+        }];
+        let input = PipelineInput {
+            samples: vec![0.0; 8000],
+            ..Default::default()
+        };
+        let out = run(&cfg, &input, &AtomicBool::new(false), &|_| {});
+        server.join().unwrap();
+        assert_eq!(out.delivery.unwrap().text, "https://cal.example.com/me");
+        assert_eq!(out.entry.enhanced_text, None);
+        assert_eq!(out.entry.final_text(), "https://cal.example.com/me");
+    }
+
+    #[test]
+    fn inline_snippet_expands_after_enhancement() {
+        let (base, server) = fake_server(vec![
+            (
+                "/v1/audio/transcriptions",
+                200,
+                r#"{"text":"book via my calendar link"}"#,
+            ),
+            (
+                "/v1/chat/completions",
+                200,
+                r#"{"choices":[{"message":{"content":"Book via my calendar link."}}]}"#,
+            ),
+        ]);
+        let mut cfg = local_config(&base);
+        cfg.snippets = vec![text::Snippet {
+            trigger: "my calendar link".into(),
+            text: "https://cal.example.com/me".into(),
+        }];
+        let input = PipelineInput {
+            samples: vec![0.0; 8000],
+            ..Default::default()
+        };
+        let out = run(&cfg, &input, &AtomicBool::new(false), &|_| {});
+        server.join().unwrap();
+        assert_eq!(
+            out.entry.enhanced_text.as_deref(),
+            Some("Book via my calendar link.")
+        );
+        assert_eq!(
+            out.delivery.unwrap().text,
+            "Book via https://cal.example.com/me."
+        );
     }
 
     #[test]

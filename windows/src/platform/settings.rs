@@ -91,6 +91,8 @@ const PAGES: &[&str] = &[
     "AI Enhancement",
     "Prompts",
     "Dictionary",
+    "Snippets",
+    "Command Mode",
     "Output",
     "History",
 ];
@@ -112,6 +114,7 @@ const ID_CLEAR_HISTORY: usize = 1042;
 const ID_OPEN_FOLDER: usize = 1043;
 const ID_EDIT_MODES: usize = 1044;
 const ID_REFRESH: usize = 1045;
+const ID_C_PROVIDER: usize = 1050;
 
 const HOTKEY_MODES: [(HotkeyMode, &str); 3] = [
     (HotkeyMode::Hybrid, "Tap to toggle, hold to talk"),
@@ -188,6 +191,13 @@ struct Controls {
     // Dictionary
     vocabulary: HWND,
     replacements: HWND,
+    // Snippets
+    snippets: HWND,
+    // Command Mode
+    c_enabled: HWND,
+    c_hotkey: HWND,
+    c_provider: HWND,
+    c_model: HWND,
     // Output
     o_method: HWND,
     o_restore: HWND,
@@ -746,7 +756,76 @@ fn build(ui: &mut Ui) {
     );
     ui.pages.push(b.finish());
 
-    // 6 Output
+    // 6 Snippets
+    b.title("Snippets", tf);
+    b.make(
+        w!("STATIC"),
+        "Say a trigger phrase and VoiceInk types the saved text. Saying only the trigger inserts the snippet as-is; inside a longer dictation it is expanded after AI clean-up.",
+        0,
+        0,
+        LEFT,
+        56,
+        CONTENT_W,
+        40,
+        0,
+    );
+    b.label(
+        "One per line:  trigger => text    (\\n = line break, {date} {time} {datetime})",
+        LEFT,
+        98,
+        CONTENT_W,
+    );
+    c.snippets = b.multiline(LEFT, 126, CONTENT_W, CLIENT_H - 126 - 92);
+    b.make(
+        w!("STATIC"),
+        "Example:  my calendar link => https://cal.com/yourname",
+        0,
+        0,
+        LEFT,
+        CLIENT_H - 82,
+        CONTENT_W,
+        20,
+        0,
+    );
+    ui.pages.push(b.finish());
+
+    // 7 Command Mode
+    b.title("Command Mode", tf);
+    b.make(
+        w!("STATIC"),
+        "Select text in any app, press the Command shortcut and say what to do — \"make this more formal\", \"translate to German\", \"turn this into bullet points\". The result replaces the selection. With nothing selected, the instruction writes new text at the cursor (\"write a polite reply declining the meeting\").",
+        0,
+        0,
+        LEFT,
+        56,
+        CONTENT_W,
+        58,
+        0,
+    );
+    let mut y = 128;
+    c.c_enabled = b.check("Enable Command Mode", FIELD_X, y, FIELD_W);
+    y += ROW;
+    b.row_label("Command shortcut", y);
+    c.c_hotkey = b.edit(y, 200, 0);
+    y += 26;
+    b.hint(
+        "Uses the same tap / hold behaviour as the record shortcut",
+        y,
+    );
+    y += ROW;
+    b.row_label("AI provider", y);
+    c.c_provider = b.combo(y, 280, false, ID_C_PROVIDER);
+    y += ROW;
+    b.row_label("Model", y);
+    c.c_model = b.combo(y, 280, true, 0);
+    y += 26;
+    b.hint(
+        "Leave empty for the provider's default. A capable model works best.",
+        y,
+    );
+    ui.pages.push(b.finish());
+
+    // 8 Output
     b.title("Output", tf);
     let mut y = 64;
     b.row_label("Insert text with", y);
@@ -972,6 +1051,32 @@ impl Ui {
                 .join("\n"),
         );
 
+        // Snippets
+        set_text(
+            c.snippets,
+            &crate::text::snippets::format_lines(&cfg.snippets),
+        );
+
+        // Command Mode
+        set_checked(c.c_enabled, cfg.command.enabled);
+        set_text(c.c_hotkey, &cfg.command.hotkey);
+        let mut providers = vec!["Same as AI Enhancement".to_string()];
+        providers.extend(
+            EnhancementProvider::ALL
+                .iter()
+                .map(|p| p.display_name().to_string()),
+        );
+        combo_fill(c.c_provider, &providers);
+        combo_set(
+            c.c_provider,
+            cfg.command
+                .provider
+                .and_then(|p| EnhancementProvider::ALL.iter().position(|x| *x == p))
+                .map_or(0, |i| i + 1),
+        );
+        self.on_command_provider(cfg.command.model.clone());
+        let c = &self.c;
+
         // Output
         combo_fill(
             c.o_method,
@@ -1065,6 +1170,22 @@ impl Ui {
             }
         }
         self.update_key_ui();
+    }
+
+    /// `None` = same provider as AI Enhancement.
+    fn selected_command_provider(&self) -> Option<EnhancementProvider> {
+        combo_sel(self.c.c_provider)
+            .filter(|&i| i > 0)
+            .and_then(|i| EnhancementProvider::ALL.get(i - 1).copied())
+    }
+
+    fn on_command_provider(&mut self, model: Option<String>) {
+        let models = self
+            .selected_command_provider()
+            .map(enhancement_models)
+            .unwrap_or_default();
+        combo_fill(self.c.c_model, &models);
+        set_text(self.c.c_model, &model.unwrap_or_default());
     }
 
     fn update_key_ui(&self) {
@@ -1233,6 +1354,23 @@ impl Ui {
             .collect();
         cfg.replacements = parse_replacements(&get_text(c.replacements))?;
 
+        // Snippets
+        cfg.snippets = crate::text::snippets::parse_lines(&get_text(c.snippets))?;
+
+        // Command Mode
+        cfg.command.enabled = is_checked(c.c_enabled);
+        let command_hotkey = get_text(c.c_hotkey).trim().to_string();
+        if cfg.command.enabled {
+            parse_hotkey(&command_hotkey).map_err(|e| format!("Command shortcut: {e}"))?;
+            if command_hotkey.eq_ignore_ascii_case(&cfg.hotkeys.record) {
+                return Err("The Command shortcut must differ from the record shortcut".into());
+            }
+        }
+        cfg.command.hotkey = command_hotkey;
+        cfg.command.provider = self.selected_command_provider();
+        let model = get_text(c.c_model).trim().to_string();
+        cfg.command.model = (!model.is_empty()).then_some(model);
+
         // Output
         cfg.output.method = PASTE_METHODS[combo_sel(c.o_method).unwrap_or(0)].0;
         cfg.output.restore_clipboard = is_checked(c.o_restore);
@@ -1378,6 +1516,7 @@ impl Ui {
             },
             (ID_T_PROVIDER, CBN_SELCHANGE) => self.on_transcription_provider(None),
             (ID_E_PROVIDER, CBN_SELCHANGE) => self.on_enhancement_provider(None),
+            (ID_C_PROVIDER, CBN_SELCHANGE) => self.on_command_provider(None),
             (ID_T_REMOVE_KEY, _) | (ID_E_REMOVE_KEY, _) => {
                 let name = if id == ID_T_REMOVE_KEY {
                     self.selected_transcription_provider().key_name()

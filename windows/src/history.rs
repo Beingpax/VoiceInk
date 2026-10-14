@@ -32,6 +32,10 @@ pub struct Entry {
     pub prompt_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enhancement_secs: Option<f64>,
+    /// Text that was actually inserted when it differs from `text` and
+    /// `enhanced_text` (snippet expansion, Command Mode).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delivered_text: Option<String>,
     /// Why AI enhancement failed (the plain transcript was delivered instead).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enhancement_error: Option<String>,
@@ -58,6 +62,7 @@ impl Entry {
             prompt_name: None,
             enhancement_secs: None,
             enhancement_error: None,
+            delivered_text: None,
             mode_name: None,
             app: None,
             audio_file: None,
@@ -66,8 +71,9 @@ impl Entry {
 
     /// The text that was delivered to the user.
     pub fn final_text(&self) -> &str {
-        self.enhanced_text
+        self.delivered_text
             .as_deref()
+            .or(self.enhanced_text.as_deref())
             .filter(|t| !t.is_empty())
             .unwrap_or(&self.text)
     }

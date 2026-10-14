@@ -6,7 +6,7 @@
 //! loading after new options are added.
 
 use crate::prompts::{self, CustomPrompt};
-use crate::text::{WordReplacement, DEFAULT_FILLER_WORDS};
+use crate::text::{Snippet, WordReplacement, DEFAULT_FILLER_WORDS};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -424,6 +424,50 @@ pub enum SendKey {
     CtrlEnter,
 }
 
+/// Command Mode: select text, hold the command shortcut and say what to do
+/// with it ("make this more formal", "translate to German"). Without a
+/// selection the instruction writes new text at the cursor.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CommandSettings {
+    pub enabled: bool,
+    /// Uses the same behaviour (hybrid / toggle / push-to-talk) as the record shortcut.
+    pub hotkey: String,
+    /// `None` uses the AI Enhancement provider and model.
+    pub provider: Option<EnhancementProvider>,
+    pub model: Option<String>,
+}
+
+impl Default for CommandSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            hotkey: "Ctrl+Shift+Space".into(),
+            provider: None,
+            model: None,
+        }
+    }
+}
+
+impl CommandSettings {
+    /// Effective provider and model, falling back to the enhancement settings.
+    pub fn resolve(&self, enhancement: &EnhancementSettings) -> (EnhancementProvider, String) {
+        let provider = self.provider.unwrap_or(enhancement.provider);
+        let model = self
+            .model
+            .clone()
+            .filter(|m| !m.trim().is_empty())
+            .unwrap_or_else(|| {
+                if self.provider.is_none() {
+                    enhancement.model_name()
+                } else {
+                    provider.default_model().to_string()
+                }
+            });
+        (provider, model)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct OutputSettings {
@@ -571,6 +615,7 @@ pub struct Config {
     pub hotkeys: HotkeySettings,
     pub transcription: TranscriptionSettings,
     pub enhancement: EnhancementSettings,
+    pub command: CommandSettings,
     pub output: OutputSettings,
     pub audio: AudioSettings,
     pub history: HistorySettings,
@@ -581,6 +626,8 @@ pub struct Config {
     /// Custom vocabulary passed to the AI (and to Deepgram/ElevenLabs as keyterms).
     pub vocabulary: Vec<String>,
     pub replacements: Vec<WordReplacement>,
+    /// Voice shortcuts expanded to saved text.
+    pub snippets: Vec<Snippet>,
     pub modes: Vec<ModeConfig>,
 }
 
@@ -590,6 +637,7 @@ impl Default for Config {
             hotkeys: HotkeySettings::default(),
             transcription: TranscriptionSettings::default(),
             enhancement: EnhancementSettings::default(),
+            command: CommandSettings::default(),
             output: OutputSettings::default(),
             audio: AudioSettings::default(),
             history: HistorySettings::default(),
@@ -599,6 +647,7 @@ impl Default for Config {
             filler_words: DEFAULT_FILLER_WORDS.iter().map(|s| s.to_string()).collect(),
             vocabulary: Vec::new(),
             replacements: Vec::new(),
+            snippets: Vec::new(),
             modes: Vec::new(),
         }
     }
@@ -900,6 +949,26 @@ mod tests {
             TranscriptionProvider::OpenAI.key_name(),
             EnhancementProvider::OpenAI.key_name()
         );
+    }
+
+    #[test]
+    fn command_falls_back_to_enhancement_model() {
+        let mut cfg = Config::default();
+        cfg.enhancement.provider = EnhancementProvider::Groq;
+        cfg.enhancement.model = Some("custom-model".into());
+        assert_eq!(
+            cfg.command.resolve(&cfg.enhancement),
+            (EnhancementProvider::Groq, "custom-model".to_string())
+        );
+        cfg.command.provider = Some(EnhancementProvider::Anthropic);
+        assert_eq!(
+            cfg.command.resolve(&cfg.enhancement),
+            (
+                EnhancementProvider::Anthropic,
+                "claude-sonnet-5".to_string()
+            )
+        );
+        assert!(parse_hotkey(&CommandSettings::default().hotkey).is_ok());
     }
 
     #[test]

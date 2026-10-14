@@ -74,6 +74,26 @@ fn is_combining_mark(ch: char) -> bool {
     matches!(ch as u32, 0x0300..=0x036F | 0x1AB0..=0x1AFF | 0x1DC0..=0x1DFF | 0x20D0..=0x20FF | 0xFE20..=0xFE2F)
 }
 
+/// Replaces whole-phrase occurrences of `phrase` (case-insensitive) with `replacement`
+/// literally, using the same boundary rules as dictionary replacements.
+pub fn replace_phrase(text: &str, phrase: &str, replacement: &str) -> String {
+    let phrase = phrase.trim();
+    if phrase.is_empty() {
+        return text.to_string();
+    }
+    let Ok(re) = RegexBuilder::new(&regex::escape(phrase))
+        .case_insensitive(true)
+        .build()
+    else {
+        return text.to_string();
+    };
+    if uses_word_boundaries(phrase) {
+        replace_bounded(text, &re, replacement)
+    } else {
+        re.replace_all(text, NoExpand(replacement)).into_owned()
+    }
+}
+
 /// Equivalent of `(?<!\w)pattern(?!\w)`, which Rust's `regex` cannot express.
 fn replace_bounded(text: &str, re: &Regex, replacement: &str) -> String {
     let mut out = String::with_capacity(text.len());

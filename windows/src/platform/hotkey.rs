@@ -22,24 +22,48 @@ use windows::Win32::UI::WindowsAndMessaging::{
 /// Posted to the app window; `wParam` is a [`HotkeyEvent`].
 pub const WM_HOTKEY_EVENT: u32 = WM_APP + 1;
 
+/// Which recording a shortcut starts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(usize)]
+pub enum TriggerKind {
+    /// Normal dictation.
+    Dictation,
+    /// Command Mode: the speech is an instruction for the selected text.
+    Command,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HotkeyEvent {
-    /// The record shortcut was pressed (or, for toggle-on-release, tapped).
-    RecordDown = 1,
-    RecordUp = 2,
+    /// A record shortcut was pressed (or, for toggle-on-release, tapped).
+    Down(TriggerKind),
+    Up(TriggerKind),
     /// A modifier-only shortcut turned out to be part of another shortcut.
-    RecordAbort = 3,
-    Cancel = 4,
-    PasteLast = 5,
+    Abort(TriggerKind),
+    Cancel,
+    PasteLast,
 }
 
 impl HotkeyEvent {
+    fn to_wparam(self) -> usize {
+        let kind = |k: TriggerKind| if k == TriggerKind::Command { 10 } else { 0 };
+        match self {
+            Self::Down(k) => 1 + kind(k),
+            Self::Up(k) => 2 + kind(k),
+            Self::Abort(k) => 3 + kind(k),
+            Self::Cancel => 4,
+            Self::PasteLast => 5,
+        }
+    }
+
     pub fn from_wparam(w: usize) -> Option<Self> {
+        let kind = if w > 10 {
+            TriggerKind::Command
+        } else {
+            TriggerKind::Dictation
+        };
         Some(match w {
-            1 => Self::RecordDown,
-            2 => Self::RecordUp,
-            3 => Self::RecordAbort,
+            1 | 11 => Self::Down(kind),
+            2 | 12 => Self::Up(kind),
+            3 | 13 => Self::Abort(kind),
             4 => Self::Cancel,
             5 => Self::PasteLast,
             _ => return None,
@@ -47,16 +71,109 @@ impl HotkeyEvent {
     }
 }
 
+/// One recording shortcut and its press state.
+struct Trigger {
+    kind: TriggerKind,
+    hotkey: Option<Hotkey>,
+    /// Shortcut currently held down.
+    held: bool,
+    /// A modifier-only shortcut is held and no other key was pressed meanwhile.
+    clean: bool,
+}
+
+impl Trigger {
+    fn new(kind: TriggerKind, hotkey: Option<Hotkey>) -> Self {
+        Self {
+            kind,
+            hotkey,
+            held: false,
+            clean: false,
+        }
+    }
+
+    /// Updates the press state for a key event; returns whether to swallow it.
+    fn on_key(
+        &mut self,
+        code: u16,
+        down: bool,
+        mode: HotkeyMode,
+        events: &mut Vec<HotkeyEvent>,
+    ) -> bool {
+        let kind = self.kind;
+        match self.hotkey {
+            Some(Hotkey::ModifierOnly { vk: m }) if same_modifier(m, code) => {
+                if down && !self.held {
+                    self.held = true;
+                    self.clean = true;
+                    if mode != HotkeyMode::Toggle {
+                        events.push(HotkeyEvent::Down(kind));
+                    }
+                } else if !down && self.held {
+                    self.held = false;
+                    if mode == HotkeyMode::Toggle {
+                        if self.clean {
+                            events.push(HotkeyEvent::Down(kind));
+                        }
+                    } else {
+                        events.push(HotkeyEvent::Up(kind));
+                    }
+                }
+                // Never swallow modifiers: other shortcuts still need them.
+                false
+            }
+            Some(Hotkey::ModifierOnly { .. }) if down && self.held => {
+                // Another key while the modifier is held: it's a regular shortcut.
+                if self.clean {
+                    self.clean = false;
+                    if mode != HotkeyMode::Toggle {
+                        events.push(HotkeyEvent::Abort(kind));
+                    }
+                }
+                false
+            }
+            Some(Hotkey::Key { vk: k, .. }) if k == code => {
+                if down && !self.held && matches_key(self.hotkey, code) {
+                    self.held = true;
+                    events.push(HotkeyEvent::Down(kind));
+                    true
+                } else if down && self.held {
+                    true // auto-repeat
+                } else if !down && self.held {
+                    self.held = false;
+                    events.push(HotkeyEvent::Up(kind));
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
+    fn on_mouse(&mut self, button: u16, down: bool, events: &mut Vec<HotkeyEvent>) -> bool {
+        let Some(Hotkey::Mouse { button: b }) = self.hotkey else {
+            return false;
+        };
+        if b != button {
+            return false;
+        }
+        if down && !self.held {
+            self.held = true;
+            events.push(HotkeyEvent::Down(self.kind));
+        } else if !down && self.held {
+            self.held = false;
+            events.push(HotkeyEvent::Up(self.kind));
+        }
+        true
+    }
+}
+
 struct HookState {
     hwnd: HWND,
-    record: Option<Hotkey>,
+    triggers: [Trigger; 2],
     cancel: Option<Hotkey>,
     paste_last: Option<Hotkey>,
     mode: HotkeyMode,
-    /// Record key currently held down.
-    record_held: bool,
-    /// A modifier-only shortcut is held and no other key was pressed meanwhile.
-    modifier_clean: bool,
 }
 
 thread_local! {
@@ -73,7 +190,7 @@ fn post(event: HotkeyEvent) {
                 let _ = PostMessageW(
                     Some(state.hwnd),
                     WM_HOTKEY_EVENT,
-                    WPARAM(event as usize),
+                    WPARAM(event.to_wparam()),
                     LPARAM(0),
                 );
             }
@@ -120,54 +237,13 @@ fn handle_key(code: u16, down: bool) -> bool {
             return false;
         };
         let mut events = Vec::new();
+        let mode = state.mode;
         let mut swallow = false;
-
-        match state.record {
-            Some(Hotkey::ModifierOnly { vk: rec }) if same_modifier(rec, code) => {
-                if down && !state.record_held {
-                    state.record_held = true;
-                    state.modifier_clean = true;
-                    if state.mode != HotkeyMode::Toggle {
-                        events.push(HotkeyEvent::RecordDown);
-                    }
-                } else if !down && state.record_held {
-                    state.record_held = false;
-                    if state.mode == HotkeyMode::Toggle {
-                        if state.modifier_clean {
-                            events.push(HotkeyEvent::RecordDown);
-                        }
-                    } else {
-                        events.push(HotkeyEvent::RecordUp);
-                    }
-                }
-                // Never swallow modifiers: other shortcuts still need them.
-            }
-            Some(Hotkey::ModifierOnly { .. }) if down && state.record_held => {
-                // Another key while the modifier is held: it's a regular shortcut.
-                if state.modifier_clean {
-                    state.modifier_clean = false;
-                    if state.mode != HotkeyMode::Toggle {
-                        events.push(HotkeyEvent::RecordAbort);
-                    }
-                }
-            }
-            Some(Hotkey::Key { vk: rec, .. }) if rec == code => {
-                if down && !state.record_held && matches_key(state.record, code) {
-                    state.record_held = true;
-                    events.push(HotkeyEvent::RecordDown);
-                    swallow = true;
-                } else if down && state.record_held {
-                    swallow = true; // auto-repeat
-                } else if !down && state.record_held {
-                    state.record_held = false;
-                    events.push(HotkeyEvent::RecordUp);
-                    swallow = true;
-                }
-            }
-            _ => {}
+        for trigger in state.triggers.iter_mut() {
+            swallow |= trigger.on_key(code, down, mode, &mut events);
         }
 
-        if down && !is_modifier_vk(code) {
+        if down && !is_modifier_vk(code) && !swallow {
             if ACTIVE.with(Cell::get) && is_cancel(state.cancel, code) {
                 events.push(HotkeyEvent::Cancel);
                 swallow = true;
@@ -198,26 +274,16 @@ fn handle_mouse(button: u16, down: bool) -> bool {
         let Some(state) = guard.as_mut() else {
             return false;
         };
-        let Some(Hotkey::Mouse { button: rec }) = state.record else {
-            return false;
-        };
-        if rec != button {
-            return false;
+        let mut events = Vec::new();
+        let mut swallow = false;
+        for trigger in state.triggers.iter_mut() {
+            swallow |= trigger.on_mouse(button, down, &mut events);
         }
-        let event = if down && !state.record_held {
-            state.record_held = true;
-            Some(HotkeyEvent::RecordDown)
-        } else if !down && state.record_held {
-            state.record_held = false;
-            Some(HotkeyEvent::RecordUp)
-        } else {
-            None
-        };
         drop(guard);
-        if let Some(e) = event {
+        for e in events {
             post(e);
         }
-        true
+        swallow
     })
 }
 
@@ -277,23 +343,36 @@ fn parse_optional(spec: Option<&str>, what: &str, errors: &mut Vec<String>) -> O
     }
 }
 
-/// Installs (or re-configures) the hooks. Returns configuration problems.
-pub fn install(hwnd: HWND, settings: &HotkeySettings) -> Result<Vec<String>, String> {
+/// Installs (or re-configures) the hooks. `command` is the Command Mode
+/// shortcut, if enabled. Returns configuration problems.
+pub fn install(
+    hwnd: HWND,
+    settings: &HotkeySettings,
+    command: Option<&str>,
+) -> Result<Vec<String>, String> {
     let mut errors = Vec::new();
     let record = parse_optional(Some(&settings.record), "record", &mut errors);
+    let mut command = parse_optional(command, "command", &mut errors);
+    if command.is_some() && command == record {
+        errors.push("the Command Mode shortcut must differ from the record shortcut".into());
+        command = None;
+    }
     let cancel = parse_optional(Some(&settings.cancel), "cancel", &mut errors);
     let paste_last = parse_optional(settings.paste_last.as_deref(), "paste-last", &mut errors);
-    let needs_mouse = matches!(record, Some(Hotkey::Mouse { .. }));
+    let needs_mouse = [record, command]
+        .iter()
+        .any(|h| matches!(h, Some(Hotkey::Mouse { .. })));
 
     STATE.with(|s| {
         *s.borrow_mut() = Some(HookState {
             hwnd,
-            record,
+            triggers: [
+                Trigger::new(TriggerKind::Dictation, record),
+                Trigger::new(TriggerKind::Command, command),
+            ],
             cancel,
             paste_last,
             mode: settings.mode,
-            record_held: false,
-            modifier_clean: false,
         })
     });
 

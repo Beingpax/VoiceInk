@@ -25,6 +25,8 @@ cursor is. It runs from the notification area, like the macOS menu-bar app.
 | Start/stop sounds, mute system audio while recording | `PlaySoundW` using the original sounds; `IAudioEndpointVolume` |
 | Keychain | DPAPI-encrypted `keys.json` (current Windows user only) |
 | History | `history.jsonl`, CSV export, "Paste last transcription" shortcut |
+| — (new, inspired by Wispr Flow) | **Command Mode**: select text, press `Ctrl+Shift+Space` and say what to do with it ("make this more formal", "translate to German"). The AI result replaces the selection; with nothing selected, it writes new text at the cursor |
+| — (new) | **Snippets**: say a trigger phrase ("my calendar link") to insert saved text, with `{date}`, `{time}` and `{datetime}` placeholders |
 | Dashboard & Settings | Native window: stats (words, time saved, WPM, streak), a 14-day chart, top apps and recent transcriptions, plus settings pages for General, Transcription, AI Enhancement, Prompts (editor), Dictionary, Output and History |
 | Launch at login | `HKCU\…\Run` |
 
@@ -40,6 +42,7 @@ Modes are edited in `config.json`; everything else is in the Settings window.
 3. Click it to open **Dashboard & Settings**, go to **Transcription**, paste your OpenAI key and click **Save**. OpenAI is the default for both transcription and AI enhancement, so one key covers both. Right-click the icon for the quick menu.
 4. Click into any text field and tap **Right Ctrl**, speak, then tap **Right Ctrl** again. You can also hold Right Ctrl while you talk.
    **Esc** cancels. **Alt+Shift+V** pastes the last transcription again.
+5. **Command Mode:** select some text, tap **Ctrl+Shift+Space**, say an instruction such as "make this shorter", then tap it again. The selection is replaced with the result.
 
 The tray icon is blue when idle, red while recording and amber while processing.
 
@@ -122,6 +125,21 @@ Example `config.json` excerpt:
 }
 ```
 
+Command Mode and snippets:
+
+```json
+{
+  "command": { "enabled": true, "hotkey": "Ctrl+Shift+Space", "provider": null, "model": null },
+  "snippets": [
+    { "trigger": "my calendar link", "text": "https://cal.com/yourname" },
+    { "trigger": "my signature", "text": "Best regards,\nAlex" }
+  ]
+}
+```
+
+- **Command Mode** uses the AI Enhancement provider unless `command.provider` is set, and works even when AI enhancement of normal dictation is off. If the request fails, nothing is pasted, so your selection is never overwritten.
+- **Snippets:** if the whole dictation is a trigger, the snippet is inserted as-is and AI is skipped. A trigger inside a longer dictation is expanded after AI clean-up, so the saved text is never rewritten.
+
 Hotkey modes:
 - `hybrid` (default): a short tap toggles recording, and holding the key longer than `hybrid_threshold_ms` works as push-to-talk.
 - `toggle`: each press starts or stops recording.
@@ -134,11 +152,11 @@ A modifier-only shortcut (such as `RightCtrl`) never blocks other shortcuts. If 
 ```
 src/
 ├── config.rs, prompts.rs, modes.rs, history.rs, credentials.rs, http.rs
-├── text/          filter, paragraph formatter, word replacements, word count
+├── text/          filter, paragraph formatter, word replacements, snippets, word count
 ├── audio/         WAV encode/decode, downmix and resampling
 ├── transcription/ cloud clients (+ local whisper.cpp)
 ├── enhancement/   LLM chat clients, retries
-├── pipeline.rs    transcribe → filter → trigger words → format → replace → enhance
+├── pipeline.rs    transcribe → filter → trigger words → format → replace → snippets → enhance; Command Mode
 ├── stats.rs       dashboard statistics
 └── platform/      Win32 via the `windows` crate (Windows only)
     ├── app.rs        tray app, message loop, recording state machine

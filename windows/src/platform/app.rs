@@ -5,7 +5,7 @@
 //! and pasting run on worker threads that report back with `PostMessageW`.
 
 use super::capture::Recorder;
-use super::hotkey::{self, HotkeyEvent, WM_HOTKEY_EVENT};
+use super::hotkey::{self, HotkeyEvent, TriggerKind, WM_HOTKEY_EVENT};
 use super::icon::IconState;
 use super::overlay::{Overlay, View, WM_OVERLAY_CLICKED};
 use super::settings::{self, WM_SETTINGS_SAVED};
@@ -23,7 +23,7 @@ use crate::{credentials, APP_VERSION};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use windows::core::{w, PCWSTR};
 use windows::Win32::Foundation::{
@@ -77,6 +77,7 @@ const CMD_RESTORE_CLIPBOARD: usize = 608;
 const CMD_SOUNDS: usize = 609;
 const CMD_MUTE: usize = 610;
 const CMD_DASHBOARD: usize = 611;
+const CMD_COMMAND_MODE: usize = 613;
 const CMD_SETTINGS: usize = 612;
 
 /// Work that must run after the app borrow is released (it pumps messages).
@@ -118,7 +119,9 @@ struct RecordingSession {
     target: HWND,
     foreground: ForegroundInfo,
     clipboard_text: Option<String>,
-    selected_text: Arc<Mutex<Option<String>>>,
+    /// Result of copying the selection (Ctrl+C) when recording started.
+    selection: Option<mpsc::Receiver<Option<String>>>,
+    kind: TriggerKind,
     /// Whether the current key press started this recording (push-to-talk logic).
     started_by_press: bool,
     mute: Option<volume::MuteGuard>,
@@ -128,6 +131,7 @@ struct Job {
     id: u64,
     cancel: Arc<AtomicBool>,
     target: HWND,
+    kind: TriggerKind,
 }
 
 enum State {
@@ -215,7 +219,12 @@ impl App {
     }
 
     fn apply_config(&mut self) {
-        match hotkey::install(self.hwnd, &self.config.hotkeys) {
+        let command = self
+            .config
+            .command
+            .enabled
+            .then_some(self.config.command.hotkey.as_str());
+        match hotkey::install(self.hwnd, &self.config.hotkeys, command) {
             Ok(problems) if !problems.is_empty() => {
                 self.notify("Hotkey problem", &problems.join("\n"), NoticeKind::Warning)
             }
@@ -247,7 +256,7 @@ impl App {
 
     // -- recording ----------------------------------------------------------
 
-    fn start_recording(&mut self, by_press: bool) {
+    fn start_recording(&mut self, by_press: bool, kind: TriggerKind) {
         self.reload_if_changed(false, false);
 
         let (mut target, mut fg) = foreground::current();
@@ -280,19 +289,24 @@ impl App {
             }
         };
 
-        let selected_text = Arc::new(Mutex::new(None));
-        if resolved.use_selected_text_context {
-            let slot = selected_text.clone();
+        // Command Mode always needs the selection; dictation only as AI context.
+        let command = kind == TriggerKind::Command;
+        let selection = (command || resolved.use_selected_text_context).then(|| {
+            let (tx, rx) = mpsc::channel();
             std::thread::spawn(move || {
-                let text = paste::copy_selection();
-                *slot.lock().unwrap_or_else(|e| e.into_inner()) = text;
+                let _ = tx.send(paste::copy_selection());
             });
-        }
+            rx
+        });
 
         self.overlay.show(View::Recording {
             started: Instant::now(),
             level: recorder.level_handle(),
-            mode: resolved.mode_name.clone(),
+            mode: if command {
+                Some("Command".into())
+            } else {
+                resolved.mode_name.clone()
+            },
         });
         if self.config.audio.mute_system_audio {
             unsafe {
@@ -305,7 +319,8 @@ impl App {
             target,
             foreground: fg,
             clipboard_text,
-            selected_text,
+            selection,
+            kind,
             started_by_press: by_press,
             mute: None,
         }));
@@ -354,21 +369,24 @@ impl App {
             return;
         }
 
+        let command = session.kind == TriggerKind::Command;
+        // Copying usually finishes within ~100 ms; Command Mode waits a bit for it.
+        let wait = Duration::from_millis(if command { 600 } else { 50 });
         let selected_text = session
-            .selected_text
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
+            .selection
+            .and_then(|rx| rx.recv_timeout(wait).ok())
+            .flatten();
         let input = PipelineInput {
             samples,
             foreground: session.foreground,
             clipboard_text: session.clipboard_text,
             selected_text,
+            command,
         };
-        self.start_job(input, session.target);
+        self.start_job(input, session.target, session.kind);
     }
 
-    fn start_job(&mut self, input: PipelineInput, target: HWND) {
+    fn start_job(&mut self, input: PipelineInput, target: HWND, kind: TriggerKind) {
         self.next_job += 1;
         let id = self.next_job;
         let cancel = Arc::new(AtomicBool::new(false));
@@ -376,6 +394,7 @@ impl App {
             id,
             cancel: cancel.clone(),
             target,
+            kind,
         });
         self.overlay.show(View::Transcribing);
         self.refresh_tray();
@@ -457,11 +476,15 @@ impl App {
                 unreachable!()
             };
             if let Some(err) = &output.error {
+                let title = match job.kind {
+                    TriggerKind::Command => "Command failed",
+                    TriggerKind::Dictation => "Transcription failed",
+                };
                 self.overlay.show(View::Message {
-                    text: "Transcription failed".into(),
+                    text: title.into(),
                     until: Instant::now() + Duration::from_secs(3),
                 });
-                self.notify("Transcription failed", err, NoticeKind::Error);
+                self.notify(title, err, NoticeKind::Error);
             } else {
                 self.overlay.hide();
             }
@@ -543,15 +566,16 @@ impl App {
     fn on_hotkey(&mut self, event: HotkeyEvent) {
         let threshold = Duration::from_millis(self.config.hotkeys.hybrid_threshold_ms);
         match event {
-            HotkeyEvent::RecordDown => match self.state {
-                State::Idle => self.start_recording(true),
+            HotkeyEvent::Down(kind) => match self.state {
+                State::Idle => self.start_recording(true, kind),
+                // Either shortcut stops a running recording.
                 State::Recording(_) => self.stop_recording(),
                 State::Processing(_) => {}
             },
-            HotkeyEvent::RecordUp => {
+            HotkeyEvent::Up(kind) => {
                 let mode = self.config.hotkeys.mode;
                 let stop = match &mut self.state {
-                    State::Recording(s) if s.started_by_press => match mode {
+                    State::Recording(s) if s.started_by_press && s.kind == kind => match mode {
                         HotkeyMode::PushToTalk => true,
                         HotkeyMode::Hybrid if s.recorder.elapsed() >= threshold => true,
                         HotkeyMode::Hybrid | HotkeyMode::Toggle => {
@@ -566,9 +590,10 @@ impl App {
                     self.stop_recording();
                 }
             }
-            HotkeyEvent::RecordAbort => {
+            HotkeyEvent::Abort(kind) => {
                 let abort = matches!(&self.state,
-                    State::Recording(s) if s.started_by_press && s.recorder.elapsed() < threshold);
+                    State::Recording(s) if s.started_by_press && s.kind == kind
+                        && s.recorder.elapsed() < threshold);
                 if abort {
                     self.cancel_recording(false);
                 }
@@ -593,6 +618,9 @@ impl App {
         let menu = Menu::new();
         menu.disabled(&format!("VoiceInk {APP_VERSION}"));
         menu.disabled(&format!("Shortcut: {}", hotkey::describe(&cfg.hotkeys)));
+        if cfg.command.enabled {
+            menu.disabled(&format!("Command Mode: {}", cfg.command.hotkey));
+        }
         menu.separator();
         menu.item(CMD_DASHBOARD, "Dashboard…");
         menu.item(CMD_SETTINGS, "Settings…");
@@ -718,6 +746,11 @@ impl App {
             "Mute system audio while recording",
             cfg.audio.mute_system_audio,
         );
+        options.check(
+            CMD_COMMAND_MODE,
+            &format!("Command Mode ({})", cfg.command.hotkey),
+            cfg.command.enabled,
+        );
         menu.submenu("Options", options);
 
         menu.separator();
@@ -785,7 +818,7 @@ impl App {
         } else {
             match cmd {
                 CMD_TOGGLE => match self.state {
-                    State::Idle => self.start_recording(false),
+                    State::Idle => self.start_recording(false, TriggerKind::Dictation),
                     State::Recording(_) => self.stop_recording(),
                     State::Processing(_) => self.cancel_job(),
                 },
@@ -809,6 +842,11 @@ impl App {
                 CMD_SOUNDS => {
                     self.config.audio.play_sounds = !self.config.audio.play_sounds;
                     self.save_config();
+                }
+                CMD_COMMAND_MODE => {
+                    self.config.command.enabled = !self.config.command.enabled;
+                    self.save_config();
+                    self.apply_config();
                 }
                 CMD_MUTE => {
                     self.config.audio.mute_system_audio = !self.config.audio.mute_system_audio;

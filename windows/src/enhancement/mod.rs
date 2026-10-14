@@ -77,42 +77,61 @@ fn wait_for_rate_limit() {
     *last = Some(Instant::now());
 }
 
-/// Enhances `text`, retrying transient failures with exponential backoff
-/// (1 s, 2 s, ...) and timeouts immediately when `retry_on_timeout` is set.
+/// Enhances `text` with the request's prompt and context.
 pub fn enhance(
     text: &str,
     req: &EnhancementRequest<'_>,
 ) -> Result<EnhancementResult, EnhancementError> {
-    let start = Instant::now();
     let system_message = build_system_message(req.prompt, &req.context);
     let user_message = build_user_message(text);
-
     if text.trim().is_empty() {
         return Ok(EnhancementResult {
             text: String::new(),
-            duration: start.elapsed(),
+            duration: Duration::ZERO,
             prompt_name: req.prompt.title.clone(),
             model: req.model.clone(),
             system_message,
             user_message,
         });
     }
-    if !is_configured(req.settings, req.provider) {
+    complete_messages(
+        req.settings,
+        req.provider,
+        &req.model,
+        &req.prompt.title,
+        system_message,
+        user_message,
+    )
+}
+
+/// Sends a system + user message pair, retrying transient failures with
+/// exponential backoff (1 s, 2 s, ...) and timeouts immediately when
+/// `retry_on_timeout` is set. Reasoning blocks are stripped from the answer.
+pub fn complete_messages(
+    settings: &EnhancementSettings,
+    provider: EnhancementProvider,
+    model: &str,
+    prompt_name: &str,
+    system_message: String,
+    user_message: String,
+) -> Result<EnhancementResult, EnhancementError> {
+    let start = Instant::now();
+    if !is_configured(settings, provider) {
         return Err(EnhancementError::NotConfigured(format!(
             "no API key configured for {}",
-            req.provider.display_name()
+            provider.display_name()
         )));
     }
 
-    let max_attempts = req.settings.max_attempts.max(1);
+    let max_attempts = settings.max_attempts.max(1);
     let mut delay = Duration::from_secs(1);
     let mut attempt = 0;
     let output = loop {
         attempt += 1;
-        if req.provider.is_rate_limited() {
+        if provider.is_rate_limited() {
             wait_for_rate_limit();
         }
-        match complete(req, &system_message, &user_message) {
+        match complete(settings, provider, model, &system_message, &user_message) {
             Ok(out) => break out,
             Err(EnhancementError::Http(e)) if attempt < max_attempts && e.is_transient() => {
                 log::warn!(
@@ -122,7 +141,7 @@ pub fn enhance(
                 delay *= 2;
             }
             Err(EnhancementError::Http(HttpError::Timeout))
-                if attempt < max_attempts && req.settings.retry_on_timeout =>
+                if attempt < max_attempts && settings.retry_on_timeout =>
             {
                 log::warn!("enhancement timed out, retrying ({attempt}/{max_attempts})");
             }
@@ -131,32 +150,34 @@ pub fn enhance(
     };
 
     let filtered = filter_enhancement_output(output.trim());
-    if filtered.is_empty() && req.provider != EnhancementProvider::Ollama {
+    if filtered.is_empty() && provider != EnhancementProvider::Ollama {
         return Err(EnhancementError::EmptyResponse);
     }
     Ok(EnhancementResult {
         text: filtered,
         duration: start.elapsed(),
-        prompt_name: req.prompt.title.clone(),
-        model: req.model.clone(),
+        prompt_name: prompt_name.to_string(),
+        model: model.to_string(),
         system_message,
         user_message,
     })
 }
 
 fn complete(
-    req: &EnhancementRequest<'_>,
+    settings: &EnhancementSettings,
+    provider: EnhancementProvider,
+    model: &str,
     system: &str,
     user: &str,
 ) -> Result<String, EnhancementError> {
-    let timeout = Duration::from_secs(req.settings.timeout_secs.max(5));
+    let timeout = Duration::from_secs(settings.timeout_secs.max(5));
     let agent = http::agent(timeout);
-    let endpoint = req.settings.endpoint_for(req.provider);
+    let endpoint = settings.endpoint_for(provider);
 
-    match req.provider {
+    match provider {
         EnhancementProvider::Anthropic => {
-            let key = credentials::get(req.provider.key_name()).unwrap_or_default();
-            let body = anthropic_body(&req.model, system, user);
+            let key = credentials::get(provider.key_name()).unwrap_or_default();
+            let body = anthropic_body(model, system, user);
             let r = agent
                 .post(&endpoint)
                 .set("x-api-key", &key)
@@ -174,7 +195,7 @@ fn complete(
                     .set("HTTP-Referer", "https://tryvoiceink.com")
                     .set("X-Title", "VoiceInk");
             }
-            let body = openai_body(provider, &req.model, system, user);
+            let body = openai_body(provider, model, system, user);
             let json = http::send_json(r, &body)?;
             parse_openai(&json).ok_or(EnhancementError::EmptyResponse)
         }
