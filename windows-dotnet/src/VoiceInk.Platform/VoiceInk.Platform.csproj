@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <RootNamespace>VoiceInk.Platform</RootNamespace>
+    <AssemblyName>VoiceInk.Platform</AssemblyName>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\VoiceInk.Core\VoiceInk.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\VoiceInk\Resources\Sounds\sound1.wav" LogicalName="Sounds.start.wav" />
+    <EmbeddedResource Include="..\..\..\VoiceInk\Resources\Sounds\sound3.wav" LogicalName="Sounds.stop.wav" />
+    <EmbeddedResource Include="..\..\..\VoiceInk\Resources\Sounds\sound7.wav" LogicalName="Sounds.cancel.wav" />
+  </ItemGroup>
+</Project>

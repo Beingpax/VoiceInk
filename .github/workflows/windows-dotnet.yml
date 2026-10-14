@@ -1,0 +1,40 @@
+name: Windows (.NET)
+
+on:
+  push:
+    paths:
+      - "windows-dotnet/**"
+      - ".github/workflows/windows-dotnet.yml"
+  pull_request:
+    paths:
+      - "windows-dotnet/**"
+      - ".github/workflows/windows-dotnet.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: windows-dotnet
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore VoiceInk.slnx
+      - name: Test core
+        run: dotnet test tests/VoiceInk.Core.Tests -c Release
+      - name: Publish (self-contained, x64)
+        run: >
+          dotnet publish src/VoiceInk.App -c Release -r win-x64 -p:Platform=x64
+          --self-contained -o artifacts/VoiceInk
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path artifacts/VoiceInk/* -DestinationPath artifacts/VoiceInk-win-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voiceink-windows-dotnet
+          path: windows-dotnet/artifacts/VoiceInk-win-x64.zip

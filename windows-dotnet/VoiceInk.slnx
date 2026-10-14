@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VoiceInk.App/VoiceInk.App.csproj">
+      <Platform Project="x64" />
+    </Project>
+    <Project Path="src/VoiceInk.Core/VoiceInk.Core.csproj" />
+    <Project Path="src/VoiceInk.Platform/VoiceInk.Platform.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VoiceInk.Core.Tests/VoiceInk.Core.Tests.csproj" />
+  </Folder>
+</Solution>
