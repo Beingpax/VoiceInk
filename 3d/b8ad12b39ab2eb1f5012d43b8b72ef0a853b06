@@ -1,0 +1,13 @@
+VoiceInk/Features/Recording/Workflows/TranscriptionDelivery.swift
+  ai_agent 169
+VoiceInk/Features/Recording/Workflows/VoiceInkEngine.swift
+  ai_agent 629-630,633-645,857-858
+VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift
+  ai_agent 249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3db8ad12b39ab2eb1f5012d43b8b72ef0a853b06",
+  "prompts": {}
+}
