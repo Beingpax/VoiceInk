@@ -13,7 +13,8 @@
     <ApplicationIcon>Assets\voiceink.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
-    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(PublishAot)' != 'true'">true</PublishReadyToRun>
+    <BaseOutputPath Condition="'$(PublishProfile)' == 'NativeAOT'">bin\aot\</BaseOutputPath>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- Self-contained Windows App SDK needs Windows build tools; CI turns it on, cross-compiling elsewhere leaves it off. -->
     <WindowsAppSDKSelfContained Condition="'$(WindowsAppSDKSelfContained)' == ''">true</WindowsAppSDKSelfContained>

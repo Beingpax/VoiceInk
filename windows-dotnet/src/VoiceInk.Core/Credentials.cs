@@ -20,6 +20,8 @@ internal sealed class PlainProtector : ISecretProtector
 /// <summary>API keys in <c>keys.json</c>, encrypted per Windows user. Environment variables win over the store.</summary>
 public static class Credentials
 {
+    private static readonly AppJsonContext StoreJson = new(new JsonSerializerOptions { WriteIndented = true });
+
     private static readonly object Gate = new();
 
     /// <summary>Set by the Windows platform layer at startup (DPAPI).</summary>
@@ -37,7 +39,7 @@ public static class Credentials
         {
             var path = AppPaths.KeysPath;
             if (!File.Exists(path)) return [];
-            var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(path));
+            var dict = JsonSerializer.Deserialize(File.ReadAllText(path), StoreJson.DictionaryStringString);
             return dict is null ? [] : new SortedDictionary<string, string>(dict, StringComparer.Ordinal);
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
@@ -50,7 +52,7 @@ public static class Credentials
     {
         var path = AppPaths.KeysPath;
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, JsonSerializer.Serialize(store, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(path, JsonSerializer.Serialize(store, StoreJson.SortedDictionaryStringString));
     }
 
     /// <summary>Returns the API key for a provider key name (<c>"groq"</c>, <c>"openai"</c>, ...).</summary>

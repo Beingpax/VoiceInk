@@ -50,7 +50,7 @@ public sealed class WasapiAudioCapture : IAudioCapture
     {
         private static readonly Guid IeeeFloatSubFormat = new("00000003-0000-0010-8000-00aa00389b71");
 
-        private readonly WasapiCapture _capture;
+        private readonly WasapiRecorder _capture;
         private readonly Resampler _resampler;
         private readonly SampleFormat _format;
         private readonly int _channels;
@@ -62,7 +62,7 @@ public sealed class WasapiAudioCapture : IAudioCapture
 
         public Session(MMDevice device)
         {
-            _capture = new WasapiCapture(device);
+            _capture = new WasapiRecorderBuilder().WithDevice(device).Build();
             var wf = _capture.WaveFormat;
             _channels = wf.Channels;
             _resampler = new Resampler(wf.SampleRate, AudioConvert.TargetSampleRate);
@@ -76,7 +76,7 @@ public sealed class WasapiAudioCapture : IAudioCapture
                 (_, 32) => SampleFormat.I32,
                 _ => throw new NotSupportedException($"unsupported microphone format {wf}"),
             };
-            _capture.DataAvailable += OnData;
+            _capture.DataAvailable += (buffer, flags, devicePosition, qpcPosition) => OnData(buffer);
             _capture.StartRecording();
         }
 
@@ -87,9 +87,9 @@ public sealed class WasapiAudioCapture : IAudioCapture
             get { lock (_gate) return _level; }
         }
 
-        private void OnData(object? sender, WaveInEventArgs e)
+        private void OnData(ReadOnlySpan<byte> buffer)
         {
-            var mono = AudioConvert.DownmixToMono(e.Buffer.AsSpan(0, e.BytesRecorded), _format, _channels);
+            var mono = AudioConvert.DownmixToMono(buffer, _format, _channels);
             var level = AudioConvert.MeterLevel(mono);
             var resampled = _resampler.Process(mono);
             lock (_gate)
