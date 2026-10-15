@@ -8,22 +8,34 @@ using VoiceInk.Platform.Shell;
 namespace VoiceInk.App;
 
 /// <summary>The WinUI application: owns the services, the tray icon, the recorder pill and the main window.</summary>
-internal sealed class VoiceInkApp : Application
+internal sealed class VoiceInkApp : Application, Microsoft.UI.Xaml.Markup.IXamlMetadataProvider
 {
+    private readonly Microsoft.UI.Xaml.XamlTypeInfo.XamlControlsXamlMetaDataProvider _metadata = new();
+    public Microsoft.UI.Xaml.Markup.IXamlType? GetXamlType(Type type) => _metadata.GetXamlType(type);
+    public Microsoft.UI.Xaml.Markup.IXamlType? GetXamlType(string fullName) => _metadata.GetXamlType(fullName);
+    public Microsoft.UI.Xaml.Markup.XmlnsDefinition[] GetXmlnsDefinitions() => _metadata.GetXmlnsDefinitions();
+
     private readonly SingleInstance _instance;
-    private readonly AppServices _services;
-    private readonly OverlayWindow _overlay;
+    private readonly string? _startPage;
+    private AppServices _services = null!;
+    private OverlayWindow _overlay = null!;
     private MainWindow? _main;
 
     public VoiceInkApp(SingleInstance instance, string? startPage)
     {
         _instance = instance;
-        Resources.MergedDictionaries.Add(new XamlControlsResources());
+        _startPage = startPage;
         UnhandledException += (_, e) =>
         {
             AppLog.Error("unhandled exception", e.Exception);
             e.Handled = true;
         };
+    }
+
+    /// <summary>Resources and windows need the XAML runtime, which isn't ready in the constructor.</summary>
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        Resources.MergedDictionaries.Add(new XamlControlsResources());
 
         var firstRun = !File.Exists(VoiceInk.Core.Config.AppPaths.ConfigPath);
         _services = new AppServices(Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread());
@@ -37,7 +49,7 @@ internal sealed class VoiceInkApp : Application
         OnStatus(_services.Dictation.Status);
         AppLog.Info($"VoiceInk for Windows {AppInfo.Version} started");
 
-        if (startPage is not null || firstRun) Show(startPage ?? "dashboard");
+        if (_startPage is not null || firstRun) Show(_startPage ?? "dashboard");
     }
 
     private void OnStatus(DictationStatus status)
