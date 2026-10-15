@@ -8,7 +8,7 @@ using VoiceInk.Platform.Shell;
 namespace VoiceInk.App;
 
 /// <summary>The WinUI application: owns the services, the tray icon, the recorder pill and the main window.</summary>
-internal sealed class VoiceInkApp : Application, Microsoft.UI.Xaml.Markup.IXamlMetadataProvider
+internal sealed partial class VoiceInkApp : Application, Microsoft.UI.Xaml.Markup.IXamlMetadataProvider
 {
     private readonly Microsoft.UI.Xaml.XamlTypeInfo.XamlControlsXamlMetaDataProvider _metadata = new();
     public Microsoft.UI.Xaml.Markup.IXamlType? GetXamlType(Type type) => _metadata.GetXamlType(type);

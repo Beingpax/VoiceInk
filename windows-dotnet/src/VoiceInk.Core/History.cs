@@ -58,9 +58,11 @@ public static class History
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() },
+        Converters = { new JsonStringEnumConverter<EntryStatus>() },
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+
+    private static readonly AppJsonContext HistoryJson = new(Options);
 
     private static readonly object Gate = new();
 
@@ -70,7 +72,7 @@ public static class History
         {
             var dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-            File.AppendAllText(path, JsonSerializer.Serialize(entry, Options) + "\n", new UTF8Encoding(false));
+            File.AppendAllText(path, JsonSerializer.Serialize(entry, HistoryJson.HistoryEntry) + "\n", new UTF8Encoding(false));
         }
     }
 
@@ -86,7 +88,7 @@ public static class History
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 try
                 {
-                    if (JsonSerializer.Deserialize<HistoryEntry>(line, Options) is { } e) result.Add(e);
+                    if (JsonSerializer.Deserialize(line, HistoryJson.HistoryEntry) is { } e) result.Add(e);
                 }
                 catch (JsonException)
                 {
@@ -128,7 +130,7 @@ public static class History
         lock (Gate)
         {
             var tmp = path + ".tmp";
-            File.WriteAllLines(tmp, entries.Skip(entries.Count - maxEntries).Select(e => JsonSerializer.Serialize(e, Options)), new UTF8Encoding(false));
+            File.WriteAllLines(tmp, entries.Skip(entries.Count - maxEntries).Select(e => JsonSerializer.Serialize(e, HistoryJson.HistoryEntry)), new UTF8Encoding(false));
             File.Move(tmp, path, overwrite: true);
         }
     }

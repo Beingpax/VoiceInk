@@ -292,17 +292,22 @@ public sealed class AppConfig
         WriteIndented = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
-        Converters = { new JsonStringEnumConverter() },
+        Converters = { new JsonStringEnumConverter<HotkeyMode>(), new JsonStringEnumConverter<PasteMethod>(),
+            new JsonStringEnumConverter<SendKey>(), new JsonStringEnumConverter<OverlayPosition>(),
+            new JsonStringEnumConverter<OutputMode>(), new JsonStringEnumConverter<AppTheme>(),
+            new JsonStringEnumConverter<TranscriptionProvider>(), new JsonStringEnumConverter<EnhancementProvider>() },
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
+    private static readonly AppJsonContext ConfigJson = new(JsonOptions);
+
     public AppConfig Clone() => FromJson(ToJson());
 
-    public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
+    public string ToJson() => JsonSerializer.Serialize(this, ConfigJson.AppConfig);
 
     public static AppConfig FromJson(string json)
     {
-        var cfg = JsonSerializer.Deserialize<AppConfig>(json, JsonOptions) ?? new AppConfig();
+        var cfg = JsonSerializer.Deserialize(json, ConfigJson.AppConfig) ?? new AppConfig();
         if (cfg.Prompts.Count == 0)
         {
             cfg.Prompts = PromptTemplates.Seed();

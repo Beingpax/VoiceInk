@@ -67,3 +67,15 @@ tests/VoiceInk.Core.Tests
 - Windows won't let a normal process send keystrokes into apps running as administrator; run VoiceInk elevated to dictate there.
 - If an app ignores Ctrl+V, choose **Output & Audio › Insert text with › Shift+Insert / Simulated typing**.
 - Allow microphone access under *Settings › Privacy & security › Microphone › Let desktop apps access your microphone*.
+
+## NativeAOT portable package (x64)
+
+On Windows, install the .NET 10 SDK and Visual Studio 2022 Desktop development with C++ workload (MSVC x64/x86 tools and Windows SDK). From `windows-dotnet`, run:
+
+```powershell
+./scripts/package-nativeaot.ps1
+```
+
+The script publishes with `Properties/PublishProfiles/NativeAOT.pubxml`, creates a ZIP in `artifacts/`, copies it to `../release/windows/` (creating the folder if needed), and prints its SHA-256 hash. Extract the entire archive and run `VoiceInk.exe`; keep the Windows App SDK and Whisper native libraries alongside the executable. AOT uses a separate `bin/aot` app build directory. The regular publish command remains available.
+
+NativeAOT compilation requires the C++ linker; a successful managed build alone does not produce a NativeAOT executable.
