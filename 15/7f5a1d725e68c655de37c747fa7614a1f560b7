@@ -1,0 +1,19 @@
+VoiceInk/Features/Recording/Workflows/VoiceInkEngine.swift
+  s_8ab489028f99c2::t_15ba8a495028f0 634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "157f5a1d725e68c655de37c747fa7614a1f560b7",
+  "prompts": {},
+  "sessions": {
+    "s_8ab489028f99c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41fde7ac-fff9-4b37-8f33-b3f2c57c8adf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
