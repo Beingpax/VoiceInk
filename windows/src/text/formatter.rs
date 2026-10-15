@@ -17,7 +17,7 @@ pub fn split_sentences(text: &str) -> Vec<String> {
     while let Some(ch) = chars.next() {
         current.push(ch);
         let boundary = match ch {
-            '。' | '！' | '？' => true,
+            '。' | '！' | '？' | '\n' => true,
             '.' | '!' | '?' | '…' => {
                 // Absorb closing quotes/brackets and repeated punctuation.
                 while let Some(&next) = chars.peek() {
@@ -28,9 +28,8 @@ pub fn split_sentences(text: &str) -> Vec<String> {
                         break;
                     }
                 }
-                chars.peek().map_or(true, |c| c.is_whitespace())
+                chars.peek().is_none_or(|c| c.is_whitespace())
             }
-            '\n' => true,
             _ => false,
         };
         if boundary {
@@ -113,10 +112,7 @@ mod tests {
 
     #[test]
     fn short_text_stays_one_paragraph() {
-        assert_eq!(
-            format_paragraphs("One two. Three four."),
-            "One two. Three four."
-        );
+        assert_eq!(format_paragraphs("One two. Three four."), "One two. Three four.");
     }
 
     #[test]

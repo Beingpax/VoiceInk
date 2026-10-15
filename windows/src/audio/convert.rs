@@ -1,5 +1,14 @@
 //! Sample-format conversion for the WASAPI mix format.
 
+// Signal processing on bounded sample counts and rates: the float/int
+// conversions in this module are intentional and range-checked by design.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+
 /// Interleaved sample layouts the shared-mode mix format can use.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SampleFormat {
@@ -29,14 +38,12 @@ pub fn downmix_to_mono(bytes: &[u8], format: SampleFormat, channels: usize) -> V
         for ch in frame.chunks_exact(format.bytes()) {
             sum += match format {
                 SampleFormat::F32 => f32::from_le_bytes([ch[0], ch[1], ch[2], ch[3]]),
-                SampleFormat::I16 => i16::from_le_bytes([ch[0], ch[1]]) as f32 / 32768.0,
+                SampleFormat::I16 => f32::from(i16::from_le_bytes([ch[0], ch[1]])) / 32768.0,
                 SampleFormat::I24 => {
                     let v = i32::from_le_bytes([0, ch[0], ch[1], ch[2]]) >> 8;
                     v as f32 / 8_388_608.0
                 }
-                SampleFormat::I32 => {
-                    i32::from_le_bytes([ch[0], ch[1], ch[2], ch[3]]) as f32 / 2_147_483_648.0
-                }
+                SampleFormat::I32 => i32::from_le_bytes([ch[0], ch[1], ch[2], ch[3]]) as f32 / 2_147_483_648.0,
             };
         }
         out.push(sum / channels as f32);
@@ -57,15 +64,9 @@ pub struct Resampler {
 
 impl Resampler {
     pub fn new(input_rate: u32, output_rate: u32) -> Self {
-        let ratio = input_rate as f64 / output_rate as f64;
+        let ratio = f64::from(input_rate) / f64::from(output_rate);
         let taps = ratio.floor().max(1.0) as usize;
-        Self {
-            ratio,
-            position: 0.0,
-            previous: 0.0,
-            filter: vec![0.0; taps],
-            filter_pos: 0,
-        }
+        Self { ratio, position: 0.0, previous: 0.0, filter: vec![0.0; taps], filter_pos: 0 }
     }
 
     pub fn process(&mut self, input: &[f32]) -> Vec<f32> {
@@ -91,11 +92,7 @@ impl Resampler {
             let idx = self.position.floor();
             let frac = (self.position - idx) as f32;
             let i = idx as isize;
-            let a = if i == 0 {
-                self.previous
-            } else {
-                filtered[(i - 1) as usize]
-            };
+            let a = if i == 0 { self.previous } else { filtered[(i - 1) as usize] };
             let b = filtered[i as usize];
             out.push(a + (b - a) * frac);
             self.position += self.ratio;
@@ -124,10 +121,7 @@ mod tests {
             bytes.extend_from_slice(&l.to_le_bytes());
             bytes.extend_from_slice(&r.to_le_bytes());
         }
-        assert_eq!(
-            downmix_to_mono(&bytes, SampleFormat::F32, 2),
-            vec![0.5, 0.5]
-        );
+        assert_eq!(downmix_to_mono(&bytes, SampleFormat::F32, 2), vec![0.5, 0.5]);
     }
 
     #[test]

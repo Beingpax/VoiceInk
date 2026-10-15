@@ -1,65 +1,66 @@
 //! "Start with Windows" via `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 
-use windows::core::PCWSTR;
+use super::error::{Context, Error, Result};
+use super::wide;
+use windows::Win32::Foundation::ERROR_FILE_NOT_FOUND;
 use windows::Win32::System::Registry::{
-    RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY,
-    HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SZ,
+    HKEY, HKEY_CURRENT_USER, KEY_READ, KEY_WRITE, REG_SAM_FLAGS, REG_SZ, RegCloseKey, RegDeleteValueW, RegOpenKeyExW,
+    RegQueryValueExW, RegSetValueExW,
 };
+use windows::core::{HRESULT, PCWSTR};
 
 const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
-const VALUE: &str = "VoiceInk";
+const VALUE_NAME: &str = "VoiceInk";
 
-fn open(access: windows::Win32::System::Registry::REG_SAM_FLAGS) -> Result<HKEY, String> {
-    let path = super::wide(RUN_KEY);
-    let mut key = HKEY::default();
-    unsafe {
-        RegOpenKeyExW(
-            HKEY_CURRENT_USER,
-            PCWSTR(path.as_ptr()),
-            None,
-            access,
-            &mut key,
-        )
+/// An open registry key, closed on drop.
+struct RegKey(HKEY);
+
+impl RegKey {
+    fn open_run_key(access: REG_SAM_FLAGS) -> Result<Self> {
+        let path = wide(RUN_KEY);
+        let mut key = HKEY::default();
+        // SAFETY: `path` is NUL-terminated and `key` is a valid out-parameter.
+        unsafe { RegOpenKeyExW(HKEY_CURRENT_USER, PCWSTR(path.as_ptr()), None, access, &raw mut key) }
+            .ok()
+            .context("open the Run registry key")?;
+        Ok(Self(key))
     }
-    .ok()
-    .map_err(|e| e.to_string())?;
-    Ok(key)
+}
+
+impl Drop for RegKey {
+    fn drop(&mut self) {
+        // SAFETY: the key was opened by RegOpenKeyExW and is closed exactly once.
+        let _ = unsafe { RegCloseKey(self.0) };
+    }
 }
 
 pub fn is_enabled() -> bool {
-    let Ok(key) = open(KEY_READ) else {
-        return false;
-    };
-    let name = super::wide(VALUE);
-    let found =
-        unsafe { RegQueryValueExW(key, PCWSTR(name.as_ptr()), None, None, None, None) }.is_ok();
-    unsafe {
-        let _ = RegCloseKey(key);
-    }
-    found
+    let Ok(key) = RegKey::open_run_key(KEY_READ) else { return false };
+    let name = wide(VALUE_NAME);
+    // SAFETY: `name` is NUL-terminated; no output buffers are requested.
+    unsafe { RegQueryValueExW(key.0, PCWSTR(name.as_ptr()), None, None, None, None) }.is_ok()
 }
 
-pub fn set_enabled(enabled: bool) -> Result<(), String> {
-    let key = open(KEY_WRITE)?;
-    let name = super::wide(VALUE);
-    let result = unsafe {
-        if enabled {
-            let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-            let command = format!("\"{}\"", exe.display());
-            let data: Vec<u8> = super::wide(&command)
-                .iter()
-                .flat_map(|u| u.to_le_bytes())
-                .collect();
-            RegSetValueExW(key, PCWSTR(name.as_ptr()), None, REG_SZ, Some(&data)).ok()
-        } else {
-            match RegDeleteValueW(key, PCWSTR(name.as_ptr())).ok() {
-                Err(e) if e.code().0 as u32 == 0x8007_0002 => Ok(()), // not found
-                other => other,
-            }
+/// Adds or removes the autostart entry for the running executable.
+///
+/// # Errors
+/// Fails when the registry cannot be written.
+pub fn set_enabled(enabled: bool) -> Result<()> {
+    let key = RegKey::open_run_key(KEY_WRITE)?;
+    let name = wide(VALUE_NAME);
+    if enabled {
+        let exe = std::env::current_exe().map_err(|e| Error::Message(e.to_string()))?;
+        let data: Vec<u8> =
+            wide(&format!("\"{}\"", exe.display())).iter().flat_map(|unit| unit.to_le_bytes()).collect();
+        // SAFETY: `name` is NUL-terminated and `data` is a NUL-terminated UTF-16 string.
+        unsafe { RegSetValueExW(key.0, PCWSTR(name.as_ptr()), None, REG_SZ, Some(&data)) }
+            .ok()
+            .context("write the autostart entry")
+    } else {
+        // SAFETY: `name` is NUL-terminated.
+        match unsafe { RegDeleteValueW(key.0, PCWSTR(name.as_ptr())) }.ok() {
+            Err(e) if e.code() == HRESULT::from_win32(ERROR_FILE_NOT_FOUND.0) => Ok(()),
+            other => other.context("remove the autostart entry"),
         }
-    };
-    unsafe {
-        let _ = RegCloseKey(key);
     }
-    result.map_err(|e| e.to_string())
 }

@@ -18,8 +18,7 @@ pub fn match_mode<'a>(modes: &'a [ModeConfig], fg: &ForegroundInfo) -> Option<&'
     modes.iter().filter(|m| m.enabled).find(|m| {
         let process_hit = m.process_names.iter().any(|p| {
             let p = p.trim().to_lowercase();
-            !p.is_empty()
-                && (process == p || process.trim_end_matches(".exe") == p.trim_end_matches(".exe"))
+            !p.is_empty() && (process == p || process.trim_end_matches(".exe") == p.trim_end_matches(".exe"))
         });
         let title_hit = m
             .window_title_contains
@@ -69,8 +68,7 @@ pub fn resolve(config: &Config, mode: Option<&ModeConfig>) -> Resolved {
 
     r.mode_name = Some(m.name.clone());
     if let Some(lang) = &m.language {
-        r.language = (!lang.trim().is_empty() && !lang.eq_ignore_ascii_case("auto"))
-            .then(|| lang.trim().to_string());
+        r.language = (!lang.trim().is_empty() && !lang.eq_ignore_ascii_case("auto")).then(|| lang.trim().to_string());
     }
     if let Some(v) = m.text_formatting {
         r.text_formatting = v;
@@ -82,19 +80,11 @@ pub fn resolve(config: &Config, mode: Option<&ModeConfig>) -> Resolved {
         r.provider = p;
         r.model = p.default_model().to_string();
     }
-    if let Some(model) = m
-        .enhancement_model
-        .as_ref()
-        .filter(|s| !s.trim().is_empty())
-    {
-        r.model = model.clone();
+    if let Some(model) = m.enhancement_model.as_ref().filter(|s| !s.trim().is_empty()) {
+        r.model.clone_from(model);
     }
-    if let Some(id) = m
-        .prompt_id
-        .as_ref()
-        .filter(|id| config.prompt(id).is_some())
-    {
-        r.prompt_id = id.clone();
+    if let Some(id) = m.prompt_id.as_ref().filter(|id| config.prompt(id).is_some()) {
+        r.prompt_id.clone_from(id);
     }
     if let Some(v) = m.use_clipboard_context {
         r.use_clipboard_context = v;
@@ -129,13 +119,7 @@ pub fn detect_trigger(text: &str, modes: &[ModeConfig]) -> Option<TriggerDetecti
             }
         }
     }
-    candidates.sort_by(|a, b| {
-        b.2.chars()
-            .count()
-            .cmp(&a.2.chars().count())
-            .then(a.0.cmp(&b.0))
-            .then(a.1.cmp(&b.1))
-    });
+    candidates.sort_by(|a, b| b.2.chars().count().cmp(&a.2.chars().count()).then(a.0.cmp(&b.0)).then(a.1.cmp(&b.1)));
 
     candidates.into_iter().find_map(|(mi, _, word)| {
         let processed = if let Some(after) = strip_trailing(text, word) {
@@ -144,10 +128,7 @@ pub fn detect_trigger(text: &str, modes: &[ModeConfig]) -> Option<TriggerDetecti
             let after = strip_leading(text, word)?;
             strip_trailing(&after, word).unwrap_or(after)
         };
-        Some(TriggerDetection {
-            mode_index: mi,
-            processed_text: processed,
-        })
+        Some(TriggerDetection { mode_index: mi, processed_text: processed })
     })
 }
 
@@ -164,11 +145,7 @@ fn capitalize_first(s: &str) -> String {
 /// Byte length of the prefix of `text` that equals `word` case-insensitively.
 fn ci_prefix_len(text: &str, word: &str) -> Option<usize> {
     let n = word.chars().count();
-    let end = text
-        .char_indices()
-        .nth(n)
-        .map(|(i, _)| i)
-        .unwrap_or(text.len());
+    let end = text.char_indices().nth(n).map_or(text.len(), |(i, _)| i);
     (text.chars().count() >= n && text[..end].to_lowercase() == word.to_lowercase()).then_some(end)
 }
 
@@ -178,41 +155,27 @@ fn ci_suffix_start(text: &str, word: &str) -> Option<usize> {
     if total < n {
         return None;
     }
-    let start = text
-        .char_indices()
-        .nth(total - n)
-        .map(|(i, _)| i)
-        .unwrap_or(0);
+    let start = text.char_indices().nth(total - n).map_or(0, |(i, _)| i);
     (text[start..].to_lowercase() == word.to_lowercase()).then_some(start)
 }
 
 fn strip_leading(text: &str, word: &str) -> Option<String> {
     let trimmed = text.trim();
     let end = ci_prefix_len(trimmed, word)?;
-    if trimmed[end..]
-        .chars()
-        .next()
-        .is_some_and(char::is_alphanumeric)
-    {
+    if trimmed[end..].chars().next().is_some_and(char::is_alphanumeric) {
         return None;
     }
-    let rest = trimmed[end..]
-        .trim_start_matches(|c: char| TRIGGER_PUNCT.contains(&c) || c.is_whitespace());
+    let rest = trimmed[end..].trim_start_matches(|c: char| TRIGGER_PUNCT.contains(&c) || c.is_whitespace());
     Some(capitalize_first(rest.trim()))
 }
 
 fn strip_trailing(text: &str, word: &str) -> Option<String> {
     let trimmed = text.trim().trim_end_matches(TRIGGER_PUNCT);
     let start = ci_suffix_start(trimmed, word)?;
-    if trimmed[..start]
-        .chars()
-        .next_back()
-        .is_some_and(char::is_alphanumeric)
-    {
+    if trimmed[..start].chars().next_back().is_some_and(char::is_alphanumeric) {
         return None;
     }
-    let rest = trimmed[..start]
-        .trim_end_matches(|c: char| TRIGGER_PUNCT.contains(&c) || c.is_whitespace());
+    let rest = trimmed[..start].trim_end_matches(|c: char| TRIGGER_PUNCT.contains(&c) || c.is_whitespace());
     Some(capitalize_first(rest.trim()))
 }
 
@@ -221,10 +184,7 @@ mod tests {
     use super::*;
 
     fn mode(name: &str) -> ModeConfig {
-        ModeConfig {
-            name: name.into(),
-            ..Default::default()
-        }
+        ModeConfig { name: name.into(), ..Default::default() }
     }
 
     #[test]
@@ -235,20 +195,11 @@ mod tests {
         gmail.window_title_contains = vec!["gmail".into()];
         let modes = vec![slack, gmail];
 
-        let fg = ForegroundInfo {
-            process_name: "slack.exe".into(),
-            window_title: "x".into(),
-        };
+        let fg = ForegroundInfo { process_name: "slack.exe".into(), window_title: "x".into() };
         assert_eq!(match_mode(&modes, &fg).unwrap().name, "Chat");
-        let fg = ForegroundInfo {
-            process_name: "chrome.exe".into(),
-            window_title: "Inbox - Gmail".into(),
-        };
+        let fg = ForegroundInfo { process_name: "chrome.exe".into(), window_title: "Inbox - Gmail".into() };
         assert_eq!(match_mode(&modes, &fg).unwrap().name, "Email");
-        let fg = ForegroundInfo {
-            process_name: "notepad.exe".into(),
-            window_title: "".into(),
-        };
+        let fg = ForegroundInfo { process_name: "notepad.exe".into(), window_title: String::new() };
         assert!(match_mode(&modes, &fg).is_none());
     }
 
@@ -257,10 +208,7 @@ mod tests {
         let mut m = mode("Off");
         m.enabled = false;
         m.process_names = vec!["a.exe".into()];
-        let fg = ForegroundInfo {
-            process_name: "a.exe".into(),
-            window_title: String::new(),
-        };
+        let fg = ForegroundInfo { process_name: "a.exe".into(), window_title: String::new() };
         assert!(match_mode(&[m], &fg).is_none());
     }
 

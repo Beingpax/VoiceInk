@@ -1,5 +1,14 @@
 //! Dashboard statistics computed from the history (port of `DashboardStatsModels`).
 
+// Statistics over word counts, seconds and day offsets: the float/int
+// conversions in this module are intentional and range-checked by design.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+
 use crate::history::{Entry, Status};
 use crate::text::word_count;
 use chrono::{Duration, Local, NaiveDate, Timelike};
@@ -38,7 +47,7 @@ pub fn compute(entries: &[Entry], days: usize, today: NaiveDate) -> Stats {
     let start = today - Duration::days(days.saturating_sub(1) as i64);
     let mut daily = vec![0usize; days];
     let mut active_days = std::collections::BTreeSet::new();
-    let mut apps: std::collections::HashMap<String, usize> = Default::default();
+    let mut apps: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
     for e in entries.iter().filter(|e| e.status == Status::Completed) {
         let words = word_count(e.final_text());
@@ -60,23 +69,11 @@ pub fn compute(entries: &[Entry], days: usize, today: NaiveDate) -> Stats {
     }
 
     s.time_saved_secs = time_saved(s.words, s.duration_secs);
-    s.wpm = if s.duration_secs > 0.0 {
-        s.words as f64 / (s.duration_secs / 60.0)
-    } else {
-        0.0
-    };
-    s.daily_words = daily
-        .into_iter()
-        .enumerate()
-        .map(|(i, w)| (start + Duration::days(i as i64), w))
-        .collect();
+    s.wpm = if s.duration_secs > 0.0 { s.words as f64 / (s.duration_secs / 60.0) } else { 0.0 };
+    s.daily_words = daily.into_iter().enumerate().map(|(i, w)| (start + Duration::days(i as i64), w)).collect();
 
     // Streak counts back from today (or yesterday, so it survives until you dictate today).
-    let mut day = if active_days.contains(&today) {
-        today
-    } else {
-        today - Duration::days(1)
-    };
+    let mut day = if active_days.contains(&today) { today } else { today - Duration::days(1) };
     while active_days.contains(&day) {
         s.streak_days += 1;
         day -= Duration::days(1);
@@ -108,7 +105,7 @@ pub fn format_count(n: usize) -> String {
     let digits = n.to_string();
     let mut out = String::new();
     for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(c);
@@ -117,6 +114,7 @@ pub fn format_count(n: usize) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp, reason = "exact values are expected")]
 mod tests {
     use super::*;
     use chrono::TimeZone;
@@ -173,7 +171,7 @@ mod tests {
         assert_eq!(format_duration(45.0), "45 s");
         assert_eq!(format_duration(125.0), "2 min");
         assert_eq!(format_duration(3900.0), "1 h 05 min");
-        assert_eq!(format_count(1234567), "1,234,567");
+        assert_eq!(format_count(1_234_567), "1,234,567");
         assert_eq!(format_count(12), "12");
     }
 }

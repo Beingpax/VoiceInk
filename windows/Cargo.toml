@@ -1,8 +1,8 @@
 [package]
 name = "voiceink-windows"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.80"
+edition = "2024"
+rust-version = "1.88"
 description = "VoiceInk for Windows: voice-to-text dictation that pastes into any app"
 license = "GPL-3.0-only"
 repository = "https://github.com/PuppetMaster2k/VoiceInkW"
@@ -25,6 +25,8 @@ local-whisper = ["dep:whisper-rs"]
 embed-resource = "3"
 
 [dependencies]
+anyhow = "1"
+thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 regex = "1"
@@ -69,6 +71,28 @@ features = [
 
 [target.'cfg(not(windows))'.dependencies]
 ureq = { version = "2.12", features = ["json"] }
+
+# Lint policy (see CONTRIBUTING-windows.md). `cargo clippy --all-targets -- -D warnings`
+# must pass for both the host and the Windows target.
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Every `unsafe` block states why it is sound.
+undocumented_unsafe_blocks = "warn"
+# Panics are for bugs, not for recoverable errors (allowed in tests via clippy.toml).
+unwrap_used = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+# Pedantic lints that add noise without value for this crate:
+module_name_repetitions = "allow" # e.g. `TranscriptionError` in `transcription`
+must_use_candidate = "allow"           # applied deliberately on builders/pure fns instead
+# Settings structs mirror independent user options; bools are the natural type.
+struct_excessive_bools = "allow"
 
 [profile.release]
 lto = true

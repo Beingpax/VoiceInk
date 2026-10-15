@@ -149,28 +149,40 @@ A modifier-only shortcut (such as `RightCtrl`) never blocks other shortcuts. If 
 
 ## Architecture
 
+The crate is a portable core plus a Win32 layer. Dependencies point inwards:
+the pipeline knows providers only through traits, and nothing outside
+`platform/` touches Windows APIs, so the core is unit tested on any OS.
+
 ```
 src/
-├── config.rs, prompts.rs, modes.rs, history.rs, credentials.rs, http.rs
-├── text/          filter, paragraph formatter, word replacements, snippets, word count
-├── audio/         WAV encode/decode, downmix and resampling
-├── transcription/ cloud clients (+ local whisper.cpp)
-├── enhancement/   LLM chat clients, retries
-├── pipeline.rs    transcribe → filter → trigger words → format → replace → snippets → enhance; Command Mode
-├── stats.rs       dashboard statistics
-└── platform/      Win32 via the `windows` crate (Windows only)
-    ├── app.rs        tray app, message loop, recording state machine
-    ├── capture.rs    WASAPI microphone capture
-    ├── hotkey.rs     low-level keyboard/mouse hooks
-    ├── paste.rs, clipboard.rs   SendInput and clipboard
-    ├── overlay.rs    recorder pill
-    ├── settings.rs   Dashboard & Settings window
-    ├── tray.rs, icon.rs, prompt.rs, sound.rs, volume.rs, autostart.rs, foreground.rs
+├── main.rs, cli.rs       entry point; CLI parsing (pure) and execution
+├── context.rs            composition root: AppContext { paths, secrets, history, services }
+├── paths.rs              data directory layout (%APPDATA%\VoiceInk, or VOICEINK_HOME)
+├── config/               typed settings, provider catalog, SettingChange (tray menu edits)
+├── settings_page.rs      the pages of the settings window (shared by CLI and UI)
+├── input/                hotkey parsing, press/release state machine, RecordingPolicy
+├── pipeline/             transcribe → filter → format → replace → snippets → enhance; Command Mode
+├── transcription/        Transcriber trait + OpenAI-compatible, Deepgram, ElevenLabs, local whisper.cpp
+├── enhancement/          ChatModel trait + OpenAI-compatible, Anthropic; rate limiting and retries
+├── credentials.rs        SecretStore trait; DPAPI key file, env-var override, in-memory store
+├── history.rs            HistoryStore (JSON Lines), CSV export
+├── text/, audio/, prompts.rs, modes.rs, stats.rs, http.rs
+└── platform/             Win32 via the `windows` crate (Windows only)
+    ├── app/              tray app: window + message loop, controller (state machine),
+    │                     menu (MenuAction registry), delivery, events, config_file
+    ├── settings/         Dashboard & Settings: one type per page behind the Page trait,
+    │                     typed control wrappers, stats panel
+    ├── capture.rs        WASAPI microphone capture
+    ├── hotkey.rs         low-level keyboard/mouse hooks feeding input::ShortcutSet
+    ├── paste.rs, clipboard.rs, foreground.rs   SendInput, clipboard, focus
+    ├── overlay.rs, tray.rs, icon.rs, gdi.rs    recorder pill, tray icon/menus, GDI RAII helpers
+    └── com.rs, error.rs, sound.rs, volume.rs, autostart.rs, actions.rs
 ```
 
-Everything outside `platform/` is portable, and its unit tests run on any OS.
-UI work happens on the main thread. Recording, transcription and pasting run on
-worker threads, which report back to the main thread with `PostMessageW`.
+UI work happens on the main thread. Recording, transcription and pasting run
+on worker threads, which report back through a channel (`app::events`) and a
+`PostMessageW` wake-up. Coding standards are in
+[CONTRIBUTING-windows.md](CONTRIBUTING-windows.md).
 
 ## Notes
 

@@ -5,6 +5,7 @@
 //! boundaries (punctuation counts as a boundary); CJK/Thai match as plain
 //! case-insensitive substrings.
 
+use super::lines::{LineError, parse_pairs};
 use super::words::is_unspaced_script;
 use regex::{NoExpand, Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
@@ -33,26 +34,16 @@ fn uses_word_boundaries(text: &str) -> bool {
 pub fn apply_replacements(text: &str, rules: &[WordReplacement]) -> String {
     let mut variants: Vec<(String, &str)> = rules
         .iter()
-        .flat_map(|r| {
-            parse_variants(&r.original)
-                .into_iter()
-                .map(move |v| (v, r.replacement.as_str()))
-        })
+        .flat_map(|r| parse_variants(&r.original).into_iter().map(move |v| (v, r.replacement.as_str())))
         .collect();
     // Longest first, then stable by case-folded key.
     variants.sort_by(|a, b| {
-        b.0.chars()
-            .count()
-            .cmp(&a.0.chars().count())
-            .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+        b.0.chars().count().cmp(&a.0.chars().count()).then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
     });
 
     let mut out = text.to_string();
     for (original, replacement) in variants {
-        let Ok(re) = RegexBuilder::new(&regex::escape(&original))
-            .case_insensitive(true)
-            .build()
-        else {
+        let Ok(re) = RegexBuilder::new(&regex::escape(&original)).case_insensitive(true).build() else {
             continue;
         };
         out = if uses_word_boundaries(&original) {
@@ -81,10 +72,7 @@ pub fn replace_phrase(text: &str, phrase: &str, replacement: &str) -> String {
     if phrase.is_empty() {
         return text.to_string();
     }
-    let Ok(re) = RegexBuilder::new(&regex::escape(phrase))
-        .case_insensitive(true)
-        .build()
-    else {
+    let Ok(re) = RegexBuilder::new(&regex::escape(phrase)).case_insensitive(true).build() else {
         return text.to_string();
     };
     if uses_word_boundaries(phrase) {
@@ -100,10 +88,7 @@ fn replace_bounded(text: &str, re: &Regex, replacement: &str) -> String {
     let mut last = 0;
     let mut search = 0;
     while let Some(m) = re.find_at(text, search) {
-        let before_ok = !text[..m.start()]
-            .chars()
-            .next_back()
-            .is_some_and(is_word_char);
+        let before_ok = !text[..m.start()].chars().next_back().is_some_and(is_word_char);
         let after_ok = !text[m.end()..].chars().next().is_some_and(is_word_char);
         if before_ok && after_ok && !m.is_empty() {
             out.push_str(&text[last..m.start()]);
@@ -126,32 +111,19 @@ fn replace_bounded(text: &str, re: &Regex, replacement: &str) -> String {
 }
 
 /// Parses `spoken -> written` lines (also accepts `=>` and `→`).
-pub fn parse_replacement_lines(text: &str) -> Result<Vec<WordReplacement>, String> {
-    let mut out = Vec::new();
-    for (n, line) in text.lines().enumerate() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let split = ["->", "=>", "→"]
-            .iter()
-            .find_map(|sep| line.split_once(sep));
-        let Some((original, replacement)) = split else {
-            return Err(format!(
-                "Replacement line {} needs \"spoken -> written\": {line}",
-                n + 1
-            ));
-        };
-        let (original, replacement) = (original.trim(), replacement.trim());
-        if original.is_empty() {
-            return Err(format!("Replacement line {} has nothing before ->", n + 1));
-        }
-        out.push(WordReplacement {
-            original: original.into(),
-            replacement: replacement.into(),
-        });
-    }
-    Ok(out)
+///
+/// # Errors
+/// Returns the first malformed line.
+pub fn parse_replacement_lines(text: &str) -> Result<Vec<WordReplacement>, LineError> {
+    Ok(parse_pairs(text, "spoken -> written")?
+        .into_iter()
+        .map(|(original, replacement)| WordReplacement { original, replacement })
+        .collect())
+}
+
+/// Inverse of [`parse_replacement_lines`].
+pub fn format_replacement_lines(rules: &[WordReplacement]) -> String {
+    rules.iter().map(|r| format!("{} -> {}", r.original, r.replacement)).collect::<Vec<_>>().join("\n")
 }
 
 #[cfg(test)]
@@ -159,10 +131,7 @@ mod tests {
     use super::*;
 
     fn rule(o: &str, r: &str) -> WordReplacement {
-        WordReplacement {
-            original: o.into(),
-            replacement: r.into(),
-        }
+        WordReplacement { original: o.into(), replacement: r.into() }
     }
 
     #[test]
@@ -183,10 +152,7 @@ mod tests {
     #[test]
     fn longer_variants_win() {
         let rules = [rule("new york", "NYC"), rule("new", "fresh")];
-        assert_eq!(
-            apply_replacements("new york is new", &rules),
-            "NYC is fresh"
-        );
+        assert_eq!(apply_replacements("new york is new", &rules), "NYC is fresh");
     }
 
     #[test]
@@ -197,10 +163,8 @@ mod tests {
 
     #[test]
     fn parses_replacement_lines() {
-        let r = parse_replacement_lines(
-            "voice ink, voice inc -> VoiceInk\n\n# comment\nk8s => Kubernetes\nai → AI",
-        )
-        .unwrap();
+        let r = parse_replacement_lines("voice ink, voice inc -> VoiceInk\n\n# comment\nk8s => Kubernetes\nai → AI")
+            .unwrap();
         assert_eq!(r.len(), 3);
         assert_eq!(r[0].original, "voice ink, voice inc");
         assert_eq!(r[0].replacement, "VoiceInk");
@@ -213,5 +177,11 @@ mod tests {
     fn replacement_is_literal() {
         let rules = [rule("price", "$1")];
         assert_eq!(apply_replacements("the price", &rules), "the $1");
+    }
+
+    #[test]
+    fn format_round_trips_through_parse() {
+        let rules = vec![rule("voice ink, voice inc", "VoiceInk"), rule("gh", "GitHub")];
+        assert_eq!(parse_replacement_lines(&format_replacement_lines(&rules)).unwrap(), rules);
     }
 }

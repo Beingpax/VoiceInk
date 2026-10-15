@@ -3,9 +3,9 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Wraps prompt-specific instructions with VoiceInk's transcription-editing rules.
+/// Wraps prompt-specific instructions with `VoiceInk`'s transcription-editing rules.
 /// `{TASK_INSTRUCTIONS}` is replaced with the prompt text.
-pub const ENHANCEMENT_SYSTEM_TEMPLATE: &str = r#"<SYSTEM_INSTRUCTIONS>
+pub const ENHANCEMENT_SYSTEM_TEMPLATE: &str = r"<SYSTEM_INSTRUCTIONS>
 <TASK>
 Clean the raw ASR text inside <TRANSCRIPT> according to <TASK_INSTRUCTIONS>.
 </TASK>
@@ -55,9 +55,9 @@ Output: The first invoice is $500, the second is $35, and the local fee is ₹30
 <OUTPUT_REQUIREMENTS>
 Return only the cleaned and polished text from <TRANSCRIPT>. Do not include explanations, answers, commentary, labels, tags, or metadata.
 </OUTPUT_REQUIREMENTS>
-</SYSTEM_INSTRUCTIONS>"#;
+</SYSTEM_INSTRUCTIONS>";
 
-const DEFAULT_PROMPT_TEXT: &str = r#"<TASK>
+const DEFAULT_PROMPT_TEXT: &str = r"<TASK>
 Clean <TRANSCRIPT> into polished, readable, general-purpose text.
 </TASK>
 
@@ -75,9 +75,9 @@ For the invoice folder, we need the following before Saturday:
 3. The spare batteries
 
 Please include the small change in your reply, since the rest of the arrangements are already set.
-</EXAMPLES>"#;
+</EXAMPLES>";
 
-const CHAT_PROMPT_TEXT: &str = r#"<TASK>
+const CHAT_PROMPT_TEXT: &str = r"<TASK>
 Rewrite <TRANSCRIPT> as an informal, concise, and conversational chat message.
 </TASK>
 
@@ -86,9 +86,9 @@ Rewrite <TRANSCRIPT> as an informal, concise, and conversational chat message.
 - Format lists only when distinct items are clear: number ordered steps or explicitly numbered items; otherwise use bullets. A count alone does not make a list.
 - Format like a modern chat message - short lines, natural breaks, emoji-friendly.
 - Do not add greetings or sign-offs.
-</RULES>"#;
+</RULES>";
 
-const EMAIL_PROMPT_TEXT: &str = r#"<TASK>
+const EMAIL_PROMPT_TEXT: &str = r"<TASK>
 Clean <TRANSCRIPT> into a polished, readable email.
 </TASK>
 
@@ -107,9 +107,9 @@ Please include the small change in your reply, since the rest of the arrangement
 
 Thanks,
 Alex
-</EXAMPLES>"#;
+</EXAMPLES>";
 
-const REWRITE_PROMPT_TEXT: &str = r#"<SYSTEM_INSTRUCTIONS>
+const REWRITE_PROMPT_TEXT: &str = r"<SYSTEM_INSTRUCTIONS>
 <TASK>
 Rewrite the user's text according to their request.
 </TASK>
@@ -128,7 +128,7 @@ Rewrite the user's text according to their request.
 <OUTPUT_REQUIREMENTS>
 - Return only the rewritten text in the requested format, without commentary or labels. If no source text is provided, output nothing.
 </OUTPUT_REQUIREMENTS>
-</SYSTEM_INSTRUCTIONS>"#;
+</SYSTEM_INSTRUCTIONS>";
 
 const ASSISTANT_PROMPT_TEXT: &str = r#"<SYSTEM_INSTRUCTIONS>
 <TASK>
@@ -165,6 +165,16 @@ fn default_true() -> bool {
 }
 
 impl CustomPrompt {
+    /// A fresh user prompt with placeholder instructions.
+    pub fn new_user_prompt() -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string().to_uppercase(),
+            title: "New prompt".into(),
+            prompt_text: "<TASK>\nDescribe how the transcript should be rewritten.\n</TASK>".into(),
+            use_system_instructions: true,
+        }
+    }
+
     /// Mirrors `CustomPrompt.finalPromptText`.
     pub fn final_prompt_text(&self) -> String {
         if self.use_system_instructions {
@@ -181,36 +191,11 @@ pub const ASSISTANT_PROMPT_ID: &str = "00000000-0000-0000-0000-000000000005";
 /// The built-in prompts seeded into a fresh configuration.
 pub fn seed_prompts() -> Vec<CustomPrompt> {
     [
-        (
-            "00000000-0000-0000-0000-000000000001",
-            "Default",
-            DEFAULT_PROMPT_TEXT,
-            true,
-        ),
-        (
-            "00000000-0000-0000-0000-000000000002",
-            "Chat",
-            CHAT_PROMPT_TEXT,
-            true,
-        ),
-        (
-            "00000000-0000-0000-0000-000000000003",
-            "Email",
-            EMAIL_PROMPT_TEXT,
-            true,
-        ),
-        (
-            "00000000-0000-0000-0000-000000000004",
-            "Rewrite",
-            REWRITE_PROMPT_TEXT,
-            false,
-        ),
-        (
-            "00000000-0000-0000-0000-000000000005",
-            "Assistant",
-            ASSISTANT_PROMPT_TEXT,
-            false,
-        ),
+        ("00000000-0000-0000-0000-000000000001", "Default", DEFAULT_PROMPT_TEXT, true),
+        ("00000000-0000-0000-0000-000000000002", "Chat", CHAT_PROMPT_TEXT, true),
+        ("00000000-0000-0000-0000-000000000003", "Email", EMAIL_PROMPT_TEXT, true),
+        ("00000000-0000-0000-0000-000000000004", "Rewrite", REWRITE_PROMPT_TEXT, false),
+        ("00000000-0000-0000-0000-000000000005", "Assistant", ASSISTANT_PROMPT_TEXT, false),
     ]
     .into_iter()
     .map(|(id, title, text, use_system)| CustomPrompt {
@@ -234,9 +219,7 @@ pub struct PromptContext<'a> {
 /// Builds the system message exactly like `AIEnhancementService.getSystemMessage`.
 pub fn build_system_message(prompt: &CustomPrompt, ctx: &PromptContext<'_>) -> String {
     fn block(tag: &str, value: Option<&str>) -> Option<String> {
-        value
-            .filter(|v| !v.trim().is_empty())
-            .map(|v| format!("<{tag}>\n{v}\n</{tag}>"))
+        value.filter(|v| !v.trim().is_empty()).map(|v| format!("<{tag}>\n{v}\n</{tag}>"))
     }
 
     let context_blocks: Vec<String> = [
@@ -248,12 +231,7 @@ pub fn build_system_message(prompt: &CustomPrompt, ctx: &PromptContext<'_>) -> S
     .flatten()
     .collect();
 
-    let vocabulary: Vec<&str> = ctx
-        .vocabulary
-        .iter()
-        .map(|w| w.trim())
-        .filter(|w| !w.is_empty())
-        .collect();
+    let vocabulary: Vec<&str> = ctx.vocabulary.iter().map(|w| w.trim()).filter(|w| !w.is_empty()).collect();
 
     let vocabulary_section = if vocabulary.is_empty() {
         String::new()
@@ -273,15 +251,11 @@ pub fn build_system_message(prompt: &CustomPrompt, ctx: &PromptContext<'_>) -> S
         )
     };
 
-    [
-        prompt.final_prompt_text(),
-        vocabulary_section,
-        context_section,
-    ]
-    .into_iter()
-    .filter(|s| !s.is_empty())
-    .collect::<Vec<_>>()
-    .join("\n\n")
+    [prompt.final_prompt_text(), vocabulary_section, context_section]
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 /// The user message that carries the transcript.
@@ -291,7 +265,7 @@ pub fn build_user_message(transcript: &str) -> String {
 
 /// System prompt for Command Mode: edit the selected text (or write new
 /// text) according to a spoken instruction, like Wispr Flow's Command Mode.
-pub const COMMAND_SYSTEM_PROMPT: &str = r#"<SYSTEM_INSTRUCTIONS>
+pub const COMMAND_SYSTEM_PROMPT: &str = r"<SYSTEM_INSTRUCTIONS>
 <TASK>
 You edit and write text for the user. <INSTRUCTION> is a spoken instruction transcribed by speech recognition.
 - If <SELECTED_TEXT> is present, apply the instruction to it and return the complete revised text.
@@ -309,7 +283,7 @@ You edit and write text for the user. <INSTRUCTION> is a spoken instruction tran
 <OUTPUT_REQUIREMENTS>
 Return only the resulting text that should replace the selection or be inserted at the cursor. No explanations, no quotes around the result, no labels, no markdown code fences unless the text itself is code that needs them.
 </OUTPUT_REQUIREMENTS>
-</SYSTEM_INSTRUCTIONS>"#;
+</SYSTEM_INSTRUCTIONS>";
 
 /// Builds the (system, user) messages for a Command Mode request.
 pub fn build_command_messages(
@@ -317,26 +291,20 @@ pub fn build_command_messages(
     selected_text: Option<&str>,
     vocabulary: &[String],
 ) -> (String, String) {
-    let mut system = COMMAND_SYSTEM_PROMPT.to_string();
-    let words: Vec<&str> = vocabulary
-        .iter()
-        .map(|w| w.trim())
-        .filter(|w| !w.is_empty())
-        .collect();
-    if !words.is_empty() {
-        system.push_str(&format!(
-            "\n\n# Custom Vocabulary\nUse these spellings for names and terms:\n<CUSTOM_VOCABULARY>\n{}\n</CUSTOM_VOCABULARY>",
+    let words: Vec<&str> = vocabulary.iter().map(|w| w.trim()).filter(|w| !w.is_empty()).collect();
+    let system = if words.is_empty() {
+        COMMAND_SYSTEM_PROMPT.to_string()
+    } else {
+        format!(
+            "{COMMAND_SYSTEM_PROMPT}\n\n# Custom Vocabulary\nUse these spellings for names and terms:\n<CUSTOM_VOCABULARY>\n{}\n</CUSTOM_VOCABULARY>",
             words.join(", ")
-        ));
-    }
-    let mut user = String::new();
-    if let Some(sel) = selected_text.filter(|s| !s.trim().is_empty()) {
-        user.push_str(&format!("<SELECTED_TEXT>\n{sel}\n</SELECTED_TEXT>\n\n"));
-    }
-    user.push_str(&format!(
-        "<INSTRUCTION>\n{}\n</INSTRUCTION>",
-        instruction.trim()
-    ));
+        )
+    };
+    let selection = selected_text
+        .filter(|s| !s.trim().is_empty())
+        .map(|s| format!("<SELECTED_TEXT>\n{s}\n</SELECTED_TEXT>\n\n"))
+        .unwrap_or_default();
+    let user = format!("{selection}<INSTRUCTION>\n{}\n</INSTRUCTION>", instruction.trim());
     (system, user)
 }
 
@@ -364,12 +332,8 @@ mod tests {
 
     #[test]
     fn system_message_includes_only_present_context() {
-        let prompt = CustomPrompt {
-            id: "x".into(),
-            title: "t".into(),
-            prompt_text: "P".into(),
-            use_system_instructions: false,
-        };
+        let prompt =
+            CustomPrompt { id: "x".into(), title: "t".into(), prompt_text: "P".into(), use_system_instructions: false };
         let vocab = vec!["VoiceInk".to_string(), " ".to_string()];
         let msg = build_system_message(
             &prompt,
@@ -409,13 +373,7 @@ mod tests {
             prompt_text: "Only this".into(),
             use_system_instructions: false,
         };
-        assert_eq!(
-            build_system_message(&prompt, &PromptContext::default()),
-            "Only this"
-        );
-        assert_eq!(
-            build_user_message("hi"),
-            "\n<TRANSCRIPT>\nhi\n</TRANSCRIPT>"
-        );
+        assert_eq!(build_system_message(&prompt, &PromptContext::default()), "Only this");
+        assert_eq!(build_user_message("hi"), "\n<TRANSCRIPT>\nhi\n</TRANSCRIPT>");
     }
 }

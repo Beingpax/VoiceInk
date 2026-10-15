@@ -4,9 +4,8 @@ use regex::{Regex, RegexBuilder};
 use std::sync::OnceLock;
 
 /// Same defaults as `FillerWordManager.defaultFillerWords`.
-pub const DEFAULT_FILLER_WORDS: &[&str] = &[
-    "uh", "um", "uhm", "umm", "uhh", "uhhh", "hmm", "hm", "mmm", "mm", "mh", "ehh",
-];
+pub const DEFAULT_FILLER_WORDS: &[&str] =
+    &["uh", "um", "uhm", "umm", "uhh", "uhhh", "hmm", "hm", "mmm", "mm", "mh", "ehh"];
 
 fn regex(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pattern).expect("static regex"))
@@ -24,7 +23,7 @@ fn remove_tag_blocks(text: &str) -> String {
         let Some(caps) = open.captures_at(text, pos) else {
             break;
         };
-        let whole = caps.get(0).unwrap();
+        let whole = caps.get_match();
         let closing = format!("</{}>", &caps[1]);
         if let Some(rel) = text[whole.end()..].find(&closing) {
             out.push_str(&text[pos..whole.start()]);
@@ -47,34 +46,23 @@ pub fn filter_transcription(text: &str, filler_words: &[String]) -> String {
     static SPACES: OnceLock<Regex> = OnceLock::new();
 
     let mut filtered = remove_tag_blocks(text);
-    filtered = regex(&BRACKETS, r"\[.*?\]|\(.*?\)|\{.*?\}")
-        .replace_all(&filtered, "")
-        .into_owned();
+    filtered = regex(&BRACKETS, r"\[.*?\]|\(.*?\)|\{.*?\}").replace_all(&filtered, "").into_owned();
 
-    for word in filler_words
-        .iter()
-        .map(|w| w.trim())
-        .filter(|w| !w.is_empty())
-    {
+    for word in filler_words.iter().map(|w| w.trim()).filter(|w| !w.is_empty()) {
         let pattern = format!(r"\b{}\b[,.]?", regex::escape(word));
         if let Ok(re) = RegexBuilder::new(&pattern).case_insensitive(true).build() {
             filtered = re.replace_all(&filtered, "").into_owned();
         }
     }
 
-    filtered = regex(&SPACES, r"\s{2,}")
-        .replace_all(&filtered, " ")
-        .into_owned();
+    filtered = regex(&SPACES, r"\s{2,}").replace_all(&filtered, " ").into_owned();
     filtered.trim().to_string()
 }
 
 /// Strips reasoning blocks that some LLMs emit before their answer.
 pub fn filter_enhancement_output(text: &str) -> String {
     static THINKING: OnceLock<Regex> = OnceLock::new();
-    let re = regex(
-        &THINKING,
-        r"(?s)<thinking>.*?</thinking>|<think>.*?</think>|<reasoning>.*?</reasoning>",
-    );
+    let re = regex(&THINKING, r"(?s)<thinking>.*?</thinking>|<think>.*?</think>|<reasoning>.*?</reasoning>");
     re.replace_all(text, "").trim().to_string()
 }
 
@@ -83,7 +71,7 @@ mod tests {
     use super::*;
 
     fn fillers() -> Vec<String> {
-        DEFAULT_FILLER_WORDS.iter().map(|s| s.to_string()).collect()
+        DEFAULT_FILLER_WORDS.iter().map(ToString::to_string).collect()
     }
 
     #[test]
@@ -101,21 +89,12 @@ mod tests {
 
     #[test]
     fn filler_words_respect_word_boundaries() {
-        assert_eq!(
-            filter_transcription("umbrella hum", &fillers()),
-            "umbrella hum"
-        );
+        assert_eq!(filter_transcription("umbrella hum", &fillers()), "umbrella hum");
     }
 
     #[test]
     fn strips_think_blocks() {
-        assert_eq!(
-            filter_enhancement_output("<think>\nplan\n</think>\n Final "),
-            "Final"
-        );
-        assert_eq!(
-            filter_enhancement_output("<reasoning>r</reasoning>A<thinking>t</thinking>"),
-            "A"
-        );
+        assert_eq!(filter_enhancement_output("<think>\nplan\n</think>\n Final "), "Final");
+        assert_eq!(filter_enhancement_output("<reasoning>r</reasoning>A<thinking>t</thinking>"), "A");
     }
 }

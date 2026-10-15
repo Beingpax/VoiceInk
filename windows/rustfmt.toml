@@ -1,0 +1,5 @@
+# Shared formatting for `cargo fmt` (run before every commit).
+edition = "2024"
+style_edition = "2024"
+max_width = 120
+use_small_heuristics = "Max"

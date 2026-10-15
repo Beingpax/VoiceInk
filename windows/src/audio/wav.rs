@@ -1,7 +1,16 @@
 //! Minimal RIFF/WAVE reader and writer.
 
-use super::convert::{downmix_to_mono, resample, SampleFormat};
+// Signal processing on bounded sample counts and rates: the float/int
+// conversions in this module are intentional and range-checked by design.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss
+)]
+
 use super::TARGET_SAMPLE_RATE;
+use super::convert::{SampleFormat, downmix_to_mono, resample};
 
 /// Encodes mono `f32` samples as a 16-bit PCM WAV file.
 pub fn encode_wav_i16(samples: &[f32], sample_rate: u32) -> Vec<u8> {
@@ -27,72 +36,115 @@ pub fn encode_wav_i16(samples: &[f32], sample_rate: u32) -> Vec<u8> {
     out
 }
 
+const WAVE_FORMAT_PCM: u16 = 1;
+const WAVE_FORMAT_IEEE_FLOAT: u16 = 3;
+const WAVE_FORMAT_EXTENSIBLE: u16 = 0xFFFE;
+const RIFF_HEADER_LEN: usize = 12;
+const CHUNK_HEADER_LEN: usize = 8;
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum WavError {
+    #[error("not a RIFF/WAVE file")]
+    NotWave,
+    #[error("the WAV data chunk comes before its format chunk")]
+    MissingFormat,
+    #[error("the WAV file has no data chunk")]
+    MissingData,
+    #[error("unsupported WAV encoding (format {format}, {bits} bits)")]
+    Unsupported { format: u16, bits: u16 },
+}
+
 #[derive(Debug)]
 pub struct DecodedWav {
     pub sample_rate: u32,
     pub samples: Vec<f32>,
 }
 
-/// Decodes PCM (8/16/24/32-bit) or IEEE-float WAV data to mono `f32`.
-pub fn decode_wav(bytes: &[u8]) -> Result<DecodedWav, String> {
-    if bytes.len() < 12 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
-        return Err("not a RIFF/WAVE file".into());
+/// The parts of a `fmt ` chunk we need.
+#[derive(Debug, Clone, Copy)]
+struct FormatChunk {
+    format: u16,
+    channels: u16,
+    sample_rate: u32,
+    bits: u16,
+}
+
+fn u16_at(b: &[u8], i: usize) -> u16 {
+    u16::from_le_bytes([b[i], b[i + 1]])
+}
+
+fn u32_at(b: &[u8], i: usize) -> u32 {
+    u32::from_le_bytes([b[i], b[i + 1], b[i + 2], b[i + 3]])
+}
+
+impl FormatChunk {
+    fn parse(body: &[u8]) -> Option<Self> {
+        if body.len() < 16 {
+            return None;
+        }
+        let mut format = u16_at(body, 0);
+        // WAVE_FORMAT_EXTENSIBLE stores the real format in the sub-format GUID.
+        if format == WAVE_FORMAT_EXTENSIBLE && body.len() >= 26 {
+            format = u16_at(body, 24);
+        }
+        Some(Self { format, channels: u16_at(body, 2), sample_rate: u32_at(body, 4), bits: u16_at(body, 14) })
     }
-    let mut pos = 12;
-    let mut fmt: Option<(u16, u16, u32, u16)> = None;
-    while pos + 8 <= bytes.len() {
+
+    fn decode(self, data: &[u8]) -> Result<Vec<f32>, WavError> {
+        let channels = usize::from(self.channels.max(1));
+        let format = match (self.format, self.bits) {
+            (WAVE_FORMAT_PCM, 8) => return Ok(decode_u8(data, channels)),
+            (WAVE_FORMAT_PCM, 16) => SampleFormat::I16,
+            (WAVE_FORMAT_PCM, 24) => SampleFormat::I24,
+            (WAVE_FORMAT_PCM, 32) => SampleFormat::I32,
+            (WAVE_FORMAT_IEEE_FLOAT, 32) => SampleFormat::F32,
+            (format, bits) => return Err(WavError::Unsupported { format, bits }),
+        };
+        Ok(downmix_to_mono(data, format, channels))
+    }
+}
+
+/// 8-bit WAV is unsigned with a 128 midpoint.
+fn decode_u8(data: &[u8], channels: usize) -> Vec<f32> {
+    data.chunks_exact(channels)
+        .map(|frame| frame.iter().map(|&b| (f32::from(b) - 128.0) / 128.0).sum::<f32>() / frame.len() as f32)
+        .collect()
+}
+
+/// Decodes PCM (8/16/24/32-bit) or IEEE-float WAV data to mono `f32`.
+///
+/// # Errors
+/// Returns [`WavError`] for non-WAV data and unsupported encodings.
+pub fn decode_wav(bytes: &[u8]) -> Result<DecodedWav, WavError> {
+    if bytes.len() < RIFF_HEADER_LEN || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
+        return Err(WavError::NotWave);
+    }
+    let mut pos = RIFF_HEADER_LEN;
+    let mut format = None;
+    while pos + CHUNK_HEADER_LEN <= bytes.len() {
         let id = &bytes[pos..pos + 4];
-        let len = u32::from_le_bytes(bytes[pos + 4..pos + 8].try_into().unwrap()) as usize;
-        let body_start = pos + 8;
-        let body_end = (body_start + len).min(bytes.len());
-        let body = &bytes[body_start..body_end];
+        let len = u32_at(bytes, pos + 4) as usize;
+        let body_start = pos + CHUNK_HEADER_LEN;
+        let body = &bytes[body_start..(body_start + len).min(bytes.len())];
         match id {
-            b"fmt " if body.len() >= 16 => {
-                let mut tag = u16::from_le_bytes([body[0], body[1]]);
-                let channels = u16::from_le_bytes([body[2], body[3]]);
-                let rate = u32::from_le_bytes(body[4..8].try_into().unwrap());
-                let bits = u16::from_le_bytes([body[14], body[15]]);
-                if tag == 0xFFFE && body.len() >= 26 {
-                    tag = u16::from_le_bytes([body[24], body[25]]);
-                }
-                fmt = Some((tag, channels, rate, bits));
-            }
+            b"fmt " => format = FormatChunk::parse(body),
             b"data" => {
-                let (tag, channels, rate, bits) = fmt.ok_or("data chunk before fmt chunk")?;
-                let samples = match (tag, bits) {
-                    (1, 8) => {
-                        let ch = channels.max(1) as usize;
-                        body.chunks_exact(ch)
-                            .map(|f| {
-                                f.iter().map(|&b| (b as f32 - 128.0) / 128.0).sum::<f32>()
-                                    / ch as f32
-                            })
-                            .collect()
-                    }
-                    (1, 16) => downmix_to_mono(body, SampleFormat::I16, channels as usize),
-                    (1, 24) => downmix_to_mono(body, SampleFormat::I24, channels as usize),
-                    (1, 32) => downmix_to_mono(body, SampleFormat::I32, channels as usize),
-                    (3, 32) => downmix_to_mono(body, SampleFormat::F32, channels as usize),
-                    _ => {
-                        return Err(format!(
-                            "unsupported WAV encoding (format {tag}, {bits} bits)"
-                        ))
-                    }
-                };
-                return Ok(DecodedWav {
-                    sample_rate: rate,
-                    samples,
-                });
+                let format = format.ok_or(WavError::MissingFormat)?;
+                return Ok(DecodedWav { sample_rate: format.sample_rate, samples: format.decode(body)? });
             }
             _ => {}
         }
+        // Chunks are padded to an even length.
         pos = body_start + len + (len & 1);
     }
-    Err("WAV file has no data chunk".into())
+    Err(WavError::MissingData)
 }
 
 /// Loads any supported WAV and converts it to 16 kHz mono.
-pub fn load_wav_16k(bytes: &[u8]) -> Result<Vec<f32>, String> {
+///
+/// # Errors
+/// See [`decode_wav`].
+pub fn load_wav_16k(bytes: &[u8]) -> Result<Vec<f32>, WavError> {
     let wav = decode_wav(bytes)?;
     Ok(resample(&wav.samples, wav.sample_rate, TARGET_SAMPLE_RATE))
 }
@@ -115,6 +167,9 @@ mod tests {
 
     #[test]
     fn rejects_garbage() {
-        assert!(decode_wav(b"nope").is_err());
+        assert_eq!(decode_wav(b"nope").unwrap_err(), WavError::NotWave);
+        let mut no_data = encode_wav_i16(&[], 16_000);
+        no_data.truncate(36);
+        assert_eq!(decode_wav(&no_data).unwrap_err(), WavError::MissingData);
     }
 }
