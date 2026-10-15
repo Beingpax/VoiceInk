@@ -10,11 +10,12 @@ use super::super::icon::IconState;
 use super::super::overlay::{Overlay, View};
 use super::super::sound::{self, Cue};
 use super::super::tray::{Menu, NoticeKind, Tray};
-use super::super::{actions, autostart, clipboard, foreground, hotkey, paste, settings, volume};
+use super::super::{actions, autostart, clipboard, foreground, hotkey, paste, volume};
 use super::config_file::ConfigFile;
 use super::delivery;
 use super::events::{JobId, Notice, SendHwnd, UiEvent, UiSender};
 use super::menu::{self, MenuAction, MenuState};
+use super::ui_link::UiLink;
 use crate::APP_VERSION;
 use crate::config::SettingChange;
 use crate::context::AppContext;
@@ -37,14 +38,6 @@ const MUTE_DELAY_MS: u32 = 250;
 const COMMAND_SELECTION_WAIT: Duration = Duration::from_millis(600);
 const CONTEXT_SELECTION_WAIT: Duration = Duration::from_millis(50);
 const ERROR_BANNER: Duration = Duration::from_secs(3);
-
-/// Work that must run after the app borrow is released, because it pumps
-/// messages (opening a window) or destroys the window that owns the app.
-#[derive(Debug, Clone, Copy)]
-pub enum Followup {
-    OpenSettings(SettingsPage),
-    Quit,
-}
 
 struct Recording {
     recorder: Recorder,
@@ -86,6 +79,8 @@ pub struct App {
     last_external: HWND,
     events: UiSender,
     inbox: Receiver<UiEvent>,
+    /// The Dashboard & Settings window.
+    ui: UiLink,
 }
 
 impl App {
@@ -109,11 +104,12 @@ impl App {
             last_external: HWND::default(),
             events,
             inbox,
+            ui: UiLink::default(),
         }
     }
 
-    pub fn context(&self) -> &AppContext {
-        &self.ctx
+    pub fn ui(&mut self) -> &mut UiLink {
+        &mut self.ui
     }
 
     // -- configuration ------------------------------------------------------
@@ -448,7 +444,7 @@ impl App {
     }
 
     fn on_finished(&mut self, id: JobId, output: crate::pipeline::PipelineOutput) {
-        settings::history_changed();
+        self.ui.history_changed();
         // A canceled (or superseded) job's result is dropped.
         if !self.current_job(id) {
             return;
@@ -504,7 +500,7 @@ impl App {
         })
     }
 
-    pub fn on_menu(&mut self, action: MenuAction) -> Option<Followup> {
+    pub fn on_menu(&mut self, action: MenuAction) {
         match action {
             MenuAction::ToggleRecording => match self.state {
                 State::Idle => self.start_recording(TriggerKind::Dictation, false),
@@ -512,7 +508,7 @@ impl App {
                 State::Processing(_) => self.cancel_job(),
             },
             MenuAction::PasteLast => self.paste_last(),
-            MenuAction::OpenSettings(page) => return Some(Followup::OpenSettings(page)),
+            MenuAction::OpenSettings(page) => self.ui.open_settings(page),
             MenuAction::Setting(change) => {
                 self.change_setting(&change);
                 if let Some(key) = change.required_key(self.config.get()).filter(|key| !self.ctx.secrets.has(key)) {
@@ -522,7 +518,7 @@ impl App {
                     } else {
                         SettingsPage::Enhancement
                     };
-                    return Some(Followup::OpenSettings(page));
+                    self.ui.open_settings(page);
                 }
             }
             MenuAction::ToggleAutostart => {
@@ -545,10 +541,9 @@ impl App {
                 "Voice to text in any app. Press your shortcut, speak, and the text is pasted where your cursor is.",
                 NoticeKind::Info,
             )),
-            MenuAction::Quit => return Some(Followup::Quit),
+            MenuAction::Quit => self.ui.quit(),
         }
         self.refresh_tray();
-        None
     }
 
     /// Stops everything before the window goes away.

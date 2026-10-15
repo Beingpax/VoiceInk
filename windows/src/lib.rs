@@ -12,6 +12,7 @@
 //!   [`history`], [`http`], [`audio`].
 //! * **UI / OS** — `platform` (Windows only): capture, hooks, tray, windows.
 
+pub mod artwork;
 pub mod audio;
 pub mod config;
 pub mod context;
@@ -28,6 +29,7 @@ pub mod settings_page;
 pub mod stats;
 pub mod text;
 pub mod transcription;
+pub mod ui;
 
 #[cfg(windows)]
 pub mod platform;

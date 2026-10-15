@@ -1,7 +1,8 @@
 # VoiceInk for Windows (Rust)
 
 A native Windows port of VoiceInk written in Rust on top of Microsoft's
-[`windows`](https://crates.io/crates/windows) crate. You press a shortcut, speak,
+[`windows`](https://crates.io/crates/windows) crate, with the Dashboard &
+Settings window built in [iced](https://iced.rs). You press a shortcut, speak,
 and the transcript (optionally cleaned up by an LLM) is pasted wherever your
 cursor is. It runs from the notification area, like the macOS menu-bar app.
 
@@ -27,7 +28,7 @@ cursor is. It runs from the notification area, like the macOS menu-bar app.
 | History | `history.jsonl`, CSV export, "Paste last transcription" shortcut |
 | — (new, inspired by Wispr Flow) | **Command Mode**: select text, press `Ctrl+Shift+Space` and say what to do with it ("make this more formal", "translate to German"). The AI result replaces the selection; with nothing selected, it writes new text at the cursor |
 | — (new) | **Snippets**: say a trigger phrase ("my calendar link") to insert saved text, with `{date}`, `{time}` and `{datetime}` placeholders |
-| Dashboard & Settings | Native window: stats (words, time saved, WPM, streak), a 14-day chart, top apps and recent transcriptions, plus settings pages for General, Transcription, AI Enhancement, Prompts (editor), Dictionary, Output and History |
+| Dashboard & Settings | An iced window: stats (words, time saved, WPM, streak), a 14-day chart, top apps and recent transcriptions, plus pages for General, Transcription, AI Enhancement, Prompts (editor), Dictionary, Snippets, Command Mode, Output and History |
 | Launch at login | `HKCU\…\Run` |
 
 Not ported (they depend on Apple frameworks or macOS-only infrastructure):
@@ -48,13 +49,23 @@ The tray icon is blue when idle, red while recording and amber while processing.
 
 ## Build
 
-Requirements: Rust 1.80+ (stable) and the MSVC toolchain (Visual Studio Build Tools).
+Requirements: Rust 1.88+ (stable) and the MSVC toolchain (Visual Studio Build Tools).
 
 ```powershell
 cd windows
 cargo build --release          # target\release\voiceink.exe
-cargo test                     # tests for the platform-independent core
+cargo test                     # core and settings-UI tests (any OS)
 ```
+
+The settings window renders with the GPU (wgpu) and falls back to a software
+renderer when no adapter is available. To force the software renderer, set
+`ICED_BACKEND=tiny-skia`. Segoe UI is used when installed, otherwise the
+bundled Fira Sans.
+
+The settings UI also runs on Linux/macOS for development:
+`cargo run -- settings` opens it standalone (on Linux it needs X11 and
+`libxkbcommon-x11`). To render every page to PNG without a display, run
+`VOICEINK_SCREENSHOTS=/tmp/shots cargo test render_screenshots -- --ignored`.
 
 Offline transcription with whisper.cpp needs CMake and a C++ compiler:
 
@@ -160,6 +171,9 @@ src/
 ├── paths.rs              data directory layout (%APPDATA%\VoiceInk, or VOICEINK_HOME)
 ├── config/               typed settings, provider catalog, SettingChange (tray menu edits)
 ├── settings_page.rs      the pages of the settings window (shared by CLI and UI)
+├── ui/                   Dashboard & Settings in iced (portable): daemon (event loop,
+│                         window, requests), settings/ (one module per page), style
+├── artwork.rs            the microphone icon, drawn in code (tray + window icon)
 ├── input/                hotkey parsing, press/release state machine, RecordingPolicy
 ├── pipeline/             transcribe → filter → format → replace → snippets → enhance; Command Mode
 ├── transcription/        Transcriber trait + OpenAI-compatible, Deepgram, ElevenLabs, local whisper.cpp
@@ -168,10 +182,9 @@ src/
 ├── history.rs            HistoryStore (JSON Lines), CSV export
 ├── text/, audio/, prompts.rs, modes.rs, stats.rs, http.rs
 └── platform/             Win32 via the `windows` crate (Windows only)
-    ├── app/              tray app: window + message loop, controller (state machine),
-    │                     menu (MenuAction registry), delivery, events, config_file
-    ├── settings/         Dashboard & Settings: one type per page behind the Page trait,
-    │                     typed control wrappers, stats panel
+    ├── app/              tray app: hidden window, controller (state machine), menu
+    │                     (MenuAction registry), delivery, events, config_file, ui_link
+    ├── desktop.rs        Desktop/Host implementations connecting the iced UI to Win32
     ├── capture.rs        WASAPI microphone capture
     ├── hotkey.rs         low-level keyboard/mouse hooks feeding input::ShortcutSet
     ├── paste.rs, clipboard.rs, foreground.rs   SendInput, clipboard, focus
@@ -179,9 +192,13 @@ src/
     └── com.rs, error.rs, sound.rs, volume.rs, autostart.rs, actions.rs
 ```
 
-UI work happens on the main thread. Recording, transcription and pasting run
-on worker threads, which report back through a channel (`app::events`) and a
-`PostMessageW` wake-up. Coding standards are in
+The main thread runs iced's event loop for the whole process (as an iced
+*daemon*, which shows a window only on request). It also pumps the messages of
+the hidden tray window, the keyboard hooks and the recorder overlay, which stay
+native Win32. The tray app talks to the UI through a `UiHandle` (open a page,
+history changed, quit); the UI calls back through the `Host` trait (settings
+saved, quit). Recording, transcription and pasting run on worker threads, which
+report back through a channel (`app::events`) and a `PostMessageW` wake-up. Coding standards are in
 [CONTRIBUTING-windows.md](CONTRIBUTING-windows.md).
 
 ## Notes

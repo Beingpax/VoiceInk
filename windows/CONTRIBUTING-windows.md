@@ -25,18 +25,35 @@ The lint policy lives in `Cargo.toml` (`[lints]`): `clippy::pedantic`,
   objects; API keys come from `credentials::SecretStore`. Tests substitute
   fakes (`MemoryStore`, fake services, `http::test_server`).
 - **One composition root.** `context::AppContext` builds the long-lived
-  services once and is passed down. No global mutable state; per-window state
-  lives in a `thread_local!` on the UI thread and is reached through
-  `with_app` / `with_window`, which tolerate re-entrancy from nested message
-  loops.
-- **One responsibility per type.** E.g. the tray app is split into window /
-  message loop (`app/mod.rs`), state machine (`controller`), menu
-  (`menu`), delivery and events; each settings page is its own type behind
-  the `Page` trait.
-- **Workers talk to the UI through `app::events::UiSender`** (a channel plus a
-  `PostMessageW` wake-up), never through shared mutable globals.
-- **Work that pumps messages or destroys the window** (opening a window,
-  quitting) runs outside the app borrow, returned as a `Followup`.
+  services once and is passed down. No global mutable state; the tray app's
+  state lives in a `thread_local!` on the UI thread and is reached through
+  `with_app`, which tolerates re-entrancy from nested message loops (menus).
+- **One responsibility per type.** E.g. the tray app is split into window
+  procedure (`app/mod.rs`), state machine (`controller`), menu (`menu`),
+  delivery, events and the link to the UI (`ui_link`); each settings page is
+  its own module with `new` / `update` / `view` / `apply`.
+- **Workers talk to the tray app through `app::events::UiSender`** (a channel
+  plus a `PostMessageW` wake-up), never through shared mutable globals.
+
+## The iced UI (`src/ui`)
+
+- **Portable.** The UI depends only on the core and two traits: `Desktop`
+  (microphones, clipboard, opening files, font) and `Host` (settings saved,
+  quit). `platform::desktop` implements them for Windows; tests use fakes.
+- **The Elm architecture.** Each page keeps only what needs validating
+  (text typed into number or shortcut fields, editor contents); toggles and
+  choices write straight into the window's working `Config`. A page's
+  `apply` validates its fields and writes them back when the user saves; an
+  error names the field and switches to its page.
+- **One event loop.** iced runs as a daemon on the main thread for the
+  process lifetime. The tray app sends `UiRequest`s through a `UiHandle`
+  (requests made before the UI connects are queued in `UiLink`). Quitting
+  always goes through the UI: it calls `Host::quit` (which destroys the Win32
+  window) and then ends the loop.
+- **Tests.** Drive the window with its `Message`s against a temporary data
+  folder, and render it headlessly with `iced_test` (click a button by its
+  label, check the produced messages). Long editors need a fixed height, as
+  pages scroll.
 
 ## Rust practices
 
@@ -55,7 +72,7 @@ The lint policy lives in `Cargo.toml` (`[lints]`): `clippy::pedantic`,
   numeric conversion (audio DSP, statistics, Win32 pixel math) allow the cast
   lints at module level with a comment explaining why.
 - **Names over magic numbers:** constants for timings, sizes and ids; enums
-  such as `SettingsPage`, `MenuAction`, `SettingChange` instead of integer
+  such as `SettingsPage`, `MenuAction`, `SettingChange`, `UiRequest` instead of integer
   ranges.
 - **Tests** sit next to the code (`#[cfg(test)] mod tests`) and cover
   behaviour, not implementation details.

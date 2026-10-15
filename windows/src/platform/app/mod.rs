@@ -8,29 +8,34 @@
 //! * [`delivery`] — pasting / custom commands on worker threads.
 //! * [`events`] — worker → UI thread messages.
 //! * [`config_file`] — the settings file and its reloading.
+//! * [`ui_link`] — requests to the iced Dashboard & Settings window.
 //!
-//! Everything UI-related runs on the main thread; transcription, enhancement
-//! and pasting run on worker threads that report back through [`events`].
+//! The main thread runs iced's event loop ([`crate::ui::run`]), which also
+//! pumps the messages of the hidden app window, the keyboard hooks and the
+//! overlay. Transcription, enhancement and pasting run on worker threads that
+//! report back through [`events`].
 
 mod config_file;
 mod controller;
 mod delivery;
 mod events;
 mod menu;
+mod ui_link;
 
 use super::com::ComGuard;
-use super::error::{Context, Result};
+use super::desktop::{TrayHost, WM_SETTINGS_SAVED, WindowsDesktop};
+use super::error::{Context, Error, Result};
 use super::hotkey::{self, WM_HOTKEY_EVENT};
 use super::overlay::{Overlay, WM_OVERLAY_CLICKED};
-use super::settings::{self, WM_SETTINGS_SAVED};
-use super::tray::{NIN_KEYSELECT, NIN_SELECT, NoticeKind, WM_TRAY};
+use super::tray::{NIN_KEYSELECT, NIN_SELECT, WM_TRAY};
 use crate::context::AppContext;
 use crate::input::HotkeyEvent;
 use crate::settings_page::SettingsPage;
 use config_file::ConfigFile;
-use controller::{App, Followup, MUTE_TIMER};
-use events::{Notice, WM_UI_EVENT};
+use controller::{App, MUTE_TIMER};
+use events::WM_UI_EVENT;
 use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use windows::Win32::Foundation::{
     CloseHandle, ERROR_ALREADY_EXISTS, GetLastError, HANDLE, HWND, LPARAM, LRESULT, WPARAM,
@@ -40,10 +45,9 @@ use windows::Win32::System::Threading::CreateMutexW;
 use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext};
 use windows::Win32::UI::WindowsAndMessaging::{
-    ASFW_ANY, AllowSetForegroundWindow, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    EVENT_SYSTEM_FOREGROUND, FindWindowW, GetMessageW, IsDialogMessageW, KillTimer, MSG, PostMessageW, PostQuitMessage,
-    RegisterClassW, RegisterWindowMessageW, SetTimer, TranslateMessage, WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT, WM_APP,
-    WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_TIMER, WNDCLASSW, WS_OVERLAPPED,
+    ASFW_ANY, AllowSetForegroundWindow, CreateWindowExW, DefWindowProcW, EVENT_SYSTEM_FOREGROUND, FindWindowW,
+    KillTimer, PostMessageW, RegisterClassW, RegisterWindowMessageW, SetTimer, WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT,
+    WM_APP, WM_CLOSE, WM_CONTEXTMENU, WM_DESTROY, WM_TIMER, WNDCLASSW, WS_OVERLAPPED,
 };
 use windows::core::{PCWSTR, w};
 
@@ -69,24 +73,8 @@ fn with_app<R>(f: impl FnOnce(&mut App) -> R) -> Option<R> {
     APP.with(|app| app.try_borrow_mut().ok()?.as_mut().map(f))
 }
 
-fn notify(notice: &Notice) {
-    with_app(|app| app.notify(notice));
-}
-
-fn open_settings(hwnd: HWND, page: SettingsPage) {
-    let Some(ctx) = with_app(|app| app.context().clone()) else { return };
-    if let Err(e) = settings::open(hwnd, &ctx, page) {
-        notify(&Notice::new("Could not open settings", e.to_string(), NoticeKind::Error));
-    }
-}
-
-fn run_followup(hwnd: HWND, followup: Option<Followup>) {
-    match followup {
-        Some(Followup::OpenSettings(page)) => open_settings(hwnd, page),
-        // SAFETY: our own window; WM_DESTROY takes the app down.
-        Some(Followup::Quit) => drop(unsafe { DestroyWindow(hwnd) }),
-        None => {}
-    }
+fn open_settings(page: SettingsPage) {
+    with_app(|app| app.ui().open_settings(page));
 }
 
 fn show_tray_menu(hwnd: HWND) {
@@ -95,7 +83,7 @@ fn show_tray_menu(hwnd: HWND) {
     let chosen = menu.track(hwnd);
     drop(menu);
     if let Some(action) = items.take(chosen) {
-        run_followup(hwnd, with_app(|app| app.on_menu(action)).flatten());
+        with_app(|app| app.on_menu(action));
     }
 }
 
@@ -133,7 +121,7 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
         WM_TIMER if wparam.0 == MUTE_TIMER => {
             with_app(App::mute_timer_elapsed);
         }
-        WM_OPEN_SETTINGS => open_settings(hwnd, SettingsPage::from_index(wparam.0).unwrap_or(SettingsPage::Dashboard)),
+        WM_OPEN_SETTINGS => open_settings(SettingsPage::from_index(wparam.0).unwrap_or(SettingsPage::Dashboard)),
         WM_SETTINGS_SAVED => {
             with_app(|app| app.reload_config(true, false));
         }
@@ -143,22 +131,21 @@ unsafe extern "system" fn wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam:
         WM_TRAY => {
             // NOTIFYICON_VERSION_4: the event is LOWORD(lParam).
             match (lparam.0 & 0xFFFF) as u32 {
-                NIN_SELECT | NIN_KEYSELECT => open_settings(hwnd, SettingsPage::Dashboard),
+                NIN_SELECT | NIN_KEYSELECT => open_settings(SettingsPage::Dashboard),
                 WM_CONTEXTMENU => show_tray_menu(hwnd),
                 _ => {}
             }
         }
+        // Quitting goes through the UI, which ends the event loop and then
+        // destroys this window (see `TrayHost::quit`).
         WM_CLOSE => {
-            // SAFETY: our own window.
-            let _ = unsafe { DestroyWindow(hwnd) };
+            with_app(|app| app.ui().quit());
         }
         WM_DESTROY => {
             hotkey::uninstall();
             if let Some(mut app) = APP.with(|app| app.try_borrow_mut().ok().and_then(|mut a| a.take())) {
                 app.shutdown();
             }
-            // SAFETY: ends this thread's message loop.
-            unsafe { PostQuitMessage(0) };
         }
         m if m != 0 && m == TASKBAR_CREATED.load(Ordering::Relaxed) => {
             with_app(App::restore_tray_icon);
@@ -267,23 +254,6 @@ fn create_main_window() -> Result<HWND> {
     }
 }
 
-fn message_loop() {
-    let mut msg = MSG::default();
-    // SAFETY: the standard message loop on the thread that owns the windows.
-    unsafe {
-        while GetMessageW(&raw mut msg, None, 0, 0).as_bool() {
-            // Tab / Enter / Esc navigation inside the settings window.
-            if let Some(dialog) = settings::dialog_hwnd()
-                && IsDialogMessageW(dialog, &raw const msg).as_bool()
-            {
-                continue;
-            }
-            let _ = TranslateMessage(&raw const msg);
-            DispatchMessageW(&raw const msg);
-        }
-    }
-}
-
 /// Runs the tray app until the user quits; `open_page` shows the dashboard
 /// or settings right away.
 ///
@@ -314,8 +284,13 @@ pub fn run(ctx: &AppContext, open_page: Option<SettingsPage>) -> Result<()> {
     });
     log::info!("ready; settings at {}", ctx.paths.config().display());
     if let Some(page) = open_page {
-        open_settings(hwnd, page);
+        open_settings(page);
     }
-    message_loop();
-    Ok(())
+    let on_connected = Box::new(|handle| {
+        with_app(|app| app.ui().connect(handle));
+    });
+    let host = TrayHost { window: hwnd, on_connected };
+    let launch = crate::ui::Launch { page: None, exit_on_close: false };
+    crate::ui::run(ctx.clone(), Rc::new(WindowsDesktop), Rc::new(host), launch)
+        .map_err(|e| Error::Message(format!("the user interface failed: {e}")))
 }

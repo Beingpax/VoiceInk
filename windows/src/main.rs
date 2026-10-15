@@ -13,16 +13,23 @@ use voiceink::settings_page::SettingsPage;
 const MAX_LOG_BYTES: u64 = 2 * 1024 * 1024;
 
 fn init_logging(ctx: &AppContext) {
-    use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
+    use simplelog::{CombinedLogger, ConfigBuilder, LevelFilter, WriteLogger};
     let path = ctx.paths.log();
     let _ = std::fs::create_dir_all(ctx.paths.root());
     if std::fs::metadata(&path).is_ok_and(|m| m.len() > MAX_LOG_BYTES) {
         let _ = std::fs::remove_file(&path);
     }
     // Append, so a second instance (which exits immediately) keeps the log.
-    if let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
-        let config = ConfigBuilder::new().set_time_format_rfc3339().build();
-        let _ = WriteLogger::init(LevelFilter::Info, config, file);
+    let open = || std::fs::OpenOptions::new().create(true).append(true).open(&path);
+    if let (Ok(ours), Ok(libraries)) = (open(), open()) {
+        // Our own messages from Info up; only problems from the UI and
+        // graphics libraries, which are chatty at Info.
+        let ours_config = ConfigBuilder::new().set_time_format_rfc3339().add_filter_allow_str("voiceink").build();
+        let libraries_config = ConfigBuilder::new().set_time_format_rfc3339().add_filter_ignore_str("voiceink").build();
+        let _ = CombinedLogger::init(vec![
+            WriteLogger::new(LevelFilter::Info, ours_config, ours),
+            WriteLogger::new(LevelFilter::Warn, libraries_config, libraries),
+        ]);
     }
 }
 
@@ -71,9 +78,23 @@ fn run_app(ctx: &AppContext, page: Option<SettingsPage>) -> ExitCode {
     }
 }
 
+/// Elsewhere the tray app is unavailable, but `voiceink settings` /
+/// `voiceink dashboard` open the (portable) settings window on its own.
 #[cfg(not(windows))]
-fn run_app(ctx: &AppContext, _page: Option<SettingsPage>) -> ExitCode {
+fn run_app(ctx: &AppContext, page: Option<SettingsPage>) -> ExitCode {
+    use std::rc::Rc;
+    use voiceink::ui::{BasicDesktop, Launch, NoHost};
     init_logging(ctx);
-    eprintln!("The VoiceInk desktop app only runs on Windows. CLI commands work everywhere:\n\n{}", cli::HELP);
-    ExitCode::from(2)
+    let Some(page) = page else {
+        eprintln!("The VoiceInk tray app only runs on Windows. CLI commands work everywhere:\n\n{}", cli::HELP);
+        return ExitCode::from(2);
+    };
+    let launch = Launch { page: Some(page), exit_on_close: true };
+    match voiceink::ui::run(ctx.clone(), Rc::new(BasicDesktop), Rc::new(NoHost), launch) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
 }

@@ -21,6 +21,9 @@ default = []
 # Offline transcription with whisper.cpp (needs CMake + a C++ toolchain at build time).
 local-whisper = ["dep:whisper-rs"]
 
+[dev-dependencies]
+iced_test = "0.14"
+
 [build-dependencies]
 embed-resource = "3"
 
@@ -35,6 +38,12 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 log = "0.4"
 simplelog = "0.12"
 base64 = "0.22"
+# Dashboard & Settings UI. tiny-skia is the software fallback when no GPU
+# adapter is available (VMs, RDP); fira-sans embeds a fallback font for
+# systems without the usual fonts; x11 lets the window run on Linux too.
+iced = { version = "0.14", default-features = false, features = [
+    "wgpu", "tiny-skia", "crisp", "thread-pool", "fira-sans", "x11",
+] }
 whisper-rs = { version = "0.16", optional = true }
 
 [target.'cfg(windows)'.dependencies]
