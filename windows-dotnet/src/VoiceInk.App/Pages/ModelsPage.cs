@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using VoiceInk.App.Ui;
 using VoiceInk.Core.Config;
-using VoiceInk.Core.Transcription;
+using VoiceInk.Core.Transcription.Local;
 
 namespace VoiceInk.App.Pages;
 
@@ -21,39 +21,56 @@ internal static class ModelsPage
     {
         var dir = s.Cfg.Transcription.ResolvedModelsDir;
         var active = s.Cfg.Transcription.Provider == TranscriptionProvider.Local ? s.Cfg.Transcription.ModelName : null;
-        var rows = ModelCatalog.All.Select(m => ModelRow(s, m, dir, active, refresh)).ToArray();
 
-        return Fluent.Page("Local models",
-            Fluent.Info("Offline dictation", "Models run on your PC with whisper.cpp (Vulkan GPU acceleration when available). Nothing leaves your device."),
-            Fluent.Section("Whisper models", rows),
-            Fluent.Section("Storage", Fluent.Row("Models folder", dir, Fluent.Button("Open", () =>
-            {
-                Directory.CreateDirectory(dir);
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dir) { UseShellExecute = true });
-            }, glyph: ""))));
+        var content = new List<UIElement>
+        {
+            Fluent.Info("Offline dictation", "Models run on your PC. Nothing leaves your device. Whisper uses whisper.cpp (Vulkan GPU when available); the others run on ONNX Runtime."),
+        };
+        foreach (var group in ModelCatalog.All.GroupBy(m => m.Engine))
+        {
+            content.Add(Fluent.Section(GroupTitle(group.Key), [.. group.Select(m => ModelRow(s, m, dir, active, refresh))]));
+        }
+
+        content.Add(Fluent.Section("Storage", Fluent.Row("Models folder", dir, Fluent.Button("Open", () =>
+        {
+            Directory.CreateDirectory(dir);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dir) { UseShellExecute = true });
+        }, glyph: "\uE838"))));
+        return Fluent.Page("Local models", [.. content]);
     }
 
-    private static UIElement ModelRow(AppServices s, WhisperModel model, string dir, string? active, Action refresh)
+    private static string GroupTitle(LocalEngine engine) => engine switch
     {
-        var installed = ModelCatalog.IsInstalled(dir, model.FileName);
-        var size = $"{model.SizeBytes / 1024.0 / 1024.0:F0} MB";
-        var description = $"{model.Description}  ({size})";
-        var title = model.FileName == active ? $"{model.Title}  ·  in use" : model.Title;
+        LocalEngine.Whisper => "OpenAI Whisper",
+        LocalEngine.Qwen3Asr => "Qwen3-ASR",
+        LocalEngine.Canary => "NVIDIA Canary",
+        _ => "Moonshine",
+    };
+
+    private static UIElement ModelRow(AppServices s, LocalModel model, string dir, string? active, Action refresh)
+    {
+        var installed = ModelCatalog.IsInstalled(dir, model);
+        var size = model.SizeBytes > 0 ? $", {model.SizeBytes / 1024.0 / 1024.0:F0} MB" : "";
+        var description = string.Join("  ", new[] { model.Description, $"({model.Languages}{size})" }.Where(t => t.Length > 0));
+        var title = model.Id == active ? $"{model.Title}  ·  in use" : model.Title;
         var actions = Fluent.Horizontal(8);
         var progress = new ProgressBar { Width = 140, Minimum = 0, Maximum = 1, Visibility = Visibility.Collapsed, VerticalAlignment = VerticalAlignment.Center };
+        var status = Fluent.Caption("");
+        status.VerticalAlignment = VerticalAlignment.Center;
+        status.MinWidth = 90;
+        actions.Children.Add(status);
         actions.Children.Add(progress);
 
         if (installed)
         {
             actions.Children.Add(Fluent.Button("Use", () =>
             {
-                s.Update(c => { c.Transcription.Provider = TranscriptionProvider.Local; c.Transcription.Model = model.FileName; });
+                s.Update(c => { c.Transcription.Provider = TranscriptionProvider.Local; c.Transcription.Model = model.Id; });
                 refresh();
-            }, accent: model.FileName != active));
+            }, accent: model.Id != active));
             actions.Children.Add(Fluent.Button("Delete", () =>
             {
-                LocalWhisper.Unload();
-                File.Delete(Path.Combine(dir, model.FileName));
+                ModelCatalog.Delete(dir, model);
                 refresh();
             }));
         }
@@ -64,27 +81,38 @@ internal static class ModelsPage
             {
                 download!.IsEnabled = false;
                 progress.Visibility = Visibility.Visible;
-                _ = DownloadAsync(s, model, dir, progress, refresh);
-            }, glyph: "");
+                _ = DownloadAsync(s, model, dir, progress, status, refresh);
+            }, glyph: "\uE896");
             actions.Children.Add(download);
         }
 
         return Fluent.Row(title, description, actions);
     }
 
-    private static async Task DownloadAsync(AppServices s, WhisperModel model, string dir, ProgressBar bar, Action refresh)
+    private static async Task DownloadAsync(AppServices s, LocalModel model, string dir, ProgressBar bar, TextBlock status, Action refresh)
     {
-        var progress = new Progress<double>(v => bar.Value = v);
+        // Created on the UI thread, so reports (a few per second) update the controls directly.
+        var progress = new Progress<DownloadProgress>(p =>
+        {
+            if (p.Phase == DownloadPhase.Unpacking)
+            {
+                bar.IsIndeterminate = true;
+                status.Text = "Unpacking…";
+                return;
+            }
+
+            bar.Value = p.Fraction;
+            status.Text = $"{p.Fraction:P0}  ·  {p.BytesPerSecond / 1024 / 1024:F1} MB/s";
+        });
         try
         {
             await ModelCatalog.DownloadAsync(model, dir, progress, CancellationToken.None);
-            refresh();
         }
-        catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException)
+        catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            bar.Visibility = Visibility.Collapsed;
             s.Tray.Notify("Download failed", e.Message, VoiceInk.Core.Dictation.NoticeKind.Error);
-            refresh();
         }
+
+        refresh();
     }
 }

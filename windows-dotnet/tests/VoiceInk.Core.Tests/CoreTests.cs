@@ -134,6 +134,105 @@ public class CoreTests
         Assert.Equal(3, stats.DailyWords[^1].Words);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Model_archives_extract_without_top_folder_and_never_escape(bool preferNative)
+    {
+        var work = Path.Combine(Path.GetTempPath(), "voiceink-arc-" + Guid.NewGuid());
+        Directory.CreateDirectory(work);
+        try
+        {
+            string Pack(string name, string entry, byte[] data)
+            {
+                var path = Path.Combine(work, name);
+                using (var stream = File.Create(path))
+                using (var writer = SharpCompress.Writers.WriterFactory.OpenWriter(
+                           stream, SharpCompress.Common.ArchiveType.Tar, new SharpCompress.Writers.WriterOptions(SharpCompress.Common.CompressionType.BZip2)))
+                {
+                    writer.Write(entry, new MemoryStream(data), null);
+                }
+
+                return path;
+            }
+
+            // Random data does not compress: this mimics real model weights and is bigger than SharpCompress' look-back buffer.
+            var weights = new byte[3 * 1024 * 1024];
+            new Random(1).NextBytes(weights);
+            var target = Path.Combine(work, "model");
+            Transcription.Local.Archives.ExtractTarBz2(Pack("ok.tar.bz2", "model-x/encoder.onnx", weights), target, preferNative);
+            Assert.Equal(weights, File.ReadAllBytes(Path.Combine(target, "encoder.onnx")));
+
+            try
+            {
+                Transcription.Local.Archives.ExtractTarBz2(Pack("bad.tar.bz2", "x/../../evil.txt", "data"u8.ToArray()), Path.Combine(work, "bad"), preferNative);
+            }
+            catch (Exception e) when (e is InvalidDataException or IOException)
+            {
+                // Rejecting the archive is fine; writing outside the target is not.
+            }
+
+            Assert.False(File.Exists(Path.Combine(work, "evil.txt")));
+            Assert.False(File.Exists(Path.Combine(Path.GetDirectoryName(work)!, "evil.txt")));
+        }
+        finally
+        {
+            Directory.Delete(work, true);
+        }
+    }
+
+    [Fact]
+    public async Task Downloader_reassembles_a_file_fetched_in_parallel_ranges()
+    {
+        var data = new byte[20 * 1024 * 1024 + 123]; // above the parallel threshold, not a multiple of the chunk size
+        new Random(7).NextBytes(data);
+        var port = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+        port.Start();
+        var url = $"http://127.0.0.1:{((IPEndPoint)port.LocalEndpoint).Port}/model.bin";
+        port.Stop();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add(url[..(url.LastIndexOf('/') + 1)]);
+        listener.Start();
+        var maxParallel = 0;
+        var active = 0;
+        _ = Task.Run(async () =>
+        {
+            while (listener.IsListening)
+            {
+                HttpListenerContext ctx;
+                try { ctx = await listener.GetContextAsync(); }
+                catch (Exception e) when (e is HttpListenerException or ObjectDisposedException) { return; }
+                _ = Task.Run(async () =>
+                {
+                    var now = Interlocked.Increment(ref active);
+                    int seen;
+                    while ((seen = maxParallel) < now && Interlocked.CompareExchange(ref maxParallel, now, seen) != seen) { }
+                    var range = ctx.Request.Headers["Range"]!.Replace("bytes=", "").Split('-');
+                    var (from, to) = (long.Parse(range[0]), Math.Min(long.Parse(range[1]), data.Length - 1));
+                    ctx.Response.StatusCode = 206;
+                    ctx.Response.Headers["Content-Range"] = $"bytes {from}-{to}/{data.Length}";
+                    ctx.Response.ContentLength64 = to - from + 1;
+                    await Task.Delay(50); // give the other workers time to overlap
+                    await ctx.Response.OutputStream.WriteAsync(data.AsMemory((int)from, (int)(to - from + 1)));
+                    ctx.Response.Close();
+                    Interlocked.Decrement(ref active);
+                });
+            }
+        });
+
+        var path = Path.Combine(Path.GetTempPath(), "voiceink-dl-" + Guid.NewGuid());
+        try
+        {
+            await Transcription.Local.FileDownloader.DownloadAsync(url, path, null, CancellationToken.None);
+            Assert.True(data.AsSpan().SequenceEqual(File.ReadAllBytes(path)));
+            Assert.True(maxParallel > 1, "chunks should have been requested concurrently");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private sealed class TempHome : IDisposable
     {
         private readonly string _dir = Path.Combine(Path.GetTempPath(), "voiceink-test-" + Guid.NewGuid());

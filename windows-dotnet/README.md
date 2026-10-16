@@ -14,7 +14,8 @@ Everything the Rust version does, with the same `config.json` format:
 - Global shortcut with toggle, push-to-talk and hybrid mode, modifier-only keys (`RightCtrl`), mouse buttons.
 - WASAPI capture (any mix format → 16 kHz mono), start/stop sounds, mute system audio while recording.
 - Transcription: OpenAI, Groq, Deepgram, ElevenLabs, Mistral, any OpenAI-compatible endpoint, **and local Whisper
-  models** with an in-app model downloader.
+  models**: Whisper (whisper.cpp), **Qwen3-ASR**, **NVIDIA Canary** and **Moonshine** (ONNX Runtime via sherpa-onnx),
+  all downloadable in the app. New engines plug in through `ILocalRecognizer`.
 - AI enhancement with the VoiceInk prompts (OpenAI, Anthropic, Gemini, Groq, Cerebras, Mistral, OpenRouter, Ollama, custom).
 - **Command Mode** (`Ctrl+Shift+Space`): select text, say what to do with it.
 - Snippets, dictionary replacements, custom vocabulary, filler-word filter, paragraph formatting.

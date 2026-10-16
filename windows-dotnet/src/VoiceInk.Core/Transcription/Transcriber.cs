@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using VoiceInk.Core.Config;
+using VoiceInk.Core.Transcription.Local;
 
 namespace VoiceInk.Core.Transcription;
 
@@ -67,10 +68,10 @@ public static class Transcriber
     private static async Task<string> LocalTranscribeAsync(
         TranscriptionSettings settings, string model, TranscriptionRequest request, CancellationToken ct)
     {
-        var path = Path.Combine(settings.ResolvedModelsDir, model);
         try
         {
-            return await LocalWhisper.TranscribeAsync(path, request.Samples, request.Language, request.Vocabulary, ct);
+            return await LocalTranscriber.TranscribeAsync(
+                new LocalRequest(settings.ResolvedModelsDir, model, request.Samples, request.Language, request.Vocabulary), ct);
         }
         catch (FileNotFoundException e)
         {

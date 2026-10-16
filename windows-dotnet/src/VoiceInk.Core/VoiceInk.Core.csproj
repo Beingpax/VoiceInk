@@ -8,6 +8,8 @@
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
+    <PackageReference Include="org.k2fsa.sherpa.onnx" Version="1.13.8" />
+    <PackageReference Include="SharpCompress" Version="0.50.5" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="VoiceInk.Core.Tests" />

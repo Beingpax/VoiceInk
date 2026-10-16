@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using VoiceInk.App.Ui;
 using VoiceInk.Core.Config;
+using VoiceInk.Core.Transcription.Local;
 
 namespace VoiceInk.App.Pages;
 
@@ -39,12 +40,22 @@ internal static class TranscriptionPage
             rows.Add(ApiKeyRow.Create(provider.KeyName(), "Endpoint (optional)"));
         }
 
-        var models = provider.Models();
-        rows.Add(models.Count > 0
-            ? Fluent.Row("Model", $"Default: {provider.DefaultModel()}",
-                Fluent.Combo([.. models.Select(m => (m, m))], t.ModelName, v => s.Update(c => c.Transcription.Model = v), 260))
-            : Fluent.Row("Model", provider == TranscriptionProvider.Local ? "File name inside the models folder. Manage models under Local models." : "Model name sent to the endpoint.",
-                Fluent.Text(t.Model, v => s.Update(c => c.Transcription.Model = string.IsNullOrWhiteSpace(v) ? null : v.Trim()), provider.DefaultModel())));
+        if (provider == TranscriptionProvider.Local)
+        {
+            var installed = ModelCatalog.Installed(t.ResolvedModelsDir).ToList();
+            if (!installed.Contains(t.ModelName)) installed.Insert(0, t.ModelName);
+            rows.Add(Fluent.Row("Model", "Whisper, Moonshine, NVIDIA Canary or Qwen3-ASR. Download more under Local models.",
+                Fluent.Combo([.. installed.Select(m => (m, ModelCatalog.Find(m)?.Title ?? m))], t.ModelName, v => s.Update(c => c.Transcription.Model = v), 300)));
+        }
+        else
+        {
+            var models = provider.Models();
+            rows.Add(models.Count > 0
+                ? Fluent.Row("Model", $"Default: {provider.DefaultModel()}",
+                    Fluent.Combo([.. models.Select(m => (m, m))], t.ModelName, v => s.Update(c => c.Transcription.Model = v), 260))
+                : Fluent.Row("Model", "Model name sent to the endpoint.",
+                    Fluent.Text(t.Model, v => s.Update(c => c.Transcription.Model = string.IsNullOrWhiteSpace(v) ? null : v.Trim()), provider.DefaultModel())));
+        }
 
         rows.Add(Fluent.Row("Language", "Auto-detect works for most providers; a fixed language is faster and more accurate.", Fluent.Combo(
             [.. Languages.All.Select(l => (l.Code, l.Name))], string.IsNullOrWhiteSpace(t.Language) ? "auto" : t.Language,

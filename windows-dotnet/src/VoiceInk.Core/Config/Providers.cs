@@ -13,7 +13,7 @@ public enum TranscriptionProvider
     /// <summary>Any OpenAI-compatible <c>/audio/transcriptions</c> endpoint (LocalAI, faster-whisper-server, ...).</summary>
     [JsonStringEnumMemberName("custom")] Custom,
 
-    /// <summary>Offline whisper.cpp through Whisper.net.</summary>
+    /// <summary>Offline models: Whisper, Moonshine, NVIDIA Canary, Qwen3-ASR.</summary>
     [JsonStringEnumMemberName("local")] Local,
 }
 
@@ -38,7 +38,7 @@ public static class TranscriptionProviders
         TranscriptionProvider.ElevenLabs => "ElevenLabs",
         TranscriptionProvider.Mistral => "Mistral",
         TranscriptionProvider.Custom => "Custom (OpenAI-compatible)",
-        TranscriptionProvider.Local => "Local (Whisper.net)",
+        TranscriptionProvider.Local => "Local (offline)",
         _ => p.ToString(),
     };
 
