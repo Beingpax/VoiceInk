@@ -3,6 +3,8 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <!-- Semantic version (MAJOR.MINOR.PATCH[-prerelease]); single source of truth read by scripts/package-nativeaot.ps1. -->
+    <Version>0.1.0</Version>
     <AssemblyName>VoiceInk</AssemblyName>
     <RootNamespace>VoiceInk.App</RootNamespace>
     <UseWinUI>true</UseWinUI>
