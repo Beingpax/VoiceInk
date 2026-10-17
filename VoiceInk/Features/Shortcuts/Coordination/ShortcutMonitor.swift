@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import CoreGraphics
 import Foundation
 import os
@@ -20,6 +21,7 @@ final class ShortcutMonitor {
         },
         isKeyDown: @escaping @Sendable (UInt16) -> Bool = { CGEventSource.keyState(.combinedSessionState, key: $0) },
         isShortcutPressed: @escaping @Sendable (Shortcut) -> Bool = { $0.isCurrentlyPressed },
+        heldRecordingShortcut: @escaping @Sendable () -> Shortcut? = { nil },
         allowsInput: @escaping @Sendable () -> Bool = { UserSessionInputPolicy.allowsShortcutHandling },
         allowsDispatch: @escaping @MainActor @Sendable () -> Bool = { UserSessionInputPolicy.allowsShortcutDispatch },
         workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
@@ -30,6 +32,7 @@ final class ShortcutMonitor {
             makeEventTap: makeEventTap,
             isKeyDown: isKeyDown,
             isShortcutPressed: isShortcutPressed,
+            heldRecordingShortcut: heldRecordingShortcut,
             allowsInput: allowsInput,
             allowsDispatch: allowsDispatch
         )
@@ -51,6 +54,7 @@ final class ShortcutMonitor {
         shortcuts: [ShortcutAction: Shortcut],
         interruptibleActions: Set<ShortcutAction> = [],
         standaloneModifierActions: Set<ShortcutAction> = [],
+        reservedShortcuts: [Shortcut] = [],
         onShortcutDown: @escaping ShortcutCallback,
         onShortcutUp: @escaping ShortcutCallback,
         onShortcutInterrupted: ShortcutCallback? = nil,
@@ -65,6 +69,7 @@ final class ShortcutMonitor {
                 shortcuts: shortcuts,
                 interruptibleActions: interruptibleActions,
                 standaloneModifierActions: standaloneModifierActions,
+                reservedShortcuts: reservedShortcuts,
                 onShortcutDown: onShortcutDown,
                 onShortcutUp: onShortcutUp,
                 onShortcutInterrupted: onShortcutInterrupted,
@@ -135,6 +140,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
     private var suppressedMouseButtons = Set<UInt16>()
     private var interruptibleActions: Set<ShortcutAction> = []
     private var standaloneModifierActions: Set<ShortcutAction> = []
+    private var reservedShortcuts: [Shortcut] = []
     private var onShortcutDown: ShortcutCallback?
     private var onShortcutUp: ShortcutCallback?
     private var onShortcutInterrupted: ShortcutCallback?
@@ -149,6 +155,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
     private let makeEventTap: EventTapFactory
     private let isKeyDown: @Sendable (UInt16) -> Bool
     private let isShortcutPressed: @Sendable (Shortcut) -> Bool
+    private let heldRecordingShortcut: @Sendable () -> Shortcut?
     private let allowsInput: @Sendable () -> Bool
     private let allowsDispatch: @MainActor @Sendable () -> Bool
     private let owner: String
@@ -183,12 +190,14 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         makeEventTap: @escaping EventTapFactory,
         isKeyDown: @escaping @Sendable (UInt16) -> Bool,
         isShortcutPressed: @escaping @Sendable (Shortcut) -> Bool,
+        heldRecordingShortcut: @escaping @Sendable () -> Shortcut?,
         allowsInput: @escaping @Sendable () -> Bool,
         allowsDispatch: @escaping @MainActor @Sendable () -> Bool
     ) {
         self.makeEventTap = makeEventTap
         self.isKeyDown = isKeyDown
         self.isShortcutPressed = isShortcutPressed
+        self.heldRecordingShortcut = heldRecordingShortcut
         self.allowsInput = allowsInput
         self.allowsDispatch = allowsDispatch
         self.owner = owner
@@ -199,6 +208,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         shortcuts: [ShortcutAction: Shortcut],
         interruptibleActions: Set<ShortcutAction> = [],
         standaloneModifierActions: Set<ShortcutAction> = [],
+        reservedShortcuts: [Shortcut] = [],
         onShortcutDown: @escaping ShortcutCallback,
         onShortcutUp: @escaping ShortcutCallback,
         onShortcutInterrupted: ShortcutCallback? = nil,
@@ -227,7 +237,8 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         }
         actionRevisions = actionRevisions.filter { shortcuts[$0.key] != nil }
         publishDispatchValidity()
-        ShortcutDiagnostics.notice("monitor owner=\(owner) generation=\(generation) reason=\(reason) shortcuts={\(shortcutSummary)}")
+        self.reservedShortcuts = reservedShortcuts
+        ShortcutDiagnostics.notice("monitor owner=\(owner) generation=\(generation) reason=\(reason) shortcuts={\(shortcutSummary)}\(reservedShortcutSummary)")
 
         self.interruptibleActions = interruptibleActions
         self.standaloneModifierActions = standaloneModifierActions
@@ -310,6 +321,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         suppressedMouseButtons = []
         interruptibleActions = []
         standaloneModifierActions = []
+        reservedShortcuts = []
         onShortcutDown = nil
         onShortcutUp = nil
         onShortcutInterrupted = nil
@@ -519,7 +531,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
 
             var recoveredMissedRelease = false
             if kind == .keyDown, state.shortcut.kind == .key, inputCode == state.shortcut.keyCode {
-                let matches = state.shortcut.matchesKeyEvent(keyCode: inputCode, modifierFlags: modifierFlags)
+                let matches = matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags)
                 if isAutoRepeat {
                     // Ignore repeats, but suppress held keys after modifier changes.
                     if matches || state.isDown {
@@ -542,7 +554,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                     recoveredMissedRelease = true
                 }
             } else if kind == .mouseDown, state.shortcut.kind == .mouseButton,
-                state.shortcut.matchesMouseEvent(buttonNumber: inputCode, modifierFlags: modifierFlags), state.isDown
+                matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags), state.isDown
             {
                 // A new mouse-down is a fresh click.
                 recoveredPresses += 1
@@ -551,7 +563,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                 recoveredMissedRelease = true
             } else if kind == .flagsChanged, state.shortcut.isModifierOnly, state.isDown,
                 inputCode == state.shortcut.keyCode,
-                state.shortcut.matchesModifierEvent(keyCode: inputCode, modifierFlags: modifierFlags),
+                matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags),
                 Shortcut.modifierKeyIsDown(inputCode, flags: modifierFlags, requiringDeviceBit: true)
             {
                 // Device flags confirm a fresh press after a missed release.
@@ -568,7 +580,9 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                     || (kind == .flagsChanged && state.shortcut.isModifierOnly && !state.isDown)
             {
                 let flags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: inputCode)
-                if flags != state.shortcut.modifierFlags {
+                if flags != state.shortcut.modifierFlags,
+                    !matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags)
+                {
                     lastModifierMismatch = "\(action.storageName):actual=0x\(String(flags.rawValue, radix: 16)),expected=0x\(String(state.shortcut.modifierFlags.rawValue, radix: 16))"
                     lastModifierMismatchAt = ProcessInfo.processInfo.systemUptime
                     if ShortcutDiagnostics.shouldTraceKey(code: inputCode, flags: modifierFlags) {
@@ -595,6 +609,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
             case .key:
                 transition = transitionForKeyShortcut(
                     state.shortcut,
+                    action: action,
                     isDown: state.isDown,
                     kind: kind,
                     keyCode: inputCode,
@@ -603,6 +618,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
             case .mouseButton:
                 transition = transitionForMouseShortcut(
                     state.shortcut,
+                    action: action,
                     isDown: state.isDown,
                     kind: kind,
                     buttonNumber: inputCode,
@@ -662,6 +678,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
 
     private func transitionForKeyShortcut(
         _ shortcut: Shortcut,
+        action: ShortcutAction,
         isDown: Bool,
         kind: EventKind,
         keyCode: UInt16,
@@ -669,7 +686,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
     ) -> ShortcutTransition {
         switch kind {
         case .keyDown:
-            guard shortcut.matchesKeyEvent(keyCode: keyCode, modifierFlags: modifierFlags) else {
+            guard matchesShortcut(shortcut, action: action, kind: kind, inputCode: keyCode, modifierFlags: modifierFlags) else {
                 return .none
             }
 
@@ -691,8 +708,73 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         }
     }
 
+    private func matchesShortcut(
+        _ shortcut: Shortcut,
+        action: ShortcutAction,
+        kind: EventKind,
+        inputCode: UInt16,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> Bool {
+        guard action == .cancelRecorder || action == .recorderPanelEscape else {
+            return matchesInput(shortcut, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags)
+        }
+
+        // Ordinary typing should not query physical recording state or scan reservations.
+        switch kind {
+        case .keyDown:
+            guard shortcut.kind == .key, shortcut.keyCode == inputCode else { return false }
+        case .mouseDown:
+            guard shortcut.kind == .mouseButton, shortcut.keyCode == inputCode else { return false }
+        case .flagsChanged:
+            guard shortcut.isModifierOnly else { return false }
+        case .keyUp, .mouseUp, .mouseDragged:
+            return false
+        }
+        let flags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: shortcut.kind == .key ? inputCode : nil)
+        guard flags.isSuperset(of: shortcut.modifierFlags) else { return false }
+        // Preserve the existing Force Quit exception.
+        if kind == .keyDown, inputCode == UInt16(kVK_Escape),
+            modifierFlags.contains([.command, .option]),
+            !shortcut.modifierFlags.contains([.command, .option])
+        {
+            return false
+        }
+        guard !reservedShortcuts.contains(where: {
+            matchesInput($0, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags)
+        }) else { return false }
+
+        if matchesInput(shortcut, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags) {
+            return true
+        }
+        guard let recordingShortcut = heldRecordingShortcut(), isShortcutPressed(recordingShortcut) else { return false }
+
+        // Keep the cancel modifiers; ignore only extras from the active physical recording press.
+        let recordingModifiers = recordingShortcut.modifierFlags.subtracting(shortcut.modifierFlags)
+        return matchesInput(shortcut, kind: kind, inputCode: inputCode,
+                            modifierFlags: modifierFlags.subtracting(recordingModifiers))
+    }
+
+    private func matchesInput(
+        _ shortcut: Shortcut,
+        kind: EventKind,
+        inputCode: UInt16,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> Bool {
+        switch kind {
+        case .keyDown:
+            return shortcut.matchesKeyEvent(keyCode: inputCode, modifierFlags: modifierFlags)
+        case .mouseDown:
+            return shortcut.matchesMouseEvent(buttonNumber: inputCode, modifierFlags: modifierFlags)
+        case .flagsChanged:
+            return shortcut.matchesModifierEvent(keyCode: inputCode, modifierFlags: modifierFlags)
+        case .keyUp, .mouseUp, .mouseDragged:
+            return false
+        }
+    }
+
     private func transitionForMouseShortcut(
         _ shortcut: Shortcut,
+        action: ShortcutAction,
         isDown: Bool,
         kind: EventKind,
         buttonNumber: UInt16,
@@ -700,10 +782,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
     ) -> ShortcutTransition {
         switch kind {
         case .mouseDown:
-            guard shortcut.matchesMouseEvent(
-                buttonNumber: buttonNumber,
-                modifierFlags: modifierFlags
-            ) else {
+            guard matchesShortcut(shortcut, action: action, kind: kind, inputCode: buttonNumber, modifierFlags: modifierFlags) else {
                 return .none
             }
 
@@ -765,7 +844,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
             return
         }
 
-        if state.shortcut.matchesModifierEvent(keyCode: keyCode, modifierFlags: modifierFlags) {
+        if matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: keyCode, modifierFlags: modifierFlags) {
             state.isDown = true
             state.pressedAt = eventTime
             state.recoveredMissedRelease = recoveredMissedRelease
@@ -911,6 +990,11 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
 
     private var shortcutSummary: String {
         shortcuts.map { "\($0.key.storageName):\($0.value.shortcut.diagnosticDescription)" }.sorted().joined(separator: ";")
+    }
+
+    private var reservedShortcutSummary: String {
+        guard !reservedShortcuts.isEmpty else { return "" }
+        return " reserved={\(reservedShortcuts.map(\.diagnosticDescription).sorted().joined(separator: ";"))}"
     }
 
     private var pressedActionSummary: String {

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import os
 
 @MainActor
 class RecordingShortcutManager: ObservableObject {
@@ -130,7 +131,10 @@ class RecordingShortcutManager: ObservableObject {
 
         self.engine = engine
         self.recorderUIManager = recorderUIManager
-        self.recorderPanelShortcutManager = RecorderPanelShortcutManager(recorderUIManager: recorderUIManager)
+        self.recorderPanelShortcutManager = RecorderPanelShortcutManager(
+            recorderUIManager: recorderUIManager,
+            heldRecordingShortcut: { shortcutModeHandler.heldRecordingShortcut }
+        )
         self.shortcutModeHandler = shortcutModeHandler
         self.primaryRecordingShortcutModeSource = primaryRecordingShortcutModeSource
         self.modeShortcutManager = ModeShortcutManager(
@@ -334,6 +338,11 @@ private final class RecordingShortcutModeSource {
 
 @MainActor
 final class RecordingShortcutModeHandler {
+    // Tap callbacks read this snapshot without waiting for the main actor.
+    private nonisolated let heldShortcut = OSAllocatedUnfairLock<Shortcut?>(initialState: nil)
+
+    nonisolated var heldRecordingShortcut: Shortcut? { heldShortcut.withLock { $0 } }
+
     private let canHandleShortcutAction: @MainActor () -> Bool
     private let isRecorderVisible: @MainActor () -> Bool
     private let recordingState: @MainActor () -> RecordingState
@@ -377,6 +386,7 @@ final class RecordingShortcutModeHandler {
     }
 
     func reset() {
+        heldShortcut.withLock { $0 = nil }
         stateRevision &+= 1
         isShortcutPressed = false
         shortcutPressStartTime = nil
@@ -422,6 +432,7 @@ final class RecordingShortcutModeHandler {
             interruptedRecordingActions.remove(action)
         }
         guard let activeRecordingShortcutAction, actions.contains(activeRecordingShortcutAction) else { return }
+        heldShortcut.withLock { $0 = nil }
         let wasHoldMode = activeRecordingShortcutMode == .pushToTalk || activeRecordingShortcutMode == .hybrid
         // Finish held recordings when monitoring resets.
         let state = recordingState()
@@ -480,6 +491,8 @@ final class RecordingShortcutModeHandler {
 
         stateRevision &+= 1
         isShortcutPressed = true
+        let shortcut = canHandleShortcutAction() ? ShortcutStore.shortcut(for: action) : nil
+        heldShortcut.withLock { $0 = shortcut }
         activeRecordingShortcutAction = action
         activeRecordingShortcutMode = mode
         activeShortcutIsDoubleTap = mode == .doubleTap
@@ -549,6 +562,7 @@ final class RecordingShortcutModeHandler {
             return
         }
         let pressDuration = shortcutPressStartTime.map { eventTime - $0 } ?? 0
+        heldShortcut.withLock { $0 = nil }
         shortcutPressStartTime = nil
         isShortcutPressed = false
         activeRecordingShortcutAction = nil
@@ -625,6 +639,7 @@ final class RecordingShortcutModeHandler {
         }
 
         if activeShortcutIsDoubleTap {
+            heldShortcut.withLock { $0 = nil }
             logDecision(action, phase: "interrupted", result: "clear-double-tap")
             stateRevision &+= 1
             isShortcutPressed = false

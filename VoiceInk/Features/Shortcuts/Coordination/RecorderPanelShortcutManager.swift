@@ -9,9 +9,10 @@ final class RecorderPanelShortcutManager: ObservableObject {
     private var visibilityTask: Task<Void, Never>?
     private var shortcutChangeObserver: NSObjectProtocol?
     private var settingsChangeObserver: NSObjectProtocol?
+    private var modeAvailabilityObserver: NSObjectProtocol?
     private var recordingStateCancellable: AnyCancellable?
     private var observedSendKey: FinishAndSendKey
-    private let visibleRecorderMonitor = ShortcutMonitor(owner: "recorder-panel")
+    private let visibleRecorderMonitor: ShortcutMonitor
 
     // Double-tap Escape handling
     private var firstEscapePressTime: Date? = nil
@@ -26,8 +27,12 @@ final class RecorderPanelShortcutManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: escapeConfirmationHintShownKey)
     }
 
-    init(recorderUIManager: RecorderUIManager) {
+    init(
+        recorderUIManager: RecorderUIManager,
+        heldRecordingShortcut: @escaping @Sendable () -> Shortcut? = { nil }
+    ) {
         self.recorderUIManager = recorderUIManager
+        self.visibleRecorderMonitor = ShortcutMonitor(owner: "recorder-panel", heldRecordingShortcut: heldRecordingShortcut)
         self.observedSendKey = FinishAndSendSettings.selectedKey
         setupShortcutChangeObserver()
         settingsChangeObserver = NotificationCenter.default.addObserver(
@@ -43,6 +48,14 @@ final class RecorderPanelShortcutManager: ObservableObject {
                 self.refreshVisibleShortcuts(reason: "send-key-changed")
             }
         }
+        // Enabling or disabling modes changes which cancellation chords are reserved.
+        modeAvailabilityObserver = NotificationCenter.default.addObserver(
+            forName: .modeShortcutAvailabilityDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.refreshVisibleShortcuts(reason: "mode-availability") }
+        }
         setupVisibilityObserver()
         recordingStateCancellable = recorderUIManager.recordingStatePublisher?.sink { [weak self] state in
             Task { @MainActor in self?.refreshVisibleShortcuts(reason: "recording-state.\(state)") }
@@ -55,16 +68,16 @@ final class RecorderPanelShortcutManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard
-                let action = notification.object as? ShortcutAction,
-                action == .cancelRecorder
-            else {
+            guard let action = notification.object as? ShortcutAction else {
                 return
             }
 
+            // Any shortcut can reserve a cancellation chord.
             Task { @MainActor in
-                self?.resetEscapeState()
-                self?.refreshVisibleShortcuts(reason: "cancel-shortcut-changed")
+                if action == .cancelRecorder {
+                    self?.resetEscapeState()
+                }
+                self?.refreshVisibleShortcuts(reason: "store-change.\(action.storageName)")
             }
         }
     }
@@ -126,8 +139,16 @@ final class RecorderPanelShortcutManager: ObservableObject {
             }
         }
 
+        // Exact assignments take priority over cancellation with recording modifiers.
+        let reservedActions = [ShortcutAction.primaryRecording, .secondaryRecording]
+            + ShortcutAction.globalUtilityActions
+            + ModeManager.shared.enabledConfigurations.map { ShortcutAction.mode($0.id) }
+        let reservedShortcuts = Array(ShortcutStore.shortcuts(for: reservedActions).values)
+            + shortcuts.filter { $0.key != .cancelRecorder && $0.key != .recorderPanelEscape }.map(\.value)
+
         visibleRecorderMonitor.start(
             shortcuts: shortcuts,
+            reservedShortcuts: reservedShortcuts,
             onShortcutDown: { [weak self] action, _ in
                 await self?.handleRecorderPanelShortcut(action)
             },
@@ -244,6 +265,9 @@ final class RecorderPanelShortcutManager: ObservableObject {
         }
         if let settingsChangeObserver {
             NotificationCenter.default.removeObserver(settingsChangeObserver)
+        }
+        if let modeAvailabilityObserver {
+            NotificationCenter.default.removeObserver(modeAvailabilityObserver)
         }
 
         visibilityTask?.cancel()
