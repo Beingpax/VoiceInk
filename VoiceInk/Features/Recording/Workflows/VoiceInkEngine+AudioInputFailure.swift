@@ -22,6 +22,22 @@ struct AudioInputFailurePresentation {
             action: AudioSetupNavigator.openAudioSettings
         )
     }
+
+    @MainActor
+    static func audioSystemNotRunning() -> AudioInputFailurePresentation {
+        AudioInputFailurePresentation(
+            title: String(localized: "macOS audio stopped responding. Restart audio, then try recording again."),
+            actionLabel: String(localized: "Restart Audio"),
+            action: restartCoreAudio
+        )
+    }
+
+    private static func restartCoreAudio() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", "do shell script \"killall coreaudiod\" with administrator privileges"]
+        try? process.run()
+    }
 }
 
 extension VoiceInkEngine {
@@ -29,15 +45,21 @@ extension VoiceInkEngine {
     func recordingAudioFailure(
         for error: Error
     ) -> (title: String, actionLabel: String, action: () -> Void)? {
-        guard let recorderError = error as? Recorder.RecorderError,
-            case .noUsableMicrophone(let internalMicrophoneBlockedByClosedLid) = recorderError
-        else {
+        guard let recorderError = error as? Recorder.RecorderError else {
             return nil
         }
 
-        let presentation = AudioInputFailurePresentation.noUsableMicrophone(
-            internalMicrophoneBlockedByClosedLid: internalMicrophoneBlockedByClosedLid
-        )
+        let presentation: AudioInputFailurePresentation
+        switch recorderError {
+        case .noUsableMicrophone(let internalMicrophoneBlockedByClosedLid):
+            presentation = .noUsableMicrophone(
+                internalMicrophoneBlockedByClosedLid: internalMicrophoneBlockedByClosedLid
+            )
+        case .audioSystemNotRunning:
+            presentation = .audioSystemNotRunning()
+        case .couldNotStartRecording:
+            return nil
+        }
         return (presentation.title, presentation.actionLabel, presentation.action)
     }
 }

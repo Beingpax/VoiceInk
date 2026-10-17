@@ -16175,6 +16175,28 @@
         }
       }
     },
+    "macOS audio stopped responding. Restart audio, then try recording again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS-Audio reagiert nicht mehr. Starte Audio neu und versuche die Aufnahme dann erneut."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’audio de macOS ne répond plus. Redémarrez l’audio, puis réessayez d’enregistrer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS 音频已停止响应。请重启音频，然后再次尝试录音。"
+          }
+        }
+      }
+    },
     "Manage AI Models" : {
       "localizations" : {
         "de" : {
@@ -22214,6 +22236,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "回复"
+          }
+        }
+      }
+    },
+    "Restart Audio" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio neu starten"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redémarrer l’audio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重启音频"
           }
         }
       }
