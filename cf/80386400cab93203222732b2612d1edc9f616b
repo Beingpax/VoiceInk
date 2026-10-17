@@ -1,0 +1,36 @@
+VoiceInk/Features/Shortcuts/Coordination/ShortcutMonitor.swift
+  s_2ea71648bd39f4::t_6741919a246fa7 995,998-999
+  s_02e8f524ac37b1::t_4a8af541b4a4cc 735-740
+  s_2ea71648bd39f4::t_6c8f835d65c897 241
+VoiceInk/Features/Shortcuts/Coordination/RecorderPanelShortcutManager.swift
+  s_2ea71648bd39f4::t_6d672f42554d81 12
+  s_2ea71648bd39f4::t_5bbebf7c01a06f 148
+  s_2ea71648bd39f4::t_497aab36fbaf28 143-145
+  s_2ea71648bd39f4::t_2d2c3f06bf9e1e 52-58
+  s_2ea71648bd39f4::t_26487b2d7cb980 71,77-80
+  s_2ea71648bd39f4::t_a4c045b53e8961 269-271
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cf80386400cab93203222732b2612d1edc9f616b",
+  "prompts": {},
+  "sessions": {
+    "s_02e8f524ac37b1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67d0c0eb-3396-4238-b429-8ca11875c01f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    },
+    "s_2ea71648bd39f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "116d504e-0f46-490b-ace4-1d8b3a714a17",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
