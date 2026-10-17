@@ -156,7 +156,7 @@ class RecordingShortcutManager: ObservableObject {
         }
 
         setupLifecycleDiagnostics()
-        ShortcutDiagnostics.startInputObservation()
+        ShortcutDiagnostics.logSessionStart()
         ShortcutDiagnostics.setRecordingContext { [weak self] in
             guard let self else { return "unavailable" }
             return "state=\(self.engine.recordingState) visible=\(self.recorderUIManager.isRecorderPanelVisible) primarySelection=\(self.primaryRecordingShortcut.rawValue) primaryMode=\(self.primaryRecordingShortcutMode.rawValue) secondarySelection=\(self.secondaryRecordingShortcut.rawValue) secondaryMode=\(self.secondaryRecordingShortcutMode.rawValue) \(self.shortcutModeHandler.diagnosticSummary)"

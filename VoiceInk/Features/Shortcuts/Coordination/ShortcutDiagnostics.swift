@@ -43,15 +43,10 @@ enum ShortcutDiagnostics {
     @MainActor private static var lastEnvironment: String?
     @MainActor private static var lastEnvironmentCheck: TimeInterval?
     @MainActor private static var recordingContext: (() -> String)?
-    @MainActor private static var inputObserver: ShortcutInputObserver?
     private static let captureAction = OSAllocatedUnfairLock<ShortcutAction?>(initialState: nil)
 
-    @MainActor static func startInputObservation() {
-        guard inputObserver == nil else { return }
-        let observer = ShortcutInputObserver()
-        inputObserver = observer
-        observer.start()
-        notice("diagnostics schema=3 processID=\(ProcessInfo.processInfo.processIdentifier) version=\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown") build=\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown") inputTrace=shortcut-candidates")
+    @MainActor static func logSessionStart() {
+        notice("diagnostics schema=4 processID=\(ProcessInfo.processInfo.processIdentifier) version=\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown") build=\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown") inputTrace=shortcut-monitors")
     }
 
     @MainActor static func setCaptureAction(_ action: ShortcutAction?) {
@@ -102,6 +97,6 @@ enum ShortcutDiagnostics {
         let lines = monitors.keys.sorted().compactMap { owner in
             monitors[owner]?.value.map { "[\(owner)] \($0.diagnosticSummary)" }
         }
-        return (["Diagnostics: schema=3 processID=\(ProcessInfo.processInfo.processIdentifier) capture=\(captureSummary)", "Environment: \(environmentSummary())", "Input observation: \(inputObserver?.diagnosticSummary ?? "disabled")", "Recording: \(recordingContext?() ?? "unavailable")"] + lines).joined(separator: "\n")
+        return (["Diagnostics: schema=4 processID=\(ProcessInfo.processInfo.processIdentifier) capture=\(captureSummary)", "Environment: \(environmentSummary())", "Recording: \(recordingContext?() ?? "unavailable")"] + lines).joined(separator: "\n")
     }
 }
