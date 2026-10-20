@@ -14,8 +14,7 @@ enum DirectTextTyper {
     // Several macOS injectors use this conservative limit for compatibility
     // with receivers that truncate longer Unicode event payloads.
     private static let chunkSize = 20
-    private static let chunksPerBatch = 16
-    private static let modifiers: CGEventFlags = [.maskCommand, .maskControl, .maskAlternate, .maskShift]
+    private static let interChunkDelayNanoseconds: UInt64 = 10_000_000
 
     static func normalizedText(_ text: String) -> String {
         text.replacingOccurrences(of: "\r\n", with: "\n")
@@ -27,22 +26,9 @@ enum DirectTextTyper {
             let source = CGEventSource(stateID: .privateState)
         else { return .notPosted }
 
-        let deadline = ProcessInfo.processInfo.systemUptime + 0.5
-        while !CGEventSource.flagsState(.hidSystemState).intersection(modifiers).isEmpty {
-            guard !Task.isCancelled,
-                ProcessInfo.processInfo.systemUptime < deadline
-            else { return .notPosted }
-            do {
-                try await Task.sleep(nanoseconds: 10_000_000)
-            } catch {
-                return .notPosted
-            }
-        }
-
         var postedChunks = 0
         for chunk in chunks {
             guard !Task.isCancelled,
-                CGEventSource.flagsState(.hidSystemState).intersection(modifiers).isEmpty,
                 let down = CGEvent(keyboardEventSource: source, virtualKey: 0x31, keyDown: true),
                 let up = CGEvent(keyboardEventSource: source, virtualKey: 0x31, keyDown: false)
             else { return postedChunks == 0 ? .notPosted : .partiallyPosted }
@@ -60,11 +46,11 @@ enum DirectTextTyper {
             up.post(tap: .cghidEventTap)
             postedChunks += 1
 
-            // Yield in batches so long transcripts do not monopolize the main
-            // actor. No per-key sleep.
-            if postedChunks.isMultiple(of: chunksPerBatch), postedChunks < chunks.count {
+            // Pace every chunk so receiving editors have time to process text
+            // insertion, including short transcripts.
+            if postedChunks < chunks.count {
                 do {
-                    try await Task.sleep(nanoseconds: 1_000_000)
+                    try await Task.sleep(nanoseconds: interChunkDelayNanoseconds)
                 } catch {
                     return .partiallyPosted
                 }

@@ -94,7 +94,13 @@ class CursorPaster {
 
         let application = NSWorkspace.shared.frontmostApplication
         let appIdentifier = application?.bundleIdentifier ?? "unknown"
+        let focusDiagnostics = PasteFocusDiagnostics(sessionID: sessionID)
+        focusDiagnostics.captureAroundPaste(processID: application?.processIdentifier, appIdentifier: appIdentifier)
         let pasteResult = await deliverText(textToDeliver, method: method, sessionID: sessionID)
+        focusDiagnostics.captureAfterPaste(
+            commandPosted: pasteResult.didPostPasteCommand,
+            commandProcessID: application?.processIdentifier
+        )
         logger.notice(
             "Paste id=\(sessionID, privacy: .public) app=\(appIdentifier, privacy: .public) method=\(method.rawValue, privacy: .public) commandPosted=\(pasteResult.didPostPasteCommand, privacy: .public) queueMs=\(queueWaitMs, privacy: .public) elapsedMs=\(elapsedMilliseconds(since: startedAt), privacy: .public)"
         )
@@ -151,12 +157,6 @@ class CursorPaster {
             case .posted: result = .commandPosted
             case .notPosted: result = .commandNotPosted
             case .partiallyPosted: result = .commandPartiallyPosted
-            }
-            if !text.isEmpty && !result.didPostPasteCommand {
-                NotificationManager.shared.showNotification(
-                    title: String(localized: "Direct Typing stopped. Check the text field before trying again. Your transcription is available in History."),
-                    type: .warning
-                )
             }
             return result
         }

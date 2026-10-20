@@ -1,8 +1,9 @@
 import AppKit
 import Carbon.HIToolbox
+import IOKit.hidsystem
 
-struct Shortcut: Codable, Equatable {
-    enum Kind: String, Codable {
+struct Shortcut: Codable, Equatable, Sendable {
+    enum Kind: String, Codable, Sendable {
         case key
         case modifierOnly
         case mouseButton
@@ -22,6 +23,29 @@ struct Shortcut: Codable, Equatable {
 
     var isModifierOnly: Bool {
         kind == .modifierOnly
+    }
+
+    var diagnosticDescription: String {
+        "kind=\(kind.rawValue),code=\(keyCode),modifiers=0x\(String(modifierFlags.rawValue, radix: 16))"
+    }
+
+    var isCurrentlyPressed: Bool {
+        let flags = NSEvent.ModifierFlags(rawValue: UInt(CGEventSource.flagsState(.combinedSessionState).rawValue))
+        let currentFlags = Self.normalizedModifierFlags(flags, forKeyCode: kind == .key ? keyCode : nil)
+        guard currentFlags.isSuperset(of: modifierFlags) else { return false }
+
+        switch kind {
+        case .key:
+            return CGEventSource.keyState(.combinedSessionState, key: keyCode)
+        case .modifierOnly:
+            if keyCode == Self.genericModifierKeyCode || keyCode == UInt16(kVK_Function) {
+                return true
+            }
+            return CGEventSource.keyState(.combinedSessionState, key: keyCode)
+        case .mouseButton:
+            guard let button = CGMouseButton(rawValue: UInt32(keyCode)) else { return false }
+            return CGEventSource.buttonState(.combinedSessionState, button: button)
+        }
     }
 
     var displayString: String {
@@ -114,6 +138,7 @@ struct Shortcut: Codable, Equatable {
         }
 
         return keyCode == eventKeyCode && normalizedFlags == modifierFlags
+            && Self.modifierKeyIsDown(keyCode, flags: eventModifierFlags)
     }
 
     func shouldReleaseModifierEvent(
@@ -129,7 +154,40 @@ struct Shortcut: Codable, Equatable {
             return !normalizedFlags.isSuperset(of: modifierFlags)
         }
 
-        return keyCode == eventKeyCode
+        return !normalizedFlags.isSuperset(of: modifierFlags)
+            || !Self.modifierKeyIsDown(keyCode, flags: eventModifierFlags)
+    }
+
+    /// Reads a specific modifier's pressed state from its device bit.
+    static func modifierKeyIsDown(_ keyCode: UInt16, flags: NSEvent.ModifierFlags, requiringDeviceBit: Bool = false) -> Bool {
+        if keyCode == UInt16(kVK_Function) { return flags.contains(.function) }
+        let family: NSEvent.ModifierFlags
+        let deviceBit: UInt
+        let familyBits: UInt
+        switch keyCode {
+        case UInt16(kVK_Command), UInt16(kVK_RightCommand):
+            family = .command
+            deviceBit = UInt(keyCode == UInt16(kVK_Command) ? NX_DEVICELCMDKEYMASK : NX_DEVICERCMDKEYMASK)
+            familyBits = UInt(NX_DEVICELCMDKEYMASK | NX_DEVICERCMDKEYMASK)
+        case UInt16(kVK_Option), UInt16(kVK_RightOption):
+            family = .option
+            deviceBit = UInt(keyCode == UInt16(kVK_Option) ? NX_DEVICELALTKEYMASK : NX_DEVICERALTKEYMASK)
+            familyBits = UInt(NX_DEVICELALTKEYMASK | NX_DEVICERALTKEYMASK)
+        case UInt16(kVK_Shift), UInt16(kVK_RightShift):
+            family = .shift
+            deviceBit = UInt(keyCode == UInt16(kVK_Shift) ? NX_DEVICELSHIFTKEYMASK : NX_DEVICERSHIFTKEYMASK)
+            familyBits = UInt(NX_DEVICELSHIFTKEYMASK | NX_DEVICERSHIFTKEYMASK)
+        case UInt16(kVK_Control), UInt16(kVK_RightControl):
+            family = .control
+            deviceBit = UInt(keyCode == UInt16(kVK_Control) ? NX_DEVICELCTLKEYMASK : NX_DEVICERCTLKEYMASK)
+            familyBits = UInt(NX_DEVICELCTLKEYMASK | NX_DEVICERCTLKEYMASK)
+        default:
+            return false
+        }
+        guard flags.contains(family) else { return false }
+        // Use generic flags if device bits are absent and optional.
+        if flags.rawValue & familyBits == 0 { return !requiringDeviceBit }
+        return flags.rawValue & deviceBit != 0
     }
 
     func isInterruptedByAdditionalKeyDown(keyCode eventKeyCode: UInt16) -> Bool {

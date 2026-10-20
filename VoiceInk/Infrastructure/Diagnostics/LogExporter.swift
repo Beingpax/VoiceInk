@@ -26,8 +26,8 @@ final class LogExporter {
     private func fetchLogs() async throws -> [String] {
         let exportDate = Date()
         let startDate = exportDate.addingTimeInterval(-exportWindow)
-        let systemInfo = await MainActor.run {
-            SystemInfoService.shared.getSystemInfoString()
+        let context = await MainActor.run {
+            (systemInfo: SystemInfoService.shared.getSystemInfoString(), shortcutHealth: ShortcutDiagnostics.healthReport())
         }
 
         let store = try OSLogStore(scope: .system)
@@ -45,7 +45,10 @@ final class LogExporter {
         logLines.append("To: \(dateFormatter.string(from: exportDate))")
         logLines.append("================================")
         logLines.append("")
-        logLines.append(systemInfo)
+        logLines.append(context.systemInfo)
+        logLines.append("")
+        logLines.append("=== Shortcut Health at Export (Current Process) ===")
+        logLines.append(context.shortcutHealth)
         logLines.append("")
 
         let position = store.position(date: startDate)
@@ -62,7 +65,7 @@ final class LogExporter {
             let category = logEntry.category
             let message = logEntry.composedMessage
 
-            logLines.append("[\(timestamp)] [\(level)] [\(category)] \(message)")
+            logLines.append("[\(timestamp)] [\(level)] [\(category)] [pid=\(logEntry.processIdentifier)] \(message)")
             logCount += 1
         }
 
