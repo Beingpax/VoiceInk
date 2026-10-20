@@ -403,11 +403,8 @@ final class AutoLearnAIReviewer: @unchecked Sendable {
         guard trimmed.hasPrefix("```") else { return trimmed }
 
         var body = trimmed.dropFirst(3)
-        if let newline = body.firstIndex(of: "\n") {
-            body = body[body.index(after: newline)...]
-        } else {
-            body = body.drop(while: \.isLetter)
-        }
+            .drop(while: \.isWhitespace)
+            .drop(while: { $0.isLetter || $0.isNumber })
         if body.hasSuffix("```") {
             body = body.dropLast(3)
         }
