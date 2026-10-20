@@ -1,0 +1,22 @@
+VoiceInk/Infrastructure/SystemIntegration/Paste/PasteFocusDiagnostics.swift
+  s_1bbeadf9e17c83::t_10e653766df929 1-110,112-119
+  s_1bbeadf9e17c83::t_8cc15667d05f4e 111
+VoiceInk/Infrastructure/SystemIntegration/Paste/CursorPaster.swift
+  s_1bbeadf9e17c83::t_10e653766df929 97-98,100-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "754a38e9263f177aff2d1e2e2bf1c4650b39a1bb",
+  "prompts": {},
+  "sessions": {
+    "s_1bbeadf9e17c83": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c067a23-4779-480e-9eee-fba9eb2cf3cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
