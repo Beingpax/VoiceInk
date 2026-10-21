@@ -133,6 +133,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         var isInterrupted = false
         var requiresStandaloneRelease = false
         var recoveredMissedRelease = false
+        var modifierFlagsAtPress: NSEvent.ModifierFlags = []
     }
 
     private var shortcuts: [ShortcutAction: ShortcutState] = [:]
@@ -562,11 +563,14 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                 shortcuts[action] = state
                 recoveredMissedRelease = true
             } else if kind == .flagsChanged, state.shortcut.isModifierOnly, state.isDown,
-                inputCode == state.shortcut.keyCode,
+                (inputCode == state.shortcut.keyCode
+                    || (state.shortcut.keyCode == UInt16.max
+                        && Shortcut.modifierKeyIsDown(inputCode, flags: state.modifierFlagsAtPress, requiringDeviceBit: true))),
                 matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags),
                 Shortcut.modifierKeyIsDown(inputCode, flags: modifierFlags, requiringDeviceBit: true)
             {
-                // Device flags confirm a fresh press after a missed release.
+                // Recover only keys held in the original chord; adding the opposite-side
+                // modifier must not turn an interrupted chord into a fresh shortcut.
                 recoveredPresses += 1
                 ShortcutDiagnostics.warning("recovery owner=\(owner) action=\(action.storageName) reason=fresh-modifier-down-without-up")
                 state = ShortcutState(shortcut: state.shortcut)
@@ -848,6 +852,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
             state.isDown = true
             state.pressedAt = eventTime
             state.recoveredMissedRelease = recoveredMissedRelease
+            state.modifierFlagsAtPress = modifierFlags
             state.requiresStandaloneRelease = standaloneModifierActions.contains(action)
             if state.requiresStandaloneRelease {
                 // Drop keys that are no longer held.

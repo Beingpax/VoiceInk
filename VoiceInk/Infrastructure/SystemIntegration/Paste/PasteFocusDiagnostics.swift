@@ -60,7 +60,7 @@ final class PasteFocusDiagnostics: @unchecked Sendable {
                     after.processID.map { String(commandPID != $0) }
                 } ?? "unknown"
                 Self.logger.notice(
-                    "Paste focus comparison id=\(sessionID, privacy: .public) commandPosted=\(commandPosted, privacy: .public) commandPID=\(commandPID, privacy: .public) appChanged=\(appChanged, privacy: .public) reportedFocusChanged=\(focusChanged, privacy: .public) afterCommandMs=\(afterCommandMs, privacy: .public) insertion=unverified"
+                    "Paste focus comparison id=\(self.sessionID, privacy: .public) commandPosted=\(commandPosted, privacy: .public) commandPID=\(commandPID, privacy: .public) appChanged=\(appChanged, privacy: .public) reportedFocusChanged=\(focusChanged, privacy: .public) afterCommandMs=\(afterCommandMs, privacy: .public) insertion=unverified"
                 )
             }
         }

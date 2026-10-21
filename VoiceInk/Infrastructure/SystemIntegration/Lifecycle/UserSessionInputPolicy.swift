@@ -58,6 +58,8 @@ enum UserSessionInputPolicy {
             var loginDone = false
             var isLocked = true
             var revision: UInt64 = 0
+            var lockRevision: UInt64 = 0
+            var consoleRevision: UInt64 = 0
 
             var allowsInput: Bool { hasSession && onConsole && loginDone && !isLocked }
         }
@@ -85,6 +87,7 @@ enum UserSessionInputPolicy {
                 guard let self else { return }
                 self.state.withLock { state in
                     state.onConsole = false
+                    state.consoleRevision &+= 1
                     state.revision &+= 1
                 }
                 ShortcutDiagnostics.notice("session event=resigned-active")
@@ -106,26 +109,39 @@ enum UserSessionInputPolicy {
             let isLocked = notification.name == Notification.Name("com.apple.screenIsLocked")
             state.withLock { state in
                 state.isLocked = isLocked
+                state.lockRevision &+= 1
                 state.revision &+= 1
             }
             ShortcutDiagnostics.notice("session event=lock-notification locked=\(isLocked)")
         }
 
         private func refresh() {
-            let revision = state.withLock { $0.revision }
-            let properties = CGSessionCopyCurrentDictionary() as? [String: Any]
-            state.withLock { state in
-                // Preserve notifications received during this query.
-                guard state.revision == revision else { return }
-                state.revision &+= 1
-                guard let properties else {
-                    state.hasSession = false
-                    return
+            let notifications = state.withLock { (lock: $0.lockRevision, console: $0.consoleRevision) }
+            while true {
+                let revision = state.withLock { $0.revision }
+                let properties = CGSessionCopyCurrentDictionary() as? [String: Any]
+                let applied = state.withLock { state in
+                    // A notification may have changed the session while it was queried.
+                    // Retry immediately so activation never waits for the health timer.
+                    guard state.revision == revision else { return false }
+                    state.revision &+= 1
+                    guard let properties else {
+                        state.hasSession = false
+                        return true
+                    }
+                    state.hasSession = true
+                    // Keep notifications that arrived during this refresh, even if
+                    // WindowServer's dictionary has not caught up with them yet.
+                    if state.consoleRevision == notifications.console {
+                        state.onConsole = UserSessionInputPolicy.booleanValue(properties[kCGSessionOnConsoleKey as String]) == true
+                    }
+                    state.loginDone = UserSessionInputPolicy.booleanValue(properties[kCGSessionLoginDoneKey as String]) == true
+                    if state.lockRevision == notifications.lock {
+                        state.isLocked = UserSessionInputPolicy.booleanValue(properties[UserSessionInputPolicy.screenIsLockedKey]) == true
+                    }
+                    return true
                 }
-                state.hasSession = true
-                state.onConsole = UserSessionInputPolicy.booleanValue(properties[kCGSessionOnConsoleKey as String]) == true
-                state.loginDone = UserSessionInputPolicy.booleanValue(properties[kCGSessionLoginDoneKey as String]) == true
-                state.isLocked = UserSessionInputPolicy.booleanValue(properties[UserSessionInputPolicy.screenIsLockedKey]) == true
+                if applied { return }
             }
         }
 

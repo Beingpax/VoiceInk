@@ -263,15 +263,16 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     }
 
     func finishHeldShortcutRecording() {
-        guard isRecorderPanelVisible, let engine else { return }
+        guard isRecorderPanelVisible, let engine,
+            let recordingStartID = engine.activeRecordingStartID
+        else { return }
         let presentationID = recorderPresentationID
-        let recordingStartID = engine.activeRecordingStartID
 
         Task { @MainActor [weak self, weak engine] in
             guard let self, let engine,
                 self.isRecorderPanelVisible,
                 self.recorderPresentationID == presentationID,
-                recordingStartID == nil || engine.activeRecordingStartID == recordingStartID
+                engine.activeRecordingStartID == recordingStartID
             else {
                 ShortcutDiagnostics.notice("held-recording result=dropped reason=recording-or-panel-changed")
                 return
