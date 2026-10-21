@@ -1,0 +1,19 @@
+VoiceInk/Infrastructure/SystemIntegration/Paste/PasteFocusDiagnostics.swift
+  s_feb17478e8d3e9::t_69ccb1fc25f94a 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6297f741a022040ff5b27905c33d7de12279678e",
+  "prompts": {},
+  "sessions": {
+    "s_feb17478e8d3e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd168bda-f269-41da-9159-a7b0e53ffe06",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
