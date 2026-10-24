@@ -11,6 +11,7 @@ class Recorder: NSObject, ObservableObject {
     let deviceManager = AudioDeviceManager.shared
     private var lifecycleCancellable: AnyCancellable?
     var recordingDeviceChangeObserver: NSObjectProtocol?
+    var recordingDeviceNotificationTask: Task<Void, Never>?
     private let mediaController = MediaController.shared
     private let playbackController = PlaybackController.shared
     /// Dedicated serial queue for hardware setup.
@@ -50,7 +51,7 @@ class Recorder: NSObject, ObservableObject {
     }
 
     func startRecording(toOutputFile url: URL) async throws {
-        var resolution = deviceManager.resolveCurrentRecordingDevice()
+        let resolution = deviceManager.resolveCurrentRecordingDevice()
         guard var deviceID = resolution.deviceID else {
             onAudioChunk = nil
             throw RecorderError.noUsableMicrophone(
@@ -85,14 +86,12 @@ class Recorder: NSObject, ObservableObject {
                 }
 
                 deviceID = fallbackDeviceID
-                resolution = retryResolution
                 deviceManager.beginRecordingSetup(deviceID: fallbackDeviceID)
                 try await startHardwareRecording(coreAudioRecorder, to: url, deviceID: fallbackDeviceID)
             }
 
             deviceManager.recordingDidStart(deviceID: deviceID)
-            showRecordingDeviceNotification(for: deviceID, resolution: resolution)
-            UserDefaults.standard.set(String(deviceID), forKey: "lastUsedMicrophoneDeviceID")
+            showRecordingDeviceNotification(for: deviceID)
             resetAudioMeter()
         } catch {
             logger.error(
@@ -107,6 +106,8 @@ class Recorder: NSObject, ObservableObject {
     }
 
     func stopRecording() async {
+        recordingDeviceNotificationTask?.cancel()
+        recordingDeviceNotificationTask = nil
         let playbackSessionID = self.playbackSessionID
         audioMuteTask?.cancel()
         audioMuteTask = nil
@@ -242,6 +243,7 @@ class Recorder: NSObject, ObservableObject {
     // MARK: - Cleanup
 
     deinit {
+        recordingDeviceNotificationTask?.cancel()
         audioMuteTask?.cancel()
         mediaPauseTask?.cancel()
         audioRestorationTask?.cancel()
