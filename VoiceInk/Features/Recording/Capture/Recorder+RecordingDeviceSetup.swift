@@ -47,7 +47,6 @@ extension Recorder {
         // Compare the stable UID for every route, including closed-lid fallbacks.
         let lastDeviceUID = UserDefaults.standard.string(forKey: "lastUsedMicrophoneDeviceUID")
         guard device.uid != lastDeviceUID else { return }
-        UserDefaults.standard.set(device.uid, forKey: "lastUsedMicrophoneDeviceUID")
 
         recordingDeviceNotificationTask?.cancel()
         // Let the caller finish recording startup before constructing the notification window.
@@ -62,6 +61,7 @@ extension Recorder {
                 title: String(format: title, device.name),
                 type: .info
             )
+            UserDefaults.standard.set(device.uid, forKey: "lastUsedMicrophoneDeviceUID")
             self.recordingDeviceNotificationTask = nil
         }
     }
