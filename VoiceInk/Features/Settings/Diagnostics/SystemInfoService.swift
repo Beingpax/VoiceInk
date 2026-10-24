@@ -155,7 +155,18 @@ final class SystemInfoService {
     }
 
     private func shortcutDescription(for action: ShortcutAction) -> String {
-        ShortcutStore.shortcut(for: action)?.displayString ?? ""
+        let modeKey = action == .primaryRecording ? "primaryRecordingShortcutMode" : "secondaryRecordingShortcutMode"
+        let mode = UserDefaults.standard.string(forKey: modeKey)
+            .flatMap(RecordingShortcutManager.Mode.init(rawValue:)) ?? .hybrid
+        let modeName: String
+        switch mode {
+        case .toggle: modeName = "Toggle"
+        case .pushToTalk: modeName = "Push to Talk"
+        case .hybrid: modeName = "Hybrid"
+        case .doubleTap: modeName = "Double Tap"
+        }
+        let shortcut = ShortcutStore.shortcut(for: action)?.displayString ?? "Not configured"
+        return "\(shortcut) [\(modeName)]"
     }
 
     private func getModeConfigurationInfo(for mode: ModeConfig?) -> String {

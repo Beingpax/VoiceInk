@@ -92,12 +92,17 @@ class VoiceInkEngine: NSObject, ObservableObject {
         }
     }
 
-    @Published var recordingState: RecordingState = .idle
+    @Published var recordingState: RecordingState = .idle {
+        didSet {
+            guard oldValue != recordingState else { return }
+            ShortcutDiagnostics.notice("recording-state old=\(oldValue) new=\(recordingState) visible=\(recorderUIManager?.isRecorderPanelVisible ?? false) startID=\(activeRecordingStartID?.uuidString ?? "none")")
+        }
+    }
     @Published var shouldCancelRecording = false
     @Published var partialTranscript: String = ""
     var currentSession: TranscriptionSession?
     private var currentSessionTranscriptionConfiguration: TranscriptionRuntimeConfiguration?
-    private var activeRecordingStartID: UUID?
+    private(set) var activeRecordingStartID: UUID?
     private var activePipelineTranscriptionID: UUID?
     private var canceledPipelineTranscriptionIDs = Set<UUID>()
     private var activeRecordingUseCase: RecordingUseCase = .newSession
@@ -232,15 +237,26 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 assistantSession.reset()
             }
 
+            let startID = UUID()
+            let permanentURL = recordingsDirectory.appendingPathComponent("\(UUID().uuidString).wav")
+            recordedFile = permanentURL
+            activeRecordingStartID = startID
+            recordingState = .starting
+
             requestRecordPermission { [self] granted in
                 if granted {
                     Task { @MainActor [self] in
-                        guard await self.passesRecordingPreflight() else {
+                        guard self.activeRecordingStartID == startID, !self.shouldCancelRecording else { return }
+                        guard await self.passesRecordingPreflight(),
+                            self.activeRecordingStartID == startID,
+                            !self.shouldCancelRecording
+                        else {
                             return
                         }
-
-                        let startID = UUID()
-                        self.activeRecordingStartID = startID
+                        guard self.recorderUIManager?.isRecorderPanelVisible ?? false else {
+                            await self.cancelRecording()
+                            return
+                        }
                         let activeModeTask = ActiveWindowService.shared.beginApplyingConfiguration(modeId: modeId) {
                             [weak self] in
                             guard let self else { return false }
@@ -248,14 +264,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         }
 
                         do {
-                            let fileName = "\(UUID().uuidString).wav"
-                            let permanentURL = self.recordingsDirectory.appendingPathComponent(fileName)
-                            self.recordedFile = permanentURL
-
                             let realtimeAudioGate = RealtimeAudioChunkGate()
                             self.recorder.onAudioChunk = realtimeAudioGate.receive
-
-                            self.recordingState = .starting
 
                             try await self.recorder.startRecording(toOutputFile: permanentURL)
 
@@ -263,6 +273,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 self.recorderUIManager?.isRecorderPanelVisible ?? false,
                                 !self.shouldCancelRecording
                             else {
+                                ShortcutDiagnostics.notice("recording-start result=aborted startID=\(startID) currentStart=\(self.activeRecordingStartID == startID) visible=\(self.recorderUIManager?.isRecorderPanelVisible ?? false) cancelled=\(self.shouldCancelRecording)")
                                 activeModeTask.cancel()
                                 let shouldKeepRecordingFile = self.shouldCancelRecording
                                 if self.activeRecordingStartID == startID {
@@ -431,6 +442,11 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         }
                     }
                 } else {
+                    if activeRecordingStartID == startID {
+                        activeRecordingStartID = nil
+                        recordedFile = nil
+                        recordingState = .idle
+                    }
                     logger.error("Recording permission denied")
                 }
             }
@@ -505,6 +521,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
         action: @escaping () -> Void
     ) async {
         logger.error("❌ Recording preflight failed: \(title, privacy: .public)")
+        activeRecordingStartID = nil
+        recordedFile = nil
         recordingState = .idle
         NotificationManager.shared.showNotification(
             title: title,

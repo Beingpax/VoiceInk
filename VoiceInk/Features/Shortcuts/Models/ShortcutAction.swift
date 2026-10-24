@@ -1,6 +1,6 @@
 import Foundation
 
-enum ShortcutAction: Hashable {
+enum ShortcutAction: Hashable, Sendable {
     case primaryRecording
     case secondaryRecording
     case pasteLastTranscription

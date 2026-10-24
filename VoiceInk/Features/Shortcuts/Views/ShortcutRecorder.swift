@@ -161,7 +161,16 @@ private struct ShortcutKeyCap: View {
     }
 }
 
+@MainActor
 final class ShortcutRecorderModel: ObservableObject {
+    private static weak var activeRecorder: ShortcutRecorderModel?
+    private static var activeRecorderID: UUID?
+
+    private let recorderID = UUID()
+    private let notificationCenter: NotificationCenter
+    private let recordingWindow: @MainActor () -> NSWindow?
+    private var focusObservers: [NSObjectProtocol] = []
+
     @Published var isRecording = false
     @Published var previewShortcut: Shortcut?
 
@@ -171,21 +180,41 @@ final class ShortcutRecorderModel: ObservableObject {
     private var pendingModifierShortcut: Shortcut?
     private var peakModifierFlags: NSEvent.ModifierFlags = []
 
-    deinit {
+    init(notificationCenter: NotificationCenter = .default,
+         recordingWindow: @escaping @MainActor () -> NSWindow? = { NSApp.keyWindow }) {
+        self.notificationCenter = notificationCenter
+        self.recordingWindow = recordingWindow
+    }
+
+    isolated deinit {
         removeRecordingMonitor()
+        resetRecordingState()
     }
 
     func start(action: ShortcutAction, onCapture: @escaping (Shortcut) -> Void) {
+        Self.activeRecorder?.cancel()
         cancel()
 
         activeAction = action
         self.onCapture = onCapture
         isRecording = true
+        Self.activeRecorder = self
+        Self.activeRecorderID = recorderID
         previewShortcut = nil
+        ShortcutDiagnostics.setCaptureAction(action)
+        ShortcutDiagnostics.notice("capture action=\(action.storageName) result=started")
         installRecordingMonitor()
+        guard localMonitor != nil else {
+            cancel()
+            return
+        }
+        observeFocusLoss()
     }
 
     func cancel() {
+        if isRecording {
+            ShortcutDiagnostics.notice("capture action=\(activeAction?.storageName ?? "unknown") result=cancelled")
+        }
         removeRecordingMonitor()
         resetRecordingState()
     }
@@ -197,12 +226,14 @@ final class ShortcutRecorderModel: ObservableObject {
         }
 
         if let validationError = ShortcutValidator.validationError(for: shortcut, action: activeAction) {
+            ShortcutDiagnostics.notice("capture action=\(activeAction.storageName) result=rejected reason=\(validationError.diagnosticReason) shortcut={\(shortcut.diagnosticDescription)}")
             cancel()
             showErrorNotification(validationError.notificationTitle(for: shortcut))
             return
         }
 
         let capture = onCapture
+        ShortcutDiagnostics.notice("capture action=\(activeAction.storageName) result=accepted shortcut={\(shortcut.diagnosticDescription)}")
         removeRecordingMonitor()
         resetRecordingState()
 
@@ -211,12 +242,41 @@ final class ShortcutRecorderModel: ObservableObject {
     }
 
     private func resetRecordingState() {
+        removeFocusObservers()
+        if Self.activeRecorderID == recorderID {
+            Self.activeRecorder = nil
+            Self.activeRecorderID = nil
+            ShortcutDiagnostics.setCaptureAction(nil)
+        }
         isRecording = false
         previewShortcut = nil
         onCapture = nil
         activeAction = nil
         pendingModifierShortcut = nil
         peakModifierFlags = []
+    }
+
+    private func observeFocusLoss() {
+        let recordingID = recorderID
+        var observations: [(Notification.Name, AnyObject?)] = [(NSApplication.didResignActiveNotification, nil)]
+        if let window = recordingWindow() {
+            observations.append((NSWindow.didResignKeyNotification, window))
+        }
+        for (name, object) in observations {
+            focusObservers.append(notificationCenter.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard Self.activeRecorderID == recordingID else { return }
+                    self?.cancel()
+                }
+            })
+        }
+    }
+
+    private func removeFocusObservers() {
+        for observer in focusObservers {
+            notificationCenter.removeObserver(observer)
+        }
+        focusObservers.removeAll()
     }
 
     private func showErrorNotification(_ title: String) {
@@ -235,6 +295,9 @@ final class ShortcutRecorderModel: ObservableObject {
             guard let self else { return event }
             let shouldConsume = self.handleRecordingEvent(event)
             return shouldConsume ? nil : event
+        }
+        if localMonitor == nil {
+            ShortcutDiagnostics.error("capture action=\(activeAction?.storageName ?? "unknown") result=monitor-install-failed")
         }
     }
 

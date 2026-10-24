@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 class ModeShortcutManager {
-    private let shortcutMonitor = ShortcutMonitor()
+    private let shortcutMonitor = ShortcutMonitor(owner: "modes")
     private let modeProvider: @MainActor () -> RecordingShortcutManager.Mode
     private let shortcutModeHandler: RecordingShortcutModeHandler
     private var shortcutChangeObserver: NSObjectProtocol?
@@ -15,7 +15,7 @@ class ModeShortcutManager {
         self.modeProvider = modeProvider
         self.shortcutModeHandler = shortcutModeHandler
 
-        refreshModeShortcuts()
+        refreshModeShortcuts(reason: "startup")
 
         shortcutChangeObserver = NotificationCenter.default.addObserver(
             forName: ShortcutStore.shortcutDidChange,
@@ -30,7 +30,7 @@ class ModeShortcutManager {
             }
 
             Task { @MainActor in
-                self?.refreshModeShortcuts()
+                self?.refreshModeShortcuts(reason: "store-change.\(action.storageName)")
             }
         }
 
@@ -42,28 +42,26 @@ class ModeShortcutManager {
         )
     }
 
-    deinit {
+    isolated deinit {
         NotificationCenter.default.removeObserver(self)
         if let shortcutChangeObserver {
             NotificationCenter.default.removeObserver(shortcutChangeObserver)
         }
-        MainActor.assumeIsolated {
-            shortcutMonitor.stop()
-        }
+        shortcutMonitor.stop(reason: "deinit")
     }
 
     @objc private func modeShortcutAvailabilityDidChange() {
         Task { @MainActor in
-            refreshModeShortcuts()
+            refreshModeShortcuts(reason: "mode-availability")
         }
     }
 
     func recordingModeDidChange() {
+        shortcutMonitor.resetShortcutStates(for: monitoredActions)
         shortcutMonitor.updateStandaloneModifierActions(standaloneModifierActions)
     }
 
-    private func refreshModeShortcuts() {
-        shortcutModeHandler.clearPendingModeDoubleTaps()
+    private func refreshModeShortcuts(reason: String) {
         let shortcuts = ModeManager.shared.enabledConfigurations.reduce(into: [ShortcutAction: Shortcut]()) {
             result, config in
             let action = ShortcutAction.mode(config.id)
@@ -78,48 +76,41 @@ class ModeShortcutManager {
             interruptibleActions: Set(shortcuts.keys),
             standaloneModifierActions: standaloneModifierActions,
             onShortcutDown: { [weak self] action, eventTime in
-                Task { @MainActor in
-                    guard let self,
-                        let modeId = self.modeId(for: action)
-                    else {
-                        return
-                    }
-
-                    await self.shortcutModeHandler.handleShortcutDown(
-                        action: action,
-                        eventTime: eventTime,
-                        mode: self.modeProvider(),
-                        modeId: modeId
-                    )
+                guard let self else { return }
+                guard let modeId = self.modeId(for: action) else {
+                    ShortcutDiagnostics.notice("decision action=\(action.storageName) result=ignored reason=mode-unavailable")
+                    return
                 }
+                await self.shortcutModeHandler.handleShortcutDown(
+                    action: action,
+                    eventTime: eventTime,
+                    mode: self.modeProvider(),
+                    modeId: modeId
+                )
             },
             onShortcutUp: { [weak self] action, eventTime in
-                Task { @MainActor in
-                    guard let self,
-                        case .mode(let modeId) = action
-                    else {
-                        return
-                    }
-
-                    await self.shortcutModeHandler.handleShortcutUp(
-                        action: action,
-                        eventTime: eventTime,
-                        mode: self.modeProvider(),
-                        modeId: modeId
-                    )
-                }
+                guard let self, case .mode(let modeId) = action else { return }
+                await self.shortcutModeHandler.handleShortcutUp(
+                    action: action,
+                    eventTime: eventTime,
+                    mode: self.modeProvider(),
+                    modeId: modeId
+                )
             },
-            onShortcutInterrupted: { [weak self] action, _ in
-                Task { @MainActor in
-                    guard let self, case .mode = action else { return }
-                    await self.shortcutModeHandler.handleInterruption(action: action)
-                }
+            onShortcutInterrupted: { [weak self] action, pressedAt in
+                guard let self, case .mode = action else { return }
+                await self.shortcutModeHandler.handleInterruption(action: action, pressedAt: pressedAt)
             },
             onStandaloneModifierChord: { [weak self] action in
-                MainActor.assumeIsolated {
-                    self?.shortcutModeHandler.clearPendingDoubleTap(for: action)
-                }
-            }
+                self?.shortcutModeHandler.clearPendingDoubleTap(for: action)
+            },
+            onMonitoringReset: { [weak self] actions in
+                self?.shortcutModeHandler.resetShortcutStates(for: actions)
+            },
+            onMissedRelease: { [weak self] action in
+                self?.shortcutModeHandler.recoverMissedRelease(for: action)
+            },
+            reason: reason
         )
     }
 

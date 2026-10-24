@@ -45,13 +45,13 @@ final class AutoLearnAXTextReader {
         enableWebAccessibilityIfNeeded(processID: processID, appElement: appElement)
 
         var candidates: [(element: AXUIElement, source: String)] = []
-        if let appFocused = copyElement(kAXFocusedUIElementAttribute as CFString, from: appElement) {
+        if let appFocused = AccessibilityFocusReader.focusedElement(in: appElement).element {
             appendUnique(appFocused, source: "application-focus", to: &candidates)
         }
 
         let systemWide = AXUIElementCreateSystemWide()
-        if let systemFocused = copyElement(kAXFocusedUIElementAttribute as CFString, from: systemWide),
-            owningProcessID(of: systemFocused) == processID
+        if let systemFocused = AccessibilityFocusReader.focusedElement(in: systemWide).element,
+            AccessibilityFocusReader.processID(of: systemFocused) == processID
         {
             appendUnique(systemFocused, source: "system-focus", to: &candidates)
         }
@@ -78,9 +78,7 @@ final class AutoLearnAXTextReader {
     }
 
     private func isEditable(_ element: AXUIElement) -> Bool {
-        if let value = copyBool("AXEditable" as CFString, from: element) { return value }
-        let role = copyString(kAXRoleAttribute as CFString, from: element) ?? ""
-        return role == kAXTextFieldRole || role == kAXTextAreaRole || role == kAXComboBoxRole
+        AccessibilityFocusReader.editableState(of: element) == true
     }
 
     func textValue(from element: AXUIElement) -> AutoLearnAXTextValue? {
@@ -257,12 +255,6 @@ final class AutoLearnAXTextReader {
         candidates.append((element, source))
     }
 
-    private func owningProcessID(of element: AXUIElement) -> pid_t? {
-        var processID: pid_t = 0
-        guard AXUIElementGetPid(element, &processID) == .success else { return nil }
-        return processID
-    }
-
     private func attributeNames(of element: AXUIElement) -> Set<String> {
         var names: CFArray?
         guard AXUIElementCopyAttributeNames(element, &names) == .success,
@@ -281,15 +273,6 @@ final class AutoLearnAXTextReader {
             return []
         }
         return Set(values)
-    }
-
-    private func copyElement(_ attribute: CFString, from element: AXUIElement) -> AXUIElement? {
-        guard let value = copyOpaque(attribute, from: element),
-            CFGetTypeID(value) == AXUIElementGetTypeID()
-        else {
-            return nil
-        }
-        return unsafeBitCast(value, to: AXUIElement.self)
     }
 
     private func copyBool(_ attribute: CFString, from element: AXUIElement) -> Bool? {

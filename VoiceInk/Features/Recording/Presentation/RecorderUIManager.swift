@@ -49,6 +49,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     @Published var isRecorderPanelVisible = false {
         didSet {
             guard oldValue != isRecorderPanelVisible else { return }
+            recorderPresentationID = UUID()
 
             if isRecorderPanelVisible {
                 showRecorderPanel()
@@ -63,6 +64,7 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     private var panelInvalidationTask: Task<Void, Never>?
     private var didSetupNotifications = false
     private var lifecycleCancellable: AnyCancellable?
+    private var recorderPresentationID = UUID()
 
     private weak var engine: VoiceInkEngine?
     private var recorder: Recorder?
@@ -220,7 +222,11 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     // MARK: - Recorder Panel Management
 
     func toggleRecorderPanel(modeId: UUID? = nil) async {
-        guard let engine = engine else { return }
+        guard let engine = engine else {
+            ShortcutDiagnostics.error("recorder-toggle result=rejected reason=engine-unavailable")
+            return
+        }
+        ShortcutDiagnostics.notice("recorder-toggle state=\(engine.recordingState) visible=\(isRecorderPanelVisible) modeID=\(modeId?.uuidString ?? "none") followUpAvailable=\(engine.assistantSession.canSendFollowUp)")
 
         if isRecorderPanelVisible {
             switch engine.recordingState {
@@ -249,8 +255,38 @@ class RecorderUIManager: ObservableObject, RecorderPanelPresenting {
     }
 
     func finishRecordingAndSend() async {
-        guard isRecorderPanelVisible, let engine, engine.recordingState == .recording else { return }
+        guard isRecorderPanelVisible, let engine, engine.recordingState == .recording else {
+            ShortcutDiagnostics.notice("finish-and-send result=ignored visible=\(isRecorderPanelVisible) state=\(engine.map { String(describing: $0.recordingState) } ?? "unavailable")")
+            return
+        }
         await engine.toggleRecord(sendAfterPaste: true)
+    }
+
+    func finishHeldShortcutRecording() {
+        guard isRecorderPanelVisible, let engine,
+            let recordingStartID = engine.activeRecordingStartID
+        else { return }
+        let presentationID = recorderPresentationID
+
+        Task { @MainActor [weak self, weak engine] in
+            guard let self, let engine,
+                self.isRecorderPanelVisible,
+                self.recorderPresentationID == presentationID,
+                engine.activeRecordingStartID == recordingStartID
+            else {
+                ShortcutDiagnostics.notice("held-recording result=dropped reason=recording-or-panel-changed")
+                return
+            }
+
+            switch engine.recordingState {
+            case .recording:
+                await engine.toggleRecord()
+            case .idle, .starting:
+                await self.cancelRecording()
+            case .transcribing, .enhancing, .busy:
+                break
+            }
+        }
     }
 
     var isActivelyRecording: Bool {
