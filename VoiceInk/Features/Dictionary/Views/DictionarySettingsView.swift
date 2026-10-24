@@ -3,7 +3,6 @@ import SwiftUI
 struct DictionarySettingsView: View {
     @State private var selectedSection: DictionarySection = .replacements
     @State private var activePanel: DictionaryPanel?
-    @State private var isAutoLearnReviewPresented = false
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
     private let dictionaryInfoMessage: LocalizedStringKey =
         "Word Replacements run after transcription. Vocabulary helps supported transcription models and AI enhancement recognize names, technical terms, and unique spellings."
@@ -69,9 +68,6 @@ struct DictionarySettingsView: View {
             case .settings:
                 DictionarySettingsPanel {
                     activePanel = nil
-                } onReviewNow: {
-                    activePanel = nil
-                    isAutoLearnReviewPresented = true
                 }
             case .autoLearnFailure:
                 AutoLearnFailurePanel {
@@ -81,11 +77,7 @@ struct DictionarySettingsView: View {
                 EmptyView()
             }
         }
-        .sidePanel(isPresented: $isAutoLearnReviewPresented) {
-            AutoLearnReviewPanel {
-                isAutoLearnReviewPresented = false
-            }
-        }
+
     }
 
     private var headerSection: some View {

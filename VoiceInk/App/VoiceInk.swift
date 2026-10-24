@@ -39,6 +39,7 @@ struct VoiceInkApp: App {
     @StateObject private var prewarmService: ModelPrewarmService
 
     init() {
+        // Track every app launch, including sessions where logs are never exported.
         _ = LogExporter.shared
 
         // Disable HTTP response caching — prevents API responses from being stored in Cache.db
@@ -107,12 +108,8 @@ struct VoiceInkApp: App {
 
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
-        let autoLearnReviewer = AutoLearnAIReviewer(enhancementService: enhancementService)
         Task {
-            await AutoLearnService.shared.configure(
-                modelContainer: resolvedContainer,
-                reviewer: autoLearnReviewer
-            )
+            await AutoLearnService.shared.configure(modelContainer: resolvedContainer)
         }
 
         // 1. Create modelsDirectory URL

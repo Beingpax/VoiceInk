@@ -24,57 +24,33 @@ enum CloudTranscriptionSettings {
 
 enum AutoLearnSettings {
     static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
-    static let providerKey = "AutoLearnDictionaryProvider"
-    static let modelKey = "AutoLearnDictionaryModel"
+    static let minimumCorrectionsKey = "AutoLearnDictionaryMinimumCorrections"
+    static let legacyBacklogDiscardedKey = "AutoLearnDictionaryLegacyBacklogDiscardedV1"
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
     static let failureAcknowledgedKey = "AutoLearnDictionaryFailureAcknowledged"
-    static let reviewScheduleKey = "AutoLearnDictionaryReviewSchedule"
 
     static var isEnabled: Bool {
         UserDefaults.standard.bool(forKey: isEnabledKey)
     }
 
-    static var selectedProvider: AIProvider? {
-        guard let value = UserDefaults.standard.string(forKey: providerKey) else { return nil }
-        return AIProvider(rawValue: value)
+    static var minimumCorrections: Int {
+        clampedMinimumCorrections(UserDefaults.standard.integer(forKey: minimumCorrectionsKey))
     }
 
-    static var selectedModel: String? {
-        let value = UserDefaults.standard.string(forKey: modelKey)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return value?.isEmpty == false ? value : nil
+    static func clampedMinimumCorrections(_ value: Int) -> Int {
+        min(3, max(1, value))
     }
 
-    static var reviewSchedule: AutoLearnReviewSchedule {
-        guard let value = UserDefaults.standard.string(forKey: reviewScheduleKey) else {
-            return .immediately
+    static func removeLegacyReviewSettings(defaults: UserDefaults = .standard) {
+        if defaults.bool(forKey: "AutoLearnDictionaryIsAIReviewFailure") {
+            defaults.set(false, forKey: hasFailureKey)
+            defaults.removeObject(forKey: failureMessageKey)
+            defaults.removeObject(forKey: failureAcknowledgedKey)
         }
-        return AutoLearnReviewSchedule(rawValue: value) ?? .immediately
-    }
-
-    /// Adopts the first configured enhancement provider for Auto Learn.
-    /// Once a Dictionary selection exists, provider configuration changes do not replace it.
-    static func initializeSelectionIfNeeded(
-        provider: AIProvider,
-        model: String,
-        defaults: UserDefaults = .standard
-    ) {
-        if let storedProvider = defaults.string(forKey: providerKey),
-            let provider = AIProvider(rawValue: storedProvider),
-            AutoLearnProviderPolicy.isSupported(provider)
-        {
-            return
-        }
-
-        guard AutoLearnProviderPolicy.isSupported(provider) else { return }
-
-        defaults.set(provider.rawValue, forKey: providerKey)
-        let selectedModel = model.trimmingCharacters(in: .whitespacesAndNewlines)
-        if selectedModel.isEmpty {
-            defaults.removeObject(forKey: modelKey)
-        } else {
-            defaults.set(selectedModel, forKey: modelKey)
+        for key in ["AutoLearnDictionaryReviewSchedule", "AutoLearnDictionaryAIReviewEnabled",
+            "AutoLearnDictionaryProvider", "AutoLearnDictionaryModel", "AutoLearnDictionaryIsAIReviewFailure"] {
+            defaults.removeObject(forKey: key)
         }
     }
 
@@ -98,7 +74,7 @@ enum AutoLearnSettings {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
         UserDefaults.standard.set(
-            message.isEmpty ? "The selected provider or model could not review corrections." : message,
+            message.isEmpty ? String(localized: "The pending corrections could not be reviewed.") : message,
             forKey: failureMessageKey
         )
         UserDefaults.standard.set(false, forKey: failureAcknowledgedKey)
@@ -123,6 +99,7 @@ enum OnboardingSettings {
 
 enum AppDefaults {
     static func registerDefaults() {
+        AutoLearnSettings.removeLegacyReviewSettings()
         UserDefaults.standard.register(defaults: [
             // Onboarding & General
             OnboardingSettings.completedV2Key: false,
@@ -152,7 +129,7 @@ enum AppDefaults {
             RecorderDisplaySettingsKeys.showLiveTranscript: true,
             CloudTranscriptionSettings.timeoutKey: CloudTranscriptionSettings.defaultTimeout,
             AutoLearnSettings.isEnabledKey: true,
-            AutoLearnSettings.reviewScheduleKey: AutoLearnReviewSchedule.immediately.rawValue,
+            AutoLearnSettings.minimumCorrectionsKey: 1,
 
             // Cleanup
             CleanupSettingsKeys.isTranscriptionCleanupEnabled: false,

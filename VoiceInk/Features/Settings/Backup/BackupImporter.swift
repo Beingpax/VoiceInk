@@ -195,27 +195,19 @@ enum BackupImporter {
         if let finishAndSendKey = general.finishAndSendKey.flatMap(FinishAndSendKey.init(rawValue:)) {
             UserDefaults.standard.set(finishAndSendKey.rawValue, forKey: FinishAndSendSettings.key)
         }
-        let importedReviewSchedule = general.autoLearnReviewSchedule.flatMap {
-            AutoLearnReviewSchedule(rawValue: $0)
-        }
-        if let importedReviewSchedule {
-            UserDefaults.standard.set(importedReviewSchedule.rawValue, forKey: AutoLearnSettings.reviewScheduleKey)
-        }
         if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
             UserDefaults.standard.set(autoLearnEnabled, forKey: AutoLearnSettings.isEnabledKey)
         }
-        if let provider = general.autoLearnProvider {
-            UserDefaults.standard.set(provider, forKey: AutoLearnSettings.providerKey)
+        if let minimumCorrections = general.autoLearnMinimumCorrections {
+            UserDefaults.standard.set(AutoLearnSettings.clampedMinimumCorrections(minimumCorrections),
+                forKey: AutoLearnSettings.minimumCorrectionsKey)
         }
-        if let model = general.autoLearnModel {
-            UserDefaults.standard.set(model, forKey: AutoLearnSettings.modelKey)
-        }
-        if general.isAutoLearnDictionaryEnabled != nil || importedReviewSchedule != nil {
+        if general.isAutoLearnDictionaryEnabled != nil || general.autoLearnMinimumCorrections != nil {
             Task {
                 if let autoLearnEnabled = general.isAutoLearnDictionaryEnabled {
                     await AutoLearnService.shared.settingDidChange(isEnabled: autoLearnEnabled)
                 } else {
-                    await AutoLearnService.shared.reviewScheduleDidChange()
+                    await AutoLearnService.shared.suggestionThresholdDidChange()
                 }
             }
         }

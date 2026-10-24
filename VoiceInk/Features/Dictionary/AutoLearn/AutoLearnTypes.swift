@@ -68,26 +68,6 @@ struct AutoLearnReviewDecision: Sendable {
     let correctedVocabularyTerm: String?
 }
 
-enum AutoLearnUnresolvedReason: String, Sendable {
-    case missingDecision
-    case conflictingDecisions
-    case missingRequiredActionValues
-    case invalidRequiredActionValues
-}
-
-struct AutoLearnUnresolvedReview: Sendable {
-    let candidateID: UUID
-    let reason: AutoLearnUnresolvedReason
-    let learningAction: AutoLearnReviewAction?
-    let incorrectTextToReplace: String?
-    let correctedVocabularyTerm: String?
-}
-
-struct AutoLearnReviewResult: Sendable {
-    let reviewDecisions: [AutoLearnReviewDecision]
-    let unresolvedReviews: [AutoLearnUnresolvedReview]
-}
-
 struct AutoLearnReviewProposal: Codable, Identifiable, Sendable {
     let id: UUID
     let candidateID: UUID
@@ -99,10 +79,6 @@ struct AutoLearnReviewProposal: Codable, Identifiable, Sendable {
 
     var addsReplacement: Bool {
         learningAction == .addReplacementAndVocabulary || learningAction == .addReplacementOnly
-    }
-
-    var addsVocabulary: Bool {
-        learningAction == .addReplacementAndVocabulary || learningAction == .addVocabularyOnly
     }
 
     var reviewCandidate: AutoLearnReviewCandidate {
@@ -123,52 +99,18 @@ struct AutoLearnReviewProposal: Codable, Identifiable, Sendable {
     }
 }
 
-struct AutoLearnReviewSelection: Sendable {
-    let proposalID: UUID
-    let includesReplacement: Bool
-    let includesVocabulary: Bool
-    let incorrectTextToReplace: String?
-    let correctedVocabularyTerm: String
-}
-
 struct AutoLearnMutationSummary: Sendable {
     let createdCount: Int
     let updatedCount: Int
-    let vocabularyCount: Int
-    let learnedCorrections: [AutoLearnAppliedCorrection]
 
     var hasChanges: Bool {
-        createdCount > 0 || updatedCount > 0 || vocabularyCount > 0
+        createdCount > 0 || updatedCount > 0
     }
 
     static let empty = AutoLearnMutationSummary(
         createdCount: 0,
-        updatedCount: 0,
-        vocabularyCount: 0,
-        learnedCorrections: []
+        updatedCount: 0
     )
-}
-
-struct AutoLearnAppliedCorrection: Sendable {
-    let incorrectTextToReplace: String
-    let correctedVocabularyTerm: String
-    let replacementSourceWasAdded: Bool
-    let vocabularyCreationDate: Date?
-}
-
-enum AutoLearnReviewSchedule: String, CaseIterable, Identifiable {
-    case immediately
-    case manually
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .immediately: String(localized: "Immediately")
-        case .manually: String(localized: "Manually")
-        }
-    }
-
 }
 
 enum AutoLearnLimits {
@@ -184,12 +126,4 @@ enum AutoLearnLimits {
     static let maximumCandidateSegments = 24
     static let reviewContextSegmentsPerSide = 3
     static let maximumUnspacedCandidateCharacters = 32
-    static let maximumReviewBatchCandidates = 100
-}
-
-enum AutoLearnProviderPolicy {
-    static func isSupported(_ provider: AIProvider) -> Bool {
-        provider.supportsEnhancement
-            && provider != .voiceInkRefine
-    }
 }
