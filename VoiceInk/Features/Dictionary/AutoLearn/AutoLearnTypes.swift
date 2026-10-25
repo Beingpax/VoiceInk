@@ -103,7 +103,6 @@ enum AutoLearnLimits {
     static let focusChangeGraceNanoseconds: UInt64 = 250_000_000
     static let accessibilityTimeoutSeconds: Float = 0.20
     static let captureAccessibilityTimeoutSeconds: Float = 0.10
-    static let maximumFieldUTF16Length = 100_000
     static let maximumPastedCharacters = 12_000
     static let maximumDiffSegments = 2_048
     static let maximumCandidateCharacters = 256

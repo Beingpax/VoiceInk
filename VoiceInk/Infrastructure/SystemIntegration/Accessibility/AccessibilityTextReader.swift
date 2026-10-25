@@ -20,6 +20,7 @@ struct AccessibilityTextValue {
 final class AccessibilityTextReader {
     static let maximumFieldUTF16Length = 100_000
     private let messagingTimeout: Float
+    private let fieldMessagingTimeout: Float?
     private let readBudget: TimeInterval?
     private var readDeadline: TimeInterval?
 
@@ -27,8 +28,9 @@ final class AccessibilityTextReader {
         readDeadline.map { ProcessInfo.processInfo.systemUptime < $0 } ?? true
     }
 
-    init(messagingTimeout: Float = 0.10, readBudget: TimeInterval? = nil) {
+    init(messagingTimeout: Float = 0.10, fieldMessagingTimeout: Float? = nil, readBudget: TimeInterval? = nil) {
         self.messagingTimeout = messagingTimeout
+        self.fieldMessagingTimeout = fieldMessagingTimeout
         self.readBudget = readBudget
     }
 
@@ -64,7 +66,6 @@ final class AccessibilityTextReader {
         }
 
         let systemWide = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(systemWide, messagingTimeout)
         if let systemFocused = AccessibilityFocusReader.focusedElement(in: systemWide).element,
             AccessibilityFocusReader.processID(of: systemFocused) == processID
         {
@@ -73,7 +74,9 @@ final class AccessibilityTextReader {
 
         var readings: [AccessibilityTextReading] = []
         for candidate in candidates {
-            AXUIElementSetMessagingTimeout(candidate.element, messagingTimeout)
+            if let fieldMessagingTimeout {
+                AXUIElementSetMessagingTimeout(candidate.element, fieldMessagingTimeout)
+            }
             guard isEditable(candidate.element) else { continue }
 
             let candidateReadings = makeReadings(
@@ -238,10 +241,12 @@ final class AccessibilityTextReader {
     private func enableWebAccessibilityIfNeeded(processID: pid_t, appElement: AXUIElement) {
         guard !webAccessibilityProcesses.contains(processID) else { return }
         let acquired = AccessibilityWebAccess.shared.acquire(processID: processID) {
-            guard let previous = copyBool(Self.manualAccessibilityAttribute, from: appElement) else { return nil }
-            guard AXUIElementSetAttributeValue(appElement, Self.manualAccessibilityAttribute, kCFBooleanTrue)
-                == .success else { return nil }
-            return previous
+            var value: CFTypeRef?
+            let readError = AXUIElementCopyAttributeValue(appElement, Self.manualAccessibilityAttribute, &value)
+            guard readError == .success else { return .failed(readError) }
+            guard let previous = (value as? NSNumber)?.boolValue else { return .failed(.failure) }
+            let writeError = AXUIElementSetAttributeValue(appElement, Self.manualAccessibilityAttribute, kCFBooleanTrue)
+            return writeError == .success ? .enabled(previous: previous) : .failed(writeError)
         }
         if acquired { webAccessibilityProcesses.insert(processID) }
     }
@@ -399,11 +404,17 @@ final class AccessibilityTextReader {
 
 /// Browser accessibility stays enabled until every reader has finished using it.
 final class AccessibilityWebAccess: @unchecked Sendable {
+    enum EnableResult {
+        case enabled(previous: Bool)
+        case failed(AXError)
+    }
+
     static let shared = AccessibilityWebAccess()
     private let lock = NSLock()
     private var processes: [pid_t: (readers: Int, previous: Bool)] = [:]
+    private var retryAfter: [pid_t: TimeInterval] = [:]
 
-    func acquire(processID: pid_t, enable: () -> Bool?) -> Bool {
+    func acquire(processID: pid_t, enable: () -> EnableResult) -> Bool {
         lock.lock()
         defer { lock.unlock() }
         if var state = processes[processID] {
@@ -411,9 +422,18 @@ final class AccessibilityWebAccess: @unchecked Sendable {
             processes[processID] = state
             return true
         }
-        guard let previous = enable() else { return false }
-        processes[processID] = (readers: 1, previous: previous)
-        return true
+        let now = ProcessInfo.processInfo.systemUptime
+        retryAfter = retryAfter.filter { $0.value > now }
+        guard retryAfter[processID] == nil else { return false }
+        switch enable() {
+        case .enabled(let previous):
+            processes[processID] = (readers: 1, previous: previous)
+            return true
+        case .failed(let error):
+            let delay: TimeInterval = error == .attributeUnsupported || error == .notImplemented ? 60 : 1
+            retryAfter[processID] = now + delay
+            return false
+        }
     }
 
     func release(processID: pid_t, restore: (Bool) -> Void) {

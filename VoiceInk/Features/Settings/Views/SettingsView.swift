@@ -168,7 +168,7 @@ struct SettingsView: View {
                 Toggle(isOn: $smartPunctuationEnabled) {
                     HStack(spacing: 4) {
                         Text("Smart Punctuation")
-                        InfoTip("Adjust capitalization, punctuation, and spacing to fit the surrounding text when pasting. If context is unavailable, your text is pasted unchanged.")
+                        InfoTip(LocalizedStringKey("Adjust capitalization, punctuation, and spacing to fit the surrounding text when pasting. If context is unavailable, your text is pasted unchanged."))
                     }
                 }
 

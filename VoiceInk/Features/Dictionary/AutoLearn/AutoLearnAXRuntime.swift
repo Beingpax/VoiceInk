@@ -86,7 +86,7 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
             defer { textReader.restoreWebAccessibility(processID: AXProcessID(active.appElement), appElement: active.appElement) }
             guard let finalTextValue = textReader.textValue(from: active.targetElement) else { return nil }
             let finalFieldText = finalTextValue.text
-            guard finalFieldText.utf16.count <= AutoLearnLimits.maximumFieldUTF16Length else { return nil }
+            guard finalFieldText.utf16.count <= AccessibilityTextReader.maximumFieldUTF16Length else { return nil }
             guard !textIsExactlyEqual(finalFieldText, active.baselineFieldText) else { return nil }
 
             return AutoLearnFieldSnapshot(

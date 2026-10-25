@@ -2,15 +2,17 @@ import Foundation
 
 enum SmartPunctuation {
     static let settingsKey = "SmartPunctuationEnabled"
+    private static let typography = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
 
     struct Context: Equatable, Sendable {
         let before: String
         let after: String
 
         init?(text: String, selection: NSRange) {
+            let utf16Length = text.utf16.count
             guard selection.location >= 0, selection.length >= 0,
-                selection.location <= text.utf16.count,
-                selection.length <= text.utf16.count - selection.location,
+                selection.location <= utf16Length,
+                selection.length <= utf16Length - selection.location,
                 let range = Range(selection, in: text),
                 NSRange(range, in: text) == selection,
                 range.lowerBound == text.endIndex || text.indices.contains(range.lowerBound),
@@ -23,19 +25,17 @@ enum SmartPunctuation {
 
     /// Changes only the insertion; surrounding text and the saved transcript stay intact.
     static func adjusted(_ text: String, context: Context) -> String {
-        let typography = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
         guard [text, context.before, context.after].allSatisfy({
             $0.unicodeScalars.allSatisfy { $0.isASCII || typography.contains($0) }
         }) else { return text }
         let core = text.trimmingCharacters(in: .whitespaces)
         guard !core.isEmpty, !text.contains(where: { $0.isNewline || $0 == "\t" }),
             !core.contains(where: { "`{}\\".contains($0) }),
-            !core.contains("://"), !core.contains("@") else { return text }
+            !core.contains("@"), !containsStructuredToken(core) else { return text }
         let before = context.before
         let after = context.after
         if let left = before.last, let right = after.first,
-            left.isLetterOrNumber, right.isLetterOrNumber,
-            !usesUnspacedScript(left), !usesUnspacedScript(right) {
+            left.isLetterOrNumber, right.isLetterOrNumber {
             return " " + core + " "
         }
 
@@ -54,10 +54,8 @@ enum SmartPunctuation {
         guard !result.isEmpty else { return text }
 
         // Keep intentional whitespace unless the editor already supplies the boundary.
-        let leading = String(text.prefix(while: { $0.isWhitespace }))
-        let trailing = String(text.reversed().prefix(while: { $0.isWhitespace }).reversed())
-        var prefix = leading
-        var suffix = trailing
+        var prefix = String(text.prefix(while: { $0.isWhitespace }))
+        var suffix = String(text.reversed().prefix(while: { $0.isWhitespace }).reversed())
         if before.last?.isWhitespace == true { prefix = "" }
         if after.first?.isWhitespace == true || after.first.map(isClosingPunctuation) == true { suffix = "" }
         if let left = before.last, let first = result.first {
@@ -74,18 +72,17 @@ enum SmartPunctuation {
     private static func adjustedCapitalization(_ text: String, before: String) -> String {
         guard let first = text.first, first.isLetter else { return text }
         let token = String(text.prefix(while: { $0.isLetter || $0 == "'" || $0 == "’" }))
-        // Keep acronyms, mixed-case brands, and the English pronoun I intact.
-        guard !token.isEmpty, token.dropFirst().allSatisfy({ !$0.isUppercase }),
+        guard token.dropFirst().allSatisfy({ !$0.isUppercase }),
             token != "I", !token.hasPrefix("I'"), !token.hasPrefix("I’") else { return text }
         let left = before.trimmingCharacters(in: .whitespaces)
-        let startsSentence = before.isEmpty || left.isEmpty || left.last?.isNewline == true
+        let startsSentence = left.isEmpty || left.last?.isNewline == true
             || left.last.map { "!?。！？".contains($0) } == true
             || (left.hasSuffix(".") && canRemovePeriod(from: left))
         if startsSentence, first.isLowercase {
             return first.uppercased() + text.dropFirst()
         }
         guard !startsSentence, first.isUppercase,
-            let previous = left.last, previous.isLetterOrNumber || previous == "," || previous == ";"
+            let previous = left.last, previous.isLetterOrNumber
         else { return text }
 
         return first.lowercased() + text.dropFirst()
@@ -98,16 +95,12 @@ enum SmartPunctuation {
         guard text.hasSuffix("."), !text.hasSuffix("..") else { return false }
         let token = text.dropLast().split(whereSeparator: \.isWhitespace).last.map(String.init) ?? ""
         guard token.count > 1, token.allSatisfy(\.isLetter) else { return false }
-        let abbreviations: Set<String> = ["mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs",
-            "etc", "inc", "ltd", "dept", "approx", "no", "fig", "vol", "jan", "feb", "mar",
-            "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "bzw", "usw", "ca"]
-        return !abbreviations.contains(token.lowercased()) && !token.allSatisfy(\.isUppercase)
+        return !token.allSatisfy(\.isUppercase)
     }
 
     private static func needsSpace(between left: Character, and right: Character) -> Bool {
         guard !left.isWhitespace, !right.isWhitespace,
-            !isOpeningPunctuation(left), !isClosingPunctuation(right),
-            !usesUnspacedScript(left), !usesUnspacedScript(right) else { return false }
+            !isOpeningPunctuation(left), !isClosingPunctuation(right) else { return false }
         return (left.isLetterOrNumber || isClosingPunctuation(left)) && right.isLetterOrNumber
     }
 
@@ -119,14 +112,9 @@ enum SmartPunctuation {
         ".,;:!?)]}”’»、。，；：！？）」』】".contains(character)
     }
 
-    private static func usesUnspacedScript(_ character: Character) -> Bool {
-        character.unicodeScalars.contains {
-            switch $0.value {
-            case 0x0E00...0x0EFF, 0x1000...0x109F, 0x1780...0x17FF,
-                0x3000...0x30FF, 0x3400...0x9FFF, 0xF900...0xFAFF, 0x20000...0x3134F:
-                return true
-            default: return false
-            }
+    private static func containsStructuredToken(_ text: String) -> Bool {
+        text.split(whereSeparator: \.isWhitespace).contains {
+            $0.contains("/") || String($0).trimmingCharacters(in: .punctuationCharacters).contains(".")
         }
     }
 }

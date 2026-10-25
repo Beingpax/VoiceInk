@@ -4386,7 +4386,6 @@
       }
     },
     "Adjust capitalization, punctuation, and spacing to fit the surrounding text when pasting. If context is unavailable, your text is pasted unchanged." : {
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
