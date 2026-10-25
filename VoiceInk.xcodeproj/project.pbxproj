@@ -929,8 +929,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/marmelroy/Zip";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.1.2;
+				kind = revision;
+				revision = bca30f6d6c7d37cbc4aa8f6b0002e281dcc36195;
 			};
 		};
 		E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */ = {
