@@ -50,7 +50,7 @@ final class AccessibilityTextReader {
 
     private var webAccessibilityProcesses = Set<pid_t>()
 
-    func focusedReadings(processID: pid_t) -> [AccessibilityTextReading] {
+    func focusedReadings(processID: pid_t, includeSystemFocus: Bool = true) -> [AccessibilityTextReading] {
         readDeadline = readBudget.map { ProcessInfo.processInfo.systemUptime + $0 }
         defer { readDeadline = nil }
         let appElement = AXUIElementCreateApplication(processID)
@@ -65,11 +65,13 @@ final class AccessibilityTextReader {
             appendUnique(appFocused, source: "application-focus", to: &candidates)
         }
 
-        let systemWide = AXUIElementCreateSystemWide()
-        if let systemFocused = AccessibilityFocusReader.focusedElement(in: systemWide).element,
-            AccessibilityFocusReader.processID(of: systemFocused) == processID
-        {
-            appendUnique(systemFocused, source: "system-focus", to: &candidates)
+        if includeSystemFocus {
+            let systemWide = AXUIElementCreateSystemWide()
+            if let systemFocused = AccessibilityFocusReader.focusedElement(in: systemWide).element,
+                AccessibilityFocusReader.processID(of: systemFocused) == processID
+            {
+                appendUnique(systemFocused, source: "system-focus", to: &candidates)
+            }
         }
 
         var readings: [AccessibilityTextReading] = []

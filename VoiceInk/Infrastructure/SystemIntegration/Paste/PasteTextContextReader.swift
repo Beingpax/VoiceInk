@@ -18,16 +18,10 @@ final class PasteTextContextReader: @unchecked Sendable {
                     continuation.resume(returning: nil)
                     return
                 }
-                let system = AXUIElementCreateSystemWide()
-                if let focused = AccessibilityFocusReader.focusedElement(in: system).element,
-                    AccessibilityFocusReader.processID(of: focused) != processID {
-                    continuation.resume(returning: nil)
-                    return
-                }
                 let reader = AccessibilityTextReader(messagingTimeout: 0.03, fieldMessagingTimeout: 0.03, readBudget: 0.25)
                 let app = AXUIElementCreateApplication(processID)
                 defer { reader.restoreWebAccessibility(processID: processID, appElement: app) }
-                let readings = reader.focusedReadings(processID: processID)
+                let readings = reader.focusedReadings(processID: processID, includeSystemFocus: false)
                 let snapshots = readings.compactMap { reading -> Snapshot? in
                     guard let selection = reading.selection,
                         let context = SmartPunctuation.Context(text: reading.fieldText, selection: selection)
