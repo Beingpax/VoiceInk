@@ -25,8 +25,15 @@ struct DictionarySettingsPanel: View {
     let onDismiss: () -> Void
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
     @AppStorage(AutoLearnSettings.minimumCorrectionsKey) private var minimumCorrections = 1
+    @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
+    @AppStorage(AutoLearnSettings.failureMessageKey) private var autoLearnFailureMessage = ""
     @State private var pendingImport: DictionaryImportPayload?
     @State private var transferAlert: DictionaryTransferAlert?
+    @State private var dataHealth = AutoLearnDataHealth()
+    @State private var isCheckingData = false
+    @State private var isRepairingData = false
+    @State private var showRepairConfirmation = false
+    @State private var repairError: String?
 
     var body: some View {
         QuickPanelScaffold {
@@ -45,6 +52,7 @@ struct DictionarySettingsPanel: View {
                         .onChange(of: isAutoLearnDictionaryEnabled) { _, isEnabled in
                             Task {
                                 await AutoLearnService.shared.settingDidChange(isEnabled: isEnabled)
+                                await checkAutoLearnData()
                             }
                         }
 
@@ -68,6 +76,23 @@ struct DictionarySettingsPanel: View {
                                 InfoTip("Increase this number to show fewer suggestions. A suggestion appears only after you make the same correction this many times.")
                             }
                         }
+                    }
+
+                    if dataHealth.needsRepair {
+                        Label("Auto-Learn data needs repair.", systemImage: "exclamationmark.triangle")
+                        Button("Repair Auto-Learn") { showRepairConfirmation = true }
+                            .disabled(isCheckingData || isRepairingData)
+                        if isRepairingData {
+                            ProgressView().controlSize(.small)
+                                .accessibilityLabel("Repairing Auto-Learn")
+                        }
+                    } else if hasAutoLearnFailure, repairError == nil {
+                        Text(autoLearnFailureMessage.isEmpty
+                            ? String(localized: "Auto-Learn is unavailable.") : autoLearnFailureMessage)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let repairError {
+                        Text(repairError).foregroundStyle(.red)
                     }
                 } header: {
                     AutoLearnSectionHeader()
@@ -97,6 +122,24 @@ struct DictionarySettingsPanel: View {
             panelHeader
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .task { await checkAutoLearnData() }
+        .onChange(of: hasAutoLearnFailure) { _, failed in
+            if failed, !isCheckingData, !isRepairingData {
+                Task { await checkAutoLearnData() }
+            }
+        }
+        .alert("Repair Auto-Learn?", isPresented: $showRepairConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Repair", role: .destructive) {
+                Task { await repairAutoLearnData() }
+            }
+        } message: {
+            if dataHealth.resetsDismissals {
+                Text("Repair backs up damaged Auto-Learn data and resets it. Saved dictionary entries are kept. Previously dismissed suggestions may appear again.")
+            } else {
+                Text("Repair backs up damaged Auto-Learn data and resets it. Saved dictionary entries are kept.")
+            }
+        }
         .sheet(item: $pendingImport) { payload in
             DictionaryImportPreviewSheet(
                 payload: payload,
@@ -114,6 +157,35 @@ struct DictionarySettingsPanel: View {
                 message: Text(alert.message),
                 dismissButton: .cancel(Text("OK"))
             )
+        }
+    }
+
+    @MainActor
+    private func checkAutoLearnData() async {
+        guard !isCheckingData, !isRepairingData else { return }
+        isCheckingData = true
+        defer { isCheckingData = false }
+        do {
+            dataHealth = try await AutoLearnService.shared.checkDataHealth()
+            repairError = nil
+        } catch {
+            dataHealth = AutoLearnDataHealth()
+            repairError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func repairAutoLearnData() async {
+        guard !isRepairingData else { return }
+        isRepairingData = true
+        repairError = nil
+        do {
+            try await AutoLearnService.shared.repairData()
+            isRepairingData = false
+            await checkAutoLearnData()
+        } catch {
+            isRepairingData = false
+            repairError = error.localizedDescription
         }
     }
 

@@ -2034,6 +2034,213 @@
         }
       }
     },
+    "Auto-Learn data needs repair." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Learn-Daten müssen repariert werden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les données d’apprentissage automatique doivent être réparées."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动学习数据需要修复。"
+          }
+        }
+      }
+    },
+    "Auto-Learn is unavailable." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Learn ist nicht verfügbar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’apprentissage automatique est indisponible."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动学习暂不可用。"
+          }
+        }
+      }
+    },
+    "Auto-Learn needs attention. Open Dictionary Settings." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Learn erfordert deine Aufmerksamkeit. Öffne die Wörterbucheinstellungen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’apprentissage automatique nécessite votre attention. Ouvrez les réglages du dictionnaire."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动学习需要处理。请打开词典设置。"
+          }
+        }
+      }
+    },
+    "Repair" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reparieren"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réparer"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修复"
+          }
+        }
+      }
+    },
+    "Repair Auto-Learn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Learn reparieren"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réparer l’apprentissage automatique"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修复自动学习"
+          }
+        }
+      }
+    },
+    "Repair Auto-Learn?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Learn reparieren?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réparer l’apprentissage automatique ?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修复自动学习？"
+          }
+        }
+      }
+    },
+    "Repair backs up damaged Auto-Learn data and resets it. Saved dictionary entries are kept." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei der Reparatur werden beschädigte Auto-Learn-Daten gesichert und zurückgesetzt. Gespeicherte Wörterbucheinträge bleiben erhalten."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La réparation sauvegarde les données d’apprentissage automatique endommagées, puis les réinitialise. Les entrées du dictionnaire sont conservées."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修复会备份并重置损坏的自动学习数据。已保存的词典条目将会保留。"
+          }
+        }
+      }
+    },
+    "Repair backs up damaged Auto-Learn data and resets it. Saved dictionary entries are kept. Previously dismissed suggestions may appear again." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bei der Reparatur werden beschädigte Auto-Learn-Daten gesichert und zurückgesetzt. Gespeicherte Wörterbucheinträge bleiben erhalten. Zuvor verworfene Vorschläge können erneut erscheinen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La réparation sauvegarde les données d’apprentissage automatique endommagées, puis les réinitialise. Les entrées du dictionnaire sont conservées. Des suggestions ignorées auparavant peuvent réapparaître."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "修复会备份并重置损坏的自动学习数据。已保存的词典条目将会保留。之前忽略的建议可能会再次出现。"
+          }
+        }
+      }
+    },
+    "Repairing Auto-Learn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto-Learn wird repariert"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réparation de l’apprentissage automatique"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在修复自动学习"
+          }
+        }
+      }
+    },
     "These corrections conflict with existing word replacements. Review your dictionary and try again." : {
       "comment" : "Shown when a grouped Auto Learn suggestion conflicts with saved word replacements.",
       "localizations" : {
@@ -6047,30 +6254,6 @@
         }
       }
     },
-    "Auto-Learn Failed" : {
-      "comment" : "Title of the panel displayed when an Auto-Learn operation fails.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatisches Lernen fehlgeschlagen"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Échec de l'apprentissage automatique"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动学习失败"
-          }
-        }
-      }
-    },
     "Automatic" : {
       "comment" : "Audio input channel selection.",
       "localizations" : {
@@ -8125,31 +8308,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "复制转写文本"
-          }
-        }
-      }
-    },
-    "Corrections are reviewed on your Mac." : {
-      "comment" : "A description of the pending corrections that are not reviewed by the AI.",
-      "extractionState" : "manual",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korrekturen werden auf deinem Mac geprüft."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les corrections sont vérifiées sur votre Mac."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更正在你的 Mac 上审核。"
           }
         }
       }
@@ -11198,30 +11356,6 @@
         }
       }
     },
-    "Enable Auto Learn before retrying pending corrections." : {
-      "comment" : "A message that appears when the user has Auto Learn disabled.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aktiviere Auto Learn, bevor du ausstehende Korrekturen erneut überprüfst."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activez l'apprentissage automatique avant de réessayer les corrections en attente."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "请先启用自动学习，然后再重试待审核的更正。"
-          }
-        }
-      }
-    },
     "Enabled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -13721,30 +13855,6 @@
         }
       }
     },
-    "How to Fix It" : {
-      "comment" : "A section that provides instructions on how to fix the error.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "So behebst du das Problem"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comment y remédier"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "如何修复"
-          }
-        }
-      }
-    },
     "How to use Vocabulary" : {
       "localizations" : {
         "de" : {
@@ -14357,7 +14467,7 @@
     },
     "Increase this number to show fewer suggestions. A suggestion appears only after you make the same correction this many times." : {
       "comment" : "Auto Learn suggestion frequency setting.",
-      "extractionState" : "stale",
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -19961,31 +20071,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "高峰听写时段"
-          }
-        }
-      }
-    },
-    "Pending corrections: %lld. Retry to review them on your Mac." : {
-      "comment" : "A sentence that describes the number of pending corrections and instructs the user to review them on their Mac. The argument is the number of pending corrections.",
-      "extractionState" : "manual",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausstehende Korrekturen: %lld. Versuche es erneut, um sie auf deinem Mac zu prüfen."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Corrections en attente : %lld. Réessayez pour les vérifier sur votre Mac."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "待审核的更正：%lld。请重试，以在你的 Mac 上审核。"
           }
         }
       }
@@ -25795,54 +25880,6 @@
         }
       }
     },
-    "The pending corrections could not be read. Retry to try again." : {
-      "comment" : "A message shown when the Auto Learn queue file cannot be read.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die ausstehenden Korrekturen konnten nicht gelesen werden. Versuche es erneut."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les corrections en attente n'ont pas pu être lues. Réessayez pour réessayer."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法读取待审核的更正。请重试。"
-          }
-        }
-      }
-    },
-    "The pending corrections could not be reviewed." : {
-      "comment" : "A description of the error that occurs when the pending corrections cannot be reviewed.",
-      "extractionState" : "manual",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die ausstehenden Korrekturen konnten nicht geprüft werden."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les corrections en attente n’ont pas pu être vérifiées."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无法审核待处理的更正。"
-          }
-        }
-      }
-    },
     "The provided API key is invalid." : {
       "localizations" : {
         "de" : {
@@ -29420,30 +29457,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "每周生产力"
-          }
-        }
-      }
-    },
-    "What Happened" : {
-      "comment" : "A section that describes the error that occurred.",
-      "isCommentAutoGenerated" : true,
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Was ist passiert?"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce qui s'est passé"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "发生了什么"
           }
         }
       }

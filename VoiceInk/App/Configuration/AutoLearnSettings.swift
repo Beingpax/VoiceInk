@@ -6,7 +6,6 @@ enum AutoLearnSettings {
     static let legacyBacklogDiscardedKey = "AutoLearnDictionaryLegacyBacklogDiscardedV1"
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
-    static let failureAcknowledgedKey = "AutoLearnDictionaryFailureAcknowledged"
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
         removeLegacyReviewSettings(defaults: defaults)
@@ -29,10 +28,10 @@ enum AutoLearnSettings {
         if defaults.bool(forKey: "AutoLearnDictionaryIsAIReviewFailure") {
             defaults.set(false, forKey: hasFailureKey)
             defaults.removeObject(forKey: failureMessageKey)
-            defaults.removeObject(forKey: failureAcknowledgedKey)
         }
         for key in ["AutoLearnDictionaryReviewSchedule", "AutoLearnDictionaryAIReviewEnabled",
-            "AutoLearnDictionaryProvider", "AutoLearnDictionaryModel", "AutoLearnDictionaryIsAIReviewFailure"] {
+            "AutoLearnDictionaryProvider", "AutoLearnDictionaryModel", "AutoLearnDictionaryIsAIReviewFailure",
+            "AutoLearnDictionaryFailureAcknowledged"] {
             defaults.removeObject(forKey: key)
         }
     }
@@ -57,20 +56,14 @@ enum AutoLearnSettings {
             .filter { !$0.isEmpty }
             .joined(separator: " ")
         defaults.set(
-            message.isEmpty ? String(localized: "The pending corrections could not be reviewed.") : message,
+            message.isEmpty ? String(localized: "Auto-Learn is unavailable.") : message,
             forKey: failureMessageKey
         )
-        defaults.set(false, forKey: failureAcknowledgedKey)
         defaults.set(true, forKey: hasFailureKey)
     }
 
     static func clearFailure(defaults: UserDefaults = .standard) {
         defaults.set(false, forKey: hasFailureKey)
         defaults.removeObject(forKey: failureMessageKey)
-        defaults.removeObject(forKey: failureAcknowledgedKey)
-    }
-
-    static func acknowledgeCurrentFailure(defaults: UserDefaults = .standard) {
-        defaults.set(true, forKey: failureAcknowledgedKey)
     }
 }

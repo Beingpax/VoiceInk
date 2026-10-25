@@ -2,7 +2,7 @@ import SwiftUI
 
 struct DictionarySettingsView: View {
     @State private var selectedSection: DictionarySection = .replacements
-    @State private var activePanel: DictionaryPanel?
+    @State private var isSettingsPresented = false
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
     private let dictionaryInfoMessage: LocalizedStringKey =
         "Word Replacements run after transcription. Vocabulary helps supported transcription models and AI enhancement recognize names, technical terms, and unique spellings."
@@ -36,11 +36,6 @@ struct DictionarySettingsView: View {
         }
     }
 
-    private enum DictionaryPanel: Equatable {
-        case settings
-        case autoLearnFailure
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             headerSection
@@ -58,24 +53,13 @@ struct DictionarySettingsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 600, minHeight: 500)
-        .sidePanel(
-            isPresented: Binding(
-                get: { activePanel != nil },
-                set: { if !$0 { activePanel = nil } }
-            )
-        ) {
-            switch activePanel {
-            case .settings:
-                DictionarySettingsPanel {
-                    activePanel = nil
-                }
-            case .autoLearnFailure:
-                AutoLearnFailurePanel {
-                    activePanel = nil
-                }
-            case nil:
-                EmptyView()
+        .sidePanel(isPresented: $isSettingsPresented) {
+            DictionarySettingsPanel {
+                isSettingsPresented = false
             }
+        }
+        .onAppear {
+            if hasAutoLearnFailure { isSettingsPresented = true }
         }
     }
 
@@ -91,7 +75,7 @@ struct DictionarySettingsView: View {
                         systemName: "exclamationmark.triangle.fill",
                         help: "Dictionary Auto Learn failed"
                     ) {
-                        activePanel = .autoLearnFailure
+                        isSettingsPresented = true
                     }
                 }
                 settingsButton
@@ -104,7 +88,7 @@ struct DictionarySettingsView: View {
             systemName: "gearshape.fill",
             help: "Dictionary Settings"
         ) {
-            activePanel = activePanel == .settings ? nil : .settings
+            isSettingsPresented.toggle()
         }
     }
 

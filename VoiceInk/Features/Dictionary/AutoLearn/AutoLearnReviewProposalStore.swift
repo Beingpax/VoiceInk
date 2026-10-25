@@ -23,6 +23,12 @@ actor AutoLearnReviewProposalStore {
         let corrections: [CountedReplacement]
     }
 
+    private struct DecodedState {
+        let corrections: [CountedReplacement]
+        var dismissedPairs: Set<String>? = nil
+        var needsMigration = false
+    }
+
     private struct LegacyCountedCorrection: Decodable {
         let count: Int
         let lastCandidateID: UUID
@@ -99,8 +105,37 @@ actor AutoLearnReviewProposalStore {
         }
     }
 
+    func dataHealth() throws -> AutoLearnDataHealth {
+        try AutoLearnDataRepair.health(of: dataFiles)
+    }
+
+    func repairDamagedData() throws {
+        try AutoLearnDataRepair.repair(dataFiles) {
+            corrections = []
+            dismissedPairs = []
+            isLoaded = false
+        }
+    }
+
+    private var dataFiles: [AutoLearnDataRepair.File] {
+        [(fileURL, false), (dismissedPairsFileURL, true)].map { url, resetsDismissals in
+            let legacy = legacyFileURLs.first { $0.new == url }?.old
+            let resolved = !fileManager.fileExists(atPath: url.path) ? legacy ?? url : url
+            return AutoLearnDataRepair.File(url: resolved, resetsDismissals: resetsDismissals,
+                initialData: {
+                    resetsDismissals ? Data("[]".utf8) : try JSONEncoder().encode(StoredState(corrections: []))
+                }, validate: { data in
+                    if resetsDismissals {
+                        _ = try JSONDecoder().decode([String].self, from: data)
+                    } else {
+                        _ = try Self.decodeState(from: data)
+                    }
+                })
+        }
+    }
+
     func discardAll() throws {
-        try loadIfNeeded()
+        try loadIfNeeded(resolveCompetingSuggestions: false)
         guard !corrections.isEmpty || fileManager.fileExists(atPath: fileURL.path) else { return }
         let snapshot = corrections
         corrections = []
@@ -119,6 +154,7 @@ actor AutoLearnReviewProposalStore {
         let candidatesByID = Dictionary(candidates.map { ($0.candidateID, $0) },
             uniquingKeysWith: { first, _ in first })
         let snapshot = corrections
+        var updatedDismissedPairs = dismissedPairs
         let previousSuggestionIDs = suggestedReplacementIDs
         let eligiblePairs = Set(eligibleDecisions.map {
             Self.correctionKey(source: $0.incorrectTextToReplace, destination: $0.correctedVocabularyTerm)
@@ -131,11 +167,17 @@ actor AutoLearnReviewProposalStore {
                 let destination = decision.correctedVocabularyTerm,
                 AutoLearnLocalReviewPolicy.accepts(source: source, destination: destination),
                 eligiblePairs.contains(Self.correctionKey(source: source, destination: destination)),
-                !dismissedPairs.contains(Self.correctionKey(source: source, destination: destination))
+                !updatedDismissedPairs.contains(Self.correctionKey(source: source, destination: destination))
             else { continue }
 
             let replacementText = WordReplacementVariants.destinationKey(for: destination)
             let sourceKey = WordReplacementVariants.key(for: source)
+            for correction in corrections where correction.replacementText != replacementText {
+                for original in correction.originals where WordReplacementVariants.key(for: original.text) == sourceKey {
+                    updatedDismissedPairs.insert(Self.correctionKey(
+                        source: original.text, destination: correction.replacementText))
+                }
+            }
             let index: Int
             if let existing = corrections.firstIndex(where: { $0.replacementText == replacementText }) {
                 index = existing
@@ -167,7 +209,7 @@ actor AutoLearnReviewProposalStore {
             let destination = correction.replacementText
             correction.originals.removeAll {
                 let key = Self.correctionKey(source: $0.text, destination: destination)
-                return !eligiblePairs.contains(key) || dismissedPairs.contains(key)
+                return !eligiblePairs.contains(key) || updatedDismissedPairs.contains(key)
             }
             for originalIndex in correction.originals.indices {
                 if correction.count < threshold {
@@ -180,7 +222,7 @@ actor AutoLearnReviewProposalStore {
             corrections[index] = correction
         }
         guard corrections != snapshot else { return 0 }
-        try saveChanges(restoring: snapshot)
+        try saveChanges(restoring: snapshot, dismissedPairs: updatedDismissedPairs)
         return suggestedReplacementIDs.subtracting(previousSuggestionIDs).count
     }
 
@@ -211,7 +253,7 @@ actor AutoLearnReviewProposalStore {
         try? save()
     }
 
-    private func loadIfNeeded() throws {
+    private func loadIfNeeded(resolveCompetingSuggestions: Bool = true) throws {
         guard !isLoaded else { return }
         for (oldURL, newURL) in legacyFileURLs
         where !fileManager.fileExists(atPath: newURL.path)
@@ -229,30 +271,45 @@ actor AutoLearnReviewProposalStore {
         var needsMigration = false
         if fileManager.fileExists(atPath: fileURL.path) {
             let data = try Data(contentsOf: fileURL)
-            if let state = try? decoder.decode(StoredState.self, from: data) {
-                loadedCorrections = state.corrections
-            } else if let legacy = try? decoder.decode(LegacyCountedState.self, from: data) {
-                loadedCorrections = Self.migrate(proposals: legacy.proposals,
-                    counts: legacy.correctionCounts, destinationCounts: legacy.destinationCounts)
-                needsMigration = true
-            } else if let legacy = try? decoder.decode(LegacyProposalState.self, from: data) {
-                loadedDismissedPairs.formUnion(legacy.dismissedPairs)
+            let state = try Self.decodeState(from: data)
+            loadedCorrections = state.corrections
+            needsMigration = state.needsMigration
+            if let legacyDismissedPairs = state.dismissedPairs {
+                loadedDismissedPairs.formUnion(legacyDismissedPairs)
                 try write(loadedDismissedPairs.sorted(), to: dismissedPairsFileURL)
-                loadedCorrections = Self.migrate(proposals: legacy.proposals)
-                needsMigration = true
-            } else {
-                let proposals = try decoder.decode([AutoLearnReviewProposal].self, from: data)
-                loadedCorrections = Self.migrate(proposals: proposals)
-                needsMigration = true
             }
         }
         loadedCorrections = Self.validated(loadedCorrections, dismissedPairs: loadedDismissedPairs)
+        let superseded = resolveCompetingSuggestions ? Self.supersededPairs(in: loadedCorrections) : []
+        if !superseded.isEmpty {
+            loadedDismissedPairs.formUnion(superseded)
+            try write(loadedDismissedPairs.sorted(), to: dismissedPairsFileURL)
+            loadedCorrections = Self.validated(loadedCorrections, dismissedPairs: loadedDismissedPairs)
+            needsMigration = true
+        }
         if needsMigration {
             try write(StoredState(corrections: loadedCorrections), to: fileURL)
         }
         corrections = loadedCorrections
         dismissedPairs = loadedDismissedPairs
         isLoaded = true
+    }
+
+    private static func decodeState(from data: Data) throws -> DecodedState {
+        let decoder = JSONDecoder()
+        if let state = try? decoder.decode(StoredState.self, from: data) {
+            return DecodedState(corrections: state.corrections)
+        }
+        if let legacy = try? decoder.decode(LegacyCountedState.self, from: data) {
+            return DecodedState(corrections: migrate(proposals: legacy.proposals,
+                counts: legacy.correctionCounts, destinationCounts: legacy.destinationCounts), needsMigration: true)
+        }
+        if let legacy = try? decoder.decode(LegacyProposalState.self, from: data) {
+            return DecodedState(corrections: migrate(proposals: legacy.proposals),
+                dismissedPairs: Set(legacy.dismissedPairs), needsMigration: true)
+        }
+        let proposals = try decoder.decode([AutoLearnReviewProposal].self, from: data)
+        return DecodedState(corrections: migrate(proposals: proposals), needsMigration: true)
     }
 
     private static func migrate(proposals: [AutoLearnReviewProposal],
@@ -353,6 +410,26 @@ actor AutoLearnReviewProposalStore {
         return AutoLearnLocalReviewPolicy.accepts(source: source, destination: destination)
     }
 
+    private static func supersededPairs(in corrections: [CountedReplacement]) -> Set<String> {
+        var latest: [String: (destination: String, order: Int)] = [:]
+        var superseded = Set<String>()
+        for correction in corrections {
+            for original in correction.originals {
+                let sourceKey = WordReplacementVariants.key(for: original.text)
+                let order = original.suggestionOrder ?? -1
+                if let previous = latest[sourceKey], previous.destination != correction.replacementText {
+                    if order < previous.order {
+                        superseded.insert(correctionKey(source: original.text, destination: correction.replacementText))
+                        continue
+                    }
+                    superseded.insert(correctionKey(source: original.text, destination: previous.destination))
+                }
+                latest[sourceKey] = (correction.replacementText, order)
+            }
+        }
+        return superseded
+    }
+
     private var suggestedReplacementIDs: Set<String> {
         Set(corrections.filter { $0.originals.contains { $0.suggestionOrder != nil } }.map(\.replacementText))
     }
@@ -361,11 +438,15 @@ actor AutoLearnReviewProposalStore {
         (corrections.flatMap(\.originals).compactMap(\.suggestionOrder).max() ?? -1) + 1
     }
 
-    private func saveChanges(restoring snapshot: [CountedReplacement]) throws {
+    private func saveChanges(restoring snapshot: [CountedReplacement], dismissedPairs updatedPairs: Set<String>? = nil) throws {
         do {
+            if let updatedPairs, updatedPairs != dismissedPairs {
+                try write(updatedPairs.sorted(), to: dismissedPairsFileURL)
+                dismissedPairs = updatedPairs
+            }
             try save()
         } catch {
-            corrections = snapshot
+            corrections = Self.validated(snapshot, dismissedPairs: dismissedPairs)
             throw error
         }
     }

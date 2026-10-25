@@ -177,11 +177,21 @@ actor AutoLearnPendingQueue {
         return queuedCorrections.filter { $0.reviewStatus == .pending }.count
     }
 
-    /// Every retained correction, including one currently under review. Used for
-    /// status reporting so a claimed correction still counts as outstanding work.
-    func outstandingCount() throws -> Int {
-        try loadIfNeeded()
-        return queuedCorrections.count
+    func dataHealth() throws -> AutoLearnDataHealth {
+        try AutoLearnDataRepair.health(of: [dataFile])
+    }
+
+    func repairDamagedData() throws {
+        try AutoLearnDataRepair.repair([dataFile]) {
+            queuedCorrections = []
+            queuedCorrectionsWereLoaded = false
+        }
+    }
+
+    private var dataFile: AutoLearnDataRepair.File {
+        .init(url: queueFileURL, initialData: { Data("[]".utf8) }, validate: {
+            _ = try JSONDecoder().decode([QueuedCorrection].self, from: $0)
+        })
     }
 
     func claimNext() throws -> AutoLearnReviewCandidate? {

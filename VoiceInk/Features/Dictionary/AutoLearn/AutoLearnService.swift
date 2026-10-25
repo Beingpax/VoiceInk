@@ -24,6 +24,7 @@ actor AutoLearnService {
     private var claimedCandidateIDs = Set<UUID>()
     private var preparationTask: Task<Void, Error>?
     private var isPrepared = false
+    private var isRepairingData = false
     private var suggestionSettingsGeneration: UInt64 = 0
     private var isUpdatingSuggestionThreshold = false
 
@@ -47,7 +48,6 @@ actor AutoLearnService {
         replacementStore = WordReplacementStore(modelContainer: modelContainer)
         do {
             try await prepareForReview()
-            await notifyQueueChanged()
             await suggestionThresholdDidChange()
         } catch {
             AutoLearnSettings.recordFailure(error, defaults: defaults)
@@ -77,9 +77,14 @@ actor AutoLearnService {
     }
 
     func settingDidChange(isEnabled: Bool) async {
-        guard isEnabled == self.isEnabled else { return }
+        guard isEnabled == self.isEnabled, !isRepairingData else { return }
         if isEnabled {
-            await suggestionThresholdDidChange()
+            do {
+                try await prepareForReview()
+                await suggestionThresholdDidChange()
+            } catch {
+                AutoLearnSettings.recordFailure(error, defaults: defaults)
+            }
             return
         }
         suggestionSettingsGeneration &+= 1
@@ -94,6 +99,7 @@ actor AutoLearnService {
     }
 
     func suggestionThresholdDidChange() async {
+        guard !isRepairingData else { return }
         suggestionSettingsGeneration &+= 1
         let generation = suggestionSettingsGeneration
         isUpdatingSuggestionThreshold = true
@@ -160,18 +166,46 @@ actor AutoLearnService {
         await refreshSuggestionPanel()
     }
 
-    func retryPendingReviews() async {
+    func checkDataHealth() async throws -> AutoLearnDataHealth {
         do {
-            try await prepareForReview()
-            await suggestionThresholdDidChange()
+            let health = try await AutoLearnDataRepair.health(
+                pendingQueue: pendingQueue, proposalStore: reviewProposalStore)
+            if health.needsRepair {
+                AutoLearnSettings.recordFailure(AutoLearnDataRepair.Failure.damagedData, defaults: defaults)
+            } else if !isPrepared, !isRepairingData, isEnabled, replacementStore != nil {
+                try await prepareForReview()
+                await suggestionThresholdDidChange()
+            }
+            return health
         } catch {
             AutoLearnSettings.recordFailure(error, defaults: defaults)
-            log(error, message: "Failed to prepare Auto Learn reviews")
+            throw error
         }
     }
 
-    func outstandingReviewCount() async throws -> Int {
-        try await pendingQueue.outstandingCount()
+    func repairData() async throws {
+        guard !isRepairingData else { return }
+        isRepairingData = true
+        defer { isRepairingData = false }
+        suggestionSettingsGeneration &+= 1
+        isUpdatingSuggestionThreshold = false
+        if let preparationTask { _ = try? await preparationTask.value }
+        isPrepared = false
+        lifecycleGeneration &+= 1
+        await discardActiveSession()
+        await cancelReviewTask()
+        await suggestionsDidChange([])
+        do {
+            try await AutoLearnDataRepair.repair(pendingQueue: pendingQueue, proposalStore: reviewProposalStore)
+            try await prepareForReview()
+            claimedCandidateIDs = []
+            AutoLearnSettings.clearFailure(defaults: defaults)
+            isRepairingData = false
+            if isEnabled { await suggestionThresholdDidChange() }
+        } catch {
+            AutoLearnSettings.recordFailure(error, defaults: defaults)
+            throw error
+        }
     }
 
     func recordingDidStart() async {
@@ -185,7 +219,7 @@ actor AutoLearnService {
 
     func pasteDidFinish(text: String, processID: pid_t?, commandPosted: Bool) async -> UInt64? {
         guard isEnabled,
-            isPrepared,
+            isPrepared, !isRepairingData,
             replacementStore != nil,
             commandPosted,
             let processID
@@ -342,7 +376,7 @@ actor AutoLearnService {
     }
 
     private func persistSnapshot(_ snapshot: AutoLearnFieldSnapshot?) async {
-        guard isEnabled,
+        guard isEnabled, isPrepared,
             let snapshot
         else { return }
 
@@ -358,7 +392,6 @@ actor AutoLearnService {
                 )
                 await schedulePendingReview()
             }
-            await notifyQueueChanged()
         } catch {
             AutoLearnSettings.recordFailure(error, defaults: defaults)
             log(error, message: "Failed to queue Auto Learn candidates")
@@ -420,7 +453,6 @@ actor AutoLearnService {
                 }
                 try await pendingQueue.remove(candidateIDs)
                 claimedCandidateIDs.subtract(candidateIDs)
-                await notifyQueueChanged()
                 AutoLearnSettings.clearFailure(defaults: defaults)
                 logger.notice("Auto Learn review completed reviewID=\(reviewID.uuidString, privacy: .public) suggestions=\(suggestions.count, privacy: .public) queuedSuggestions=\(queuedSuggestions, privacy: .public)")
 
@@ -465,17 +497,6 @@ actor AutoLearnService {
         } catch {
             AutoLearnSettings.recordFailure(error, defaults: defaults)
             log(error, message: "Failed to release an Auto Learn correction")
-        }
-        await notifyQueueChanged()
-    }
-
-    private func notifyQueueChanged() async {
-        let outstandingCount = (try? await pendingQueue.outstandingCount()) ?? 0
-        await MainActor.run {
-            NotificationCenter.default.post(
-                name: .autoLearnQueueDidChange,
-                object: outstandingCount
-            )
         }
     }
 
