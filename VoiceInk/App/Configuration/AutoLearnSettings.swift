@@ -60,7 +60,7 @@ enum AutoLearnSettings {
             message.isEmpty ? String(localized: "Auto-Learn is unavailable.") : message,
             forKey: failureMessageKey
         )
-        defaults.set(isDataHealthFailure, forKey: dataHealthFailureKey)
+        defaults.set(isDataHealthFailure || defaults.bool(forKey: dataHealthFailureKey), forKey: dataHealthFailureKey)
         defaults.set(true, forKey: hasFailureKey)
     }
 
