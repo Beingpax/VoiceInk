@@ -75,7 +75,7 @@ final class WordReplacementService {
                     in: modifiedText,
                     options: [],
                     range: range,
-                    withTemplate: replacementText
+                    withTemplate: NSRegularExpression.escapedTemplate(for: replacementText)
                 )
                 matchedRuleCount += 1
             } else {

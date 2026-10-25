@@ -19,9 +19,7 @@ struct DashboardHeroCard: View {
     let canViewInsights: Bool
     let actionHelp: String
     let actionAccessibilityLabel: String
-    let reviewCorrectionCount: Int?
     let onViewInsights: () -> Void
-    let onReviewCorrections: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -44,27 +42,6 @@ struct DashboardHeroCard: View {
                 .disabled(!canViewInsights)
                 .help(actionHelp)
                 .accessibilityLabel(Text(actionAccessibilityLabel))
-
-                if let reviewCorrectionCount {
-                    Button(action: onReviewCorrections) {
-                        DashboardMomentumActionLabel(
-                            title: "Review Corrections",
-                            icon: "text.book.closed",
-                            isPrimary: false
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help(reviewCorrectionsHelp(count: reviewCorrectionCount))
-                    .accessibilityLabel("Review corrections")
-                    .accessibilityValue(
-                        Text(
-                            String(
-                                format: String(localized: "%lld pending corrections"),
-                                Int64(reviewCorrectionCount)
-                            )
-                        )
-                    )
-                }
             }
             .padding(.top, 8)
         }
@@ -73,13 +50,6 @@ struct DashboardHeroCard: View {
         .frame(maxWidth: .infinity, minHeight: 160, alignment: .leading)
         .background(DashboardImpactBackground(isLocked: isLocked))
         .clipShape(RoundedRectangle(cornerRadius: DashboardLayout.cardCornerRadius, style: .continuous))
-    }
-
-    private func reviewCorrectionsHelp(count: Int) -> String {
-        String(
-            format: String(localized: "Review %lld pending corrections"),
-            Int64(count)
-        )
     }
 
     private var heroCopy: some View {

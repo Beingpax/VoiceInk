@@ -14,7 +14,7 @@ struct AutoLearnFailurePanel: View {
 
             Form {
                 Section {
-                    AutoLearnModelSelectionView(retriesOnChange: false)
+                    Text("Corrections are reviewed on your Mac.")
                 } header: {
                     AutoLearnSectionHeader()
                 }
@@ -62,7 +62,7 @@ struct AutoLearnFailurePanel: View {
         guard let pendingCount else {
             return "The pending corrections could not be read. Retry to try again."
         }
-        return "Pending corrections: \(pendingCount). Choose another model or provider above, then retry."
+        return "Pending corrections: \(pendingCount). Retry to review them on your Mac."
     }
 
     private func refreshPendingCount() async {
@@ -71,7 +71,7 @@ struct AutoLearnFailurePanel: View {
 
     private var errorDescription: String {
         failureMessage.isEmpty
-            ? String(localized: "The selected provider or model could not review the pending corrections.")
+            ? String(localized: "The pending corrections could not be reviewed.")
             : failureMessage
     }
 
