@@ -14,7 +14,6 @@ private final class AutoLearnFocusCallbackBridge: @unchecked Sendable {
         handler(token)
     }
 }
-
 private let autoLearnFocusCallback: AXObserverCallback = { _, _, _, refcon in
     guard let refcon else { return }
     let bridge = Unmanaged<AutoLearnFocusCallbackBridge>.fromOpaque(refcon).takeUnretainedValue()

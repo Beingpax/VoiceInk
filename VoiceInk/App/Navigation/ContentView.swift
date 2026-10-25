@@ -19,6 +19,7 @@ final class MainWindowNavigation: ObservableObject {
     static let shared = MainWindowNavigation()
 
     @Published var selectedView: ViewType = .dashboard
+    @Published var dictionarySettingsRequested = false
 
     private init() {}
 
@@ -32,6 +33,11 @@ final class MainWindowNavigation: ObservableObject {
 
     func navigate(to destination: ViewType) {
         selectedView = destination
+    }
+
+    func openDictionarySettings() {
+        dictionarySettingsRequested = true
+        navigate(to: .dictionary)
     }
 }
 

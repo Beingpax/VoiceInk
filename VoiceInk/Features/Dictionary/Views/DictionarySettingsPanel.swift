@@ -1,5 +1,18 @@
 import SwiftUI
 
+struct AutoLearnSectionHeader: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("Auto Learn")
+            InfoTip(
+                "Offers word replacements on your Mac. Add a suggestion to keep it, or dismiss it.",
+                learnMoreURL: "https://tryvoiceink.com/docs/auto-learn-dictionary"
+            )
+            .accessibilityLabel("Learn about Dictionary Auto Learn")
+        }
+    }
+}
+
 private struct DictionaryTransferAlert: Identifiable {
     let id = UUID()
     let title: String
@@ -10,13 +23,18 @@ struct DictionarySettingsPanel: View {
     @Environment(\.modelContext) private var modelContext
 
     let onDismiss: () -> Void
-    let onReviewNow: () -> Void
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
-    @AppStorage(AutoLearnSettings.reviewScheduleKey)
-    private var reviewScheduleRawValue = AutoLearnReviewSchedule.immediately.rawValue
-    @State private var pendingCorrectionCount = 0
+    @AppStorage(AutoLearnSettings.minimumCorrectionsKey) private var minimumCorrections = 1
+    @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
+    @AppStorage(AutoLearnSettings.failureMessageKey) private var autoLearnFailureMessage = ""
     @State private var pendingImport: DictionaryImportPayload?
     @State private var transferAlert: DictionaryTransferAlert?
+    @State private var dataHealth = AutoLearnDataHealth()
+    @State private var isCheckingData = false
+    @State private var needsDataCheck = false
+    @State private var isRepairingData = false
+    @State private var showRepairConfirmation = false
+    @State private var repairError: String?
 
     var body: some View {
         QuickPanelScaffold {
@@ -35,42 +53,47 @@ struct DictionarySettingsPanel: View {
                         .onChange(of: isAutoLearnDictionaryEnabled) { _, isEnabled in
                             Task {
                                 await AutoLearnService.shared.settingDidChange(isEnabled: isEnabled)
+                                await checkAutoLearnData()
                             }
                         }
 
                     if isAutoLearnDictionaryEnabled {
-                        AutoLearnModelSelectionView()
-
                         LabeledContent {
-                            Picker("", selection: $reviewScheduleRawValue) {
-                                ForEach(AutoLearnReviewSchedule.allCases) { schedule in
-                                    Text(schedule.title).tag(schedule.rawValue)
-                                }
+                            Picker("Suggest after", selection: Binding(
+                                get: { AutoLearnSettings.clampedMinimumCorrections(minimumCorrections) },
+                                set: { minimumCorrections = $0 }
+                            )) {
+                                Text("1 correction").tag(1)
+                                Text("2 corrections").tag(2)
+                                Text("3 corrections").tag(3)
                             }
                             .labelsHidden()
-                            .onChange(of: reviewScheduleRawValue) { _, _ in
-                                Task {
-                                    await AutoLearnService.shared.reviewScheduleDidChange()
-                                }
+                            .onChange(of: minimumCorrections) { _, _ in
+                                Task { await AutoLearnService.shared.suggestionThresholdDidChange() }
                             }
                         } label: {
                             HStack(spacing: 4) {
-                                Text("Review corrections")
-                                InfoTip(
-                                    "Choose when saved corrections are sent to your AI provider. Manual review keeps them local until you select Review Now."
-                                )
+                                Text("Suggest after")
+                                InfoTip("Increase this number to show fewer suggestions. A suggestion appears only after you make the same correction this many times.")
                             }
                         }
+                    }
 
-                        LabeledContent("Corrections to review") {
-                            Text("\(pendingCorrectionCount)")
-                                .foregroundStyle(.secondary)
+                    if dataHealth.needsRepair {
+                        Label("Auto-Learn data needs repair.", systemImage: "exclamationmark.triangle")
+                        Button("Repair Auto-Learn") { showRepairConfirmation = true }
+                            .disabled(isCheckingData || isRepairingData)
+                        if isRepairingData {
+                            ProgressView().controlSize(.small)
+                                .accessibilityLabel("Repairing Auto-Learn")
                         }
-
-                        Button("Review Now") {
-                            onReviewNow()
-                        }
-                        .disabled(pendingCorrectionCount == 0)
+                    } else if isAutoLearnDictionaryEnabled, hasAutoLearnFailure, repairError == nil {
+                        Text(autoLearnFailureMessage.isEmpty
+                            ? String(localized: "Auto-Learn is unavailable.") : autoLearnFailureMessage)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let repairError {
+                        Text(repairError).foregroundStyle(.red)
                     }
                 } header: {
                     AutoLearnSectionHeader()
@@ -100,19 +123,23 @@ struct DictionarySettingsPanel: View {
             panelHeader
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .task {
-            await refreshPendingCorrectionCount()
+        .task { await checkAutoLearnData() }
+        .onChange(of: hasAutoLearnFailure) { _, failed in
+            if failed { Task { await checkAutoLearnData() } }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .autoLearnQueueDidChange)) { _ in
-            Task {
-                await refreshPendingCorrectionCount()
+        .onChange(of: autoLearnFailureMessage) { _, _ in
+            Task { await checkAutoLearnData() }
+        }
+        .alert("Repair Auto-Learn?", isPresented: $showRepairConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Repair", role: .destructive) {
+                Task { await repairAutoLearnData() }
             }
-        }
-        .onReceive(
-            NotificationCenter.default.publisher(for: .autoLearnReviewProposalsDidChange)
-        ) { _ in
-            Task {
-                await refreshPendingCorrectionCount()
+        } message: {
+            if dataHealth.resetsDismissals {
+                Text("Repair backs up damaged Auto-Learn data and resets it. Saved dictionary entries are kept. Previously dismissed suggestions may appear again.")
+            } else {
+                Text("Repair backs up damaged Auto-Learn data and resets it. Saved dictionary entries are kept.")
             }
         }
         .sheet(item: $pendingImport) { payload in
@@ -135,6 +162,42 @@ struct DictionarySettingsPanel: View {
         }
     }
 
+    @MainActor
+    private func checkAutoLearnData() async {
+        guard !isRepairingData else { return }
+        if isCheckingData {
+            needsDataCheck = true
+            return
+        }
+        isCheckingData = true
+        defer { isCheckingData = false }
+        repeat {
+            needsDataCheck = false
+            do {
+                dataHealth = try await AutoLearnService.shared.checkDataHealth()
+                repairError = nil
+            } catch {
+                dataHealth = AutoLearnDataHealth()
+                repairError = error.localizedDescription
+            }
+        } while needsDataCheck && !Task.isCancelled
+    }
+
+    @MainActor
+    private func repairAutoLearnData() async {
+        guard !isRepairingData else { return }
+        isRepairingData = true
+        repairError = nil
+        do {
+            try await AutoLearnService.shared.repairData()
+            isRepairingData = false
+            await checkAutoLearnData()
+        } catch {
+            isRepairingData = false
+            repairError = error.localizedDescription
+        }
+    }
+
     private var panelHeader: some View {
         HStack(spacing: 12) {
             Text("Dictionary Settings")
@@ -154,13 +217,6 @@ struct DictionarySettingsPanel: View {
         }
         .padding(.horizontal, 20)
         .frame(height: QuickPanelMetrics.headerHeight)
-    }
-
-    @MainActor
-    private func refreshPendingCorrectionCount() async {
-        let pending = (try? await AutoLearnService.shared.outstandingReviewCount()) ?? 0
-        let proposals = (try? await AutoLearnService.shared.reviewProposalCount()) ?? 0
-        pendingCorrectionCount = pending + proposals
     }
 
     @MainActor

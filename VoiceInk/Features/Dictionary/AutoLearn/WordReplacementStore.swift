@@ -3,221 +3,97 @@ import SwiftData
 
 @ModelActor
 actor WordReplacementStore {
-    private enum MutationError: Error { case invalidReplacementSource }
-    func apply(
-        _ decisions: [AutoLearnReviewDecision],
-        candidates: [AutoLearnReviewCandidate]
-    ) throws -> AutoLearnMutationSummary {
-        guard !decisions.isEmpty else { return .empty }
+    private enum ApplyError: LocalizedError {
+        case conflictingReplacement
 
-        var createdCount = 0
-        var updatedCount = 0
-        var vocabularyCount = 0
-        var learnedCorrections: [AutoLearnAppliedCorrection] = []
-
-        do {
-            try modelContext.transaction {
-                var entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
-                var existingSourceKeys = Set(
-                    entries.flatMap {
-                        WordReplacementVariants.parse($0.originalText).map {
-                            WordReplacementVariants.key(for: $0)
-                        }
-                    }
-                )
-                var vocabularyKeys = Set(
-                    try modelContext.fetch(FetchDescriptor<VocabularyWord>()).map {
-                        WordReplacementVariants.key(for: $0.word)
-                    }
-                )
-                let candidatesByID = Dictionary(
-                    uniqueKeysWithValues: candidates.map { ($0.candidateID, $0) }
-                )
-
-                for decision in decisions {
-                    guard let candidate = candidatesByID[decision.candidateID],
-                        decision.learningAction != .rejectCorrection,
-                        let correctedVocabularyTerm = decision.correctedVocabularyTerm
-                    else { continue }
-
-                    let mutation: (created: Bool, updated: Bool)
-                    let shouldAddVocabulary: Bool
-                    switch decision.learningAction {
-                    case .addReplacementAndVocabulary:
-                        shouldAddVocabulary = true
-                        guard let incorrectTextToReplace = decision.incorrectTextToReplace else {
-                            continue
-                        }
-                        mutation = try applyReplacement(
-                            source: incorrectTextToReplace,
-                            destination: correctedVocabularyTerm,
-                            entries: &entries,
-                            existingSourceKeys: &existingSourceKeys
-                        )
-                    case .addReplacementOnly:
-                        shouldAddVocabulary = false
-                        guard let incorrectTextToReplace = decision.incorrectTextToReplace else {
-                            continue
-                        }
-                        mutation = try applyReplacement(
-                            source: incorrectTextToReplace,
-                            destination: correctedVocabularyTerm,
-                            entries: &entries,
-                            existingSourceKeys: &existingSourceKeys
-                        )
-                    case .addVocabularyOnly:
-                        shouldAddVocabulary = true
-                        mutation = (false, false)
-                    case .rejectCorrection:
-                        continue
-                    }
-                    createdCount += mutation.created ? 1 : 0
-                    updatedCount += mutation.updated ? 1 : 0
-
-                    let vocabulary = correctedVocabularyTerm
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .precomposedStringWithCanonicalMapping
-                    let vocabularyKey = WordReplacementVariants.key(for: vocabulary)
-                    var vocabularyCreationDate: Date?
-                    if shouldAddVocabulary,
-                        !vocabularyKey.isEmpty,
-                        vocabularyKeys.insert(vocabularyKey).inserted
-                    {
-                        let entry = VocabularyWord(word: vocabulary)
-                        modelContext.insert(entry)
-                        vocabularyCreationDate = entry.dateAdded
-                        vocabularyCount += 1
-                    }
-
-                    if mutation.created || mutation.updated || vocabularyCreationDate != nil {
-                        learnedCorrections.append(
-                            AutoLearnAppliedCorrection(
-                                incorrectTextToReplace: decision.incorrectTextToReplace
-                                    ?? candidate.originalText,
-                                correctedVocabularyTerm: correctedVocabularyTerm,
-                                replacementSourceWasAdded: mutation.created || mutation.updated,
-                                vocabularyCreationDate: vocabularyCreationDate
-                            )
-                        )
-                    }
-                }
-            }
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            throw error
+        var errorDescription: String? {
+            String(localized: "These corrections conflict with existing word replacements. Review your dictionary and try again.")
         }
-
-        return AutoLearnMutationSummary(
-            createdCount: createdCount,
-            updatedCount: updatedCount,
-            vocabularyCount: vocabularyCount,
-            learnedCorrections: learnedCorrections
-        )
     }
 
-    func undo(_ correction: AutoLearnAppliedCorrection) throws {
-        try modelContext.transaction {
-            if correction.replacementSourceWasAdded {
-                let destinationKey = WordReplacementVariants.destinationKey(
-                    for: correction.correctedVocabularyTerm
-                )
-                let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
-                if let entry = entries.first(where: {
-                    WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
-                        && WordReplacementVariants.contains(
-                            correction.incorrectTextToReplace,
-                            in: WordReplacementVariants.parse($0.originalText)
-                        )
-                }) {
-                    var variants = WordReplacementVariants.parse(entry.originalText)
-                    variants.removeAll {
-                        WordReplacementVariants.key(for: $0)
-                            == WordReplacementVariants.key(
-                                for: correction.incorrectTextToReplace
-                            )
-                    }
-                    if variants.isEmpty {
-                        modelContext.delete(entry)
-                    } else {
-                        entry.originalText = WordReplacementVariants.serialize(variants)
-                    }
-                }
-            }
-
-            if let creationDate = correction.vocabularyCreationDate {
-                let vocabularyKey = WordReplacementVariants.key(
-                    for: correction.correctedVocabularyTerm
-                )
-                let vocabulary = try modelContext.fetch(FetchDescriptor<VocabularyWord>())
-                if let entry = vocabulary.first(where: {
-                    $0.dateAdded == creationDate
-                        && WordReplacementVariants.key(for: $0.word) == vocabularyKey
-                }) {
-                    modelContext.delete(entry)
-                }
-            }
+    func unsavedSuggestions(_ suggestions: [AutoLearnReviewDecision]) throws -> [AutoLearnReviewDecision] {
+        guard !suggestions.isEmpty else { return [] }
+        let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+        let savedSources = Set(entries.flatMap {
+            WordReplacementVariants.parse($0.originalText).map { WordReplacementVariants.key(for: $0) }
+        })
+        return suggestions.filter { suggestion in
+            guard let source = suggestion.incorrectTextToReplace,
+                let destination = suggestion.correctedVocabularyTerm else { return false }
+            let sourceKey = WordReplacementVariants.key(for: source)
+            return !savedSources.contains(sourceKey)
+                && !wouldCreateCycle(sourceKey: sourceKey,
+                    destinationSourceKey: WordReplacementVariants.key(for: destination), entries: entries)
         }
+    }
+
+    func apply(_ suggestion: AutoLearnSuggestion) throws -> Bool {
+        try Task.checkCancellation()
+        guard suggestion.isValid else { return false }
+
+        var hasChanges = false
         do {
-            try modelContext.save()
+            try modelContext.transaction {
+                let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+                try Task.checkCancellation()
+                hasChanges = try applyReplacement(sources: suggestion.originals.map(\.text),
+                    destination: suggestion.replacementText, entries: entries)
+                try Task.checkCancellation()
+            }
+            try Task.checkCancellation()
+            if hasChanges { try modelContext.save() }
         } catch {
             modelContext.rollback()
             throw error
         }
+        return hasChanges
     }
 
     private func applyReplacement(
-        source rawSource: String,
+        sources: [String],
         destination rawDestination: String,
-        entries: inout [WordReplacement],
-        existingSourceKeys: inout Set<String>
-    ) throws -> (created: Bool, updated: Bool) {
-        let source = rawSource.trimmingCharacters(in: .whitespacesAndNewlines)
-            .precomposedStringWithCanonicalMapping
-        let destination = rawDestination.trimmingCharacters(in: .whitespacesAndNewlines)
-            .precomposedStringWithCanonicalMapping
-        let sourceKey = WordReplacementVariants.key(for: source)
-        let destinationKey = WordReplacementVariants.destinationKey(for: destination)
+        entries: [WordReplacement]
+    ) throws -> Bool {
+        let destination = WordReplacementVariants.destinationKey(for: rawDestination)
         let destinationSourceKey = WordReplacementVariants.key(for: destination)
-
-        guard !source.contains(",") else { throw MutationError.invalidReplacementSource }
-        guard !source.isEmpty, !destination.isEmpty,
-            !sourceKey.isEmpty, !destinationKey.isEmpty,
-            source != destination,
-            !existingSourceKeys.contains(sourceKey),
-            !wouldCreateCycle(
-                sourceKey: sourceKey,
-                destinationSourceKey: destinationSourceKey,
-                entries: entries
-            )
-        else {
-            return (false, false)
-        }
-
-        let destinationMatches = entries
-            .filter {
-                WordReplacementVariants.destinationKey(for: $0.replacementText) == destinationKey
+        let orderedEntries = entries.sorted(by: destinationOrder)
+        var savedDestinations: [String: Set<String>] = [:]
+        for entry in orderedEntries {
+            for source in WordReplacementVariants.parse(entry.originalText) {
+                savedDestinations[WordReplacementVariants.key(for: source), default: []]
+                    .insert(WordReplacementVariants.destinationKey(for: entry.replacementText))
             }
-            .sorted(by: destinationOrder)
-        let canonical = destinationMatches.first
-
-        if let canonical {
-            // Auto Learn only adds the learned source without rewriting rows,
-            // allowing Undo to remove exactly what was added.
-            var variants = WordReplacementVariants.parse(canonical.originalText)
-            variants.append(source)
-            canonical.originalText = WordReplacementVariants.serialize(variants)
-        } else {
-            let entry = WordReplacement(
-                originalText: WordReplacementVariants.serialize([source]),
-                replacementText: destination
-            )
-            modelContext.insert(entry)
-            entries.append(entry)
         }
 
-        existingSourceKeys.insert(sourceKey)
-        return (canonical == nil, canonical != nil)
+        var newSources: [String] = []
+        var seen = Set<String>()
+        for source in sources {
+            let key = WordReplacementVariants.key(for: source)
+            guard seen.insert(key).inserted else { continue }
+            if let destinations = savedDestinations[key] {
+                guard destinations == Set([destination]) else { throw ApplyError.conflictingReplacement }
+            } else {
+                newSources.append(source)
+            }
+        }
+        guard !newSources.isEmpty else { return false }
+        guard !WordReplacementVariants.wouldCreateCycle(
+            newSources: newSources.map {
+                (source: WordReplacementVariants.key(for: $0), destination: destinationSourceKey)
+            },
+            in: orderedEntries.map { (originalText: $0.originalText, replacementText: $0.replacementText) }
+        ) else { throw ApplyError.conflictingReplacement }
+
+        if let canonical = orderedEntries.first(where: {
+            WordReplacementVariants.destinationKey(for: $0.replacementText) == destination
+        }) {
+            canonical.originalText = WordReplacementVariants.serialize(
+                WordReplacementVariants.parse(canonical.originalText) + newSources)
+        } else {
+            modelContext.insert(WordReplacement(
+                originalText: WordReplacementVariants.serialize(newSources), replacementText: destination))
+        }
+        return true
     }
 
     private func destinationOrder(_ lhs: WordReplacement, _ rhs: WordReplacement) -> Bool {

@@ -1,6 +1,26 @@
 import Foundation
 
 enum CorrectionDiffEngine {
+    static func replacementPair(from revision: AutoLearnRevision) -> (source: String, destination: String)? {
+        let originalSegments = segments(in: revision.original)
+        let correctedSegments = segments(in: revision.corrected)
+        guard originalSegments.count <= AutoLearnLimits.maximumDiffSegments,
+            correctedSegments.count <= AutoLearnLimits.maximumDiffSegments
+        else { return nil }
+
+        let hunks = segmentHunks(from: originalSegments, to: correctedSegments)
+        guard hunks.count == 1, let hunk = hunks.first,
+            hunk.originalRange.count <= AutoLearnLimits.maximumCandidateSegments,
+            hunk.correctedRange.count <= AutoLearnLimits.maximumCandidateSegments,
+            let source = fragment(from: revision.original, segments: originalSegments,
+                segmentRange: hunk.originalRange),
+            let destination = fragment(from: revision.corrected, segments: correctedSegments,
+                segmentRange: hunk.correctedRange)
+        else { return nil }
+
+        return cleanedPair(source: source, destination: destination)
+    }
+
     private struct TextSegment: Equatable {
         let text: String
         let range: Range<String.Index>

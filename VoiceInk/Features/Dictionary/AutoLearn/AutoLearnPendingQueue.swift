@@ -1,6 +1,8 @@
 import Foundation
+import OSLog
 
 actor AutoLearnPendingQueue {
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "AutoLearnQueue")
     private enum ReviewStatus: String, Codable {
         case pending
         case reviewing
@@ -85,15 +87,28 @@ actor AutoLearnPendingQueue {
     private var queuedCorrections: [QueuedCorrection] = []
     private var queuedCorrectionsWereLoaded = false
 
-    init(fileManager: FileManager = .default) {
+    init(fileManager: FileManager = .default, fileURL: URL? = nil) {
         self.fileManager = fileManager
         let applicationSupport = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        queueFileURL = applicationSupport
+        queueFileURL = fileURL ?? applicationSupport
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
             .appendingPathComponent("auto-learn-pending-corrections.json")
+    }
+
+    func discardAll() throws {
+        try loadIfNeeded()
+        guard !queuedCorrections.isEmpty || fileManager.fileExists(atPath: queueFileURL.path) else { return }
+        let snapshot = queuedCorrections
+        queuedCorrections = []
+        do {
+            try save()
+        } catch {
+            queuedCorrections = snapshot
+            throw error
+        }
     }
 
     func recoverInterruptedReviews() throws {
@@ -108,6 +123,7 @@ actor AutoLearnPendingQueue {
         if changed {
             do { try save() } catch { queuedCorrections = snapshot; throw error }
         }
+        logger.notice("Auto Learn queue loaded outstanding=\(self.queuedCorrections.count, privacy: .public) interruptedReviewsRecovered=\(snapshot.filter { $0.reviewStatus == .reviewing }.count, privacy: .public)")
     }
 
     func enqueue(_ candidates: [DetectedCorrectionCandidate]) throws -> Int {
@@ -115,14 +131,7 @@ actor AutoLearnPendingQueue {
         try loadIfNeeded()
         let originalQueuedCorrections = queuedCorrections
 
-        var knownPairs = Set(
-            queuedCorrections.map {
-                pairKey(
-                    originalText: $0.originalText,
-                    correctedText: $0.correctedText
-                )
-            }
-        )
+        var knownPairs = Set<String>()
         var insertedCount = 0
         for candidate in candidates {
             let originalText = candidate.originalText.trimmingCharacters(
@@ -156,44 +165,49 @@ actor AutoLearnPendingQueue {
                 queuedCorrections = originalQueuedCorrections
                 throw error
             }
+            for correction in queuedCorrections.suffix(insertedCount) {
+                logger.notice("Auto Learn candidate saved candidateID=\(correction.candidateID.uuidString, privacy: .public) status=pending originalCharacters=\(correction.originalText.count, privacy: .public) correctedCharacters=\(correction.correctedText.count, privacy: .public)")
+            }
         }
         return insertedCount
     }
 
-    /// Corrections that still need a review decision. Entries claimed by an
-    /// in-flight batch are excluded so callers only see actionable work.
     func pendingCount() throws -> Int {
         try loadIfNeeded()
         return queuedCorrections.filter { $0.reviewStatus == .pending }.count
     }
 
-    /// Every retained correction, including one currently under review. Used for
-    /// status reporting so a claimed batch still counts as outstanding work.
-    func outstandingCount() throws -> Int {
-        try loadIfNeeded()
-        return queuedCorrections.count
+    func dataHealth() throws -> AutoLearnDataHealth {
+        try AutoLearnDataRepair.health(of: [dataFile])
     }
 
-    func claimPending(limit: Int) throws -> [AutoLearnReviewCandidate] {
-        try loadIfNeeded()
-
-        let pendingCorrectionIndices = queuedCorrections.indices
-            .filter { queuedCorrections[$0].reviewStatus == .pending }
-            .prefix(max(0, limit))
-        guard !pendingCorrectionIndices.isEmpty else { return [] }
-
-        for index in pendingCorrectionIndices {
-            queuedCorrections[index].reviewStatus = .reviewing
+    func repairDamagedData() throws {
+        try AutoLearnDataRepair.repair([dataFile]) {
+            queuedCorrections = []
+            queuedCorrectionsWereLoaded = false
         }
+    }
+
+    private var dataFile: AutoLearnDataRepair.File {
+        .init(url: queueFileURL, initialData: { Data("[]".utf8) }, validate: {
+            _ = try Self.decodeCorrections(from: $0)
+        })
+    }
+
+    func claimNext() throws -> AutoLearnReviewCandidate? {
+        try loadIfNeeded()
+        guard let index = queuedCorrections.firstIndex(where: { $0.reviewStatus == .pending }) else {
+            return nil
+        }
+
+        queuedCorrections[index].reviewStatus = .reviewing
         do {
             try save()
         } catch {
-            for index in pendingCorrectionIndices {
-                queuedCorrections[index].reviewStatus = .pending
-            }
+            queuedCorrections[index].reviewStatus = .pending
             throw error
         }
-        return pendingCorrectionIndices.map { queuedCorrections[$0].reviewCandidate }
+        return queuedCorrections[index].reviewCandidate
     }
 
     func release(_ candidateIDs: Set<UUID>) throws {
@@ -203,7 +217,8 @@ actor AutoLearnPendingQueue {
 
         var changed = false
         for index in queuedCorrections.indices
-        where candidateIDs.contains(queuedCorrections[index].candidateID) {
+        where candidateIDs.contains(queuedCorrections[index].candidateID)
+            && queuedCorrections[index].reviewStatus == .reviewing {
             queuedCorrections[index].reviewStatus = .pending
             changed = true
         }
@@ -250,7 +265,8 @@ actor AutoLearnPendingQueue {
         }
 
         return records.compactMap { record in
-            guard let recordData = try? JSONSerialization.data(withJSONObject: record) else {
+            guard let record = record as? [String: Any],
+                let recordData = try? JSONSerialization.data(withJSONObject: record) else {
                 return nil
             }
             return try? decoder.decode(QueuedCorrection.self, from: recordData)
