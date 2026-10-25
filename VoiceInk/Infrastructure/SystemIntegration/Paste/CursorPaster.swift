@@ -29,6 +29,7 @@ class CursorPaster {
 
     @MainActor
     private static var pasteQueueTask: Task<Void, Never>?
+    private static let textContextReader = PasteTextContextReader()
 
     static func pasteAtCursor(_ text: String) {
         Task {
@@ -68,8 +69,25 @@ class CursorPaster {
         let queueWaitMs = elapsedMilliseconds(since: requestedAt)
         let sessionID = UUID().uuidString
         let method = PasteMethod.current()
-        let textToDeliver = method == .directTyping ? DirectTextTyper.normalizedText(text) : text
+        let originalText = method == .directTyping ? DirectTextTyper.normalizedText(text) : text
+        var textToDeliver = originalText
+        let smartPunctuation = UserDefaults.standard.bool(forKey: SmartPunctuation.settingsKey)
         let pasteboard: NSPasteboard? = method.usesClipboard ? NSPasteboard.general : nil
+        if smartPunctuation {
+            // Settle focus before reading, rather than retaining context across the paste delay.
+            if pasteboard != nil { await wait(prePasteDelay) }
+            if let processID = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+                let snapshot = await textContextReader.read(processID: processID) {
+                let adjusted = SmartPunctuation.adjusted(originalText, context: snapshot.context)
+                if adjusted != originalText {
+                    let current = await textContextReader.read(processID: processID)
+                    if NSWorkspace.shared.frontmostApplication?.processIdentifier == processID,
+                        PasteTextContextReader.matches(snapshot, current) {
+                        textToDeliver = adjusted
+                    }
+                }
+            }
+        }
         let shouldRestoreClipboard = pasteboard != nil
             && UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
         let savedContents: ClipboardSnapshot
@@ -87,7 +105,7 @@ class CursorPaster {
                 return (PasteOutcome(result: .commandNotPosted, autoLearnGeneration: nil), nil)
             }
 
-            await wait(prePasteDelay)
+            if !smartPunctuation { await wait(prePasteDelay) }
         } else {
             savedContents = []
         }

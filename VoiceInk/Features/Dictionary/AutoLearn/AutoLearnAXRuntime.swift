@@ -17,7 +17,7 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
         subsystem: "com.prakashjoshipax.voiceink",
         category: "AutoLearnCapture"
     )
-    private let textReader = AutoLearnAXTextReader()
+    private let textReader = AccessibilityTextReader(messagingTimeout: AutoLearnLimits.captureAccessibilityTimeoutSeconds)
     private var session: Session?
 
     func capturePastedText(text: String, processID: pid_t) async -> AutoLearnPasteToken? {
@@ -33,9 +33,9 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
                 return rejectCapture("pasted-text-too-large")
             }
 
-            var matchedReading: AutoLearnAXTextReading?
+            var matchedReading: AccessibilityTextReading?
             var pastedRange: NSRange?
-            var lastReading: AutoLearnAXTextReading?
+            var lastReading: AccessibilityTextReading?
 
             let readings = textReader.focusedReadings(processID: processID)
             for reading in readings {
@@ -86,7 +86,7 @@ final class AutoLearnAXRuntime: @unchecked Sendable {
             defer { textReader.restoreWebAccessibility(processID: AXProcessID(active.appElement), appElement: active.appElement) }
             guard let finalTextValue = textReader.textValue(from: active.targetElement) else { return nil }
             let finalFieldText = finalTextValue.text
-            guard finalFieldText.utf16.count <= AutoLearnLimits.maximumFieldUTF16Length else { return nil }
+            guard finalFieldText.utf16.count <= AccessibilityTextReader.maximumFieldUTF16Length else { return nil }
             guard !textIsExactlyEqual(finalFieldText, active.baselineFieldText) else { return nil }
 
             return AutoLearnFieldSnapshot(

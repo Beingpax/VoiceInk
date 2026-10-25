@@ -61,6 +61,8 @@ private extension ViewType {
         switch self {
         case .transcribeAudio:
             return "Transcribe"
+        case .history:
+            return "History"
         default:
             return LocalizedStringKey(rawValue)
         }

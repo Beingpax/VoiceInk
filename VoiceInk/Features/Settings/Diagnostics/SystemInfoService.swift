@@ -56,6 +56,7 @@ final class SystemInfoService {
             Restore Clipboard After Paste: \(UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste"))
             Clipboard Restore Delay: \(UserDefaults.standard.double(forKey: "clipboardRestoreDelay"))s
             Paste Method: \(PasteMethod.current().displayName)
+            Smart Punctuation: \(UserDefaults.standard.bool(forKey: SmartPunctuation.settingsKey))
 
             DATA CLEANUP SETTINGS:
             Auto-Delete Transcriptions: \(UserDefaults.standard.bool(forKey: CleanupSettingsKeys.isTranscriptionCleanupEnabled))
