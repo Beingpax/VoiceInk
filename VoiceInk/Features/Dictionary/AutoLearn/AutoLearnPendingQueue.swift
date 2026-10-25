@@ -190,7 +190,7 @@ actor AutoLearnPendingQueue {
 
     private var dataFile: AutoLearnDataRepair.File {
         .init(url: queueFileURL, initialData: { Data("[]".utf8) }, validate: {
-            _ = try JSONDecoder().decode([QueuedCorrection].self, from: $0)
+            _ = try Self.decodeCorrections(from: $0)
         })
     }
 

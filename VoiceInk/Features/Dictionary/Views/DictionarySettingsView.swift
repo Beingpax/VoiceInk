@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DictionarySettingsView: View {
+    @EnvironmentObject private var navigation: MainWindowNavigation
     @State private var selectedSection: DictionarySection = .replacements
     @State private var isSettingsPresented = false
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
@@ -58,8 +59,11 @@ struct DictionarySettingsView: View {
                 isSettingsPresented = false
             }
         }
-        .onAppear {
-            if hasAutoLearnFailure { isSettingsPresented = true }
+        .onChange(of: navigation.dictionarySettingsRequested, initial: true) { _, requested in
+            if requested {
+                isSettingsPresented = true
+                navigation.dictionarySettingsRequested = false
+            }
         }
     }
 

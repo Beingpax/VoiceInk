@@ -149,7 +149,7 @@ struct DashboardContent: View {
 
             if hasAutoLearnFailure, isAutoLearnEnabled {
                 Button {
-                    MainWindowNavigation.shared.navigate(to: .dictionary)
+                    MainWindowNavigation.shared.openDictionarySettings()
                 } label: {
                     Label("Auto-Learn needs attention. Open Dictionary Settings.", systemImage: "exclamationmark.triangle")
                 }

@@ -31,6 +31,7 @@ struct DictionarySettingsPanel: View {
     @State private var transferAlert: DictionaryTransferAlert?
     @State private var dataHealth = AutoLearnDataHealth()
     @State private var isCheckingData = false
+    @State private var needsDataCheck = false
     @State private var isRepairingData = false
     @State private var showRepairConfirmation = false
     @State private var repairError: String?
@@ -86,7 +87,7 @@ struct DictionarySettingsPanel: View {
                             ProgressView().controlSize(.small)
                                 .accessibilityLabel("Repairing Auto-Learn")
                         }
-                    } else if hasAutoLearnFailure, repairError == nil {
+                    } else if isAutoLearnDictionaryEnabled, hasAutoLearnFailure, repairError == nil {
                         Text(autoLearnFailureMessage.isEmpty
                             ? String(localized: "Auto-Learn is unavailable.") : autoLearnFailureMessage)
                             .foregroundStyle(.secondary)
@@ -124,9 +125,10 @@ struct DictionarySettingsPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task { await checkAutoLearnData() }
         .onChange(of: hasAutoLearnFailure) { _, failed in
-            if failed, !isCheckingData, !isRepairingData {
-                Task { await checkAutoLearnData() }
-            }
+            if failed { Task { await checkAutoLearnData() } }
+        }
+        .onChange(of: autoLearnFailureMessage) { _, _ in
+            Task { await checkAutoLearnData() }
         }
         .alert("Repair Auto-Learn?", isPresented: $showRepairConfirmation) {
             Button("Cancel", role: .cancel) {}
@@ -162,16 +164,23 @@ struct DictionarySettingsPanel: View {
 
     @MainActor
     private func checkAutoLearnData() async {
-        guard !isCheckingData, !isRepairingData else { return }
+        guard !isRepairingData else { return }
+        if isCheckingData {
+            needsDataCheck = true
+            return
+        }
         isCheckingData = true
         defer { isCheckingData = false }
-        do {
-            dataHealth = try await AutoLearnService.shared.checkDataHealth()
-            repairError = nil
-        } catch {
-            dataHealth = AutoLearnDataHealth()
-            repairError = error.localizedDescription
-        }
+        repeat {
+            needsDataCheck = false
+            do {
+                dataHealth = try await AutoLearnService.shared.checkDataHealth()
+                repairError = nil
+            } catch {
+                dataHealth = AutoLearnDataHealth()
+                repairError = error.localizedDescription
+            }
+        } while needsDataCheck && !Task.isCancelled
     }
 
     @MainActor

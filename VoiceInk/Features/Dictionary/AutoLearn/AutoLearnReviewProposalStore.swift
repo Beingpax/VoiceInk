@@ -81,8 +81,12 @@ actor AutoLearnReviewProposalStore {
 
     func all() throws -> [AutoLearnSuggestion] {
         try loadIfNeeded()
+        let superseded = Self.supersededPairs(in: corrections)
         return corrections.compactMap { correction -> (order: Int, suggestion: AutoLearnSuggestion)? in
-            let ready = correction.originals.filter { $0.suggestionOrder != nil }
+            let ready = correction.originals.filter {
+                $0.suggestionOrder != nil && !superseded.contains(Self.correctionKey(
+                    source: $0.text, destination: correction.replacementText))
+            }
             guard let order = ready.compactMap(\.suggestionOrder).min() else { return nil }
             return (order, AutoLearnSuggestion(replacementText: correction.replacementText,
                 originals: ready.map { .init(id: $0.id, text: $0.text) }))
@@ -135,7 +139,7 @@ actor AutoLearnReviewProposalStore {
     }
 
     func discardAll() throws {
-        try loadIfNeeded(resolveCompetingSuggestions: false)
+        try loadIfNeeded()
         guard !corrections.isEmpty || fileManager.fileExists(atPath: fileURL.path) else { return }
         let snapshot = corrections
         corrections = []
@@ -172,12 +176,7 @@ actor AutoLearnReviewProposalStore {
 
             let replacementText = WordReplacementVariants.destinationKey(for: destination)
             let sourceKey = WordReplacementVariants.key(for: source)
-            for correction in corrections where correction.replacementText != replacementText {
-                for original in correction.originals where WordReplacementVariants.key(for: original.text) == sourceKey {
-                    updatedDismissedPairs.insert(Self.correctionKey(
-                        source: original.text, destination: correction.replacementText))
-                }
-            }
+            updatedDismissedPairs.formUnion(correctionPairs(for: [sourceKey], excluding: replacementText))
             let index: Int
             if let existing = corrections.firstIndex(where: { $0.replacementText == replacementText }) {
                 index = existing
@@ -226,22 +225,28 @@ actor AutoLearnReviewProposalStore {
         return suggestedReplacementIDs.subtracting(previousSuggestionIDs).count
     }
 
-    func removeOriginals(_ originalIDs: Set<UUID>) throws {
+    func removeApprovedSuggestion(_ suggestion: AutoLearnSuggestion) throws {
+        let originalIDs = suggestion.originalIDs
         guard !originalIDs.isEmpty else { return }
         try loadIfNeeded()
         let snapshot = corrections
+        let sources = Set(suggestion.originals.map { WordReplacementVariants.key(for: $0.text) })
+        let updatedPairs = dismissedPairs.union(correctionPairs(for: sources, excluding: suggestion.replacementText))
         for index in corrections.indices {
-            corrections[index].originals.removeAll { $0.suggestionOrder != nil && originalIDs.contains($0.id) }
+            let destination = corrections[index].replacementText
+            corrections[index].originals.removeAll {
+                ($0.suggestionOrder != nil && originalIDs.contains($0.id))
+                    || updatedPairs.contains(Self.correctionKey(source: $0.text, destination: destination))
+            }
         }
         guard corrections != snapshot else { return }
-        try saveChanges(restoring: snapshot)
+        try saveChanges(restoring: snapshot, dismissedPairs: updatedPairs)
     }
 
     func dismiss(_ suggestion: AutoLearnSuggestion) throws {
         guard let dismissed = try matching(suggestion) else { return }
-        let updatedPairs = dismissedPairs.union(dismissed.originals.map {
-            Self.correctionKey(source: $0.text, destination: dismissed.replacementText)
-        })
+        let sources = Set(dismissed.originals.map { WordReplacementVariants.key(for: $0.text) })
+        let updatedPairs = dismissedPairs.union(correctionPairs(for: sources))
         try write(updatedPairs.sorted(), to: dismissedPairsFileURL)
         dismissedPairs = updatedPairs
         for index in corrections.indices {
@@ -253,7 +258,17 @@ actor AutoLearnReviewProposalStore {
         try? save()
     }
 
-    private func loadIfNeeded(resolveCompetingSuggestions: Bool = true) throws {
+    private func correctionPairs(for sources: Set<String>, excluding replacement: String? = nil) -> Set<String> {
+        var pairs = Set<String>()
+        for correction in corrections where correction.replacementText != replacement {
+            for original in correction.originals where sources.contains(WordReplacementVariants.key(for: original.text)) {
+                pairs.insert(Self.correctionKey(source: original.text, destination: correction.replacementText))
+            }
+        }
+        return pairs
+    }
+
+    private func loadIfNeeded() throws {
         guard !isLoaded else { return }
         for (oldURL, newURL) in legacyFileURLs
         where !fileManager.fileExists(atPath: newURL.path)
@@ -280,13 +295,6 @@ actor AutoLearnReviewProposalStore {
             }
         }
         loadedCorrections = Self.validated(loadedCorrections, dismissedPairs: loadedDismissedPairs)
-        let superseded = resolveCompetingSuggestions ? Self.supersededPairs(in: loadedCorrections) : []
-        if !superseded.isEmpty {
-            loadedDismissedPairs.formUnion(superseded)
-            try write(loadedDismissedPairs.sorted(), to: dismissedPairsFileURL)
-            loadedCorrections = Self.validated(loadedCorrections, dismissedPairs: loadedDismissedPairs)
-            needsMigration = true
-        }
         if needsMigration {
             try write(StoredState(corrections: loadedCorrections), to: fileURL)
         }
@@ -439,14 +447,20 @@ actor AutoLearnReviewProposalStore {
     }
 
     private func saveChanges(restoring snapshot: [CountedReplacement], dismissedPairs updatedPairs: Set<String>? = nil) throws {
+        let previousDismissedPairs = dismissedPairs
+        var wroteDismissals = false
         do {
             if let updatedPairs, updatedPairs != dismissedPairs {
                 try write(updatedPairs.sorted(), to: dismissedPairsFileURL)
-                dismissedPairs = updatedPairs
+                wroteDismissals = true
             }
             try save()
+            if let updatedPairs { dismissedPairs = updatedPairs }
         } catch {
-            corrections = Self.validated(snapshot, dismissedPairs: dismissedPairs)
+            corrections = snapshot
+            if wroteDismissals {
+                try write(previousDismissedPairs.sorted(), to: dismissedPairsFileURL)
+            }
             throw error
         }
     }

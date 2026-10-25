@@ -6,6 +6,7 @@ enum AutoLearnSettings {
     static let legacyBacklogDiscardedKey = "AutoLearnDictionaryLegacyBacklogDiscardedV1"
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
+    static let dataHealthFailureKey = "AutoLearnDictionaryIsDataHealthFailure"
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
         removeLegacyReviewSettings(defaults: defaults)
@@ -26,8 +27,7 @@ enum AutoLearnSettings {
 
     static func removeLegacyReviewSettings(defaults: UserDefaults = .standard) {
         if defaults.bool(forKey: "AutoLearnDictionaryIsAIReviewFailure") {
-            defaults.set(false, forKey: hasFailureKey)
-            defaults.removeObject(forKey: failureMessageKey)
+            clearFailure(defaults: defaults, includingDataHealthFailure: true)
         }
         for key in ["AutoLearnDictionaryReviewSchedule", "AutoLearnDictionaryAIReviewEnabled",
             "AutoLearnDictionaryProvider", "AutoLearnDictionaryModel", "AutoLearnDictionaryIsAIReviewFailure",
@@ -36,7 +36,8 @@ enum AutoLearnSettings {
         }
     }
 
-    static func recordFailure(_ error: Error, defaults: UserDefaults = .standard) {
+    static func recordFailure(_ error: Error, defaults: UserDefaults = .standard,
+        isDataHealthFailure: Bool = false) {
         let nsError = error as NSError
         var details = [nsError.localizedDescription]
         if let reason = nsError.localizedFailureReason,
@@ -59,11 +60,14 @@ enum AutoLearnSettings {
             message.isEmpty ? String(localized: "Auto-Learn is unavailable.") : message,
             forKey: failureMessageKey
         )
+        defaults.set(isDataHealthFailure, forKey: dataHealthFailureKey)
         defaults.set(true, forKey: hasFailureKey)
     }
 
-    static func clearFailure(defaults: UserDefaults = .standard) {
+    static func clearFailure(defaults: UserDefaults = .standard, includingDataHealthFailure: Bool = false) {
+        guard includingDataHealthFailure || !defaults.bool(forKey: dataHealthFailureKey) else { return }
         defaults.set(false, forKey: hasFailureKey)
         defaults.removeObject(forKey: failureMessageKey)
+        defaults.removeObject(forKey: dataHealthFailureKey)
     }
 }

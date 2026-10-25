@@ -156,7 +156,7 @@ actor AutoLearnService {
                 NotificationCenter.default.post(name: .wordReplacementsDidChange, object: nil)
             }
         }
-        try await reviewProposalStore.removeOriginals(current.originalIDs)
+        try await reviewProposalStore.removeApprovedSuggestion(current)
         await refreshSuggestionPanel()
     }
 
@@ -167,20 +167,32 @@ actor AutoLearnService {
     }
 
     func checkDataHealth() async throws -> AutoLearnDataHealth {
+        let health: AutoLearnDataHealth
         do {
-            let health = try await AutoLearnDataRepair.health(
+            health = try await AutoLearnDataRepair.health(
                 pendingQueue: pendingQueue, proposalStore: reviewProposalStore)
-            if health.needsRepair {
-                AutoLearnSettings.recordFailure(AutoLearnDataRepair.Failure.damagedData, defaults: defaults)
-            } else if !isPrepared, !isRepairingData, isEnabled, replacementStore != nil {
-                try await prepareForReview()
-                await suggestionThresholdDidChange()
-            }
-            return health
         } catch {
-            AutoLearnSettings.recordFailure(error, defaults: defaults)
+            AutoLearnSettings.recordFailure(error, defaults: defaults, isDataHealthFailure: true)
             throw error
         }
+        if health.needsRepair {
+            AutoLearnSettings.recordFailure(AutoLearnDataRepair.Failure.damagedData, defaults: defaults,
+                isDataHealthFailure: true)
+        } else {
+            if defaults.bool(forKey: AutoLearnSettings.dataHealthFailureKey) {
+                AutoLearnSettings.clearFailure(defaults: defaults, includingDataHealthFailure: true)
+            }
+            if !isPrepared, !isRepairingData, isEnabled, replacementStore != nil {
+                do {
+                    try await prepareForReview()
+                    await suggestionThresholdDidChange()
+                } catch {
+                    AutoLearnSettings.recordFailure(error, defaults: defaults)
+                    throw error
+                }
+            }
+        }
+        return health
     }
 
     func repairData() async throws {
@@ -199,7 +211,7 @@ actor AutoLearnService {
             try await AutoLearnDataRepair.repair(pendingQueue: pendingQueue, proposalStore: reviewProposalStore)
             try await prepareForReview()
             claimedCandidateIDs = []
-            AutoLearnSettings.clearFailure(defaults: defaults)
+            AutoLearnSettings.clearFailure(defaults: defaults, includingDataHealthFailure: true)
             isRepairingData = false
             if isEnabled { await suggestionThresholdDidChange() }
         } catch {
