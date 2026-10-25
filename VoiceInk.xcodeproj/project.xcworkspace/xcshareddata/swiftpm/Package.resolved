@@ -247,8 +247,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/marmelroy/Zip",
       "state" : {
-        "revision" : "67fa55813b9e7b3b9acee9c0ae501def28746d76",
-        "version" : "2.1.2"
+        "revision" : "bca30f6d6c7d37cbc4aa8f6b0002e281dcc36195"
       }
     }
   ],
