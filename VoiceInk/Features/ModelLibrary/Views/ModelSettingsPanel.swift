@@ -302,7 +302,7 @@ private struct AdvancedModelSettingsSection: View {
                 HStack(spacing: 4) {
                     Text("Timeout")
                     InfoTip(
-                        "Set how long to wait for batch cloud transcription to finish. This does not affect local or realtime transcription."
+                        LocalizedStringKey("Set how long to wait for batch cloud transcription to finish. This does not affect local or realtime transcription.")
                     )
                 }
             }

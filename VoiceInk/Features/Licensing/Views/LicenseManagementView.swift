@@ -262,7 +262,7 @@ struct LicenseManagementView: View {
 
             ResourceLinkRow(
                 title: "Affiliate Program",
-                subtitle: "Earn 30% from referrals",
+                subtitle: "Earn \(0.3.formatted(.percent.precision(.fractionLength(0)))) from referrals",
                 systemImage: "link.badge.plus",
                 tint: neutralIconColor
             ) {
