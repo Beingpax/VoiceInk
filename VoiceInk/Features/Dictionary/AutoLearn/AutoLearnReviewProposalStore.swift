@@ -43,6 +43,7 @@ actor AutoLearnReviewProposalStore {
     private let fileManager: FileManager
     private let fileURL: URL
     private let dismissedPairsFileURL: URL
+    private let legacyFileURLs: [(old: URL, new: URL)]
     private var corrections: [CountedReplacement] = []
     private var dismissedPairs = Set<String>()
     private var isLoaded = false
@@ -55,10 +56,21 @@ actor AutoLearnReviewProposalStore {
         )[0]
         let proposalsURL = fileURL ?? applicationSupport
             .appendingPathComponent("com.prakashjoshipax.VoiceInk", isDirectory: true)
-            .appendingPathComponent("auto-learn-review-proposals.json")
+            .appendingPathComponent("auto-learn-suggestions.json")
         self.fileURL = proposalsURL
-        self.dismissedPairsFileURL = dismissedPairsFileURL ?? proposalsURL.deletingLastPathComponent()
-            .appendingPathComponent("auto-learn-dismissed-pairs.json")
+        let dismissedURL = dismissedPairsFileURL ?? proposalsURL.deletingLastPathComponent()
+            .appendingPathComponent("auto-learn-dismissed-corrections.json")
+        self.dismissedPairsFileURL = dismissedURL
+        var legacyFiles: [(old: URL, new: URL)] = []
+        if fileURL == nil {
+            legacyFiles.append((proposalsURL.deletingLastPathComponent()
+                .appendingPathComponent("auto-learn-review-proposals.json"), proposalsURL))
+        }
+        if fileURL == nil, dismissedPairsFileURL == nil {
+            legacyFiles.append((dismissedURL.deletingLastPathComponent()
+                .appendingPathComponent("auto-learn-dismissed-pairs.json"), dismissedURL))
+        }
+        legacyFileURLs = legacyFiles
     }
 
     func all() throws -> [AutoLearnSuggestion] {
@@ -201,6 +213,11 @@ actor AutoLearnReviewProposalStore {
 
     private func loadIfNeeded() throws {
         guard !isLoaded else { return }
+        for (oldURL, newURL) in legacyFileURLs
+        where !fileManager.fileExists(atPath: newURL.path)
+            && fileManager.fileExists(atPath: oldURL.path) {
+            try fileManager.moveItem(at: oldURL, to: newURL)
+        }
         let decoder = JSONDecoder()
         var loadedDismissedPairs = Set<String>()
         if fileManager.fileExists(atPath: dismissedPairsFileURL.path) {

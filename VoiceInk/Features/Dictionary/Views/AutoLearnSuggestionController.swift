@@ -109,7 +109,7 @@ final class AutoLearnSuggestionController: ObservableObject {
             guard let panel = self?.panel, let view = panel.contentView else { return }
             view.layoutSubtreeIfNeeded()
             panel.setContentSize(view.fittingSize)
-            if let metrics = MiniRecorderPanel.calculateWindowMetrics(size: panel.frame.size, screen: panel.screen) {
+            if let metrics = MiniRecorderPanel.calculateWindowMetrics(size: panel.frame.size, screen: panel.screen)?.offsetBy(dx: 0, dy: 48) {
                 panel.setFrameOrigin(metrics.origin)
             }
         }
@@ -118,7 +118,7 @@ final class AutoLearnSuggestionController: ObservableObject {
     private func present() {
         let view = AutoLearnSuggestionView(controller: self)
         let hostingView = NSHostingView(rootView: view)
-        guard let metrics = MiniRecorderPanel.calculateWindowMetrics(size: hostingView.fittingSize) else { return }
+        guard let metrics = MiniRecorderPanel.calculateWindowMetrics(size: hostingView.fittingSize)?.offsetBy(dx: 0, dy: 48) else { return }
         let panel = AutoLearnSuggestionPanel(contentRect: metrics,
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.contentView = hostingView
