@@ -71,8 +71,9 @@ enum StreamingKeysMigration {
             "voxtral-mini-transcribe-realtime-2602",
         ]
 
+        let globalSelection = defaults.string(forKey: "CurrentTranscriptionModel")
         // The old combined entry used realtime by default. Preserve that behavior.
-        if let selected = defaults.string(forKey: "CurrentTranscriptionModel"), legacyModels.contains(selected) {
+        if let selected = globalSelection, legacyModels.contains(selected) {
             defaults.set("voxtral-mini-transcribe-realtime-3-0", forKey: "CurrentTranscriptionModel")
         }
 
@@ -81,7 +82,9 @@ enum StreamingKeysMigration {
                   var configs = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]] else { continue }
             var changed = false
             for index in configs.indices {
-                guard let selected = configs[index]["selectedTranscriptionModelName"] as? String,
+                // Preserve each mode's setting when it inherits the legacy global model.
+                let selected = configs[index]["selectedTranscriptionModelName"] as? String ?? globalSelection
+                guard let selected,
                       legacyModels.contains(selected) else { continue }
                 let realtime = configs[index]["isRealtimeTranscriptionEnabled"] as? Bool ?? true
                 configs[index]["selectedTranscriptionModelName"] = realtime

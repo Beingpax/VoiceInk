@@ -53,8 +53,17 @@ struct MistralProvider: CloudProvider {
         )
     }
 
+    @MainActor
     func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? {
-        MistralStreamingProvider(modelContext: modelContext)
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+        let words = (try? modelContext.fetch(descriptor)) ?? []
+        var seen = Set<String>()
+        let vocabulary = words.compactMap { entry -> String? in
+            let word = entry.word.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !word.isEmpty, seen.insert(word.lowercased()).inserted else { return nil }
+            return word
+        }
+        return MistralStreamingProvider(customVocabulary: vocabulary)
     }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {
