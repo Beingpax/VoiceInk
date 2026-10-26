@@ -1,7 +1,7 @@
 import Atomics
 import Foundation
 import SwiftUI
-import Zip
+import ZIPFoundation
 import os
 
 // MARK: - WhisperModelFile
@@ -309,9 +309,6 @@ class WhisperModelManager: ObservableObject {
         try? FileManager.default.removeItem(
             at: modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc.zip")
         )
-        try? FileManager.default.removeItem(
-            at: modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
-        )
     }
 
     private func downloadMainModel(_ model: WhisperModel, from url: URL) async throws -> WhisperModelFile {
@@ -343,52 +340,109 @@ class WhisperModelManager: ObservableObject {
     private func unzipAndSetupCoreMLModel(for model: WhisperModelFile, zipPath: URL, progressKey: String) async throws
         -> WhisperModelFile
     {
-        let coreMLDestination = modelsDirectory.appendingPathComponent("\(model.name)-encoder.mlmodelc")
-
-        try? FileManager.default.removeItem(at: coreMLDestination)
-        try Task.checkCancellation()
-        try await unzipCoreMLFile(zipPath, to: modelsDirectory)
-        try Task.checkCancellation()
-        return try verifyAndCleanupCoreMLFiles(model, coreMLDestination, zipPath, progressKey)
-    }
-
-    private func unzipCoreMLFile(_ zipPath: URL, to destination: URL) async throws {
-        let finished = ManagedAtomic(false)
-
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            func finishOnce(_ result: Result<Void, Error>) {
-                if finished.exchange(true, ordering: .acquiring) == false {
-                    continuation.resume(with: result)
-                }
-            }
-
-            do {
-                try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-                try Zip.unzipFile(zipPath, destination: destination, overwrite: true, password: nil)
-                finishOnce(.success(()))
-            } catch {
-                finishOnce(.failure(error))
-            }
+        defer { try? FileManager.default.removeItem(at: zipPath) }
+        let directory = modelsDirectory
+        let encoderName = "\(model.name)-encoder.mlmodelc"
+        let extraction = Task.detached(priority: .utility) {
+            try Self.extractCoreMLArchive(zipPath, encoderName: encoderName, to: directory)
         }
+        let destination = try await withTaskCancellationHandler {
+            try await extraction.value
+        } onCancel: {
+            extraction.cancel()
+        }
+
+        var installedModel = model
+        installedModel.coreMLEncoderURL = destination
+        downloadProgress.removeValue(forKey: progressKey)
+        return installedModel
     }
 
-    private func verifyAndCleanupCoreMLFiles(
-        _ model: WhisperModelFile, _ destination: URL, _ zipPath: URL, _ progressKey: String
-    ) throws -> WhisperModelFile {
-        var model = model
-
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: destination.path, isDirectory: &isDirectory), isDirectory.boolValue
-        else {
-            try? FileManager.default.removeItem(at: zipPath)
+    nonisolated private static func extractCoreMLArchive(
+        _ zipPath: URL, encoderName: String, to directory: URL,
+        maximumEntrySize: UInt64 = 8 * 1_024 * 1_024 * 1_024,
+        maximumTotalSize: UInt64 = 16 * 1_024 * 1_024 * 1_024,
+        maximumEntryCount: Int = 10_000
+    ) throws -> URL {
+        let fileManager = FileManager.default
+        guard !encoderName.contains("/"), !encoderName.contains("\\") else {
             throw VoiceInkEngineError.unzipFailed
         }
+        let staging = directory.appendingPathComponent(".coreml-" + UUID().uuidString, isDirectory: true)
+        try fileManager.createDirectory(
+            at: staging, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        defer { try? fileManager.removeItem(at: staging) }
 
-        try? FileManager.default.removeItem(at: zipPath)
-        model.coreMLEncoderURL = destination
-        self.downloadProgress.removeValue(forKey: progressKey)
+        let archive = try Archive(url: zipPath, accessMode: .read)
+        var entryCount = 0
+        var declaredSize: UInt64 = 0
+        var extractedSize: UInt64 = 0
+        for entry in archive {
+            try Task.checkCancellation()
+            guard entryCount < maximumEntryCount,
+                  entry.uncompressedSize <= maximumEntrySize,
+                  entry.uncompressedSize <= maximumTotalSize - declaredSize else {
+                throw VoiceInkEngineError.unzipFailed
+            }
+            entryCount += 1
+            declaredSize += entry.uncompressedSize
 
-        return model
+            let path = entry.path
+            let destination = staging.appendingPathComponent(path)
+            // Model bundles need only regular files and directories.
+            guard entry.type != .symlink,
+                  !path.hasPrefix("/"), !path.contains("\\"), !path.utf8.contains(0),
+                  !path.split(separator: "/").contains(".."),
+                  destination.isContained(in: staging) else {
+                throw VoiceInkEngineError.unzipFailed
+            }
+            let checksum: CRC32
+            if entry.type == .directory {
+                guard entry.uncompressedSize == 0 else { throw VoiceInkEngineError.unzipFailed }
+                checksum = try archive.extract(entry, to: destination, allowUncontainedSymlinks: false)
+            } else {
+                try fileManager.createDirectory(
+                    at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+                guard !fileManager.fileExists(atPath: destination.path),
+                      fileManager.createFile(atPath: destination.path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+                    throw VoiceInkEngineError.unzipFailed
+                }
+                let output = try FileHandle(forWritingTo: destination)
+                defer { try? output.close() }
+                var entrySize: UInt64 = 0
+                checksum = try archive.extract(entry) { data in
+                    try Task.checkCancellation()
+                    let size = UInt64(data.count)
+                    // Check actual output too; archive sizes can be forged.
+                    guard size <= entry.uncompressedSize - entrySize,
+                          size <= maximumEntrySize - entrySize,
+                          size <= maximumTotalSize - extractedSize else {
+                        throw VoiceInkEngineError.unzipFailed
+                    }
+                    try output.write(contentsOf: data)
+                    entrySize += size
+                    extractedSize += size
+                }
+                guard entrySize == entry.uncompressedSize else { throw VoiceInkEngineError.unzipFailed }
+            }
+            guard checksum == entry.checksum else { throw Archive.ArchiveError.invalidCRC32 }
+        }
+
+        let encoder = staging.appendingPathComponent(encoderName, isDirectory: true)
+        let contents = try encoder.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard contents.isDirectory == true, contents.isSymbolicLink != true,
+              !(try fileManager.contentsOfDirectory(atPath: encoder.path)).isEmpty else {
+            throw VoiceInkEngineError.unzipFailed
+        }
+        try Task.checkCancellation()
+
+        let destination = directory.appendingPathComponent(encoderName, isDirectory: true)
+        if fileManager.fileExists(atPath: destination.path) {
+            _ = try fileManager.replaceItemAt(destination, withItemAt: encoder)
+        } else {
+            try fileManager.moveItem(at: encoder, to: destination)
+        }
+        return destination
     }
 
     private func shouldWarmup(_ model: WhisperModel) -> Bool {
