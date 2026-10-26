@@ -83,7 +83,9 @@ enum StreamingKeysMigration {
             var changed = false
             for index in configs.indices {
                 // Preserve each mode's setting when it inherits the legacy global model.
-                let selected = configs[index]["selectedTranscriptionModelName"] as? String ?? globalSelection
+                let selected = configs[index]["selectedTranscriptionModelName"] as? String
+                    ?? configs[index]["selectedWhisperModel"] as? String
+                    ?? globalSelection
                 guard let selected,
                       legacyModels.contains(selected) else { continue }
                 let realtime = configs[index]["isRealtimeTranscriptionEnabled"] as? Bool ?? true
