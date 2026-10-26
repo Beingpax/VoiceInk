@@ -10,6 +10,10 @@ enum TranscriptionRealtimeSupport {
             return FluidAudioModelManager.requiresRealtime(named: model.name)
         }
 
+        if model.provider == .mistral, model.name == "voxtral-mini-transcribe-realtime-3-0" {
+            return true
+        }
+
         return CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly ?? false
     }
 

@@ -1,8 +1,12 @@
 import Foundation
 import LLMkit
+import SwiftData
 
 /// Mistral streaming provider wrapping `LLMkit.MistralStreamingClient`.
 final class MistralStreamingProvider: StreamingTranscriptionProvider {
+
+    private let modelContext: ModelContext
+    var finalizationEvents: AsyncStream<String>? { client.finalizationEvents }
 
     private let client = LLMkit.MistralStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
@@ -10,7 +14,8 @@ final class MistralStreamingProvider: StreamingTranscriptionProvider {
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init() {
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -31,7 +36,10 @@ final class MistralStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "voxtral-mini-transcribe-realtime-2602", language: language)
+            try await client.connect(
+                apiKey: apiKey, model: model.name, language: language,
+                customVocabulary: customVocabularyTerms()
+            )
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
@@ -80,6 +88,17 @@ final class MistralStreamingProvider: StreamingTranscriptionProvider {
                     self.eventsContinuation?.yield(.error(StreamingTranscriptionError.serverError(message)))
                 }
             }
+        }
+    }
+
+    private func customVocabularyTerms() -> [String] {
+        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
+        guard let words = try? modelContext.fetch(descriptor) else { return [] }
+        var seen = Set<String>()
+        return words.compactMap { entry in
+            let word = entry.word.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !word.isEmpty, seen.insert(word.lowercased()).inserted else { return nil }
+            return word
         }
     }
 
