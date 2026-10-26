@@ -359,7 +359,10 @@ class WhisperModelManager: ObservableObject {
     }
 
     nonisolated private static func extractCoreMLArchive(
-        _ zipPath: URL, encoderName: String, to directory: URL
+        _ zipPath: URL, encoderName: String, to directory: URL,
+        maximumEntrySize: UInt64 = 8 * 1_024 * 1_024 * 1_024,
+        maximumTotalSize: UInt64 = 16 * 1_024 * 1_024 * 1_024,
+        maximumEntryCount: Int = 10_000
     ) throws -> URL {
         let fileManager = FileManager.default
         guard !encoderName.contains("/"), !encoderName.contains("\\") else {
@@ -371,8 +374,19 @@ class WhisperModelManager: ObservableObject {
         defer { try? fileManager.removeItem(at: staging) }
 
         let archive = try Archive(url: zipPath, accessMode: .read)
+        var entryCount = 0
+        var declaredSize: UInt64 = 0
+        var extractedSize: UInt64 = 0
         for entry in archive {
             try Task.checkCancellation()
+            guard entryCount < maximumEntryCount,
+                  entry.uncompressedSize <= maximumEntrySize,
+                  entry.uncompressedSize <= maximumTotalSize - declaredSize else {
+                throw VoiceInkEngineError.unzipFailed
+            }
+            entryCount += 1
+            declaredSize += entry.uncompressedSize
+
             let path = entry.path
             let destination = staging.appendingPathComponent(path)
             // Model bundles need only regular files and directories.
@@ -382,7 +396,35 @@ class WhisperModelManager: ObservableObject {
                   destination.isContained(in: staging) else {
                 throw VoiceInkEngineError.unzipFailed
             }
-            let checksum = try archive.extract(entry, to: destination, allowUncontainedSymlinks: false)
+            let checksum: CRC32
+            if entry.type == .directory {
+                guard entry.uncompressedSize == 0 else { throw VoiceInkEngineError.unzipFailed }
+                checksum = try archive.extract(entry, to: destination, allowUncontainedSymlinks: false)
+            } else {
+                try fileManager.createDirectory(
+                    at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+                guard !fileManager.fileExists(atPath: destination.path),
+                      fileManager.createFile(atPath: destination.path, contents: nil, attributes: [.posixPermissions: 0o600]) else {
+                    throw VoiceInkEngineError.unzipFailed
+                }
+                let output = try FileHandle(forWritingTo: destination)
+                defer { try? output.close() }
+                var entrySize: UInt64 = 0
+                checksum = try archive.extract(entry) { data in
+                    try Task.checkCancellation()
+                    let size = UInt64(data.count)
+                    // Check actual output too; archive sizes can be forged.
+                    guard size <= entry.uncompressedSize - entrySize,
+                          size <= maximumEntrySize - entrySize,
+                          size <= maximumTotalSize - extractedSize else {
+                        throw VoiceInkEngineError.unzipFailed
+                    }
+                    try output.write(contentsOf: data)
+                    entrySize += size
+                    extractedSize += size
+                }
+                guard entrySize == entry.uncompressedSize else { throw VoiceInkEngineError.unzipFailed }
+            }
             guard checksum == entry.checksum else { throw Archive.ArchiveError.invalidCRC32 }
         }
 
