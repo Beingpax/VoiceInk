@@ -4,13 +4,17 @@ import LLMkit
 /// Mistral streaming provider wrapping `LLMkit.MistralStreamingClient`.
 final class MistralStreamingProvider: StreamingTranscriptionProvider {
 
+    private let customVocabulary: [String]
+    var finalizationEvents: AsyncStream<String>? { client.finalizationEvents }
+
     private let client = LLMkit.MistralStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init() {
+    init(customVocabulary: [String]) {
+        self.customVocabulary = customVocabulary
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -31,7 +35,10 @@ final class MistralStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: "voxtral-mini-transcribe-realtime-2602", language: language)
+            try await client.connect(
+                apiKey: apiKey, model: model.name, language: language,
+                customVocabulary: customVocabulary
+            )
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()

@@ -14,7 +14,7 @@ protocol CloudProvider: Sendable {
         audioData: Data, fileName: String, apiKey: String, model: String, language: String?,
         customVocabulary: [String], timeout: TimeInterval
     ) async throws -> String
-    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)?
+    @MainActor func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)?
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?)
 }
 
