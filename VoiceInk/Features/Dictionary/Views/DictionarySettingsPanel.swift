@@ -23,6 +23,7 @@ struct DictionarySettingsPanel: View {
     @Environment(\.modelContext) private var modelContext
 
     let onDismiss: () -> Void
+    @AppStorage(VocabularyCorrectionSettings.isEnabledKey) private var isVocabularyCorrectionEnabled = true
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
     @AppStorage(AutoLearnSettings.minimumCorrectionsKey) private var minimumCorrections = 1
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
@@ -46,6 +47,16 @@ struct DictionarySettingsPanel: View {
                     }
                 } header: {
                     Text("Shortcut")
+                }
+
+                Section {
+                    Toggle("Automatic Vocabulary Correction", isOn: $isVocabularyCorrectionEnabled)
+                } header: {
+                    HStack(spacing: 4) {
+                        Text("Vocabulary")
+                        InfoTip("Locally corrects words using your vocabulary and names on screen with similar spelling or sound.")
+                            .accessibilityLabel("Learn about Vocabulary Correction")
+                    }
                 }
 
                 Section {

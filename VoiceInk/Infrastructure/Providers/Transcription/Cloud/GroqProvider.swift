@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 struct GroqProvider: CloudProvider {
     let modelProvider: ModelProvider = .groq
@@ -32,11 +31,26 @@ struct GroqProvider: CloudProvider {
             apiKey: apiKey,
             model: model,
             language: language,
+            prompt: Self.vocabularyPrompt(from: customVocabulary),
             timeout: timeout
         )
     }
 
-    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? { nil }
+    static func vocabularyPrompt(from terms: [String]) -> String? {
+        // Groq rejects prompts over 896 UTF-8 bytes before Whisper can trim tokens.
+        let maximumBytes = 896
+        var selected: [String] = []
+        var byteCount = 0
+        for term in terms where !term.isEmpty {
+            let requiredBytes = term.utf8.count + (selected.isEmpty ? 0 : 2)
+            guard requiredBytes <= maximumBytes - byteCount else { continue }
+            selected.append(term)
+            byteCount += requiredBytes
+        }
+        return selected.isEmpty ? nil : selected.joined(separator: ", ")
+    }
+
+    func makeStreamingProvider(vocabulary: RecordingVocabulary) -> (any StreamingTranscriptionProvider)? { nil }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {
         return await OpenAITranscriptionClient.verifyAPIKey(

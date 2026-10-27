@@ -29,6 +29,24 @@ actor WhisperContext {
         }
     }
 
+    /// Keep request settings, inference and result retrieval in one actor operation.
+    func transcribe(samples: [Float], request: TranscriptionRequestContext) throws -> String {
+        try Task.checkCancellation()
+        let previousLanguage = language
+        let previousPrompt = prompt
+        defer {
+            language = previousLanguage
+            prompt = previousPrompt
+        }
+        language = request.language
+        // whisper.cpp tokenizes the prompt and retains its trailing tokens within its own context limit.
+        prompt = [request.prompt ?? "", request.vocabulary?.terms.joined(separator: ", ") ?? ""]
+            .filter { !$0.isEmpty }.joined(separator: "\n")
+        guard fullTranscribe(samples: samples) else { throw VoiceInkEngineError.whisperCoreFailed }
+        try Task.checkCancellation()
+        return getTranscription()
+    }
+
     func fullTranscribe(samples: [Float]) -> Bool {
         guard let context = context else { return false }
 

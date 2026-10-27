@@ -137,7 +137,7 @@ final class VoiceInkRefineService: ObservableObject {
         }
     }
 
-    func enhance(transcript: String) async throws -> String {
+    func enhance(transcript: String, vocabulary: RecordingVocabulary) async throws -> String {
         guard availability == .available else {
             throw VoiceInkRefineError.unavailable
         }
@@ -148,7 +148,8 @@ final class VoiceInkRefineService: ObservableObject {
         return try await inferenceClient.enhance(
             transcript: transcript,
             modelDirectory: snapshotURL,
-            systemPrompt: Self.systemPrompt
+            systemPrompt: [Self.systemPrompt, vocabulary.enhancementSection]
+                .filter { !$0.isEmpty }.joined(separator: "\n\n")
         )
     }
 

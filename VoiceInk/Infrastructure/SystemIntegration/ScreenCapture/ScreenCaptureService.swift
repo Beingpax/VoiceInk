@@ -15,7 +15,6 @@ class ScreenCaptureService: ObservableObject {
         let frame: CGRect?
     }
 
-    private static let captureTimeout: TimeInterval = 3.0
     nonisolated private static let maximumCaptureDimension: CGFloat = 2800
     nonisolated private static let focusedWindowFrameTolerance: CGFloat = 96
 
@@ -38,7 +37,7 @@ class ScreenCaptureService: ObservableObject {
     }
 
     func captureAndExtractText() async -> String? {
-        guard !isCapturing else { return nil }
+        guard !isCapturing, !Task.isCancelled else { return nil }
 
         isCapturing = true
         defer {
@@ -49,18 +48,15 @@ class ScreenCaptureService: ObservableObject {
         let focusedWindowHint = makeFocusedWindowHint(excluding: currentPID)
 
         guard
-            let contextText = await Self.withTimeout(
-                seconds: Self.captureTimeout,
-                operation: {
-                    await Self.captureAndExtractWindowText(
-                        focusedWindowHint: focusedWindowHint,
-                        currentPID: currentPID
-                    )
-                })
+            let contextText = await Self.captureAndExtractWindowText(
+                focusedWindowHint: focusedWindowHint,
+                currentPID: currentPID
+            )
         else {
             return nil
         }
 
+        guard !Task.isCancelled else { return nil }
         lastCapturedText = contextText
         return contextText
     }
@@ -74,10 +70,14 @@ class ScreenCaptureService: ObservableObject {
 
         var focusedTitle: String?
         var focusedFrame: CGRect?
+        let processHint = FocusedWindowHint(processID: frontmostPID, title: nil, frame: nil)
 
         if AXIsProcessTrusted() {
             let appElement = AXUIElementCreateApplication(frontmostPID)
+            // This lookup also runs during context capture; never use the multi-second AX default.
+            guard AXUIElementSetMessagingTimeout(appElement, 0.03) == .success else { return processHint }
             if let focusedWindow = copyAXElementAttribute(kAXFocusedWindowAttribute, from: appElement) {
+                guard AXUIElementSetMessagingTimeout(focusedWindow, 0.03) == .success else { return processHint }
                 focusedTitle = normalized(copyStringAttribute(kAXTitleAttribute, from: focusedWindow))
 
                 if let position = copyCGPointAttribute(kAXPositionAttribute, from: focusedWindow),
@@ -100,7 +100,9 @@ class ScreenCaptureService: ObservableObject {
         currentPID: pid_t
     ) async -> String? {
         do {
+            try Task.checkCancellation()
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            try Task.checkCancellation()
 
             guard
                 let window = findActiveWindow(
@@ -124,6 +126,7 @@ class ScreenCaptureService: ObservableObject {
 
             let cgImage = try await SCScreenshotManager.captureImage(
                 contentFilter: filter, configuration: configuration)
+            try Task.checkCancellation()
 
             var contextText = """
                 Active Window: \(title)
@@ -131,7 +134,8 @@ class ScreenCaptureService: ObservableObject {
 
                 """
 
-            let extractedText = extractText(from: cgImage)
+            let extractedText = await extractText(from: cgImage)
+            try Task.checkCancellation()
             if let extractedText, !extractedText.isEmpty {
                 contextText += "Window Content:\n\(extractedText)"
             } else {
@@ -207,7 +211,7 @@ class ScreenCaptureService: ObservableObject {
         return min(2, maximumCaptureDimension / longestSide)
     }
 
-    private nonisolated static func extractText(from cgImage: CGImage) -> String? {
+    private nonisolated static func extractText(from cgImage: CGImage) async -> String? {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
@@ -215,38 +219,24 @@ class ScreenCaptureService: ObservableObject {
 
         let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
 
-        do {
-            try requestHandler.perform([request])
-            guard let observations = request.results else {
+        return await withTaskCancellationHandler {
+            do {
+                try Task.checkCancellation()
+                try requestHandler.perform([request])
+                try Task.checkCancellation()
+                guard let observations = request.results else {
+                    return nil
+                }
+                let text =
+                    observations
+                    .compactMap { $0.topCandidates(1).first?.string }
+                    .joined(separator: "\n")
+                return text.isEmpty ? nil : text
+            } catch {
                 return nil
             }
-            let text =
-                observations
-                .compactMap { $0.topCandidates(1).first?.string }
-                .joined(separator: "\n")
-            return text.isEmpty ? nil : text
-        } catch {
-            return nil
-        }
-    }
-
-    private nonisolated static func withTimeout<T: Sendable>(
-        seconds: TimeInterval,
-        operation: @escaping @Sendable () async -> T?
-    ) async -> T? {
-        await withTaskGroup(of: T?.self) { group in
-            group.addTask {
-                await operation()
-            }
-
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                return nil
-            }
-
-            let result = await group.next() ?? nil
-            group.cancelAll()
-            return result
+        } onCancel: {
+            request.cancel()
         }
     }
 

@@ -1,7 +1,6 @@
 import CryptoKit
 import Foundation
 import LLMkit
-import SwiftData
 
 /// Shared persistence for OpenRouter's separate text and speech-to-text catalogs.
 final class OpenRouterCatalogStore: @unchecked Sendable {
@@ -94,7 +93,7 @@ struct OpenRouterProvider: CloudProvider {
         )
     }
 
-    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? { nil }
+    func makeStreamingProvider(vocabulary: RecordingVocabulary) -> (any StreamingTranscriptionProvider)? { nil }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {
         await OpenRouterClient.verifyAPIKey(key)
