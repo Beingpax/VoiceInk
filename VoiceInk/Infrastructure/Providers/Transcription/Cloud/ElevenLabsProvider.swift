@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 struct ElevenLabsProvider: CloudProvider {
     let modelProvider: ModelProvider = .elevenLabs
@@ -56,8 +55,8 @@ struct ElevenLabsProvider: CloudProvider {
         )
     }
 
-    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? {
-        ElevenLabsStreamingProvider(modelContext: modelContext)
+    func makeStreamingProvider(vocabulary: RecordingVocabulary) -> (any StreamingTranscriptionProvider)? {
+        ElevenLabsStreamingProvider(customVocabulary: vocabulary.terms)
     }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {

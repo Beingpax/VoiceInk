@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 struct SpeechmaticsProvider: CloudProvider {
     let modelProvider: ModelProvider = .speechmatics
@@ -45,8 +44,8 @@ struct SpeechmaticsProvider: CloudProvider {
         )
     }
 
-    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? {
-        SpeechmaticsStreamingProvider(modelContext: modelContext)
+    func makeStreamingProvider(vocabulary: RecordingVocabulary) -> (any StreamingTranscriptionProvider)? {
+        SpeechmaticsStreamingProvider(customVocabulary: vocabulary.terms)
     }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {

@@ -718,8 +718,8 @@ class AIService: ObservableObject {
         try await ollamaService.enhance(text, withSystemPrompt: systemPrompt, model: model, timeout: timeout)
     }
 
-    func enhanceWithVoiceInkRefine(transcript: String) async throws -> String {
-        try await voiceInkRefineService.enhance(transcript: transcript)
+    func enhanceWithVoiceInkRefine(transcript: String, vocabulary: RecordingVocabulary) async throws -> String {
+        try await voiceInkRefineService.enhance(transcript: transcript, vocabulary: vocabulary)
     }
 
     func updateOllamaBaseURL(_ newURL: String) {

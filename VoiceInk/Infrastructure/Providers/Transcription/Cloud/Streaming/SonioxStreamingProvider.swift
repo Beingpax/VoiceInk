@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 /// Soniox streaming provider wrapping `LLMkit.SonioxStreamingClient`.
 final class SonioxStreamingProvider: StreamingTranscriptionProvider {
@@ -8,12 +7,12 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
     private let client = LLMkit.SonioxStreamingClient()
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
-    private let modelContext: ModelContext
+    private let customVocabulary: [String]
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    init(customVocabulary: [String]) {
+        self.customVocabulary = customVocabulary
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -29,15 +28,13 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
             throw StreamingTranscriptionError.missingAPIKey
         }
 
-        let vocabulary = getCustomDictionaryTerms()
-
         // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
         startEventForwarding()
 
         do {
             try await client.connect(
-                apiKey: apiKey, model: "stt-rt-v5", language: language, customVocabulary: vocabulary)
+                apiKey: apiKey, model: "stt-rt-v5", language: language, customVocabulary: customVocabulary)
         } catch {
             // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
@@ -87,25 +84,6 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
         }
-    }
-
-    private func getCustomDictionaryTerms() -> [String] {
-        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
-        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
-            return []
-        }
-        var seen = Set<String>()
-        var unique: [String] = []
-        for word in vocabularyWords {
-            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            let key = trimmed.lowercased()
-            if !seen.contains(key) {
-                seen.insert(key)
-                unique.append(trimmed)
-            }
-        }
-        return unique
     }
 
     private func mapError(_ error: Error) -> Error {

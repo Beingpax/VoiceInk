@@ -1,19 +1,18 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 /// Gemini streaming provider wrapping `LLMkit.GeminiStreamingClient`.
 final class GeminiStreamingProvider: StreamingTranscriptionProvider {
     private let client = LLMkit.GeminiStreamingClient()
-    private let modelContext: ModelContext
+    private let customVocabulary: [String]
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
     var finalizationEvents: AsyncStream<String>? { client.finalizationEvents }
 
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    init(customVocabulary: [String]) {
+        self.customVocabulary = customVocabulary
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -37,7 +36,7 @@ final class GeminiStreamingProvider: StreamingTranscriptionProvider {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                customVocabulary: customVocabularyTerms()
+                customVocabulary: Array(customVocabulary.prefix(1_000))
             )
         } catch {
             forwardingTask?.cancel()
@@ -86,25 +85,6 @@ final class GeminiStreamingProvider: StreamingTranscriptionProvider {
                 }
             }
         }
-    }
-
-    private func customVocabularyTerms() -> [String] {
-        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
-        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
-            return []
-        }
-
-        var seen = Set<String>()
-        var unique: [String] = []
-        for word in vocabularyWords {
-            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            let key = trimmed.lowercased()
-            guard seen.insert(key).inserted else { continue }
-            unique.append(trimmed)
-            if unique.count == 1_000 { break }
-        }
-        return unique
     }
 
     private func mapError(_ error: Error) -> Error {

@@ -14,7 +14,7 @@ class TranscriptionServiceRegistry {
         modelsDirectory: modelsDirectory,
         modelProvider: modelProvider
     )
-    private(set) lazy var cloudTranscriptionService = CloudTranscriptionService(modelContext: modelContext)
+    private(set) lazy var cloudTranscriptionService = CloudTranscriptionService()
     private(set) lazy var nativeAppleTranscriptionService = NativeAppleTranscriptionService()
     private(set) lazy var fluidAudioTranscriptionService = FluidAudioTranscriptionService()
     private var cachedTranscribeCppTranscriptionService: TranscribeCppTranscriptionService?
@@ -56,7 +56,10 @@ class TranscriptionServiceRegistry {
         logger.debug(
             "Transcribing with \(model.displayName, privacy: .public) using \(String(describing: type(of: service)), privacy: .public)"
         )
-        return try await service.transcribe(audioURL: audioURL, model: model, context: context.scoped(to: model))
+        let vocabulary = context.vocabulary ?? CustomVocabularyService.shared.loadSavedVocabulary(from: modelContext)
+        return try await service.transcribe(
+            audioURL: audioURL, model: model, context: context.withVocabulary(vocabulary).scoped(to: model)
+        )
     }
 
     /// Creates a streaming or file-based session for the resolved transcription configuration.
@@ -67,7 +70,6 @@ class TranscriptionServiceRegistry {
 
         if shouldUseRealtimeTranscription(for: configuration) {
             let streamingService = StreamingTranscriptionService(
-                modelContext: modelContext,
                 fluidAudioService: model.provider == .fluidAudio ? fluidAudioTranscriptionService : nil,
                 onPartialTranscript: onPartialTranscript
             )

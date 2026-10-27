@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 enum CloudTranscriptionError: Error, LocalizedError {
     case unsupportedProvider
@@ -40,16 +39,12 @@ enum CloudTranscriptionError: Error, LocalizedError {
 }
 
 class CloudTranscriptionService: TranscriptionService {
-    private let modelContext: ModelContext
     private lazy var openAICompatibleService = OpenAICompatibleTranscriptionService()
-
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
-    }
 
     func transcribe(audioURL: URL, model: any TranscriptionModel, context: TranscriptionRequestContext) async throws
         -> String
     {
+        try Task.checkCancellation()
         let audioData = try loadAudioData(from: audioURL)
         let fileName = audioURL.lastPathComponent
         let language = selectedLanguage(from: context)
@@ -74,14 +69,18 @@ class CloudTranscriptionService: TranscriptionService {
                 apiKey: apiKey,
                 model: model.name,
                 language: language,
-                customVocabulary: getCustomDictionaryTerms(),
+                customVocabulary: context.vocabulary?.terms ?? [],
                 timeout: timeout
             )
+        } catch is CancellationError {
+            throw CancellationError()
         } catch let error as CloudTranscriptionError {
             throw error
         } catch let error as LLMKitError {
+            try Task.checkCancellation()
             throw mapLLMKitError(error)
         } catch {
+            try Task.checkCancellation()
             throw CloudTranscriptionError.networkError(error)
         }
     }
@@ -105,25 +104,6 @@ class CloudTranscriptionService: TranscriptionService {
     private func selectedLanguage(from context: TranscriptionRequestContext) -> String? {
         let lang = context.language ?? "auto"
         return (lang == "auto" || lang.isEmpty) ? nil : lang
-    }
-
-    private func getCustomDictionaryTerms() -> [String] {
-        let descriptor = FetchDescriptor<VocabularyWord>(sortBy: [SortDescriptor(\.word)])
-        guard let vocabularyWords = try? modelContext.fetch(descriptor) else {
-            return []
-        }
-        var seen = Set<String>()
-        var unique: [String] = []
-        for word in vocabularyWords {
-            let trimmed = word.word.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-            let key = trimmed.lowercased()
-            if !seen.contains(key) {
-                seen.insert(key)
-                unique.append(trimmed)
-            }
-        }
-        return unique
     }
 
     private func mapLLMKitError(_ error: LLMKitError) -> CloudTranscriptionError {

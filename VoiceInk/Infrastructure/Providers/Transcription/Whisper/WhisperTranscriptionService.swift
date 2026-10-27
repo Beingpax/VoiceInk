@@ -57,29 +57,26 @@ class WhisperTranscriptionService: TranscriptionService {
         // Read audio data
         let data = try readAudioSamples(audioURL)
 
-        // Set prompt
-        await whisperContext.setLanguage(context.language)
-        await whisperContext.setPrompt(context.prompt ?? "")
-
-        // Transcribe
-        let success = await whisperContext.fullTranscribe(samples: data)
-
-        guard success else {
-            logger.error("❌ Core transcription engine failed (whisper_full).")
-            throw VoiceInkEngineError.whisperCoreFailed
+        // The actor applies settings and reads the result atomically, keeping concurrent
+        // recordings/imports from overwriting each other's language, hints or output.
+        let text: String
+        do {
+            text = try await whisperContext.transcribe(samples: data, request: context)
+        } catch {
+            await releaseUnsharedContext(whisperContext)
+            throw error
         }
-
-        let text = await whisperContext.getTranscription()
-
         logger.notice("Whisper transcription completed successfully.")
-
-        // Only release resources if we created a new context (not using the shared one)
-        if await modelProvider?.whisperContext !== whisperContext {
-            await whisperContext.releaseResources()
-            self.whisperContext = nil
-        }
-
+        await releaseUnsharedContext(whisperContext)
         return text
+    }
+
+    private func releaseUnsharedContext(_ context: WhisperContext) async {
+        guard await modelProvider?.whisperContext !== context else { return }
+        await context.releaseResources()
+        if whisperContext === context {
+            whisperContext = nil
+        }
     }
 
     private func readAudioSamples(_ url: URL) throws -> [Float] {

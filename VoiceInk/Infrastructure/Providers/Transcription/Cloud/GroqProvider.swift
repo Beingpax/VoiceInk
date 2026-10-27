@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 struct GroqProvider: CloudProvider {
     let modelProvider: ModelProvider = .groq
@@ -32,11 +31,12 @@ struct GroqProvider: CloudProvider {
             apiKey: apiKey,
             model: model,
             language: language,
+            prompt: customVocabulary.isEmpty ? nil : customVocabulary.joined(separator: ", "),
             timeout: timeout
         )
     }
 
-    func makeStreamingProvider(modelContext: ModelContext) -> (any StreamingTranscriptionProvider)? { nil }
+    func makeStreamingProvider(vocabulary: RecordingVocabulary) -> (any StreamingTranscriptionProvider)? { nil }
 
     func verifyAPIKey(_ key: String) async -> (isValid: Bool, errorMessage: String?) {
         return await OpenAITranscriptionClient.verifyAPIKey(

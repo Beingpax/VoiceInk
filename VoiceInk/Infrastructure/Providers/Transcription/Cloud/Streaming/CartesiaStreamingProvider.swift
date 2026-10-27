@@ -1,6 +1,5 @@
 import Foundation
 import LLMkit
-import SwiftData
 
 /// Cartesia Ink 2 streaming provider wrapping `LLMkit.CartesiaStreamingClient`.
 final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
@@ -10,12 +9,12 @@ final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
     private var forwardingTask: Task<Void, Never>?
     private let finalizationLock = NSLock()
     private var didRequestFinalization = false
-    private let modelContext: ModelContext
+    private let customVocabulary: [String]
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    init(customVocabulary: [String]) {
+        self.customVocabulary = customVocabulary
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -36,7 +35,10 @@ final class CartesiaStreamingProvider: StreamingTranscriptionProvider {
         startEventForwarding()
 
         do {
-            try await client.connect(apiKey: apiKey, model: model.name, language: nil, customVocabulary: [])
+            try await client.connect(
+                apiKey: apiKey, model: model.name, language: nil,
+                customVocabulary: customVocabulary
+            )
         } catch {
             forwardingTask?.cancel()
             forwardingTask = nil

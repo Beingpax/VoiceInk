@@ -1,5 +1,4 @@
 import Foundation
-import SwiftData
 import os
 
 /// Sendable source that bridges audio chunks from any thread into an AsyncStream.
@@ -123,7 +122,6 @@ class StreamingTranscriptionService {
     private let chunkSource = AudioChunkSource()
     private var state: StreamingState = .idle
     private var committedSegments: [String] = []
-    private let modelContext: ModelContext
     private let fluidAudioService: FluidAudioTranscriptionService?
     private var onPartialTranscript: ((String) -> Void)?
     private let metrics = StreamingMetrics()
@@ -132,10 +130,9 @@ class StreamingTranscriptionService {
     private var firstCommitLogged = false
 
     init(
-        modelContext: ModelContext, fluidAudioService: FluidAudioTranscriptionService? = nil,
+        fluidAudioService: FluidAudioTranscriptionService? = nil,
         onPartialTranscript: ((String) -> Void)? = nil
     ) {
-        self.modelContext = modelContext
         self.fluidAudioService = fluidAudioService
         self.onPartialTranscript = onPartialTranscript
     }
@@ -156,6 +153,7 @@ class StreamingTranscriptionService {
 
     /// Start a streaming transcription session for the given model.
     func startStreaming(model: any TranscriptionModel, context: TranscriptionRequestContext) async throws {
+        try Task.checkCancellation()
         let start = Date()
         state = .connecting
         committedSegments = []
@@ -163,7 +161,7 @@ class StreamingTranscriptionService {
         firstPartialLogged = false
         firstCommitLogged = false
 
-        let provider = createProvider(for: model)
+        let provider = createProvider(for: model, vocabulary: context.vocabulary ?? RecordingVocabulary())
         self.provider = provider
 
         let selectedLanguage = context.language ?? "auto"
@@ -304,7 +302,9 @@ class StreamingTranscriptionService {
 
     // MARK: - Private
 
-    private func createProvider(for model: any TranscriptionModel) -> StreamingTranscriptionProvider {
+    private func createProvider(
+        for model: any TranscriptionModel, vocabulary: RecordingVocabulary
+    ) -> StreamingTranscriptionProvider {
         if model.provider == .fluidAudio {
             if FluidAudioModelManager.isNemotronModel(named: model.name) {
                 return FluidAudioNemotronStreamingProvider()
@@ -325,7 +325,7 @@ class StreamingTranscriptionService {
             return FluidAudioStreamingProvider(fluidAudioService: fluidAudioService)
         }
         guard let cloudProvider = CloudProviderRegistry.provider(for: model.provider),
-            let streamingProvider = cloudProvider.makeStreamingProvider(modelContext: modelContext)
+            let streamingProvider = cloudProvider.makeStreamingProvider(vocabulary: vocabulary)
         else {
             fatalError(
                 "Unsupported streaming provider: \(model.provider). Check shouldUseRealtimeTranscription() before calling startStreaming()."

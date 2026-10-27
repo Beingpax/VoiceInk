@@ -3,6 +3,7 @@ import Foundation
 struct TranscriptionRequestContext {
     let language: String?
     let prompt: String?
+    var vocabulary: RecordingVocabulary? = nil
 
     static var currentDefaults: TranscriptionRequestContext {
         let language = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
@@ -12,9 +13,15 @@ struct TranscriptionRequestContext {
         )
     }
 
+    func withVocabulary(_ vocabulary: RecordingVocabulary) -> TranscriptionRequestContext {
+        var context = self
+        context.vocabulary = vocabulary
+        return context
+    }
+
     func scoped(to model: any TranscriptionModel) -> TranscriptionRequestContext {
         guard model.provider == .whisper else {
-            return TranscriptionRequestContext(language: language, prompt: nil)
+            return TranscriptionRequestContext(language: language, prompt: nil, vocabulary: vocabulary)
         }
 
         return self
