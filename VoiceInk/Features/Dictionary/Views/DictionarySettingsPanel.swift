@@ -55,6 +55,7 @@ struct DictionarySettingsPanel: View {
                     HStack(spacing: 4) {
                         Text("Vocabulary")
                         InfoTip("Locally corrects words using your vocabulary and names on screen with similar spelling or sound.")
+                            .accessibilityLabel("Learn about Vocabulary Correction")
                     }
                 }
 

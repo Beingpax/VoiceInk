@@ -36,6 +36,7 @@ struct RecordingVocabulary: Sendable {
                 .replacingOccurrences(of: ">", with: "&gt;")
         }.joined(separator: "\n")
         return """
+        Use these entries as preferred spellings for clearly matching words, names, and phonetic transcription mistakes.
         <CUSTOM_VOCABULARY>
         Important Vocabulary:
         \(entries)

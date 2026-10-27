@@ -15114,6 +15114,30 @@
         }
       }
     },
+    "Learn about Vocabulary Correction" : {
+      "comment" : "Accessibility label for the vocabulary correction help icon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mehr über die Vokabularkorrektur erfahren"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En savoir plus sur la correction du vocabulaire"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "了解词汇纠正"
+          }
+        }
+      }
+    },
     "Learn more" : {
       "localizations" : {
         "de" : {
@@ -27679,29 +27703,6 @@
         }
       }
     },
-    "Use captured on-screen text as context for this mode." : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erfassten Bildschirmtext als Kontext für diesen Modus verwenden."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utilisez le texte capturé à l'écran comme contexte pour ce mode."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "将捕获的屏幕文本用作此模式的上下文。"
-          }
-        }
-      }
-    },
     "Use clipboard text as context for this mode." : {
       "extractionState" : "manual",
       "localizations" : {
@@ -27812,6 +27813,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "使用系统模板"
+          }
+        }
+      }
+    },
+    "Use text recognized from the active window as context for this mode." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erkannten Text aus dem aktiven Fenster als Kontext für diesen Modus verwenden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utilisez le texte reconnu dans la fenêtre active comme contexte pour ce mode."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将从当前活动窗口中识别的文本用作此模式的上下文。"
           }
         }
       }

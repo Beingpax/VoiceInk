@@ -70,13 +70,14 @@ class ScreenCaptureService: ObservableObject {
 
         var focusedTitle: String?
         var focusedFrame: CGRect?
+        let processHint = FocusedWindowHint(processID: frontmostPID, title: nil, frame: nil)
 
         if AXIsProcessTrusted() {
             let appElement = AXUIElementCreateApplication(frontmostPID)
             // This lookup also runs during context capture; never use the multi-second AX default.
-            guard AXUIElementSetMessagingTimeout(appElement, 0.03) == .success else { return nil }
+            guard AXUIElementSetMessagingTimeout(appElement, 0.03) == .success else { return processHint }
             if let focusedWindow = copyAXElementAttribute(kAXFocusedWindowAttribute, from: appElement) {
-                guard AXUIElementSetMessagingTimeout(focusedWindow, 0.03) == .success else { return nil }
+                guard AXUIElementSetMessagingTimeout(focusedWindow, 0.03) == .success else { return processHint }
                 focusedTitle = normalized(copyStringAttribute(kAXTitleAttribute, from: focusedWindow))
 
                 if let position = copyCGPointAttribute(kAXPositionAttribute, from: focusedWindow),
