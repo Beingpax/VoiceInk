@@ -869,7 +869,8 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
             // Preserve an already-warm XPC model immediately, while retaining the
             // debounce below before any new model preparation begins.
-            await aiService.voiceInkRefineService.keepPreparedModelWarmForRecording()
+            await VoiceInkRefineService.service(for: initialConfiguration.modelName)
+                .keepPreparedModelWarmForRecording()
 
             do {
                 try await Task.sleep(for: .milliseconds(450))
@@ -892,7 +893,7 @@ class VoiceInkEngine: NSObject, ObservableObject {
                 return
             }
 
-            await aiService.voiceInkRefineService.prepareForRecording()
+            await VoiceInkRefineService.service(for: configuration.modelName).prepareForRecording()
         }
     }
 

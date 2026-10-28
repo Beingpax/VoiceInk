@@ -78,7 +78,7 @@ class AIEnhancementService: ObservableObject {
         guard let provider = configuration.provider else { return false }
 
         if provider == .voiceInkRefine {
-            return aiService.voiceInkRefineService.isAvailableInModes
+            return VoiceInkRefineService.service(for: configuration.modelName).isAvailableInModes
         }
 
         guard configuration.prompt != nil else { return false }
@@ -189,7 +189,9 @@ class AIEnhancementService: ObservableObject {
 
         if provider == .voiceInkRefine {
             do {
-                let result = try await aiService.enhanceWithVoiceInkRefine(transcript: text, vocabulary: vocabulary)
+                let result = try await aiService.enhanceWithVoiceInkRefine(
+                    transcript: text, vocabulary: vocabulary, modelName: configuration.modelName
+                )
                 let filteredResult = AIEnhancementOutputFilter.filter(
                     result.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
@@ -471,8 +473,9 @@ class AIEnhancementService: ObservableObject {
 
         for index in updatedConfigurations.indices {
             if updatedConfigurations[index].selectedAIProvider == AIProvider.voiceInkRefine.rawValue {
-                if updatedConfigurations[index].selectedAIModel != VoiceInkRefineService.modelName {
-                    updatedConfigurations[index].selectedAIModel = VoiceInkRefineService.modelName
+                let configured = updatedConfigurations[index].selectedAIModel
+                if configured.flatMap(VoiceInkRefineModel.init(rawValue:)) == nil {
+                    updatedConfigurations[index].selectedAIModel = VoiceInkRefineModel.v1.rawValue
                     didUpdateModes = true
                 }
             }

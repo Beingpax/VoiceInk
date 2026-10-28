@@ -105,7 +105,10 @@ struct ModeConfigDraft {
         }
 
         if provider == .voiceInkRefine {
-            selectedAIModel = provider.defaultModel
+            let models = snapshot.availableModels(for: provider)
+            if selectedAIModel.map({ models.contains($0) }) != true {
+                selectedAIModel = models.first ?? provider.defaultModel
+            }
             return
         }
 

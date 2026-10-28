@@ -23,7 +23,7 @@ struct VoiceInkRefineModelCardView: View {
 
     private var headerSection: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(VoiceInkRefineService.modelName)
+            Text(service.modelName)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color(.labelColor))
 
@@ -43,7 +43,7 @@ struct VoiceInkRefineModelCardView: View {
             Label("Enhancement Model", systemImage: "sparkles")
             Label("On-Device", systemImage: "checkmark.shield")
             Label {
-                Text(verbatim: VoiceInkRefineService.downloadSizeDescription)
+                Text(verbatim: service.downloadSizeDescription)
             } icon: {
                 Image(systemName: "internaldrive")
             }

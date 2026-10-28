@@ -431,13 +431,15 @@ struct ModeConfigFormView: View {
                 draft.selectedAIModel = nil
             }
         } else if provider == .voiceInkRefine {
-            LabeledContent("AI Model") {
-                Text(VoiceInkRefineService.modelName)
-                    .foregroundColor(.secondary)
+            Picker("AI Model", selection: Binding(
+                get: { draft.selectedAIModel ?? VoiceInkRefineService.resolvedModelName(nil) },
+                set: { draft.selectedAIModel = $0 }
+            )) {
+                ForEach(aiModelOptions(for: provider), id: \.self) { model in
+                    Text(model).tag(model)
+                }
             }
-            .onAppear {
-                applyVoiceInkRefineRules()
-            }
+            .onAppear { applyVoiceInkRefineRules() }
         } else {
             let models = aiModelOptions(for: provider)
             if models.isEmpty {
@@ -599,7 +601,7 @@ struct ModeConfigFormView: View {
     }
 
     private func applyVoiceInkRefineRules() {
-        draft.selectedAIModel = VoiceInkRefineService.modelName
+        draft.selectedAIModel = VoiceInkRefineService.resolvedModelName(draft.selectedAIModel)
         applyOutputRules()
     }
 

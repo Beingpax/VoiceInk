@@ -230,7 +230,7 @@ enum ModeRuntimeResolver {
         }
 
         if provider == .voiceInkRefine {
-            return provider.defaultModel
+            return VoiceInkRefineService.resolvedModelName(configuredModelName)
         }
 
         let models = aiService.availableModels(for: provider)

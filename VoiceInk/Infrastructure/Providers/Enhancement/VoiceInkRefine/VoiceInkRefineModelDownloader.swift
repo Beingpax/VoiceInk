@@ -174,10 +174,18 @@ final class VoiceInkRefineModelDownloader: @unchecked Sendable {
     private let revision: String
     private let snapshotDirectory: URL
     private let partialsDirectory: URL
-    private let progressTracker = ProgressTracker(totalBytes: totalBytes)
+    private let files: [ModelFile]
+    private let progressTracker: ProgressTracker
     private let maximumAttempts = 4
 
-    init(repositoryID: String, revision: String, modelRootDirectory: URL) {
+    init(
+        repositoryID: String,
+        revision: String,
+        modelRootDirectory: URL,
+        files: [ModelFile] = VoiceInkRefineModelDownloader.files
+    ) {
+        self.files = files
+        self.progressTracker = ProgressTracker(totalBytes: files.reduce(0) { $0 + $1.size })
         self.repositoryID = repositoryID
         self.revision = revision
         snapshotDirectory = Self.snapshotDirectory(
@@ -222,7 +230,7 @@ final class VoiceInkRefineModelDownloader: @unchecked Sendable {
     private func prepareFiles() throws -> [ModelFile] {
         var pendingFiles: [ModelFile] = []
 
-        for file in Self.files {
+        for file in files {
             try Task.checkCancellation()
 
             let finalURL = snapshotDirectory.appendingPathComponent(file.path)
@@ -453,7 +461,7 @@ final class VoiceInkRefineModelDownloader: @unchecked Sendable {
     }
 
     private func validateSnapshot() throws {
-        for file in Self.files {
+        for file in files {
             try Self.validateDownloadedFile(
                 at: snapshotDirectory.appendingPathComponent(file.path),
                 file: file
@@ -462,7 +470,7 @@ final class VoiceInkRefineModelDownloader: @unchecked Sendable {
 
         guard let record = Self.verificationRecord(
             at: snapshotDirectory,
-            files: Self.files
+            files: files
         ) else {
             throw VoiceInkRefineDownloadError.invalidResponse(
                 Self.verificationRecordFilename

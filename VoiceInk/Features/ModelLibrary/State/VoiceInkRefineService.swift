@@ -23,28 +23,45 @@ enum VoiceInkRefineError: LocalizedError {
 }
 
 final class VoiceInkRefineService: ObservableObject {
-    static let shared = VoiceInkRefineService()
+    static let shared = VoiceInkRefineService(model: .v1)
+    static let mini = VoiceInkRefineService(model: .mini)
+    static let all = [shared, mini]
+
+    static func service(for modelName: String?) -> VoiceInkRefineService {
+        all.first { $0.modelName == modelName } ?? shared
+    }
+
+    static var installationChanges: AnyPublisher<Void, Never> {
+        Publishers.MergeMany(all.map { service in
+            service.$isDownloaded
+                .removeDuplicates()
+                .dropFirst()
+                .map { _ in () }
+                .eraseToAnyPublisher()
+        }).eraseToAnyPublisher()
+    }
+
+    static var availableModelNames: [String] {
+        all.filter(\.isAvailableInModes).map(\.modelName)
+    }
+
+    static func resolvedModelName(_ configured: String?) -> String {
+        if let configured, VoiceInkRefineModel(rawValue: configured) != nil { return configured }
+        return availableModelNames.first ?? VoiceInkRefineModel.v1.rawValue
+    }
 
     static let providerName = "VoiceInk Refine"
-    static let modelName = "VoiceInk Refine V1"
-    static let systemPrompt = """
-        Transform raw ASR input into polished text. Preserve the original meaning and tone. Handle punctuation, capitalization, and spoken formatting cues properly. Remove fillers, repetitions, false starts, and discarded self-corrections. Output only the final text.
-        """
-    static let repositoryID = "beingpax/VoiceInk-Refine-V1"
-    static let pinnedRevision = "ad665418d3850e379e29236e66be3ddc0ac0bf04"
-    static let minimumMemoryBytes: UInt64 = 16 * 1_024 * 1_024 * 1_024
-    static var downloadSizeDescription: String {
-        ByteCountFormatter.string(
-            fromByteCount: VoiceInkRefineModelDownloader.totalBytes,
-            countStyle: .file
-        )
+    let model: VoiceInkRefineModel
+    var modelName: String { model.rawValue }
+    var downloadSizeDescription: String {
+        ByteCountFormatter.string(fromByteCount: model.totalBytes, countStyle: .file)
     }
 
     @Published private(set) var isDownloaded = false
     @Published private(set) var isDownloading = false
     @Published private(set) var downloadProgress = 0.0
     private(set) var downloadedBytes: Int64 = 0
-    private(set) var totalDownloadBytes = VoiceInkRefineModelDownloader.totalBytes
+    private(set) var totalDownloadBytes: Int64
     private(set) var isFinalizingDownload = false
     @Published private(set) var downloadError: String?
 
@@ -74,16 +91,21 @@ final class VoiceInkRefineService: ObservableObject {
         category: "VoiceInkRefineService"
     )
     private let modelRootDirectory: URL
-    private let inferenceClient = VoiceInkRefineXPCClient()
+    // One client serializes both variants and keeps only one model warm at a time.
+    private static let sharedInferenceClient = VoiceInkRefineXPCClient()
+    private var inferenceClient: VoiceInkRefineXPCClient { Self.sharedInferenceClient }
     private var downloadTask: Task<Void, Never>?
 
     private init(
+        model: VoiceInkRefineModel,
         architectureIsAppleSilicon: Bool = SystemArchitecture.isAppleSilicon,
         physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory
     ) {
+        self.model = model
+        self.totalDownloadBytes = model.totalBytes
         if !architectureIsAppleSilicon {
             availability = .unsupportedIntel
-        } else if physicalMemory < Self.minimumMemoryBytes {
+        } else if physicalMemory < model.minimumMemoryBytes {
             availability = .insufficientMemory
         } else {
             availability = .available
@@ -95,7 +117,7 @@ final class VoiceInkRefineService: ObservableObject {
         )[0]
         modelRootDirectory = appSupportDirectory
             .appendingPathComponent("com.prakashjoshipax.VoiceInk")
-            .appendingPathComponent("VoiceInkRefine")
+            .appendingPathComponent(model.directoryName)
 
         refreshDownloadedState()
     }
@@ -148,7 +170,7 @@ final class VoiceInkRefineService: ObservableObject {
         return try await inferenceClient.enhance(
             transcript: transcript,
             modelDirectory: snapshotURL,
-            systemPrompt: [Self.systemPrompt, vocabulary.enhancementSection]
+            systemPrompt: [model.systemPrompt, vocabulary.enhancementSection]
                 .filter { !$0.isEmpty }.joined(separator: "\n\n")
         )
     }
@@ -169,7 +191,7 @@ final class VoiceInkRefineService: ObservableObject {
         do {
             try await inferenceClient.prepare(
                 modelDirectory: snapshotURL,
-                systemPrompt: Self.systemPrompt
+                systemPrompt: model.systemPrompt
             )
         } catch is CancellationError {
         } catch {
@@ -183,7 +205,7 @@ final class VoiceInkRefineService: ObservableObject {
     private func downloadModel() async {
         downloadProgress = 0
         downloadedBytes = 0
-        totalDownloadBytes = VoiceInkRefineModelDownloader.totalBytes
+        totalDownloadBytes = model.totalBytes
         isFinalizingDownload = false
         downloadError = nil
         isDownloading = true
@@ -196,9 +218,10 @@ final class VoiceInkRefineService: ObservableObject {
 
         #if arch(arm64)
             let downloader = VoiceInkRefineModelDownloader(
-                repositoryID: Self.repositoryID,
-                revision: Self.pinnedRevision,
-                modelRootDirectory: modelRootDirectory
+                repositoryID: model.repositoryID,
+                revision: model.pinnedRevision,
+                modelRootDirectory: modelRootDirectory,
+                files: model.files
             )
             let progressTask = Task { @MainActor [weak self, downloader] in
                 while !Task.isCancelled {
@@ -255,8 +278,8 @@ final class VoiceInkRefineService: ObservableObject {
         #if arch(arm64)
             return VoiceInkRefineModelDownloader.snapshotDirectory(
                 in: modelRootDirectory,
-                repositoryID: Self.repositoryID,
-                revision: Self.pinnedRevision
+                repositoryID: model.repositoryID,
+                revision: model.pinnedRevision
             )
         #else
             return nil
@@ -270,7 +293,8 @@ final class VoiceInkRefineService: ObservableObject {
         }
 
         isDownloaded = VoiceInkRefineModelDownloader.isSnapshotComplete(
-            at: snapshotURL
+            at: snapshotURL,
+            files: model.files
         )
     }
 
