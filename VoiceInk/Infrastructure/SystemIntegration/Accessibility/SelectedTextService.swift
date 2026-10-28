@@ -67,6 +67,7 @@ protocol SelectionPasteboard: AnyObject {
 
 @MainActor
 final class SelectedTextCapture {
+    private static let selectedTextWordLimit = 2_500
     private let environment: SelectedTextCaptureEnvironment
     private let pasteboard: any SelectionPasteboard
     private var copyInProgress = false
@@ -97,7 +98,7 @@ final class SelectedTextCapture {
             let reading = await environment.readSelection(pid)
             guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
             switch reading {
-            case .text(let text): return Self.normalized(text)
+            case .text(let text): return Self.normalizedSelection(text)
             case .empty: return nil
             case .unavailable: break
             }
@@ -135,7 +136,7 @@ final class SelectedTextCapture {
                     unrestoredCopyChangeCount = nil
                 }
                 guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
-                return Self.normalized(text)
+                return Self.normalizedSelection(text)
             }
             let text = await operation.value
             guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
@@ -143,6 +144,15 @@ final class SelectedTextCapture {
         } onCancel: {
             cancellation.withLock { $0 = true }
         }
+    }
+
+    /// Limit both accessibility and Copy captures before storing selected-text context.
+    /// Words are whitespace-separated; preserve the original formatting within the limit.
+    private static func normalizedSelection(_ text: String?) -> String? {
+        guard let text = normalized(text) else { return nil }
+        let words = text.split(maxSplits: selectedTextWordLimit, whereSeparator: \.isWhitespace)
+        guard words.count > selectedTextWordLimit else { return text }
+        return String(text[..<words[selectedTextWordLimit - 1].endIndex])
     }
 
     private static func normalized(_ text: String?) -> String? {
