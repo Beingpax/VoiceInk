@@ -51,9 +51,6 @@ enum RecordingContextCaptureService {
         }
         return [
             Task { @MainActor in
-                store.updateClipboardText(NSPasteboard.general.string(forType: .string))
-            },
-            Task { @MainActor in
                 guard !Task.isCancelled else { return }
                 let selectedText = await SelectedTextService.fetchSelectedText()
                 guard !Task.isCancelled else { return }

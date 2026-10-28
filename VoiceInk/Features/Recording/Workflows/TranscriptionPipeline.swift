@@ -204,12 +204,15 @@ class TranscriptionPipeline {
 
                     do {
                         defer { cancelContextCapture() }
-                        // Context is optional: never hold enhancement for unfinished capture.
-                        let contextSnapshot = recordingContextSnapshot()
                         if Task.isCancelled || shouldCancel() {
                             await finishCanceledTranscription()
                             return
                         }
+                        // Context is optional: never hold enhancement for unfinished capture.
+                        var contextSnapshot = recordingContextSnapshot() ?? RecordingContextSnapshot()
+                        contextSnapshot.clipboardText = SelectedTextService.clipboardContext(
+                            isEnabled: resolvedEnhancementConfiguration.useClipboardContext
+                        )
                         transcription.aiEnhancementModelName =
                             resolvedEnhancementConfiguration.modelName
                             ?? resolvedEnhancementConfiguration.provider?.defaultModel

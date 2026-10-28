@@ -19,7 +19,6 @@
 		E1DD1EE12FA1D7D30020AF3B /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = E1DD1EE02FA1D7D30020AF3B /* ZIPFoundation */; };
 		E1F350112F1D10D600790A2C /* whisper.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; };
 		E1F350122F1D10D600790A2C /* whisper.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E1A0BD052EB1E7B800266859 /* whisper.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = E1F511032FA3B47000F00001 /* SelectedTextKit */; };
 		E1FA00062FA7000000000001 /* VoiceInkRefineXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FA00052FA7000000000001 /* VoiceInkRefineXPCProtocol.swift */; };
 		E1FA00072FA7000000000001 /* VoiceInkRefineXPCProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1FA00052FA7000000000001 /* VoiceInkRefineXPCProtocol.swift */; };
 		E1FA00082FA7000000000001 /* VoiceInkRefineXPC.xpc in Embed XPC Services */ = {isa = PBXBuildFile; fileRef = E1FA00012FA7000000000001 /* VoiceInkRefineXPC.xpc */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -153,7 +152,6 @@
 				E1DD1EE12FA1D7D30020AF3B /* ZIPFoundation in Frameworks */,
 				E1701E75305E77220098872B /* LLMkit in Frameworks */,
 				E13461ED2FD1CCCD005B6A81 /* MarkdownUI in Frameworks */,
-				E1F511012FA3B47000F00001 /* SelectedTextKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -265,7 +263,6 @@
 				E1342C1E2EB4844800CED8A2 /* Atomics */,
 				E1DD1EE02FA1D7D30020AF3B /* ZIPFoundation */,
 				E1C0A0012FA8000000000001 /* TranscribeCpp */,
-				E1F511032FA3B47000F00001 /* SelectedTextKit */,
 				E13461EC2FD1CCCD005B6A81 /* MarkdownUI */,
 				E1AF669A3031B7AA006D50FA /* FluidAudio */,
 				E1701E74305E77220098872B /* LLMkit */,
@@ -390,7 +387,6 @@
 				E1D7EF972E35E16C00640029 /* XCRemoteSwiftPackageReference "mediaremote-adapter" */,
 				E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 				E1342C1D2EB4844800CED8A2 /* XCRemoteSwiftPackageReference "swift-atomics" */,
-				E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */,
 				E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 				E1F900012FA6000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				E1F900022FA6000000000001 /* XCRemoteSwiftPackageReference "swift-huggingface" */,
@@ -933,14 +929,6 @@
 				version = 0.9.20;
 			};
 		};
-		E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Beingpax/SelectedTextKit.git";
-			requirement = {
-				branch = "performance/off-main-menu-action";
-				kind = branch;
-			};
-		};
 		E1F900012FA6000000000001 /* XCRemoteSwiftPackageReference "mlx-swift-lm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm.git";
@@ -1009,11 +997,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1ECEC142E44590200DFFBA8 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
-		};
-		E1F511032FA3B47000F00001 /* SelectedTextKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = E1F511022FA3B47000F00001 /* XCRemoteSwiftPackageReference "SelectedTextKit" */;
-			productName = SelectedTextKit;
 		};
 		E1F900102FA6000000000001 /* MLXLLM */ = {
 			isa = XCSwiftPackageProductDependency;
