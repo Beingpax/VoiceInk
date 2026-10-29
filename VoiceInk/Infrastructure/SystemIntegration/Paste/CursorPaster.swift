@@ -75,7 +75,7 @@ class CursorPaster {
         let pasteboard: NSPasteboard? = method.usesClipboard ? NSPasteboard.general : nil
         if smartPunctuation {
             // Settle focus before reading, rather than retaining context across the paste delay.
-            if pasteboard != nil || method == .remoteTyping { await wait(prePasteDelay) }
+            if method.usesClipboard || method == .remoteTyping { await wait(prePasteDelay) }
             if let processID = NSWorkspace.shared.frontmostApplication?.processIdentifier,
                 let snapshot = await textContextReader.read(processID: processID) {
                 let adjusted = SmartPunctuation.adjusted(originalText, context: snapshot.context)
@@ -87,6 +87,11 @@ class CursorPaster {
                     }
                 }
             }
+        }
+        if method == .remoteTyping, let prepared = RemoteTextTyper.textForTyping(textToDeliver) {
+            // Auto Learn should observe what was actually typed, while history
+            // keeps the original transcript unchanged.
+            textToDeliver = prepared
         }
         let shouldRestoreClipboard = pasteboard != nil
             && UserDefaults.standard.bool(forKey: "restoreClipboardAfterPaste")
@@ -178,14 +183,14 @@ class CursorPaster {
             case .notPosted:
                 if !text.isEmpty {
                     NotificationManager.shared.showNotification(
-                        title: String(localized: "Remote typing could not start. Check Accessibility access and keyboard layout, release modifier keys, and turn off Caps Lock."),
+                        title: String(localized: "Remote typing could not start. Check Accessibility access and keyboard layout."),
                         type: .error
                     )
                 }
                 return .commandNotPosted
             case .unsupportedCharacters:
                 NotificationManager.shared.showNotification(
-                    title: String(localized: "This text contains characters unavailable on your keyboard layout. Use clipboard paste instead."),
+                    title: String(localized: "Remote typing could not find any characters it can type."),
                     type: .error
                 )
                 return .commandNotPosted

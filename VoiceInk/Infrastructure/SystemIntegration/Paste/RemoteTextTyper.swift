@@ -21,40 +21,19 @@ enum RemoteTextTyper {
 
     // Matches the pacing used by the remote typing implementation in PR #701.
     private static let interKeyDelayNanoseconds: UInt64 = 5_000_000
-    private static let interferingModifiers: CGEventFlags = [
-        .maskCommand, .maskControl, .maskAlternate, .maskShift, .maskAlphaShift,
-    ]
 
     static func type(_ text: String, sendKey: FinishAndSendKey) async -> Result {
         guard !Task.isCancelled, AXIsProcessTrusted(),
             let source = CGEventSource(stateID: .privateState),
-            let map = keyboardMap(),
-            let targetPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            let map = keyboardMap()
         else { return .notPosted }
 
-        // Preflight the whole transcript. Falling back to a Unicode payload on
-        // an unmapped key produces spaces or incorrect letters in some viewers.
-        var keys: [KeyStroke] = []
-        for character in DirectTextTyper.normalizedText(text) {
-            switch character {
-            case "\n":
-                keys.append(KeyStroke(code: CGKeyCode(kVK_Return), shift: sendKey == .enter))
-            case "\t":
-                keys.append(KeyStroke(code: CGKeyCode(kVK_Tab), shift: false))
-            default:
-                guard let key = map[character] else { return .unsupportedCharacters }
-                keys.append(key)
-            }
-        }
-        guard !keys.isEmpty else { return .notPosted }
+        guard let keys = keyStrokes(for: text, sendKey: sendKey, map: map) else { return .unsupportedCharacters }
+        guard !keys.isEmpty else { return text.isEmpty ? .notPosted : .unsupportedCharacters }
 
         var postedKeys = 0
         for key in keys {
-            // Physical typing must not become shortcuts if the recording hotkey
-            // is still held. Also stop if the user switches applications.
             guard !Task.isCancelled,
-                NSWorkspace.shared.frontmostApplication?.processIdentifier == targetPID,
-                CGEventSource.flagsState(.hidSystemState).intersection(interferingModifiers).isEmpty,
                 let down = CGEvent(keyboardEventSource: source, virtualKey: key.code, keyDown: true),
                 let up = CGEvent(keyboardEventSource: source, virtualKey: key.code, keyDown: false)
             else { return postedKeys == 0 ? .notPosted : .partiallyPosted }
@@ -89,6 +68,58 @@ enum RemoteTextTyper {
             }
         }
         return .posted
+    }
+
+    /// Returns the physical-key-compatible form without posting input events.
+    /// Prefer exact layout characters; approximate common dictation typography
+    /// and Latin accents, and skip characters with no physical-key equivalent.
+    static func textForTyping(_ text: String) -> String? {
+        guard let map = keyboardMap() else { return nil }
+        return textForTyping(text, map: map)
+    }
+
+    private static func textForTyping(_ text: String, map: [Character: KeyStroke]) -> String {
+        let substitutions: [Character: String] = [
+            "’": "'", "‘": "'", "ʼ": "'", "“": "\"", "”": "\"", "„": "\"",
+            "—": "-", "–": "-", "−": "-", "‑": "-", "…": "...",
+            "\u{00A0}": " ", "\u{202F}": " ", "\u{2009}": " ",
+            "ß": "ss", "ẞ": "SS", "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE",
+            "ø": "o", "Ø": "O", "ł": "l", "Ł": "L",
+        ]
+        var result = ""
+        for character in DirectTextTyper.normalizedText(text) {
+            if character == "\n" || character == "\t" || map[character] != nil {
+                result.append(character)
+                continue
+            }
+            let replacement = substitutions[character]
+                ?? String(character).folding(options: .diacriticInsensitive, locale: Locale(identifier: "en_US_POSIX"))
+            // Only emit complete, mapped replacements. Never send a placeholder
+            // key or a Unicode payload that a remote viewer may misinterpret.
+            if replacement != String(character), replacement.allSatisfy({ map[$0] != nil }) {
+                result += replacement
+            }
+        }
+        return result
+    }
+
+    private static func keyStrokes(
+        for text: String, sendKey: FinishAndSendKey, map: [Character: KeyStroke]
+    ) -> [KeyStroke]? {
+        // Prepare the whole transcript using only characters on this layout.
+        var keys: [KeyStroke] = []
+        for character in textForTyping(text, map: map) {
+            switch character {
+            case "\n":
+                keys.append(KeyStroke(code: CGKeyCode(kVK_Return), shift: sendKey == .enter))
+            case "\t":
+                keys.append(KeyStroke(code: CGKeyCode(kVK_Tab), shift: false))
+            default:
+                guard let key = map[character] else { return nil }
+                keys.append(key)
+            }
+        }
+        return keys
     }
 
     private static func keyboardMap() -> [Character: KeyStroke]? {
