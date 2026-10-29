@@ -9206,25 +9206,25 @@
         }
       }
     },
-    "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing inserts Unicode text. Remote Desktop Typing sends individual keys for remote desktops and virtual machines. Use matching keyboard layouts on both computers. Newlines use Return, or Shift+Return when Auto Send is Return; Return and Tab may trigger actions in the destination." : {
+    "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing enters text without using the clipboard. Some editors may not support Direct Typing. Remote Desktop Typing sends individual keys for remote desktops and virtual machines. Use matching keyboard layouts on both computers. Newlines use Return, or Shift+Return when Auto Send is Return; Return and Tab may trigger actions in the destination." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard verwendet Cmd+V. AppleScript bietet eine alternative Möglichkeit, Cmd+V zu senden. Direkte Texteingabe fügt Unicode-Text ein. Remote-Desktop-Texteingabe sendet einzelne Tastenanschläge für Remote-Desktops und virtuelle Maschinen. Verwende auf beiden Computern das gleiche Tastaturlayout. Zeilenumbrüche verwenden die Eingabetaste oder Umschalt+Eingabe, wenn für „Automatisch senden“ die Eingabetaste eingestellt ist; Eingabe und Tab können im Zielprogramm Aktionen auslösen."
+            "value" : "Standard verwendet Cmd+V. AppleScript bietet eine alternative Möglichkeit, Cmd+V zu senden. Direkte Texteingabe fügt Text ohne Zwischenablage ein. Manche Editoren unterstützen die direkte Texteingabe möglicherweise nicht. Remote-Desktop-Texteingabe sendet einzelne Tastenanschläge für Remote-Desktops und virtuelle Maschinen. Verwende auf beiden Computern das gleiche Tastaturlayout. Zeilenumbrüche verwenden die Eingabetaste oder Umschalt+Eingabe, wenn für „Automatisch senden“ die Eingabetaste eingestellt ist; Eingabe und Tab können im Zielprogramm Aktionen auslösen."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La méthode Par défaut utilise Cmd+V. AppleScript offre une autre façon d’envoyer Cmd+V. La saisie directe insère du texte Unicode. La saisie pour bureau à distance envoie des frappes individuelles aux bureaux à distance et aux machines virtuelles. Utilisez la même disposition de clavier sur les deux ordinateurs. Les sauts de ligne utilisent Retour, ou Maj+Retour si Retour est configuré pour l’envoi automatique ; Retour et Tab peuvent déclencher des actions dans l’application de destination."
+            "value" : "La méthode Par défaut utilise Cmd+V. AppleScript offre une autre façon d’envoyer Cmd+V. La saisie directe entre le texte sans utiliser le presse-papiers. Certains éditeurs peuvent ne pas prendre en charge la saisie directe. La saisie pour bureau à distance envoie des frappes individuelles aux bureaux à distance et aux machines virtuelles. Utilisez la même disposition de clavier sur les deux ordinateurs. Les sauts de ligne utilisent Retour, ou Maj+Retour si Retour est configuré pour l’envoi automatique ; Retour et Tab peuvent déclencher des actions dans l’application de destination."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "默认方式使用 Cmd+V。AppleScript 提供另一种发送 Cmd+V 的方式。直接输入插入 Unicode 文本。远程桌面输入通过逐个发送按键，支持远程桌面和虚拟机。请在两台电脑上使用相同的键盘布局。换行使用 Return；若“自动发送”设置为 Return，则使用 Shift+Return。Return 和 Tab 可能触发目标应用中的操作。"
+            "value" : "默认方式使用 Cmd+V。AppleScript 提供另一种发送 Cmd+V 的方式。直接输入无需使用剪贴板。部分编辑器可能不支持直接输入。远程桌面输入通过逐个发送按键，支持远程桌面和虚拟机。请在两台电脑上使用相同的键盘布局。换行使用 Return；若“自动发送”设置为 Return，则使用 Shift+Return。Return 和 Tab 可能触发目标应用中的操作。"
           }
         }
       }

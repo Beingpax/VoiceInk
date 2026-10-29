@@ -42,12 +42,12 @@ class CursorPaster {
 
     @MainActor
     @discardableResult
-    static func startPasteAtCursor(_ text: String) -> Task<PasteOutcome, Never> {
+    static func startPasteAtCursor(_ text: String, sendKey: FinishAndSendKey = .none) -> Task<PasteOutcome, Never> {
         let requestedAt = ProcessInfo.processInfo.systemUptime
         let previousPasteTask = pasteQueueTask
         let sessionTask = Task { @MainActor in
             await previousPasteTask?.value
-            return await performPasteSession(text, requestedAt: requestedAt)
+            return await performPasteSession(text, sendKey: sendKey, requestedAt: requestedAt)
         }
 
         pasteQueueTask = Task { @MainActor in
@@ -62,7 +62,7 @@ class CursorPaster {
     }
 
     @MainActor
-    private static func performPasteSession(_ text: String, requestedAt: TimeInterval) async -> (
+    private static func performPasteSession(_ text: String, sendKey: FinishAndSendKey, requestedAt: TimeInterval) async -> (
         outcome: PasteOutcome, clipboardRestoreTask: Task<Void, Never>?
     ) {
         let startedAt = ProcessInfo.processInfo.systemUptime
@@ -115,7 +115,7 @@ class CursorPaster {
         let appIdentifier = application?.bundleIdentifier ?? "unknown"
         let focusDiagnostics = PasteFocusDiagnostics(sessionID: sessionID)
         focusDiagnostics.captureAroundPaste(processID: application?.processIdentifier, appIdentifier: appIdentifier)
-        let pasteResult = await deliverText(textToDeliver, method: method, sessionID: sessionID)
+        let pasteResult = await deliverText(textToDeliver, method: method, sendKey: sendKey, sessionID: sessionID)
         focusDiagnostics.captureAfterPaste(
             commandPosted: pasteResult.didPostPasteCommand,
             commandProcessID: application?.processIdentifier
@@ -163,14 +163,16 @@ class CursorPaster {
     }
 
     @MainActor
-    private static func deliverText(_ text: String, method: PasteMethod, sessionID: String) async -> PasteResult {
+    private static func deliverText(
+        _ text: String, method: PasteMethod, sendKey: FinishAndSendKey, sessionID: String
+    ) async -> PasteResult {
         switch method {
         case .appleScript:
             return pasteUsingAppleScript(sessionID: sessionID) ? .commandPosted : .commandNotPosted
         case .standard:
             return await pasteFromClipboard(sessionID: sessionID)
         case .remoteTyping:
-            switch await RemoteTextTyper.type(text, sendKey: FinishAndSendSettings.selectedKey) {
+            switch await RemoteTextTyper.type(text, sendKey: sendKey) {
             case .posted:
                 return .commandPosted
             case .notPosted:

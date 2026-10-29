@@ -180,7 +180,7 @@ struct SettingsView: View {
                     HStack(spacing: 4) {
                         Text("Paste Method")
                         InfoTip(
-                            "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing inserts Unicode text. Remote Desktop Typing sends individual keys for remote desktops and virtual machines. Use matching keyboard layouts on both computers. Newlines use Return, or Shift+Return when Auto Send is Return; Return and Tab may trigger actions in the destination."
+                            "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing enters text without using the clipboard. Some editors may not support Direct Typing. Remote Desktop Typing sends individual keys for remote desktops and virtual machines. Use matching keyboard layouts on both computers. Newlines use Return, or Shift+Return when Auto Send is Return; Return and Tab may trigger actions in the destination."
                         )
                     }
                 }
