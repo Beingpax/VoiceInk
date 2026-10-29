@@ -11,12 +11,13 @@ final class SelectedTextService {
         pasteboard: SystemSelectionPasteboard(.general)
     )
 
-    static func clipboardContext(isEnabled: Bool) -> String? {
-        capture.clipboardContext(isEnabled: isEnabled)
+    static func captureClipboardText() -> String? {
+        capture.captureClipboardText()
     }
 
-    static func fetchSelectedText() async -> String? {
-        await capture.fetchSelectedText()
+    static func fetchSelectedText(isEnabled: Bool) async -> String? {
+        guard isEnabled else { return nil }
+        return await capture.fetchSelectedText()
     }
 }
 
@@ -36,6 +37,7 @@ struct SelectedTextCaptureEnvironment {
     var uptime: () -> TimeInterval
     var waitForClipboardChange: () async -> Void
     var copyWait: TimeInterval = 0.5
+    var findMenuCopy: (pid_t) async -> (@MainActor () -> Bool)? = { _ in nil }
 
     static var live: Self {
         Self(
@@ -53,7 +55,13 @@ struct SelectedTextCaptureEnvironment {
                 return true
             },
             uptime: { ProcessInfo.processInfo.systemUptime },
-            waitForClipboardChange: { try? await Task.sleep(for: .milliseconds(10)) }
+            waitForClipboardChange: { try? await Task.sleep(for: .milliseconds(10)) },
+            findMenuCopy: { pid in
+                guard let menuCopy = await Task.detached(priority: .userInitiated, operation: {
+                    SelectionMenuCopy.find(processID: pid)
+                }).value else { return nil }
+                return { menuCopy.press() }
+            }
         )
     }
 }
@@ -85,9 +93,9 @@ final class SelectedTextCapture {
         self.pasteboard = pasteboard
     }
 
-    /// Called only after enhancement and the final mode's context settings resolve.
-    func clipboardContext(isEnabled: Bool) -> String? {
-        guard isEnabled, !copyInProgress else { return nil }
+    /// Snapshot at recording start; the final mode decides whether to use it later.
+    func captureClipboardText() -> String? {
+        guard !copyInProgress else { return nil }
         // A failed restore can leave our selected text on the pasteboard.
         // Keep excluding it until the clipboard changes independently.
         if let count = unrestoredCopyChangeCount, pasteboard.changeCount == count { return nil }
@@ -105,7 +113,10 @@ final class SelectedTextCapture {
             guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
             switch reading {
             case .text(let text): return Self.normalizedSelection(text)
-            case .empty, .unavailable: break
+            // A known empty selection must not become a Copy-current-line command
+            // in editors that support copying without a selection.
+            case .empty: return nil
+            case .unavailable: break
             }
 
             // Serialize temporary clipboard operations, without queueing a Copy
@@ -113,6 +124,8 @@ final class SelectedTextCapture {
             guard !copyInProgress else { return nil }
             copyInProgress = true
             defer { copyInProgress = false }
+            let menuCopy = await environment.findMenuCopy(pid)
+            guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
             let initialCount = pasteboard.changeCount
             guard let saved = pasteboard.capture(), pasteboard.changeCount == initialCount else { return nil }
 
@@ -121,7 +134,12 @@ final class SelectedTextCapture {
             let operation = Task { @MainActor in
                 guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid,
                     pasteboard.changeCount == initialCount else { return nil as String? }
-                guard environment.postCopy(pid) else { return nil }
+                let menuCopyDispatched = menuCopy?() ?? false
+                if !menuCopyDispatched {
+                    guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid,
+                        pasteboard.changeCount == initialCount else { return nil }
+                    guard environment.postCopy(pid) else { return nil }
+                }
                 let deadline = environment.uptime() + environment.copyWait
                 while pasteboard.changeCount == initialCount, environment.uptime() < deadline {
                     await environment.waitForClipboardChange()
@@ -180,7 +198,78 @@ final class SelectedTextCapture {
     }
 }
 
-/// Creates Cmd+C events without posting them. No menu lookup is involved.
+/// An immutable accessibility reference, discovered off the main actor and only
+/// pressed on the main actor after capture rechecks focus and cancellation.
+struct SelectionMenuCopy: @unchecked Sendable {
+    private let element: AXUIElement
+    private static let lookupWait: TimeInterval = 0.1
+    private static let messagingWait: Float = 0.02
+
+    static func find(processID: pid_t) -> Self? {
+        let lookup = Lookup(deadline: ProcessInfo.processInfo.systemUptime + lookupWait)
+        let app = AXUIElementCreateApplication(processID)
+        guard let menuBar = lookup.element(kAXMenuBarAttribute, from: app),
+            let edit = lookup.children(of: menuBar).first(where: {
+                lookup.attribute(kAXTitleAttribute, from: $0) as? String == "Edit"
+            })
+        else { return nil }
+
+        // Follow Edit > Copy directly. Localized or custom menus keep using the
+        // layout-aware shortcut rather than searching the entire menu tree.
+        for menu in lookup.children(of: edit) {
+            for item in lookup.children(of: menu) {
+                guard lookup.attribute(kAXTitleAttribute, from: item) as? String == "Copy",
+                    lookup.attribute(kAXRoleAttribute, from: item) as? String == kAXMenuItemRole,
+                    lookup.attribute(kAXEnabledAttribute, from: item) as? Bool == true,
+                    ProcessInfo.processInfo.systemUptime < lookup.deadline
+                else { continue }
+                return Self(element: item)
+            }
+        }
+        return nil
+    }
+
+    @MainActor
+    func press() -> Bool {
+        guard AXUIElementSetMessagingTimeout(element, Self.messagingWait) == .success else { return false }
+        switch AXUIElementPerformAction(element, kAXPressAction as CFString) {
+        case .success, .cannotComplete:
+            // cannotComplete can leave Copy pending in the target app. Wait for
+            // its clipboard write without posting a second Copy via Cmd+C.
+            return true
+        default:
+            return false
+        }
+    }
+
+    private struct Lookup {
+        let deadline: TimeInterval
+
+        func attribute(_ name: String, from element: AXUIElement) -> CFTypeRef? {
+            let remaining = deadline - ProcessInfo.processInfo.systemUptime
+            guard remaining > 0,
+                AXUIElementSetMessagingTimeout(element, min(Float(remaining), SelectionMenuCopy.messagingWait)) == .success
+            else { return nil }
+            var value: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return nil }
+            return value
+        }
+
+        func element(_ name: String, from parent: AXUIElement) -> AXUIElement? {
+            guard let value = attribute(name, from: parent), CFGetTypeID(value) == AXUIElementGetTypeID() else {
+                return nil
+            }
+            return unsafeDowncast(value, to: AXUIElement.self)
+        }
+
+        func children(of element: AXUIElement) -> [AXUIElement] {
+            guard let children = attribute(kAXChildrenAttribute, from: element) as? [AXUIElement] else { return [] }
+            return Array(children.prefix(128))
+        }
+    }
+}
+
+/// Creates Cmd+C events without posting them.
 enum SelectionCopyShortcut {
     static func makeEvents() -> [CGEvent]? {
         let sources = [
@@ -243,8 +332,11 @@ final class SystemSelectionPasteboard: SelectionPasteboard {
         let types = ["org.nspasteboard.TransientType", "org.nspasteboard.ConcealedType", "org.nspasteboard.AutoGeneratedType"]
             .map { NSPasteboard.PasteboardType($0) }
         let markedCount = pasteboard.addTypes(types, owner: nil)
-        guard markedCount != 0 else {
-            return pasteboard.changeCount == count ? .failed(changeCount: count) : .changed
+        guard markedCount > 0 else {
+            // AppKit can refuse addTypes for contents owned by another app
+            // (returning -1). Markers are advisory: read and restore the Copy
+            // result without them, but only while its change count is unchanged.
+            return pasteboard.changeCount == count ? .complete(changeCount: count) : .changed
         }
         for type in types {
             guard pasteboard.changeCount == markedCount else { return .changed }
@@ -330,12 +422,10 @@ private enum SelectionAccessibility {
         AXUIElementSetMessagingTimeout(app, timeout)
         guard let element = elementAttribute(kAXFocusedUIElementAttribute as CFString, from: app) else { return .unavailable }
         AXUIElementSetMessagingTimeout(element, timeout)
-        var sawEmpty = false
         var value: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &value) == .success,
             let text = value as? String {
             if !text.isEmpty { return .text(text) }
-            sawEmpty = true
         }
         value = nil
         if AXUIElementCopyAttributeValue(element, "AXSelectedTextMarkerRange" as CFString, &value) == .success,
@@ -344,7 +434,6 @@ private enum SelectionAccessibility {
             if AXUIElementCopyParameterizedAttributeValue(element, "AXStringForTextMarkerRange" as CFString, range, &text) == .success,
                 let selected = text as? String {
                 if !selected.isEmpty { return .text(selected) }
-                sawEmpty = true
             }
         }
         value = nil
@@ -352,7 +441,7 @@ private enum SelectionAccessibility {
             let value, CFGetTypeID(value) == AXValueGetTypeID() {
             var range = CFRange()
             if AXValueGetValue(value as! AXValue, .cfRange, &range), range.location >= 0, range.length >= 0 {
-                if range.length == 0 { sawEmpty = true }
+                if range.length == 0 { return .empty }
                 else if let rangeValue = AXValueCreate(.cfRange, &range) {
                     var text: CFTypeRef?
                     if AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString, rangeValue, &text) == .success,
@@ -360,7 +449,9 @@ private enum SelectionAccessibility {
                 }
             }
         }
-        return sawEmpty ? .empty : .unavailable
+        // Some apps return empty strings even for a nonempty selection. Only
+        // an explicit zero-length range above can safely suppress Copy fallback.
+        return .unavailable
     }
 
     private static func elementAttribute(_ name: CFString, from element: AXUIElement) -> AXUIElement? {

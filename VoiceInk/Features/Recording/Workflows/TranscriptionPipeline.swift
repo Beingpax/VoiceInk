@@ -198,21 +198,30 @@ class TranscriptionPipeline {
 
                     onStateChange(.enhancing)
                     let textForAI = text
-                    if shouldRespondInRecorder {
-                        await assistant.startResponse(textForAI, resolvedEnhancementConfiguration)
-                    }
-
                     do {
                         defer { cancelContextCapture() }
                         if Task.isCancelled || shouldCancel() {
                             await finishCanceledTranscription()
                             return
                         }
-                        // Context is optional: never hold enhancement for unfinished capture.
-                        var contextSnapshot = recordingContextSnapshot() ?? RecordingContextSnapshot()
-                        contextSnapshot.clipboardText = SelectedTextService.clipboardContext(
-                            isEnabled: resolvedEnhancementConfiguration.useClipboardContext
+                        let selectedText = await SelectedTextService.fetchSelectedText(
+                            isEnabled: resolvedEnhancementConfiguration.useSelectedTextContext
                         )
+                        if Task.isCancelled || shouldCancel() {
+                            await finishCanceledTranscription()
+                            return
+                        }
+                        if shouldRespondInRecorder {
+                            await assistant.startResponse(textForAI, resolvedEnhancementConfiguration)
+                        }
+                        if Task.isCancelled || shouldCancel() {
+                            await finishCanceledTranscription()
+                            return
+                        }
+                        // Pick up OCR that finished during selection capture or response setup,
+                        // without waiting for it. Clipboard text remains the recording-start snapshot.
+                        var contextSnapshot = recordingContextSnapshot() ?? RecordingContextSnapshot()
+                        contextSnapshot.selectedText = selectedText
                         transcription.aiEnhancementModelName =
                             resolvedEnhancementConfiguration.modelName
                             ?? resolvedEnhancementConfiguration.provider?.defaultModel

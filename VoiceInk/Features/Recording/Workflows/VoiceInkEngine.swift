@@ -306,6 +306,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                             }
 
                             self.recordingState = .recording
+                            // Preserve the clipboard before awaiting mode resolution
+                            // or any later selected-text Copy operation.
+                            let clipboardText = SelectedTextService.captureClipboardText()
 
                             // Only retire the previous paste session once recording
                             // has actually started. Preflight/permission failures
@@ -349,7 +352,10 @@ class VoiceInkEngine: NSObject, ObservableObject {
                                 return
                             }
 
-                            self.startRecordingContextCapture(language: transcriptionConfiguration.language)
+                            self.startRecordingContextCapture(
+                                language: transcriptionConfiguration.language,
+                                clipboardText: clipboardText
+                            )
 
                             if self.serviceRegistry.shouldUseRealtimeTranscription(for: transcriptionConfiguration),
                                 let contextStore = self.activeRecordingContextStore
@@ -556,12 +562,13 @@ class VoiceInkEngine: NSObject, ObservableObject {
 
     // MARK: - Recording Context
 
-    private func startRecordingContextCapture(language: String) {
+    private func startRecordingContextCapture(language: String, clipboardText: String?) {
         clearActiveRecordingContext()
 
         let store = RecordingContextSnapshotStore(
             savedVocabulary: CustomVocabularyService.shared.loadSavedVocabulary(from: modelContext)
         )
+        store.updateClipboardText(clipboardText)
         activeRecordingContextStore = store
         activeRecordingContextTasks = RecordingContextCaptureService.startCapture(
             into: store,
