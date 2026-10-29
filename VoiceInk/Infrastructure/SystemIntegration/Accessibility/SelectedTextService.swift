@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import Carbon
 import Foundation
 import os
 
@@ -62,7 +63,12 @@ protocol SelectionPasteboard: AnyObject {
     var changeCount: Int { get }
     func capture() -> ClipboardSnapshot?
     func readText() -> String?
-    func restore(_ snapshot: ClipboardSnapshot) -> Bool
+    func markTransient(ifUnchangedSince changeCount: Int) -> ClipboardWriteResult
+    func restore(_ snapshot: ClipboardSnapshot, ifUnchangedSince changeCount: Int) -> ClipboardWriteResult
+}
+
+enum ClipboardWriteResult {
+    case complete(changeCount: Int), failed(changeCount: Int), changed
 }
 
 @MainActor
@@ -99,8 +105,7 @@ final class SelectedTextCapture {
             guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
             switch reading {
             case .text(let text): return Self.normalizedSelection(text)
-            case .empty: return nil
-            case .unavailable: break
+            case .empty, .unavailable: break
             }
 
             // Serialize temporary clipboard operations, without queueing a Copy
@@ -125,16 +130,29 @@ final class SelectedTextCapture {
                 // Several ownership changes cannot be safely attributed to our Copy.
                 // Abstain rather than overwrite a potentially newer user copy.
                 guard copiedCount == initialCount + 1 else { return nil }
+                var cleanupCount = copiedCount
+                // Install cleanup before marking or reading, including failed reads,
+                // cancellation and focus loss. Never adopt an unrelated change count.
+                defer {
+                    switch pasteboard.restore(saved, ifUnchangedSince: cleanupCount) {
+                    case .complete, .changed:
+                        unrestoredCopyChangeCount = nil
+                    case .failed(let count):
+                        unrestoredCopyChangeCount = count
+                        logger.error("Unable to restore the previous clipboard contents")
+                    }
+                }
+                switch pasteboard.markTransient(ifUnchangedSince: copiedCount) {
+                case .complete(let count): cleanupCount = count
+                case .failed(let count):
+                    cleanupCount = count
+                    return nil
+                case .changed: return nil
+                }
                 let text = pasteboard.readText()
                 // macOS has no atomic compare-and-restore operation; this check
                 // reduces races, but cannot eliminate concurrent clipboard writes.
-                guard pasteboard.changeCount == copiedCount else { return nil }
-                if !pasteboard.restore(saved) {
-                    unrestoredCopyChangeCount = pasteboard.changeCount
-                    logger.error("Unable to restore the previous clipboard contents")
-                } else {
-                    unrestoredCopyChangeCount = nil
-                }
+                guard pasteboard.changeCount == cleanupCount else { return nil }
                 guard !cancellation.withLock({ $0 }), environment.frontmostProcessID() == pid else { return nil }
                 return Self.normalizedSelection(text)
             }
@@ -165,16 +183,48 @@ final class SelectedTextCapture {
 /// Creates Cmd+C events without posting them. No menu lookup is involved.
 enum SelectionCopyShortcut {
     static func makeEvents() -> [CGEvent]? {
+        let sources = [
+            TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+            TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue(),
+        ]
+        let keyCode = sources.compactMap { $0 }.lazy.compactMap { source -> CGKeyCode? in
+            guard let data = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+            let layoutData = Unmanaged<CFData>.fromOpaque(data).takeUnretainedValue()
+            return copyKeyCode(layoutData: layoutData, keyboardType: UInt32(LMGetKbdType()))
+        }.first
+        guard let keyCode else { return nil }
         let source = CGEventSource(stateID: .privateState)
         guard let commandDown = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: true),
-            let down = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: true),
-            let up = CGEvent(keyboardEventSource: source, virtualKey: 0x08, keyDown: false),
+            let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+            let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false),
             let commandUp = CGEvent(keyboardEventSource: source, virtualKey: 0x37, keyDown: false) else { return nil }
         commandDown.flags = .maskCommand
         down.flags = .maskCommand
         up.flags = .maskCommand
         commandUp.flags = []
         return [commandDown, down, up, commandUp]
+    }
+
+    static func copyKeyCode(layoutData: CFData, keyboardType: UInt32) -> CGKeyCode? {
+        guard CFDataGetLength(layoutData) >= MemoryLayout<UCKeyboardLayout>.size,
+            let bytes = CFDataGetBytePtr(layoutData) else { return nil }
+        return bytes.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { layout in
+            for keyCode in UInt16(0)..<128 {
+                var deadKeyState: UInt32 = 0
+                var characters = [UniChar](repeating: 0, count: 4)
+                var length = 0
+                // Honor layouts such as Dvorak–QWERTY ⌘ that remap under Command.
+                let status = UCKeyTranslate(
+                    layout, keyCode, UInt16(kUCKeyActionDown), UInt32(cmdKey >> 8), keyboardType,
+                    OptionBits(kUCKeyTranslateNoDeadKeysMask), &deadKeyState,
+                    characters.count, &length, &characters
+                )
+                if status == noErr, length == 1, characters[0] == 0x63 || characters[0] == 0x43 {
+                    return keyCode
+                }
+            }
+            return nil
+        }
     }
 }
 
@@ -186,9 +236,40 @@ final class SystemSelectionPasteboard: SelectionPasteboard {
     var changeCount: Int { pasteboard.changeCount }
     func capture() -> ClipboardSnapshot? { ClipboardSnapshot.capture(pasteboard) }
     func readText() -> String? { pasteboard.string(forType: .string) }
-    func restore(_ snapshot: ClipboardSnapshot) -> Bool { snapshot.restore(to: pasteboard) }
+    func markTransient(ifUnchangedSince count: Int) -> ClipboardWriteResult {
+        guard pasteboard.changeCount == count else { return .changed }
+        // The target app owns the initial Copy write. These advisory markers can
+        // only be added afterward; they cannot revoke an earlier history/sync read.
+        let types = ["org.nspasteboard.TransientType", "org.nspasteboard.ConcealedType", "org.nspasteboard.AutoGeneratedType"]
+            .map { NSPasteboard.PasteboardType($0) }
+        let markedCount = pasteboard.addTypes(types, owner: nil)
+        guard markedCount != 0 else {
+            return pasteboard.changeCount == count ? .failed(changeCount: count) : .changed
+        }
+        for type in types {
+            guard pasteboard.changeCount == markedCount else { return .changed }
+            guard pasteboard.setData(Data(), forType: type) else {
+                return pasteboard.changeCount == markedCount ? .failed(changeCount: markedCount) : .changed
+            }
+        }
+        return pasteboard.changeCount == markedCount ? .complete(changeCount: markedCount) : .changed
+    }
+
+    func restore(_ snapshot: ClipboardSnapshot, ifUnchangedSince count: Int) -> ClipboardWriteResult {
+        snapshot.restore(to: pasteboard, ifUnchangedSince: count)
+    }
 }
 
+@MainActor
+protocol ClipboardRestorationTarget {
+    var changeCount: Int { get }
+    func clearContents() -> Int
+    func writeObjects(_ objects: [NSPasteboardWriting]) -> Bool
+}
+
+extension NSPasteboard: ClipboardRestorationTarget {}
+
+@MainActor
 struct ClipboardSnapshot {
     let items: [[(NSPasteboard.PasteboardType, Data)]]
 
@@ -209,17 +290,35 @@ struct ClipboardSnapshot {
         return ClipboardSnapshot(items: saved)
     }
 
-    func restore(to pasteboard: NSPasteboard) -> Bool {
+    func restore(to pasteboard: any ClipboardRestorationTarget, ifUnchangedSince count: Int) -> ClipboardWriteResult {
+        var ownedCount = count
+        for _ in 0..<3 {
+            // Items become bound to a pasteboard on write. Recreate them for retries,
+            // and finish all fallible item preparation before clearing any contents.
+            guard let restored = makeItems() else { return .failed(changeCount: ownedCount) }
+            guard pasteboard.changeCount == ownedCount else { return .changed }
+            ownedCount = pasteboard.clearContents()
+            guard pasteboard.changeCount == ownedCount else { return .changed }
+            if restored.isEmpty || pasteboard.writeObjects(restored) {
+                return pasteboard.changeCount == ownedCount ? .complete(changeCount: ownedCount) : .changed
+            }
+            // Only retry while the count returned by our own clear still matches.
+            // A fresh count sampled after a failure could belong to a user copy.
+            guard pasteboard.changeCount == ownedCount else { return .changed }
+        }
+        return .failed(changeCount: ownedCount)
+    }
+
+    private func makeItems() -> [NSPasteboardItem]? {
         var restored: [NSPasteboardItem] = []
         for representations in items {
             let item = NSPasteboardItem()
             for (type, data) in representations {
-                guard item.setData(data, forType: type) else { return false }
+                guard item.setData(data, forType: type) else { return nil }
             }
             restored.append(item)
         }
-        pasteboard.clearContents()
-        return restored.isEmpty || pasteboard.writeObjects(restored)
+        return restored
     }
 }
 
