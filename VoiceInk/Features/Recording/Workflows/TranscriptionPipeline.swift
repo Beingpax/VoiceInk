@@ -198,21 +198,29 @@ class TranscriptionPipeline {
 
                     onStateChange(.enhancing)
                     let textForAI = text
-                    if shouldRespondInRecorder {
-                        await assistant.startResponse(textForAI, resolvedEnhancementConfiguration)
-                    }
-
                     do {
                         defer { cancelContextCapture() }
                         if Task.isCancelled || shouldCancel() {
                             await finishCanceledTranscription()
                             return
                         }
-                        // Context is optional: never hold enhancement for unfinished capture.
+                        // Use available screen context without waiting for unfinished OCR.
+                        // Clipboard text is the snapshot taken when recording began.
                         var contextSnapshot = recordingContextSnapshot() ?? RecordingContextSnapshot()
-                        contextSnapshot.clipboardText = SelectedTextService.clipboardContext(
-                            isEnabled: resolvedEnhancementConfiguration.useClipboardContext
+                        contextSnapshot.selectedText = await SelectedTextService.fetchSelectedText(
+                            isEnabled: resolvedEnhancementConfiguration.useSelectedTextContext
                         )
+                        if Task.isCancelled || shouldCancel() {
+                            await finishCanceledTranscription()
+                            return
+                        }
+                        if shouldRespondInRecorder {
+                            await assistant.startResponse(textForAI, resolvedEnhancementConfiguration)
+                        }
+                        if Task.isCancelled || shouldCancel() {
+                            await finishCanceledTranscription()
+                            return
+                        }
                         transcription.aiEnhancementModelName =
                             resolvedEnhancementConfiguration.modelName
                             ?? resolvedEnhancementConfiguration.provider?.defaultModel

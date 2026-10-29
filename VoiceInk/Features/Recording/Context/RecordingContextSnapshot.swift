@@ -17,10 +17,6 @@ final class RecordingContextSnapshotStore {
         vocabularyPreparation = RecordingVocabularyPreparation(savedVocabulary: savedVocabulary)
     }
 
-    func updateSelectedText(_ text: String?) {
-        snapshot.selectedText = Self.normalized(text)
-    }
-
     func updateClipboardText(_ text: String?) {
         snapshot.clipboardText = Self.normalized(text)
     }
@@ -38,7 +34,10 @@ final class RecordingContextSnapshotStore {
 
 @MainActor
 enum RecordingContextCaptureService {
-    static func startCapture(into store: RecordingContextSnapshotStore, language: String?) -> [Task<Void, Never>] {
+    static func startCapture(
+        into store: RecordingContextSnapshotStore,
+        language: String?
+    ) -> [Task<Void, Never>] {
         let screenCapture = Task { @MainActor in
             guard CGPreflightScreenCaptureAccess(), !Task.isCancelled else { return }
             let screenCaptureService = ScreenCaptureService()
@@ -49,14 +48,6 @@ enum RecordingContextCaptureService {
                 store.vocabularyPreparation.prepareScreenNames(in: text, language: language)
             }
         }
-        return [
-            Task { @MainActor in
-                guard !Task.isCancelled else { return }
-                let selectedText = await SelectedTextService.fetchSelectedText()
-                guard !Task.isCancelled else { return }
-                store.updateSelectedText(selectedText)
-            },
-            screenCapture,
-        ]
+        return [screenCapture]
     }
 }
