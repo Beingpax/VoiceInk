@@ -4,6 +4,7 @@ enum PasteMethod: String, CaseIterable, Identifiable {
     case standard = "default"
     case appleScript = "appleScript"
     case directTyping = "directTyping"
+    case remoteTyping = "remoteTyping"
 
     static let userDefaultsKey = "pasteMethod"
     static let legacyAppleScriptPasteKey = "useAppleScriptPaste"
@@ -14,7 +15,7 @@ enum PasteMethod: String, CaseIterable, Identifiable {
         switch self {
         case .standard, .appleScript:
             return true
-        case .directTyping:
+        case .directTyping, .remoteTyping:
             return false
         }
     }
@@ -27,6 +28,8 @@ enum PasteMethod: String, CaseIterable, Identifiable {
             return String(localized: "AppleScript")
         case .directTyping:
             return String(localized: "Direct Typing")
+        case .remoteTyping:
+            return String(localized: "Remote Desktop Typing")
         }
     }
 

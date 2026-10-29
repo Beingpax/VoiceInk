@@ -69,13 +69,13 @@ class CursorPaster {
         let queueWaitMs = elapsedMilliseconds(since: requestedAt)
         let sessionID = UUID().uuidString
         let method = PasteMethod.current()
-        let originalText = method == .directTyping ? DirectTextTyper.normalizedText(text) : text
+        let originalText = method.usesClipboard ? text : DirectTextTyper.normalizedText(text)
         var textToDeliver = originalText
         let smartPunctuation = UserDefaults.standard.bool(forKey: SmartPunctuation.settingsKey)
         let pasteboard: NSPasteboard? = method.usesClipboard ? NSPasteboard.general : nil
         if smartPunctuation {
             // Settle focus before reading, rather than retaining context across the paste delay.
-            if pasteboard != nil { await wait(prePasteDelay) }
+            if pasteboard != nil || method == .remoteTyping { await wait(prePasteDelay) }
             if let processID = NSWorkspace.shared.frontmostApplication?.processIdentifier,
                 let snapshot = await textContextReader.read(processID: processID) {
                 let adjusted = SmartPunctuation.adjusted(originalText, context: snapshot.context)
@@ -108,6 +108,7 @@ class CursorPaster {
             if !smartPunctuation { await wait(prePasteDelay) }
         } else {
             savedContents = []
+            if method == .remoteTyping && !smartPunctuation { await wait(prePasteDelay) }
         }
 
         let application = NSWorkspace.shared.frontmostApplication
@@ -168,6 +169,31 @@ class CursorPaster {
             return pasteUsingAppleScript(sessionID: sessionID) ? .commandPosted : .commandNotPosted
         case .standard:
             return await pasteFromClipboard(sessionID: sessionID)
+        case .remoteTyping:
+            switch await RemoteTextTyper.type(text, sendKey: FinishAndSendSettings.selectedKey) {
+            case .posted:
+                return .commandPosted
+            case .notPosted:
+                if !text.isEmpty {
+                    NotificationManager.shared.showNotification(
+                        title: String(localized: "Remote typing could not start. Check Accessibility access and keyboard layout, release modifier keys, and turn off Caps Lock."),
+                        type: .error
+                    )
+                }
+                return .commandNotPosted
+            case .unsupportedCharacters:
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "This text contains characters unavailable on your keyboard layout. Use clipboard paste instead."),
+                    type: .error
+                )
+                return .commandNotPosted
+            case .partiallyPosted:
+                NotificationManager.shared.showNotification(
+                    title: String(localized: "Remote typing was interrupted. Check the destination before retrying."),
+                    type: .error
+                )
+                return .commandPartiallyPosted
+            }
         case .directTyping:
             // Never retry partial typing: a retry could duplicate text.
             let result: PasteResult

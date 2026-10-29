@@ -151,7 +151,7 @@ struct SettingsView: View {
                     isEnabled: $restoreClipboardAfterPaste,
                     label: "Keep Clipboard Content",
                     infoMessage:
-                        "Default and AppleScript temporarily use the clipboard to paste transcription. When enabled, this restores your previous clipboard content after the selected delay. Direct Typing leaves the clipboard unchanged."
+                        "Default and AppleScript temporarily use the clipboard to paste transcription. When enabled, this restores your previous clipboard content after the selected delay. Both typing methods leave the clipboard unchanged."
                 ) {
                     Picker("Restore Delay", selection: $clipboardRestoreDelay) {
                         Text("250ms").tag(0.25)
@@ -163,7 +163,7 @@ struct SettingsView: View {
                         Text("5s").tag(5.0)
                     }
                 }
-                .disabled(pasteMethodRawValue == PasteMethod.directTyping.rawValue)
+                .disabled(!(PasteMethod(rawValue: pasteMethodRawValue)?.usesClipboard ?? true))
 
                 Toggle(isOn: $smartPunctuationEnabled) {
                     HStack(spacing: 4) {
@@ -180,7 +180,7 @@ struct SettingsView: View {
                     HStack(spacing: 4) {
                         Text("Paste Method")
                         InfoTip(
-                            "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing enters text without using the clipboard. Some editors may not support it."
+                            "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing inserts Unicode text. Remote Desktop Typing sends individual keys for remote desktops and virtual machines. Use matching keyboard layouts on both computers. Newlines use Return, or Shift+Return when Auto Send is Return; Return and Tab may trigger actions in the destination."
                         )
                     }
                 }
