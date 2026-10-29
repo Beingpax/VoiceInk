@@ -233,12 +233,12 @@ struct SelectionMenuCopy: @unchecked Sendable {
     func press() -> Bool {
         guard AXUIElementSetMessagingTimeout(element, Self.messagingWait) == .success else { return false }
         switch AXUIElementPerformAction(element, kAXPressAction as CFString) {
-        case .actionUnsupported, .invalidUIElement, .notImplemented, .illegalArgument:
-            return false
-        default:
-            // A timeout or other indeterminate error can leave Copy pending in
-            // the target app. Wait for its clipboard write without posting Cmd+C.
+        case .success, .cannotComplete:
+            // cannotComplete can leave Copy pending in the target app. Wait for
+            // its clipboard write without posting a second Copy via Cmd+C.
             return true
+        default:
+            return false
         }
     }
 

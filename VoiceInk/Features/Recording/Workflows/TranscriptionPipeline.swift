@@ -204,10 +204,7 @@ class TranscriptionPipeline {
                             await finishCanceledTranscription()
                             return
                         }
-                        // Use available screen context without waiting for unfinished OCR.
-                        // Clipboard text is the snapshot taken when recording began.
-                        var contextSnapshot = recordingContextSnapshot() ?? RecordingContextSnapshot()
-                        contextSnapshot.selectedText = await SelectedTextService.fetchSelectedText(
+                        let selectedText = await SelectedTextService.fetchSelectedText(
                             isEnabled: resolvedEnhancementConfiguration.useSelectedTextContext
                         )
                         if Task.isCancelled || shouldCancel() {
@@ -221,6 +218,10 @@ class TranscriptionPipeline {
                             await finishCanceledTranscription()
                             return
                         }
+                        // Pick up OCR that finished during selection capture or response setup,
+                        // without waiting for it. Clipboard text remains the recording-start snapshot.
+                        var contextSnapshot = recordingContextSnapshot() ?? RecordingContextSnapshot()
+                        contextSnapshot.selectedText = selectedText
                         transcription.aiEnhancementModelName =
                             resolvedEnhancementConfiguration.modelName
                             ?? resolvedEnhancementConfiguration.provider?.defaultModel
