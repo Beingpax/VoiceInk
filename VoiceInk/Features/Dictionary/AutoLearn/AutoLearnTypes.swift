@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let autoLearnReviewStateChanged = Notification.Name("AutoLearnReviewStateChanged")
+}
+
 enum AutoLearnTextNormalizer {
     /// Produces a comparison-only representation of text exposed by editable
     /// web controls. The original field value remains untouched for anchoring.
@@ -52,6 +56,7 @@ struct AutoLearnReviewCandidate: Sendable {
     let candidateID: UUID
     let originalText: String
     let correctedText: String
+    var observationID: UUID? = nil
 }
 
 enum AutoLearnReviewAction: String, Codable, Sendable {
@@ -66,12 +71,36 @@ struct AutoLearnReviewDecision: Sendable {
     let learningAction: AutoLearnReviewAction
     let incorrectTextToReplace: String?
     let correctedVocabularyTerm: String?
+    var aiReviewConfigurationID: String? = nil
+}
+
+enum AutoLearnSuggestionLimiter {
+    static func limit(_ decisions: [AutoLearnReviewDecision], candidates: [AutoLearnReviewCandidate])
+        -> [AutoLearnReviewDecision] {
+        let observations = Dictionary(candidates.map {
+            ($0.candidateID, $0.observationID ?? $0.candidateID)
+        }, uniquingKeysWith: { first, _ in first })
+        var targetsByObservation: [UUID: Set<String>] = [:]
+        return decisions.filter { decision in
+            guard let target = decision.correctedVocabularyTerm else { return false }
+            let observation = observations[decision.candidateID] ?? decision.candidateID
+            let key = WordReplacementVariants.destinationKey(for: target)
+            var targets = targetsByObservation[observation, default: []]
+            guard targets.contains(key) || targets.count < AutoLearnLimits.maximumSuggestionsPerObservation else { return false }
+            targets.insert(key)
+            targetsByObservation[observation] = targets
+            return true
+        }
+    }
 }
 
 struct AutoLearnSuggestion: Identifiable, Equatable, Sendable {
     struct Original: Identifiable, Equatable, Sendable {
         let id: UUID
         let text: String
+        var originalContext: String? = nil
+        var correctedContext: String? = nil
+        var aiReviewConfigurationID: String? = nil
     }
 
     let replacementText: String
@@ -82,7 +111,8 @@ struct AutoLearnSuggestion: Identifiable, Equatable, Sendable {
 
     var isValid: Bool {
         !originals.isEmpty && originals.allSatisfy {
-            AutoLearnLocalReviewPolicy.accepts(source: $0.text, destination: replacementText)
+            AutoLearnReviewEligibility.accepts(source: $0.text, destination: replacementText,
+                aiReviewConfigurationID: $0.aiReviewConfigurationID)
         }
     }
 }
@@ -105,7 +135,8 @@ enum AutoLearnLimits {
     static let captureAccessibilityTimeoutSeconds: Float = 0.10
     static let maximumPastedCharacters = 12_000
     static let maximumDiffSegments = 2_048
-    static let maximumCandidateCharacters = 256
+    static let maximumCandidateCharacters = 64
+    static let maximumSuggestionsPerObservation = 3
     static let maximumCandidateSegments = 24
     static let reviewContextSegmentsPerSide = 3
     static let maximumUnspacedCandidateCharacters = 32
