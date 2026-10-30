@@ -232,7 +232,8 @@ class AIEnhancementService: ObservableObject {
                 messages: [.user(formattedText)],
                 systemPrompt: systemMessage,
                 localUserPrompt: formattedText,
-                timeout: requestTimeout
+                timeout: requestTimeout,
+                retryOnTimeout: EnhancementRequestSettings.retryOnTimeout
             )
             if let openRouterCompletion = completion.openRouterCompletion {
                 let routedProvider = openRouterCompletion.provider ?? "unknown"
@@ -298,87 +299,6 @@ class AIEnhancementService: ObservableObject {
         }
     }
 
-    private var retryOnTimeout: Bool {
-        EnhancementRequestSettings.retryOnTimeout
-    }
-
-    private func makeRequestWithRetry(
-        text: String,
-        configuration: EnhancementRuntimeConfiguration,
-        contextSnapshot: RecordingContextSnapshot?,
-        vocabulary: RecordingVocabulary,
-        maxAttempts: Int = EnhancementRequestSettings.maximumAttempts,
-        initialDelay: TimeInterval = 1.0
-    ) async throws -> (text: String, systemMessage: String?, userMessage: String?) {
-        var retries = 0
-        var currentDelay = initialDelay
-
-        while retries < maxAttempts {
-            do {
-                return try await makeRequest(
-                    text: text,
-                    configuration: configuration,
-                    contextSnapshot: contextSnapshot,
-                    vocabulary: vocabulary
-                )
-            } catch let error as EnhancementError {
-                switch error {
-                case .networkError, .serverError, .rateLimitExceeded:
-                    retries += 1
-                    if retries < maxAttempts {
-                        logger.warning(
-                            "Request failed, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxAttempts, privacy: .public))"
-                        )
-                        try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
-                        currentDelay *= 2
-                    } else {
-                        logger.error("Request failed after \(maxAttempts, privacy: .public) attempts.")
-                        throw error
-                    }
-                case .timeout:
-                    if retryOnTimeout {
-                        retries += 1
-                        if retries < maxAttempts {
-                            logger.warning(
-                                "Request timed out, retrying immediately... (Attempt \(retries, privacy: .public)/\(maxAttempts, privacy: .public))"
-                            )
-                        } else {
-                            logger.error("Request timed out after \(maxAttempts, privacy: .public) attempts.")
-                            throw error
-                        }
-                    } else {
-                        logger.error("Request timed out, failing immediately (retry disabled).")
-                        throw error
-                    }
-                default:
-                    throw error
-                }
-            } catch {
-                let nsError = error as NSError
-                if nsError.domain == NSURLErrorDomain
-                    && [NSURLErrorNotConnectedToInternet, NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost].contains(
-                        nsError.code)
-                {
-                    retries += 1
-                    if retries < maxAttempts {
-                        logger.warning(
-                            "Request failed with network error, retrying in \(currentDelay, privacy: .public)s... (Attempt \(retries, privacy: .public)/\(maxAttempts, privacy: .public))"
-                        )
-                        try await Task.sleep(nanoseconds: UInt64(currentDelay * 1_000_000_000))
-                        currentDelay *= 2
-                    } else {
-                        logger.error("Request failed after \(maxAttempts, privacy: .public) attempts with network error.")
-                        throw EnhancementError.networkError
-                    }
-                } else {
-                    throw error
-                }
-            }
-        }
-
-        throw EnhancementError.enhancementFailed
-    }
-
     func enhance(
         _ text: String,
         configuration: EnhancementRuntimeConfiguration,
@@ -390,12 +310,11 @@ class AIEnhancementService: ObservableObject {
         let promptName = configuration.prompt?.title
 
         do {
-            let requestResult = try await makeRequestWithRetry(
+            let requestResult = try await makeRequest(
                 text: text,
                 configuration: configuration,
                 contextSnapshot: contextSnapshot,
-                vocabulary: preparedVocabulary,
-                maxAttempts: EnhancementRequestSettings.maximumAttempts
+                vocabulary: preparedVocabulary
             )
             let endTime = Date()
             let duration = endTime.timeIntervalSince(startTime)
