@@ -192,6 +192,9 @@ enum BackupImporter {
         if let clipboardDelay = general.clipboardRestoreDelay {
             UserDefaults.standard.set(clipboardDelay, forKey: "clipboardRestoreDelay")
         }
+        if let method = general.pasteMethod.flatMap(PasteMethod.init(rawValue:)) {
+            PasteMethod.setCurrent(method)
+        }
         if let enabled = general.smartPunctuationEnabled {
             UserDefaults.standard.set(enabled, forKey: SmartPunctuation.settingsKey)
         }

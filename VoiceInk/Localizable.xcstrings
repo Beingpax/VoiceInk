@@ -9114,25 +9114,25 @@
         }
       }
     },
-    "Default and AppleScript temporarily use the clipboard to paste transcription. When enabled, this restores your previous clipboard content after the selected delay. Direct Typing leaves the clipboard unchanged." : {
+    "Default and AppleScript temporarily use the clipboard to paste transcription. When enabled, this restores your previous clipboard content after the selected delay. Both typing methods leave the clipboard unchanged." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard und AppleScript verwenden vorübergehend die Zwischenablage zum Einfügen der Transkription. Wenn aktiviert, wird der vorherige Inhalt nach der gewählten Verzögerung wiederhergestellt. Direkte Texteingabe verändert die Zwischenablage nicht."
+            "value" : "Standard und AppleScript verwenden vorübergehend die Zwischenablage zum Einfügen der Transkription. Wenn aktiviert, wird der vorherige Inhalt nach der gewählten Verzögerung wiederhergestellt. Beide Texteingabemethoden verändern die Zwischenablage nicht."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les méthodes Par défaut et AppleScript utilisent temporairement le presse-papiers pour coller la transcription. Cette option restaure son contenu précédent après le délai choisi. La saisie directe ne modifie pas le presse-papiers."
+            "value" : "Les méthodes Par défaut et AppleScript utilisent temporairement le presse-papiers pour coller la transcription. Cette option restaure son contenu précédent après le délai choisi. Les deux méthodes de saisie laissent le presse-papiers inchangé."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "默认和 AppleScript 会暂时使用剪贴板来粘贴转录。启用后，会在所选延迟后恢复剪贴板之前的内容。直接输入不会更改剪贴板。"
+            "value" : "默认和 AppleScript 会暂时使用剪贴板来粘贴转录。启用后，会在所选延迟后恢复剪贴板之前的内容。两种输入方式均不会更改剪贴板。"
           }
         }
       }
@@ -9206,25 +9206,25 @@
         }
       }
     },
-    "Default uses Cmd+V. AppleScript offers an alternative way to send Cmd+V. Direct Typing enters text without using the clipboard. Some editors may not support it." : {
+    "Default uses Cmd+V. AppleScript offers another way to paste. Direct Typing enters text without using the clipboard and may not work in every app. Remote Desktop Typing is for remote desktops and virtual machines. Characters it cannot type are simplified or skipped." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standard verwendet Cmd+V. AppleScript bietet eine alternative Möglichkeit, Cmd+V zu senden. Direkte Texteingabe fügt Text ohne Zwischenablage ein. Manche Editoren unterstützen dies möglicherweise nicht."
+            "value" : "Standard verwendet Cmd+V. AppleScript bietet eine weitere Möglichkeit zum Einfügen. Direkte Texteingabe fügt Text ohne Zwischenablage ein und funktioniert möglicherweise nicht in jeder App. Remote-Desktop-Texteingabe ist für Remote-Desktops und virtuelle Maschinen gedacht. Nicht eingebbare Zeichen werden vereinfacht oder übersprungen."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La méthode Par défaut utilise Cmd+V. AppleScript offre une autre façon d’envoyer Cmd+V. La saisie directe entre le texte sans utiliser le presse-papiers. Certains éditeurs peuvent ne pas la prendre en charge."
+            "value" : "La méthode Par défaut utilise Cmd+V. AppleScript offre une autre façon de coller. La saisie directe entre le texte sans utiliser le presse-papiers et peut ne pas fonctionner dans toutes les applications. La saisie pour bureau à distance est destinée aux bureaux à distance et aux machines virtuelles. Les caractères impossibles à saisir sont simplifiés ou ignorés."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "默认方式使用 Cmd+V。AppleScript 提供另一种发送 Cmd+V 的方式。直接输入无需使用剪贴板。部分编辑器可能不支持。"
+            "value" : "默认方式使用 Cmd+V。AppleScript 提供另一种粘贴方式。直接输入无需使用剪贴板，但可能不适用于所有应用。远程桌面输入适用于远程桌面和虚拟机。无法通过按键输入的字符会被简化或跳过。"
           }
         }
       }
@@ -21278,6 +21278,75 @@
         }
       }
     },
+    "Remote Desktop Typing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remote-Desktop-Texteingabe"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisie pour bureau à distance"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "远程桌面输入"
+          }
+        }
+      }
+    },
+    "Remote typing could not start. Check Accessibility access and keyboard layout." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Remote-Desktop-Texteingabe konnte nicht gestartet werden. Prüfe den Bedienungshilfen-Zugriff und das Tastaturlayout."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de démarrer la saisie à distance. Vérifiez l’autorisation d’accessibilité et la disposition du clavier."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法开始远程输入。请检查辅助功能权限和键盘布局。"
+          }
+        }
+      }
+    },
+    "Remote typing was interrupted. Check the destination before retrying." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Remote-Desktop-Texteingabe wurde unterbrochen. Prüfe den Text im Zielprogramm, bevor du es erneut versuchst."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La saisie à distance a été interrompue. Vérifiez le texte dans l’application de destination avant de réessayer."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "远程输入已中断。重试前请检查目标应用中的文本。"
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "de" : {
@@ -26457,6 +26526,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这将移除%1$@和%2$@。此操作无法撤销。"
+          }
+        }
+      }
+    },
+    "Remote typing could not find any characters it can type." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Remote-Desktop-Texteingabe konnte keine eingebbaren Zeichen finden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La saisie à distance n’a trouvé aucun caractère qu’elle peut saisir."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "远程输入未找到可通过按键输入的字符。"
           }
         }
       }
