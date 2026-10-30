@@ -46,7 +46,8 @@ enum CorrectionDiffEngine {
         ",", "!", "?", ";", ":", "…", "(", ")", "[", "]", "{", "}", "\"", "“", "”",
     ]
 
-    static func candidates(from revision: AutoLearnRevision) -> [DetectedCorrectionCandidate] {
+    static func candidates(from revision: AutoLearnRevision,
+        usesAIReviewer: Bool = AutoLearnSettings.usesAIReviewer) -> [DetectedCorrectionCandidate] {
         let original = revision.original.precomposedStringWithCanonicalMapping
         let corrected = revision.corrected.precomposedStringWithCanonicalMapping
         guard original != corrected else { return [] }
@@ -61,7 +62,7 @@ enum CorrectionDiffEngine {
 
         let hunks = segmentHunks(from: originalSegments, to: correctedSegments)
         var seen = Set<String>()
-        var results: [DetectedCorrectionCandidate] = []
+        var extracted: [DetectedCorrectionCandidate] = []
 
         for (hunkIndex, hunk) in hunks.enumerated() {
             guard !hunk.originalRange.isEmpty,
@@ -116,7 +117,10 @@ enum CorrectionDiffEngine {
                 continue
             }
 
-            guard pair.source != pair.destination,
+            let eligible = usesAIReviewer
+                ? AutoLearnLocalReviewPolicy.fitsLimits(source: pair.source, destination: pair.destination)
+                : AutoLearnLocalReviewPolicy.accepts(source: pair.source, destination: pair.destination)
+            guard pair.source != pair.destination, eligible,
                 !pair.source.contains(","),
                 pair.source.count <= AutoLearnLimits.maximumCandidateCharacters,
                 pair.destination.count <= AutoLearnLimits.maximumCandidateCharacters,
@@ -129,14 +133,25 @@ enum CorrectionDiffEngine {
 
             let deduplicationKey = pair.source + "\u{0}" + pair.destination
             guard seen.insert(deduplicationKey).inserted else { continue }
-
-            results.append(
-                DetectedCorrectionCandidate(
-                    originalText: originalSnippet,
-                    correctedText: correctedSnippet
-                ))
+            extracted.append(DetectedCorrectionCandidate(originalText: originalSnippet,
+                correctedText: correctedSnippet))
         }
-
+        var results: [DetectedCorrectionCandidate] = []
+        var destinations = Set<String>()
+        for candidate in extracted {
+            if usesAIReviewer {
+                results.append(candidate)
+                continue
+            }
+            guard let pair = replacementPair(from: .init(original: candidate.originalText,
+                corrected: candidate.correctedText)) else { continue }
+            let key = WordReplacementVariants.destinationKey(for: pair.destination)
+            if !destinations.contains(key) {
+                guard destinations.count < AutoLearnLimits.maximumSuggestionsPerObservation else { continue }
+                destinations.insert(key)
+            }
+            results.append(candidate)
+        }
         return results
     }
 

@@ -3,14 +3,72 @@ import Foundation
 enum AutoLearnSettings {
     static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
     static let minimumCorrectionsKey = "AutoLearnDictionaryMinimumCorrections"
-    static let legacyBacklogDiscardedKey = "AutoLearnDictionaryLegacyBacklogDiscardedV1"
+    static let defaultMinimumCorrections = 2
+    static let reviewerProviderKey = "AutoLearnDictionaryReviewerProvider"
+    static let reviewerModelKey = "AutoLearnDictionaryReviewerModel"
+
+    struct ReviewerSelection: Equatable, Sendable {
+        let providerName: String
+        let modelName: String
+
+        var configurationID: String { "pairs-v3|\(providerName)|\(modelName)" }
+        var legacyConfigurationID: String { "legacy-2.21|\(providerName)|\(modelName)" }
+    }
+
+    private static let legacyProviderKey = "AutoLearnDictionaryProvider"
+    private static let legacyModelKey = "AutoLearnDictionaryModel"
+    private static let legacyAIReviewEnabledKey = "AutoLearnDictionaryAIReviewEnabled"
+
+    static var reviewerSelection: ReviewerSelection? {
+        let defaults = UserDefaults.standard
+        guard let provider = defaults.string(forKey: reviewerProviderKey), !provider.isEmpty else { return nil }
+        return ReviewerSelection(providerName: provider, modelName: defaults.string(forKey: reviewerModelKey) ?? "")
+    }
+
+    static var usesAIReviewer: Bool { reviewerSelection != nil }
+    static var reviewConfigurationID: String? { reviewerSelection?.configurationID }
+    static var legacyReviewConfigurationID: String? { reviewerSelection?.legacyConfigurationID }
+
+    static var legacyApprovalConfigurationID: String? {
+        let defaults = UserDefaults.standard
+        guard let provider = defaults.string(forKey: legacyProviderKey), !provider.isEmpty else { return nil }
+        return ReviewerSelection(providerName: provider, modelName: legacyModel(for: provider, defaults: defaults))
+            .legacyConfigurationID
+    }
+
+    private static let selectionMigratedKey = "AutoLearnDictionaryReviewerSelectionMigratedV1"
     static let hasFailureKey = "AutoLearnDictionaryHasFailure"
     static let failureMessageKey = "AutoLearnDictionaryFailureMessage"
     static let dataHealthFailureKey = "AutoLearnDictionaryIsDataHealthFailure"
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
-        removeLegacyReviewSettings(defaults: defaults)
-        defaults.register(defaults: [isEnabledKey: true, minimumCorrectionsKey: 1])
+        migrateReviewerSelection(defaults: defaults)
+        defaults.register(defaults: [isEnabledKey: true, minimumCorrectionsKey: defaultMinimumCorrections])
+    }
+
+    // Preserve 2.21 selections unless the user has chosen a new setup.
+    private static func migrateReviewerSelection(defaults: UserDefaults) {
+        guard !defaults.bool(forKey: selectionMigratedKey) else { return }
+        if defaults.object(forKey: reviewerProviderKey) == nil {
+            let explicitlyDisabled = defaults.object(forKey: legacyAIReviewEnabledKey) != nil
+                && !defaults.bool(forKey: legacyAIReviewEnabledKey)
+            let legacyProvider = defaults.string(forKey: legacyProviderKey) ?? ""
+            if !explicitlyDisabled, !legacyProvider.isEmpty {
+                defaults.set(legacyProvider, forKey: reviewerProviderKey)
+                if defaults.object(forKey: reviewerModelKey) == nil {
+                    defaults.set(legacyModel(for: legacyProvider, defaults: defaults), forKey: reviewerModelKey)
+                }
+            }
+        }
+        // Retain legacy keys for rollback; new installs keep local review.
+        defaults.set(true, forKey: selectionMigratedKey)
+    }
+
+    private static func legacyModel(for provider: String, defaults: UserDefaults) -> String {
+        let choices = [defaults.string(forKey: legacyModelKey),
+            defaults.string(forKey: "\(provider)SelectedModel"), AIProvider(rawValue: provider)?.defaultModel]
+        return choices.compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first { !$0.isEmpty } ?? ""
     }
 
     static var isEnabled: Bool {
@@ -23,17 +81,6 @@ enum AutoLearnSettings {
 
     static func clampedMinimumCorrections(_ value: Int) -> Int {
         min(3, max(1, value))
-    }
-
-    static func removeLegacyReviewSettings(defaults: UserDefaults = .standard) {
-        if defaults.bool(forKey: "AutoLearnDictionaryIsAIReviewFailure") {
-            clearFailure(defaults: defaults, includingDataHealthFailure: true)
-        }
-        for key in ["AutoLearnDictionaryReviewSchedule", "AutoLearnDictionaryAIReviewEnabled",
-            "AutoLearnDictionaryProvider", "AutoLearnDictionaryModel", "AutoLearnDictionaryIsAIReviewFailure",
-            "AutoLearnDictionaryFailureAcknowledged"] {
-            defaults.removeObject(forKey: key)
-        }
     }
 
     static func recordFailure(_ error: Error, defaults: UserDefaults = .standard,

@@ -12,13 +12,15 @@ actor AutoLearnPendingQueue {
         let candidateID: UUID
         let originalText: String
         let correctedText: String
+        var observationID: UUID? = nil
         var reviewStatus: ReviewStatus
 
         var reviewCandidate: AutoLearnReviewCandidate {
             AutoLearnReviewCandidate(
                 candidateID: candidateID,
                 originalText: originalText,
-                correctedText: correctedText
+                correctedText: correctedText,
+                observationID: observationID
             )
         }
 
@@ -26,6 +28,7 @@ actor AutoLearnPendingQueue {
             case candidateID
             case originalText
             case correctedText
+            case observationID
             case reviewStatus
             case detectedOriginalText
             case userCorrectedText
@@ -37,17 +40,20 @@ actor AutoLearnPendingQueue {
             candidateID: UUID,
             originalText: String,
             correctedText: String,
-            reviewStatus: ReviewStatus
+            reviewStatus: ReviewStatus,
+            observationID: UUID? = nil
         ) {
             self.candidateID = candidateID
             self.originalText = originalText
             self.correctedText = correctedText
             self.reviewStatus = reviewStatus
+            self.observationID = observationID
         }
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
             candidateID = try container.decode(UUID.self, forKey: .candidateID)
+            observationID = try container.decodeIfPresent(UUID.self, forKey: .observationID)
             reviewStatus = try container.decode(ReviewStatus.self, forKey: .reviewStatus)
 
             if let value = try container.decodeIfPresent(String.self, forKey: .originalText) {
@@ -78,6 +84,7 @@ actor AutoLearnPendingQueue {
             try container.encode(candidateID, forKey: .candidateID)
             try container.encode(originalText, forKey: .originalText)
             try container.encode(correctedText, forKey: .correctedText)
+            try container.encodeIfPresent(observationID, forKey: .observationID)
             try container.encode(reviewStatus, forKey: .reviewStatus)
         }
     }
@@ -98,19 +105,6 @@ actor AutoLearnPendingQueue {
             .appendingPathComponent("auto-learn-pending-corrections.json")
     }
 
-    func discardAll() throws {
-        try loadIfNeeded()
-        guard !queuedCorrections.isEmpty || fileManager.fileExists(atPath: queueFileURL.path) else { return }
-        let snapshot = queuedCorrections
-        queuedCorrections = []
-        do {
-            try save()
-        } catch {
-            queuedCorrections = snapshot
-            throw error
-        }
-    }
-
     func recoverInterruptedReviews() throws {
         try loadIfNeeded()
         let snapshot = queuedCorrections
@@ -126,7 +120,7 @@ actor AutoLearnPendingQueue {
         logger.notice("Auto Learn queue loaded outstanding=\(self.queuedCorrections.count, privacy: .public) interruptedReviewsRecovered=\(snapshot.filter { $0.reviewStatus == .reviewing }.count, privacy: .public)")
     }
 
-    func enqueue(_ candidates: [DetectedCorrectionCandidate]) throws -> Int {
+    func enqueue(_ candidates: [DetectedCorrectionCandidate], observationID: UUID = UUID()) throws -> Int {
         guard !candidates.isEmpty else { return 0 }
         try loadIfNeeded()
         let originalQueuedCorrections = queuedCorrections
@@ -152,7 +146,8 @@ actor AutoLearnPendingQueue {
                     candidateID: UUID(),
                     originalText: originalText,
                     correctedText: correctedText,
-                    reviewStatus: .pending
+                    reviewStatus: .pending,
+                    observationID: observationID
                 )
             )
             insertedCount += 1
@@ -177,6 +172,11 @@ actor AutoLearnPendingQueue {
         return queuedCorrections.filter { $0.reviewStatus == .pending }.count
     }
 
+    func outstandingCount() throws -> Int {
+        try loadIfNeeded()
+        return queuedCorrections.count
+    }
+
     func dataHealth() throws -> AutoLearnDataHealth {
         try AutoLearnDataRepair.health(of: [dataFile])
     }
@@ -194,20 +194,15 @@ actor AutoLearnPendingQueue {
         })
     }
 
-    func claimNext() throws -> AutoLearnReviewCandidate? {
+    // Corrections arriving after this snapshot stay pending.
+    func claimAllPending() throws -> [AutoLearnReviewCandidate] {
         try loadIfNeeded()
-        guard let index = queuedCorrections.firstIndex(where: { $0.reviewStatus == .pending }) else {
-            return nil
-        }
-
-        queuedCorrections[index].reviewStatus = .reviewing
-        do {
-            try save()
-        } catch {
-            queuedCorrections[index].reviewStatus = .pending
-            throw error
-        }
-        return queuedCorrections[index].reviewCandidate
+        let indices = queuedCorrections.indices.filter { queuedCorrections[$0].reviewStatus == .pending }
+        guard !indices.isEmpty else { return [] }
+        let snapshot = queuedCorrections
+        for index in indices { queuedCorrections[index].reviewStatus = .reviewing }
+        do { try save() } catch { queuedCorrections = snapshot; throw error }
+        return indices.map { queuedCorrections[$0].reviewCandidate }
     }
 
     func release(_ candidateIDs: Set<UUID>) throws {
@@ -280,6 +275,10 @@ actor AutoLearnPendingQueue {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(queuedCorrections)
+        let backup = queueFileURL.appendingPathExtension("pre-replacement-only.backup")
+        if fileManager.fileExists(atPath: queueFileURL.path), !fileManager.fileExists(atPath: backup.path) {
+            try fileManager.copyItem(at: queueFileURL, to: backup)
+        }
         try data.write(to: queueFileURL, options: .atomic)
     }
 

@@ -2,7 +2,7 @@ import Combine
 import Foundation
 import LLMkit
 
-enum AIProvider: String, CaseIterable {
+enum AIProvider: String, CaseIterable, Sendable {
     case cerebras = "Cerebras"
     case groq = "Groq"
     case gemini = "Gemini"
