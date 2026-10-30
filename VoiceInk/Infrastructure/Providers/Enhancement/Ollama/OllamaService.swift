@@ -76,7 +76,11 @@ class OllamaService: ObservableObject {
     }
 
     func enhance(
-        _ text: String, withSystemPrompt systemPrompt: String? = nil, model: String? = nil, timeout: TimeInterval = 30
+        _ text: String,
+        withSystemPrompt systemPrompt: String? = nil,
+        model: String? = nil,
+        timeout: TimeInterval = 30,
+        retryOnTimeout: Bool = false
     ) async throws -> String {
         guard let systemPrompt = systemPrompt else {
             throw LocalAIError.invalidRequest
@@ -97,7 +101,8 @@ class OllamaService: ObservableObject {
                 systemPrompt: systemPrompt,
                 options: OllamaGenerationOptions(temperature: defaultTemperature),
                 think: false,
-                timeout: timeout
+                timeout: timeout,
+                retryOnTimeout: retryOnTimeout
             )
         } catch let error as LLMKitError {
             throw mapLLMKitError(error)
@@ -110,6 +115,7 @@ class OllamaService: ObservableObject {
             return .invalidURL
         case .httpError(let statusCode, _):
             if statusCode == 404 { return .modelNotFound }
+            if statusCode == 408 { return .timeout }
             if statusCode == 500 { return .serverError }
             return .invalidResponse
         case .networkError:

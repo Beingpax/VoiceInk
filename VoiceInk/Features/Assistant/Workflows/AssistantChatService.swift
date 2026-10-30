@@ -39,11 +39,13 @@ final class AssistantChatService {
         }
 
         let startTime = Date()
-        let text = try await requestReplyWithTimeoutPolicy(
+        let text = try await aiService.completeChat(
             provider: provider,
             modelName: modelName,
             messages: chatMessages,
-            systemPrompt: systemPrompt
+            systemPrompt: systemPrompt,
+            timeout: requestTimeout,
+            retryOnTimeout: EnhancementRequestSettings.retryOnTimeout
         )
 
         return Reply(
@@ -52,62 +54,6 @@ final class AssistantChatService {
             systemPrompt: systemPrompt,
             requestLog: Self.requestLog(from: messages)
         )
-    }
-
-    private func requestReplyWithTimeoutPolicy(
-        provider: AIProvider,
-        modelName: String?,
-        messages: [ChatMessage],
-        systemPrompt: String?
-    ) async throws -> String {
-        let maximumAttempts = EnhancementRequestSettings.retryOnTimeout
-            ? EnhancementRequestSettings.maximumAttempts
-            : 1
-
-        var attempt = 0
-        while attempt < maximumAttempts {
-            do {
-                return try await aiService.completeChat(
-                    provider: provider,
-                    modelName: modelName,
-                    messages: messages,
-                    systemPrompt: systemPrompt,
-                    timeout: requestTimeout
-                )
-            } catch {
-                attempt += 1
-                guard Self.isTimeout(error), attempt < maximumAttempts else {
-                    throw error
-                }
-            }
-        }
-
-        throw EnhancementError.timeout
-    }
-
-    private static func isTimeout(_ error: Error) -> Bool {
-        if let llmKitError = error as? LLMKitError {
-            switch llmKitError {
-            case .timeout:
-                return true
-            case .httpError(let statusCode, _):
-                return statusCode == 408
-            default:
-                break
-            }
-        }
-        if let enhancementError = error as? EnhancementError, case .timeout = enhancementError {
-            return true
-        }
-        if let localError = error as? LocalAIError, case .timeout = localError {
-            return true
-        }
-        if let localCLIError = error as? LocalCLIError, case .timeout = localCLIError {
-            return true
-        }
-
-        let nsError = error as NSError
-        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorTimedOut
     }
 
     func applyAssistantTurn(

@@ -5,7 +5,6 @@ enum EnhancementRequestSettings {
     static let retryOnTimeoutKey = "EnhancementRetryOnTimeout"
     static let defaultTimeoutSeconds = 7
     static let defaultRetryOnTimeout = true
-    static let maximumAttempts = 3
 
     static var timeout: TimeInterval {
         let configuredTimeout = UserDefaults.standard.integer(forKey: timeoutKey)
