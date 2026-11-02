@@ -6,7 +6,7 @@ struct AutoLearnSectionHeader: View {
         HStack(spacing: 4) {
             Text("Auto Learn")
             InfoTip(
-                "Offers dictionary replacements from your corrections. Add a suggestion to keep it, or dismiss it.",
+                "Offers dictionary replacements from your corrections. Local Auto-Learn uses rules on your Mac. AI review sends only the original and corrected words or short phrases to your selected provider. Automatic reviews corrections after you finish editing; Manual waits for Review. Add a suggestion to keep it, or dismiss it.",
                 learnMoreURL: "https://tryvoiceink.com/docs/auto-learn-dictionary"
             )
             .accessibilityLabel("Learn about Dictionary Auto Learn")
@@ -31,6 +31,7 @@ struct DictionarySettingsPanel: View {
     @AppStorage(AutoLearnSettings.failureMessageKey) private var autoLearnFailureMessage = ""
     @AppStorage(AutoLearnSettings.reviewerProviderKey) private var reviewerProvider = ""
     @AppStorage(AutoLearnSettings.reviewerModelKey) private var reviewerModel = ""
+    @AppStorage(AutoLearnSettings.aiReviewModeKey) private var aiReviewMode = AutoLearnSettings.AIReviewMode.automatic
     @StateObject private var reviewerAIService = AIService()
     @State private var pendingReviewCount = 0
     @State private var isBackgroundReviewing = false
@@ -112,6 +113,12 @@ struct DictionarySettingsPanel: View {
                 reconcileReviewerConfiguration()
             }
         }
+        .onChange(of: aiReviewMode) { _, _ in
+            reviewError = nil
+            reviewCompleted = false
+            reviewerConfigurationDebounceTask?.cancel()
+            reconcileReviewerConfiguration()
+        }
         .onDisappear {
             reviewerConfigurationDebounceTask?.cancel()
             if hasUnreconciledReviewerConfiguration {
@@ -182,6 +189,10 @@ struct DictionarySettingsPanel: View {
             if isAutoLearnDictionaryEnabled {
                 aiReviewSetup
                 if !reviewerProvider.isEmpty {
+                    Picker("AI review", selection: $aiReviewMode) {
+                        Text("Automatic").tag(AutoLearnSettings.AIReviewMode.automatic)
+                        Text("Manual").tag(AutoLearnSettings.AIReviewMode.manual)
+                    }
                     pendingReviewControls
                 }
                 if reviewerProvider.isEmpty {
@@ -246,8 +257,14 @@ struct DictionarySettingsPanel: View {
                         ProgressView().controlSize(.small)
                             .accessibilityLabel("Reviewing corrections")
                     }
-                    Button("Review") {
+                    Button {
                         Task { await reviewPendingCorrections() }
+                    } label: {
+                        if hasAutoLearnFailure || aiReviewMode == .automatic {
+                            Text("Retry")
+                        } else {
+                            Text("Review")
+                        }
                     }
                     .disabled(isReviewing || isRepairingData || dataHealth.needsRepair)
                 }

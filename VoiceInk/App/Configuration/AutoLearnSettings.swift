@@ -3,9 +3,19 @@ import Foundation
 enum AutoLearnSettings {
     static let isEnabledKey = "IsAutoLearnDictionaryEnabled"
     static let minimumCorrectionsKey = "AutoLearnDictionaryMinimumCorrections"
-    static let defaultMinimumCorrections = 2
+    static let defaultMinimumCorrections = 1
     static let reviewerProviderKey = "AutoLearnDictionaryReviewerProvider"
     static let reviewerModelKey = "AutoLearnDictionaryReviewerModel"
+    static let aiReviewModeKey = "AutoLearnDictionaryAIReviewMode"
+
+    enum AIReviewMode: String {
+        case automatic
+        case manual
+    }
+
+    static var aiReviewMode: AIReviewMode {
+        AIReviewMode(rawValue: UserDefaults.standard.string(forKey: aiReviewModeKey) ?? "") ?? .automatic
+    }
 
     struct ReviewerSelection: Equatable, Sendable {
         let providerName: String
@@ -45,7 +55,8 @@ enum AutoLearnSettings {
 
     static func registerDefaults(defaults: UserDefaults = .standard) {
         migrateReviewerSelection(defaults: defaults)
-        defaults.register(defaults: [isEnabledKey: true, minimumCorrectionsKey: defaultMinimumCorrections])
+        defaults.register(defaults: [isEnabledKey: true, minimumCorrectionsKey: defaultMinimumCorrections,
+            aiReviewModeKey: AIReviewMode.automatic.rawValue])
     }
 
     // Preserve 2.21 selections unless the user has chosen a new setup.

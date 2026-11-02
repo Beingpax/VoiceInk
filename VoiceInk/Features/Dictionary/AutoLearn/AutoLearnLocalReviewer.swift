@@ -56,7 +56,7 @@ enum AutoLearnLocalReviewPolicy {
         you're you've you'll you'd he's he'll he'd she's she'll she'd it's it'll it'd we're we've we'll
         we'd they're they've they'll they'd isn't aren't wasn't weren't hasn't haven't hadn't doesn't
         don't didn't can't couldn't shouldn't wouldn't won't mustn't shan't there's that's who's what's
-        let's
+        let's too than then cannot
         """.split(whereSeparator: \.isWhitespace).map(String.init))
 
     private static let irregularForms: [Set<String>] = [

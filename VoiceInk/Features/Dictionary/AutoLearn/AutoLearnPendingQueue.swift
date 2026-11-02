@@ -333,7 +333,7 @@ actor AutoLearnPendingQueue {
         var archived: [ArchivedCorrection] = []
         if fileManager.fileExists(atPath: archiveFileURL.path) {
             let data = try Data(contentsOf: archiveFileURL)
-            archived = Self.decodeArchive(from: data)
+            archived = try Self.decodeArchive(from: data)
         }
         // Queue-save failures can replay an already archived correction.
         var knownIDs = Set(archived.map(\.candidateID))
@@ -355,17 +355,10 @@ actor AutoLearnPendingQueue {
         try data.write(to: archiveFileURL, options: .atomic)
     }
 
-    private static func decodeArchive(from data: Data) -> [ArchivedCorrection] {
-        guard let records = try? JSONSerialization.jsonObject(with: data) as? [Any] else { return [] }
+    private static func decodeArchive(from data: Data) throws -> [ArchivedCorrection] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return records.compactMap { record in
-            guard let record = record as? [String: Any],
-                let recordData = try? JSONSerialization.data(withJSONObject: record) else {
-                return nil
-            }
-            return try? decoder.decode(ArchivedCorrection.self, from: recordData)
-        }
+        return try decoder.decode([ArchivedCorrection].self, from: data)
     }
 
     private func pairKey(

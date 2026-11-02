@@ -160,7 +160,8 @@ actor AutoLearnReviewProposalStore {
         decisions: [AutoLearnReviewDecision] = [],
         candidates: [AutoLearnReviewCandidate] = [],
         minimumCorrections: Int,
-        eligibleDecisions: [AutoLearnReviewDecision]
+        eligibleDecisions: [AutoLearnReviewDecision],
+        reviewerSelection: AutoLearnSettings.ReviewerSelection?
     ) throws -> Int {
         try loadIfNeeded()
         let threshold = AutoLearnSettings.clampedMinimumCorrections(minimumCorrections)
@@ -179,7 +180,8 @@ actor AutoLearnReviewProposalStore {
                 let source = decision.incorrectTextToReplace,
                 let destination = decision.correctedVocabularyTerm,
                 AutoLearnReviewEligibility.accepts(source: source, destination: destination,
-                    aiReviewConfigurationID: decision.aiReviewConfigurationID),
+                    aiReviewConfigurationID: decision.aiReviewConfigurationID,
+                    reviewerSelection: reviewerSelection),
                 eligiblePairs.contains(Self.correctionKey(source: source, destination: destination)),
                 !updatedDismissedPairs.contains(Self.correctionKey(source: source, destination: destination))
             else { continue }

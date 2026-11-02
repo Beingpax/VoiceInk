@@ -189,7 +189,8 @@ class ImportExportService {
             smartPunctuationEnabled: UserDefaults.standard.bool(forKey: SmartPunctuation.settingsKey),
             finishAndSendKey: FinishAndSendSettings.selectedKey.rawValue,
             isAutoLearnDictionaryEnabled: AutoLearnSettings.isEnabled,
-            autoLearnMinimumCorrections: AutoLearnSettings.minimumCorrections
+            autoLearnMinimumCorrections: AutoLearnSettings.minimumCorrections,
+            autoLearnAIReviewMode: AutoLearnSettings.aiReviewMode.rawValue
         )
 
         let exportedSettings = BackupFile(
