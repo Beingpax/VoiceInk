@@ -408,7 +408,7 @@ class ModeManager: ObservableObject {
     }
 
     func getConfigurationForURL(_ url: String) -> ModeConfig? {
-        guard let target = Self.hostAndPath(ofBrowserURL: url) else { return nil }
+        guard let target = Self.target(ofBrowserURL: url) else { return nil }
 
         for config in configurations.filter({ $0.isEnabled }) {
             for urlConfig in config.allURLConfigs {
@@ -420,9 +420,10 @@ class ModeManager: ObservableObject {
         return nil
     }
 
-    /// Host and path of the active tab, lowercased and without a leading "www.".
-    /// Triggers are stored without a scheme, so a bare host is parsed as one.
-    static func hostAndPath(ofBrowserURL url: String) -> (host: String, path: String)? {
+    /// Host, port and path of the active tab. The host is lowercased and loses a
+    /// leading "www.". Triggers are stored without a scheme, so a bare host is
+    /// parsed as one.
+    static func target(ofBrowserURL url: String) -> (host: String, port: Int?, path: String)? {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
 
@@ -434,28 +435,61 @@ class ModeManager: ObservableObject {
             return nil
         }
 
-        return (normalizedHost(host), components.path)
+        return (normalizedHost(host), components.port, components.path)
     }
 
     /// A trigger matches the host itself or any subdomain of it. A trigger that
     /// carries a path, such as "icloud.com/mail", also has to match that path
-    /// prefix on a segment boundary.
-    static func trigger(_ trigger: String, matches target: (host: String, path: String)) -> Bool {
+    /// prefix on a segment boundary. Triggers are stored lowercased, so paths
+    /// are compared without regard to case.
+    static func trigger(_ trigger: String, matches target: (host: String, port: Int?, path: String)) -> Bool {
         let parts = trigger.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
         guard let first = parts.first else { return false }
 
-        let triggerHost = normalizedHost(String(first))
+        let authority = String(first)
+        let triggerHost = normalizedHost(authority)
         guard !triggerHost.isEmpty else { return false }
         guard target.host == triggerHost || target.host.hasSuffix("." + triggerHost) else { return false }
 
-        guard parts.count > 1, !parts[1].isEmpty else { return true }
-        let triggerPath = "/" + parts[1]
-        return target.path == triggerPath || target.path.hasPrefix(triggerPath + "/")
+        // A trigger that names a port only matches that port.
+        if let triggerPort = port(ofAuthority: authority), target.port != triggerPort { return false }
+
+        guard parts.count > 1 else { return true }
+        let triggerPath = String(parts[1])
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .lowercased()
+        guard !triggerPath.isEmpty else { return true }
+
+        let prefix = "/" + triggerPath
+        let path = target.path.lowercased()
+        return path == prefix || path.hasPrefix(prefix + "/")
+    }
+
+    /// Lowercases a host, drops a leading "www." and drops a port. An IPv6
+    /// literal keeps its address: only a single colon is read as a port
+    /// separator, and a bracketed literal is unwrapped first.
+    /// The port of a stored trigger, if it names one. An IPv6 literal without a
+    /// bracketed port carries colons of its own and is read as portless.
+    private static func port(ofAuthority authority: String) -> Int? {
+        if authority.hasPrefix("[") {
+            guard let closingBracket = authority.firstIndex(of: "]") else { return nil }
+            let rest = authority[authority.index(after: closingBracket)...]
+            guard rest.hasPrefix(":") else { return nil }
+            return Int(rest.dropFirst())
+        }
+        guard authority.filter({ $0 == ":" }).count == 1,
+            let portSeparator = authority.firstIndex(of: ":")
+        else {
+            return nil
+        }
+        return Int(authority[authority.index(after: portSeparator)...])
     }
 
     private static func normalizedHost(_ host: String) -> String {
         var value = host.lowercased()
-        if let portSeparator = value.firstIndex(of: ":") {
+        if value.hasPrefix("["), let closingBracket = value.firstIndex(of: "]") {
+            value = String(value[value.index(after: value.startIndex)..<closingBracket])
+        } else if value.filter({ $0 == ":" }).count == 1, let portSeparator = value.firstIndex(of: ":") {
             value = String(value[..<portSeparator])
         }
         if value.hasPrefix("www.") {
