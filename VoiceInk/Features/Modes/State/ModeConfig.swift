@@ -408,18 +408,60 @@ class ModeManager: ObservableObject {
     }
 
     func getConfigurationForURL(_ url: String) -> ModeConfig? {
-        let cleanedURL = cleanURL(url)
+        guard let target = Self.hostAndPath(ofBrowserURL: url) else { return nil }
 
         for config in configurations.filter({ $0.isEnabled }) {
             for urlConfig in config.allURLConfigs {
-                let configURL = cleanURL(urlConfig.url)
-
-                if cleanedURL.contains(configURL) {
+                if Self.trigger(cleanURL(urlConfig.url), matches: target) {
                     return config
                 }
             }
         }
         return nil
+    }
+
+    /// Host and path of the active tab, lowercased and without a leading "www.".
+    /// Triggers are stored without a scheme, so a bare host is parsed as one.
+    static func hostAndPath(ofBrowserURL url: String) -> (host: String, path: String)? {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let absolute = trimmed.contains("://") ? trimmed : "https://" + trimmed
+        guard let components = URLComponents(string: absolute),
+            let host = components.host,
+            !host.isEmpty
+        else {
+            return nil
+        }
+
+        return (normalizedHost(host), components.path)
+    }
+
+    /// A trigger matches the host itself or any subdomain of it. A trigger that
+    /// carries a path, such as "icloud.com/mail", also has to match that path
+    /// prefix on a segment boundary.
+    static func trigger(_ trigger: String, matches target: (host: String, path: String)) -> Bool {
+        let parts = trigger.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+        guard let first = parts.first else { return false }
+
+        let triggerHost = normalizedHost(String(first))
+        guard !triggerHost.isEmpty else { return false }
+        guard target.host == triggerHost || target.host.hasSuffix("." + triggerHost) else { return false }
+
+        guard parts.count > 1, !parts[1].isEmpty else { return true }
+        let triggerPath = "/" + parts[1]
+        return target.path == triggerPath || target.path.hasPrefix(triggerPath + "/")
+    }
+
+    private static func normalizedHost(_ host: String) -> String {
+        var value = host.lowercased()
+        if let portSeparator = value.firstIndex(of: ":") {
+            value = String(value[..<portSeparator])
+        }
+        if value.hasPrefix("www.") {
+            value = String(value.dropFirst(4))
+        }
+        return value
     }
 
     func getConfigurationForApp(_ bundleId: String) -> ModeConfig? {
