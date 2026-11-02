@@ -1,0 +1,38 @@
+VoiceInk/Features/Dictionary/Views/DictionarySettingsPanel.swift
+  s_45db554db98a57::t_62644df250412b 48
+  s_45db554db98a57::t_397fedbfa7b8f3 49
+  s_45db554db98a57::t_cc43492817c22a 107,109-116
+  s_45db554db98a57::t_8d66abc607da01 108,117-119
+VoiceInk/Features/Dictionary/AutoLearn/AutoLearnPendingQueue.swift
+  s_45db554db98a57::t_2660b87ca032da 235
+  s_45db554db98a57::t_acf5e40a13198f 332-370
+  s_45db554db98a57::t_f407f1fc89bdb2 219-230,236
+  s_45db554db98a57::t_a3255194aeb9f3 93-103,106,110,116,119-121
+VoiceInk/App/Configuration/AutoLearnSettings.swift
+  s_45db554db98a57::t_6a4b8bb7303306 25-27
+VoiceInk/Features/Dictionary/AutoLearn/AutoLearnLocalReviewer.swift
+  s_45db554db98a57::t_d2ac408fbc8ff5 13-34
+VoiceInk/Features/Dictionary/AutoLearn/AutoLearnReviewProposalStore.swift
+  s_45db554db98a57::t_27ed540a501244 194-204,206-208
+  s_45db554db98a57::t_74dd44f69812d2 437-440
+  s_45db554db98a57::t_db7205126eb192 205
+VoiceInk/Features/Dictionary/AutoLearn/CorrectionDiffEngine.swift
+  s_45db554db98a57::t_fa1046079ddfb0 65
+  s_45db554db98a57::t_c06733fa46627f 136-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "416c227f0097fdb2f8c8b91550d1df449dd4b206",
+  "prompts": {},
+  "sessions": {
+    "s_45db554db98a57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffda3478-64b7-4749-a835-c56e0f0b3053",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
