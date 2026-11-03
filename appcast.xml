@@ -3,26 +3,29 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>2.21</title>
-            <pubDate>Mon, 28 Sep 2026 19:43:04 +0545</pubDate>
-            <sparkle:version>221</sparkle:version>
-            <sparkle:shortVersionString>2.21</sparkle:shortVersionString>
+            <title>2.25</title>
+            <pubDate>Tue, 03 Nov 2026 23:05:19 +0545</pubDate>
+            <sparkle:version>225</sparkle:version>
+            <sparkle:shortVersionString>2.25</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h3>What's New in VoiceInk 2.21</h3>
+            <description><![CDATA[<h3>What's New in VoiceInk 2.25</h3>
 <ul>
-  <li>🦜 Added support for Parakeet Ultra</li>
-  <li>🌐 Added support for OpenRouter transcription models</li>
-  <li>🤖 Added GPT-6 Luna and GPT-6 Sol enhancement models</li>
-  <li>⚙️ Support for custom AI enhancement model IDs</li>
-  <li>⌨️ Added double-tap recording shortcuts</li>
-  <li>↩️ Made Auto Send a global setting with automatic Return delivery</li>
-  <li>📋 Added mode duplication and context menu actions</li>
-  <li>🧠 Added local CLI support for Dictionary Auto Learn</li>
-  <li>📝 Improved dictionary editing and replacement rules</li>
+  <li>✨ Added Smart Punctuation</li>
+  <li>🧠 Improved Dictionary Auto Learning</li>
+  <li>⌨️ Added Direct Typing and Remote Desktop Typing support as a Paste Method</li>
+  <li>↩️ Restored per-mode Auto Send</li>
+  <li>🗣️ Added support for Mistral Voxtral 3 transcription models</li>
+  <li>☁️ Added support for Soniox V6, AssemblyAI Universal 3.6 Pro, and ElevenLabs Scribe V2 Medical</li>
+  <li>⚙️ Support for custom enhancement model names</li>
+  <li>📋 Improved context awareness</li>
+  <li>🔄 Improved recording shortcut recovery</li>
+  <li>📋 Improved paste reliability and clipboard restoration</li>
+  <li>🌐 Improved website mode triggers</li>
+  <li>🌍 Added Japanese localization</li>
   <li>🛠️ Minor bug fixes and improvements</li>
 </ul>
 ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.21/VoiceInk.dmg" length="51053559" type="application/octet-stream" sparkle:edSignature="ilXFZq09qe/9bQ9zAXr3AbwL5moVNyGVMj/dcQikvnagiZ+qRKBLhmlIF3O2CmEEppFaLSZPhPgXiQKL4AkJDQ=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.25/VoiceInk.dmg" length="51378202" type="application/octet-stream" sparkle:edSignature="k1dsYo6A8CvwjdEc/Z+TdPBQQGQpRUKyM5/K86di9Z1ID7NbaaF4FLi5XnGLwUW89mVb+wuqdEsyShKGjG/YBg=="/>
         </item>
     </channel>
 </rss>
