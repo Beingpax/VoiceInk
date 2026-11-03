@@ -6,10 +6,14 @@ actor AutoLearnReviewProposalStore {
         var candidateID: UUID
         var text: String
         var suggestionOrder: Int?
+        var originalContext: String? = nil
+        var correctedContext: String? = nil
+        var aiReviewConfigurationID: String? = nil
 
         func decision(replacementText: String) -> AutoLearnReviewDecision {
             AutoLearnReviewDecision(candidateID: candidateID, learningAction: .addReplacementOnly,
-                incorrectTextToReplace: text, correctedVocabularyTerm: replacementText)
+                incorrectTextToReplace: text, correctedVocabularyTerm: replacementText,
+                aiReviewConfigurationID: aiReviewConfigurationID)
         }
     }
 
@@ -17,6 +21,15 @@ actor AutoLearnReviewProposalStore {
         let replacementText: String
         var count: Int
         var originals: [ObservedOriginal]
+        var lastObservationID: UUID? = nil
+        var observationIDs: Set<UUID>? = nil
+        var reviewConfigurationID: String? = nil
+
+        var configurationID: String? {
+            let id = reviewConfigurationID ?? originals.first?.aiReviewConfigurationID
+            // Legacy approvals remain valid for the same provider/model.
+            return id?.replacingOccurrences(of: "legacy-2.21|", with: "pairs-v3|", options: .anchored)
+        }
     }
 
     private struct StoredState: Codable {
@@ -83,16 +96,20 @@ actor AutoLearnReviewProposalStore {
         try loadIfNeeded()
         let superseded = Self.supersededPairs(in: corrections)
         return corrections.compactMap { correction -> (order: Int, suggestion: AutoLearnSuggestion)? in
-            let ready = correction.originals.filter {
-                $0.suggestionOrder != nil && !superseded.contains(Self.correctionKey(
-                    source: $0.text, destination: correction.replacementText))
+            let ready = correction.originals.filter { original in
+                original.suggestionOrder != nil
+                    && !superseded.contains(Self.correctionKey(source: original.text, destination: correction.replacementText))
+                    && AutoLearnReviewEligibility.accepts(source: original.text,
+                        destination: correction.replacementText, aiReviewConfigurationID: original.aiReviewConfigurationID)
             }
             guard let order = ready.compactMap(\.suggestionOrder).min() else { return nil }
             return (order, AutoLearnSuggestion(replacementText: correction.replacementText,
-                originals: ready.map { .init(id: $0.id, text: $0.text) }))
+                originals: ready.map { .init(id: $0.id, text: $0.text,
+                    originalContext: $0.originalContext, correctedContext: $0.correctedContext,
+                    aiReviewConfigurationID: $0.aiReviewConfigurationID) }))
         }.sorted {
             $0.order == $1.order ? $0.suggestion.id < $1.suggestion.id : $0.order < $1.order
-        }.map { $0.suggestion }
+        }.map(\.suggestion)
     }
 
     func matching(_ suggestion: AutoLearnSuggestion) throws -> AutoLearnSuggestion? {
@@ -138,27 +155,20 @@ actor AutoLearnReviewProposalStore {
         }
     }
 
-    func discardAll() throws {
-        try loadIfNeeded()
-        guard !corrections.isEmpty || fileManager.fileExists(atPath: fileURL.path) else { return }
-        let snapshot = corrections
-        corrections = []
-        try saveChanges(restoring: snapshot)
-    }
-
     @discardableResult
     func update(
         decisions: [AutoLearnReviewDecision] = [],
         candidates: [AutoLearnReviewCandidate] = [],
         minimumCorrections: Int,
-        eligibleDecisions: [AutoLearnReviewDecision]
+        eligibleDecisions: [AutoLearnReviewDecision],
+        reviewerSelection: AutoLearnSettings.ReviewerSelection?
     ) throws -> Int {
         try loadIfNeeded()
         let threshold = AutoLearnSettings.clampedMinimumCorrections(minimumCorrections)
         let candidatesByID = Dictionary(candidates.map { ($0.candidateID, $0) },
             uniquingKeysWith: { first, _ in first })
         let snapshot = corrections
-        var updatedDismissedPairs = dismissedPairs
+        let updatedDismissedPairs = dismissedPairs
         let previousSuggestionIDs = suggestedReplacementIDs
         let eligiblePairs = Set(eligibleDecisions.map {
             Self.correctionKey(source: $0.incorrectTextToReplace, destination: $0.correctedVocabularyTerm)
@@ -169,36 +179,73 @@ actor AutoLearnReviewProposalStore {
                 let candidate = candidatesByID[decision.candidateID],
                 let source = decision.incorrectTextToReplace,
                 let destination = decision.correctedVocabularyTerm,
-                AutoLearnLocalReviewPolicy.accepts(source: source, destination: destination),
+                AutoLearnReviewEligibility.accepts(source: source, destination: destination,
+                    aiReviewConfigurationID: decision.aiReviewConfigurationID,
+                    reviewerSelection: reviewerSelection),
                 eligiblePairs.contains(Self.correctionKey(source: source, destination: destination)),
                 !updatedDismissedPairs.contains(Self.correctionKey(source: source, destination: destination))
             else { continue }
 
             let replacementText = WordReplacementVariants.destinationKey(for: destination)
             let sourceKey = WordReplacementVariants.key(for: source)
-            updatedDismissedPairs.formUnion(correctionPairs(for: [sourceKey], excluding: replacementText))
             let index: Int
-            if let existing = corrections.firstIndex(where: { $0.replacementText == replacementText }) {
+            let configurationID = decision.aiReviewConfigurationID?.replacingOccurrences(
+                of: "legacy-2.21|", with: "pairs-v3|", options: .anchored)
+            // A newer target supersedes this reviewer's conflicting proposal only.
+            // Switching reviewers must not dismiss another configuration's history.
+            var emptiedGroupIndices: [Int] = []
+            for otherIndex in corrections.indices
+            where corrections[otherIndex].replacementText != replacementText
+                && corrections[otherIndex].configurationID == configurationID
+                && !corrections[otherIndex].originals.isEmpty {
+                corrections[otherIndex].originals.removeAll {
+                    WordReplacementVariants.key(for: $0.text) == sourceKey
+                }
+                if corrections[otherIndex].originals.isEmpty {
+                    emptiedGroupIndices.append(otherIndex)
+                }
+            }
+            for emptiedIndex in emptiedGroupIndices.sorted(by: >) {
+                corrections.remove(at: emptiedIndex)
+            }
+            if let existing = corrections.firstIndex(where: {
+                $0.replacementText == replacementText && $0.configurationID == configurationID
+            }) {
                 index = existing
             } else {
                 index = corrections.endIndex
-                corrections.append(CountedReplacement(replacementText: replacementText, count: 0, originals: []))
+                corrections.append(CountedReplacement(replacementText: replacementText, count: 0,
+                    originals: [], reviewConfigurationID: configurationID))
             }
             var correction = corrections[index]
+            var isNewCandidate = true
             if let existing = correction.originals.firstIndex(where: {
                 WordReplacementVariants.key(for: $0.text) == sourceKey
             }) {
-                if correction.originals[existing].candidateID != candidate.candidateID {
-                    correction.originals[existing].candidateID = candidate.candidateID
-                    correction.count = AutoLearnSettings.clampedMinimumCorrections(correction.count + 1)
-                }
+                isNewCandidate = correction.originals[existing].candidateID != candidate.candidateID
+                correction.originals[existing].candidateID = candidate.candidateID
+                correction.originals[existing].originalContext = candidate.originalText
+                correction.originals[existing].correctedContext = candidate.correctedText
+                correction.originals[existing].aiReviewConfigurationID = decision.aiReviewConfigurationID
             } else {
                 correction.originals.append(ObservedOriginal(id: UUID(), candidateID: candidate.candidateID,
                     text: source.trimmingCharacters(in: .whitespacesAndNewlines)
                         .precomposedStringWithCanonicalMapping,
-                    suggestionOrder: nil))
-                correction.count = AutoLearnSettings.clampedMinimumCorrections(correction.count + 1)
+                    suggestionOrder: nil, originalContext: candidate.originalText,
+                    correctedContext: candidate.correctedText,
+                    aiReviewConfigurationID: decision.aiReviewConfigurationID))
             }
+            // Multiple spellings corrected to one target in a single dictation
+            // count once. Legacy queue entries retain candidate-based counting.
+            let observationID = candidate.observationID ?? candidate.candidateID
+            var observed = correction.observationIDs
+                ?? Set(correction.lastObservationID.map { [$0] } ?? [])
+            if isNewCandidate, !observed.contains(observationID), correction.count < 3 {
+                correction.count = AutoLearnSettings.clampedMinimumCorrections(correction.count + 1)
+                correction.lastObservationID = observationID
+                observed.insert(observationID)
+            }
+            correction.observationIDs = observed
             corrections[index] = correction
         }
 
@@ -268,12 +315,22 @@ actor AutoLearnReviewProposalStore {
         return pairs
     }
 
+    /// Preserve the complete old document, including vocabulary-only proposals
+    /// that have no source from which a word replacement could be constructed.
+    private func backUpBeforeMigration(_ url: URL) throws {
+        guard fileManager.fileExists(atPath: url.path) else { return }
+        let backup = url.appendingPathExtension("pre-replacement-only.backup")
+        guard !fileManager.fileExists(atPath: backup.path) else { return }
+        try fileManager.copyItem(at: url, to: backup)
+    }
+
     private func loadIfNeeded() throws {
         guard !isLoaded else { return }
         for (oldURL, newURL) in legacyFileURLs
         where !fileManager.fileExists(atPath: newURL.path)
             && fileManager.fileExists(atPath: oldURL.path) {
-            try fileManager.moveItem(at: oldURL, to: newURL)
+            try backUpBeforeMigration(oldURL)
+            try fileManager.copyItem(at: oldURL, to: newURL)
         }
         let decoder = JSONDecoder()
         var loadedDismissedPairs = Set<String>()
@@ -291,11 +348,14 @@ actor AutoLearnReviewProposalStore {
             needsMigration = state.needsMigration
             if let legacyDismissedPairs = state.dismissedPairs {
                 loadedDismissedPairs.formUnion(legacyDismissedPairs)
+                try backUpBeforeMigration(fileURL)
+                try backUpBeforeMigration(dismissedPairsFileURL)
                 try write(loadedDismissedPairs.sorted(), to: dismissedPairsFileURL)
             }
         }
         loadedCorrections = Self.validated(loadedCorrections, dismissedPairs: loadedDismissedPairs)
         if needsMigration {
+            try backUpBeforeMigration(fileURL)
             try write(StoredState(corrections: loadedCorrections), to: fileURL)
         }
         corrections = loadedCorrections
@@ -335,7 +395,9 @@ actor AutoLearnReviewProposalStore {
             group.count = AutoLearnSettings.clampedMinimumCorrections(
                 group.count + AutoLearnSettings.clampedMinimumCorrections(observation.count))
             group.originals.append(ObservedOriginal(id: proposal.id, candidateID: observation.lastCandidateID,
-                text: source, suggestionOrder: nil))
+                text: source, suggestionOrder: nil,
+                originalContext: proposal.originalText, correctedContext: proposal.correctedText,
+                aiReviewConfigurationID: AutoLearnSettings.legacyApprovalConfigurationID))
             groups[replacement] = group
         }
         for (order, proposal) in proposals.enumerated() {
@@ -350,7 +412,9 @@ actor AutoLearnReviewProposalStore {
                 group.originals[index].suggestionOrder = order
             } else {
                 group.originals.append(ObservedOriginal(id: proposal.id, candidateID: proposal.candidateID,
-                    text: source, suggestionOrder: order))
+                    text: source, suggestionOrder: order,
+                    originalContext: proposal.originalText, correctedContext: proposal.correctedText,
+                    aiReviewConfigurationID: AutoLearnSettings.legacyApprovalConfigurationID))
                 group.count = 3
             }
             groups[replacement] = group
@@ -372,21 +436,30 @@ actor AutoLearnReviewProposalStore {
         for correction in loaded {
             let replacement = WordReplacementVariants.destinationKey(for: correction.replacementText)
             guard correction.count > 0,
-                AutoLearnLocalReviewPolicy.accepts(source: nil, destination: replacement) else { continue }
+                AutoLearnLocalReviewPolicy.fitsLimits(source: nil, destination: replacement) else { continue }
+            // Preserve approved names such as "Will" when loading suggestions.
+            guard !correction.originals.isEmpty
+                || AutoLearnLocalReviewPolicy.accepts(source: nil, destination: replacement) else { continue }
             let index: Int
-            if let existing = groups.firstIndex(where: { $0.replacementText == replacement }) {
+            if let existing = groups.firstIndex(where: {
+                $0.replacementText == replacement && $0.configurationID == correction.configurationID
+            }) {
                 index = existing
             } else {
                 index = groups.endIndex
-                groups.append(CountedReplacement(replacementText: replacement, count: 0, originals: []))
+                groups.append(CountedReplacement(replacementText: replacement, count: 0,
+                    originals: [], reviewConfigurationID: correction.configurationID))
             }
             var group = groups[index]
             group.count = max(group.count, AutoLearnSettings.clampedMinimumCorrections(correction.count))
+            group.lastObservationID = correction.lastObservationID ?? group.lastObservationID
+            group.observationIDs = (group.observationIDs ?? []).union(correction.observationIDs
+                ?? Set(correction.lastObservationID.map { [$0] } ?? []))
             var sources = Set(group.originals.map { WordReplacementVariants.key(for: $0.text) })
             for var original in correction.originals {
                 original.text = original.text.trimmingCharacters(in: .whitespacesAndNewlines)
                     .precomposedStringWithCanonicalMapping
-                guard AutoLearnLocalReviewPolicy.accepts(source: original.text, destination: replacement),
+                guard AutoLearnLocalReviewPolicy.fitsLimits(source: original.text, destination: replacement),
                     !dismissedPairs.contains(correctionKey(source: original.text, destination: replacement)),
                     !knownIDs.contains(original.id),
                     sources.insert(WordReplacementVariants.key(for: original.text)).inserted else { continue }
@@ -412,10 +485,10 @@ actor AutoLearnReviewProposalStore {
     }
 
     private static func valid(_ proposal: AutoLearnReviewProposal) -> Bool {
-        guard proposal.learningAction == .addReplacementOnly,
+        guard proposal.learningAction == .addReplacementOnly || proposal.learningAction == .addReplacementAndVocabulary,
             let source = proposal.incorrectTextToReplace,
             let destination = proposal.correctedVocabularyTerm else { return false }
-        return AutoLearnLocalReviewPolicy.accepts(source: source, destination: destination)
+        return AutoLearnLocalReviewPolicy.fitsLimits(source: source, destination: destination)
     }
 
     private static func supersededPairs(in corrections: [CountedReplacement]) -> Set<String> {
@@ -423,6 +496,9 @@ actor AutoLearnReviewProposalStore {
         var superseded = Set<String>()
         for correction in corrections {
             for original in correction.originals {
+                guard AutoLearnReviewEligibility.accepts(source: original.text,
+                    destination: correction.replacementText,
+                    aiReviewConfigurationID: original.aiReviewConfigurationID) else { continue }
                 let sourceKey = WordReplacementVariants.key(for: original.text)
                 let order = original.suggestionOrder ?? -1
                 if let previous = latest[sourceKey], previous.destination != correction.replacementText {
@@ -466,6 +542,8 @@ actor AutoLearnReviewProposalStore {
     }
 
     private func save() throws {
+        // Protect both legacy documents and already-counted suggestions before the first rewrite.
+        try backUpBeforeMigration(fileURL)
         try write(StoredState(corrections: corrections), to: fileURL)
     }
 
