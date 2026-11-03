@@ -30,23 +30,32 @@ actor WordReplacementStore {
     func apply(_ suggestion: AutoLearnSuggestion) throws -> Bool {
         try Task.checkCancellation()
         guard suggestion.isValid else { return false }
+        return try apply([suggestion]) > 0
+    }
 
-        var hasChanges = false
+    func apply(_ suggestions: [AutoLearnSuggestion]) throws -> Int {
+        try Task.checkCancellation()
+        guard suggestions.allSatisfy(\.isValid) else { throw CancellationError() }
+        var learnedTargets = Set<String>()
         do {
             try modelContext.transaction {
-                let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
-                try Task.checkCancellation()
-                hasChanges = try applyReplacement(sources: suggestion.originals.map(\.text),
-                    destination: suggestion.replacementText, entries: entries)
+                for suggestion in suggestions {
+                    try Task.checkCancellation()
+                    let entries = try modelContext.fetch(FetchDescriptor<WordReplacement>())
+                    if try applyReplacement(sources: suggestion.originals.map(\.text),
+                        destination: suggestion.replacementText, entries: entries) {
+                        learnedTargets.insert(WordReplacementVariants.destinationKey(for: suggestion.replacementText))
+                    }
+                }
                 try Task.checkCancellation()
             }
             try Task.checkCancellation()
-            if hasChanges { try modelContext.save() }
+            if !learnedTargets.isEmpty { try modelContext.save() }
         } catch {
             modelContext.rollback()
             throw error
         }
-        return hasChanges
+        return learnedTargets.count
     }
 
     private func applyReplacement(

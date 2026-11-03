@@ -6,7 +6,7 @@ struct AutoLearnSectionHeader: View {
         HStack(spacing: 4) {
             Text("Auto Learn")
             InfoTip(
-                "Offers dictionary replacements from your corrections. Local Auto-Learn uses rules on your Mac. AI review sends only the original and corrected words or short phrases to your selected provider. Automatic reviews corrections after you finish editing; Manual waits for Review. Add a suggestion to keep it, or dismiss it.",
+                "Learns from your edits.",
                 learnMoreURL: "https://tryvoiceink.com/docs/auto-learn-dictionary"
             )
             .accessibilityLabel("Learn about Dictionary Auto Learn")
@@ -24,7 +24,6 @@ struct DictionarySettingsPanel: View {
     @Environment(\.modelContext) private var modelContext
 
     let onDismiss: () -> Void
-    @AppStorage(VocabularyCorrectionSettings.isEnabledKey) private var isVocabularyCorrectionEnabled = true
     @AppStorage(AutoLearnSettings.isEnabledKey) private var isAutoLearnDictionaryEnabled = true
     @AppStorage(AutoLearnSettings.minimumCorrectionsKey) private var minimumCorrections = AutoLearnSettings.defaultMinimumCorrections
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
@@ -38,6 +37,7 @@ struct DictionarySettingsPanel: View {
     @State private var isRequestingReview = false
     @State private var reviewError: String?
     @State private var reviewCompleted = false
+    @State private var learnedReplacementCount: Int?
     @State private var pendingImport: DictionaryImportPayload?
     @State private var transferAlert: DictionaryTransferAlert?
     @State private var dataHealth = AutoLearnDataHealth()
@@ -59,16 +59,6 @@ struct DictionarySettingsPanel: View {
                     }
                 } header: {
                     Text("Shortcut")
-                }
-
-                Section {
-                    Toggle("Automatic Vocabulary Correction", isOn: $isVocabularyCorrectionEnabled)
-                } header: {
-                    HStack(spacing: 4) {
-                        Text("Vocabulary")
-                        InfoTip("Locally corrects words using your vocabulary and names on screen with similar spelling or sound.")
-                            .accessibilityLabel("Learn about Vocabulary Correction")
-                    }
                 }
 
                 autoLearnSection
@@ -260,7 +250,7 @@ struct DictionarySettingsPanel: View {
                     Button {
                         Task { await reviewPendingCorrections() }
                     } label: {
-                        if hasAutoLearnFailure || aiReviewMode == .automatic {
+                        if hasAutoLearnFailure || reviewError != nil || aiReviewMode == .automatic {
                             Text("Retry")
                         } else {
                             Text("Review")
@@ -269,9 +259,24 @@ struct DictionarySettingsPanel: View {
                     .disabled(isReviewing || isRepairingData || dataHealth.needsRepair)
                 }
             }
-        } else if reviewCompleted {
-            Label("Review complete", systemImage: "checkmark.circle")
-                .foregroundStyle(.secondary)
+        }
+        if reviewCompleted {
+            if let learnedReplacementCount {
+                if learnedReplacementCount == 0 {
+                    Label("No new replacements learned", systemImage: "checkmark.circle")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Label {
+                        Text("Learned \(learnedReplacementCount) replacements")
+                    } icon: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                    .foregroundStyle(.secondary)
+                }
+            } else {
+                Label("Review complete", systemImage: "checkmark.circle")
+                    .foregroundStyle(.secondary)
+            }
         }
         if let reviewError, reviewError != autoLearnFailureMessage {
             Text(reviewError).foregroundStyle(.red)
@@ -297,7 +302,8 @@ struct DictionarySettingsPanel: View {
         reviewError = nil
         defer { isRequestingReview = false }
         do {
-            try await AutoLearnService.shared.reviewPendingCorrections()
+            let learnedCount = try await AutoLearnService.shared.reviewPendingCorrections()
+            learnedReplacementCount = aiReviewMode == .manual ? learnedCount : nil
             reviewCompleted = true
         } catch is CancellationError {
             // Switching providers or disabling Auto-Learn leaves work queued.

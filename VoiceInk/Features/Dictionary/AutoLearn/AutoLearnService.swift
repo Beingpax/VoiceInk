@@ -46,11 +46,15 @@ actor AutoLearnService {
     }
 
     func pendingReviewState() async throws -> (count: Int, isReviewing: Bool) {
-        let count = try await pendingQueue.outstandingCount()
+        var count = try await pendingQueue.outstandingCount()
+        if AutoLearnSettings.usesAIReviewer, AutoLearnSettings.aiReviewMode == .manual {
+            count += try await reviewProposalStore.all().reduce(0) { $0 + $1.originals.count }
+        }
         return (count, reviewTask != nil)
     }
 
-    func reviewPendingCorrections() async throws {
+    @discardableResult
+    func reviewPendingCorrections() async throws -> Int {
         guard isEnabled, AutoLearnSettings.usesAIReviewer else { throw EnhancementError.notConfigured }
         let configuration = AutoLearnSettings.reviewConfigurationID
         let mode = AutoLearnSettings.aiReviewMode
@@ -69,6 +73,37 @@ actor AutoLearnService {
             throw EnhancementError.customError(defaults.string(forKey: AutoLearnSettings.failureMessageKey)
                 ?? String(localized: "Auto-Learn is unavailable."))
         }
+        if mode == .manual {
+            do {
+                return try await learnManualSuggestions(configuration: configuration)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                AutoLearnSettings.recordFailure(error, defaults: defaults)
+                throw error
+            }
+        }
+        return 0
+    }
+
+    private func learnManualSuggestions(configuration: String?) async throws -> Int {
+        guard let replacementStore else { throw EnhancementError.notConfigured }
+        try await updateSuggestions(settingsGeneration: suggestionSettingsGeneration)
+        let suggestions = try await reviewProposalStore.all()
+        try Task.checkCancellation()
+        guard isEnabled, AutoLearnSettings.aiReviewMode == .manual,
+            configuration == AutoLearnSettings.reviewConfigurationID else { throw CancellationError() }
+        let learnedCount = try await replacementStore.apply(suggestions)
+        if learnedCount > 0 {
+            await MainActor.run {
+                NotificationCenter.default.post(name: .wordReplacementsDidChange, object: nil)
+            }
+        }
+        for suggestion in suggestions {
+            try await reviewProposalStore.removeApprovedSuggestion(suggestion)
+        }
+        notifyReviewStateChanged()
+        return learnedCount
     }
 
     private func notifyReviewStateChanged() {
@@ -568,6 +603,10 @@ actor AutoLearnService {
 
     private func refreshSuggestionPanel() async {
         guard isPrepared else { return }
+        if AutoLearnSettings.usesAIReviewer, AutoLearnSettings.aiReviewMode == .manual {
+            await suggestionsDidChange([])
+            return
+        }
         do {
             let suggestions = try await reviewProposalStore.all()
             await suggestionsDidChange(isEnabled ? suggestions : [])

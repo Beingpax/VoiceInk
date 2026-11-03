@@ -2,15 +2,6 @@ import Foundation
 import NaturalLanguage
 import os
 
-enum VocabularyCorrectionSettings {
-    static let isEnabledKey = "IsAutomaticVocabularyCorrectionEnabled"
-
-    static var isEnabled: Bool {
-        let defaults = UserDefaults.standard
-        return defaults.object(forKey: isEnabledKey) == nil || defaults.bool(forKey: isEnabledKey)
-    }
-}
-
 /// An immutable vocabulary snapshot for a transcription or enhancement request.
 struct RecordingVocabulary: Sendable {
     private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "VocabularyCorrection")
@@ -47,7 +38,7 @@ struct RecordingVocabulary: Sendable {
     /// Correct the final model output off the main actor using this run's prepared terms.
     func correctTranscription(_ text: String) async throws -> String {
         try Task.checkCancellation()
-        guard VocabularyCorrectionSettings.isEnabled, !terms.isEmpty, !text.isEmpty else { return text }
+        guard !terms.isEmpty, !text.isEmpty else { return text }
         let vocabulary = terms
         let correction = Task.detached(priority: .userInitiated) {
             try Task.checkCancellation()
