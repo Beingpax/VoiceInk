@@ -2,6 +2,37 @@ import Foundation
 
 // Safe to delete once all users have updated past this version.
 enum StreamingKeysMigration {
+    // Run before services load model selections or decode saved modes.
+    static func migrateSonioxV6(defaults: UserDefaults = .standard) {
+        // The catalog has one entry for both async and realtime; the realtime toggle
+        // selects stt-rt-v6 when recording starts.
+        let legacyModels: Set<String> = ["stt-async-v5", "stt-rt-v5"]
+        if let selected = defaults.string(forKey: "CurrentTranscriptionModel"),
+            legacyModels.contains(selected)
+        {
+            defaults.set("stt-async-v6", forKey: "CurrentTranscriptionModel")
+        }
+
+        for key in ["modeConfigurationsV2", "powerModeConfigurationsV2"] {
+            guard let data = defaults.data(forKey: key),
+                var configs = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]]
+            else { continue }
+            var changed = false
+            for index in configs.indices {
+                for field in ["selectedTranscriptionModelName", "selectedWhisperModel"] {
+                    guard let selected = configs[index][field] as? String,
+                        legacyModels.contains(selected)
+                    else { continue }
+                    configs[index][field] = "stt-async-v6"
+                    changed = true
+                }
+            }
+            if changed, let updated = try? JSONSerialization.data(withJSONObject: configs) {
+                defaults.set(updated, forKey: key)
+            }
+        }
+    }
+
     static func run() {
         let defaults = UserDefaults.standard
         // Run after the older migration, including for users who already ran it.

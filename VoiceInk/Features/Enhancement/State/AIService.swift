@@ -76,7 +76,7 @@ enum AIProvider: String, CaseIterable, Sendable {
         case .deepgram:
             return "whisper-1"
         case .soniox:
-            return "stt-async-v5"
+            return "stt-async-v6"
         case .speechmatics:
             return "speechmatics-enhanced"
         case .assemblyAI:
@@ -150,7 +150,7 @@ enum AIProvider: String, CaseIterable, Sendable {
         case .deepgram:
             return ["whisper-1"]
         case .soniox:
-            return ["stt-async-v5"]
+            return ["stt-async-v6"]
         case .speechmatics:
             return ["speechmatics-enhanced"]
         case .assemblyAI:
