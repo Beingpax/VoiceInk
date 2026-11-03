@@ -132,12 +132,12 @@ class BrowserURLService {
                 // Check if output contains error messages
                 if output.lowercased().contains("error") {
                     logger.error(
-                        "❌ AppleScript error for \(browser.displayName, privacy: .public): \(output, privacy: .public)")
+                        "❌ AppleScript error for \(browser.displayName, privacy: .public): \(output, privacy: .private)")
                     throw BrowserURLError.executionFailed
                 }
 
                 logger.debug(
-                    "✅ Successfully retrieved URL from \(browser.displayName, privacy: .public): \(output, privacy: .public)"
+                    "✅ Successfully retrieved URL from \(browser.displayName, privacy: .public): \(output, privacy: .private)"
                 )
                 return output
             } else {
