@@ -121,7 +121,7 @@ class TranscriptionPipeline {
                 )
             }
             let vocabulary = vocabularyPreparation.finish()
-            text = TranscriptionOutputFilter.filter(text)
+            text = TranscriptionOutputFilter.filter(text, language: transcriptionConfiguration.language)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
             if shouldCancel() {

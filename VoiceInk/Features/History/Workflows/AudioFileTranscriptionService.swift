@@ -73,7 +73,7 @@ class AudioTranscriptionService: ObservableObject {
             let transcriptionStart = Date()
             var text = try await serviceRegistry.transcribe(audioURL: url, model: model, context: requestContext)
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
-            text = TranscriptionOutputFilter.filter(text)
+            text = TranscriptionOutputFilter.filter(text, language: language)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             text = try await vocabulary.correctTranscription(text)
             let formattingConfiguration = ModeRuntimeResolver.transcriptionFormattingConfiguration(mode: mode)

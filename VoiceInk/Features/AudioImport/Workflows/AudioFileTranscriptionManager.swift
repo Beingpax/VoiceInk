@@ -178,7 +178,7 @@ class AudioTranscriptionManager: ObservableObject {
                 context: transcriptionConfiguration.requestContext.withVocabulary(vocabulary)
             )
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
-            text = TranscriptionOutputFilter.filter(text)
+            text = TranscriptionOutputFilter.filter(text, language: transcriptionConfiguration.language)
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             text = try await vocabulary.correctTranscription(text)
 
