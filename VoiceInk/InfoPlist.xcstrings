@@ -28,6 +28,12 @@
             "state" : "translated",
             "value" : "VoiceInk"
           }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
+          }
         }
       }
     },
@@ -54,6 +60,12 @@
           }
         },
         "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk"
+          }
+        },
+        "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "VoiceInk"
@@ -87,6 +99,12 @@
             "state" : "translated",
             "value" : "Fichier audio/vidéo"
           }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声/動画ファイル"
+          }
         }
       }
     },
@@ -117,6 +135,12 @@
             "state" : "translated",
             "value" : "VoiceInk doit interagir avec votre navigateur pour détecter le site Web actuel afin d'appliquer des configurations spécifiques au site Web."
           }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkは、開いているウェブサイトに応じた設定を適用するためにブラウザと連携する必要があります。"
+          }
         }
       }
     },
@@ -143,6 +167,12 @@
           }
         },
         "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : ""
+          }
+        },
+        "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : ""
@@ -177,6 +207,12 @@
             "state" : "translated",
             "value" : "VoiceInk a besoin d'accéder à votre microphone pour enregistrer l'audio à des fins de transcription."
           }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkは、文字起こし用の音声を録音するためにマイクへのアクセスが必要です。"
+          }
         }
       }
     },
@@ -205,6 +241,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VoiceInk a besoin d'un accès à l'enregistrement d'écran pour comprendre le contexte de votre écran afin d'améliorer la précision de la transcription."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkは、文字起こしの精度を高めるために画面の内容を理解する画面収録アクセス権が必要です。"
           }
         }
       }
