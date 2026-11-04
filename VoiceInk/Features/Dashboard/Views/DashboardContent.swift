@@ -31,7 +31,6 @@ struct DashboardContent: View {
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
     @State private var isAccessibilityEnabled = AXIsProcessTrusted()
-    @EnvironmentObject private var updaterViewModel: UpdaterViewModel
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject private var starPrompt = GitHubStarPromptCoordinator.shared
     @State private var isSystemInfoCopied = false
@@ -103,7 +102,6 @@ struct DashboardContent: View {
         }
         .onAppear {
             refreshAccessibilityStatus()
-            updaterViewModel.checkForUpdatesIfDue()
         }
         .onReceive(LifecycleObserver.shared.publisher(for: .applicationDidBecomeActive)) { _ in
             refreshAccessibilityStatus()
@@ -286,23 +284,7 @@ struct DashboardContent: View {
 
     private var greetingHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(greetingEmoji)
-                    .font(.system(size: 25))
-                    .accessibilityHidden(true)
-
-                Text("\(greetingText),")
-                    .font(displayNameFont)
-                    .foregroundStyle(AppTheme.Text.primary)
-                    .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
-
-                displayNameView
-
-                dismissingSpacer
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
+            greetingTitle
 
             HStack(alignment: .top, spacing: 0) {
                 Text(headerSubtitle)
@@ -316,6 +298,25 @@ struct DashboardContent: View {
             .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var greetingTitle: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(greetingEmoji)
+                .font(.system(size: 25))
+                .accessibilityHidden(true)
+
+            Text("\(greetingText),")
+                .font(displayNameFont)
+                .foregroundStyle(AppTheme.Text.primary)
+                .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
+
+            displayNameView
+            dismissingSpacer
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
     }
 
     @ViewBuilder
@@ -579,29 +580,6 @@ struct DashboardContent: View {
                 .animation(.easeInOut(duration: 0.15), value: starPrompt.openFailed)
             }
 
-            if let availableUpdate = updaterViewModel.availableUpdate {
-                Button(action: updaterViewModel.checkForUpdates) {
-                    footerActionLabel(
-                        icon: "arrow.down.circle.fill",
-                        title: "Update Available",
-                        color: AppTheme.Status.infoStrong
-                    )
-                }
-                .buttonStyle(.plain)
-                .fixedSize(horizontal: true, vertical: true)
-                .disabled(!updaterViewModel.canCheckForUpdates)
-                .help(
-                    String(
-                        format: String(localized: "Open the VoiceInk %@ update"),
-                        availableUpdate.displayVersion
-                    )
-                )
-                .accessibilityLabel("Update Available")
-                .accessibilityValue(Text(verbatim: availableUpdate.displayVersion))
-                .accessibilityHint("Opens the update window")
-                .transition(.move(edge: .trailing).combined(with: .opacity))
-            }
-
             Button(action: copySystemInfo) {
                 footerActionLabel(
                     icon: isSystemInfoCopied ? "checkmark" : "doc.on.doc",
@@ -613,7 +591,6 @@ struct DashboardContent: View {
             .fixedSize(horizontal: true, vertical: true)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSystemInfoCopied)
         }
-        .animation(.easeOut(duration: 0.2), value: updaterViewModel.availableUpdate)
     }
 
     @ViewBuilder
