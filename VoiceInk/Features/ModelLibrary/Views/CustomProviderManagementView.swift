@@ -234,6 +234,13 @@ struct CustomTranscriptionModelEditorPanel: View {
                             CustomModelTextField(
                                 label: "API Endpoint", placeholder: "https://api.openai.com/v1/audio/transcriptions",
                                 text: $apiEndpoint)
+                            Text(
+                                "Use a /v1/chat/completions endpoint for instruction-following models such as Nemotron Transcribe; set the instruction per Mode."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.leading, CustomModelEditorMetrics.labelWidth + 12)
                             CustomModelTextField(
                                 label: "API Key", placeholder: String(localized: "Paste API key"), text: $apiKey,
                                 isSecure: true)

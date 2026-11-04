@@ -177,6 +177,18 @@ struct CustomCloudModel: TranscriptionModel, Codable {
         APIKeyManager.shared.getCustomModelAPIKey(forModelId: id) ?? ""
     }
 
+    /// Chat completions endpoints accept a per-mode instruction alongside the audio.
+    var usesChatCompletions: Bool {
+        Self.isChatCompletionsEndpoint(apiEndpoint)
+    }
+
+    static func isChatCompletionsEndpoint(_ endpoint: String) -> Bool {
+        guard let path = URL(string: endpoint.trimmingCharacters(in: .whitespacesAndNewlines))?.path else {
+            return false
+        }
+        return path.hasSuffix("/chat/completions")
+    }
+
     init(
         id: UUID = UUID(), name: String, displayName: String, description: String, apiEndpoint: String,
         modelName: String, isMultilingual: Bool = true, supportedLanguages: [String: String]? = nil

@@ -14,6 +14,10 @@ struct CustomModelConnectionTester {
     static func testTranscriptionEndpoint(endpoint: String, apiKey: String, modelName: String) async
         -> ConnectionTestResult
     {
+        if CustomCloudModel.isChatCompletionsEndpoint(endpoint) {
+            return await testEnhancementEndpoint(baseURL: endpoint, apiKey: apiKey, modelName: modelName)
+        }
+
         guard let url = URL(string: endpoint), isAllowedScheme(url) else {
             return .failure(
                 message: String(localized: "Endpoint must use HTTPS (plain HTTP is allowed only for localhost)"))
