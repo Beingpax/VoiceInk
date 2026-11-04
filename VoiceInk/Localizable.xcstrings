@@ -8638,6 +8638,35 @@
         }
       }
     },
+    "Checks for updates in the background while VoiceInk is running." : {
+      "comment" : "Help for the automatic update checks setting. Checks continue when the Dashboard is closed.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sucht im Hintergrund nach Updates, solange VoiceInk ausgeführt wird."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche les mises à jour en arrière-plan pendant que VoiceInk est en cours d’exécution."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk の実行中にバックグラウンドでアップデートを確認します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在 VoiceInk 运行时于后台检查更新。"
+          }
+        }
+      }
+    },
     "Choose" : {
       "localizations" : {
         "de" : {
