@@ -284,7 +284,23 @@ struct DashboardContent: View {
 
     private var greetingHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
-            greetingTitle
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(greetingEmoji)
+                    .font(.system(size: 25))
+                    .accessibilityHidden(true)
+
+                Text("\(greetingText),")
+                    .font(displayNameFont)
+                    .foregroundStyle(AppTheme.Text.primary)
+                    .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
+
+                displayNameView
+
+                dismissingSpacer
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
 
             HStack(alignment: .top, spacing: 0) {
                 Text(headerSubtitle)
@@ -298,25 +314,6 @@ struct DashboardContent: View {
             .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var greetingTitle: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(greetingEmoji)
-                .font(.system(size: 25))
-                .accessibilityHidden(true)
-
-            Text("\(greetingText),")
-                .font(displayNameFont)
-                .foregroundStyle(AppTheme.Text.primary)
-                .onTapGesture(perform: dismissDisplayNameEditorIfNeeded)
-
-            displayNameView
-            dismissingSpacer
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .lineLimit(1)
-        .minimumScaleFactor(0.72)
     }
 
     @ViewBuilder
