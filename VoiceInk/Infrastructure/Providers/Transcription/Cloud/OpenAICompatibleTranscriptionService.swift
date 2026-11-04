@@ -127,7 +127,8 @@ class OpenAICompatibleTranscriptionService {
             throw CloudTranscriptionError.audioFileNotFound
         }
 
-        var instruction = (context.instruction ?? .default).prompt(language: context.language)
+        let settings = context.instruction ?? .default
+        var instruction = settings.prompt(language: context.language)
         if let terms = context.vocabulary?.terms, !terms.isEmpty {
             instruction += " Context terms: " + terms.joined(separator: ", ") + "."
         }
@@ -146,7 +147,7 @@ class OpenAICompatibleTranscriptionService {
         let body: [String: Any] = [
             "model": model.modelName,
             "messages": [message],
-            "temperature": 0,
+            "temperature": settings.requestTemperature,
             "chat_template_kwargs": ["enable_thinking": false],
             "skip_special_tokens": false,
             "spaces_between_special_tokens": false,

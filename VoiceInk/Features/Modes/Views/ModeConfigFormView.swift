@@ -369,6 +369,24 @@ struct ModeConfigFormView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 }
+
+                LabeledContent {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: $draft.transcriptionInstruction.temperature,
+                            in: TranscriptionInstruction.temperatureRange,
+                            step: 0.1
+                        )
+                        Text(instruction.requestTemperature, format: .number.precision(.fractionLength(1)))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Temperature")
+                        InfoTip("0 gives the most consistent transcript. Higher values let the model vary its wording.")
+                    }
+                }
             }
         }
     }
