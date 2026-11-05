@@ -234,6 +234,8 @@ struct ModeConfigFormView: View {
 
             languagePicker
 
+            transcriptionInstructionPicker
+
             ExpandableSettingsRow(
                 title: "Transcription Formatting",
                 isExpanded: $draft.isTranscriptionFormattingExpanded
@@ -330,6 +332,62 @@ struct ModeConfigFormView: View {
                 .onAppear {
                     draft.selectedLanguage = effectiveLanguage(for: modelInfo)
                 }
+        }
+    }
+
+    @ViewBuilder
+    private var transcriptionInstructionPicker: some View {
+        if (selectedTranscriptionModel as? CustomCloudModel)?.usesChatCompletions == true {
+            let instruction = draft.transcriptionInstruction
+
+            VStack(alignment: .leading, spacing: 8) {
+                LabeledContent {
+                    Picker("", selection: $draft.transcriptionInstruction.preset) {
+                        ForEach(TranscriptionInstruction.Preset.allCases) { preset in
+                            Text(preset.displayName).tag(preset)
+                        }
+                    }
+                    .labelsHidden()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Instruction")
+                        InfoTip(instruction.preset.summary)
+                    }
+                }
+
+                if instruction.preset == .custom {
+                    TextField(
+                        "Describe how to transcribe",
+                        text: $draft.transcriptionInstruction.customText,
+                        axis: .vertical
+                    )
+                    .lineLimit(2...5)
+
+                    Text(
+                        "Sent to the model with the audio. Dictionary words are added as context terms automatically. Empty text falls back to Clean."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                LabeledContent {
+                    HStack(spacing: 8) {
+                        Slider(
+                            value: $draft.transcriptionInstruction.temperature,
+                            in: TranscriptionInstruction.temperatureRange,
+                            step: 0.1
+                        )
+                        Text(instruction.requestTemperature, format: .number.precision(.fractionLength(1)))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Temperature")
+                        InfoTip("0 gives the most consistent transcript. Higher values let the model vary its wording.")
+                    }
+                }
+            }
         }
     }
 

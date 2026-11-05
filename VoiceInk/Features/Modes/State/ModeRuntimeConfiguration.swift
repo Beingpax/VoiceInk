@@ -16,7 +16,8 @@ struct TranscriptionRuntimeConfiguration {
     var requestContext: TranscriptionRequestContext {
         TranscriptionRequestContext(
             language: language,
-            prompt: model.provider == .whisper ? WhisperPrompt.resolvedPrompt(for: language) : nil
+            prompt: model.provider == .whisper ? WhisperPrompt.resolvedPrompt(for: language) : nil,
+            instruction: mode.transcriptionInstruction
         )
     }
 }

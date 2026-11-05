@@ -4,12 +4,14 @@ struct TranscriptionRequestContext {
     let language: String?
     let prompt: String?
     var vocabulary: RecordingVocabulary? = nil
+    var instruction: TranscriptionInstruction? = nil
 
     static var currentDefaults: TranscriptionRequestContext {
         let language = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
         return TranscriptionRequestContext(
             language: language,
-            prompt: WhisperPrompt.resolvedPrompt(for: language)
+            prompt: WhisperPrompt.resolvedPrompt(for: language),
+            instruction: ModeManager.shared.currentEffectiveConfiguration?.transcriptionInstruction
         )
     }
 
@@ -21,7 +23,9 @@ struct TranscriptionRequestContext {
 
     func scoped(to model: any TranscriptionModel) -> TranscriptionRequestContext {
         guard model.provider == .whisper else {
-            return TranscriptionRequestContext(language: language, prompt: nil, vocabulary: vocabulary)
+            return TranscriptionRequestContext(
+                language: language, prompt: nil, vocabulary: vocabulary,
+                instruction: model.provider == .custom ? instruction : nil)
         }
 
         return self
