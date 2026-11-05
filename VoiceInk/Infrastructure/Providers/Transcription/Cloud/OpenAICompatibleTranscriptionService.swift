@@ -16,17 +16,31 @@ class OpenAICompatibleTranscriptionService {
         }
 
         let boundary = "Boundary-\(UUID().uuidString)"
+        let body = try buildRequestBody(
+            audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
+        let (data, _) = try await post(
+            url: url, contentType: "multipart/form-data; boundary=\(boundary)", apiKey: model.apiKey,
+            body: body, timeout: timeout)
+
+        do {
+            return try JSONDecoder().decode(TranscriptionResponse.self, from: data).text
+        } catch {
+            throw CloudTranscriptionError.noTranscriptionReturned
+        }
+    }
+
+    /// Ephemeral session per request: the shared session persists Alt-Svc and upgrades
+    /// new connections to HTTP/3, but QUIC bulk uploads blackhole behind VPNs that drop
+    /// full-size UDP datagrams (e.g. GlobalProtect), timing out large audio uploads.
+    private func post(
+        url: URL, contentType: String, apiKey: String, body: Data, timeout: TimeInterval
+    ) async throws -> (Data, HTTPURLResponse) {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.timeoutInterval = timeout
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
-        let body = try buildRequestBody(
-            audioURL: audioURL, modelName: model.modelName, boundary: boundary, context: context)
-        // Ephemeral session per request: the shared session persists Alt-Svc and upgrades
-        // new connections to HTTP/3, but QUIC bulk uploads blackhole behind VPNs that drop
-        // full-size UDP datagrams (e.g. GlobalProtect), timing out large audio uploads.
         let session = URLSession(configuration: .ephemeral)
         defer { session.finishTasksAndInvalidate() }
         let (data, response) = try await session.upload(for: request, from: body)
@@ -40,11 +54,7 @@ class OpenAICompatibleTranscriptionService {
             throw CloudTranscriptionError.apiRequestFailed(statusCode: httpResponse.statusCode, message: errorMessage)
         }
 
-        do {
-            return try JSONDecoder().decode(TranscriptionResponse.self, from: data).text
-        } catch {
-            throw CloudTranscriptionError.noTranscriptionReturned
-        }
+        return (data, httpResponse)
     }
 
     private func buildRequestBody(
@@ -90,30 +100,18 @@ class OpenAICompatibleTranscriptionService {
         audioURL: URL, url: URL, model: CustomCloudModel, context: TranscriptionRequestContext,
         timeout: TimeInterval
     ) async throws -> String {
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = timeout
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(model.apiKey)", forHTTPHeaderField: "Authorization")
-
         let body = try buildChatCompletionsBody(audioURL: audioURL, model: model, context: context)
-        let session = URLSession(configuration: .ephemeral)
-        defer { session.finishTasksAndInvalidate() }
-        let (data, response) = try await session.upload(for: request, from: body)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw CloudTranscriptionError.networkError(URLError(.badServerResponse))
-        }
-
-        if !(200...299).contains(httpResponse.statusCode) {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "No error message"
-            throw CloudTranscriptionError.apiRequestFailed(statusCode: httpResponse.statusCode, message: errorMessage)
-        }
+        let (data, httpResponse) = try await post(
+            url: url, contentType: "application/json", apiKey: model.apiKey, body: body, timeout: timeout)
 
         guard let decoded = try? JSONDecoder().decode(ChatCompletionsResponse.self, from: data),
-            let content = decoded.choices.first?.message.content,
-            !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let content = decoded.choices.first?.message.content
         else {
+            throw CloudTranscriptionError.apiRequestFailed(
+                statusCode: httpResponse.statusCode, message: Self.errorMessage(from: data))
+        }
+
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw CloudTranscriptionError.noTranscriptionReturned
         }
 
@@ -133,55 +131,63 @@ class OpenAICompatibleTranscriptionService {
             instruction += " Context terms: " + terms.joined(separator: ", ") + "."
         }
 
-        let audioDataURL =
-            "data:\(Self.audioMIMEType(for: audioURL));base64,\(audioData.base64EncodedString())"
+        return try Self.chatCompletionsBody(
+            audioData: audioData, modelName: model.modelName, instruction: instruction,
+            temperature: settings.requestTemperature)
+    }
+
+    /// Builds the chat-completions request body, splicing the base64 audio into the
+    /// serialized JSON so the encoded audio is never held as a `String`.
+    internal static func chatCompletionsBody(
+        audioData: Data, modelName: String, instruction: String, temperature: Double,
+        maxTokens: Int? = nil
+    ) throws -> Data {
+        let audioPlaceholder = "__VOICEINK_AUDIO_DATA_URL__"
 
         let message: [String: Any] = [
             "role": "user",
             "content": [
                 ["type": "text", "text": instruction],
-                ["type": "audio_url", "audio_url": ["url": audioDataURL]],
+                ["type": "audio_url", "audio_url": ["url": audioPlaceholder]],
             ] as [[String: Any]],
         ]
 
-        let body: [String: Any] = [
-            "model": model.modelName,
+        var body: [String: Any] = [
+            "model": modelName,
             "messages": [message],
-            "temperature": settings.requestTemperature,
+            "temperature": temperature,
             "chat_template_kwargs": ["enable_thinking": false],
             "skip_special_tokens": false,
             "spaces_between_special_tokens": false,
         ]
+        if let maxTokens {
+            body["max_tokens"] = maxTokens
+        }
 
-        return try JSONSerialization.data(withJSONObject: body)
+        let json = try JSONSerialization.data(withJSONObject: body)
+        let placeholder = Data(audioPlaceholder.utf8)
+        guard let placeholderRange = json.range(of: placeholder) else {
+            throw CloudTranscriptionError.dataEncodingError
+        }
+
+        var encodedBody = Data()
+        encodedBody.append(json[json.startIndex..<placeholderRange.lowerBound])
+        encodedBody.append(Data("data:audio/wav;base64,".utf8))
+        encodedBody.append(audioData.base64EncodedData())
+        encodedBody.append(json[placeholderRange.upperBound...])
+        return encodedBody
     }
 
-    private static func audioMIMEType(for audioURL: URL) -> String {
-        switch audioURL.pathExtension.lowercased() {
-        case "mp3": return "audio/mpeg"
-        case "m4a": return "audio/mp4"
-        case "flac": return "audio/flac"
-        case "ogg": return "audio/ogg"
-        default: return "audio/wav"
+    private static func errorMessage(from data: Data) -> String {
+        guard let text = String(data: data, encoding: .utf8), !text.isEmpty else {
+            return "No error message"
         }
+        return String(text.prefix(500))
     }
 
     private static func processedTranscript(from content: String) -> String {
-        let withoutThinking = removingThinkingBlock(content)
-        let withoutLoops = removingGenerationLoops(withoutThinking)
-        return formattingSpeakerTags(withoutLoops)
-    }
-
-    private static func removingThinkingBlock(_ text: String) -> String {
-        guard
-            let regex = try? NSRegularExpression(
-                pattern: "<think>.*?</think>", options: [.dotMatchesLineSeparators])
-        else {
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        let range = NSRange(text.startIndex..., in: text)
-        let stripped = regex.stringByReplacingMatches(in: text, range: range, withTemplate: "")
-        return stripped.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        return formattingSpeakerTags(removingGenerationLoops(trimmed))
     }
 
     /// Collapses the degenerate token loops instruction-tuned audio models fall
@@ -190,7 +196,7 @@ class OpenAICompatibleTranscriptionService {
         let collapsedCharacters = replacingMatches(
             in: text, pattern: "(.)\\1{20,}", template: "$1")
         return replacingMatches(
-            in: collapsedCharacters, pattern: "(.{1,4096}?)\\1{19,}", template: "$1")
+            in: collapsedCharacters, pattern: "(.{1,256}?)\\1{19,}", template: "$1")
     }
 
     private static func replacingMatches(in text: String, pattern: String, template: String) -> String {
@@ -236,7 +242,7 @@ class OpenAICompatibleTranscriptionService {
     private struct ChatCompletionsResponse: Decodable {
         struct Choice: Decodable {
             struct Message: Decodable {
-                let content: String
+                let content: String?
             }
 
             let message: Message

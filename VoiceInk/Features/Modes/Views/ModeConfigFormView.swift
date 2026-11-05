@@ -364,7 +364,7 @@ struct ModeConfigFormView: View {
                     .lineLimit(2...5)
 
                     Text(
-                        "Sent to the model with the audio. Dictionary words are added as context terms automatically."
+                        "Sent to the model with the audio. Dictionary words are added as context terms automatically. Empty text falls back to Clean."
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
