@@ -1,4 +1,5 @@
 import Foundation
+import LLMkit
 import os
 
 /// Encapsulates a single recording-to-transcription lifecycle (streaming or file-based).
@@ -63,6 +64,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
     private var model: (any TranscriptionModel)?
     private var context: TranscriptionRequestContext = .currentDefaults
     private var streamingFailed = false
+    private var startupError: Error?
     private var isCancelled = false
     private var startupTask: Task<Void, Never>?
     private var startupTaskID: UUID?
@@ -82,6 +84,8 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         self.model = model
         self.context = context
+        streamingFailed = false
+        startupError = nil
         logger.notice("Streaming session prepare model=\(model.displayName, privacy: .public)")
 
         // Start the provider in the background.
@@ -120,6 +124,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
                 let desc = error.localizedDescription
                 self.logger.error("❌ Failed to start streaming, will fall back to batch: \(desc, privacy: .public)")
                 self.streamingFailed = true
+                self.startupError = error
             }
         }
 
@@ -141,6 +146,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             await startupTask?.value
         }
         try checkCancellation()
+        if let error = startupError as? ElevenLabsStreamingError, !error.allowsBatchFallback {
+            throw error
+        }
         if !isUnified, !requiresStreaming, !streamingService.isActive {
             streamingFailed = true
         }
@@ -163,6 +171,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             } catch {
                 if isCancelled || Task.isCancelled || error is CancellationError {
                     throw CancellationError()
+                }
+                if let error = error as? ElevenLabsStreamingError, !error.allowsBatchFallback {
+                    throw error
                 }
                 logger.error("❌ Streaming failed, falling back to batch: \(error, privacy: .public)")
             }
