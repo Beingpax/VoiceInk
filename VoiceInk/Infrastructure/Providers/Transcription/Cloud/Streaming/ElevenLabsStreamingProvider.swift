@@ -8,11 +8,16 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
     private let customVocabulary: [String]
+    private let finalizationContinuation: AsyncStream<String>.Continuation
+    let finalizationEvents: AsyncStream<String>?
 
     private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
 
     init(customVocabulary: [String]) {
         self.customVocabulary = customVocabulary
+        let finalization = AsyncStream.makeStream(of: String.self)
+        finalizationEvents = finalization.stream
+        finalizationContinuation = finalization.continuation
         var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
         transcriptionEvents = AsyncStream { continuation = $0 }
         eventsContinuation = continuation
@@ -21,6 +26,7 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
     deinit {
         forwardingTask?.cancel()
         eventsContinuation?.finish()
+        finalizationContinuation.finish()
     }
 
     func connect(model: any TranscriptionModel, language: String?) async throws {
@@ -57,7 +63,9 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
 
     func commit() async throws {
         do {
-            try await client.commit()
+            let text = try await client.finalize()
+            finalizationContinuation.yield(text)
+            finalizationContinuation.finish()
         } catch {
             throw mapError(error)
         }
@@ -68,6 +76,7 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
         forwardingTask = nil
         await client.disconnect()
         eventsContinuation?.finish()
+        finalizationContinuation.finish()
     }
 
     // MARK: - Private
@@ -91,6 +100,7 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
     }
 
     private func mapError(_ error: Error) -> Error {
+        if let streamingError = error as? ElevenLabsStreamingError { return streamingError }
         guard let llmError = error as? LLMKitError else { return error }
         switch llmError {
         case .missingAPIKey:
