@@ -2,6 +2,11 @@ import AppKit
 import SwiftUI
 import os
 
+@MainActor
+final class NotchRecorderScreenMetrics: ObservableObject {
+    @Published var notchSize = NSSize(width: 180, height: 37)
+}
+
 class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
@@ -12,6 +17,7 @@ class NotchRecorderPanel: KeyablePanel {
     override var canBecomeMain: Bool { true }
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NotchRecorderPanel")
+    let screenMetrics = NotchRecorderScreenMetrics()
 
     init(contentRect: NSRect) {
         // Previously this initializer ignored `contentRect` and recomputed the metrics itself.
@@ -43,8 +49,8 @@ class NotchRecorderPanel: KeyablePanel {
 
     /// Returns `nil` when there is no screen at all, so callers can skip showing the panel
     /// instead of placing it at the global origin.
-    static func calculateWindowMetrics() -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat)? {
-        guard let screen = RecorderScreenResolver.resolve() else { return nil }
+    static func calculateWindowMetrics(screen: NSScreen? = nil) -> (frame: NSRect, notchWidth: CGFloat, notchHeight: CGFloat)? {
+        guard let screen = screen ?? RecorderScreenResolver.resolve() else { return nil }
 
         let safeAreaInsets = screen.safeAreaInsets
         let notchHeight: CGFloat = safeAreaInsets.top > 0 ? safeAreaInsets.top : NSStatusBar.system.thickness
@@ -71,12 +77,13 @@ class NotchRecorderPanel: KeyablePanel {
     }
 
     @discardableResult
-    func show() -> Bool {
-        guard let metrics = NotchRecorderPanel.calculateWindowMetrics() else {
+    func show(on screen: NSScreen? = nil) -> Bool {
+        guard let metrics = NotchRecorderPanel.calculateWindowMetrics(screen: screen) else {
             logger.error("Notch panel show skipped: no screen available")
             return false
         }
 
+        screenMetrics.notchSize = NSSize(width: metrics.notchWidth, height: metrics.notchHeight)
         setFrame(metrics.frame, display: true)
         orderFrontRegardless()
 
