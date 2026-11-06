@@ -887,7 +887,7 @@
 			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
 			requirement = {
 				kind = revision;
-				revision = 5f3cf2fd55f9f5f98427311c2e1bdf8bf1ae3715;
+				revision = ff32e368eeaffd2f6c1ef0d3614a0bddea4c3fd5;
 			};
 		};
 		E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */ = {

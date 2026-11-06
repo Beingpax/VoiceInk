@@ -55,16 +55,26 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
             forwardingTask?.cancel()
             forwardingTask = nil
             await client.disconnect()
-            throw error
+            throw mapError(error)
         }
     }
 
-    func sendAudioChunk(_ data: Data) async throws { try await client.sendAudioChunk(data) }
+    func sendAudioChunk(_ data: Data) async throws {
+        do {
+            try await client.sendAudioChunk(data)
+        } catch {
+            throw mapError(error)
+        }
+    }
 
     func commit() async throws {
-        let text = try await client.finalize()
-        finalization.yield(text)
-        finalization.finish()
+        do {
+            let text = try await client.finalize()
+            finalization.yield(text)
+            finalization.finish()
+        } catch {
+            throw mapError(error)
+        }
     }
 
     func disconnect() async {
@@ -73,5 +83,34 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         await client.disconnect()
         events.finish()
         finalization.finish()
+    }
+
+    private func mapError(_ error: Error) -> Error {
+        if let streamingError = error as? SonioxStreamingError {
+            switch streamingError {
+            case .connection(let message):
+                return StreamingTranscriptionError.connectionFailed(message)
+            case .timeout:
+                return StreamingTranscriptionError.timeout
+            case .server, .bufferOverflow, .incompleteStream:
+                return StreamingTranscriptionError.serverError(streamingError.localizedDescription)
+            }
+        }
+        if let llmError = error as? LLMKitError {
+            switch llmError {
+            case .missingAPIKey:
+                return StreamingTranscriptionError.missingAPIKey
+            case .httpError(_, let message):
+                return StreamingTranscriptionError.serverError(message)
+            case .networkError(let detail):
+                return StreamingTranscriptionError.connectionFailed(detail)
+            default:
+                return StreamingTranscriptionError.serverError(llmError.localizedDescription)
+            }
+        }
+        if let urlError = error as? URLError, urlError.code != .cancelled {
+            return StreamingTranscriptionError.connectionFailed(urlError.localizedDescription)
+        }
+        return error
     }
 }

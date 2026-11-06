@@ -122,7 +122,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             } catch {
                 guard !Task.isCancelled else { return }
                 let desc = error.localizedDescription
-                self.logger.error("❌ Failed to start streaming, will fall back to batch: \(desc, privacy: .public)")
+                self.logger.error("❌ Failed to start streaming: \(desc, privacy: .public)")
                 self.streamingFailed = true
                 self.startupError = error
             }
@@ -136,17 +136,19 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             throw VoiceInkEngineError.transcriptionFailed
         }
 
-        // Optional vocabulary never delays startup or finalization. Providers with a
-        // batch endpoint can immediately fall back if the connection is not ready.
+        // Optional vocabulary never delays startup or finalization. Most providers
+        // with a batch endpoint can fall back if the connection is not ready.
         let isUnified = model.provider == .fluidAudio
             && FluidAudioModelManager.isParakeetUnifiedModel(named: model.name)
         let requiresStreaming = CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly == true
-        if isUnified || requiresStreaming {
-            // These paths need their normal model/connection startup to produce any result.
+        if isUnified || requiresStreaming || model.provider == .elevenLabs {
+            // ElevenLabs must finish startup before its error can decide whether batch
+            // fallback is allowed. The other paths require streaming to produce a result.
             await startupTask?.value
         }
         try checkCancellation()
         if let error = startupError as? ElevenLabsStreamingError, !error.allowsBatchFallback {
+            stopStreaming()
             throw error
         }
         if !isUnified, !requiresStreaming, !streamingService.isActive {
