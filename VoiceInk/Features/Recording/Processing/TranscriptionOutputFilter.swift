@@ -7,7 +7,11 @@ struct TranscriptionOutputFilter {
         #"\{.*?\}"#,  // {}
     ]
 
-    static func filter(_ text: String, language: String? = nil) -> String {
+    static func filter(
+        _ text: String,
+        language: String? = nil,
+        fillers: [String] = FillerWordManager.shared.fillerWords
+    ) -> String {
         var filteredText = text
 
         // Remove <TAG>...</TAG> blocks
@@ -27,7 +31,7 @@ struct TranscriptionOutputFilter {
         }
 
         filteredText = FillerWordCleanup.remove(
-            from: filteredText, fillers: FillerWordManager.shared.fillerWords, language: language
+            from: filteredText, fillers: applicableFillers(for: language, configured: fillers), language: language
         )
 
         // Normalize horizontal whitespace without flattening paragraphs or lists.
@@ -35,6 +39,21 @@ struct TranscriptionOutputFilter {
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return filteredText
+    }
+
+    /// English and unspecified languages keep the configured list. Every other language drops the
+    /// built-in English hesitations so real words such as German "um" survive saved defaults.
+    private static func applicableFillers(for language: String?, configured: [String]) -> [String] {
+        let normalized = language?.lowercased() ?? ""
+        if normalized.isEmpty || normalized == "auto" {
+            return configured
+        }
+        let primaryEnd = normalized.firstIndex(where: { $0 == "-" || $0 == "_" }) ?? normalized.endIndex
+        if normalized[..<primaryEnd] == "en" {
+            return configured
+        }
+        let defaults = Set(FillerWordManager.defaultFillerWords.map { $0.lowercased() })
+        return configured.filter { !defaults.contains($0.lowercased()) }
     }
 }
 
