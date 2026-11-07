@@ -41,19 +41,21 @@ struct TranscriptionOutputFilter {
         return filteredText
     }
 
-    /// English and unspecified languages keep the configured list. Every other language drops the
-    /// built-in English hesitations so real words such as German "um" survive saved defaults.
+    /// Built-in fillers that are ordinary words in a language, keyed by primary language subtag.
+    /// Only these collisions are skipped, so hesitations such as "uh" and "hmm" still go everywhere.
+    private static let languageWordCollisions: [String: Set<String>] = [
+        "de": ["um"],  // "um ... zu", "um 8 Uhr"
+        "pt": ["um"],  // "um carro"
+        "is": ["um"],  // "um daginn"
+    ]
+
     private static func applicableFillers(for language: String?, configured: [String]) -> [String] {
         let normalized = language?.lowercased() ?? ""
-        if normalized.isEmpty || normalized == "auto" {
-            return configured
-        }
         let primaryEnd = normalized.firstIndex(where: { $0 == "-" || $0 == "_" }) ?? normalized.endIndex
-        if normalized[..<primaryEnd] == "en" {
+        guard let collisions = languageWordCollisions[String(normalized[..<primaryEnd])] else {
             return configured
         }
-        let defaults = Set(FillerWordManager.defaultFillerWords.map { $0.lowercased() })
-        return configured.filter { !defaults.contains($0.lowercased()) }
+        return configured.filter { !collisions.contains($0.lowercased()) }
     }
 }
 

@@ -83,11 +83,34 @@ final class TranscriptionOutputFilterTests: XCTestCase {
         )
     }
 
-    func testRegionTagsAreNotTreatedAsEnglish() {
-        let sentence = "Wir diktieren, um weniger schreiben zu müssen."
+    func testGermanStillStripsOtherDefaultFillers() {
         XCTAssertEqual(
-            TranscriptionOutputFilter.filter(sentence, language: "es-US", fillers: FillerWordManager.defaultFillerWords),
+            TranscriptionOutputFilter.filter(
+                "Wir diktieren, uh, um weniger hmm schreiben zu müssen.",
+                language: "de-DE",
+                fillers: FillerWordManager.defaultFillerWords
+            ),
+            "Wir diktieren, um weniger schreiben zu müssen."
+        )
+    }
+
+    func testPortugueseKeepsUm() {
+        let sentence = "Eu tenho um carro."
+        XCTAssertEqual(
+            TranscriptionOutputFilter.filter(sentence, language: "pt-BR", fillers: FillerWordManager.defaultFillerWords),
             sentence
+        )
+    }
+
+    func testOtherLanguagesKeepDefaultFillers() {
+        let fillers = FillerWordManager.defaultFillerWords
+        XCTAssertEqual(
+            TranscriptionOutputFilter.filter("Pues, uh, no sé.", language: "es-US", fillers: fillers),
+            "Pues, no sé."
+        )
+        XCTAssertEqual(
+            TranscriptionOutputFilter.filter("Je pense, um, que oui.", language: "fr", fillers: fillers),
+            "Je pense, que oui."
         )
     }
 
