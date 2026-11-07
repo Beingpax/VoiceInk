@@ -21,16 +21,18 @@ struct TranscribeCppModelCardView: View {
                 HStack(spacing: 12) {
                     Label(model.language, systemImage: "globe")
                     Label(model.size, systemImage: "internaldrive")
-                    HStack(spacing: 3) {
-                        Text("Speed")
-                        progressDotsWithNumber(value: model.speed * 10)
+                    if model.hasPerformanceRatings {
+                        HStack(spacing: 3) {
+                            Text("Speed")
+                            progressDotsWithNumber(value: model.speed * 10)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                        HStack(spacing: 3) {
+                            Text("Accuracy")
+                            progressDotsWithNumber(value: model.accuracy * 10)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
                     }
-                    .fixedSize(horizontal: true, vertical: false)
-                    HStack(spacing: 3) {
-                        Text("Accuracy")
-                        progressDotsWithNumber(value: model.accuracy * 10)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
                 }
                 .font(.system(size: 11))
                 .foregroundColor(Color(.secondaryLabelColor))
