@@ -79,6 +79,7 @@ class Recorder: NSObject, ObservableObject {
             do {
                 try await startHardwareRecording(coreAudioRecorder, to: url, deviceID: deviceID)
             } catch {
+                guard self.playbackSessionID == playbackSessionID else { throw error }
                 let retryResolution = deviceManager.resolveCurrentRecordingDevice(excluding: deviceID)
                 guard deviceManager.isClamshellClosed,
                     deviceManager.isInternalMicrophone(deviceID),
@@ -92,6 +93,11 @@ class Recorder: NSObject, ObservableObject {
                 try await startHardwareRecording(coreAudioRecorder, to: url, deviceID: fallbackDeviceID)
             }
 
+            guard self.playbackSessionID == playbackSessionID else {
+                await stopRecording(forSession: playbackSessionID)
+                return
+            }
+
             deviceManager.recordingDidStart(deviceID: deviceID)
             showRecordingDeviceNotification(for: deviceID)
             resetAudioMeter()
@@ -99,7 +105,7 @@ class Recorder: NSObject, ObservableObject {
             logger.error(
                 "Failed to start recording deviceID=\(deviceID, privacy: .public) file=\(url.lastPathComponent, privacy: .public) error=\(error, privacy: .public)"
             )
-            await stopRecording()
+            await stopRecording(forSession: playbackSessionID)
             if (error as? CoreAudioRecorderError)?.status == kAudioHardwareNotRunningError {
                 throw RecorderError.audioSystemNotRunning
             }
@@ -107,7 +113,7 @@ class Recorder: NSObject, ObservableObject {
         }
     }
 
-    func stopRecording() async {
+    func stopRecording(forSession targetSessionID: UUID? = nil) async {
         recordingDeviceNotificationTask?.cancel()
         recordingDeviceNotificationTask = nil
         let playbackSessionID = self.playbackSessionID
@@ -123,6 +129,9 @@ class Recorder: NSObject, ObservableObject {
                 currentRecorder?.stopRecording()
                 continuation.resume()
             }
+        }
+        if let targetSessionID, self.playbackSessionID != targetSessionID {
+            return
         }
         guard self.playbackSessionID == playbackSessionID else { return }
         onAudioChunk = nil
