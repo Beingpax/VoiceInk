@@ -42,8 +42,8 @@ final class ScreenSleepPreventer {
                 self.logger.error("Failed to release power assertion: \(status)")
             } else {
                 self.logger.notice("Successfully released power assertion")
+                self.assertionID = 0
             }
-            self.assertionID = 0
         }
     }
 }
