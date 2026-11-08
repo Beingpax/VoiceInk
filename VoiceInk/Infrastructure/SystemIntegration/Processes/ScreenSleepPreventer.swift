@@ -37,12 +37,14 @@ final class ScreenSleepPreventer {
             guard let self else { return }
             guard self.assertionID != 0 else { return }
             
-            let status = IOPMAssertionRelease(self.assertionID)
+            let currentAssertionID = self.assertionID
+            self.assertionID = 0
+            
+            let status = IOPMAssertionRelease(currentAssertionID)
             if status != kIOReturnSuccess {
                 self.logger.error("Failed to release power assertion: \(status)")
             } else {
                 self.logger.notice("Successfully released power assertion")
-                self.assertionID = 0
             }
         }
     }
