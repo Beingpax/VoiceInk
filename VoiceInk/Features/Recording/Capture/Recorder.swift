@@ -91,6 +91,7 @@ class Recorder: NSObject, ObservableObject {
             }
 
             deviceManager.recordingDidStart(deviceID: deviceID)
+            ScreenSleepPreventer.shared.startPreventingSleep()
             showRecordingDeviceNotification(for: deviceID)
             resetAudioMeter()
         } catch {
@@ -134,6 +135,7 @@ class Recorder: NSObject, ObservableObject {
                 await playbackController.resumeMedia(sessionID: playbackSessionID)
             }
         }
+        ScreenSleepPreventer.shared.stopPreventingSleep()
         deviceManager.recordingDidStop()
     }
 
