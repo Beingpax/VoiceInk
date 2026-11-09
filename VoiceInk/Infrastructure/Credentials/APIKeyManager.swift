@@ -73,7 +73,8 @@ final class APIKeyManager {
         if let cached = keyPresence.withLock({ $0[keyIdentifier] }) {
             return cached
         }
-        let exists = keychain.exists(forKey: keyIdentifier)
+        // Only cache definite answers; a transient Keychain error is retried on the next call.
+        guard let exists = keychain.exists(forKey: keyIdentifier) else { return false }
         keyPresence.withLock { $0[keyIdentifier] = exists }
         return exists
     }
