@@ -108,13 +108,13 @@ struct DashboardContent: View {
         .background(
             WindowAccessor { window in
                 hostWindow = window
-                isWindowVisible = window.isVisible
+                isWindowVisible = window.occlusionState.contains(.visible)
             }
         )
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didChangeOcclusionStateNotification)) {
             notification in
             guard let window = notification.object as? NSWindow, window === hostWindow else { return }
-            isWindowVisible = window.isVisible
+            isWindowVisible = window.occlusionState.contains(.visible)
         }
         .onReceive(LifecycleObserver.shared.publisher(for: .applicationDidBecomeActive)) { _ in
             refreshAccessibilityStatus()
@@ -201,7 +201,7 @@ struct DashboardContent: View {
     private var recentDashboardTranscriptions: [Transcription] {
         // In menu bar mode the main window stays alive while hidden, and this query re-runs after
         // every save. Without a timestamp index each run reads every transcription row, so only
-        // read it while the window is on screen.
+        // read it while some part of the window is actually visible.
         guard isWindowVisible else { return [] }
         return Array(
             recentTranscriptionCandidates
