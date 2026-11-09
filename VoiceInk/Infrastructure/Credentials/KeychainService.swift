@@ -211,6 +211,9 @@ final class KeychainService {
                 return false
             #endif
         default:
+            logger.error(
+                "Failed to check keychain item for key: \(key, privacy: .public), status: \(status, privacy: .public)"
+            )
             return nil
         }
     }
