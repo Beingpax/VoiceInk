@@ -7,6 +7,11 @@ final class APIKeyManager {
 
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "APIKeyManager")
     private let keychain = KeychainService.shared
+    /// `hasAPIKey` runs once per cloud model inside SwiftUI bodies and on every recording start;
+    /// each Keychain lookup is a synchronous securityd round trip on the main thread.
+    /// All provider key writes go through this class, so save/delete keep the cache exact.
+    /// Keys added on another Mac via iCloud Keychain appear after relaunch.
+    private let keyPresence = OSAllocatedUnfairLock<[String: Bool]>(initialState: [:])
 
     /// Provider to Keychain identifier mapping (iOS compatible for iCloud sync).
     private static let providerToKeychainKey: [String: String] = [
@@ -35,6 +40,7 @@ final class APIKeyManager {
     func saveAPIKey(_ key: String, forProvider provider: String) -> Bool {
         let keyIdentifier = keychainIdentifier(forProvider: provider)
         let success = keychain.save(key, forKey: keyIdentifier)
+        keyPresence.withLock { _ = $0.removeValue(forKey: keyIdentifier) }
         if success {
             logger.info(
                 "Saved API key for provider: \(provider, privacy: .public) with key: \(keyIdentifier, privacy: .public)"
@@ -54,6 +60,7 @@ final class APIKeyManager {
     func deleteAPIKey(forProvider provider: String) -> Bool {
         let keyIdentifier = keychainIdentifier(forProvider: provider)
         let success = keychain.delete(forKey: keyIdentifier)
+        keyPresence.withLock { _ = $0.removeValue(forKey: keyIdentifier) }
         if success {
             logger.info("Deleted API key for provider: \(provider, privacy: .public)")
         }
@@ -63,7 +70,12 @@ final class APIKeyManager {
     /// Checks if an API key exists for a provider.
     func hasAPIKey(forProvider provider: String) -> Bool {
         let keyIdentifier = keychainIdentifier(forProvider: provider)
-        return keychain.exists(forKey: keyIdentifier)
+        if let cached = keyPresence.withLock({ $0[keyIdentifier] }) {
+            return cached
+        }
+        let exists = keychain.exists(forKey: keyIdentifier)
+        keyPresence.withLock { $0[keyIdentifier] = exists }
+        return exists
     }
 
     // MARK: - Custom Model API Keys
