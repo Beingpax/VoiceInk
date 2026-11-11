@@ -1,0 +1,11 @@
+VoiceInk/Infrastructure/Providers/Transcription/Cloud/ElevenLabsProvider.swift
+  ai_agent 5-18,37-46,48,51,55,60
+VoiceInk/Infrastructure/Providers/Transcription/Cloud/Streaming/ElevenLabsStreamingProvider.swift
+  ai_agent 33-36,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "271300582c0d7b06a9aa8ddb8137274b6afde934",
+  "prompts": {}
+}
