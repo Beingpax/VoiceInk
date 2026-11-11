@@ -7,7 +7,11 @@ struct TranscriptionOutputFilter {
         #"\{.*?\}"#,  // {}
     ]
 
-    static func filter(_ text: String, language: String? = nil) -> String {
+    static func filter(
+        _ text: String,
+        language: String? = nil,
+        fillers: [String] = FillerWordManager.shared.fillerWords
+    ) -> String {
         var filteredText = text
 
         // Remove <TAG>...</TAG> blocks
@@ -27,7 +31,7 @@ struct TranscriptionOutputFilter {
         }
 
         filteredText = FillerWordCleanup.remove(
-            from: filteredText, fillers: FillerWordManager.shared.fillerWords, language: language
+            from: filteredText, fillers: applicableFillers(for: language, configured: fillers), language: language
         )
 
         // Normalize horizontal whitespace without flattening paragraphs or lists.
@@ -35,6 +39,23 @@ struct TranscriptionOutputFilter {
         filteredText = filteredText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return filteredText
+    }
+
+    /// Built-in fillers that are ordinary words in a language, keyed by primary language subtag.
+    /// Only these collisions are skipped, so hesitations such as "uh" and "hmm" still go everywhere.
+    private static let languageWordCollisions: [String: Set<String>] = [
+        "de": ["um"],  // "um ... zu", "um 8 Uhr"
+        "pt": ["um"],  // "um carro"
+        "is": ["um"],  // "um daginn"
+    ]
+
+    private static func applicableFillers(for language: String?, configured: [String]) -> [String] {
+        let normalized = language?.lowercased() ?? ""
+        let primaryEnd = normalized.firstIndex(where: { $0 == "-" || $0 == "_" }) ?? normalized.endIndex
+        guard let collisions = languageWordCollisions[String(normalized[..<primaryEnd])] else {
+            return configured
+        }
+        return configured.filter { !collisions.contains($0.lowercased()) }
     }
 }
 
