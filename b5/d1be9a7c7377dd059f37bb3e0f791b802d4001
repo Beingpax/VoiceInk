@@ -1,0 +1,13 @@
+VoiceInk.xcodeproj/project.pbxproj
+  ai_agent 632,648,668,684
+appcast.xml
+  ai_agent 6-9,11,13-15,18,21
+release-notes/2.27.html
+  ai_agent 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b5d1be9a7c7377dd059f37bb3e0f791b802d4001",
+  "prompts": {}
+}
