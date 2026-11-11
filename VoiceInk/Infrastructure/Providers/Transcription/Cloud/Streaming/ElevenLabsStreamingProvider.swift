@@ -30,6 +30,10 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
     }
 
     func connect(model: any TranscriptionModel, language: String?) async throws {
+        guard let streamingModel = ElevenLabsProvider.ScribeModel(rawValue: model.name)?.streamingID else {
+            throw CloudTranscriptionError.unsupportedModel(model.name)
+        }
+
         guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "ElevenLabs"), !apiKey.isEmpty else {
             throw StreamingTranscriptionError.missingAPIKey
         }
@@ -41,7 +45,7 @@ final class ElevenLabsStreamingProvider: StreamingTranscriptionProvider {
         do {
             try await client.connect(
                 apiKey: apiKey,
-                model: "scribe_v2_realtime",
+                model: streamingModel,
                 language: language,
                 customVocabulary: customVocabulary
             )
