@@ -326,7 +326,7 @@ final class ShortcutRecorderModel: ObservableObject {
     }
 
     private func handleKeyDown(keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags) -> Bool {
-        let modifiers = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: keyCode)
+        let modifiers = Shortcut.flagsByCapturingModifierSides(modifierFlags, forKeyCode: keyCode)
 
         if keyCode == UInt16(kVK_Escape), modifiers.isEmpty {
             if activeAction == .cancelRecorder {
@@ -358,7 +358,7 @@ final class ShortcutRecorderModel: ObservableObject {
 
         let shortcut = Shortcut.mouseButton(
             buttonNumber: buttonNumber,
-            modifierFlags: Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil)
+            modifierFlags: Shortcut.flagsByCapturingModifierSides(modifierFlags, forKeyCode: nil)
         )
         previewShortcut = shortcut
         finish(with: shortcut)
@@ -376,7 +376,9 @@ final class ShortcutRecorderModel: ObservableObject {
         }
 
         if !modifiers.isEmpty {
-            peakModifierFlags.formUnion(modifiers)
+            peakModifierFlags.formUnion(
+                Shortcut.flagsByCapturingModifierSides(modifierFlags, forKeyCode: nil)
+            )
             let singleModifierKeyCode = Shortcut.modifierKeyCodeForSingleModifierEvent(
                 keyCode: keyCode,
                 modifiers: peakModifierFlags
