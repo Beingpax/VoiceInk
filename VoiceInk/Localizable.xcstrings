@@ -27976,6 +27976,34 @@
         }
       }
     },
+    "Requires English. Set Language to English to use Zoom Polishing." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erfordert Englisch. Stellen Sie die Sprache auf Englisch, um Zoom-Glättung zu verwenden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nécessite l'anglais. Réglez la langue sur anglais pour utiliser Amélioration Zoom."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要英语。请将语言设为英语以使用 Zoom 润色。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "英語が必要です。Zoom 校正を使用するには、言語を英語に設定してください。"
+          }
+        }
+      }
+    },
     "Reset" : {
       "localizations" : {
         "de" : {
@@ -38806,6 +38834,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "語数と比較結果がここに表示されます。"
+          }
+        }
+      }
+    },
+    "Zoom Polishing" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom-Glättung"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amélioration Zoom"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom 润色"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom 校正"
+          }
+        }
+      }
+    },
+    "Zoom's built-in polishing for Zoom Scribe transcripts, provided by Zoom AI Services. Add-on feature: Zoom may charge extra. See zoom.ai for details. English only." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zooms integrierte Glättung für Zoom-Scribe-Transkripte, bereitgestellt von Zoom AI Services. Zusatzfunktion: Zoom kann zusätzliche Gebühren berechnen. Details unter zoom.ai. Nur Englisch."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amélioration intégrée de Zoom pour les transcriptions Zoom Scribe, fournie par Zoom AI Services. Fonctionnalité complémentaire : Zoom peut facturer des frais supplémentaires. Voir zoom.ai pour plus de détails. Anglais uniquement."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom 为 Zoom Scribe 转写内容提供的内置润色，由 Zoom AI Services 提供。附加功能：Zoom 可能收取额外费用，详情请见 zoom.ai。仅支持英语。"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom Scribe の文字起こしを整える Zoom 内蔵の校正機能で、Zoom AI Services が提供します。アドオン機能：追加料金がかかる場合があります。詳細は zoom.ai をご覧ください。英語のみ対応。"
           }
         }
       }

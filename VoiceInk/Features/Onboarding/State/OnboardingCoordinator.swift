@@ -266,7 +266,7 @@ final class OnboardingCoordinator: ObservableObject {
     var onboardingTranscriptionProviderOptions: [any CloudProvider] {
         let preferredOrder = [
             "AssemblyAI", "Cartesia", "Deepgram", "ElevenLabs", "Soniox",
-            "Speechmatics", "xAI", "Mistral", "Groq", "Gemini",
+            "Speechmatics", "xAI", "Mistral", "Groq", "Gemini", "Zoom Scribe",
         ]
 
         return CloudProviderRegistry.allProviders.sorted { first, second in

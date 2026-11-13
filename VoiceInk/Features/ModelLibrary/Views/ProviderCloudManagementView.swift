@@ -43,7 +43,7 @@ struct CloudProviderManagementView: View {
 
         let preferredOrder = [
             "Groq", "Cerebras", "Gemini", "OpenAI", "OpenRouter", "Anthropic", "Mistral",
-            "Deepgram", "ElevenLabs", "Soniox", "Speechmatics", "AssemblyAI", "xAI", "Cartesia",
+            "Deepgram", "ElevenLabs", "Soniox", "Speechmatics", "AssemblyAI", "xAI", "Cartesia", "Zoom Scribe",
         ]
 
         return descriptors.sorted { first, second in
@@ -136,6 +136,8 @@ struct ProviderDescriptor: Identifiable {
             return "provider-xai"
         case "cartesia":
             return "provider-cartesia"
+        case "zoom scribe":
+            return "provider-zoomscribe"
         default:
             return nil
         }
@@ -171,6 +173,8 @@ struct ProviderDescriptor: Identifiable {
             return URL(string: "https://console.x.ai/")
         case "cartesia":
             return URL(string: "https://play.cartesia.ai/keys")
+        case "zoom scribe":
+            return URL(string: "https://zoom.ai/")
         default:
             return nil
         }
