@@ -2,114 +2,110 @@ import Combine
 import Foundation
 import Sparkle
 import SwiftUI
+import os
 
 @MainActor
 final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
-    struct AvailableUpdate: Equatable {
-        let versionIdentifier: String
-        let displayVersion: String
-    }
-
     private enum DefaultsKey {
-        // Keep the existing persisted key strings so current user preferences migrate automatically.
-        static let automaticUpdateChecks = "VoiceInkChecksForUpdatesOnLaunch"
-        static let interactedUpdateVersions = "VoiceInkInteractedUpdateVersions"
-        static let sparkleAutomaticChecks = "SUEnableAutomaticChecks"
+        static let legacyAutomaticChecks = "VoiceInkChecksForUpdatesOnLaunch"
+        static let legacyInteractedVersions = "VoiceInkInteractedUpdateVersions"
+        static let legacyAvailableUpdate = "VoiceInkAvailableUpdate"
     }
 
-    private let defaults: UserDefaults
-    private var isUserInitiatedUpdateCheck = false
+    private let defaults = UserDefaults.standard
+    private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "updates")
+    private var subscriptions = Set<AnyCancellable>()
     private lazy var updaterController = SPUStandardUpdaterController(
         startingUpdater: false,
         updaterDelegate: self,
         userDriverDelegate: nil
     )
 
-    @Published var canCheckForUpdates = false
-    @Published private(set) var checksForUpdatesWhenDashboardAppears = false
-    @Published private(set) var availableUpdate: AvailableUpdate?
+    @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var automaticallyChecksForUpdates = false
 
     override init() {
-        let defaults = UserDefaults.standard
-        self.defaults = defaults
-        checksForUpdatesWhenDashboardAppears = Self.initialAutomaticCheckPreference(in: defaults)
         super.init()
 
         let updater = updaterController.updater
 
-        // VoiceInk owns automatic discovery through Sparkle's non-presenting probe.
-        // Keeping Sparkle's scheduler disabled prevents it from showing an update
-        // window independently of the Dashboard button.
-        updater.automaticallyChecksForUpdates = false
-        updaterController.startUpdater()
+        // The Dashboard-only implementation kept its own preference and forced
+        // Sparkle's preference off. Migrate the user's actual choice before
+        // starting Sparkle, then let Sparkle own the preference and schedule.
+        if let legacyPreference = defaults.object(forKey: DefaultsKey.legacyAutomaticChecks) as? Bool {
+            updater.automaticallyChecksForUpdates = legacyPreference
+            defaults.removeObject(forKey: DefaultsKey.legacyAutomaticChecks)
+        }
+        // Remove state left by the previous custom update reminders.
+        defaults.removeObject(forKey: DefaultsKey.legacyInteractedVersions)
+        defaults.removeObject(forKey: DefaultsKey.legacyAvailableUpdate)
 
-        canCheckForUpdates = updater.canCheckForUpdates
+        automaticallyChecksForUpdates = updater.automaticallyChecksForUpdates
+
         updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+        updater.publisher(for: \.automaticallyChecksForUpdates)
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                self.automaticallyChecksForUpdates = enabled
+                self.logger.notice("Automatic update checks enabled=\(enabled, privacy: .public)")
+            }
+            .store(in: &subscriptions)
+
+        updaterController.startUpdater()
     }
 
-    func setChecksForUpdatesWhenDashboardAppears(_ value: Bool) {
-        guard checksForUpdatesWhenDashboardAppears != value else { return }
-
-        checksForUpdatesWhenDashboardAppears = value
-        defaults.set(value, forKey: DefaultsKey.automaticUpdateChecks)
-
-        if value {
-            checkForUpdateInformationIfPossible()
-        } else {
-            availableUpdate = nil
-        }
-    }
-
-    func checkForUpdatesIfDue() {
-        guard checksForUpdatesWhenDashboardAppears else { return }
-
-        let updater = updaterController.updater
-        guard !updater.sessionInProgress else { return }
-
-        if let lastCheckDate = updater.lastUpdateCheckDate {
-            let elapsed = Date().timeIntervalSince(lastCheckDate)
-            guard elapsed < 0 || elapsed >= updater.updateCheckInterval else { return }
-        }
-
-        checkForUpdateInformationIfPossible()
+    func setAutomaticallyChecksForUpdates(_ value: Bool) {
+        guard automaticallyChecksForUpdates != value else { return }
+        updaterController.updater.automaticallyChecksForUpdates = value
     }
 
     func checkForUpdates() {
         guard canCheckForUpdates else { return }
 
-        // Any explicit check is interaction with the currently advertised update.
-        // Persist it before presenting Sparkle so dismissing or closing the native
-        // window cannot make the Dashboard button reappear for the same build.
-        if let availableUpdate {
-            rememberInteraction(with: availableUpdate.versionIdentifier)
-            self.availableUpdate = nil
-        }
-
-        if !updaterController.updater.sessionInProgress {
-            isUserInitiatedUpdateCheck = true
-        }
+        // This action also brings an existing update/progress window into focus.
+        // Manual checks remain available when automatic checks are off.
+        logger.notice("Update check requested source=manual")
         updaterController.checkForUpdates(nil)
     }
 
-    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
-        let update = AvailableUpdate(
-            versionIdentifier: item.versionString,
-            displayVersion: item.displayVersionString
-        )
-
-        if isUserInitiatedUpdateCheck {
-            rememberInteraction(with: update.versionIdentifier)
-            availableUpdate = nil
-        } else if checksForUpdatesWhenDashboardAppears && !hasInteracted(with: update.versionIdentifier) {
-            availableUpdate = update
-        } else {
-            availableUpdate = nil
+    func updater(_ updater: SPUUpdater, mayPerform updateCheck: SPUUpdateCheck) throws {
+        // Protect every non-manual entry point, including a scheduled check
+        // queued just before the user disabled automatic checks.
+        guard updateCheck == .updates || updater.automaticallyChecksForUpdates else {
+            logger.notice("Update check blocked reason=automatic-checks-disabled")
+            throw NSError(
+                domain: "com.prakashjoshipax.voiceink.updates",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Automatic update checks are disabled."]
+            )
         }
+        logger.notice("Update check started kind=\(updateCheck.rawValue, privacy: .public)")
+    }
+
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        logger.notice("Update found build=\(item.versionString, privacy: .public) version=\(item.displayVersionString, privacy: .public)")
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
-        availableUpdate = nil
+        logger.notice("Update check result=no-update")
+    }
+
+    func updater(
+        _ updater: SPUUpdater,
+        userDidMake choice: SPUUserUpdateChoice,
+        forUpdate updateItem: SUAppcastItem,
+        state: SPUUserUpdateState
+    ) {
+        logger.notice("Update choice=\(choice.rawValue, privacy: .public) build=\(updateItem.versionString, privacy: .public)")
+    }
+
+    func updater(_ updater: SPUUpdater, willScheduleUpdateCheckAfterDelay delay: TimeInterval) {
+        logger.notice("Update check scheduled delaySeconds=\(Int(delay), privacy: .public)")
+    }
+
+    func updaterWillNotScheduleUpdateCheck(_ updater: SPUUpdater) {
+        logger.notice("Update scheduler inactive automaticChecks=\(self.automaticallyChecksForUpdates, privacy: .public)")
     }
 
     func updater(
@@ -117,38 +113,12 @@ final class UpdaterViewModel: NSObject, ObservableObject, SPUUpdaterDelegate {
         didFinishUpdateCycleFor updateCheck: SPUUpdateCheck,
         error: Error?
     ) {
-        isUserInitiatedUpdateCheck = false
-    }
-
-    private func checkForUpdateInformationIfPossible() {
-        let updater = updaterController.updater
-        guard !updater.sessionInProgress else { return }
-        updater.checkForUpdateInformation()
-    }
-
-    private func hasInteracted(with versionIdentifier: String) -> Bool {
-        defaults.stringArray(forKey: DefaultsKey.interactedUpdateVersions)?
-            .contains(versionIdentifier) == true
-    }
-
-    private func rememberInteraction(with versionIdentifier: String) {
-        var versions = defaults.stringArray(forKey: DefaultsKey.interactedUpdateVersions) ?? []
-        guard !versions.contains(versionIdentifier) else { return }
-        versions.append(versionIdentifier)
-        defaults.set(versions, forKey: DefaultsKey.interactedUpdateVersions)
-    }
-
-    private static func initialAutomaticCheckPreference(in defaults: UserDefaults) -> Bool {
-        if let preference = defaults.object(forKey: DefaultsKey.automaticUpdateChecks) as? Bool {
-            return preference
+        if let error {
+            let error = error as NSError
+            logger.notice("Update cycle finished kind=\(updateCheck.rawValue, privacy: .public) errorDomain=\(error.domain, privacy: .public) errorCode=\(error.code, privacy: .public)")
+        } else {
+            logger.notice("Update cycle finished kind=\(updateCheck.rawValue, privacy: .public) result=completed")
         }
-
-        // Preserve an explicit choice made through VoiceInk's previous Sparkle-backed
-        // setting. With no saved choice, keep VoiceInk's existing opt-in default.
-        let preference = (defaults.object(forKey: DefaultsKey.sparkleAutomaticChecks) as? Bool) ?? true
-
-        defaults.set(preference, forKey: DefaultsKey.automaticUpdateChecks)
-        return preference
     }
 }
 

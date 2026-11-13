@@ -3,7 +3,7 @@
 ## Requirements
 
 - macOS 15.0 or later
-- Xcode with Command Line Tools
+- Xcode with Swift 6.2 or later and Command Line Tools
 - Git
 
 ## Local Build

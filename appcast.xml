@@ -3,29 +3,19 @@
     <channel>
         <title>VoiceInk</title>
         <item>
-            <title>2.25</title>
-            <pubDate>Tue, 03 Nov 2026 23:05:19 +0545</pubDate>
-            <sparkle:version>225</sparkle:version>
-            <sparkle:shortVersionString>2.25</sparkle:shortVersionString>
+            <title>2.27</title>
+            <pubDate>Wed, 11 Nov 2026 10:11:05 +0545</pubDate>
+            <sparkle:version>227</sparkle:version>
+            <sparkle:shortVersionString>2.27</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h3>What's New in VoiceInk 2.25</h3>
+            <description><![CDATA[<h3>What's New in VoiceInk 2.27</h3>
 <ul>
-  <li>✨ Added Smart Punctuation</li>
-  <li>🧠 Improved Dictionary Auto Learning</li>
-  <li>⌨️ Added Direct Typing and Remote Desktop Typing support as a Paste Method</li>
-  <li>↩️ Restored per-mode Auto Send</li>
-  <li>🗣️ Added support for Mistral Voxtral 3 transcription models</li>
-  <li>☁️ Added support for Soniox V6, AssemblyAI Universal 3.6 Pro, and ElevenLabs Scribe V2 Medical</li>
-  <li>⚙️ Support for custom enhancement model names</li>
-  <li>📋 Improved context awareness</li>
-  <li>🔄 Improved recording shortcut recovery</li>
-  <li>📋 Improved paste reliability and clipboard restoration</li>
-  <li>🌐 Improved website mode triggers</li>
-  <li>🌍 Added Japanese localization</li>
-  <li>🛠️ Minor bug fixes and improvements</li>
+  <li>Added ElevenLabs Scribe V3 support.</li>
+  <li>Keep the display awake during active dictation (by <a href="https://github.com/ofa1">@ofa1</a>).</li>
+  <li>Performance fixes and improvements by <a href="https://github.com/wotschofsky">@wotschofsky</a>.</li>
 </ul>
 ]]></description>
-            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.25/VoiceInk.dmg" length="51378202" type="application/octet-stream" sparkle:edSignature="k1dsYo6A8CvwjdEc/Z+TdPBQQGQpRUKyM5/K86di9Z1ID7NbaaF4FLi5XnGLwUW89mVb+wuqdEsyShKGjG/YBg=="/>
+            <enclosure url="https://github.com/Beingpax/VoiceInk/releases/download/v2.27/VoiceInk.dmg" length="39307531" type="application/octet-stream" sparkle:edSignature="nYg43djgKgFyL7D2NU7OhjlY4Z050v6rRlDtYzqMNzCgx7XfLapDTXQvpFXDEZI1lLWYoWBqGGomps5C3nJJBg=="/>
         </item>
     </channel>
 </rss>

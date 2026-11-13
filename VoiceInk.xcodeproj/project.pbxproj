@@ -629,7 +629,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 225;
+				CURRENT_PROJECT_VERSION = 227;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
 				DEVELOPMENT_TEAM = V6J6A3VWY2;
@@ -645,7 +645,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 2.25;
+				MARKETING_VERSION = 2.27;
 				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk.dev;
 				PRODUCT_MODULE_NAME = VoiceInk;
 				PRODUCT_NAME = "VoiceInk Dev";
@@ -665,7 +665,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 225;
+				CURRENT_PROJECT_VERSION = 227;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"VoiceInk/Preview Content\"";
 				DEVELOPMENT_TEAM = V6J6A3VWY2;
@@ -681,7 +681,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 2.25;
+				MARKETING_VERSION = 2.27;
 				PRODUCT_BUNDLE_IDENTIFIER = com.prakashjoshipax.VoiceInk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "ENABLE_NATIVE_SPEECH_ANALYZER $(inherited)";
@@ -871,7 +871,7 @@
 			repositoryURL = "https://github.com/apple/swift-atomics.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 1.3.0;
+				minimumVersion = 1.3.1;
 			};
 		};
 		E13461EB2FD1CCCD005B6A81 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
@@ -895,7 +895,7 @@
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.6.4;
+				minimumVersion = 2.10.1;
 			};
 		};
 		E1AF66993031B7AA006D50FA /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
@@ -905,6 +905,8 @@
 				branch = main;
 				kind = branch;
 			};
+			traits = (
+			);
 		};
 		E1C0A0002FA8000000000001 /* XCRemoteSwiftPackageReference "Transcribe-cpp-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -935,7 +937,7 @@
 			repositoryURL = "https://github.com/ml-explore/mlx-swift-lm.git";
 			requirement = {
 				kind = revision;
-				revision = cd1ab3dd98ceb02d095490aa25e61298ea3e2f5b;
+				revision = c8dabc63e7018d0b1567b2171f8df5dd8a334a55;
 			};
 			traits = (
 			);
@@ -945,7 +947,7 @@
 			repositoryURL = "https://github.com/huggingface/swift-huggingface.git";
 			requirement = {
 				kind = exactVersion;
-				version = 0.9.0;
+				version = 1.0.0;
 			};
 		};
 		E1F900032FA6000000000001 /* XCRemoteSwiftPackageReference "swift-transformers" */ = {
@@ -953,7 +955,7 @@
 			repositoryURL = "https://github.com/huggingface/swift-transformers.git";
 			requirement = {
 				kind = exactVersion;
-				version = 1.3.0;
+				version = 1.4.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

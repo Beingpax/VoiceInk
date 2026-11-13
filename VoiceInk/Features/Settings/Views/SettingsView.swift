@@ -252,9 +252,10 @@ struct SettingsView: View {
                 Toggle(
                     "Automatically Check for Updates",
                     isOn: Binding(
-                        get: { updaterViewModel.checksForUpdatesWhenDashboardAppears },
-                        set: { updaterViewModel.setChecksForUpdatesWhenDashboardAppears($0) }
+                        get: { updaterViewModel.automaticallyChecksForUpdates },
+                        set: { updaterViewModel.setAutomaticallyChecksForUpdates($0) }
                     ))
+                    .help("Checks for updates in the background while VoiceInk is running.")
 
                 Toggle("Show Announcements", isOn: $enableAnnouncements)
                     .onChange(of: enableAnnouncements) { _, newValue in

@@ -2,6 +2,20 @@ import Foundation
 import LLMkit
 
 struct ElevenLabsProvider: CloudProvider {
+    enum ScribeModel: String {
+        case v3 = "scribe_v3"
+        case v2 = "scribe_v2"
+        case v2Medical = "scribe_v2_medical"
+
+        var streamingID: String? {
+            switch self {
+            case .v3: return "scribe_v3_live"
+            case .v2: return "scribe_v2_realtime"
+            case .v2Medical: return nil
+            }
+        }
+    }
+
     let modelProvider: ModelProvider = .elevenLabs
     let providerKey: String = "ElevenLabs"
     let languageCodes: [String]? = [
@@ -20,21 +34,30 @@ struct ElevenLabsProvider: CloudProvider {
     var models: [CloudModel] {
         [
             CloudModel(
-                name: "scribe_v2",
-                displayName: "Scribe V2",
-                description: "ElevenLabs' Scribe V2 model for the most accurate transcription",
+                name: ScribeModel.v3.rawValue,
+                displayName: "Scribe V3",
+                description: "ElevenLabs' Scribe V3 for recorded audio and Scribe V3 Live for real-time dictation",
                 provider: .elevenLabs,
                 isMultilingual: true,
-                supportsStreaming: true,
+                supportsStreaming: ScribeModel.v3.streamingID != nil,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
             ),
             CloudModel(
-                name: "scribe_v2_medical",
+                name: ScribeModel.v2.rawValue,
+                displayName: "Scribe V2",
+                description: "ElevenLabs' Scribe V2 for recorded audio and real-time dictation",
+                provider: .elevenLabs,
+                isMultilingual: true,
+                supportsStreaming: ScribeModel.v2.streamingID != nil,
+                supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
+            ),
+            CloudModel(
+                name: ScribeModel.v2Medical.rawValue,
                 displayName: "Scribe V2 Medical",
                 description: "Optimized for clinical audio and medical terminology in 90+ languages. Transcribes after recording stops; no realtime support.",
                 provider: .elevenLabs,
                 isMultilingual: true,
-                supportsStreaming: false,
+                supportsStreaming: ScribeModel.v2Medical.streamingID != nil,
                 supportedLanguages: LanguageDictionary.forProvider(isMultilingual: true, provider: .elevenLabs)
             ),
         ]

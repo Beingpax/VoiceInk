@@ -10,7 +10,9 @@ struct VoiceInkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     let container: ModelContainer
 
-    @StateObject private var engine: VoiceInkEngine
+    // Retain the engine without re-evaluating every scene on each recording state and live
+    // transcript update. Views that display engine state observe it via environmentObject.
+    @State private var engine: VoiceInkEngine
     // Retain managers without subscribing the entire scene to download progress.
     @State private var whisperModelManager: WhisperModelManager
     @State private var fluidAudioModelManager: FluidAudioModelManager
@@ -154,7 +156,7 @@ struct VoiceInkApp: App {
         _fluidAudioModelManager = State(initialValue: fluidAudioModelManager)
         _transcriptionModelManager = StateObject(wrappedValue: transcriptionModelManager)
         _recorderUIManager = StateObject(wrappedValue: recorderUIManager)
-        _engine = StateObject(wrappedValue: engine)
+        _engine = State(initialValue: engine)
 
         // 7. Create other services that depend on engine
         let recordingShortcutManager = RecordingShortcutManager(engine: engine, recorderUIManager: recorderUIManager)

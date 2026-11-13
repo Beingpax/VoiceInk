@@ -1,4 +1,5 @@
 import Foundation
+import LLMkit
 import os
 
 /// Encapsulates a single recording-to-transcription lifecycle (streaming or file-based).
@@ -63,6 +64,7 @@ final class StreamingTranscriptionSession: TranscriptionSession {
     private var model: (any TranscriptionModel)?
     private var context: TranscriptionRequestContext = .currentDefaults
     private var streamingFailed = false
+    private var startupError: Error?
     private var isCancelled = false
     private var startupTask: Task<Void, Never>?
     private var startupTaskID: UUID?
@@ -82,6 +84,8 @@ final class StreamingTranscriptionSession: TranscriptionSession {
 
         self.model = model
         self.context = context
+        streamingFailed = false
+        startupError = nil
         logger.notice("Streaming session prepare model=\(model.displayName, privacy: .public)")
 
         // Start the provider in the background.
@@ -118,8 +122,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             } catch {
                 guard !Task.isCancelled else { return }
                 let desc = error.localizedDescription
-                self.logger.error("❌ Failed to start streaming, will fall back to batch: \(desc, privacy: .public)")
+                self.logger.error("❌ Failed to start streaming: \(desc, privacy: .public)")
                 self.streamingFailed = true
+                self.startupError = error
             }
         }
 
@@ -131,16 +136,21 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             throw VoiceInkEngineError.transcriptionFailed
         }
 
-        // Optional vocabulary never delays startup or finalization. Providers with a
-        // batch endpoint can immediately fall back if the connection is not ready.
+        // Optional vocabulary never delays startup or finalization. Most providers
+        // with a batch endpoint can fall back if the connection is not ready.
         let isUnified = model.provider == .fluidAudio
             && FluidAudioModelManager.isParakeetUnifiedModel(named: model.name)
         let requiresStreaming = CloudProviderRegistry.provider(for: model.provider)?.isStreamingOnly == true
-        if isUnified || requiresStreaming {
-            // These paths need their normal model/connection startup to produce any result.
+        if isUnified || requiresStreaming || model.provider == .elevenLabs {
+            // ElevenLabs must finish startup before its error can decide whether batch
+            // fallback is allowed. The other paths require streaming to produce a result.
             await startupTask?.value
         }
         try checkCancellation()
+        if let error = startupError as? ElevenLabsStreamingError, !error.allowsBatchFallback {
+            stopStreaming()
+            throw error
+        }
         if !isUnified, !requiresStreaming, !streamingService.isActive {
             streamingFailed = true
         }
@@ -163,6 +173,9 @@ final class StreamingTranscriptionSession: TranscriptionSession {
             } catch {
                 if isCancelled || Task.isCancelled || error is CancellationError {
                     throw CancellationError()
+                }
+                if let error = error as? ElevenLabsStreamingError, !error.allowsBatchFallback {
+                    throw error
                 }
                 logger.error("❌ Streaming failed, falling back to batch: \(error, privacy: .public)")
             }

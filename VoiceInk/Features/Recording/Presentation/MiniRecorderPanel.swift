@@ -54,8 +54,8 @@ final class MiniRecorderPanel: NSPanel {
     }
 
     @discardableResult
-    func show() -> Bool {
-        guard let metrics = MiniRecorderPanel.calculateWindowMetrics() else {
+    func show(on screen: NSScreen? = nil) -> Bool {
+        guard let metrics = MiniRecorderPanel.calculateWindowMetrics(screen: screen) else {
             logger.error("Mini panel show skipped: no screen available")
             return false
         }
