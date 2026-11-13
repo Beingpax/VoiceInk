@@ -14,7 +14,6 @@ struct ModeConfigFormView: View {
     @EnvironmentObject private var aiService: AIService
     @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
     @FocusState private var isNameFieldFocused: Bool
-    @AppStorage(ZoomScribeProvider.textPolishingKey) private var isTextPolishingEnabled = false
 
     @State private var isShowingIconPicker = false
     @State private var isShowingDeleteConfirmation = false
@@ -271,8 +270,8 @@ struct ModeConfigFormView: View {
         {
             let isEnglish = effectiveLanguage(for: model) == "en"
             let polishingBinding = Binding<Bool>(
-                get: { isTextPolishingEnabled && isEnglish },
-                set: { isTextPolishingEnabled = $0 }
+                get: { draft.zoomTextPolishingEnabled && isEnglish },
+                set: { draft.zoomTextPolishingEnabled = $0 }
             )
 
             Toggle("Zoom Polishing", isOn: polishingBinding)
