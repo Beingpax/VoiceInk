@@ -36,6 +36,7 @@ final class ZoomScribeStreamingProvider: StreamingTranscriptionProvider {
 
         // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
+        await client.disconnect()
         client = ZoomScribeStreamingClient(
             trackingIdPrefix: ZoomScribeProvider.trackingIdPrefix,
             textPolishing: ZoomScribeProvider.effectiveTextPolishing(model: model.name, language: language)
