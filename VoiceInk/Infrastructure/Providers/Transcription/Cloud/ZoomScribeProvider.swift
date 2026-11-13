@@ -12,6 +12,19 @@ struct ZoomScribeProvider: CloudProvider {
         UserDefaults.standard.bool(forKey: textPolishingKey)
     }
 
+    /// Text Polishing applies only to the English models. Auto (`nil`, "", "auto") resolves to English for them.
+    static func textPolishingAllowed(model: String, language: String?) -> Bool {
+        guard model == "zoom-scribe-en" || model == "zoom-scribe-en-pro" else { return false }
+        guard let language else { return true }
+        let normalized = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["", "auto", "en"].contains(normalized)
+    }
+
+    /// The polishing value actually sent to Zoom for a request.
+    static func effectiveTextPolishing(model: String, language: String?) -> Bool {
+        textPolishingEnabled && textPolishingAllowed(model: model, language: language)
+    }
+
     private static let supportedLanguageCodes = ["en", "ar", "zh", "fr", "de", "it", "ja", "ko", "pt", "es"]
 
     let modelProvider: ModelProvider = .zoomScribe
@@ -59,7 +72,7 @@ struct ZoomScribeProvider: CloudProvider {
             return try await ZoomScribeClient.transcribe(
                 audioData: audioData, fileName: fileName, apiKey: apiKey, model: model, language: language,
                 customVocabulary: customVocabulary, trackingIdPrefix: Self.trackingIdPrefix, timeout: timeout,
-                textPolishing: Self.textPolishingEnabled)
+                textPolishing: Self.effectiveTextPolishing(model: model, language: language))
         } catch let error where ZoomScribeProvider.shouldTranscode(after: error) {
             // Fast mode rejected the container or the size. Re-encode once and retry.
             let fileExtension = URL(fileURLWithPath: fileName).pathExtension.lowercased()
@@ -67,7 +80,7 @@ struct ZoomScribeProvider: CloudProvider {
             return try await ZoomScribeClient.transcribe(
                 audioData: aacData, fileName: "audio.m4a", apiKey: apiKey, model: model, language: language,
                 customVocabulary: customVocabulary, trackingIdPrefix: Self.trackingIdPrefix, timeout: timeout,
-                textPolishing: Self.textPolishingEnabled)
+                textPolishing: Self.effectiveTextPolishing(model: model, language: language))
         }
     }
 

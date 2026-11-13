@@ -1,12 +1,14 @@
 import AVFoundation
 import Foundation
 import LLMkit
+import os
 
 /// Transcodes arbitrary audio into 16 kHz mono AAC (m4a) so long recordings fit Zoom Scribe Fast mode's request limit.
 enum ZoomScribeAudioEncoder {
     static let sampleRate: Double = 16_000
     static let bitRate = 32_000
     private static let inputFrameCapacity: AVAudioFrameCount = 65_536
+    private static let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "ZoomScribe")
 
     static func transcodeToAAC(_ audioData: Data, inputExtension: String) throws -> Data {
         let fileManager = FileManager.default
@@ -24,6 +26,9 @@ enum ZoomScribeAudioEncoder {
             try convert(inputURL: inputURL, outputURL: outputURL)
             return try Data(contentsOf: outputURL)
         } catch {
+            logger.error(
+                "Zoom Scribe transcode failed: \(error.localizedDescription, privacy: .public) (input extension: \(extensionName, privacy: .public), bytes: \(audioData.count, privacy: .public))"
+            )
             throw LLMKitError.encodingError
         }
     }
@@ -40,6 +45,9 @@ enum ZoomScribeAudioEncoder {
             let inputBuffer = AVAudioPCMBuffer(pcmFormat: inputFormat, frameCapacity: inputFrameCapacity),
             let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputCapacity)
         else {
+            logger.error(
+                "Zoom Scribe transcode could not create converter or buffers (input format: \(inputFormat.description, privacy: .public))"
+            )
             throw LLMKitError.encodingError
         }
 
@@ -72,6 +80,9 @@ enum ZoomScribeAudioEncoder {
                 return inputBuffer
             }
             guard status != .error, conversionError == nil else {
+                logger.error(
+                    "Zoom Scribe conversion failed (status: \(String(describing: status), privacy: .public), error: \(conversionError?.localizedDescription ?? "none", privacy: .public))"
+                )
                 throw LLMKitError.encodingError
             }
             if outputBuffer.frameLength > 0 {
@@ -86,6 +97,9 @@ enum ZoomScribeAudioEncoder {
             return nil
         }
         guard conversionError == nil else {
+            logger.error(
+                "Zoom Scribe tail flush failed (error: \(conversionError?.localizedDescription ?? "none", privacy: .public))"
+            )
             throw LLMKitError.encodingError
         }
         if outputBuffer.frameLength > 0 {

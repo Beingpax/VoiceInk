@@ -7,9 +7,10 @@ final class ZoomScribeStreamingProvider: StreamingTranscriptionProvider {
     private let customVocabulary: [String]
     var finalizationEvents: AsyncStream<String>? { client.finalizationEvents }
 
-    private let client = ZoomScribeStreamingClient(
+    /// Replaced in `connect` once the model and language are known, so polishing matches the request.
+    private var client = ZoomScribeStreamingClient(
         trackingIdPrefix: ZoomScribeProvider.trackingIdPrefix,
-        textPolishing: ZoomScribeProvider.textPolishingEnabled
+        textPolishing: false
     )
     private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
     private var forwardingTask: Task<Void, Never>?
@@ -35,6 +36,10 @@ final class ZoomScribeStreamingProvider: StreamingTranscriptionProvider {
 
         // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
+        client = ZoomScribeStreamingClient(
+            trackingIdPrefix: ZoomScribeProvider.trackingIdPrefix,
+            textPolishing: ZoomScribeProvider.effectiveTextPolishing(model: model.name, language: language)
+        )
         startEventForwarding()
 
         do {
