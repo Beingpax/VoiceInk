@@ -884,10 +884,10 @@
 		};
 		E1701E73305E77220098872B /* XCRemoteSwiftPackageReference "LLMkit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Beingpax/LLMkit.git";
+			repositoryURL = "https://github.com/jiang-levi/LLMkit.git";
 			requirement = {
 				kind = revision;
-				revision = ff32e368eeaffd2f6c1ef0d3614a0bddea4c3fd5;
+				revision = 54aadd364d52f8b52f2ce0cf580a8061a39d8054;
 			};
 		};
 		E1ADD45D2CC544F100303ECB /* XCRemoteSwiftPackageReference "Sparkle" */ = {

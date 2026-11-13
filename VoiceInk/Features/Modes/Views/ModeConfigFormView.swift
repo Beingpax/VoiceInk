@@ -234,6 +234,8 @@ struct ModeConfigFormView: View {
 
             languagePicker
 
+            zoomTextPolishingRow
+
             ExpandableSettingsRow(
                 title: "Transcription Formatting",
                 isExpanded: $draft.isTranscriptionFormattingExpanded
@@ -257,6 +259,33 @@ struct ModeConfigFormView: View {
                 Label(model.displayName, systemImage: "checkmark")
             } else {
                 Text(model.displayName)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var zoomTextPolishingRow: some View {
+        if let model = selectedTranscriptionModel,
+            ["zoom-scribe-en", "zoom-scribe-en-pro"].contains(model.name)
+        {
+            let isEnglish = effectiveLanguage(for: model) == "en"
+            let polishingBinding = Binding<Bool>(
+                get: { draft.zoomTextPolishingEnabled && isEnglish },
+                set: { draft.zoomTextPolishingEnabled = $0 }
+            )
+
+            Toggle("Zoom Polishing", isOn: polishingBinding)
+                .toggleStyle(.switch)
+                .disabled(!isEnglish)
+
+            Text("Zoom's built-in polishing for Zoom Scribe transcripts, provided by Zoom AI Services. Add-on feature: Zoom may charge extra. See zoom.ai for details. English only.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            if !isEnglish {
+                Text("Requires English. Set Language to English to use Zoom Polishing.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

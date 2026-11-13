@@ -15,6 +15,7 @@ enum ModelProvider: String, Codable, Hashable, CaseIterable {
     case assemblyAI = "AssemblyAI"
     case xai = "xAI"
     case cartesia = "Cartesia"
+    case zoomScribe = "Zoom Scribe"
     case openRouter = "OpenRouter"
     case custom = "Custom"
     case nativeApple = "Native Apple"
