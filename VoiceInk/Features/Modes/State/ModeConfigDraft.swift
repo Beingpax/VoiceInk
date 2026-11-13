@@ -45,7 +45,7 @@ struct ModeConfigDraft {
             selectedTranscriptionModelName = inheritedConfig?.selectedTranscriptionModelName
             isRealtimeTranscriptionEnabled = true
             selectedLanguage = inheritedConfig?.selectedLanguage
-            zoomTextPolishingEnabled = inheritedConfig?.zoomTextPolishingEnabled ?? false
+            zoomTextPolishingEnabled = false
             isTextFormattingEnabled = true
             useClipboardContext = false
             useSelectedTextContext = false
