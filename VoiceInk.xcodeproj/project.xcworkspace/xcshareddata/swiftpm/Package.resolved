@@ -24,7 +24,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jiang-levi/LLMkit.git",
       "state" : {
-        "revision" : "4385b80f190c3b6f7038289956efb3a7b67ce65c"
+        "revision" : "54aadd364d52f8b52f2ce0cf580a8061a39d8054"
       }
     },
     {
