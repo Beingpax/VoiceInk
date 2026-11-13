@@ -22,7 +22,7 @@ struct ZoomScribeProvider: CloudProvider {
 
     /// The polishing value actually sent to Zoom for a request.
     static func effectiveTextPolishing(model: String, language: String?) -> Bool {
-        textPolishingEnabled && textPolishingAllowed(model: model, language: language)
+        ZoomScribeRequestOptions.textPolishingRequested && textPolishingAllowed(model: model, language: language)
     }
 
     private static let supportedLanguageCodes = ["en", "ar", "zh", "fr", "de", "it", "ja", "ko", "pt", "es"]

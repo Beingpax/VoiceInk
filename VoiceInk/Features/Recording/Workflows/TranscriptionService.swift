@@ -4,6 +4,8 @@ struct TranscriptionRequestContext {
     let language: String?
     let prompt: String?
     var vocabulary: RecordingVocabulary? = nil
+    /// The mode's Zoom Polishing choice. Read by the Zoom Scribe batch and streaming paths only.
+    var zoomTextPolishingEnabled: Bool = false
 
     static var currentDefaults: TranscriptionRequestContext {
         let language = UserDefaults.standard.string(forKey: "SelectedLanguage") ?? "auto"
@@ -21,7 +23,9 @@ struct TranscriptionRequestContext {
 
     func scoped(to model: any TranscriptionModel) -> TranscriptionRequestContext {
         guard model.provider == .whisper else {
-            return TranscriptionRequestContext(language: language, prompt: nil, vocabulary: vocabulary)
+            return TranscriptionRequestContext(
+                language: language, prompt: nil, vocabulary: vocabulary,
+                zoomTextPolishingEnabled: zoomTextPolishingEnabled)
         }
 
         return self
