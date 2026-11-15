@@ -66,6 +66,8 @@ DERIVED="${VOICEINK_DERIVED_DATA:-$OUTPUT_DIR/dd}"
 EXPORT_DIR="$OUTPUT_DIR/export"
 rm -rf "$ARCHIVE" "$EXPORT_DIR"
 
+python3 "$SCRIPT_DIR/prepare-local-haas-runtime.py" --sign-identity "$IDENTITY"
+
 echo "Archiving VoiceInk..."
 if ! xcodebuild archive \
     -project VoiceInk.xcodeproj \

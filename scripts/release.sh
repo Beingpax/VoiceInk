@@ -227,6 +227,8 @@ if [[ "$SKIP_APPCAST" == "0" ]]; then
     [[ -x "$SIGN_UPDATE" ]] || fail "Sparkle sign_update tool not found"
 fi
 
+python3 "$SCRIPT_DIR/prepare-local-haas-runtime.py" --sign-identity "$DEVELOPER_IDENTITY"
+
 security find-identity -v -p codesigning | grep -F "$DEVELOPER_IDENTITY" >/dev/null \
     || fail "Developer ID signing identity is unavailable: $DEVELOPER_IDENTITY"
 

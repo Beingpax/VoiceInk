@@ -138,44 +138,39 @@ bash Tests/run-recording-speech-gate-tests.sh
 起動して試す前に辞書を書き出して保管する。新しいAuto Learnは候補ファイルを移行するので、
 旧版へ戻しても新しい候補が旧版で読めるとは限らない。
 
-## HaaS-ja / Horizon の外部連携
+## HaaS-ja / Horizon の同梱実行環境
 
-HaaS-jaによる日本語音声認識と、Horizonによる句読点補完をローカルサービス経由で利用できる。
-これらはアプリ内蔵ではなく、実行ファイル・プロキシ・Python環境・モデルを別途用意する構成。
-このリポジトリの取得や `make local` だけでは導入されない。
+Apple Silicon版では、音声認識用のspeech.cppライブラリ、ポータブルPython、
+Horizonの句読点補完処理をアプリに同梱する。Homebrew、Pythonの別途インストール、
+常駐サーバーの起動は不要。モデルの重みは同梱せず、初回に約655MBをダウンロードする。
 
-新規起動時は **HaaS-ja + Horizon** を初期選択する。オンボーディングで
-ローカルプロキシの句読点補完とHaaSモデルの接続を確認してから進む。
-初期接続先は `http://127.0.0.1:8081/v1/audio/transcriptions`、モデル名は
-`Haas-ja-v1.0`、言語は自動判定、リアルタイム認識はオフ。
-既存の保存設定は上書きしない。Parakeetやクラウドへの切り替えも可能。
-サービス未導入の場合は導入・起動が必要で、アプリからの自動インストールは行わない。
+新規起動時は **HaaS-ja + Horizon** を初期選択する。初回設定画面でモデルを取得し、
+固定バージョンのファイルサイズとSHA-256を確認してから利用可能にする。
+言語は自動判定、リアルタイム認識はオフ。取得後はオフラインで利用できる。
+「モデル」のカスタムプロバイダー画面でも取得・中止・再試行ができる。
+モデルはアプリ専用のApplication Support内に保存し、バックアップ対象から除外する。
 
-検証は `bash Tests/run-local-haas-defaults-tests.sh`。
-サービス導入済みのMacでは `bash Tests/run-local-haas-defaults-tests.sh --live` で、
-合成日本語音声を本番のHTTPクライアントから送り、文字起こしと句読点まで確認できる。
+処理経路は VoiceInk → 同梱Python → 同梱speech.cppのC API → HaaS-ja → Horizon。
+録音ごとに専用プロセスを起動し、処理後に終了する。認識の中止・タイムアウト・アプリ終了時も
+そのプロセスを停止する。ローカルHTTPサーバーや固定ポートは使用しない。
+既存の外部サービス用カスタムモデルは、保存済みの接続先を引き続き使う。
+AI補正やAuto Learnにクラウドを選んだ場合は、その処理のテキストが外部送信される。
 
-処理経路は VoiceInk のカスタム文字起こし接続先 → 互換プロキシ → HaaS-ja。
-認識結果を返す際にプロキシがHorizonで句読点を補完する。
-VoiceInk側には、プロキシのOpenAI互換文字起こしエンドポイントと対応するモデル名を設定する。
+ビルド前に `python3 scripts/prepare-local-haas-runtime.py` で実行環境を準備する。
+`make build` / `make local` と配布ビルドは自動で準備する。
+配布用のネイティブ実行ファイルは、アプリと同じ署名IDで署名してから同梱する。
+直接Xcodeからビルドする場合も、先に準備コマンドを実行する。
+現時点の実行環境はarm64専用。実行部分のバージョン・取得元・ハッシュと依存パッケージは
+`scripts/prepare-local-haas-runtime.py` と `runtime/local-haas/requirements.txt` に固定する。
+エンドユーザー環境では実行コードのダウンロードやpipの実行を行わない。
 
-- **互換プロキシ**: VoiceInkが送る `temperature` を取り除いて音声認識サーバーへ中継する。
-- **Horizon**: ローカルONNXモデルで元の文字・空白・既存の句読点を保ちながら句読点を追加する。
-  Python依存、トークナイザー、モデル設定、ONNXモデルが必要。補完失敗時は認識結果をそのまま返す。
-- **補完対象**: 成功した通常のJSON文字起こし応答の `text`（16,000文字以下）。
-  `segments` / `words` を含む応答、JSON以外、エラー応答は変更しない。
-- **状態確認**: プロキシの `/_voiceink/health` と `X-VoiceInk-Punctuation` 応答ヘッダーで確認する。
-  これらは音声認識の精度やVoiceInkからの接続成功を保証するものではない。
+検証コマンド:
 
-Macでの標準構成はネイティブ実行を推奨する。通常のLinuxコンテナはMacのMetal GPUを
-直接使えず、Docker化してもモデルの速度や導入負担が改善するとは限らない。
-Docker Model RunnerのGPU推論はホスト側で動く別方式であり、HaaS/Horizonの
-現在のサーバーをそのまま置き換える構成としては検証していない。
-Docker/ComposeはLinuxサーバーへの導入など、用途を限定した追加構成として検討する。
+- `bash Tests/run-local-haas-defaults-tests.sh`: 初期設定と既存設定の保持
+- `bash Tests/run-local-haas-runtime-tests.sh`: モデル検証・破損・中止・タイムアウト
+- `bash Tests/run-local-haas-runtime-tests.sh --live`: 初回モデル取得、合成日本語音声の認識、
+  通信を拒否した新しい実行環境での再認識（モデルは一時フォルダに保存）
 
-自動起動・ログ出力先・接続ポートは利用環境に合わせて設定する。
-ローカル文字起こしを使っていても、AI補正やAuto Learnにクラウドを選んだ場合は
-その処理のテキストが外部送信される。
 
 ## 個人配布用の DMG
 
@@ -315,7 +310,7 @@ GPL本文とソースのリンクを置くだけで、すべての依存物の�
   [Horizon](https://huggingface.co/Horizon-Labs/punctuation-restoration-small)は、公開元でApache-2.0と表記されている。
 - モデルや外部プログラムを同梱・再配布する場合は、それぞれのライセンス本文、著作権表示、
   同梱されている告知文書などを確認して保持する。Horizonには、基盤モデル由来の告知文書もある。
-- このMac版のDMGにはHaaS/Horizonの重みや外部の実行環境を含めていない。
+- このMac版にはHaaS/Horizonの実行環境を同梱し、モデルの重みは初回に取得する。
   ただし、音声の有無を判定するSilero VAD v5.1.2のモデルは以前から同梱しており、
   MITライセンスの原文と著作権表示を配布物に保持する。
   ダウンロードや別途導入でも、利用する各配布物の条件に従う。
@@ -329,11 +324,12 @@ Apache-2.0の再配布条件は[Apache公式のライセンス本文](https://ww
 配布処理は次をDMG内にまとめる。
 
 - GPLv3本文と、依存物ごとのライセンス・著作権表示・告知文書の原文
-- アプリ、Swift依存物、Whisper、transcribe.cpp、NeMo文字処理の固定ソース
+- アプリ、Swift依存物、Whisper、transcribe.cpp、NeMo文字処理、speech.cppの固定ソース
 - Swiftのサブモジュールと、ロック済みのRust依存ソース
 - リビジョンと同梱モデルのハッシュを記録した一覧、再ビルドの案内、各ファイルのチェックサム
 
-HaaS/Horizonのモデルは含めず、同梱Silero VADのライセンスは別途収録する。
+HaaS/Horizonの重みは含めず、実行環境とHorizonの告知原文を保持する。
+同梱Python・依存パッケージの告知文書は実行環境内にも保持し、Silero VADのライセンスを別途収録する。
 Appleの公証はライセンス条件を満たしたことを保証するものではない。
 将来の依存物・モデルの追加や差し替え時には、その版の条件と告知文書を再確認する。
 

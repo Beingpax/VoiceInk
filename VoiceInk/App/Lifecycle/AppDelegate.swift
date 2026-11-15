@@ -24,6 +24,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        LocalHaasRuntime.shared.stopAll()
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }

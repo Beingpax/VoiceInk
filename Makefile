@@ -27,6 +27,10 @@ check:
 healthcheck: check
 
 # Build process
+.PHONY: local-haas-runtime
+local-haas-runtime:
+	python3 scripts/prepare-local-haas-runtime.py
+
 whisper:
 	@mkdir -p $(DEPS_DIR)
 	@if [ ! -d "$(FRAMEWORK_PATH)" ]; then \
@@ -41,7 +45,7 @@ whisper:
 		echo "whisper.xcframework already built in $(DEPS_DIR), skipping build"; \
 	fi
 
-setup: whisper
+setup: whisper local-haas-runtime
 	@echo "Whisper framework is ready at $(FRAMEWORK_PATH)"
 	@echo "Please ensure your Xcode project references the framework from this new location."
 

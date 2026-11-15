@@ -4,7 +4,6 @@ import SwiftUI
 struct OnboardingTranscriptionSetupCard: View {
     let localModel: FluidAudioModel?
     let setupKind: OnboardingTranscriptionSetupKind
-    let isHaasReady: Bool
     let providerOptions: [any CloudProvider]
     @Binding var selectedProviderKey: String
     let isLocalDownloaded: Bool
@@ -49,7 +48,7 @@ struct OnboardingTranscriptionSetupCard: View {
 
             switch setupKind {
             case .haas:
-                haasSetup
+                LocalHaasSetupCard(autoDownload: true, onReady: onVerificationChanged)
             case .local:
                 localSetup
             case .cloud:
@@ -112,19 +111,6 @@ struct OnboardingTranscriptionSetupCard: View {
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
-    }
-
-    private var haasSetup: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("HaaS-ja + Horizon").font(.headline)
-            Text("このMacで音声認識と句読点補完を行います。リアルタイム認識は使用しません。")
-            Text(isHaasReady ? "ローカルサービスに接続できました。" : "サービスを確認中、または未接続です。HaaS-jaとHorizonの導入・起動が必要です。")
-                .foregroundStyle(.secondary)
-            Button("接続を確認", action: onVerificationChanged)
-        }
-        .padding(16)
-        .background(AppMaterialCardBackground(cornerRadius: 12))
-        .onAppear(perform: onVerificationChanged)
     }
 
     @ViewBuilder

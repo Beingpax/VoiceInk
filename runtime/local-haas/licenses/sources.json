@@ -1,0 +1,17 @@
+[
+  {
+    "file": "speech-LICENSE",
+    "url": "https://raw.githubusercontent.com/nyosegawa/speech.cpp/06590811a90041f935a470ba0e2b85346d2fc041/LICENSE",
+    "sha256": "688f8aca0abe167966d277ed00bd594a5a51b028a4fbc1516ff9de7ef05c521a"
+  },
+  {
+    "file": "Horizon-LICENSE",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "file": "Horizon-NOTICE",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/NOTICE",
+    "sha256": "74b3592d7abe959e9f2c3693203a60e3844d482742aaffb599105ec063b30af3"
+  }
+]

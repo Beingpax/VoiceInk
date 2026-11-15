@@ -103,3 +103,9 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Generated bundled runtime (no model weights)
+.local-haas-runtime/
+.local-haas-cache/
+
+.local-haas-build/

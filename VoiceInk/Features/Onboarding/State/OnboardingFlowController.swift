@@ -382,7 +382,9 @@ final class OnboardingFlowController {
         if coordinator.transcriptionSetupKind == .haas {
             coordinator.isSelectedTranscriptionProviderVerified = false
             Task { @MainActor [weak self] in
-                let ready = await LocalHaasSettings.verifyService()
+                let ready: Bool
+                do { try await LocalHaasRuntime.shared.prepare(); ready = true }
+                catch { ready = false }
                 guard let self, self.coordinator.transcriptionSetupKind == .haas else { return }
                 self.coordinator.isSelectedTranscriptionProviderVerified = ready
             }

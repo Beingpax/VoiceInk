@@ -1,6 +1,25 @@
 {
-  "whisper": {"url": "https://github.com/ggml-org/whisper.cpp", "revision": "0c7be696371069e0baa2515ed7aa08d5a5473aa6"},
-  "transcribe": {"url": "https://github.com/handy-computer/transcribe.cpp", "revision": "856d7c10a1a864b900e066b7c9801edf373f5148", "cargo": true},
-  "nemo": {"url": "https://github.com/FluidInference/text-processing-rs", "revision": "46ebddcea5e1ff673c2cb5256a1b6b0e6c4ff527", "cargo": true},
-  "silero-vad": {"url": "https://github.com/snakers4/silero-vad", "revision": "v5.1.2", "license_only": true}
+  "whisper": {
+    "url": "https://github.com/ggml-org/whisper.cpp",
+    "revision": "0c7be696371069e0baa2515ed7aa08d5a5473aa6"
+  },
+  "transcribe": {
+    "url": "https://github.com/handy-computer/transcribe.cpp",
+    "revision": "856d7c10a1a864b900e066b7c9801edf373f5148",
+    "cargo": true
+  },
+  "nemo": {
+    "url": "https://github.com/FluidInference/text-processing-rs",
+    "revision": "46ebddcea5e1ff673c2cb5256a1b6b0e6c4ff527",
+    "cargo": true
+  },
+  "silero-vad": {
+    "url": "https://github.com/snakers4/silero-vad",
+    "revision": "v5.1.2",
+    "license_only": true
+  },
+  "speech": {
+    "url": "https://github.com/nyosegawa/speech.cpp",
+    "revision": "06590811a90041f935a470ba0e2b85346d2fc041"
+  }
 }

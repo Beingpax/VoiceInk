@@ -1,9 +1,19 @@
 import Foundation
 
 class OpenAICompatibleTranscriptionService {
+    private let localRuntime: @MainActor () -> LocalHaasRuntime
+
+    init(localRuntime: @escaping @MainActor () -> LocalHaasRuntime = { .shared }) {
+        self.localRuntime = localRuntime
+    }
+
     func transcribe(
         audioURL: URL, model: CustomCloudModel, context: TranscriptionRequestContext, timeout: TimeInterval
     ) async throws -> String {
+        if model.id == LocalHaasSettings.modelID {
+            let runtime = await localRuntime()
+            return try await runtime.transcribe(audioURL: audioURL, timeout: timeout)
+        }
         guard let url = URL(string: model.apiEndpoint) else {
             throw NSError(
                 domain: "CustomWhisperTranscriptionService", code: -1,

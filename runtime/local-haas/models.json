@@ -1,0 +1,38 @@
+[
+  {
+    "path": "HaaS/Haas-616M-ja-v1.0-Q4_K.gguf",
+    "url": "https://huggingface.co/sakasegawa/Haas-ja-v1.0-GGUF/resolve/6b965d5007ba780585de51549d57a8c1c0d67c7e/Haas-616M-ja-v1.0-Q4_K.gguf",
+    "size": 351901216,
+    "sha256": "d24d53f29b75214a933ff482b0de1217e0a800f4118cca39ad6cf03609a89d6f"
+  },
+  {
+    "path": "Horizon/onnx/model_quantized.onnx",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/onnx/model_quantized.onnx",
+    "size": 268414381,
+    "sha256": "5679870be92c7fa47c9be9b2872fac389ef28d43d2c33f35e1315b93a82f4ace"
+  },
+  {
+    "path": "Horizon/tokenizer.json",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/tokenizer.json",
+    "size": 34363286,
+    "sha256": "f34b44a6dc8a0eef651bfa10e8325057530152606a69d9c3b6ae02efb1558f0a"
+  },
+  {
+    "path": "Horizon/config.json",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/config.json",
+    "size": 2110,
+    "sha256": "f457c77954f0720ff2c0624b92714fb551bd19c42fba0625ee7af1740df49e05"
+  },
+  {
+    "path": "Horizon/special_tokens_map.json",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/special_tokens_map.json",
+    "size": 636,
+    "sha256": "baec30ea10906f16adb8c18af7a34023002c1746542612b8b41c9f09e1351351"
+  },
+  {
+    "path": "Horizon/tokenizer_config.json",
+    "url": "https://huggingface.co/Horizon-Labs/punctuation-restoration-small/resolve/12b02a85b60a2843ad6f22e4248669f50aeecdbb/tokenizer_config.json",
+    "size": 46440,
+    "sha256": "ea349495764b24570b4560fe2e4a557e5c0a47e6bce782c2409b1d6445cf8633"
+  }
+]

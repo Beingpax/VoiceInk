@@ -25,7 +25,6 @@ struct OnboardingModelScreen: View {
             OnboardingTranscriptionSetupCard(
                 localModel: localModel,
                 setupKind: setupKind,
-                isHaasReady: isSetupReady,
                 providerOptions: providerOptions,
                 selectedProviderKey: $selectedProviderKey,
                 isLocalDownloaded: isLocalDownloaded,

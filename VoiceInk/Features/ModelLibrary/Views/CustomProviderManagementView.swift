@@ -13,9 +13,14 @@ struct CustomProviderManagementView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+            LocalHaasSetupCard()
             customTranscriptionSection
             customEnhancementSection
         }
+    }
+
+    private var editableTranscriptionModels: [CustomCloudModel] {
+        customModelManager.customModels.filter { $0.id != LocalHaasSettings.modelID }
     }
 
     private var customTranscriptionSection: some View {
@@ -27,13 +32,13 @@ struct CustomProviderManagementView: View {
                 onAdd: onAddTranscriptionModel
             )
 
-            if customModelManager.customModels.isEmpty {
+            if editableTranscriptionModels.isEmpty {
                 CustomProviderEmptyState(
                     systemImage: "waveform",
                     title: "No Custom Transcription Models"
                 )
             } else {
-                ForEach(customModelManager.customModels) { model in
+                ForEach(editableTranscriptionModels) { model in
                     CustomModelCardView(
                         model: model,
                         deleteAction: {

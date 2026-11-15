@@ -138,11 +138,22 @@ def build(root, checkouts, whisper, cache, output, app, extra_sources=None):
             raise RuntimeError('Expected exactly one bundled Silero model')
         records.append(dict(name='silero-vad', source=silero['url'], revision=silero['revision'],
             model_sha256=sha256(models[0]), notices=['silero-vad/LICENSE']))
+        runtime = app / 'Contents/Resources/LocalHaas'
+        if not (runtime / 'runtime.json').exists():
+            raise RuntimeError('Bundled HaaS runtime missing from distribution')
+        shutil.copytree(runtime / 'Licenses', licenses / 'local-haas-runtime', dirs_exist_ok=True)
+        shutil.copy2(runtime / 'runtime.json', output / 'LOCAL_HAAS_RUNTIME.json')
+        shutil.copy2(runtime / 'requirements.txt', output / 'LOCAL_HAAS_REQUIREMENTS.txt')
+        for path in (runtime / 'python').rglob('*'):
+            if path.is_file() and notice_file(path):
+                target = licenses / 'local-haas-runtime' / path.relative_to(runtime)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, target)
         manifest = dict(app_revision=app_sha, components=records,
             excluded_models=['HaaS-ja', 'Horizon'], platform='Apple Silicon / macOS 15+')
         (output / 'DEPENDENCIES.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n')
         (stage / 'DEPENDENCIES.json').write_text((output / 'DEPENDENCIES.json').read_text())
-        instructions = '''# 対応ソースとビルド手順\n\nSources/VoiceInkがこの配布のアプリ本体、他のディレクトリが依存物の固定ソースです。\n各リビジョンはDEPENDENCIES.jsonに記録しています。Swiftのサブモジュールも含みます。\nSparkleのTests/Resourcesにある既成のテスト用アプリ・インストーラー等は、配布アプリのビルドに不要なため除外します。\nこのテスト用配布物はDEPENDENCIES.jsonのSparkleの出所とリビジョンから入手できます。\nライブラリ本体、ビルド手順、テストのソースコード、ライセンス原文は保持します。\n\nアプリのビルドはSources/VoiceInk/README.mdとBUILDING.mdを参照してください。\nXcode・macOS SDK・署名用証明書は別途用意します。個人の秘密鍵は含めません。\n\nネイティブ依存物:\n- Sources/whisper: ./build-xcframework.sh でWhisperをビルドします。\n- Sources/transcribe: TRANSCRIBE_XCFRAMEWORK_SLICES=macos ./scripts/ci/build_xcframework.sh\n- Sources/nemo: ./build-xcframework.sh。Rustターゲットの導入は同スクリプトを参照します。\nCargo.lockに従うRust依存ソースは各ディレクトリのvendorへ収録し、.cargo/config.tomlで参照します。\nSPMラッパーの元のバイナリURL・チェックサムはPackage.swiftに残っています。\n再生成したXCFrameworkを使う場合は、対応するbinaryTargetをローカルパスへ変更します。\nほかのSwift依存物はSources以下のPackage.swiftとロック済みリビジョンを参照してください。\n\nHaaS/Horizonのモデル・実行環境はこの配布に含めません。Silero VADの重みはアプリに同梱しています。\n各プロジェクトのライセンス・著作権表示は元のソースとDMGのLicensesに保持しています。\n'''
+        instructions = '''# 対応ソースとビルド手順\n\nSources/VoiceInkがこの配布のアプリ本体、他のディレクトリが依存物の固定ソースです。\n各リビジョンはDEPENDENCIES.jsonに記録しています。Swiftのサブモジュールも含みます。\nSparkleのTests/Resourcesにある既成のテスト用アプリ・インストーラー等は、配布アプリのビルドに不要なため除外します。\nこのテスト用配布物はDEPENDENCIES.jsonのSparkleの出所とリビジョンから入手できます。\nライブラリ本体、ビルド手順、テストのソースコード、ライセンス原文は保持します。\n\nアプリのビルドはSources/VoiceInk/README.mdとBUILDING.mdを参照してください。\nXcode・macOS SDK・署名用証明書は別途用意します。個人の秘密鍵は含めません。\n\nネイティブ依存物:\n- Sources/whisper: ./build-xcframework.sh でWhisperをビルドします。\n- Sources/transcribe: TRANSCRIBE_XCFRAMEWORK_SLICES=macos ./scripts/ci/build_xcframework.sh\n- Sources/nemo: ./build-xcframework.sh。Rustターゲットの導入は同スクリプトを参照します。\nCargo.lockに従うRust依存ソースは各ディレクトリのvendorへ収録し、.cargo/config.tomlで参照します。\nSPMラッパーの元のバイナリURL・チェックサムはPackage.swiftに残っています。\n再生成したXCFrameworkを使う場合は、対応するbinaryTargetをローカルパスへ変更します。\nほかのSwift依存物はSources以下のPackage.swiftとロック済みリビジョンを参照してください。\n\nHaaS/Horizonの実行環境はアプリに同梱し、モデルは初回に取得します。Silero VADの重みはアプリに同梱しています。\n各プロジェクトのライセンス・著作権表示は元のソースとDMGのLicensesに保持しています。\n'''
         (stage / 'ソースの利用方法.md').write_text(instructions)
         archive = output / 'CorrespondingSource.tar.gz'
         with tarfile.open(archive, 'w:gz') as tar:
@@ -151,7 +162,7 @@ def build(root, checkouts, whisper, cache, output, app, extra_sources=None):
         text = ['# 第三者ソフトウェアとモデルの告知\n',
             'ライセンス・著作権表示はLicenses内の原文を参照してください。',
             '対応ソースは同梱のCorrespondingSource.tar.gzにあります。',
-            'HaaS/Horizonは同梱しません。Silero VADはMITライセンスのモデルを同梱します。\n']
+            'HaaS/Horizonの実行環境を同梱し、モデルは初回に取得します。Silero VADはMITライセンスのモデルを同梱します。\n']
         for record in records:
             text += ['## '+record['name'], '出所: '+record['source'], 'リビジョン: `'+record['revision']+'`',
                      '原文: '+', '.join('`Licenses/'+p+'`' for p in record['notices'])+'\n']
