@@ -25,6 +25,21 @@ VoiceInkは、話した内容をすばやく文字にするmacOS向けのアプ�
 このリポジトリは独自機能を追加したフォークであり、本家の公式配布版とは異なる。
 独自機能と利用条件は、後述の「フォーク独自の変更一覧」以降を参照。
 
+## ダウンロード（このフォーク）
+
+**[Apple Silicon向けDMGをダウンロード](https://github.com/RyoyaYahagi/VoiceInk/releases/latest/download/VoiceInk.dmg)**
+
+macOS 15以降のApple Silicon搭載Macに対応する。Developer IDで署名し、Appleの公証を通した
+このフォークのビルドをGitHub Releasesで公開している。本家の公式配布版とは異なる。
+利用する人は、Apple Developer Programへの加入やアプリのビルドを行う必要はない。
+
+- [リリース情報・対応ソース・SHA-256チェックサム](https://github.com/RyoyaYahagi/VoiceInk/releases/latest)
+- 既存のVoiceInkを終了してから、DMG内のアプリを「アプリケーション」へコピーする。
+  同じアプリを複数起動しないようにする。
+- HaaS-ja＋Horizonは初回にモデル約655MBを取得する。取得後はオフラインで利用できる。
+- 既存設定は保持する。従来の外部サービス用モデルから切り替える場合は、
+  新しい「HaaS-ja + Horizon」を選ぶ。
+
 ![Mac版VoiceInkの画面](https://github.com/user-attachments/assets/12367379-83e7-48a6-b52c-4488a6a04bba)
 
 本家の作者は、約5か月間の開発を経てソースコードを公開した。
@@ -172,12 +187,12 @@ AI補正やAuto Learnにクラウドを選んだ場合は、その処理のテ�
   通信を拒否した新しい実行環境での再認識（モデルは一時フォルダに保存）
 
 
-## 個人配布用の DMG
+## DMGの作成と配布
 
-このフォークのビルドは GitHub では配布しない。Developer ID で署名し、Apple の公証を通した
-DMG を個人的に配る。
+完成したDMGは[GitHub Releases](https://github.com/RyoyaYahagi/VoiceInk/releases/latest)から入手できる。
+以下は、配布する側が自分でDeveloper ID署名・Apple公証済みのDMGを作成する場合の手順。
 
-必要なもの:
+署名・公証済みの配布ビルドを作るために必要なもの:
 
 - Developer ID Application 証明書
   （Xcode → Settings → Accounts → チームを選ぶ → Manage Certificates → 「+」）
@@ -196,7 +211,7 @@ APIキーを直接使う場合は `VOICEINK_NOTARY_KEY`（p8のパス）、
 署名チームは `LocalBuild.xcconfig` から読み、`VOICEINK_TEAM_ID` で上書きできる。
 
 `scripts/build-personal-dmg.sh` が、アーカイブ作成 → Developer IDで署名して書き出し → DMG作成 → 公証申請 →
-公証チケットの添付まで行う。公証時はDMGをAppleへ送信するが、GitHub Releasesなどへの公開はしない。
+公証チケットの添付まで行う。公証時はDMGをAppleへ送信する。このスクリプトはローカルでの生成までを行い、GitHub Releasesへのアップロードは別に行う。
 DMGにはライセンス原文、第三者ソフトウェアの告知、アプリと依存物の対応ソースを同梱する。出力は `~/Downloads/VoiceInk-dmg/VoiceInk.dmg`。証明書がない場合は作成手順を
 表示して止まる。公証を飛ばして署名と DMG だけ作る場合は `--skip-notarization`。
 
