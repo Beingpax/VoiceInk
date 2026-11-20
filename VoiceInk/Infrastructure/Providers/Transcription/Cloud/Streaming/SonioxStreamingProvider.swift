@@ -1,44 +1,60 @@
 import Foundation
 import LLMkit
 
-/// Soniox streaming provider wrapping `LLMkit.SonioxStreamingClient`.
+/// Adapts LLMkit's Soniox stream to VoiceInk's recording and fallback lifecycle.
 final class SonioxStreamingProvider: StreamingTranscriptionProvider {
-
     private let client = LLMkit.SonioxStreamingClient()
-    private var eventsContinuation: AsyncStream<StreamingTranscriptionEvent>.Continuation?
+    private let vocabulary: [String]
+    private let events: AsyncStream<StreamingTranscriptionEvent>.Continuation
+    private let finalization: AsyncStream<String>.Continuation
     private var forwardingTask: Task<Void, Never>?
-    private let customVocabulary: [String]
 
-    private(set) var transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
+    let transcriptionEvents: AsyncStream<StreamingTranscriptionEvent>
+    let finalizationEvents: AsyncStream<String>?
+
+    var stopDisposition: StreamingStopDisposition {
+        client.requiresFullRecording ? .useBatchFallback : .finalizeStreaming
+    }
 
     init(customVocabulary: [String]) {
-        self.customVocabulary = customVocabulary
-        var continuation: AsyncStream<StreamingTranscriptionEvent>.Continuation!
-        transcriptionEvents = AsyncStream { continuation = $0 }
-        eventsContinuation = continuation
+        vocabulary = customVocabulary
+        let events = AsyncStream.makeStream(of: StreamingTranscriptionEvent.self)
+        transcriptionEvents = events.stream
+        self.events = events.continuation
+        let finalization = AsyncStream.makeStream(of: String.self)
+        finalizationEvents = finalization.stream
+        self.finalization = finalization.continuation
     }
 
     deinit {
         forwardingTask?.cancel()
-        eventsContinuation?.finish()
+        events.finish()
+        finalization.finish()
     }
 
     func connect(model: any TranscriptionModel, language: String?) async throws {
-        guard let apiKey = APIKeyManager.shared.getAPIKey(forProvider: "Soniox"), !apiKey.isEmpty else {
+        guard let key = APIKeyManager.shared.getAPIKey(forProvider: "Soniox"), !key.isEmpty else {
             throw StreamingTranscriptionError.missingAPIKey
         }
-
-        // Cancel any existing forwarding task before starting a new one
         forwardingTask?.cancel()
-        startEventForwarding()
-
+        let source = client.transcriptionEvents
+        let events = events
+        forwardingTask = Task {
+            for await event in source {
+                switch event {
+                case .sessionStarted: events.yield(.sessionStarted)
+                case .partial(let text): events.yield(.partial(text: text))
+                case .committed(let text): events.yield(.committed(text: text))
+                case .error(let message): events.yield(.error(StreamingTranscriptionError.serverError(message)))
+                }
+            }
+        }
         do {
-            try await client.connect(
-                apiKey: apiKey, model: "stt-rt-v6", language: language, customVocabulary: customVocabulary)
+            try await client.connect(apiKey: key, model: "stt-rt-v6", language: language, customVocabulary: vocabulary)
         } catch {
-            // Clean up forwarding task on connection failure
             forwardingTask?.cancel()
             forwardingTask = nil
+            await client.disconnect()
             throw mapError(error)
         }
     }
@@ -53,7 +69,9 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
 
     func commit() async throws {
         do {
-            try await client.commit()
+            let text = try await client.finalize()
+            finalization.yield(text)
+            finalization.finish()
         } catch {
             throw mapError(error)
         }
@@ -63,40 +81,36 @@ final class SonioxStreamingProvider: StreamingTranscriptionProvider {
         forwardingTask?.cancel()
         forwardingTask = nil
         await client.disconnect()
-        eventsContinuation?.finish()
-    }
-
-    // MARK: - Private
-
-    private func startEventForwarding() {
-        forwardingTask = Task { [weak self] in
-            guard let self else { return }
-            for await event in self.client.transcriptionEvents {
-                switch event {
-                case .sessionStarted:
-                    self.eventsContinuation?.yield(.sessionStarted)
-                case .partial(let text):
-                    self.eventsContinuation?.yield(.partial(text: text))
-                case .committed(let text):
-                    self.eventsContinuation?.yield(.committed(text: text))
-                case .error(let message):
-                    self.eventsContinuation?.yield(.error(StreamingTranscriptionError.serverError(message)))
-                }
-            }
-        }
+        events.finish()
+        finalization.finish()
     }
 
     private func mapError(_ error: Error) -> Error {
-        guard let llmError = error as? LLMKitError else { return error }
-        switch llmError {
-        case .missingAPIKey:
-            return StreamingTranscriptionError.missingAPIKey
-        case .httpError(_, let message):
-            return StreamingTranscriptionError.serverError(message)
-        case .networkError(let detail):
-            return StreamingTranscriptionError.connectionFailed(detail)
-        default:
-            return StreamingTranscriptionError.serverError(llmError.localizedDescription)
+        if let streamingError = error as? SonioxStreamingError {
+            switch streamingError {
+            case .connection(let message):
+                return StreamingTranscriptionError.connectionFailed(message)
+            case .timeout:
+                return StreamingTranscriptionError.timeout
+            case .server, .bufferOverflow, .incompleteStream:
+                return StreamingTranscriptionError.serverError(streamingError.localizedDescription)
+            }
         }
+        if let llmError = error as? LLMKitError {
+            switch llmError {
+            case .missingAPIKey:
+                return StreamingTranscriptionError.missingAPIKey
+            case .httpError(_, let message):
+                return StreamingTranscriptionError.serverError(message)
+            case .networkError(let detail):
+                return StreamingTranscriptionError.connectionFailed(detail)
+            default:
+                return StreamingTranscriptionError.serverError(llmError.localizedDescription)
+            }
+        }
+        if let urlError = error as? URLError, urlError.code != .cancelled {
+            return StreamingTranscriptionError.connectionFailed(urlError.localizedDescription)
+        }
+        return error
     }
 }

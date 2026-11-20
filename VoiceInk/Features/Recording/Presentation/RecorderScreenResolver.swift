@@ -1,23 +1,43 @@
 import AppKit
 
-/// Resolves the screen the recorder panel should be placed on.
-///
-/// `NSScreen.main` is the screen containing the window with keyboard focus. VoiceInk is a
-/// menu-bar style app that usually has no key window, so `NSScreen.main` can return `nil` —
-/// most plausibly while displays are asleep or being reconfigured.
-///
-/// The point of this helper is the fallback chain, not the nil case itself: callers must never
-/// fall back to a rect at the global origin, because a transparent, shadowless panel placed at
-/// (0, 0) sits behind the Dock and is indistinguishable from a panel that never appeared.
+/// Prefers the retained display, then the cursor's screen, the active screen, and the first
+/// available display. Returns `nil` when no screen is available.
+@MainActor
 enum RecorderScreenResolver {
-    static func resolve() -> NSScreen? {
-        if let main = NSScreen.main { return main }
+    static func resolve(preferredDisplayID: CGDirectDisplayID? = nil) -> NSScreen? {
+        // Read fresh screen objects: display geometry can change during a presentation.
+        let screens = NSScreen.screens
+        if let preferredDisplayID,
+            let retainedScreen = screens.first(where: { displayID(for: $0) == preferredDisplayID })
+        {
+            return retainedScreen
+        }
 
         let mouseLocation = NSEvent.mouseLocation
-        if let screenUnderMouse = NSScreen.screens.first(where: { $0.frame.contains(mouseLocation) }) {
+        if let screenUnderMouse = screens.first(where: { $0.frame.contains(mouseLocation) }) {
             return screenUnderMouse
         }
 
-        return NSScreen.screens.first
+        return NSScreen.main ?? screens.first
+    }
+
+    static func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+    }
+}
+
+/// Keeps one display until the recorder is dismissed or that display becomes unavailable.
+@MainActor
+struct RecorderScreenSelection {
+    private var displayID: CGDirectDisplayID?
+
+    mutating func resolve() -> NSScreen? {
+        guard let screen = RecorderScreenResolver.resolve(preferredDisplayID: displayID) else { return nil }
+        displayID = RecorderScreenResolver.displayID(for: screen)
+        return screen
+    }
+
+    mutating func reset() {
+        displayID = nil
     }
 }

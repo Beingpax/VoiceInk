@@ -39,12 +39,13 @@ RELEASE_OUTPUT_ROOT="${VOICEINK_RELEASE_OUTPUT_ROOT:-$HOME/Downloads/VoiceInk Bu
 OUTPUT_DIR="$RELEASE_OUTPUT_ROOT/VoiceInk-$RELEASE_TIMESTAMP"
 APPCAST_OUTPUT="$REPO_ROOT/appcast.xml"
 SKIP_NOTARIZATION=0
+SKIP_APPCAST=0
 ALLOW_DIRTY=0
 
 usage() {
     cat <<'EOF'
 Usage:
-  scripts/release.sh --notes <release-notes.html> [options]
+  scripts/release.sh [options]
 
 Builds, signs, notarizes, packages, validates, and creates VoiceInk's Appcast.
 The script never commits, pushes, tags, or creates a GitHub release.
@@ -57,6 +58,7 @@ Options:
   --appcast-output <file>     Appcast destination (default: ./appcast.xml).
   --notary-profile <name>     notarytool Keychain profile.
   --skip-notarization         Skip Apple submissions; useful for layout testing.
+  --skip-appcast              Package and validate without generating an Appcast.
   --allow-dirty               Permit a dirty Git working tree.
   -h, --help                  Show this help.
 
@@ -153,6 +155,10 @@ while [[ $# -gt 0 ]]; do
             SKIP_NOTARIZATION=1
             shift
             ;;
+        --skip-appcast)
+            SKIP_APPCAST=1
+            shift
+            ;;
         --allow-dirty)
             ALLOW_DIRTY=1
             shift
@@ -193,7 +199,9 @@ require_command sips
 require_command spctl
 require_command stat
 require_command xcrun
-require_command xmllint
+if [[ "$SKIP_APPCAST" == "0" ]]; then
+    require_command xmllint
+fi
 
 BACKGROUND_PIXEL_WIDTH="$(read_image_property "$DMG_BACKGROUND" pixelWidth)"
 BACKGROUND_PIXEL_HEIGHT="$(read_image_property "$DMG_BACKGROUND" pixelHeight)"
@@ -209,13 +217,15 @@ BACKGROUND_DPI_HEIGHT="$(read_image_property "$DMG_BACKGROUND" dpiHeight)"
 [[ "${BACKGROUND_DPI_HEIGHT%%.*}" == "$DMG_BACKGROUND_DPI" ]] \
     || fail "DMG background vertical DPI must be $DMG_BACKGROUND_DPI"
 
-find_sparkle_tools
-GENERATE_APPCAST="$SPARKLE_BIN_DIR/generate_appcast"
-GENERATE_KEYS="$SPARKLE_BIN_DIR/generate_keys"
-SIGN_UPDATE="$SPARKLE_BIN_DIR/sign_update"
+if [[ "$SKIP_APPCAST" == "0" ]]; then
+    find_sparkle_tools
+    GENERATE_APPCAST="$SPARKLE_BIN_DIR/generate_appcast"
+    GENERATE_KEYS="$SPARKLE_BIN_DIR/generate_keys"
+    SIGN_UPDATE="$SPARKLE_BIN_DIR/sign_update"
 
-[[ -x "$GENERATE_KEYS" ]] || fail "Sparkle generate_keys tool not found"
-[[ -x "$SIGN_UPDATE" ]] || fail "Sparkle sign_update tool not found"
+    [[ -x "$GENERATE_KEYS" ]] || fail "Sparkle generate_keys tool not found"
+    [[ -x "$SIGN_UPDATE" ]] || fail "Sparkle sign_update tool not found"
+fi
 
 security find-identity -v -p codesigning | grep -F "$DEVELOPER_IDENTITY" >/dev/null \
     || fail "Developer ID signing identity is unavailable: $DEVELOPER_IDENTITY"
@@ -286,7 +296,9 @@ if [[ -z "$NOTES_PATH" ]]; then
 elif [[ "$NOTES_PATH" != /* ]]; then
     NOTES_PATH="$REPO_ROOT/$NOTES_PATH"
 fi
-[[ -f "$NOTES_PATH" ]] || fail "Release notes not found: $NOTES_PATH"
+if [[ "$SKIP_APPCAST" == "0" ]]; then
+    [[ -f "$NOTES_PATH" ]] || fail "Release notes not found: $NOTES_PATH"
+fi
 
 NOTES_EXTENSION="${NOTES_PATH##*.}"
 NOTES_EXTENSION="$(printf '%s' "$NOTES_EXTENSION" | tr '[:upper:]' '[:lower:]')"
@@ -301,10 +313,12 @@ esac
     || fail "Unexpected minimum system version: $MINIMUM_SYSTEM_VERSION (expected $EXPECTED_MINIMUM_SYSTEM_VERSION)"
 [[ "$BUILD_VERSION" =~ ^[0-9]+$ ]] || fail "CFBundleVersion must be numeric: $BUILD_VERSION"
 
-log "Verifying application signature and Sparkle key"
+log "Verifying application signature"
 codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-KEYCHAIN_PUBLIC_KEY="$("$GENERATE_KEYS" --account "$SPARKLE_ACCOUNT" -p)"
-[[ "$KEYCHAIN_PUBLIC_KEY" == "$APP_PUBLIC_KEY" ]] || fail "Sparkle Keychain public key does not match the app"
+if [[ "$SKIP_APPCAST" == "0" ]]; then
+    KEYCHAIN_PUBLIC_KEY="$("$GENERATE_KEYS" --account "$SPARKLE_ACCOUNT" -p)"
+    [[ "$KEYCHAIN_PUBLIC_KEY" == "$APP_PUBLIC_KEY" ]] || fail "Sparkle Keychain public key does not match the app"
+fi
 
 if [[ "$SKIP_NOTARIZATION" == "0" ]]; then
     APP_ZIP="$WORK_DIR/VoiceInk.zip"
@@ -370,52 +384,61 @@ MOUNTED_APP="$DMG_MOUNT_DIR/VoiceInk.app"
 [[ "$(read_plist_value "$MOUNTED_APP/Contents/Info.plist" SUPublicEDKey)" == "$APP_PUBLIC_KEY" ]] \
     || fail "DMG app Sparkle public key does not match"
 codesign --verify --deep --strict --verbose=2 "$MOUNTED_APP"
+if [[ "$SKIP_NOTARIZATION" == "0" ]]; then
+    xcrun stapler validate "$MOUNTED_APP"
+    spctl -a -t exec -vv "$MOUNTED_APP"
+fi
 
 hdiutil detach "$DMG_MOUNT_DIR"
 DMG_MOUNTED=0
 
-APPCAST_WORK_DIR="$WORK_DIR/appcast"
-mkdir -p "$APPCAST_WORK_DIR"
-ditto "$DMG_PATH" "$APPCAST_WORK_DIR/VoiceInk.dmg"
-cp "$NOTES_PATH" "$APPCAST_WORK_DIR/VoiceInk.$NOTES_EXTENSION"
-
-log "Generating Sparkle Appcast"
-"$GENERATE_APPCAST" \
-    --account "$SPARKLE_ACCOUNT" \
-    --download-url-prefix "$RELEASE_BASE_URL/$RELEASE_TAG/" \
-    --embed-release-notes \
-    --versions "$BUILD_VERSION" \
-    "$APPCAST_WORK_DIR"
-
-GENERATED_APPCAST="$APPCAST_WORK_DIR/appcast.xml"
-[[ -f "$GENERATED_APPCAST" ]] || fail "Sparkle did not generate appcast.xml"
-xmllint --noout "$GENERATED_APPCAST"
-
-APPCAST_VERSION="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='version'])" "$GENERATED_APPCAST")"
-APPCAST_SHORT_VERSION="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='shortVersionString'])" "$GENERATED_APPCAST")"
-APPCAST_MINIMUM_SYSTEM="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='minimumSystemVersion'])" "$GENERATED_APPCAST")"
-APPCAST_URL="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='enclosure']/@url)" "$GENERATED_APPCAST")"
-APPCAST_LENGTH="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='enclosure']/@length)" "$GENERATED_APPCAST")"
-APPCAST_SIGNATURE="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='enclosure']/@*[local-name()='edSignature'])" "$GENERATED_APPCAST")"
 DMG_LENGTH="$(stat -f '%z' "$DMG_PATH")"
 
-[[ "$APPCAST_VERSION" == "$BUILD_VERSION" ]] || fail "Appcast build version does not match"
-[[ "$APPCAST_SHORT_VERSION" == "$SHORT_VERSION" ]] || fail "Appcast short version does not match"
-[[ "$APPCAST_MINIMUM_SYSTEM" == "$MINIMUM_SYSTEM_VERSION" ]] || fail "Appcast minimum system version does not match"
-[[ "$APPCAST_URL" == "$DOWNLOAD_URL" ]] || fail "Unexpected Appcast download URL: $APPCAST_URL"
-[[ "$APPCAST_LENGTH" == "$DMG_LENGTH" ]] || fail "Appcast DMG length does not match"
-[[ -n "$APPCAST_SIGNATURE" ]] || fail "Appcast is missing the Sparkle EdDSA signature"
-"$SIGN_UPDATE" --account "$SPARKLE_ACCOUNT" --verify "$DMG_PATH" "$APPCAST_SIGNATURE"
+if [[ "$SKIP_APPCAST" == "0" ]]; then
+    APPCAST_WORK_DIR="$WORK_DIR/appcast"
+    mkdir -p "$APPCAST_WORK_DIR"
+    ditto "$DMG_PATH" "$APPCAST_WORK_DIR/VoiceInk.dmg"
+    cp "$NOTES_PATH" "$APPCAST_WORK_DIR/VoiceInk.$NOTES_EXTENSION"
 
-RELEASE_APPCAST="$OUTPUT_DIR/appcast.xml"
-cp "$GENERATED_APPCAST" "$RELEASE_APPCAST"
-xmllint --noout "$RELEASE_APPCAST"
+    log "Generating Sparkle Appcast"
+    "$GENERATE_APPCAST" \
+        --account "$SPARKLE_ACCOUNT" \
+        --download-url-prefix "$RELEASE_BASE_URL/$RELEASE_TAG/" \
+        --embed-release-notes \
+        --versions "$BUILD_VERSION" \
+        "$APPCAST_WORK_DIR"
 
-mkdir -p "$(dirname "$APPCAST_OUTPUT")"
-if [[ "$APPCAST_OUTPUT" != "$RELEASE_APPCAST" ]]; then
-    cp "$GENERATED_APPCAST" "$APPCAST_OUTPUT"
+    GENERATED_APPCAST="$APPCAST_WORK_DIR/appcast.xml"
+    [[ -f "$GENERATED_APPCAST" ]] || fail "Sparkle did not generate appcast.xml"
+    xmllint --noout "$GENERATED_APPCAST"
+
+    APPCAST_VERSION="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='version'])" "$GENERATED_APPCAST")"
+    APPCAST_SHORT_VERSION="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='shortVersionString'])" "$GENERATED_APPCAST")"
+    APPCAST_MINIMUM_SYSTEM="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='minimumSystemVersion'])" "$GENERATED_APPCAST")"
+    APPCAST_URL="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='enclosure']/@url)" "$GENERATED_APPCAST")"
+    APPCAST_LENGTH="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='enclosure']/@length)" "$GENERATED_APPCAST")"
+    APPCAST_SIGNATURE="$(xmllint --xpath "string(//*[local-name()='item']/*[local-name()='enclosure']/@*[local-name()='edSignature'])" "$GENERATED_APPCAST")"
+
+    [[ "$APPCAST_VERSION" == "$BUILD_VERSION" ]] || fail "Appcast build version does not match"
+    [[ "$APPCAST_SHORT_VERSION" == "$SHORT_VERSION" ]] || fail "Appcast short version does not match"
+    [[ "$APPCAST_MINIMUM_SYSTEM" == "$MINIMUM_SYSTEM_VERSION" ]] || fail "Appcast minimum system version does not match"
+    [[ "$APPCAST_URL" == "$DOWNLOAD_URL" ]] || fail "Unexpected Appcast download URL: $APPCAST_URL"
+    [[ "$APPCAST_LENGTH" == "$DMG_LENGTH" ]] || fail "Appcast DMG length does not match"
+    [[ -n "$APPCAST_SIGNATURE" ]] || fail "Appcast is missing the Sparkle EdDSA signature"
+    "$SIGN_UPDATE" --account "$SPARKLE_ACCOUNT" --verify "$DMG_PATH" "$APPCAST_SIGNATURE"
+
+    RELEASE_APPCAST="$OUTPUT_DIR/appcast.xml"
+    cp "$GENERATED_APPCAST" "$RELEASE_APPCAST"
+    xmllint --noout "$RELEASE_APPCAST"
+
+    mkdir -p "$(dirname "$APPCAST_OUTPUT")"
+    if [[ "$APPCAST_OUTPUT" != "$RELEASE_APPCAST" ]]; then
+        cp "$GENERATED_APPCAST" "$APPCAST_OUTPUT"
+    fi
+    xmllint --noout "$APPCAST_OUTPUT"
+else
+    log "Skipping Appcast generation; update feed unchanged"
 fi
-xmllint --noout "$APPCAST_OUTPUT"
 
 DMG_SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
 
@@ -426,8 +449,12 @@ printf 'DMG:           %s\n' "$DMG_PATH"
 printf 'DMG bytes:     %s\n' "$DMG_LENGTH"
 printf 'DMG SHA-256:   %s\n' "$DMG_SHA256"
 printf 'Artifacts:     %s\n' "$OUTPUT_DIR"
-printf 'Appcast:       %s\n' "$RELEASE_APPCAST"
-printf 'Repository:    %s\n' "$APPCAST_OUTPUT"
+if [[ "$SKIP_APPCAST" == "0" ]]; then
+    printf 'Appcast:       %s\n' "$RELEASE_APPCAST"
+    printf 'Repository:    %s\n' "$APPCAST_OUTPUT"
+else
+    printf 'Appcast:       skipped; update feed unchanged\n'
+fi
 printf 'Download URL:  %s\n' "$DOWNLOAD_URL"
 if [[ "$SKIP_NOTARIZATION" == "1" ]]; then
     printf 'Notarization:  skipped (test artifact only)\n'

@@ -120,13 +120,9 @@ actor VoiceInkRefineInferenceEngine {
             do {
                 for try await event in session.streamDetails(to: transcript) {
                     try Task.checkCancellation()
-                    switch event {
-                    case .chunk(let text):
+                    // Reasoning and tool events are separate from the answer text.
+                    if let text = event.chunk {
                         output.append(contentsOf: text)
-                    case .info:
-                        break
-                    case .toolCall:
-                        break
                     }
                 }
                 await session.clear()

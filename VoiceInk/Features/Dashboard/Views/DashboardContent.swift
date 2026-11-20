@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftData
 import SwiftUI
@@ -41,6 +42,7 @@ struct DashboardContent: View {
     @AppStorage(AutoLearnSettings.hasFailureKey) private var hasAutoLearnFailure = false
     @FocusState private var isNameFieldFocused: Bool
     @Query(Self.recentTranscriptionsDescriptor()) private var recentTranscriptionCandidates: [Transcription]
+    @State private var isWindowVisible = false
 
     private static func recentTranscriptionsDescriptor() -> FetchDescriptor<Transcription> {
         var descriptor = FetchDescriptor<Transcription>(
@@ -103,6 +105,7 @@ struct DashboardContent: View {
         .onAppear {
             refreshAccessibilityStatus()
         }
+        .background(DashboardWindowVisibilityReader(isVisible: $isWindowVisible))
         .onReceive(LifecycleObserver.shared.publisher(for: .applicationDidBecomeActive)) { _ in
             refreshAccessibilityStatus()
         }
@@ -186,7 +189,11 @@ struct DashboardContent: View {
     }
 
     private var recentDashboardTranscriptions: [Transcription] {
-        Array(
+        // In menu bar mode the main window stays alive while hidden, and this query re-runs after
+        // every save. Without a timestamp index each run reads every transcription row, so only
+        // read it while some part of the window is actually visible.
+        guard isWindowVisible else { return [] }
+        return Array(
             recentTranscriptionCandidates
                 .filter { transcription in
                     isRecentDashboardTranscription(transcription)
@@ -906,6 +913,51 @@ private struct DashboardNoModesReminder: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppCardBackground(cornerRadius: 16))
+    }
+}
+
+private struct DashboardWindowVisibilityReader: NSViewRepresentable {
+    @Binding var isVisible: Bool
+
+    func makeNSView(context: Context) -> VisibilityView {
+        let view = VisibilityView()
+        view.visibility = $isVisible
+        return view
+    }
+
+    func updateNSView(_ view: VisibilityView, context: Context) {
+        view.visibility = $isVisible
+    }
+
+    final class VisibilityView: NSView {
+        var visibility: Binding<Bool>?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            let center = NotificationCenter.default
+            let name = NSWindow.didChangeOcclusionStateNotification
+            center.removeObserver(self, name: name, object: nil)
+            if let window {
+                center.addObserver(self, selector: #selector(occlusionDidChange(_:)), name: name, object: window)
+            }
+
+            // AppKit can attach this view during a SwiftUI update.
+            DispatchQueue.main.async { [weak self] in
+                self?.updateVisibility()
+            }
+        }
+
+        @objc private func occlusionDidChange(_ notification: Notification) {
+            updateVisibility()
+        }
+
+        private func updateVisibility() {
+            guard let visibility else { return }
+            let isVisible = window?.occlusionState.contains(.visible) ?? false
+            if visibility.wrappedValue != isVisible {
+                visibility.wrappedValue = isVisible
+            }
+        }
     }
 }
 

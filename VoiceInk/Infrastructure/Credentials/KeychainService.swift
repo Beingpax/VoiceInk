@@ -194,19 +194,28 @@ final class KeychainService {
         }
     }
 
-    /// Checks if a key exists in Keychain.
-    func exists(forKey key: String, syncable: Bool = true) -> Bool {
+    /// Checks if a key exists in Keychain. Returns nil when the Keychain can't answer
+    /// (for example while it's locked), so callers can tell that apart from a missing key.
+    func exists(forKey key: String, syncable: Bool = true) -> Bool? {
         var query = baseQuery(forKey: key, syncable: syncable)
         query[kSecReturnData as String] = kCFBooleanFalse
 
         let status = SecItemCopyMatching(query as CFDictionary, nil)
-        #if LOCAL_BUILD
-            if status == errSecItemNotFound {
+        switch status {
+        case errSecSuccess:
+            return true
+        case errSecItemNotFound:
+            #if LOCAL_BUILD
                 return defaults.data(forKey: legacyLocalPrefix + key) != nil
-            }
-        #endif
-
-        return status == errSecSuccess
+            #else
+                return false
+            #endif
+        default:
+            logger.error(
+                "Failed to check keychain item for key: \(key, privacy: .public), status: \(status, privacy: .public)"
+            )
+            return nil
+        }
     }
 
     // MARK: - Private Helpers

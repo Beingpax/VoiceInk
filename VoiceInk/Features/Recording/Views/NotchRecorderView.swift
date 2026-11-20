@@ -4,14 +4,11 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
     @ObservedObject var stateProvider: S
     @ObservedObject var recorder: Recorder
     @ObservedObject var assistantSession: AssistantSession
+    @ObservedObject var screenMetrics: NotchRecorderScreenMetrics
     let onRecordButtonTapped: () -> Void
     let onCloseTapped: () -> Void
     let onAssistantFollowUp: (String) -> Void
     @AppStorage(RecorderDisplaySettingsKeys.showLiveTranscript) private var showLiveTranscript = true
-    /// Bumped on every screen reconfiguration to invalidate the view. The notch metrics below
-    /// come from AppKit, which SwiftUI cannot observe on its own, so without this the view keeps
-    /// whatever sizes it happened to compute the last time it was rendered.
-    @State private var screenGeneration = 0
 
     // MARK: - Display State
 
@@ -40,34 +37,9 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
 
     // MARK: - Screen Geometry
 
-    /// Reads `screenGeneration` so SwiftUI records a dependency on it: the metrics below come
-    /// from AppKit, which it cannot observe, and a view only re-evaluates the parts that depend
-    /// on the state that changed.
-    private var screenMetrics: (width: CGFloat, height: CGFloat) {
-        _ = screenGeneration
+    private var notchWidth: CGFloat { screenMetrics.notchSize.width }
 
-        guard let screen = RecorderScreenResolver.resolve() else { return (180, 37) }
-
-        let width: CGFloat = {
-            if let left = screen.auxiliaryTopLeftArea?.width,
-                let right = screen.auxiliaryTopRightArea?.width
-            {
-                return screen.frame.width - left - right
-            }
-            return 180
-        }()
-
-        let height: CGFloat = {
-            if screen.safeAreaInsets.top > 0 { return screen.safeAreaInsets.top }
-            return NSApplication.shared.mainMenu?.menuBarHeight ?? NSStatusBar.system.thickness
-        }()
-
-        return (width, height)
-    }
-
-    private var notchWidth: CGFloat { screenMetrics.width }
-
-    private var notchHeight: CGFloat { screenMetrics.height }
+    private var notchHeight: CGFloat { screenMetrics.notchSize.height }
 
     // MARK: - Layout Constants
 
@@ -140,11 +112,6 @@ struct NotchRecorderView<S: RecorderStateProvider & ObservableObject>: View {
             pill.position(x: geo.size.width / 2, y: pillHeight / 2)
         }
         .animation(pillAnimation, value: displayState)
-        .onReceive(
-            LifecycleObserver.shared.publisher(for: .screenConfigurationChanged)
-        ) { _ in
-            screenGeneration += 1
-        }
     }
 
     // MARK: - Pill

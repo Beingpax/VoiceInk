@@ -7,7 +7,7 @@ class NotchWindowManager {
     private var windowController: NSWindowController?
     private var panel: NotchRecorderPanel?
 
-    private let makeView: () -> AnyView
+    private let makeView: (NotchRecorderScreenMetrics) -> AnyView
     private let logger = Logger(subsystem: "com.prakashjoshipax.voiceink", category: "NotchWindowManager")
 
     init(
@@ -18,12 +18,13 @@ class NotchWindowManager {
         onCloseTapped: @escaping () -> Void,
         onAssistantFollowUp: @escaping (String) -> Void
     ) {
-        self.makeView = {
+        self.makeView = { screenMetrics in
             AnyView(
                 NotchRecorderView(
                     stateProvider: engine,
                     recorder: recorder,
                     assistantSession: assistantSession,
+                    screenMetrics: screenMetrics,
                     onRecordButtonTapped: onRecordButtonTapped,
                     onCloseTapped: onCloseTapped,
                     onAssistantFollowUp: onAssistantFollowUp
@@ -44,10 +45,10 @@ class NotchWindowManager {
     /// NSPanel plus one hosting controller per dictation, which is noise next to starting audio
     /// capture and a transcription session in the same code path.
     @discardableResult
-    func show() -> Bool {
-        if panel == nil { initializeWindow() }
+    func show(on screen: NSScreen? = nil) -> Bool {
+        if panel == nil { initializeWindow(on: screen) }
         guard let panel else { return false }
-        return panel.show()
+        return panel.show(on: screen)
     }
 
     /// Tears the window down rather than just ordering it out, so `isVisible` is never used as a
@@ -63,14 +64,14 @@ class NotchWindowManager {
     // Rebuilding gives the SwiftUI content a new identity, so view-local state inside it is
     // reset — currently the assistant follow-up draft and its focus. The conversation itself
     // lives in `AssistantSession`, which is owned by the engine and survives.
-    private func initializeWindow() {
+    private func initializeWindow(on screen: NSScreen?) {
         deinitializeWindow()
-        guard let metrics = NotchRecorderPanel.calculateWindowMetrics() else {
+        guard let metrics = NotchRecorderPanel.calculateWindowMetrics(screen: screen) else {
             logger.error("Notch panel not created: no screen available")
             return
         }
         let newPanel = NotchRecorderPanel(contentRect: metrics.frame)
-        let view = makeView()
+        let view = makeView(newPanel.screenMetrics)
         let hostingController = NotchRecorderHostingController(rootView: view)
         newPanel.contentView = hostingController.view
         panel = newPanel
