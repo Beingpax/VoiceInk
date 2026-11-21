@@ -105,14 +105,19 @@ final class AccessibilityTextReader {
                 children: { self.copyOpaque(kAXChildrenAttribute as CFString, from: $0) as? [AXUIElement] ?? [] },
                 selectedEditableElement: { self.selectedEditableElement(in: $0, processID: processID) }
             )
-            var roots = candidates.map(\.element)
-            if let window = copyElement(kAXFocusedWindowAttribute as CFString, from: appElement) {
-                roots.append(window)
-            }
-            for root in roots {
-                guard let editable = resolver.resolve(in: root) else { continue }
+            for candidate in candidates {
+                let editable = resolver.resolve(in: candidate.element) ?? resolver.resolve(fromFocus: candidate.element) {
+                    self.copyElement(kAXParentAttribute as CFString, from: $0)
+                }
+                guard let editable else { continue }
                 readings = makeReadings(from: editable, appElement: appElement, focusSource: "web-selection")
                 if !readings.isEmpty { break }
+            }
+            if readings.isEmpty,
+                let window = copyElement(kAXFocusedWindowAttribute as CFString, from: appElement),
+                let editable = resolver.resolve(in: window)
+            {
+                readings = makeReadings(from: editable, appElement: appElement, focusSource: "web-selection")
             }
         }
         if readings.isEmpty { restoreWebAccessibility(processID: processID, appElement: appElement) }

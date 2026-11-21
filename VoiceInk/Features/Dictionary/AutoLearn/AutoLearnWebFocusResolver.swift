@@ -7,6 +7,18 @@ struct AutoLearnWebFocusResolver<Element> {
     let children: (Element) -> [Element]
     let selectedEditableElement: (Element) -> Element?
 
+    func resolve(fromFocus focusedElement: Element, parent: (Element) -> Element?) -> Element? {
+        // Some editors report a proxy element as focused. Walk its ancestors to
+        // the nearest web area, even when it is too deep in the window tree.
+        var current: Element? = focusedElement
+        for _ in 0..<8 {
+            guard let element = current else { return nil }
+            if isWebArea(element) { return selectedEditableElement(element) }
+            current = parent(element)
+        }
+        return nil
+    }
+
     func resolve(in root: Element) -> Element? {
         var queue: [(Element, Int)] = [(root, 0)]
         var index = 0

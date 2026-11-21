@@ -18,6 +18,26 @@ struct AutoLearnWebFocusTests {
         precondition(inspected == ["web", "web"])
         print("PASS Muse selection resolves editor missing from exposed children")
 
+        // Muse 13.1 reports a button inside a group as the focused element.
+        // Its containing web area is seven levels below the focused window.
+        let deepTree = [
+            "window": ["group1"], "group1": ["group2"], "group2": ["group3"],
+            "group3": ["group4"], "group4": ["group5"], "group5": ["scroll"],
+            "scroll": ["web"], "web": ["composer"], "composer": ["focus-proxy"]
+        ]
+        let parents = deepTree.reduce(into: [String: String]()) { result, entry in
+            for child in entry.value { result[child] = entry.key }
+        }
+        let deepResolver = AutoLearnWebFocusResolver<String>(
+            isWebArea: { $0 == "web" },
+            children: { deepTree[$0] ?? [] },
+            selectedEditableElement: { _ in "hidden-editor" }
+        )
+        precondition(deepResolver.resolve(in: "window") == nil)
+        precondition(deepResolver.resolve(in: "focus-proxy") == nil)
+        precondition(deepResolver.resolve(fromFocus: "focus-proxy") { parents[$0] } == "hidden-editor")
+        print("PASS Muse focus proxy resolves the selected editor in a deeply nested web area")
+
         var readChildren: [String] = []
         let noSelection = AutoLearnWebFocusResolver<String>(
             isWebArea: { $0 == "web" },
@@ -25,6 +45,7 @@ struct AutoLearnWebFocusTests {
             selectedEditableElement: { _ in nil }
         )
         precondition(noSelection.resolve(in: "window") == nil)
+        precondition(noSelection.resolve(fromFocus: "focus-proxy") { parents[$0] } == nil)
         precondition(!readChildren.contains("web"))
         print("PASS absent or noneditable selection never searches conversation contents")
 
@@ -36,6 +57,9 @@ struct AutoLearnWebFocusTests {
         )
         precondition(cycle.resolve(in: 0) == nil)
         precondition(visited <= 64)
+        visited = 0
+        precondition(cycle.resolve(fromFocus: 0) { $0 } == nil)
+        precondition(visited <= 8)
         print("PASS cyclic or broad trees have bounded work")
     }
 }
