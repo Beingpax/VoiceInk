@@ -7,7 +7,7 @@ struct TranscriptionOutputFilter {
         #"\{.*?\}"#,  // {}
     ]
 
-    static func filter(_ text: String, language: String? = nil) -> String {
+    static func filter(_ text: String, language: String? = nil, removeFillers: Bool = true) -> String {
         var filteredText = text
 
         // Remove <TAG>...</TAG> blocks
@@ -26,9 +26,11 @@ struct TranscriptionOutputFilter {
             }
         }
 
-        filteredText = FillerWordCleanup.remove(
-            from: filteredText, fillers: FillerWordManager.shared.fillerWords, language: language
-        )
+        if removeFillers {
+            filteredText = FillerWordCleanup.remove(
+                from: filteredText, fillers: FillerWordManager.shared.fillerWords, language: language
+            )
+        }
 
         // Normalize horizontal whitespace without flattening paragraphs or lists.
         filteredText = filteredText.replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)

@@ -121,7 +121,12 @@ class TranscriptionPipeline {
                 )
             }
             let vocabulary = vocabularyPreparation.finish()
-            text = TranscriptionOutputFilter.filter(text, language: transcriptionConfiguration.language)
+            let instruction = TranscriptionInstruction.active(for: transcriptionConfiguration.mode, model: model)
+            text = TranscriptionOutputFilter.filter(
+                text,
+                language: transcriptionConfiguration.language,
+                removeFillers: instruction?.keepsFillers != true
+            )
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
 
             if shouldCancel() {
@@ -151,7 +156,7 @@ class TranscriptionPipeline {
                     ?? resolvedOutputConfiguration.mode ?? transcriptionConfiguration.mode
             )
 
-            if formattingConfiguration.isTextFormattingEnabled {
+            if formattingConfiguration.isTextFormattingEnabled, instruction?.keepsParagraphs != true {
                 text = ParagraphFormatter.format(text)
             }
 

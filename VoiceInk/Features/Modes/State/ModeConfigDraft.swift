@@ -14,6 +14,7 @@ struct ModeConfigDraft {
     var isRealtimeTranscriptionEnabled: Bool
     var selectedLanguage: String?
     var isTextFormattingEnabled: Bool
+    var transcriptionInstruction: TranscriptionInstruction
     var useClipboardContext: Bool
     var useSelectedTextContext: Bool
     var useScreenCapture: Bool
@@ -45,6 +46,7 @@ struct ModeConfigDraft {
             isRealtimeTranscriptionEnabled = true
             selectedLanguage = inheritedConfig?.selectedLanguage
             isTextFormattingEnabled = true
+            transcriptionInstruction = inheritedConfig?.transcriptionInstruction ?? .default
             useClipboardContext = false
             useSelectedTextContext = false
             useScreenCapture = true
@@ -72,6 +74,7 @@ struct ModeConfigDraft {
             isRealtimeTranscriptionEnabled = latestConfig.isRealtimeTranscriptionEnabled
             selectedLanguage = latestConfig.selectedLanguage
             isTextFormattingEnabled = latestConfig.isTextFormattingEnabled
+            transcriptionInstruction = latestConfig.transcriptionInstruction ?? .default
             useClipboardContext = latestConfig.useClipboardContext
             useSelectedTextContext = latestConfig.useSelectedTextContext
             useScreenCapture = latestConfig.useScreenCapture
@@ -191,6 +194,7 @@ struct ModeConfigDraft {
                 outputMode: outputMode,
                 autoSendKey: savedAutoSendKey,
                 customCommand: savedCustomCommand,
+                transcriptionInstruction: transcriptionInstruction,
                 isDefault: savedIsDefault
             )
 
@@ -208,6 +212,7 @@ struct ModeConfigDraft {
             updatedConfig.isRealtimeTranscriptionEnabled = isRealtimeTranscriptionEnabled
             updatedConfig.selectedLanguage = selectedLanguage
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
+            updatedConfig.transcriptionInstruction = transcriptionInstruction
             updatedConfig.useClipboardContext = useClipboardContext
             updatedConfig.useSelectedTextContext = useSelectedTextContext
             updatedConfig.useScreenCapture = useScreenCapture

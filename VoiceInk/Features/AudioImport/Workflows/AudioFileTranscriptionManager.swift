@@ -178,14 +178,19 @@ class AudioTranscriptionManager: ObservableObject {
                 context: transcriptionConfiguration.requestContext.withVocabulary(vocabulary)
             )
             let transcriptionDuration = Date().timeIntervalSince(transcriptionStart)
-            text = TranscriptionOutputFilter.filter(text, language: transcriptionConfiguration.language)
+            let instruction = TranscriptionInstruction.active(for: transcriptionConfiguration.mode, model: currentModel)
+            text = TranscriptionOutputFilter.filter(
+                text,
+                language: transcriptionConfiguration.language,
+                removeFillers: instruction?.keepsFillers != true
+            )
             text = text.trimmingCharacters(in: .whitespacesAndNewlines)
             text = try await vocabulary.correctTranscription(text)
 
             let modeMetadata = transcriptionConfiguration.metadata
             let formattingConfiguration = ModeRuntimeResolver.transcriptionFormattingConfiguration(mode: mode)
 
-            if formattingConfiguration.isTextFormattingEnabled {
+            if formattingConfiguration.isTextFormattingEnabled, instruction?.keepsParagraphs != true {
                 text = ParagraphFormatter.format(text)
             }
 
