@@ -214,7 +214,7 @@ struct ModeConfigFormView: View {
                     } label: {
                         // Resolves removed models to their replacement.
                         Text(
-                            warmupSnapshot.transcriptionModel(named: draft.selectedTranscriptionModelName)
+                            selectedTranscriptionModel
                                 .flatMap { model in availableModels.first { $0.selectionKey == model.selectionKey } }
                                 .map(\.displayName)
                                 ?? String(localized: "Unavailable")
@@ -258,7 +258,7 @@ struct ModeConfigFormView: View {
         Button {
             draft.selectedTranscriptionModelName = model.selectionKey
         } label: {
-            if draft.selectedTranscriptionModelName == model.selectionKey {
+            if selectedTranscriptionModel?.selectionKey == model.selectionKey {
                 Label(model.displayName, systemImage: "checkmark")
             } else {
                 Text(model.displayName)
