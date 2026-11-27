@@ -74,6 +74,21 @@ actor WhisperContext {
             params.initial_prompt = nil
         }
 
+        // whisper.cpp otherwise feeds each 30 s window's decoded text into the next window, so one
+        // repeating window repeats until the end of long recordings. Give the context budget only to
+        // the prompt (plus the <|prev|> token) and repeat it in every window, leaving none for decoded text.
+        params.n_max_text_ctx = 0
+        if let prompt, !prompt.isEmpty {
+            var tokens = [whisper_token](repeating: 0, count: 512)
+            let tokenCount = whisper_tokenize(context, prompt, &tokens, Int32(tokens.count))
+            // A negative count means the prompt needs that many tokens; whisper.cpp keeps its tail.
+            let promptTokenCount = abs(tokenCount)
+            if promptTokenCount > 0 {
+                params.carry_initial_prompt = true
+                params.n_max_text_ctx = promptTokenCount + 1
+            }
+        }
+
         params.print_realtime = true
         params.print_progress = false
         params.print_timestamps = true
