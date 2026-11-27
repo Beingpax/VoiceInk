@@ -212,8 +212,11 @@ struct ModeConfigFormView: View {
                             }
                         }
                     } label: {
+                        // Resolves removed models to their replacement.
                         Text(
-                            availableModels.first { $0.selectionKey == draft.selectedTranscriptionModelName }?.displayName
+                            warmupSnapshot.transcriptionModel(named: draft.selectedTranscriptionModelName)
+                                .flatMap { model in availableModels.first { $0.selectionKey == model.selectionKey } }
+                                .map(\.displayName)
                                 ?? String(localized: "Unavailable")
                         )
                             .lineLimit(1)
