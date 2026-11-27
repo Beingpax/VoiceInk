@@ -504,7 +504,9 @@ final class RecordingShortcutModeHandler {
                     logDecision(action, phase: "recording", result: "ignored-engine-state")
                     return
                 }
-                logDecision(action, phase: "down", result: "stop-hands-free", detail: "mode=\(mode.rawValue)")
+                // The hands-free flag can outlive its recording; log what the toggle will actually do.
+                let isRunning = recordingState() == .starting || recordingState() == .recording
+                logDecision(action, phase: "down", result: isRunning ? "stop-hands-free" : "toggle-recorder", detail: "mode=\(mode.rawValue)")
                 await toggleRecorderPanel(modeId)
                 return
             }
