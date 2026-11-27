@@ -1,0 +1,21 @@
+VoiceInk.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_8b324de38da708::t_2b734b3cb83842 25,27
+VoiceInk.xcodeproj/project.pbxproj
+  s_8b324de38da708::t_2b734b3cb83842 887,890
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "66c14a2a548a7c7fb96d308e3a18f5230cc0326c",
+  "prompts": {},
+  "sessions": {
+    "s_8b324de38da708": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f772a37-baac-4f66-a7ef-8397cb7fcbbc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
