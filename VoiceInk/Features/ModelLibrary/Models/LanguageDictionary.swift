@@ -2,7 +2,13 @@ import Foundation
 
 enum TranscriptionLanguageSupport {
     static func languages(for model: any TranscriptionModel, realtimeEnabled: Bool? = nil) -> [String: String] {
-        model.supportedLanguages
+        guard let cloudModel = model as? CloudModel,
+            !cloudModel.recordedOnlyLanguages.isEmpty,
+            !TranscriptionRealtimeSupport.isEnabled(for: model, modeValue: realtimeEnabled)
+        else {
+            return model.supportedLanguages
+        }
+        return model.supportedLanguages.merging(cloudModel.recordedOnlyLanguages) { current, _ in current }
     }
 
     static func validLanguageOrFallback(

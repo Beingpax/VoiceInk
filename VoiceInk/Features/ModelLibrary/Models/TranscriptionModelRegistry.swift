@@ -12,6 +12,11 @@ enum TranscriptionModelRegistry {
             return model
         }
 
+        // Removed AssemblyAI models use their replacement.
+        if let replacement = AssemblyAIProvider.retiredModelReplacements[key] {
+            return models.first { $0.selectionKey == replacement }
+        }
+
         // Earlier versions stored OpenRouter by slug and custom models by name.
         // If that old key could identify either, require an explicit selection.
         if let openRouter = models.first(where: { $0.provider == .openRouter && "OpenRouter:\($0.name)" == key }) {
