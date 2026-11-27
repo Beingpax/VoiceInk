@@ -63,15 +63,19 @@ class CloudTranscriptionService: TranscriptionService {
                 throw CloudTranscriptionError.unsupportedProvider
             }
             let apiKey = try requireAPIKey(forProvider: cloudProvider.providerKey)
-            return try await cloudProvider.transcribe(
-                audioData: audioData,
-                fileName: fileName,
-                apiKey: apiKey,
-                model: model.name,
-                language: language,
-                customVocabulary: context.vocabulary?.terms ?? [],
-                timeout: timeout
-            )
+            return try await ZoomScribeRequestOptions.$textPolishingRequested.withValue(
+                context.zoomTextPolishingEnabled
+            ) {
+                try await cloudProvider.transcribe(
+                    audioData: audioData,
+                    fileName: fileName,
+                    apiKey: apiKey,
+                    model: model.name,
+                    language: language,
+                    customVocabulary: context.vocabulary?.terms ?? [],
+                    timeout: timeout
+                )
+            }
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as CloudTranscriptionError {

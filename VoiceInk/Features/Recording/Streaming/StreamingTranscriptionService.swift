@@ -169,7 +169,9 @@ class StreamingTranscriptionService {
             "Streaming start requested model=\(model.displayName, privacy: .public) language=\(selectedLanguage, privacy: .public)"
         )
 
-        try await provider.connect(model: model, language: selectedLanguage)
+        try await ZoomScribeRequestOptions.$textPolishingRequested.withValue(context.zoomTextPolishingEnabled) {
+            try await provider.connect(model: model, language: selectedLanguage)
+        }
 
         // If cancel() was called while we were awaiting the connection, tear down immediately.
         if state == .cancelled {

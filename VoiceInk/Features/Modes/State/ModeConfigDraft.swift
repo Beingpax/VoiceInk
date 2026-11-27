@@ -13,6 +13,7 @@ struct ModeConfigDraft {
     var selectedTranscriptionModelName: String?
     var isRealtimeTranscriptionEnabled: Bool
     var selectedLanguage: String?
+    var zoomTextPolishingEnabled: Bool
     var isTextFormattingEnabled: Bool
     var useClipboardContext: Bool
     var useSelectedTextContext: Bool
@@ -44,6 +45,7 @@ struct ModeConfigDraft {
             selectedTranscriptionModelName = inheritedConfig?.selectedTranscriptionModelName
             isRealtimeTranscriptionEnabled = true
             selectedLanguage = inheritedConfig?.selectedLanguage
+            zoomTextPolishingEnabled = false
             isTextFormattingEnabled = true
             useClipboardContext = false
             useSelectedTextContext = false
@@ -71,6 +73,7 @@ struct ModeConfigDraft {
             selectedTranscriptionModelName = latestConfig.selectedTranscriptionModelName
             isRealtimeTranscriptionEnabled = latestConfig.isRealtimeTranscriptionEnabled
             selectedLanguage = latestConfig.selectedLanguage
+            zoomTextPolishingEnabled = latestConfig.zoomTextPolishingEnabled
             isTextFormattingEnabled = latestConfig.isTextFormattingEnabled
             useClipboardContext = latestConfig.useClipboardContext
             useSelectedTextContext = latestConfig.useSelectedTextContext
@@ -182,6 +185,7 @@ struct ModeConfigDraft {
                 selectedTranscriptionModelName: selectedTranscriptionModelName,
                 isRealtimeTranscriptionEnabled: isRealtimeTranscriptionEnabled,
                 selectedLanguage: selectedLanguage,
+                zoomTextPolishingEnabled: zoomTextPolishingEnabled,
                 useClipboardContext: useClipboardContext,
                 useSelectedTextContext: useSelectedTextContext,
                 useScreenCapture: useScreenCapture,
@@ -207,6 +211,7 @@ struct ModeConfigDraft {
             updatedConfig.selectedTranscriptionModelName = selectedTranscriptionModelName
             updatedConfig.isRealtimeTranscriptionEnabled = isRealtimeTranscriptionEnabled
             updatedConfig.selectedLanguage = selectedLanguage
+            updatedConfig.zoomTextPolishingEnabled = zoomTextPolishingEnabled
             updatedConfig.isTextFormattingEnabled = isTextFormattingEnabled
             updatedConfig.useClipboardContext = useClipboardContext
             updatedConfig.useSelectedTextContext = useSelectedTextContext
