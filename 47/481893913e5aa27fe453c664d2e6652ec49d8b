@@ -1,0 +1,19 @@
+VoiceInk/Infrastructure/Providers/Transcription/Whisper/LibWhisper.swift
+  s_79d20802ed2782::t_4a933e40cdaa4d 77-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47481893913e5aa27fe453c664d2e6652ec49d8b",
+  "prompts": {},
+  "sessions": {
+    "s_79d20802ed2782": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b61c758d-26d2-43ff-b111-fe5339ef0b0d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
