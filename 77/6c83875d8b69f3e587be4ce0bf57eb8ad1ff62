@@ -1,0 +1,19 @@
+VoiceInk/Features/Shortcuts/Coordination/RecordingShortcutManager.swift
+  s_032b2a03ffcdb0::t_538fbd194deeab 507-509
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "776c83875d8b69f3e587be4ce0bf57eb8ad1ff62",
+  "prompts": {},
+  "sessions": {
+    "s_032b2a03ffcdb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc0e321e-0e51-4639-aa40-b11031966dbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
