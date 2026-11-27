@@ -1,0 +1,20 @@
+VoiceInk/Features/Modes/Views/ModeConfigFormView.swift
+  s_8b324de38da708::t_01e7509e961c59 217
+  s_8b324de38da708::t_5d1727834e1da2 261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fb9537bc7c7b5502ed6d6972d3c232cb8260c983",
+  "prompts": {},
+  "sessions": {
+    "s_8b324de38da708": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f772a37-baac-4f66-a7ef-8397cb7fcbbc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
