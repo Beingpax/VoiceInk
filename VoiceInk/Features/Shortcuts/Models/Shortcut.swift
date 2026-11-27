@@ -233,6 +233,9 @@ struct Shortcut: Codable, Equatable, Sendable {
         functionKeyCodes.contains(keyCode)
     }
 
+    /// Globe keyboards send keyDown/keyUp with this code right after a short Fn tap. It is the Fn key, not another key.
+    static let globeKeyCode: UInt16 = 179
+
     private static let modifierKeyCodes: Set<UInt16> = [
         UInt16(kVK_Shift),
         UInt16(kVK_RightShift),

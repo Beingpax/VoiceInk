@@ -504,6 +504,13 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         eventTime: TimeInterval,
         isAutoRepeat: Bool
     ) -> Bool {
+        // Ignore the globe echo of an Fn tap so it can't read as a chord and cancel Fn shortcuts.
+        if kind == .keyDown || kind == .keyUp, inputCode == Shortcut.globeKeyCode,
+            !shortcuts.values.contains(where: { $0.shortcut.kind == .key && $0.shortcut.keyCode == inputCode })
+        {
+            return false
+        }
+
         var shouldSuppress: Bool
         switch kind {
         case .mouseDragged:

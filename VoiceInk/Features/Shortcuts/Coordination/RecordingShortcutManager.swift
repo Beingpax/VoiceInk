@@ -361,6 +361,7 @@ final class RecordingShortcutModeHandler {
     private var activeShortcutIsDoubleTap = false
     private var stateRevision: UInt64 = 0
     private var pendingDoubleTapReleaseTimes: [ShortcutAction: TimeInterval] = [:]
+    private var doubleTapTriggerTimes: [ShortcutAction: TimeInterval] = [:]
 
     private let hybridPressThreshold: TimeInterval = 0.5
     private let doubleTapThreshold: TimeInterval = 0.7
@@ -399,6 +400,7 @@ final class RecordingShortcutModeHandler {
 
     func clearPendingDoubleTaps() {
         pendingDoubleTapReleaseTimes.removeAll()
+        doubleTapTriggerTimes.removeAll()
     }
 
     func clearPendingDoubleTap(for action: ShortcutAction) {
@@ -424,6 +426,7 @@ final class RecordingShortcutModeHandler {
     private func resetShortcutStates(for actions: Set<ShortcutAction>, preservingRecording: Bool) {
         for action in actions {
             pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+            doubleTapTriggerTimes.removeValue(forKey: action)
             interruptedRecordingActions.removeValue(forKey: action)
         }
         guard let activeRecordingShortcutAction, actions.contains(activeRecordingShortcutAction) else { return }
@@ -592,7 +595,23 @@ final class RecordingShortcutModeHandler {
                 clearPendingDoubleTap(for: action)
                 break
             }
-            if pressDuration < 0 || pressDuration > doubleTapThreshold {
+            if isRecorderVisible() && recordingState() == .recording {
+                pendingDoubleTapReleaseTimes.removeValue(forKey: action)
+                if let triggeredAt = doubleTapTriggerTimes[action],
+                    eventTime - triggeredAt >= 0,
+                    eventTime - triggeredAt <= doubleTapThreshold
+                {
+                    // An extra tap of the starting double tap must not stop the new recording.
+                    logDecision(action, phase: "up", result: "ignored-extra-tap", detail: "sinceTrigger=\(String(format: "%.3f", eventTime - triggeredAt))")
+                    break
+                }
+                // The double tap guards starts only; one tap stops a running recording.
+                logDecision(action, phase: "up", result: "single-tap-stop", detail: "mode=doubleTap")
+                await toggleRecorderPanel(modeId)
+                if stateRevision == releaseRevision {
+                    isHandsFreeRecording = isRecorderVisible()
+                }
+            } else if pressDuration < 0 || pressDuration > doubleTapThreshold {
                 logDecision(action, phase: "up", result: "ignored-tap-duration", detail: "duration=\(String(format: "%.3f", pressDuration))")
                 pendingDoubleTapReleaseTimes.removeValue(forKey: action)
             } else if let firstRelease = pendingDoubleTapReleaseTimes.removeValue(forKey: action),
@@ -600,6 +619,7 @@ final class RecordingShortcutModeHandler {
                 eventTime - firstRelease <= doubleTapThreshold
             {
                 logDecision(action, phase: "up", result: "double-tap-triggered", detail: "interval=\(String(format: "%.3f", eventTime - firstRelease))")
+                doubleTapTriggerTimes[action] = eventTime
                 await toggleRecorderPanel(modeId)
                 if stateRevision == releaseRevision {
                     isHandsFreeRecording = isRecorderVisible()
