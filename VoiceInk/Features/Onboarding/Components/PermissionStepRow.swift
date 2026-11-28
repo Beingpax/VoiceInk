@@ -9,8 +9,6 @@ struct PermissionStepRow: View {
     let showsRestartHint: Bool
     var guidance: String? = nil
     var help: ControlPermission.SetupHelp? = nil
-    var showsRelaunchHint = false
-    var onRelaunch: () -> Void = {}
     let actionTitle: String
     let onSelect: () -> Void
     let onAction: () -> Void
@@ -52,11 +50,6 @@ struct PermissionStepRow: View {
                     .font(.system(size: 12))
                     .foregroundColor(status == .limited ? AppTheme.Status.error : AppTheme.Text.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 44)
-            }
-
-            if isActive && !isLocked && !status.isGranted && showsRelaunchHint {
-                relaunchHint
                     .padding(.leading, 44)
             }
 
@@ -130,22 +123,6 @@ struct PermissionStepRow: View {
             return AppTheme.Status.error
         default:
             return AppTheme.Text.secondary
-        }
-    }
-
-    private var relaunchHint: some View {
-        HStack(spacing: 8) {
-            Text("Already allowed full access? Restart VoiceInk to apply it.")
-                .font(.system(size: 12))
-                .foregroundColor(AppTheme.Text.muted)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Button("Restart VoiceInk") {
-                onRelaunch()
-            }
-            .font(.system(size: 12, weight: .semibold))
-            .buttonStyle(.plain)
-            .foregroundColor(AppTheme.Action.secondaryForeground)
         }
     }
 

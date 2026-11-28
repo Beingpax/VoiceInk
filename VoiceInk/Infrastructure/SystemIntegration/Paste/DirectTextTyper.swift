@@ -22,7 +22,7 @@ enum DirectTextTyper {
     }
 
     static func type(_ text: String) async -> Result {
-        guard ControlPermission.isGranted, let chunks = unicodeChunks(for: text), !chunks.isEmpty,
+        guard AXIsProcessTrusted(), let chunks = unicodeChunks(for: text), !chunks.isEmpty,
             let source = CGEventSource(stateID: .privateState)
         else { return .notPosted }
 

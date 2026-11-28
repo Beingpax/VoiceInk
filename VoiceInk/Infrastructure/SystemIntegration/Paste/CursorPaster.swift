@@ -69,6 +69,13 @@ class CursorPaster {
         let queueWaitMs = elapsedMilliseconds(since: requestedAt)
         let sessionID = UUID().uuidString
         let method = PasteMethod.current()
+        // Every paste method sends keystrokes, which macOS drops without full control access.
+        // Check before touching the clipboard so a refused paste leaves it unchanged.
+        guard ControlPermission.isGranted else {
+            logger.error("Paste skipped: no full control permission id=\(sessionID, privacy: .public) controlPermission=\(ControlPermission.diagnosticValue, privacy: .public)")
+            showControlPermissionNotice()
+            return (PasteOutcome(result: .commandNotPosted, autoLearnGeneration: nil), nil)
+        }
         let originalText = method.usesClipboard ? text : DirectTextTyper.normalizedText(text)
         var textToDeliver = originalText
         let smartPunctuation = UserDefaults.standard.bool(forKey: SmartPunctuation.settingsKey)
@@ -181,9 +188,7 @@ class CursorPaster {
             case .posted:
                 return .commandPosted
             case .notPosted:
-                if !ControlPermission.isGranted {
-                    showControlPermissionNotice()
-                } else if !text.isEmpty {
+                if !text.isEmpty {
                     NotificationManager.shared.showNotification(
                         title: String(localized: "Remote typing could not start. Check Accessibility access and keyboard layout."),
                         type: .error
@@ -208,9 +213,7 @@ class CursorPaster {
             let result: PasteResult
             switch await DirectTextTyper.type(text) {
             case .posted: result = .commandPosted
-            case .notPosted:
-                if !ControlPermission.isGranted { showControlPermissionNotice() }
-                result = .commandNotPosted
+            case .notPosted: result = .commandNotPosted
             case .partiallyPosted: result = .commandPartiallyPosted
             }
             return result
@@ -309,9 +312,8 @@ class CursorPaster {
     // Posts Cmd+V via CGEvent without modifying the active input source.
     @MainActor
     private static func pasteFromClipboard(sessionID: String) async -> PasteResult {
-        guard ControlPermission.isGranted else {
-            logger.error("Paste needs full control permission id=\(sessionID, privacy: .public) controlPermission=\(ControlPermission.diagnosticValue, privacy: .public)")
-            showControlPermissionNotice()
+        guard AXIsProcessTrusted() else {
+            logger.error("Accessibility permission is required to paste with simulated key events id=\(sessionID, privacy: .public)")
             return .commandNotPosted
         }
 
@@ -352,11 +354,11 @@ class CursorPaster {
         try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
-    /// Without this, a limited macOS 27.3 grant makes pasting fail with no visible sign.
     @MainActor
     private static func showControlPermissionNotice() {
         NotificationManager.shared.showNotification(
-            title: String(localized: "Couldn't paste. Allow VoiceInk in \(ControlPermission.settingsName)."),
+            title: ControlPermission.statusNote
+                ?? String(localized: "Couldn't paste. Allow VoiceInk in \(ControlPermission.settingsName)."),
             type: .error,
             duration: 7.0,
             actionButton: (String(localized: "Open Settings"), ControlPermission.openSettings)

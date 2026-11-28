@@ -1,6 +1,5 @@
 import AppKit
 import ApplicationServices
-import CoreGraphics
 
 /// The macOS permission VoiceInk needs for its shortcuts and for pasting into other apps.
 ///
@@ -18,12 +17,11 @@ enum ControlPermission {
     }
 
     static var status: Status {
-        _ = trustedAtFirstCheck
         guard AXIsProcessTrusted() else { return .notGranted }
         guard usesProtectionOverride else { return .granted }
-        // CGPreflightPostEventAccess() keeps the answer from its first call, so a grant made
-        // while VoiceInk runs only shows up in the per-app check, which macOS answers each time.
-        return isTrustedForAllApps || CGPreflightPostEventAccess() ? .granted : .chosenAppsOnly
+        // Not CGPreflightPostEventAccess(): it keeps the answer from its first call, while this
+        // check reflects grants and scope changes made while VoiceInk runs.
+        return isTrustedForAllApps ? .granted : .chosenAppsOnly
     }
 
     /// macOS 27.3's per-app trust check: true only for Override System Protections, not Choose Apps.
@@ -31,14 +29,6 @@ enum ControlPermission {
     /// aren't in the 27.2 SDK, so their values are used directly.
     private static var isTrustedForAllApps: Bool {
         AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionTargetBundleIdentifier": "*"] as CFDictionary)
-    }
-
-    private static let trustedAtFirstCheck = AXIsProcessTrusted()
-
-    /// The permission changed while VoiceInk was running but still doesn't read as full access.
-    /// Some of macOS's answers only refresh at launch, so a restart applies the change.
-    static var mayNeedRestart: Bool {
-        usesProtectionOverride && status != .granted && AXIsProcessTrusted() != trustedAtFirstCheck
     }
 
     static var isGranted: Bool {
