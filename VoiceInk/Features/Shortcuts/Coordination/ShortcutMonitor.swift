@@ -591,7 +591,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                     || (kind == .flagsChanged && state.shortcut.isModifierOnly && !state.isDown)
             {
                 let flags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: inputCode)
-                if flags != state.shortcut.modifierFlags,
+                if flags != state.shortcut.genericModifierFlags,
                     !matchesShortcut(state.shortcut, action: action, kind: kind, inputCode: inputCode, modifierFlags: modifierFlags)
                 {
                     lastModifierMismatch = "\(action.storageName):actual=0x\(String(flags.rawValue, radix: 16)),expected=0x\(String(state.shortcut.modifierFlags.rawValue, radix: 16))"
@@ -709,11 +709,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                 return .none
             }
 
-            let currentFlags = Shortcut.normalizedModifierFlags(
-                modifierFlags,
-                forKeyCode: shortcut.keyCode
-            )
-            return currentFlags.isSuperset(of: shortcut.modifierFlags) ? .suppress : .keyUp
+            return shortcut.modifiersStillHeld(in: modifierFlags) ? .suppress : .keyUp
         case .mouseDown, .mouseDragged, .mouseUp:
             return .none
         }
@@ -741,8 +737,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
         case .keyUp, .mouseUp, .mouseDragged:
             return false
         }
-        let flags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: shortcut.kind == .key ? inputCode : nil)
-        guard flags.isSuperset(of: shortcut.modifierFlags) else { return false }
+        guard shortcut.modifiersStillHeld(in: modifierFlags) else { return false }
         // Preserve the existing Force Quit exception.
         if kind == .keyDown, inputCode == UInt16(kVK_Escape),
             modifierFlags.contains([.command, .option]),
@@ -805,8 +800,7 @@ private final class ShortcutMonitorWorker: @unchecked Sendable {
                 return .none
             }
 
-            let currentFlags = Shortcut.normalizedModifierFlags(modifierFlags, forKeyCode: nil)
-            return currentFlags.isSuperset(of: shortcut.modifierFlags) ? .suppress : .keyUp
+            return shortcut.modifiersStillHeld(in: modifierFlags) ? .suppress : .keyUp
         case .keyDown, .keyUp, .mouseDragged:
             return .none
         }

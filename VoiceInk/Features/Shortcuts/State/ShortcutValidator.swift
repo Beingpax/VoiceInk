@@ -78,7 +78,7 @@ enum ShortcutValidator {
                 return .plainKeyRequiresModifier
             }
 
-            if shortcut.modifierFlags == [.shift],
+            if shortcut.genericModifierFlags == [.shift],
                 shiftOnlyTypingKeyCodes.contains(shortcut.keyCode)
             {
                 return .shiftTypingKeyRequiresAdditionalModifier
