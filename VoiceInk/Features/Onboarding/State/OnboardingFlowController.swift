@@ -362,7 +362,6 @@ final class OnboardingFlowController {
     }
 
     func skipOnboarding(onComplete: () -> Void) {
-        guard coordinator.requiredPermissionsGranted else { return }
         onComplete()
     }
 

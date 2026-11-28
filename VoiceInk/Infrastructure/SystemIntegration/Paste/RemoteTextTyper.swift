@@ -23,7 +23,7 @@ enum RemoteTextTyper {
     private static let interKeyDelayNanoseconds: UInt64 = 5_000_000
 
     static func type(_ text: String, sendKey: FinishAndSendKey) async -> Result {
-        guard !Task.isCancelled, AXIsProcessTrusted(),
+        guard !Task.isCancelled, ControlPermission.isGranted,
             let source = CGEventSource(stateID: .privateState),
             let map = keyboardMap()
         else { return .notPosted }

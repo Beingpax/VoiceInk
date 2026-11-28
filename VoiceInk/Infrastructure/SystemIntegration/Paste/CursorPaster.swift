@@ -181,7 +181,9 @@ class CursorPaster {
             case .posted:
                 return .commandPosted
             case .notPosted:
-                if !text.isEmpty {
+                if !ControlPermission.isGranted {
+                    showControlPermissionNotice()
+                } else if !text.isEmpty {
                     NotificationManager.shared.showNotification(
                         title: String(localized: "Remote typing could not start. Check Accessibility access and keyboard layout."),
                         type: .error
@@ -206,7 +208,9 @@ class CursorPaster {
             let result: PasteResult
             switch await DirectTextTyper.type(text) {
             case .posted: result = .commandPosted
-            case .notPosted: result = .commandNotPosted
+            case .notPosted:
+                if !ControlPermission.isGranted { showControlPermissionNotice() }
+                result = .commandNotPosted
             case .partiallyPosted: result = .commandPartiallyPosted
             }
             return result
@@ -305,8 +309,9 @@ class CursorPaster {
     // Posts Cmd+V via CGEvent without modifying the active input source.
     @MainActor
     private static func pasteFromClipboard(sessionID: String) async -> PasteResult {
-        guard AXIsProcessTrusted() else {
-            logger.error("Accessibility permission is required to paste with simulated key events id=\(sessionID, privacy: .public)")
+        guard ControlPermission.isGranted else {
+            logger.error("Paste needs full control permission id=\(sessionID, privacy: .public) controlPermission=\(ControlPermission.diagnosticValue, privacy: .public)")
+            showControlPermissionNotice()
             return .commandNotPosted
         }
 
@@ -347,11 +352,22 @@ class CursorPaster {
         try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
+    /// Without this, a limited macOS 27.3 grant makes pasting fail with no visible sign.
+    @MainActor
+    private static func showControlPermissionNotice() {
+        NotificationManager.shared.showNotification(
+            title: String(localized: "Couldn't paste. Allow VoiceInk in \(ControlPermission.settingsName)."),
+            type: .error,
+            duration: 7.0,
+            actionButton: (String(localized: "Open Settings"), ControlPermission.openSettings)
+        )
+    }
+
     // MARK: - Send Key
 
     static func performSendKey(_ key: FinishAndSendKey) {
         guard key.isEnabled else { return }
-        guard AXIsProcessTrusted() else { return }
+        guard ControlPermission.isGranted else { return }
 
         let source = CGEventSource(stateID: .privateState)
         let enterDown = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: true)

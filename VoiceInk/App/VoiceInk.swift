@@ -428,12 +428,23 @@ struct VoiceInkApp: App {
         guard !didShowLaunchReminders else { return }
         didShowLaunchReminders = true
 
-        if !AXIsProcessTrusted() {
+        switch ControlPermission.status {
+        case .granted:
+            break
+        case .chosenAppsOnly:
             NotificationManager.shared.showNotification(
-                title: String(localized: "Accessibility permission is not provided"),
+                title: String(localized: "VoiceInk needs full access to work properly."),
                 type: .warning,
                 duration: 7.0,
-                actionButton: (String(localized: "Open Settings"), Self.openAccessibilitySettings)
+                actionButton: (String(localized: "Open Settings"), ControlPermission.openSettings)
+            )
+            return
+        case .notGranted:
+            NotificationManager.shared.showNotification(
+                title: String(localized: "Allow VoiceInk in \(ControlPermission.settingsName)"),
+                type: .warning,
+                duration: 7.0,
+                actionButton: (String(localized: "Open Settings"), ControlPermission.openSettings)
             )
             return
         }
@@ -445,12 +456,6 @@ struct VoiceInkApp: App {
                 duration: 7.0,
                 actionButton: (String(localized: "Manage Modes"), ModeSetupNavigator.openModesSettings)
             )
-        }
-    }
-
-    private static func openAccessibilitySettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
         }
     }
 }

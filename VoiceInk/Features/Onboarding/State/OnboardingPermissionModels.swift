@@ -128,8 +128,8 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
 
         case .accessibility:
             return OnboardingPermissionDescriptor(
-                title: String(localized: "Accessibility"),
-                subtitle: String(localized: "VoiceInk uses Accessibility to type transcriptions directly into any app.")
+                title: ControlPermission.settingsName,
+                subtitle: String(localized: "Required for VoiceInk to work properly.")
             )
 
         case .screenRecording:
@@ -150,6 +150,8 @@ struct OnboardingPermissionDescriptor {
 enum OnboardingPermissionStatus: Equatable {
     case granted
     case needsAccess
+    /// Granted for chosen apps only, which isn't enough (macOS 27.3 and later).
+    case limited
     case denied
     case restricted
     case unknown
@@ -159,7 +161,7 @@ enum OnboardingPermissionStatus: Equatable {
     }
 
     var requiresSettings: Bool {
-        self == .denied || self == .restricted
+        self == .denied || self == .restricted || self == .limited
     }
 
     var label: String {
@@ -168,6 +170,8 @@ enum OnboardingPermissionStatus: Equatable {
             return String(localized: "Granted")
         case .needsAccess:
             return String(localized: "Needs access")
+        case .limited:
+            return String(localized: "Limited")
         case .denied:
             return String(localized: "Denied")
         case .restricted:
@@ -183,7 +187,7 @@ enum OnboardingPermissionStatus: Equatable {
             return AppTheme.Text.secondary
         case .needsAccess:
             return AppTheme.Text.secondary
-        case .denied, .restricted:
+        case .denied, .restricted, .limited:
             return AppTheme.Status.error
         case .unknown:
             return AppTheme.Text.secondary

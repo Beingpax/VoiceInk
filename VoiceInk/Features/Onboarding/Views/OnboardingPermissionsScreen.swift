@@ -43,6 +43,10 @@ struct OnboardingPermissionsScreen: View {
                     isLocked: isLocked(permission),
                     showsRestartHint: permission == .screenRecording && hasRequestedScreenRecording
                         && !status(.screenRecording).isGranted,
+                    guidance: permission == .accessibility ? ControlPermission.statusNote : nil,
+                    help: permission == .accessibility ? ControlPermission.setupHelp : nil,
+                    showsRelaunchHint: permission == .accessibility && ControlPermission.mayNeedRestart,
+                    onRelaunch: AppRelauncher.relaunch,
                     actionTitle: actionTitle(permission),
                     onSelect: {
                         guard !isLocked(permission) else { return }

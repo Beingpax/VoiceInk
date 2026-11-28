@@ -31,7 +31,7 @@ struct DashboardContent: View {
     @State private var isModelUsagePanelPresented = false
     @State private var isInsightsViewPresented = false
     @State private var selectedInsightPeriod: DashboardInsightPeriod = .allTime
-    @State private var isAccessibilityEnabled = AXIsProcessTrusted()
+    @State private var controlPermissionStatus = ControlPermission.status
     @ObservedObject private var modeManager = ModeManager.shared
     @ObservedObject private var starPrompt = GitHubStarPromptCoordinator.shared
     @State private var isSystemInfoCopied = false
@@ -157,7 +157,7 @@ struct DashboardContent: View {
                 .buttonStyle(.link)
             }
 
-            if !isAccessibilityEnabled {
+            if controlPermissionStatus != .granted {
                 nameEditorDismissArea {
                     accessibilityReminder
                 }
@@ -286,7 +286,10 @@ struct DashboardContent: View {
     }
 
     private var accessibilityReminder: some View {
-        DashboardAccessibilityReminder(onOpenSettings: openAccessibilitySettings)
+        DashboardAccessibilityReminder(
+            status: controlPermissionStatus,
+            onOpenSettings: ControlPermission.openSettings
+        )
     }
 
     private var greetingHeader: some View {
@@ -374,13 +377,7 @@ struct DashboardContent: View {
     }
 
     private func refreshAccessibilityStatus() {
-        isAccessibilityEnabled = AXIsProcessTrusted()
-    }
-
-    private func openAccessibilitySettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        controlPermissionStatus = ControlPermission.status
     }
 
     private func openInsightsIfAvailable() {
@@ -837,7 +834,17 @@ struct DashboardContent: View {
 }
 
 private struct DashboardAccessibilityReminder: View {
+    let status: ControlPermission.Status
     let onOpenSettings: () -> Void
+
+    private var title: String {
+        String(localized: "Allow VoiceInk in \(ControlPermission.settingsName)")
+    }
+
+    private var message: String {
+        ControlPermission.statusNote
+            ?? String(localized: "Required for VoiceInk to work properly.")
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -853,12 +860,12 @@ private struct DashboardAccessibilityReminder: View {
             .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Enable Accessibility Access")
+                Text(title)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text("Required for VoiceInk shortcuts and app-wide controls to work properly.")
+                Text(message)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -868,7 +875,7 @@ private struct DashboardAccessibilityReminder: View {
 
             Button("Open Settings", action: onOpenSettings)
                 .controlSize(.small)
-                .help("Open Accessibility settings")
+                .help("Open Settings")
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

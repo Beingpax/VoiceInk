@@ -4043,6 +4043,7 @@
       }
     },
     "Accessibility permission is not provided" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5274,6 +5275,34 @@
         }
       }
     },
+    "Added with Choose Apps? Click ⓘ next to VoiceInk and turn on Control Your Entire Mac and All Apps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit „Apps“ hinzugefügt? Klicke neben VoiceInk auf ⓘ und aktiviere „Control Your Entire Mac and All Apps“."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouté avec « Choisir des apps » ? Cliquez sur ⓘ à côté de VoiceInk et activez « Control Your Entire Mac and All Apps »."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「アプリを選択」で追加した場合は、VoiceInkの横のⓘをクリックし、「このMac全体とすべてのアプリを制御」をオンにします。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已用“选取App”添加？点按 VoiceInk 旁边的 ⓘ，然后打开“Control Your Entire Mac and All Apps”。"
+          }
+        }
+      }
+    },
     "Additional Shortcuts" : {
       "localizations" : {
         "de" : {
@@ -5972,6 +6001,34 @@
         }
       }
     },
+    "Allow VoiceInk in %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk in „%@“ erlauben"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisez VoiceInk dans « %@ »"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「%@」でVoiceInkを許可してください"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "请在“%@”中允许 VoiceInk"
+          }
+        }
+      }
+    },
     "Allow VoiceInk to work across all your apps." : {
       "localizations" : {
         "de" : {
@@ -5996,6 +6053,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "允许 VoiceInk 在你的所有 App 中工作。"
+          }
+        }
+      }
+    },
+    "Already allowed full access? Restart VoiceInk to apply it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vollen Zugriff schon erlaubt? Starte VoiceInk neu, um ihn zu übernehmen."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accès complet déjà autorisé ? Redémarrez VoiceInk pour l’appliquer."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "フルアクセスを許可済みの場合は、VoiceInkを再起動して反映してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已允许完全访问？重新启动 VoiceInk 以使其生效。"
           }
         }
       }
@@ -8891,6 +8976,34 @@
         }
       }
     },
+    "Choose Override System Protections, not Choose Apps." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle „Override System Protections“, nicht „Apps“."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez « Override System Protections », et non « Choisir des apps »."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「アプリを選択」ではなく「Override System Protections」を選択します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选择“Override System Protections”，不要选“选取App”。"
+          }
+        }
+      }
+    },
     "Choose what to import from this backup." : {
       "localizations" : {
         "de" : {
@@ -9113,6 +9226,62 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "CLI 提供商"
+          }
+        }
+      }
+    },
+    "Click each OK, then Allow System & App Protection Override, and confirm with your password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicke jeweils auf „OK“, dann auf „Allow System & App Protection Override“, und bestätige mit deinem Passwort."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cliquez sur chaque « OK », puis sur « Allow System & App Protection Override », et confirmez avec votre mot de passe."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各「OK」をクリックしてから「Allow System & App Protection Override」をクリックし、パスワードで確定します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点按每个“OK”，然后点按“Allow System & App Protection Override”，并输入密码确认。"
+          }
+        }
+      }
+    },
+    "Click Open Settings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicke auf „Einstellungen öffnen“."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cliquez sur « Ouvrir les paramètres »."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "「設定を開く」をクリックします。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "点按“打开设置”。"
           }
         }
       }
@@ -10612,6 +10781,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "无法打开 — 重试"
+          }
+        }
+      }
+    },
+    "Couldn't paste. Allow VoiceInk in %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einfügen fehlgeschlagen. Erlaube VoiceInk in „%@“."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collage impossible. Autorisez VoiceInk dans « %@ »."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ペーストできませんでした。「%@」でVoiceInkを許可してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法粘贴。请在“%@”中允许 VoiceInk。"
           }
         }
       }
@@ -12186,6 +12383,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "检测语音片段并过滤静音，以提高本地模型的准确性。"
+          }
+        }
+      }
+    },
+    "Device Control and Data Access" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerätesteuerung und Datenzugriff"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contrôle de l’appareil et accès aux données"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイスの制御とデータへのアクセス"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "设备控制和数据访问"
           }
         }
       }
@@ -14078,6 +14303,7 @@
       }
     },
     "Enable Accessibility Access" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -17269,6 +17495,34 @@
         }
       }
     },
+    "How to allow VoiceInk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So erlaubst du VoiceInk den Zugriff"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comment autoriser VoiceInk"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkを許可する方法"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "如何允许 VoiceInk"
+          }
+        }
+      }
+    },
     "How to use Vocabulary" : {
       "localizations" : {
         "de" : {
@@ -19544,6 +19798,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "浅色"
+          }
+        }
+      }
+    },
+    "Limited" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingeschränkt"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limité"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "制限あり"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "受限"
           }
         }
       }
@@ -24026,6 +24308,7 @@
       }
     },
     "Open Accessibility settings" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27951,6 +28234,7 @@
       }
     },
     "Required for VoiceInk shortcuts and app-wide controls to work properly." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -27974,6 +28258,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "VoiceInk 的快捷键和全局控制需要此权限才能正常工作。"
+          }
+        }
+      }
+    },
+    "Required for VoiceInk to work properly." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erforderlich, damit VoiceInk richtig funktioniert."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nécessaire au bon fonctionnement de VoiceInk."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkが正しく動作するために必要です。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk 正常运行所必需。"
           }
         }
       }
@@ -28020,16 +28332,16 @@
             "value" : "Nécessite l'anglais. Réglez la langue sur anglais pour utiliser Amélioration Zoom."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "需要英语。请将语言设为英语以使用 Zoom 润色。"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "英語が必要です。Zoom 校正を使用するには、言語を英語に設定してください。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要英语。请将语言设为英语以使用 Zoom 润色。"
           }
         }
       }
@@ -28200,6 +28512,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重启音频"
+          }
+        }
+      }
+    },
+    "Restart VoiceInk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk neu starten"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redémarrer VoiceInk"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkを再起動"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新启动 VoiceInk"
           }
         }
       }
@@ -29179,6 +29519,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "屏幕录制"
+          }
+        }
+      }
+    },
+    "Scroll down, click +, and select VoiceInk." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scrolle nach unten, klicke auf + und wähle VoiceInk."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites défiler vers le bas, cliquez sur + et sélectionnez VoiceInk."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下にスクロールして＋をクリックし、VoiceInkを選択します。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "向下滚动，点按 +，然后选择 VoiceInk。"
           }
         }
       }
@@ -30846,10 +31214,28 @@
     },
     "Skip" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überspringen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer"
+          }
+        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "スキップ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过"
           }
         }
       }
@@ -30885,10 +31271,28 @@
     },
     "Skip onboarding" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einführung überspringen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer l'intégration"
+          }
+        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "初期設定をスキップ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过新手引导"
           }
         }
       }
@@ -30923,10 +31327,28 @@
     },
     "Skip the remaining onboarding steps" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restliche Schritte der Einführung überspringen"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer les étapes restantes de l'intégration"
+          }
+        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "残りの初期設定をスキップ"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过剩余的新手引导步骤"
           }
         }
       }
@@ -32056,6 +32478,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "系统"
+          }
+        }
+      }
+    },
+    "System & App Protection Override" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System & App Protection Override"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System & App Protection Override"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System & App Protection Override"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System & App Protection Override"
           }
         }
       }
@@ -33729,6 +34179,34 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "这是针对英语优化的模型，仅支持英语转写。"
+          }
+        }
+      }
+    },
+    "This is the same permission VoiceInk used before. macOS now shows it differently." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das ist dieselbe Berechtigung wie bisher. macOS zeigt sie jetzt nur anders an."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "C’est la même autorisation qu’avant. macOS la présente simplement différemment."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "これまでと同じアクセス権です。macOSでの表示方法が変わっただけです。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这与 VoiceInk 以前使用的权限相同，只是 macOS 现在的显示方式不同。"
           }
         }
       }
@@ -37004,6 +37482,34 @@
         }
       }
     },
+    "VoiceInk needs full access to work properly." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk braucht vollen Zugriff, um richtig zu funktionieren."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk a besoin d’un accès complet pour fonctionner correctement."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInkが正しく動作するにはフルアクセスが必要です。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VoiceInk 需要完全访问权限才能正常运行。"
+          }
+        }
+      }
+    },
     "VoiceInk needs to restart macOS audio. Sound in all apps will cut out for a moment." : {
       "localizations" : {
         "de" : {
@@ -37399,6 +37905,7 @@
       }
     },
     "VoiceInk uses Accessibility to type transcriptions directly into any app." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -38883,16 +39390,16 @@
             "value" : "Amélioration Zoom"
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zoom 润色"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zoom 校正"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom 润色"
           }
         }
       }
@@ -38911,16 +39418,16 @@
             "value" : "Amélioration intégrée de Zoom pour les transcriptions Zoom Scribe, fournie par Zoom AI Services. Fonctionnalité complémentaire : Zoom peut facturer des frais supplémentaires. Voir zoom.ai pour plus de détails. Anglais uniquement."
           }
         },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zoom 为 Zoom Scribe 转写内容提供的内置润色，由 Zoom AI Services 提供。附加功能：Zoom 可能收取额外费用，详情请见 zoom.ai。仅支持英语。"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zoom Scribe の文字起こしを整える Zoom 内蔵の校正機能で、Zoom AI Services が提供します。アドオン機能：追加料金がかかる場合があります。詳細は zoom.ai をご覧ください。英語のみ対応。"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zoom 为 Zoom Scribe 转写内容提供的内置润色，由 Zoom AI Services 提供。附加功能：Zoom 可能收取额外费用，详情请见 zoom.ai。仅支持英语。"
           }
         }
       }
