@@ -83,7 +83,11 @@ final class OnboardingPermissionController {
         switch permission {
         case .microphone:
             return permissionStatus.requiresSettings ? String(localized: "Open Settings") : String(localized: "Allow")
-        case .accessibility, .screenRecording:
+        case .accessibility:
+            // macOS 27.3 has no prompt for this permission; people add VoiceInk in System Settings.
+            return permissionStatus.requiresSettings || ControlPermission.usesProtectionOverride
+                ? String(localized: "Open Settings") : String(localized: "Allow")
+        case .screenRecording:
             return String(localized: "Allow")
         }
     }
@@ -130,7 +134,14 @@ final class OnboardingPermissionController {
             }
 
         case .accessibility:
-            return AXIsProcessTrusted() ? .granted : .needsAccess
+            switch ControlPermission.status {
+            case .granted:
+                return .granted
+            case .chosenAppsOnly:
+                return .limited
+            case .notGranted:
+                return .needsAccess
+            }
 
         case .screenRecording:
             return CGPreflightScreenCaptureAccess() ? .granted : .needsAccess
@@ -153,11 +164,7 @@ final class OnboardingPermissionController {
     }
 
     private func requestAccessibility() {
-        let options: NSDictionary = [
-            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
-        ]
-        AXIsProcessTrustedWithOptions(options)
-        openPrivacySettings(.accessibility)
+        ControlPermission.requestAccess()
         startPollingPermissionStatus()
     }
 

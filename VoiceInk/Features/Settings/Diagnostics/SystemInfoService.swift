@@ -228,7 +228,11 @@ final class SystemInfoService {
     }
 
     private func getAccessibilityStatus() -> String {
-        return AXIsProcessTrusted() ? "Granted" : "Not Granted"
+        switch ControlPermission.status {
+        case .granted: return "Granted"
+        case .chosenAppsOnly: return "Chosen apps only (needs Override System Protections)"
+        case .notGranted: return "Not Granted"
+        }
     }
 
     private func getScreenRecordingStatus() -> String {

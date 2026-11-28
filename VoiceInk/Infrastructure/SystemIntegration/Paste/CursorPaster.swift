@@ -69,6 +69,13 @@ class CursorPaster {
         let queueWaitMs = elapsedMilliseconds(since: requestedAt)
         let sessionID = UUID().uuidString
         let method = PasteMethod.current()
+        // Every paste method sends keystrokes, which macOS drops without full control access.
+        // Check before touching the clipboard so a refused paste leaves it unchanged.
+        guard ControlPermission.isGranted else {
+            logger.error("Paste skipped: no full control permission id=\(sessionID, privacy: .public) controlPermission=\(ControlPermission.diagnosticValue, privacy: .public)")
+            showControlPermissionNotice()
+            return (PasteOutcome(result: .commandNotPosted, autoLearnGeneration: nil), nil)
+        }
         let originalText = method.usesClipboard ? text : DirectTextTyper.normalizedText(text)
         var textToDeliver = originalText
         let smartPunctuation = UserDefaults.standard.bool(forKey: SmartPunctuation.settingsKey)
@@ -347,11 +354,22 @@ class CursorPaster {
         try? await Task.sleep(nanoseconds: nanoseconds)
     }
 
+    @MainActor
+    private static func showControlPermissionNotice() {
+        NotificationManager.shared.showNotification(
+            title: ControlPermission.statusNote
+                ?? String(localized: "Couldn't paste. Allow VoiceInk in \(ControlPermission.settingsName)."),
+            type: .error,
+            duration: 7.0,
+            actionButton: (String(localized: "Open Settings"), ControlPermission.openSettings)
+        )
+    }
+
     // MARK: - Send Key
 
     static func performSendKey(_ key: FinishAndSendKey) {
         guard key.isEnabled else { return }
-        guard AXIsProcessTrusted() else { return }
+        guard ControlPermission.isGranted else { return }
 
         let source = CGEventSource(stateID: .privateState)
         let enterDown = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: true)

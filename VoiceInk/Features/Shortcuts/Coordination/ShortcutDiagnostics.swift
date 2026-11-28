@@ -89,7 +89,7 @@ enum ShortcutDiagnostics {
         // Secure Input ownership is advisory.
         let reportedPID = secureInput ? (session?["kCGSSessionSecureInputPID"] as? NSNumber)?.int32Value : nil
         let reportedOwner = reportedPID.flatMap { NSRunningApplication(processIdentifier: $0)?.bundleIdentifier }
-        return "accessibility=\(AXIsProcessTrusted()) listenAccess=\(CGPreflightListenEventAccess()) postAccess=\(CGPreflightPostEventAccess()) secureInput=\(secureInput) reportedSecureInputPID=\(reportedPID.map { String($0) } ?? "unknown") reportedSecureInputApp=\(reportedOwner ?? "unknown") sessionAllowsInput=\(UserSessionInputPolicy.allowsShortcutHandling)"
+        return "accessibility=\(AXIsProcessTrusted()) controlPermission=\(ControlPermission.diagnosticValue) listenAccess=\(CGPreflightListenEventAccess()) postAccess=\(CGPreflightPostEventAccess()) secureInput=\(secureInput) reportedSecureInputPID=\(reportedPID.map { String($0) } ?? "unknown") reportedSecureInputApp=\(reportedOwner ?? "unknown") sessionAllowsInput=\(UserSessionInputPolicy.allowsShortcutHandling)"
     }
 
     @MainActor static func healthReport() -> String {

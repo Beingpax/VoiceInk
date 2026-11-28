@@ -7,6 +7,8 @@ struct PermissionStepRow: View {
     let isActive: Bool
     let isLocked: Bool
     let showsRestartHint: Bool
+    var guidance: String? = nil
+    var help: ControlPermission.SetupHelp? = nil
     let actionTitle: String
     let onSelect: () -> Void
     let onAction: () -> Void
@@ -18,9 +20,15 @@ struct PermissionStepRow: View {
                 stepNumberView
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey(descriptor.title))
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(AppTheme.Text.primary)
+                    HStack(spacing: 6) {
+                        Text(LocalizedStringKey(descriptor.title))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(AppTheme.Text.primary)
+
+                        if let help {
+                            PermissionHelpButton(help: help)
+                        }
+                    }
 
                     Text(LocalizedStringKey(descriptor.subtitle))
                         .font(.system(size: 12))
@@ -35,6 +43,14 @@ struct PermissionStepRow: View {
                 } else {
                     actionButton
                 }
+            }
+
+            if isActive && !isLocked && !status.isGranted, let guidance {
+                Text(guidance)
+                    .font(.system(size: 12))
+                    .foregroundColor(status == .limited ? AppTheme.Status.error : AppTheme.Text.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 44)
             }
 
             if isActive && !isLocked && showsRestartHint {
@@ -103,7 +119,7 @@ struct PermissionStepRow: View {
 
     private var statusTone: Color {
         switch status {
-        case .denied, .restricted:
+        case .denied, .restricted, .limited:
             return AppTheme.Status.error
         default:
             return AppTheme.Text.secondary
@@ -124,5 +140,65 @@ struct PermissionStepRow: View {
             .buttonStyle(.plain)
             .foregroundColor(AppTheme.Action.secondaryForeground)
         }
+    }
+}
+
+/// An info button that shows how to grant a permission in System Settings.
+private struct PermissionHelpButton: View {
+    let help: ControlPermission.SetupHelp
+    @State private var isShowingHelp = false
+
+    var body: some View {
+        Button {
+            isShowingHelp.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: 13))
+                .foregroundColor(AppTheme.Text.muted)
+        }
+        .buttonStyle(.plain)
+        .help(help.title)
+        .accessibilityLabel(help.title)
+        .popover(isPresented: $isShowingHelp, arrowEdge: .bottom) {
+            PermissionHelpContent(help: help)
+        }
+    }
+}
+
+private struct PermissionHelpContent: View {
+    let help: ControlPermission.SetupHelp
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(help.title)
+                .font(.system(size: 13, weight: .semibold))
+
+            ForEach(Array(help.steps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(verbatim: "\(index + 1).")
+                        .font(.system(size: 12, weight: .semibold))
+                        .monospacedDigit()
+                    Text(step)
+                        .font(.system(size: 12))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            if let fix = help.chosenAppsFix {
+                Text(fix)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppTheme.Status.error)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Divider()
+
+            Text(help.note)
+                .font(.system(size: 11))
+                .foregroundColor(AppTheme.Text.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 320, alignment: .leading)
     }
 }
