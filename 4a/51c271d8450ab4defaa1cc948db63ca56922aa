@@ -1,0 +1,31 @@
+VoiceInk/Resources/asideURL.scpt
+  s_636067066a3e17::t_4c6cf8b2598686 2
+  s_636067066a3e17::t_7ea5351edbd155 1,3-5
+VoiceInk/Resources/ardiaURL.scpt
+  s_636067066a3e17::t_f63e2e527706f6 1-5
+VoiceInk/Infrastructure/SystemIntegration/Context/BrowserURLService.swift
+  s_636067066a3e17::t_01bb2ea28387eb 19-20,37-38,57-58,77-78,83
+  s_636067066a3e17::t_4215f51c1f8053 18,36,56,76
+  s_636067066a3e17::t_83593f41d5775c 17,35,55,75
+  s_636067066a3e17::t_5a260457e5b29e 143-150
+VoiceInk/Resources/yabURL.scpt
+  s_636067066a3e17::t_c256c2e9b67ece 1-5
+VoiceInk/Resources/heliumURL.scpt
+  s_636067066a3e17::t_28ad4792f1a72e 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4a51c271d8450ab4defaa1cc948db63ca56922aa",
+  "prompts": {},
+  "sessions": {
+    "s_636067066a3e17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78da147b-3bad-4e3f-a988-562d30844847",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prakash Joshi Pax <101010368+Beingpax@users.noreply.github.com>"
+    }
+  }
+}
