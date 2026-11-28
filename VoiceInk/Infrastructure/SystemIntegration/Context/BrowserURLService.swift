@@ -14,6 +14,10 @@ enum BrowserType {
     case vivaldi
     case orion
     case yandex
+    case helium
+    case ardia
+    case yab
+    case aside
 
     var scriptName: String {
         switch self {
@@ -28,6 +32,10 @@ enum BrowserType {
         case .vivaldi: return "vivaldiURL"
         case .orion: return "orionURL"
         case .yandex: return "yandexURL"
+        case .helium: return "heliumURL"
+        case .ardia: return "ardiaURL"
+        case .yab: return "yabURL"
+        case .aside: return "asideURL"
         }
     }
 
@@ -44,6 +52,10 @@ enum BrowserType {
         case .vivaldi: return "com.vivaldi.Vivaldi"
         case .orion: return "com.kagi.kagimacOS"
         case .yandex: return "ru.yandex.desktop.yandex-browser"
+        case .helium: return "net.imput.helium"
+        case .ardia: return "com.ardia.browser"
+        case .yab: return "dev.serafim.fast"
+        case .aside: return "at.studio.AsideBrowser"
         }
     }
 
@@ -60,11 +72,15 @@ enum BrowserType {
         case .vivaldi: return "Vivaldi"
         case .orion: return "Orion"
         case .yandex: return "Yandex Browser"
+        case .helium: return "Helium"
+        case .ardia: return "Ardia"
+        case .yab: return "Yab"
+        case .aside: return "Aside"
         }
     }
 
     static var allCases: [BrowserType] {
-        [.safari, .arc, .dia, .chrome, .comet, .edge, .brave, .opera, .vivaldi, .orion, .yandex]
+        [.safari, .arc, .dia, .chrome, .comet, .edge, .brave, .opera, .vivaldi, .orion, .yandex, .helium, .ardia, .yab, .aside]
     }
 
     static var installedBrowsers: [BrowserType] {
@@ -124,16 +140,17 @@ class BrowserURLService {
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             if let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                // osascript exits non-zero when the script fails. Checking the exit status
+                // instead of the text keeps URLs that contain the word "error" working.
+                if task.terminationStatus != 0 {
+                    logger.error(
+                        "❌ AppleScript error for \(browser.displayName, privacy: .public) (exit \(task.terminationStatus, privacy: .public)): \(output, privacy: .private)")
+                    throw BrowserURLError.executionFailed
+                }
+
                 if output.isEmpty {
                     logger.error("❌ Empty output from AppleScript for \(browser.displayName, privacy: .public)")
                     throw BrowserURLError.noActiveTab
-                }
-
-                // Check if output contains error messages
-                if output.lowercased().contains("error") {
-                    logger.error(
-                        "❌ AppleScript error for \(browser.displayName, privacy: .public): \(output, privacy: .private)")
-                    throw BrowserURLError.executionFailed
                 }
 
                 logger.debug(
